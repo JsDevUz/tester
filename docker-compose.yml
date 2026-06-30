@@ -24,6 +24,8 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
       JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+    volumes:
+      - uploads_data:/app/apps/backend/uploads
     depends_on:
       db:
         condition: service_healthy
@@ -87,3 +89,4 @@ volumes:
   postgres_data:
   caddy_data:
   caddy_config:
+  uploads_data:
