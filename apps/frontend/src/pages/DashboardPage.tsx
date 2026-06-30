@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import { FolderCard } from '../components/FolderCard';
 import { FolderContextMenu } from '../components/FolderContextMenu';
@@ -7,6 +8,7 @@ import { useFolderStore } from '../stores/folderStore';
 import type { Folder } from '../api/folders';
 
 export function DashboardPage() {
+  const navigate = useNavigate();
   const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [editFolder, setEditFolder] = useState<Folder | null>(null);
@@ -54,7 +56,7 @@ export function DashboardPage() {
             <FolderCard
               key={folder.id}
               folder={folder}
-              onDoubleClick={() => { /* future: navigate to folder tests */ }}
+              onDoubleClick={() => navigate(`/folders/${folder.id}`)}
               onContextMenu={(e) => handleContextMenu(e, folder)}
             />
           ))}
