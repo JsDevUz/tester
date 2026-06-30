@@ -82,7 +82,7 @@ export function DashboardPage() {
         />
       )}
       <p className="fixed bottom-3 right-4 text-[10px] text-gray-300 select-none">
-        v1.1
+        v1.2
       </p>
       {confirmDelete && (
         <>

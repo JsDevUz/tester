@@ -112,13 +112,31 @@ export function TakeTestPage() {
       e.preventDefault();
     };
 
+    // blur: boshqa ilovaga o'tganda — 3 soniya kutib, hali ham focus yo'q bo'lsa submit
+    let blurTimer: ReturnType<typeof setTimeout> | null = null;
+    const handleBlur = () => {
+      blurTimer = setTimeout(() => {
+        if (document.visibilityState === 'hidden' || !document.hasFocus()) {
+          sendSubmit();
+        }
+      }, 3000);
+    };
+    const handleFocus = () => {
+      if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
+    };
+
     window.addEventListener('pagehide', sendSubmit);
     window.addEventListener('beforeunload', handleBeforeUnload);
     document.addEventListener('visibilitychange', handleVisibility);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
       window.removeEventListener('beforeunload', handleBeforeUnload);
       document.removeEventListener('visibilitychange', handleVisibility);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
+      if (blurTimer) clearTimeout(blurTimer);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 

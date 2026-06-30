@@ -112,7 +112,12 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
       ];
     } else {
       options = opts.filter((o) => o.text.trim());
+      if ((type === 'single' || type === 'multi') && options.length > 0) {
+        const hasCorrect = options.some((o) => o.isCorrect);
+        if (!hasCorrect) { setUploadError("Kamida bitta to'g'ri javob belgilanishi shart"); return; }
+      }
     }
+    setUploadError(null);
 
     onSubmit({ text: text.trim(), type, options, imageUrl, audioUrl });
 

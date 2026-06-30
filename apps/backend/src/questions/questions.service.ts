@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { questions, options, tests } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -40,6 +40,10 @@ export class QuestionsService {
     audioUrl?: string;
   }) {
     await this.verifyTestOwnership(testId, adminId);
+    if ((data.type === 'single' || data.type === 'multi') && data.options.length > 0) {
+      const hasCorrect = data.options.some((o) => o.isCorrect);
+      if (!hasCorrect) throw new BadRequestException('Kamida bitta to\'g\'ri javob belgilanishi shart');
+    }
     const existing = await db.query.questions.findMany({ where: eq(questions.testId, testId) });
     const [question] = await db.insert(questions).values({
       testId,

@@ -41,9 +41,10 @@ export function parseBulk(input: string): ParsedQuestion[] {
   return result.map((q) => {
     if (q.type === 'arrange') return q;
     const correctCount = q.options.filter((o) => o.isCorrect).length;
-    if (q.options.length === 0) q.type = 'open';
-    else if (correctCount >= 2) q.type = 'multi';
+    if (q.options.length === 0) { q.type = 'open'; return q; }
+    if (correctCount === 0) return null; // variantli savol, lekin + yo'q — o'tkazib yuborish
+    if (correctCount >= 2) q.type = 'multi';
     else q.type = 'single';
     return q;
-  });
+  }).filter((q): q is ParsedQuestion => q !== null);
 }
