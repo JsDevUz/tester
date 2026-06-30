@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Copy, Check } from 'lucide-react';
 
 interface Props {
   onImport: (text: string) => Promise<number>;
@@ -28,6 +29,14 @@ export function BulkImportTab({ onImport, defaultValue = '' }: Props) {
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  function copyHint() {
+    navigator.clipboard.writeText(HINT).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    });
+  }
 
   function handlePreview() {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
@@ -53,7 +62,14 @@ export function BulkImportTab({ onImport, defaultValue = '' }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 font-mono whitespace-pre">{HINT}</div>
+      <div className="bg-gray-50 rounded-xl p-3 flex items-start justify-between gap-3">
+        <pre className="text-xs text-gray-500 font-mono whitespace-pre flex-1">{HINT}</pre>
+        <button type="button" onClick={copyHint}
+          className="shrink-0 flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors bg-white">
+          {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
+          {copied ? 'Nusxalandi' : 'Namuna nusxalash'}
+        </button>
+      </div>
       <textarea value={text} onChange={(e) => { setText(e.target.value); setPreview(null); setResult(null); }}
         rows={10} placeholder="Savollarni shu yerga joylashtiring..."
         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y" />
