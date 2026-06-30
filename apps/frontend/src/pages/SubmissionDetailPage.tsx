@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { CheckCircle2, XCircle, Circle, CheckCheck } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
 
@@ -44,8 +45,8 @@ export function SubmissionDetailPage() {
               <div className="flex items-start gap-2 mb-3">
                 <span className="text-xs text-gray-400 mt-0.5">{i + 1}.</span>
                 <p className="text-sm font-medium text-gray-800 flex-1">{a.questionText}</p>
-                <span className="text-base shrink-0">
-                  {a.isCorrect === true ? '✅' : a.isCorrect === false ? '❌' : '—'}
+                <span className="shrink-0">
+                  {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300 text-sm">—</span>}
                 </span>
               </div>
 
@@ -64,9 +65,9 @@ export function SubmissionDetailPage() {
                         studentSelected ? 'bg-red-50 text-red-600' :
                         'text-gray-500'
                       }`}>
-                        <span>{studentSelected ? '●' : '○'}</span>
+                        {studentSelected ? <Circle size={10} className="fill-current shrink-0" /> : <Circle size={10} className="shrink-0 opacity-30" />}
                         <span>{opt.text}</span>
-                        {isCorrectOpt && <span className="ml-auto text-[10px]">✓ to'g'ri</span>}
+                        {isCorrectOpt && <span className="ml-auto flex items-center gap-0.5 text-[10px]"><CheckCheck size={10} /> to'g'ri</span>}
                       </div>
                     );
                   })}

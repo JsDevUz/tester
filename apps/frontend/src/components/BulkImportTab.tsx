@@ -34,11 +34,11 @@ export function BulkImportTab({ onImport }: Props) {
     setLoading(true);
     try {
       const imported = await onImport(text);
-      setResult(`✓ ${imported} ta savol muvaffaqiyatli import qilindi.`);
+      setResult(`ok:${imported} ta savol muvaffaqiyatli import qilindi.`);
       setText('');
       setPreview(null);
     } catch {
-      setResult('✗ Import amalga oshmadi. Formatni tekshiring.');
+      setResult('err:Import amalga oshmadi. Formatni tekshiring.');
     } finally {
       setLoading(false);
     }
@@ -51,7 +51,11 @@ export function BulkImportTab({ onImport }: Props) {
         rows={10} placeholder="Savollarni shu yerga joylashtiring..."
         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y" />
       {preview && <p className="text-sm text-gray-600">{preview}</p>}
-      {result && <p className={`text-sm ${result.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{result}</p>}
+      {result && (
+        <p className={`text-sm ${result.startsWith('ok:') ? 'text-green-600' : 'text-red-500'}`}>
+          {result.startsWith('ok:') ? result.slice(3) : result.slice(4)}
+        </p>
+      )}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={handlePreview} disabled={!text.trim()}
           className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40">

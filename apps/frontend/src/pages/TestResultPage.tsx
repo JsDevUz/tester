@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { CheckCircle2, XCircle, Circle, CheckCheck } from 'lucide-react';
 import type { SubmissionResult } from '../api/delivery';
 
 export function TestResultPage() {
@@ -45,8 +46,8 @@ export function TestResultPage() {
                   <div className="flex items-start gap-2 mb-2">
                     <span className="font-medium text-gray-500 shrink-0">{i + 1}.</span>
                     <span className="font-medium text-gray-800 flex-1">{a.questionText}</span>
-                    <span className="shrink-0 text-base">
-                      {a.isCorrect === true ? '✅' : a.isCorrect === false ? '❌' : '—'}
+                    <span className="shrink-0">
+                      {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300">—</span>}
                     </span>
                   </div>
                   {a.questionType === 'open' ? (
@@ -62,9 +63,9 @@ export function TestResultPage() {
                             selected ? 'bg-red-100 text-red-600' :
                             'text-gray-400'
                           }`}>
-                            <span>{selected ? '●' : '○'}</span>
+                            {selected ? <Circle size={10} className="fill-current shrink-0" /> : <Circle size={10} className="shrink-0 opacity-40" />}
                             <span>{opt.text}</span>
-                            {correct && <span className="ml-auto opacity-60">✓</span>}
+                            {correct && <CheckCheck size={11} className="ml-auto opacity-60 shrink-0" />}
                           </div>
                         );
                       })}
@@ -78,7 +79,7 @@ export function TestResultPage() {
 
         {result.showResults === 'after_deadline' && (
           <div className="text-center text-gray-600">
-            <p className="text-lg font-medium mb-2">Test topshirildi ✓</p>
+            <p className="text-lg font-medium mb-2 flex items-center justify-center gap-2"><CheckCircle2 size={20} className="text-green-500" /> Test topshirildi</p>
             <p className="text-sm text-gray-400">
               Natijalar {result.deadline ? new Date(result.deadline).toLocaleString() : 'deadline'} dan keyin ochiladi.
             </p>
@@ -87,7 +88,7 @@ export function TestResultPage() {
 
         {result.showResults === 'hidden' && (
           <div className="text-center text-gray-600">
-            <p className="text-lg font-medium">Test muvaffaqiyatli topshirildi ✓</p>
+            <p className="text-lg font-medium flex items-center justify-center gap-2"><CheckCircle2 size={20} className="text-green-500" /> Test muvaffaqiyatli topshirildi</p>
           </div>
         )}
       </div>

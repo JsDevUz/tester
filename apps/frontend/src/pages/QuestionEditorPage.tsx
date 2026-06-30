@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Check, Circle } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { QuestionForm } from '../components/QuestionForm';
 import { BulkImportTab } from '../components/BulkImportTab';
@@ -7,12 +8,15 @@ import { useQuestionStore } from '../stores/questionStore';
 import { apiGetTest } from '../api/tests';
 import type { TestDetail } from '../api/tests';
 
+import type { Question } from '../api/questions';
+
 export function QuestionEditorPage() {
   const { id: testId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { questions, setQuestions, addQuestion, bulkImport, deleteQuestion } = useQuestionStore();
   const [test, setTest] = useState<TestDetail | null>(null);
   const [tab, setTab] = useState<'manual' | 'bulk'>('manual');
+  const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     if (!testId) return;
@@ -25,6 +29,14 @@ export function QuestionEditorPage() {
   async function handleAddQuestion(data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }> }) {
     if (!testId) return;
     await addQuestion(testId, data);
+  }
+
+  async function handleEditQuestion(data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }> }) {
+    if (!testId || !editingQuestion) return;
+    await deleteQuestion(editingQuestion.id);
+    await addQuestion(testId, data);
+    setEditingQuestion(null);
+    setTab('manual');
   }
 
   async function handleBulkImport(text: string) {
@@ -58,7 +70,20 @@ export function QuestionEditorPage() {
         </div>
 
         {tab === 'manual' ? (
-          <QuestionForm onSubmit={handleAddQuestion} />
+          editingQuestion ? (
+            <QuestionForm
+              initial={{
+                text: editingQuestion.text,
+                type: editingQuestion.type,
+                options: editingQuestion.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
+              }}
+              submitLabel="Saqlash"
+              onCancel={() => setEditingQuestion(null)}
+              onSubmit={handleEditQuestion}
+            />
+          ) : (
+            <QuestionForm onSubmit={handleAddQuestion} />
+          )
         ) : (
           <BulkImportTab onImport={handleBulkImport} />
         )}
@@ -79,13 +104,24 @@ export function QuestionEditorPage() {
                       {q.type === 'single' ? 'Yagona' : q.type === 'multi' ? 'Ko\'p tanlov' : 'Ochiq'}
                     </span>
                   </div>
-                  <button onClick={() => deleteQuestion(q.id)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <button
+                      onClick={() => { setEditingQuestion(q); setTab('manual'); }}
+                      className="text-xs text-gray-400 hover:text-indigo-500 px-2 py-0.5 rounded hover:bg-indigo-50"
+                    >
+                      Tahrirlash
+                    </button>
+                    <button onClick={() => deleteQuestion(q.id)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+                  </div>
                 </div>
                 {q.options.length > 0 && (
                   <ul className="mt-2 flex flex-col gap-1">
                     {q.options.map((o) => (
                       <li key={o.id} className={`text-xs px-2 py-1 rounded-lg ${o.isCorrect ? 'bg-green-50 text-green-700' : 'text-gray-500'}`}>
-                        {o.isCorrect ? '✓ ' : '○ '}{o.text}
+                        <span className="inline-flex items-center gap-1">
+                          {o.isCorrect ? <Check size={10} /> : <Circle size={10} className="opacity-30" />}
+                          {o.text}
+                        </span>
                       </li>
                     ))}
                   </ul>

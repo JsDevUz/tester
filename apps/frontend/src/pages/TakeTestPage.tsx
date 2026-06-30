@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, type PublicTest, type PublicQuestion } from '../api/delivery';
 
 function seededShuffle<T>(arr: T[], seed: string): T[] {
@@ -135,7 +136,7 @@ export function TakeTestPage() {
         <span className="text-sm font-medium text-gray-700">{test.name}</span>
         {timeLeft !== null && (
           <span className={`font-mono text-sm ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
-            ⏱ {formatTime(timeLeft)}
+            <Clock size={13} className="inline mr-1" />{formatTime(timeLeft)}
           </span>
         )}
       </div>

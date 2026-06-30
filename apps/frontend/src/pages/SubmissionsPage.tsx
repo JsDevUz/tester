@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Copy, Check } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { useSubmissionStore } from '../stores/submissionStore';
 import { useTestStore } from '../stores/testStore';
@@ -22,8 +23,12 @@ export function SubmissionsPage() {
 
   const shareLink = test?.slug ? `${window.location.origin}/t/${test.slug}` : '';
 
+  const [copied, setCopied] = useState(false);
   async function copyLink() {
-    if (shareLink) await navigator.clipboard.writeText(shareLink);
+    if (!shareLink) return;
+    await navigator.clipboard.writeText(shareLink);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
   }
 
   function scoreBadgeClass(score: number | null, total: number | null) {
@@ -47,8 +52,9 @@ export function SubmissionsPage() {
         {shareLink && (
           <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 mb-4">
             <span className="text-xs text-gray-400 flex-1 truncate">{shareLink}</span>
-            <button onClick={copyLink} className="text-xs text-indigo-500 hover:text-indigo-700 shrink-0">
-              📋 Nusxalash
+            <button onClick={copyLink} className="flex items-center gap-1 text-xs text-indigo-500 hover:text-indigo-700 shrink-0">
+              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? 'Nusxalandi' : 'Nusxalash'}
             </button>
           </div>
         )}

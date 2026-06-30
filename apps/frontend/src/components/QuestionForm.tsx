@@ -1,21 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 
 interface OptionInput {
   text: string;
   isCorrect: boolean;
 }
 
-interface Props {
-  onSubmit: (data: { text: string; type: string; options: OptionInput[] }) => void;
+interface InitialValues {
+  text: string;
+  type: 'single' | 'multi' | 'open';
+  options: OptionInput[];
 }
 
-export function QuestionForm({ onSubmit }: Props) {
-  const [text, setText] = useState('');
-  const [type, setType] = useState<'single' | 'multi' | 'open'>('single');
-  const [opts, setOpts] = useState<OptionInput[]>([
-    { text: '', isCorrect: false },
-    { text: '', isCorrect: false },
-  ]);
+interface Props {
+  onSubmit: (data: { text: string; type: string; options: OptionInput[] }) => void;
+  initial?: InitialValues;
+  submitLabel?: string;
+  onCancel?: () => void;
+}
+
+export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props) {
+  const [text, setText] = useState(initial?.text ?? '');
+  const [type, setType] = useState<'single' | 'multi' | 'open'>(initial?.type ?? 'single');
+  const [opts, setOpts] = useState<OptionInput[]>(
+    initial?.options.length
+      ? initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect }))
+      : [{ text: '', isCorrect: false }, { text: '', isCorrect: false }]
+  );
+
+  useEffect(() => {
+    if (!initial) return;
+    setText(initial.text);
+    setType(initial.type);
+    setOpts(initial.options.length
+      ? initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect }))
+      : [{ text: '', isCorrect: false }, { text: '', isCorrect: false }]
+    );
+  }, [initial]);
 
   function addOption() {
     setOpts([...opts, { text: '', isCorrect: false }]);
@@ -72,9 +92,16 @@ export function QuestionForm({ onSubmit }: Props) {
           <button type="button" onClick={addOption} className="text-xs text-indigo-500 hover:text-indigo-700 self-start">+ Variant qo'shish</button>
         </div>
       )}
-      <button type="submit" className="self-end text-sm bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600">
-        Savol qo'shish
-      </button>
+      <div className="flex gap-2 justify-end">
+        {onCancel && (
+          <button type="button" onClick={onCancel} className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700">
+            Bekor qilish
+          </button>
+        )}
+        <button type="submit" className="text-sm bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600">
+          {submitLabel ?? 'Savol qo\'shish'}
+        </button>
+      </div>
     </form>
   );
 }

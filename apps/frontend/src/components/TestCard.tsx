@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { Clock, Shuffle, Calendar, Link2, Check } from 'lucide-react';
 import type { Test } from '../api/tests';
 
 interface Props {
@@ -73,16 +74,18 @@ export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
 
       {/* Footer */}
       <div className="border-t border-gray-100 px-4 py-2.5 flex items-center gap-3 text-[11px] text-gray-400">
-        {test.timeLimit ? (
-          <span className="flex items-center gap-1">⏱ {test.timeLimit} daq</span>
-        ) : (
-          <span className="flex items-center gap-1">⏱ —</span>
+        <span className="flex items-center gap-1">
+          <Clock size={11} />
+          {test.timeLimit ? `${test.timeLimit} daq` : '—'}
+        </span>
+        {test.oneByOne && <span title="Birin-ketin" className="font-medium">1×1</span>}
+        {test.shuffleQuestions && (
+          <span title="Savollar aralashtiriladi"><Shuffle size={11} /></span>
         )}
-        {test.oneByOne && <span title="Birin-ketin">1×1</span>}
-        {test.shuffleQuestions && <span title="Savollar aralashtiriladi">🔀</span>}
         {test.deadline && (
           <span className="flex items-center gap-1" title={new Date(test.deadline).toLocaleString()}>
-            📅 {new Date(test.deadline).toLocaleDateString('uz-UZ')}
+            <Calendar size={11} />
+            {new Date(test.deadline).toLocaleDateString('uz-UZ')}
           </span>
         )}
         {test.slug && (
@@ -91,7 +94,7 @@ export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
             className="ml-auto text-indigo-400 hover:text-indigo-600 transition-colors"
             title="Linkni nusxalash"
           >
-            {copied ? '✓' : '🔗'}
+            {copied ? <Check size={12} /> : <Link2 size={12} />}
           </button>
         )}
       </div>

@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
+import { Clock, Calendar } from 'lucide-react';
 import { apiGetPublicTest, apiStartSubmission, type PublicTest } from '../api/delivery';
 
 export function TakeTestEntryPage() {
@@ -57,11 +58,13 @@ export function TakeTestEntryPage() {
         {test.description && <p className="text-sm text-gray-500 mb-4">{test.description}</p>}
         <div className="flex gap-2 flex-wrap mb-6">
           {test.timeLimit && (
-            <span className="text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">⏱ {test.timeLimit} daqiqa</span>
+            <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">
+              <Clock size={11} /> {test.timeLimit} daqiqa
+            </span>
           )}
           {test.deadline && (
-            <span className="text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded-lg">
-              📅 {new Date(test.deadline).toLocaleString()}
+            <span className="flex items-center gap-1 text-xs bg-orange-50 text-orange-600 px-2 py-1 rounded-lg">
+              <Calendar size={11} /> {new Date(test.deadline).toLocaleString()}
             </span>
           )}
         </div>
