@@ -102,35 +102,25 @@ export function TakeTestPage() {
       navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };
 
-    const checkAndRedirect = () => {
-      if (submittingRef.current) return;
-      apiGetSubmission(submissionId).then((sub) => {
-        if (sub.status === 'submitted') {
-          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-        }
-      }).catch(() => {});
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        sendSubmit();
+      } else if (document.visibilityState === 'visible' && !submittingRef.current) {
+        setTimeout(() => {
+          apiGetSubmission(submissionId).then((sub) => {
+            if (sub.status === 'submitted') {
+              navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+            }
+          }).catch(() => {});
+        }, 800);
+      }
     };
-
-    const handleVisibilityHidden = () => {
-      if (document.visibilityState === 'hidden') sendSubmit();
-    };
-    const handleVisibilityVisible = () => {
-      if (document.visibilityState === 'visible') setTimeout(checkAndRedirect, 800);
-    };
-    const handleBlur = () => sendSubmit();
-    const handleFocus = () => setTimeout(checkAndRedirect, 800);
 
     window.addEventListener('pagehide', sendSubmit);
-    document.addEventListener('visibilitychange', handleVisibilityHidden);
-    document.addEventListener('visibilitychange', handleVisibilityVisible);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
-      document.removeEventListener('visibilitychange', handleVisibilityHidden);
-      document.removeEventListener('visibilitychange', handleVisibilityVisible);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
