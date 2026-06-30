@@ -7,6 +7,6 @@ async function bootstrap() {
   app.setGlobalPrefix('api/v1', { exclude: ['public/(.*)'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
   app.enableCors({ origin: process.env.FRONTEND_URL });
-  await app.listen(process.env.PORT ?? 3000);
+  await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();
