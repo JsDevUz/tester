@@ -4,5 +4,20 @@
 
 {$DOMAIN:test.jamm.uz} {
     encode gzip zstd
-    reverse_proxy web:80
+
+    handle /api/* {
+        reverse_proxy backend:3000
+    }
+
+    handle /public/* {
+        reverse_proxy backend:3000
+    }
+
+    handle /uploads/* {
+        reverse_proxy backend:3000
+    }
+
+    handle {
+        reverse_proxy web:80
+    }
 }
