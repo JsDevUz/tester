@@ -38,7 +38,6 @@ export function TakeTestPage() {
   const textMapRef = useRef<Record<string, string>>({});
   const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
   const submittingRef = useRef(false);
-  const autoSubmitSentRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
@@ -93,7 +92,7 @@ export function TakeTestPage() {
 
     const sendSubmit = () => {
       // Don't submit if questions haven't loaded yet or already submitting via button
-      if (submittingRef.current || autoSubmitSentRef.current || orderedQuestionsRef.current.length === 0) return;
+      if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -101,23 +100,21 @@ export function TakeTestPage() {
       }));
       const url = `${getPublicBaseUrl()}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      autoSubmitSentRef.current = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-    };
-
-    const redirectIfSubmitted = () => {
-      if (!slug) return;
-      apiGetSubmission(submissionId).then((sub) => {
-        if (sub.status === 'submitted') {
-          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-        }
-      }).catch(() => {});
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };
 
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
         sendSubmit();
-      } else if (document.visibilityState === 'visible') {
-        redirectIfSubmitted();
+      } else if (document.visibilityState === 'visible' && !submittingRef.current) {
+        // After returning, check if beacon succeeded and redirect
+        setTimeout(() => {
+          apiGetSubmission(submissionId).then((sub) => {
+            if (sub.status === 'submitted') {
+              navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+            }
+          }).catch(() => {});
+        }, 500);
       }
     };
 
@@ -126,9 +123,8 @@ export function TakeTestPage() {
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
       document.removeEventListener('visibilitychange', handleVisibility);
-      sendSubmit();
     };
-  }, [navigate, slug, submissionId]);
+  }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit() {
     if (submitting || !test) return;
