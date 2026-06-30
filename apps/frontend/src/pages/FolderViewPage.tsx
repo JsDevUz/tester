@@ -3,10 +3,9 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import { TestCard } from '../components/TestCard';
 import { TestSettingsModal } from '../components/TestSettingsModal';
-import { FolderContextMenu } from '../components/FolderContextMenu';
 import { useTestStore } from '../stores/testStore';
 import { useFolderStore } from '../stores/folderStore';
-import type { Test } from '../api/tests';
+import type { Test, CreateTestData } from '../api/tests';
 
 export function FolderViewPage() {
   const { id: folderId } = useParams<{ id: string }>();
@@ -22,7 +21,7 @@ export function FolderViewPage() {
     if (folderId) fetchTests(folderId);
   }, [folderId]);
 
-  async function handleCreate(data: any) {
+  async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
     setShowModal(false);
     navigate(`/tests/${test.id}/edit`);
@@ -69,13 +68,20 @@ export function FolderViewPage() {
         <TestSettingsModal folderId={folderId} onSubmit={handleCreate} onClose={() => setShowModal(false)} />
       )}
       {menu && (
-        <FolderContextMenu
-          x={menu.x} y={menu.y}
-          onRename={() => setMenu(null)}
-          onChangeColor={() => setMenu(null)}
-          onDelete={handleDelete}
-          onClose={() => setMenu(null)}
-        />
+        <>
+          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
+          <div
+            className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[140px]"
+            style={{ top: menu.y, left: menu.x }}
+          >
+            <button
+              onClick={handleDelete}
+              className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
+            >
+              Delete
+            </button>
+          </div>
+        </>
       )}
     </div>
   );
