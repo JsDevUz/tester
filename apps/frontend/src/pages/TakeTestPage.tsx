@@ -112,14 +112,12 @@ export function TakeTestPage() {
       e.preventDefault();
     };
 
-    // blur: boshqa ilovaga o'tganda — 3 soniya kutib, hali ham focus yo'q bo'lsa submit
+    // blur: boshqa ilovaga o'tganda — 1 soniya kutib, focus qaytmasa submit
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
     const handleBlur = () => {
       blurTimer = setTimeout(() => {
-        if (document.visibilityState === 'hidden' || !document.hasFocus()) {
-          sendSubmit();
-        }
-      }, 3000);
+        if (!document.hasFocus()) sendSubmit();
+      }, 1000);
     };
     const handleFocus = () => {
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
