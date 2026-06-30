@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
+import { getApiBaseUrl } from '../api/baseUrl';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
@@ -37,6 +38,7 @@ export function TakeTestPage() {
   const textMapRef = useRef<Record<string, string>>({});
   const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
   const submittingRef = useRef(false);
+  const autoSubmitSentRef = useRef(false);
 
   // Keep refs in sync
   useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
@@ -90,20 +92,32 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const sendSubmit = () => {
+      // Don't submit if questions haven't loaded yet or already submitting via button
+      if (submittingRef.current || autoSubmitSentRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
         textAnswer: textMapRef.current[q.id] ?? null,
       }));
-      const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/api\/v1\/?$/, '');
-      const url = `${base}/public/submissions/${submissionId}/submit`;
+      const url = `${getApiBaseUrl()}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      autoSubmitSentRef.current = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+    };
+
+    const redirectIfSubmitted = () => {
+      if (!slug) return;
+      apiGetSubmission(submissionId).then((sub) => {
+        if (sub.status === 'submitted') {
+          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+        }
+      }).catch(() => {});
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden' && !submittingRef.current) {
+      if (document.visibilityState === 'hidden') {
         sendSubmit();
+      } else if (document.visibilityState === 'visible') {
+        redirectIfSubmitted();
       }
     };
 
@@ -112,11 +126,13 @@ export function TakeTestPage() {
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
       document.removeEventListener('visibilitychange', handleVisibility);
+      sendSubmit();
     };
-  }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [navigate, slug, submissionId]);
 
   async function handleSubmit() {
     if (submitting || !test) return;
+    submittingRef.current = true;
     setSubmitting(true);
     const answers = orderedQuestions.map((q) => ({
       questionId: q.id,

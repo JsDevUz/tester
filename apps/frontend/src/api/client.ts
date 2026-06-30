@@ -1,8 +1,9 @@
 import axios from 'axios';
 import { useLoadingStore } from '../store/loadingStore';
+import { getApiBaseUrl } from './baseUrl';
 
 const client = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api/v1`,
+  baseURL: getApiBaseUrl(),
 });
 
 client.interceptors.request.use((config) => {
