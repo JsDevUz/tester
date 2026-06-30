@@ -2,8 +2,11 @@
   "name": "test-platform",
   "private": true,
   "workspaces": ["apps/*"],
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
-    "dev:backend": "npm run dev --workspace=apps/backend",
+    "dev:backend": "npm run start:dev --workspace=apps/backend",
     "dev:frontend": "npm run dev --workspace=apps/frontend"
   }
 }
