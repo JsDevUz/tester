@@ -10,21 +10,29 @@ import type { Test, CreateTestData } from '../api/tests';
 export function FolderViewPage() {
   const { id: folderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tests, fetchTests, createTest, deleteTest } = useTestStore();
-  const { folders } = useFolderStore();
+  const { tests, fetchTests, createTest, updateTest, deleteTest } = useTestStore();
+  const { folders, fetchFolders } = useFolderStore();
   const [showModal, setShowModal] = useState(false);
+  const [editTest, setEditTest] = useState<Test | null>(null);
   const [menu, setMenu] = useState<{ x: number; y: number; test: Test } | null>(null);
 
   const folder = folders.find((f) => f.id === folderId);
 
   useEffect(() => {
     if (folderId) fetchTests(folderId);
+    if (folders.length === 0) fetchFolders();
   }, [folderId]);
 
   async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
     setShowModal(false);
     navigate(`/tests/${test.id}/edit`);
+  }
+
+  async function handleUpdate(data: CreateTestData) {
+    if (!editTest) return;
+    await updateTest(editTest.id, data);
+    setEditTest(null);
   }
 
   async function handleDelete() {
@@ -67,6 +75,24 @@ export function FolderViewPage() {
       {showModal && folderId && (
         <TestSettingsModal folderId={folderId} onSubmit={handleCreate} onClose={() => setShowModal(false)} />
       )}
+      {editTest && folderId && (
+        <TestSettingsModal
+          folderId={folderId}
+          title="Edit Test Settings"
+          initial={{
+            name: editTest.name,
+            description: editTest.description ?? undefined,
+            timeLimit: editTest.timeLimit ?? undefined,
+            showResults: editTest.showResults,
+            shuffleQuestions: editTest.shuffleQuestions,
+            shuffleOptions: editTest.shuffleOptions,
+            oneByOne: editTest.oneByOne,
+            deadline: editTest.deadline ?? undefined,
+          }}
+          onSubmit={handleUpdate}
+          onClose={() => setEditTest(null)}
+        />
+      )}
       {menu && (
         <>
           <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
@@ -74,6 +100,12 @@ export function FolderViewPage() {
             className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[140px]"
             style={{ top: menu.y, left: menu.x }}
           >
+            <button
+              onClick={() => { setEditTest(menu.test); setMenu(null); }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Edit Settings
+            </button>
             <button
               onClick={handleDelete}
               className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
