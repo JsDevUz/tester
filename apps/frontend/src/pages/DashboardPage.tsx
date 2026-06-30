@@ -41,9 +41,9 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <Toolbar />
-      <div className="flex-1 p-6">
-        <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">My Folders</h2>
+      <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-6">
+          <h2 className="text-xl font-bold text-gray-800">Folders</h2>
           <button
             onClick={() => setShowNewModal(true)}
             className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
@@ -51,7 +51,7 @@ export function DashboardPage() {
             + New Folder
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
           {folders.map((folder) => (
             <FolderCard
               key={folder.id}
@@ -61,7 +61,7 @@ export function DashboardPage() {
             />
           ))}
           {folders.length === 0 && (
-            <p className="text-gray-400 text-sm mt-8 w-full text-center">No folders yet. Create one!</p>
+            <p className="text-gray-400 text-sm mt-8 col-span-full text-center">No folders yet. Create one!</p>
           )}
         </div>
       </div>
