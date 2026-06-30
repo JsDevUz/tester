@@ -1,10 +1,11 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, Calendar } from 'lucide-react';
-import { apiGetPublicTest, apiStartSubmission, type PublicTest } from '../api/delivery';
+import { apiGetPublicTest, apiStartSubmission, apiGetSubmission, type PublicTest } from '../api/delivery';
 
 export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
+  const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [test, setTest] = useState<PublicTest | null>(null);
   const [name, setName] = useState('');
@@ -14,6 +15,28 @@ export function TakeTestEntryPage() {
 
   useEffect(() => {
     if (!slug) return;
+
+    const sid = searchParams.get('sid');
+
+    // If sid in URL — check submission status
+    if (sid) {
+      apiGetSubmission(sid)
+        .then((sub) => {
+          if (sub.status === 'submitted') {
+            // Already submitted — go to result
+            navigate(`/t/${slug}/result?sid=${sid}`, { replace: true });
+          } else {
+            // In progress — resume test
+            navigate(`/t/${slug}/take?sid=${sid}`, { replace: true });
+          }
+        })
+        .catch(() => {
+          // Invalid sid — load test normally
+          apiGetPublicTest(slug).then(setTest).catch(() => setError('Test topilmadi.')).finally(() => setLoading(false));
+        });
+      return;
+    }
+
     apiGetPublicTest(slug)
       .then(setTest)
       .catch(() => setError('Test topilmadi.'))
@@ -28,7 +51,7 @@ export function TakeTestEntryPage() {
       const { submissionId } = await apiStartSubmission(slug, name.trim());
       navigate(`/t/${slug}/take?sid=${submissionId}`);
     } catch {
-      setError('Xato yuz berdi. Qayta urinib ko\'ring.');
+      setError("Xato yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setStarting(false);
     }

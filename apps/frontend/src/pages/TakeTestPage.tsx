@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, type PublicTest, type PublicQuestion } from '../api/delivery';
@@ -32,6 +32,18 @@ export function TakeTestPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
+  // Refs for auto-submit — useState values are stale in event listeners
+  const selectedMapRef = useRef<Record<string, string[]>>({});
+  const textMapRef = useRef<Record<string, string>>({});
+  const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
+  const submittingRef = useRef(false);
+
+  // Keep refs in sync
+  useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
+  useEffect(() => { textMapRef.current = textMap; }, [textMap]);
+  useEffect(() => { orderedQuestionsRef.current = orderedQuestions; }, [orderedQuestions]);
+  useEffect(() => { submittingRef.current = submitting; }, [submitting]);
+
   useEffect(() => {
     if (!slug) return;
     apiGetPublicTest(slug).then((t) => {
@@ -62,6 +74,33 @@ export function TakeTestPage() {
   useEffect(() => {
     if (timeLeft === 0) handleSubmit();
   }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Auto-submit on page hide/close
+  useEffect(() => {
+    if (!submissionId) return;
+
+    const submitViaBeacon = () => {
+      if (submittingRef.current || !orderedQuestionsRef.current.length) return;
+      const answers = orderedQuestionsRef.current.map((q) => ({
+        questionId: q.id,
+        selectedOptionIds: selectedMapRef.current[q.id] ?? [],
+        textAnswer: textMapRef.current[q.id] ?? null,
+      }));
+      const url = `${import.meta.env.VITE_API_URL}/public/submissions/${submissionId}/submit`;
+      navigator.sendBeacon(url, new Blob([JSON.stringify({ answers })], { type: 'application/json' }));
+    };
+
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') submitViaBeacon();
+    };
+
+    window.addEventListener('beforeunload', submitViaBeacon);
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => {
+      window.removeEventListener('beforeunload', submitViaBeacon);
+      document.removeEventListener('visibilitychange', handleVisibility);
+    };
+  }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit() {
     if (submitting || !test) return;
@@ -192,7 +231,7 @@ export function TakeTestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col notranslate" translate="no">
       <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
         <span className="text-sm font-medium text-gray-700">{test.name}</span>
         {timeLeft !== null && (
@@ -214,7 +253,13 @@ export function TakeTestPage() {
           <p className="text-xs text-gray-400 text-right">{currentIdx + 1} / {orderedQuestions.length}</p>
         )}
         {questions.map((q, i) => renderQuestion(q, isOneByOne ? currentIdx : i))}
-        <div className="flex justify-end gap-2 mt-2">
+        <div className="flex justify-between gap-2 mt-2">
+          {isOneByOne && currentIdx > 0 ? (
+            <button onClick={() => setCurrentIdx((i) => i - 1)}
+              className="px-5 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm hover:border-gray-300">
+              Oldingi
+            </button>
+          ) : <span />}
           {isOneByOne && !isLast ? (
             <button onClick={() => setCurrentIdx((i) => i + 1)}
               className="px-5 py-2 bg-indigo-500 text-white rounded-xl text-sm hover:bg-indigo-600">

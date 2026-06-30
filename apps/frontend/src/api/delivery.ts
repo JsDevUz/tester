@@ -58,6 +58,14 @@ export async function apiGetPublicTest(slug: string): Promise<PublicTest> {
   return res.data;
 }
 
+export async function apiGetSubmission(submissionId: string): Promise<
+  | { status: 'in_progress'; testId: string; studentName: string }
+  | { status: 'submitted'; score: number; total: number; showResults: string; deadline: string | null }
+> {
+  const res = await publicClient.get(`/public/submissions/${submissionId}`);
+  return res.data;
+}
+
 export async function apiStartSubmission(slug: string, studentName: string): Promise<{ submissionId: string }> {
   const res = await publicClient.post('/public/submissions', { slug, studentName });
   return res.data;

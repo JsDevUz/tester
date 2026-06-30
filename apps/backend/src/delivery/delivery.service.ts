@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests, submissions, answers } from '../db/schema';
+import { tests, submissions, answers, questions, options } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
 @Injectable()
@@ -34,7 +34,6 @@ export class DeliveryService {
         orderIndex: q.orderIndex,
         imageUrl: q.imageUrl,
         audioUrl: q.audioUrl,
-        // For arrange questions expose all options (correct+distractors) without revealing isCorrect
         options: q.options.map((o) => ({ id: o.id, text: o.text, orderIndex: o.orderIndex })),
       })),
     };
@@ -52,6 +51,33 @@ export class DeliveryService {
     return { submissionId: submission.id };
   }
 
+  // Resume: return submission state if not yet submitted
+  async getSubmission(submissionId: string) {
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+    });
+    if (!submission) throw new NotFoundException('Submission not found');
+
+    // Already submitted — return result (respecting showResults)
+    if (submission.submittedAt) {
+      const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
+      return {
+        status: 'submitted' as const,
+        score: submission.score,
+        total: submission.total,
+        showResults: test?.showResults ?? 'hidden',
+        deadline: test?.deadline ?? null,
+      };
+    }
+
+    // Not submitted — return in-progress state so frontend can resume
+    return {
+      status: 'in_progress' as const,
+      testId: submission.testId,
+      studentName: submission.studentName,
+    };
+  }
+
   async submitAnswers(submissionId: string, answerItems: Array<{
     questionId: string;
     selectedOptionIds: string[];
@@ -67,11 +93,7 @@ export class DeliveryService {
 
     const test = await db.query.tests.findFirst({
       where: eq(tests.id, submission.testId),
-      with: {
-        questions: {
-          with: { options: {} },
-        },
-      },
+      with: { questions: { with: { options: {} } } },
     });
     if (!test) throw new NotFoundException('Test not found');
 
@@ -79,13 +101,13 @@ export class DeliveryService {
 
     let score = 0;
     let total = 0;
-    const answerResults: Array<{
+
+    // Safe answer results — never expose correct option IDs or option texts to client
+    const safeAnswers: Array<{
       questionId: string;
       questionText: string;
       questionType: string;
       isCorrect: boolean | null;
-      correctOptionIds: string[];
-      options: Array<{ id: string; text: string }>;
       selectedOptionIds: string[];
       textAnswer: string | null;
     }> = [];
@@ -106,7 +128,6 @@ export class DeliveryService {
         if (isCorrect) score++;
       } else if (question.type === 'arrange') {
         total++;
-        // Correct order: options with isCorrect=true sorted by orderIndex
         const correctOrder = question.options
           .filter((o) => o.isCorrect)
           .sort((a, b) => a.orderIndex - b.orderIndex)
@@ -117,13 +138,11 @@ export class DeliveryService {
         if (isCorrect) score++;
       }
 
-      answerResults.push({
+      safeAnswers.push({
         questionId: item.questionId,
         questionText: question.text,
         questionType: question.type,
         isCorrect,
-        correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
-        options: question.options.map((o) => ({ id: o.id, text: o.text })),
         selectedOptionIds: item.selectedOptionIds,
         textAnswer: item.textAnswer ?? null,
       });
@@ -145,13 +164,17 @@ export class DeliveryService {
       .set({ submittedAt: new Date(), score, total })
       .where(eq(submissions.id, submissionId));
 
+    // Only return answer breakdown if showResults === 'immediately'
+    // For other modes, never send per-question correctness to client
+    const showAnswers = test.showResults === 'immediately';
+
     return {
       submissionId,
       score,
       total,
       showResults: test.showResults,
       deadline: test.deadline,
-      answers: answerResults,
+      answers: showAnswers ? safeAnswers : [],
     };
   }
 }
