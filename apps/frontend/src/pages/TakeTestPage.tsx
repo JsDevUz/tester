@@ -91,6 +91,7 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const sendSubmit = () => {
+      console.log('[auto] sendSubmit called, submitting:', submittingRef.current, 'qLen:', orderedQuestionsRef.current.length);
       if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
