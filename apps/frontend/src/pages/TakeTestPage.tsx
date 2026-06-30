@@ -91,10 +91,7 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const sendSubmit = () => {
-      if (submittingRef.current || orderedQuestionsRef.current.length === 0) {
-        console.log('[autosubmit] skipped', { submitting: submittingRef.current, qLen: orderedQuestionsRef.current.length });
-        return;
-      }
+      if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -102,32 +99,38 @@ export function TakeTestPage() {
       }));
       const url = `${getPublicBaseUrl()}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      console.log('[autosubmit] sending beacon to', url, 'answers:', answers.length);
-      const ok = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-      console.log('[autosubmit] beacon result:', ok);
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };
 
-    const handleVisibility = () => {
-      console.log('[visibility]', document.visibilityState);
-      if (document.visibilityState === 'hidden') {
-        sendSubmit();
-      } else if (document.visibilityState === 'visible' && !submittingRef.current) {
-        setTimeout(() => {
-          apiGetSubmission(submissionId).then((sub) => {
-            console.log('[autosubmit] check status:', sub.status);
-            if (sub.status === 'submitted') {
-              navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-            }
-          }).catch(() => {});
-        }, 500);
-      }
+    const checkAndRedirect = () => {
+      if (submittingRef.current) return;
+      apiGetSubmission(submissionId).then((sub) => {
+        if (sub.status === 'submitted') {
+          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+        }
+      }).catch(() => {});
     };
+
+    const handleVisibilityHidden = () => {
+      if (document.visibilityState === 'hidden') sendSubmit();
+    };
+    const handleVisibilityVisible = () => {
+      if (document.visibilityState === 'visible') setTimeout(checkAndRedirect, 800);
+    };
+    const handleBlur = () => sendSubmit();
+    const handleFocus = () => setTimeout(checkAndRedirect, 800);
 
     window.addEventListener('pagehide', sendSubmit);
-    document.addEventListener('visibilitychange', handleVisibility);
+    document.addEventListener('visibilitychange', handleVisibilityHidden);
+    document.addEventListener('visibilitychange', handleVisibilityVisible);
+    window.addEventListener('blur', handleBlur);
+    window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
-      document.removeEventListener('visibilitychange', handleVisibility);
+      document.removeEventListener('visibilitychange', handleVisibilityHidden);
+      document.removeEventListener('visibilitychange', handleVisibilityVisible);
+      window.removeEventListener('blur', handleBlur);
+      window.removeEventListener('focus', handleFocus);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
