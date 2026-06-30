@@ -46,13 +46,13 @@ export function QuestionForm({ onSubmit }: Props) {
   return (
     <form onSubmit={handleSubmit} className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3">
       <textarea value={text} onChange={(e) => setText(e.target.value)} rows={2}
-        placeholder="Question text..." required
+        placeholder="Savol matni..." required
         className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none" />
       <div className="flex gap-2">
         {(['single', 'multi', 'open'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setType(t)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-500 hover:border-indigo-300'}`}>
-            {t === 'single' ? 'Single choice' : t === 'multi' ? 'Multi choice' : 'Open answer'}
+            {t === 'single' ? 'Yagona tanlov' : t === 'multi' ? 'Ko\'p tanlov' : 'Ochiq javob'}
           </button>
         ))}
       </div>
@@ -64,16 +64,16 @@ export function QuestionForm({ onSubmit }: Props) {
                 checked={opt.isCorrect} onChange={() => toggleCorrect(i)}
                 name="correct" className="w-4 h-4 accent-indigo-500" />
               <input value={opt.text} onChange={(e) => setOpts(opts.map((o, idx) => idx === i ? { ...o, text: e.target.value } : o))}
-                placeholder={`Option ${i + 1}`}
+                placeholder={`Variant ${i + 1}`}
                 className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
               <button type="button" onClick={() => removeOption(i)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
             </div>
           ))}
-          <button type="button" onClick={addOption} className="text-xs text-indigo-500 hover:text-indigo-700 self-start">+ Add option</button>
+          <button type="button" onClick={addOption} className="text-xs text-indigo-500 hover:text-indigo-700 self-start">+ Variant qo'shish</button>
         </div>
       )}
       <button type="submit" className="self-end text-sm bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600">
-        Add Question
+        Savol qo'shish
       </button>
     </form>
   );

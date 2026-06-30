@@ -26,7 +26,7 @@ export function AdminsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this admin?')) return;
+    if (!confirm('Bu adminni o\'chirishni tasdiqlaysizmi?')) return;
     await apiDeleteAdmin(id);
     load();
   }
@@ -37,11 +37,11 @@ export function AdminsPage() {
       <div className="p-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Back</button>
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Admins</h2>
+            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Orqaga</button>
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Adminlar</h2>
           </div>
           <button onClick={() => setShowModal(true)} className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600">
-            + Add Admin
+            + Admin qo'shish
           </button>
         </div>
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
@@ -53,7 +53,7 @@ export function AdminsPage() {
               </div>
               {admin.id !== currentAdmin?.id && (
                 <button onClick={() => handleDelete(admin.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">
-                  Delete
+                  O'chirish
                 </button>
               )}
             </div>

@@ -7,6 +7,7 @@ export interface Folder {
   color: string;
   icon: string;
   createdAt: string;
+  testCount: number;
 }
 
 export async function apiFetchFolders(): Promise<Folder[]> {

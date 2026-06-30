@@ -26,10 +26,10 @@ export function FolderContextMenu({ x, y, onRename, onChangeColor, onDelete, onC
       style={{ position: 'fixed', top: y, left: x, zIndex: 1000 }}
       className="bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-36 text-sm"
     >
-      <button onClick={onRename} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Rename</button>
-      <button onClick={onChangeColor} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Change Color</button>
+      <button onClick={onRename} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Nomini o'zgartirish</button>
+      <button onClick={onChangeColor} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Rangini o'zgartirish</button>
       <div className="border-t border-gray-100 my-1" />
-      <button onClick={onDelete} className="w-full text-left px-4 py-1.5 hover:bg-gray-50 text-red-500">Delete</button>
+      <button onClick={onDelete} className="w-full text-left px-4 py-1.5 hover:bg-gray-50 text-red-500">O'chirish</button>
     </div>
   );
 }

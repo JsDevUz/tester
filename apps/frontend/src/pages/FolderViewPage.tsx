@@ -37,7 +37,7 @@ export function FolderViewPage() {
 
   async function handleDelete() {
     if (!menu) return;
-    if (!confirm(`Delete "${menu.test.name}"?`)) return;
+    if (!confirm(`"${menu.test.name}" testini o'chirishni tasdiqlaysizmi?`)) return;
     await deleteTest(menu.test.id);
     setMenu(null);
   }
@@ -48,16 +48,16 @@ export function FolderViewPage() {
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Folders</button>
+            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Papkalar</button>
             <span className="text-gray-400">/</span>
             <h2 className="text-sm font-medium text-gray-700">{folder?.name ?? 'Folder'}</h2>
           </div>
           <button onClick={() => setShowModal(true)}
             className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600">
-            + New Test
+            + Yangi test
           </button>
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
           {tests.map((test) => (
             <TestCard
               key={test.id}
@@ -67,18 +67,18 @@ export function FolderViewPage() {
             />
           ))}
           {tests.length === 0 && (
-            <p className="text-gray-400 text-sm mt-8 w-full text-center">No tests yet. Create one!</p>
+            <p className="text-gray-400 text-sm mt-8 w-full text-center">Hali testlar yo'q. Yangisini yarating!</p>
           )}
         </div>
       </div>
 
       {showModal && folderId && (
-        <TestSettingsModal folderId={folderId} onSubmit={handleCreate} onClose={() => setShowModal(false)} />
+        <TestSettingsModal folderId={folderId} title="Yangi test" onSubmit={handleCreate} onClose={() => setShowModal(false)} />
       )}
       {editTest && folderId && (
         <TestSettingsModal
           folderId={folderId}
-          title="Edit Test Settings"
+          title="Test sozlamalari"
           initial={{
             name: editTest.name,
             description: editTest.description ?? undefined,
@@ -104,19 +104,19 @@ export function FolderViewPage() {
               onClick={() => { navigate(`/tests/${menu.test.id}/submissions`); setMenu(null); }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              Submissions
+              Natijalar
             </button>
             <button
               onClick={() => { setEditTest(menu.test); setMenu(null); }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
-              Edit Settings
+              Sozlamalar
             </button>
             <button
               onClick={handleDelete}
               className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
             >
-              Delete
+              O'chirish
             </button>
           </div>
         </>

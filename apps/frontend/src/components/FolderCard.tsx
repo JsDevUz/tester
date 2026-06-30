@@ -75,7 +75,7 @@ export function FolderCard({ folder, testCount, onDoubleClick, onContextMenu }: 
       <div className="text-center w-full px-1">
         <p className="text-[13px] font-medium text-gray-800 leading-snug line-clamp-2 break-words">{folder.name}</p>
         {testCount !== undefined && (
-          <p className="text-[11px] text-gray-400 mt-0.5">{testCount} Files</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{testCount} ta test</p>
         )}
       </div>
     </div>

@@ -43,12 +43,12 @@ export function DashboardPage() {
       <Toolbar />
       <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
         <div className="flex items-center justify-between mb-6">
-          <h2 className="text-xl font-bold text-gray-800">Folders</h2>
+          <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>
           <button
             onClick={() => setShowNewModal(true)}
             className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
           >
-            + New Folder
+            + Yangi papka
           </button>
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
@@ -56,12 +56,13 @@ export function DashboardPage() {
             <FolderCard
               key={folder.id}
               folder={folder}
+              testCount={folder.testCount}
               onDoubleClick={() => navigate(`/folders/${folder.id}`)}
               onContextMenu={(e) => handleContextMenu(e, folder)}
             />
           ))}
           {folders.length === 0 && (
-            <p className="text-gray-400 text-sm mt-8 col-span-full text-center">No folders yet. Create one!</p>
+            <p className="text-gray-400 text-sm mt-8 col-span-full text-center">Hali papkalar yo'q. Yangisini yarating!</p>
           )}
         </div>
       </div>
@@ -71,7 +72,7 @@ export function DashboardPage() {
       )}
       {editFolder && (
         <NewFolderModal
-          title="Rename Folder"
+          title="Papkani tahrirlash"
           initial={{ name: editFolder.name, color: editFolder.color }}
           onSubmit={handleRename}
           onClose={() => setEditFolder(null)}

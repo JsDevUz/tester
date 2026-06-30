@@ -7,6 +7,30 @@ interface Props {
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
+const STATUS_STYLES: Record<string, { label: string; className: string }> = {
+  immediately: { label: 'Natija ko\'rinadi', className: 'bg-green-100 text-green-700' },
+  after_deadline: { label: 'Muddat keyin', className: 'bg-orange-100 text-orange-700' },
+  hidden:        { label: 'Natija yashirin', className: 'bg-gray-100 text-gray-500' },
+};
+
+// Deterministic pastel from string hash
+function colorFromName(name: string): string {
+  const palettes = [
+    ['#fca5a5', '#ef4444'], // red
+    ['#fdba74', '#f97316'], // orange
+    ['#fde68a', '#f59e0b'], // amber
+    ['#86efac', '#22c55e'], // green
+    ['#93c5fd', '#3b82f6'], // blue
+    ['#c4b5fd', '#8b5cf6'], // violet
+    ['#f9a8d4', '#ec4899'], // pink
+    ['#5eead4', '#14b8a6'], // teal
+  ];
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
+  const [light, base] = palettes[h % palettes.length];
+  return `linear-gradient(135deg, ${light} 0%, ${base} 100%)`;
+}
+
 export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -18,39 +42,59 @@ export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
     setTimeout(() => setCopied(false), 1500);
   }
 
+  const status = STATUS_STYLES[test.showResults] ?? STATUS_STYLES.immediately;
+  const headerGradient = colorFromName(test.name);
+
   return (
     <div
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
-      className="flex flex-col items-center gap-1 p-3 rounded-xl cursor-pointer hover:bg-white/60 select-none w-28"
+      className="rounded-2xl overflow-hidden shadow-sm border border-white/60 cursor-pointer select-none hover:shadow-md active:scale-[0.98] transition-all duration-100 bg-white flex flex-col"
+      style={{ width: 220 }}
     >
-      <div className="w-16 h-14 flex items-center justify-center text-4xl">📄</div>
-      <span className="text-xs text-gray-700 text-center break-words w-full leading-tight">
-        {test.name}
-      </span>
-      <div className="flex gap-1 flex-wrap justify-center">
-        {test.timeLimit && (
-          <span className="text-[10px] bg-blue-100 text-blue-600 px-1 rounded">⏱ {test.timeLimit}m</span>
-        )}
-        {test.shuffleQuestions && (
-          <span className="text-[10px] bg-purple-100 text-purple-600 px-1 rounded">🔀</span>
-        )}
-        {test.oneByOne && (
-          <span className="text-[10px] bg-green-100 text-green-600 px-1 rounded">1×1</span>
-        )}
-        {test.deadline && (
-          <span className="text-[10px] bg-orange-100 text-orange-600 px-1 rounded">📅</span>
+      {/* Colored header */}
+      <div className="h-2 w-full" style={{ background: headerGradient }} />
+
+      {/* Body */}
+      <div className="p-4 flex flex-col gap-2 flex-1">
+        <div className="flex items-start justify-between gap-2">
+          <h3 className="text-[14px] font-bold text-gray-800 leading-snug line-clamp-2 flex-1">{test.name}</h3>
+          <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full shrink-0 ${status.className}`}>
+            {status.label}
+          </span>
+        </div>
+
+        {test.description ? (
+          <p className="text-[12px] text-gray-400 leading-relaxed line-clamp-2">{test.description}</p>
+        ) : (
+          <p className="text-[12px] text-gray-300 italic">Tavsif yo'q</p>
         )}
       </div>
-      {test.slug && (
-        <button
-          onClick={copyLink}
-          className="text-[10px] text-indigo-400 hover:text-indigo-600 mt-0.5"
-          title="Linkni nusxalash"
-        >
-          {copied ? '✓ Nusxalandi' : `#${test.slug}`}
-        </button>
-      )}
+
+      {/* Footer */}
+      <div className="border-t border-gray-100 px-4 py-2.5 flex items-center gap-3 text-[11px] text-gray-400">
+        {test.timeLimit ? (
+          <span className="flex items-center gap-1">⏱ {test.timeLimit} daq</span>
+        ) : (
+          <span className="flex items-center gap-1">⏱ —</span>
+        )}
+        {test.oneByOne && <span title="Birin-ketin">1×1</span>}
+        {test.shuffleQuestions && <span title="Savollar aralashtiriladi">🔀</span>}
+        {test.deadline && (
+          <span className="flex items-center gap-1" title={new Date(test.deadline).toLocaleString()}>
+            📅 {new Date(test.deadline).toLocaleDateString('uz-UZ')}
+          </span>
+        )}
+        {test.slug && (
+          <button
+            onClick={copyLink}
+            className="ml-auto text-indigo-400 hover:text-indigo-600 transition-colors"
+            title="Linkni nusxalash"
+          >
+            {copied ? '✓' : '🔗'}
+          </button>
+        )}
+      </div>
     </div>
   );
 }

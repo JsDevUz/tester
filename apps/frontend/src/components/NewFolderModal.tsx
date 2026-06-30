@@ -1,6 +1,6 @@
 import { useState } from 'react';
 
-const COLORS = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+const COLORS = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6', '#6B7280', '#1f2937'];
 
 interface Props {
   onSubmit: (name: string, color: string) => void;
@@ -9,7 +9,7 @@ interface Props {
   title?: string;
 }
 
-export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder' }: Props) {
+export function NewFolderModal({ onSubmit, onClose, initial, title = 'Yangi papka' }: Props) {
   const [name, setName] = useState(initial?.name ?? '');
   const [color, setColor] = useState(initial?.color ?? '#6366f1');
 
@@ -28,7 +28,7 @@ export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
-            placeholder="Folder name"
+            placeholder="Papka nomi"
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <div className="flex gap-2 flex-wrap">
@@ -43,9 +43,9 @@ export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder
             ))}
           </div>
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
+            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Bekor qilish</button>
             <button type="submit" className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-              {title === 'New Folder' ? 'Create' : 'Save'}
+              {title === 'Yangi papka' ? 'Yaratish' : 'Saqlash'}
             </button>
           </div>
         </form>

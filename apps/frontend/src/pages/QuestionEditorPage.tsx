@@ -41,18 +41,18 @@ export function QuestionEditorPage() {
       <div className="flex-1 p-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center gap-2 mb-4">
           <button onClick={() => navigate(`/folders/${test?.folderId}`)} className="text-gray-400 hover:text-gray-600 text-sm">
-            ← Back
+            ← Orqaga
           </button>
           <span className="text-gray-400">/</span>
           <h2 className="text-sm font-medium text-gray-700">{test?.name ?? 'Test'}</h2>
-          <span className="text-xs text-gray-400 ml-auto">{questions.length} question(s)</span>
+          <span className="text-xs text-gray-400 ml-auto">{questions.length} ta savol</span>
         </div>
 
         <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 border border-gray-100 w-fit">
           {(['manual', 'bulk'] as const).map((t) => (
             <button key={t} onClick={() => setTab(t)}
               className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? 'bg-indigo-500 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-              {t === 'manual' ? 'Manual' : 'Bulk Import'}
+              {t === 'manual' ? 'Qo\'lda kiritish' : 'Ommaviy import'}
             </button>
           ))}
         </div>
@@ -65,7 +65,7 @@ export function QuestionEditorPage() {
 
         {questions.length > 0 && (
           <div className="mt-6 flex flex-col gap-3">
-            <h3 className="text-sm font-medium text-gray-500">Questions ({questions.length})</h3>
+            <h3 className="text-sm font-medium text-gray-500">Savollar ({questions.length})</h3>
             {questions.map((q, i) => (
               <div key={q.id} className="bg-white rounded-xl border border-gray-100 p-4">
                 <div className="flex items-start justify-between gap-2">
@@ -76,7 +76,7 @@ export function QuestionEditorPage() {
                       q.type === 'single' ? 'bg-blue-100 text-blue-600' :
                       q.type === 'multi' ? 'bg-purple-100 text-purple-600' :
                       'bg-gray-100 text-gray-500'}`}>
-                      {q.type}
+                      {q.type === 'single' ? 'Yagona' : q.type === 'multi' ? 'Ko\'p tanlov' : 'Ochiq'}
                     </span>
                   </div>
                   <button onClick={() => deleteQuestion(q.id)} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>

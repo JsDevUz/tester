@@ -25,7 +25,7 @@ export function BulkImportTab({ onImport }: Props) {
   function handlePreview() {
     const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
     const count = lines.filter((l) => l.startsWith('# ')).length;
-    setPreview(`Found ${count} question(s) to import.`);
+    setPreview(`${count} ta savol import qilinadi.`);
     setResult(null);
   }
 
@@ -34,11 +34,11 @@ export function BulkImportTab({ onImport }: Props) {
     setLoading(true);
     try {
       const imported = await onImport(text);
-      setResult(`✓ ${imported} questions imported successfully.`);
+      setResult(`✓ ${imported} ta savol muvaffaqiyatli import qilindi.`);
       setText('');
       setPreview(null);
     } catch {
-      setResult('✗ Import failed. Check format and try again.');
+      setResult('✗ Import amalga oshmadi. Formatni tekshiring.');
     } finally {
       setLoading(false);
     }
@@ -48,18 +48,18 @@ export function BulkImportTab({ onImport }: Props) {
     <div className="flex flex-col gap-4">
       <div className="bg-gray-50 rounded-xl p-3 text-xs text-gray-500 font-mono whitespace-pre">{HINT}</div>
       <textarea value={text} onChange={(e) => { setText(e.target.value); setPreview(null); setResult(null); }}
-        rows={10} placeholder="Paste your questions here..."
+        rows={10} placeholder="Savollarni shu yerga joylashtiring..."
         className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y" />
       {preview && <p className="text-sm text-gray-600">{preview}</p>}
       {result && <p className={`text-sm ${result.startsWith('✓') ? 'text-green-600' : 'text-red-500'}`}>{result}</p>}
       <div className="flex gap-2 justify-end">
         <button type="button" onClick={handlePreview} disabled={!text.trim()}
           className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40">
-          Preview
+          Ko'rish
         </button>
         <button type="button" onClick={handleImport} disabled={!text.trim() || loading}
           className="text-sm px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-40">
-          {loading ? 'Importing...' : 'Import'}
+          {loading ? 'Yuklanmoqda...' : 'Import qilish'}
         </button>
       </div>
     </div>

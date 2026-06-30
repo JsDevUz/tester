@@ -1,15 +1,24 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { folders } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { folders, tests } from '../db/schema';
+import { and, eq, sql } from 'drizzle-orm';
 
 @Injectable()
 export class FoldersService {
-  findAll(adminId: string) {
-    return db.query.folders.findMany({
+  async findAll(adminId: string) {
+    const rows = await db.query.folders.findMany({
       where: eq(folders.adminId, adminId),
       orderBy: (f, { asc }) => [asc(f.createdAt)],
     });
+
+    const counts = await db
+      .select({ folderId: tests.folderId, count: sql<number>`count(*)::int` })
+      .from(tests)
+      .where(eq(tests.adminId, adminId))
+      .groupBy(tests.folderId);
+
+    const countMap = new Map(counts.map((c) => [c.folderId, c.count]));
+    return rows.map((f) => ({ ...f, testCount: countMap.get(f.id) ?? 0 }));
   }
 
   async create(adminId: string, name: string, color?: string, icon?: string) {

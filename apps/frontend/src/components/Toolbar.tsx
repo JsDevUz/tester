@@ -19,14 +19,14 @@ export function Toolbar() {
             onClick={() => navigate('/admins')}
             className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
           >
-            Admins
+            Adminlar
           </button>
         )}
         <button
           onClick={handleLogout}
           className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
         >
-          Logout
+          Chiqish
         </button>
       </div>
     </div>

@@ -21,7 +21,7 @@ export function LoginPage() {
       useAuthStore.setState({ admin: me });
       navigate('/');
     } catch {
-      setError('Invalid email or password');
+      setError('Email yoki parol noto\'g\'ri');
     } finally {
       setLoading(false);
     }
@@ -30,7 +30,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-gray-800 mb-6 text-center">Admin Panel</h1>
+        <h1 className="text-xl font-semibold text-gray-800 mb-6 text-center">Admin paneli</h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
@@ -43,7 +43,7 @@ export function LoginPage() {
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
-            placeholder="Password"
+            placeholder="Parol"
             className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
           />
           {error && <p className="text-red-500 text-sm text-center">{error}</p>}
@@ -52,7 +52,7 @@ export function LoginPage() {
             disabled={loading}
             className="bg-indigo-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 disabled:opacity-50"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? 'Kirish...' : 'Kirish'}
           </button>
         </form>
       </div>
