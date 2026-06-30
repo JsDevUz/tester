@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { tests, submissions, answers } from '../db/schema';
 import { eq } from 'drizzle-orm';
@@ -58,6 +58,9 @@ export class DeliveryService {
       where: eq(submissions.id, submissionId),
     });
     if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.submittedAt) {
+      throw new BadRequestException('Submission already submitted');
+    }
 
     const test = await db.query.tests.findFirst({
       where: eq(tests.id, submission.testId),
