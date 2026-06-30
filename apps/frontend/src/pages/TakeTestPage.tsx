@@ -105,7 +105,17 @@ export function TakeTestPage() {
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') sendSubmit();
+      if (document.visibilityState === 'hidden') {
+        sendSubmit();
+      } else if (document.visibilityState === 'visible') {
+        setTimeout(() => {
+          apiGetSubmission(submissionId).then((sub) => {
+            if (sub.status === 'submitted') {
+              navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+            }
+          }).catch(() => {});
+        }, 500);
+      }
     };
 
     const handleBeforeUnload = () => { sendSubmit(); };
