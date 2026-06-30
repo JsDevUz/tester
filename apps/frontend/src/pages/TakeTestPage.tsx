@@ -91,7 +91,6 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const sendSubmit = () => {
-      console.log('[auto] sendSubmit called, submitting:', submittingRef.current, 'qLen:', orderedQuestionsRef.current.length);
       if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
@@ -105,7 +104,6 @@ export function TakeTestPage() {
     };
 
     const handleVisibility = () => {
-      console.log('[auto] visibilitychange:', document.visibilityState);
       if (document.visibilityState === 'hidden') sendSubmit();
     };
 
@@ -116,14 +114,11 @@ export function TakeTestPage() {
 
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
     const handleBlur = () => {
-      console.log('[auto] blur, hasFocus:', document.hasFocus(), 'visibility:', document.visibilityState);
       blurTimer = setTimeout(() => {
-        console.log('[auto] blur timeout, hasFocus:', document.hasFocus());
         if (!document.hasFocus()) sendSubmit();
       }, 1000);
     };
     const handleFocus = () => {
-      console.log('[auto] focus');
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
     };
 

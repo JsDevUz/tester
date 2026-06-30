@@ -16,6 +16,9 @@ const STATUS: Record<string, { label: string; dot: string }> = {
   hidden:        { label: 'Natija yashirin', dot: 'bg-gray-400' },
 };
 
+const actionButtonClass = 'w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors';
+const actionIconSize = 17;
+
 export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Props) {
   const [copied, setCopied] = useState(false);
   const status = STATUS[test.showResults] ?? STATUS.immediately;
@@ -46,11 +49,11 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`} />
           <span className="text-[11px] text-gray-300 truncate">{status.label}</span>
         </div>
-        <div className="flex items-center gap-2 shrink-0 ml-2">
-          <button onClick={onResults}  title="Natijalar"  className="text-gray-400 hover:text-white transition-colors"><BarChart2 size={14} /></button>
-          <button onClick={onEdit}     title="Savollar"   className="text-gray-400 hover:text-white transition-colors"><Pencil    size={14} /></button>
-          <button onClick={onSettings} title="Sozlamalar" className="text-gray-400 hover:text-white transition-colors"><Settings2 size={14} /></button>
-          <button onClick={onDelete}   title="O'chirish"  className="text-gray-400 hover:text-red-400 transition-colors"><Trash2   size={14} /></button>
+        <div className="flex items-center gap-2.5 shrink-0 ml-3">
+          <button onClick={onResults}  title="Natijalar"  className={actionButtonClass}><BarChart2 size={actionIconSize} /></button>
+          <button onClick={onEdit}     title="Savollar"   className={actionButtonClass}><Pencil    size={actionIconSize} /></button>
+          <button onClick={onSettings} title="Sozlamalar" className={actionButtonClass}><Settings2 size={actionIconSize} /></button>
+          <button onClick={onDelete}   title="O'chirish"  className={`${actionButtonClass} hover:text-red-400`}><Trash2   size={actionIconSize} /></button>
         </div>
       </div>
 
