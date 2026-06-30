@@ -17,6 +17,16 @@ export class SubmissionsService {
     });
   }
 
+  async deleteOne(submissionId: string, adminId: string) {
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+      with: { test: true },
+    });
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.test.adminId !== adminId) throw new NotFoundException('Submission not found');
+    await db.delete(submissions).where(eq(submissions.id, submissionId));
+  }
+
   async findOne(submissionId: string, adminId: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),

@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Param, Req, UseGuards } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 
@@ -15,5 +15,11 @@ export class SubmissionsController {
   @Get('submissions/:id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.submissionsService.findOne(id, req.admin.id);
+  }
+
+  @Delete('submissions/:id')
+  @HttpCode(204)
+  deleteOne(@Param('id') id: string, @Req() req: any) {
+    return this.submissionsService.deleteOne(id, req.admin.id);
   }
 }

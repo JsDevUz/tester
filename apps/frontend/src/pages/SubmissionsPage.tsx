@@ -1,15 +1,16 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Trash2 } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { useSubmissionStore } from '../stores/submissionStore';
 import { useTestStore } from '../stores/testStore';
 import { apiGetTest, type TestDetail } from '../api/tests';
+import type { Submission } from '../api/submissions';
 
 export function SubmissionsPage() {
   const { id: testId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { submissions, fetchSubmissions } = useSubmissionStore();
+  const { submissions, fetchSubmissions, deleteSubmission } = useSubmissionStore();
   const { tests } = useTestStore();
   const [fetchedTest, setFetchedTest] = useState<TestDetail | null>(null);
   const storeTest = tests.find((t) => t.id === testId);
@@ -24,6 +25,7 @@ export function SubmissionsPage() {
   const shareLink = test?.slug ? `${window.location.origin}/t/${test.slug}` : '';
 
   const [copied, setCopied] = useState(false);
+  const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
   async function copyLink() {
     if (!shareLink) return;
     await navigator.clipboard.writeText(shareLink);
@@ -65,8 +67,8 @@ export function SubmissionsPage() {
           <div className="flex flex-col gap-3">
             {submissions.map((sub) => (
               <div key={sub.id}
+                className="group bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
                 onClick={() => navigate(`/submissions/${sub.id}`)}
-                className="bg-white rounded-2xl border border-gray-100 px-5 py-4 flex items-center gap-4 cursor-pointer hover:shadow-md transition-shadow"
               >
                 <div className="flex-1">
                   <p className="text-sm font-medium text-gray-800">{sub.studentName}</p>
@@ -77,11 +79,37 @@ export function SubmissionsPage() {
                 <span className={`text-xs font-medium px-2.5 py-1 rounded-lg ${scoreBadgeClass(sub.score, sub.total)}`}>
                   {sub.score !== null && sub.total !== null ? `${sub.score} / ${sub.total}` : '—'}
                 </span>
+                <button
+                  onClick={(e) => { e.stopPropagation(); setConfirmDelete(sub); }}
+                  className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 shrink-0"
+                >
+                  <Trash2 size={15} />
+                </button>
               </div>
             ))}
           </div>
         )}
       </div>
+      {confirmDelete && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
+          <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
+              <p className="text-sm font-medium text-gray-800 mb-1">Natijani o'chirish</p>
+              <p className="text-sm text-gray-400 mb-5">"{confirmDelete.studentName}" natijasi o'chiriladimi?</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setConfirmDelete(null)} className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700">Bekor qilish</button>
+                <button
+                  onClick={async () => { await deleteSubmission(confirmDelete.id); setConfirmDelete(null); }}
+                  className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  O'chirish
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }

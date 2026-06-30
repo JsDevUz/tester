@@ -34,3 +34,7 @@ export async function apiGetSubmission(id: string): Promise<SubmissionDetail> {
   const res = await client.get(`/submissions/${id}`);
   return res.data;
 }
+
+export async function apiDeleteSubmission(id: string): Promise<void> {
+  await client.delete(`/submissions/${id}`);
+}

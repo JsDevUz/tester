@@ -1,19 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Toolbar } from '../components/Toolbar';
-import { FolderCard } from '../components/FolderCard';
-import { NewFolderModal } from '../components/NewFolderModal';
-import { useFolderStore } from '../stores/folderStore';
-import type { Folder } from '../api/folders';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Toolbar } from "../components/Toolbar";
+import { FolderCard } from "../components/FolderCard";
+import { NewFolderModal } from "../components/NewFolderModal";
+import { useFolderStore } from "../stores/folderStore";
+import type { Folder } from "../api/folders";
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
+  const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } =
+    useFolderStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [editFolder, setEditFolder] = useState<Folder | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Folder | null>(null);
 
-  useEffect(() => { fetchFolders(); }, []);
+  useEffect(() => {
+    fetchFolders();
+  }, []);
 
   async function handleCreate(name: string, color: string) {
     await createFolder(name, color);
@@ -57,13 +60,18 @@ export function DashboardPage() {
             />
           ))}
           {folders.length === 0 && (
-            <p className="text-gray-400 text-sm mt-8 col-span-full text-center">Hali papkalar yo'q. Yangisini yarating!</p>
+            <p className="text-gray-400 text-sm mt-8 col-span-full text-center">
+              Hali papkalar yo'q. Yangisini yarating!
+            </p>
           )}
         </div>
       </div>
 
       {showNewModal && (
-        <NewFolderModal onSubmit={handleCreate} onClose={() => setShowNewModal(false)} />
+        <NewFolderModal
+          onSubmit={handleCreate}
+          onClose={() => setShowNewModal(false)}
+        />
       )}
       {editFolder && (
         <NewFolderModal
@@ -73,17 +81,37 @@ export function DashboardPage() {
           onClose={() => setEditFolder(null)}
         />
       )}
-      <p className="fixed bottom-3 right-4 text-[10px] text-gray-300 select-none">v1.0</p>
+      <p className="fixed bottom-3 right-4 text-[10px] text-gray-300 select-none">
+        v1.1
+      </p>
       {confirmDelete && (
         <>
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
+          <div
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setConfirmDelete(null)}
+          />
           <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
             <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
-              <p className="text-sm font-medium text-gray-800 mb-1">Papkani o'chirish</p>
-              <p className="text-sm text-gray-400 mb-5">"{confirmDelete.name}" papkasi va undagi barcha testlar o'chiriladimi?</p>
+              <p className="text-sm font-medium text-gray-800 mb-1">
+                Papkani o'chirish
+              </p>
+              <p className="text-sm text-gray-400 mb-5">
+                "{confirmDelete.name}" papkasi va undagi barcha testlar
+                o'chiriladimi?
+              </p>
               <div className="flex gap-2 justify-end">
-                <button onClick={() => setConfirmDelete(null)} className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700">Bekor qilish</button>
-                <button onClick={handleDelete} className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">O'chirish</button>
+                <button
+                  onClick={() => setConfirmDelete(null)}
+                  className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={handleDelete}
+                  className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  O'chirish
+                </button>
               </div>
             </div>
           </div>
