@@ -1,18 +1,23 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import { useSubmissionStore } from '../stores/submissionStore';
 import { useTestStore } from '../stores/testStore';
+import { apiGetTest, type TestDetail } from '../api/tests';
 
 export function SubmissionsPage() {
   const { id: testId } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { submissions, fetchSubmissions } = useSubmissionStore();
   const { tests } = useTestStore();
-  const test = tests.find((t) => t.id === testId);
+  const [fetchedTest, setFetchedTest] = useState<TestDetail | null>(null);
+  const storeTest = tests.find((t) => t.id === testId);
+  const test = storeTest ?? fetchedTest;
 
   useEffect(() => {
-    if (testId) fetchSubmissions(testId);
+    if (!testId) return;
+    fetchSubmissions(testId);
+    if (!storeTest) apiGetTest(testId).then(setFetchedTest).catch(() => {});
   }, [testId]);
 
   const shareLink = test?.slug ? `${window.location.origin}/t/${test.slug}` : '';

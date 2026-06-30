@@ -7,10 +7,17 @@ export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [detail, setDetail] = useState<SubmissionDetail | null>(null);
+  const [error, setError] = useState(false);
 
   useEffect(() => {
-    if (id) apiGetSubmission(id).then(setDetail);
+    if (id) apiGetSubmission(id).then(setDetail).catch(() => setError(true));
   }, [id]);
+
+  if (error) return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
+      <p className="text-red-400">Natija topilmadi.</p>
+    </div>
+  );
 
   if (!detail) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">

@@ -6,7 +6,10 @@ export function TestResultPage() {
 
   useEffect(() => {
     const raw = sessionStorage.getItem('submissionResult');
-    if (raw) setResult(JSON.parse(raw));
+    if (raw) {
+      setResult(JSON.parse(raw));
+      sessionStorage.removeItem('submissionResult');
+    }
   }, []);
 
   if (!result) return (
