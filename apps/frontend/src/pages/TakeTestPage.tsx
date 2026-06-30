@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
 import { getPublicBaseUrl } from '../api/baseUrl';
@@ -32,6 +32,8 @@ export function TakeTestPage() {
   const [textMap, setTextMap] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [showExitConfirm, setShowExitConfirm] = useState(false);
+  const [exitSubmitting, setExitSubmitting] = useState(false);
 
   // Refs for auto-submit — useState values are stale in event listeners
   const selectedMapRef = useRef<Record<string, string[]>>({});
@@ -139,14 +141,18 @@ export function TakeTestPage() {
       }).catch(() => {});
     };
 
+    const handlePopState = () => { sendSubmit(); };
+
     window.addEventListener('pagehide', sendSubmit);
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('popstate', handlePopState);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
