@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import type { Test } from '../api/tests';
 
 interface Props {
@@ -7,6 +8,16 @@ interface Props {
 }
 
 export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
+  const [copied, setCopied] = useState(false);
+
+  async function copyLink(e: React.MouseEvent) {
+    e.stopPropagation();
+    if (!test.slug) return;
+    await navigator.clipboard.writeText(`${window.location.origin}/t/${test.slug}`);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  }
+
   return (
     <div
       onDoubleClick={onDoubleClick}
@@ -31,6 +42,15 @@ export function TestCard({ test, onDoubleClick, onContextMenu }: Props) {
           <span className="text-[10px] bg-orange-100 text-orange-600 px-1 rounded">📅</span>
         )}
       </div>
+      {test.slug && (
+        <button
+          onClick={copyLink}
+          className="text-[10px] text-indigo-400 hover:text-indigo-600 mt-0.5"
+          title="Linkni nusxalash"
+        >
+          {copied ? '✓ Nusxalandi' : `#${test.slug}`}
+        </button>
+      )}
     </div>
   );
 }

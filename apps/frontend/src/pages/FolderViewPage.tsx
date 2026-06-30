@@ -101,6 +101,12 @@ export function FolderViewPage() {
             style={{ top: menu.y, left: menu.x }}
           >
             <button
+              onClick={() => { navigate(`/tests/${menu.test.id}/submissions`); setMenu(null); }}
+              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
+            >
+              Submissions
+            </button>
+            <button
               onClick={() => { setEditTest(menu.test); setMenu(null); }}
               className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
             >
