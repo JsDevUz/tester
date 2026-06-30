@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Check, Circle } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
@@ -17,6 +17,7 @@ export function QuestionEditorPage() {
   const [test, setTest] = useState<TestDetail | null>(null);
   const [tab, setTab] = useState<'manual' | 'bulk'>('manual');
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null);
+  const formRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (!testId) return;
@@ -69,6 +70,7 @@ export function QuestionEditorPage() {
           ))}
         </div>
 
+        <div ref={formRef}>
         {tab === 'manual' ? (
           editingQuestion ? (
             <QuestionForm
@@ -88,6 +90,7 @@ export function QuestionEditorPage() {
         ) : (
           <BulkImportTab onImport={handleBulkImport} />
         )}
+        </div>
 
         {questions.length > 0 && (
           <div className="mt-6 flex flex-col gap-3">
@@ -107,7 +110,11 @@ export function QuestionEditorPage() {
                   </div>
                   <div className="flex items-center gap-1 shrink-0">
                     <button
-                      onClick={() => { setEditingQuestion(q); setTab('manual'); }}
+                      onClick={() => {
+                        setEditingQuestion(q);
+                        setTab('manual');
+                        setTimeout(() => formRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 50);
+                      }}
                       className="text-xs text-gray-400 hover:text-indigo-500 px-2 py-0.5 rounded hover:bg-indigo-50"
                     >
                       Tahrirlash
