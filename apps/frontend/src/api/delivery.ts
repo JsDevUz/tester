@@ -1,8 +1,19 @@
 import axios from 'axios';
+import { useLoadingStore } from '../store/loadingStore';
 
 const publicClient = axios.create({
   baseURL: import.meta.env.VITE_API_URL,
 });
+
+publicClient.interceptors.request.use((config) => {
+  useLoadingStore.getState().inc();
+  return config;
+});
+
+publicClient.interceptors.response.use(
+  (res) => { useLoadingStore.getState().dec(); return res; },
+  (err) => { useLoadingStore.getState().dec(); return Promise.reject(err); },
+);
 
 export interface PublicOption {
   id: string;

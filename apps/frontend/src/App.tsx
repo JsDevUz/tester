@@ -11,10 +11,12 @@ import { SubmissionsPage } from './pages/SubmissionsPage';
 import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
+import { TopProgressBar } from './components/TopProgressBar';
 
 export default function App() {
   return (
     <BrowserRouter>
+      <TopProgressBar />
       <Routes>
         <Route path="/login" element={<LoginPage />} />
         <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />

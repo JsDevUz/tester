@@ -88,7 +88,16 @@ export class DeliveryService {
     });
     if (!submission) throw new NotFoundException('Submission not found');
     if (submission.submittedAt) {
-      throw new BadRequestException('Submission already submitted');
+      // Already submitted — return cached result (beacon may fire multiple times)
+      const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
+      return {
+        submissionId,
+        score: submission.score,
+        total: submission.total,
+        showResults: test?.showResults ?? 'hidden',
+        deadline: test?.deadline ?? null,
+        answers: [],
+      };
     }
 
     const test = await db.query.tests.findFirst({

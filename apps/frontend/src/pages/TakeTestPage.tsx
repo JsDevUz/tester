@@ -80,7 +80,7 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const submitViaBeacon = () => {
-      if (submittingRef.current || !orderedQuestionsRef.current.length) return;
+      if (submittingRef.current) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -94,10 +94,10 @@ export function TakeTestPage() {
       if (document.visibilityState === 'hidden') submitViaBeacon();
     };
 
-    window.addEventListener('beforeunload', submitViaBeacon);
+    window.addEventListener('pagehide', submitViaBeacon);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      window.removeEventListener('beforeunload', submitViaBeacon);
+      window.removeEventListener('pagehide', submitViaBeacon);
       document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
@@ -159,8 +159,8 @@ export function TakeTestPage() {
     const selected = selectedMap[q.id] ?? [];
     return (
       <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-5">
-        <p className="text-xs text-gray-400 mb-1">{idx + 1}. savol</p>
-        <p className="text-sm font-medium text-gray-800 mb-3">{q.text}</p>
+        <p className="text-sm text-gray-400 mb-1">{idx + 1}. savol</p>
+        <p className="text-base font-medium text-gray-800 mb-3">{q.text}</p>
         {q.imageUrl && (
           <div className="mb-3 flex justify-center">
             <img src={mediaUrl(q.imageUrl)} alt="" className="rounded-xl object-contain max-h-64 max-w-full border border-gray-100" />
@@ -174,7 +174,7 @@ export function TakeTestPage() {
             value={textMap[q.id] ?? ''} rows={3}
             onChange={(e) => setTextMap((prev) => ({ ...prev, [q.id]: e.target.value }))}
             placeholder="Javobingizni yozing..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-base outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
           />
         ) : q.type === 'arrange' ? (
           <div className="flex flex-col gap-3">
@@ -186,7 +186,7 @@ export function TakeTestPage() {
                 return opt ? (
                   <button key={id} type="button"
                     onClick={() => arrangeRemove(q.id, id)}
-                    className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-sm shadow-sm hover:bg-indigo-600 transition-colors">
+                    className="px-3 py-2 bg-indigo-500 text-white rounded-lg text-base shadow-sm hover:bg-indigo-600 transition-colors">
                     {opt.text}
                   </button>
                 ) : null;
@@ -199,7 +199,7 @@ export function TakeTestPage() {
                 .map((opt) => (
                   <button key={opt.id} type="button"
                     onClick={() => arrangeAdd(q.id, opt.id)}
-                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-base text-gray-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 transition-colors">
                     {opt.text}
                   </button>
                 ))}
@@ -218,7 +218,7 @@ export function TakeTestPage() {
               return (
                 <button key={opt.id} type="button"
                   onClick={() => toggleOption(q.id, opt.id, q.type as 'single' | 'multi')}
-                  className={`text-left px-4 py-3 rounded-xl border text-sm transition-colors ${checked ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-700 hover:border-indigo-300'}`}
+                  className={`text-left px-4 py-3 rounded-xl border text-base transition-colors ${checked ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-700 hover:border-indigo-300'}`}
                 >
                   {opt.text}
                 </button>
@@ -232,11 +232,11 @@ export function TakeTestPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col notranslate" translate="no">
-      <div className="bg-white border-b border-gray-100 px-6 py-3 flex items-center justify-between">
-        <span className="text-sm font-medium text-gray-700">{test.name}</span>
+      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
+        <span className="text-base font-medium text-gray-700">{test.name}</span>
         {timeLeft !== null && (
-          <span className={`font-mono text-sm ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
-            <Clock size={13} className="inline mr-1" />{formatTime(timeLeft)}
+          <span className={`font-mono text-base ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
+            <Clock size={15} className="inline mr-1" />{formatTime(timeLeft)}
           </span>
         )}
       </div>
@@ -256,18 +256,18 @@ export function TakeTestPage() {
         <div className="flex justify-between gap-2 mt-2">
           {isOneByOne && currentIdx > 0 ? (
             <button onClick={() => setCurrentIdx((i) => i - 1)}
-              className="px-5 py-2 bg-white border border-gray-200 text-gray-600 rounded-xl text-sm hover:border-gray-300">
+              className="px-5 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl text-base hover:border-gray-300">
               Oldingi
             </button>
           ) : <span />}
           {isOneByOne && !isLast ? (
             <button onClick={() => setCurrentIdx((i) => i + 1)}
-              className="px-5 py-2 bg-indigo-500 text-white rounded-xl text-sm hover:bg-indigo-600">
+              className="px-5 py-3 bg-indigo-500 text-white rounded-xl text-base hover:bg-indigo-600">
               Keyingi
             </button>
           ) : (
             <button onClick={handleSubmit} disabled={submitting}
-              className="px-5 py-2 bg-green-500 text-white rounded-xl text-sm hover:bg-green-600 disabled:opacity-40">
+              className="px-5 py-3 bg-green-500 text-white rounded-xl text-base hover:bg-green-600 disabled:opacity-40">
               {submitting ? 'Topshirilmoqda...' : 'Topshirish'}
             </button>
           )}

@@ -16,27 +16,9 @@ const STATUS: Record<string, { label: string; dot: string }> = {
   hidden:        { label: 'Natija yashirin', dot: 'bg-gray-400' },
 };
 
-const PALETTES: [string, string, string][] = [
-  ['#a5b4fc', '#818cf8', '#6366f1'],
-  ['#93c5fd', '#60a5fa', '#3b82f6'],
-  ['#6ee7b7', '#34d399', '#10b981'],
-  ['#fca5a5', '#f87171', '#ef4444'],
-  ['#fcd34d', '#fbbf24', '#f59e0b'],
-  ['#f9a8d4', '#f472b6', '#ec4899'],
-  ['#5eead4', '#2dd4bf', '#14b8a6'],
-  ['#c4b5fd', '#a78bfa', '#8b5cf6'],
-];
-
-function palette(name: string): [string, string, string] {
-  let h = 0;
-  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) & 0xffff;
-  return PALETTES[h % PALETTES.length];
-}
-
 export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Props) {
   const [copied, setCopied] = useState(false);
   const status = STATUS[test.showResults] ?? STATUS.immediately;
-  const [c1, c2, c3] = palette(test.name);
 
   async function copyLink(e: React.MouseEvent) {
     e.stopPropagation();
@@ -49,21 +31,13 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
   return (
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
-      {/* Gradient blur header */}
-      <div className="relative h-28 overflow-hidden" style={{ background: '#f5f5fa' }}>
-        <div className="absolute w-36 h-36 rounded-full blur-3xl opacity-70 -top-8 -left-8"  style={{ background: c1 }} />
-        <div className="absolute w-32 h-32 rounded-full blur-3xl opacity-60 bottom-0 left-1/3" style={{ background: c2 }} />
-        <div className="absolute w-28 h-28 rounded-full blur-3xl opacity-50 -top-4 -right-4"  style={{ background: c3 }} />
-
-        <div className="absolute inset-0 px-4 py-3 flex flex-col justify-between">
-          <div>
-            <p className="text-[10px] text-gray-400/80 uppercase tracking-wide font-medium mb-0.5">Test</p>
-            <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{test.name}</p>
-          </div>
-          {test.description && (
-            <p className="text-[11px] text-gray-500 line-clamp-2 leading-snug">{test.description}</p>
-          )}
-        </div>
+      {/* Header */}
+      <div className="px-4 pt-4 pb-3">
+        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Test</p>
+        <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{test.name}</p>
+        {test.description && (
+          <p className="text-[11px] text-gray-400 line-clamp-2 leading-snug mt-1">{test.description}</p>
+        )}
       </div>
 
       {/* Dark action bar */}

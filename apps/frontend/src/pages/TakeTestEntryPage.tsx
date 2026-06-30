@@ -77,8 +77,8 @@ export function TakeTestEntryPage() {
           <span className="w-3 h-3 rounded-full bg-yellow-400" />
           <span className="w-3 h-3 rounded-full bg-green-400" />
         </div>
-        <h1 className="text-xl font-semibold text-gray-800 mb-1">{test.name}</h1>
-        {test.description && <p className="text-sm text-gray-500 mb-4">{test.description}</p>}
+        <h1 className="text-2xl font-semibold text-gray-800 mb-1">{test.name}</h1>
+        {test.description && <p className="text-base text-gray-500 mb-4">{test.description}</p>}
         <div className="flex gap-2 flex-wrap mb-6">
           {test.timeLimit && (
             <span className="flex items-center gap-1 text-xs bg-blue-50 text-blue-600 px-2 py-1 rounded-lg">
@@ -95,11 +95,11 @@ export function TakeTestEntryPage() {
           <input
             autoFocus value={name} onChange={(e) => setName(e.target.value)}
             placeholder="Ismingizni kiriting"
-            className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-400"
           />
           <button
             type="submit" disabled={!name.trim() || starting}
-            className="w-full bg-indigo-500 text-white rounded-xl py-2.5 text-sm font-medium hover:bg-indigo-600 disabled:opacity-40"
+            className="w-full bg-indigo-500 text-white rounded-xl py-3 text-base font-medium hover:bg-indigo-600 disabled:opacity-40"
           >
             {starting ? 'Boshlanmoqda...' : 'Testni boshlash'}
           </button>
