@@ -97,14 +97,28 @@ export function TakeTestPage() {
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
         textAnswer: textMapRef.current[q.id] ?? null,
       }));
-      const url = `${getPublicBaseUrl()}/public/submissions/${submissionId}/submit`;
+      const base = getPublicBaseUrl() || window.location.origin;
+      const url = `${base}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
       navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };
 
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') sendSubmit();
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      sendSubmit();
+      e.preventDefault();
+    };
+
     window.addEventListener('pagehide', sendSubmit);
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibility);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibility);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
