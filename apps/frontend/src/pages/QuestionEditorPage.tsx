@@ -149,12 +149,28 @@ export function QuestionEditorPage() {
     await addQuestion(testId, data);
   }
 
-async function handleBulkImport(text: string) {
+  async function handleBulkImport(text: string) {
     if (!testId) return 0;
     const count = await bulkImport(testId, text);
     const updated = await apiGetTest(testId);
     setQuestions(updated.questions);
     return count;
+  }
+
+  function questionsToBulkText(): string {
+    return questions.map((q) => {
+      const lines: string[] = [`# ${q.text}`];
+      if (q.type === 'open') return lines.join('\n');
+      if (q.type === 'arrange') {
+        const correct = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const distractors = q.options.filter((o) => !o.isCorrect);
+        for (const o of correct) lines.push(`> ${o.text}`);
+        for (const o of distractors) lines.push(`~ ${o.text}`);
+        return lines.join('\n');
+      }
+      for (const o of q.options) lines.push(`${o.isCorrect ? '+' : '-'} ${o.text}`);
+      return lines.join('\n');
+    }).join('\n\n');
   }
 
   return (
@@ -183,7 +199,7 @@ async function handleBulkImport(text: string) {
           {tab === 'manual' ? (
             <QuestionForm key="new" onSubmit={handleAddQuestion} />
           ) : (
-            <BulkImportTab onImport={handleBulkImport} />
+            <BulkImportTab onImport={handleBulkImport} bulkText={questionsToBulkText()} />
           )}
         </div>
 
