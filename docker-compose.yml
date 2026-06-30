@@ -1,0 +1,72 @@
+services:
+  db:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-testplatform}
+      POSTGRES_USER: ${POSTGRES_USER:-testplatform}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-change_me}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-testplatform} -d ${POSTGRES_DB:-testplatform}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    restart: unless-stopped
+    environment:
+      PORT: 3000
+      DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
+      JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
+      FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build:
+      context: .
+      dockerfile: Dockerfile.frontend
+      args:
+        VITE_API_URL: ${VITE_API_URL:-}
+    restart: unless-stopped
+    ports:
+      - "${HTTP_PORT:-80}:80"
+    depends_on:
+      - backend
+
+  migrate:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "db:migrate", "--workspace=apps/backend"]
+
+  seed:
+    build:
+      context: .
+      dockerfile: Dockerfile.backend
+    profiles: ["tools"]
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
+      JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
+      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@example.com}
+      SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-changeme123}
+      SUPER_ADMIN_NAME: ${SUPER_ADMIN_NAME:-Super Admin}
+    depends_on:
+      db:
+        condition: service_healthy
+    command: ["npm", "run", "seed", "--workspace=apps/backend"]
+
+volumes:
+  postgres_data:
