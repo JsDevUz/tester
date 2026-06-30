@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
-import { apiGetPublicTest, apiSubmitAnswers, type PublicTest, type PublicQuestion } from '../api/delivery';
+import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
@@ -45,6 +45,16 @@ export function TakeTestPage() {
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
 
   useEffect(() => {
+    if (!slug || !submissionId) return;
+    // Guard: if already submitted, redirect to result immediately
+    apiGetSubmission(submissionId).then((sub) => {
+      if (sub.status === 'submitted') {
+        navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+      }
+    }).catch(() => {});
+  }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
     if (!slug) return;
     apiGetPublicTest(slug).then((t) => {
       setTest(t);
@@ -79,26 +89,35 @@ export function TakeTestPage() {
   useEffect(() => {
     if (!submissionId) return;
 
-    const submitViaBeacon = () => {
+    const autoSubmit = () => {
       if (submittingRef.current) return;
+      submittingRef.current = true;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
         textAnswer: textMapRef.current[q.id] ?? null,
       }));
-      const url = `${import.meta.env.VITE_API_URL}/public/submissions/${submissionId}/submit`;
-      navigator.sendBeacon(url, new Blob([JSON.stringify({ answers })], { type: 'application/json' }));
+      const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/api\/v1\/?$/, '');
+      const url = `${base}/public/submissions/${submissionId}/submit`;
+      const body = JSON.stringify({ answers });
+      // fetch with keepalive works on iOS Safari; sendBeacon as fallback
+      try {
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+      } catch {
+        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      }
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') submitViaBeacon();
+      if (document.visibilityState === 'hidden') autoSubmit();
     };
 
-    window.addEventListener('pagehide', submitViaBeacon);
+    window.addEventListener('pagehide', autoSubmit);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      window.removeEventListener('pagehide', submitViaBeacon);
+      window.removeEventListener('pagehide', autoSubmit);
       document.removeEventListener('visibilitychange', handleVisibility);
+      autoSubmit();
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 

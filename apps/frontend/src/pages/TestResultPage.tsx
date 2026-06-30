@@ -1,15 +1,35 @@
 import { useEffect, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Circle, CheckCheck } from 'lucide-react';
-import type { SubmissionResult } from '../api/delivery';
+import { apiGetSubmission, type SubmissionResult } from '../api/delivery';
 
 export function TestResultPage() {
+  const [searchParams] = useSearchParams();
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
   useEffect(() => {
+    // Try sessionStorage first (just submitted)
     const raw = sessionStorage.getItem('submissionResult');
     if (raw) {
       setResult(JSON.parse(raw));
       sessionStorage.removeItem('submissionResult');
+      return;
+    }
+    // Fallback: load from backend via sid param (e.g. navigated back)
+    const sid = searchParams.get('sid');
+    if (sid) {
+      apiGetSubmission(sid).then((sub) => {
+        if (sub.status === 'submitted') {
+          setResult({
+            submissionId: sid,
+            score: sub.score ?? 0,
+            total: sub.total ?? 0,
+            showResults: sub.showResults as SubmissionResult['showResults'],
+            deadline: sub.deadline,
+            answers: [],
+          });
+        }
+      }).catch(() => {});
     }
   }, []);
 
