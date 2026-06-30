@@ -128,9 +128,8 @@ export function TakeTestPage() {
       }
     };
 
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = () => {
       sendSubmit();
-      e.preventDefault();
     };
 
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
