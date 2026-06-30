@@ -37,13 +37,39 @@ export function TestResultPage() {
             </div>
             <div className="flex flex-col gap-3">
               {result.answers.map((a, i) => (
-                <div key={a.questionId} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${
-                  a.isCorrect === true ? 'bg-green-50 text-green-700' :
-                  a.isCorrect === false ? 'bg-red-50 text-red-600' :
-                  'bg-gray-50 text-gray-500'
+                <div key={a.questionId} className={`rounded-xl px-4 py-3 text-sm ${
+                  a.isCorrect === true ? 'bg-green-50' :
+                  a.isCorrect === false ? 'bg-red-50' :
+                  'bg-gray-50'
                 }`}>
-                  <span className="font-medium w-5">{i + 1}.</span>
-                  <span>{a.isCorrect === true ? '✓ To\'g\'ri' : a.isCorrect === false ? '✗ Noto\'g\'ri' : '— Ochiq'}</span>
+                  <div className="flex items-start gap-2 mb-2">
+                    <span className="font-medium text-gray-500 shrink-0">{i + 1}.</span>
+                    <span className="font-medium text-gray-800 flex-1">{a.questionText}</span>
+                    <span className="shrink-0 text-base">
+                      {a.isCorrect === true ? '✅' : a.isCorrect === false ? '❌' : '—'}
+                    </span>
+                  </div>
+                  {a.questionType === 'open' ? (
+                    <p className="text-xs text-gray-500 pl-5">{a.textAnswer ?? '(javob berilmagan)'}</p>
+                  ) : (
+                    <div className="flex flex-col gap-1 pl-5">
+                      {a.options.map((opt) => {
+                        const selected = a.selectedOptionIds.includes(opt.id);
+                        const correct = a.correctOptionIds.includes(opt.id);
+                        return (
+                          <div key={opt.id} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg ${
+                            correct ? 'bg-green-100 text-green-700' :
+                            selected ? 'bg-red-100 text-red-600' :
+                            'text-gray-400'
+                          }`}>
+                            <span>{selected ? '●' : '○'}</span>
+                            <span>{opt.text}</span>
+                            {correct && <span className="ml-auto opacity-60">✓</span>}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>

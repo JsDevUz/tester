@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { submissions, tests } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, isNotNull } from 'drizzle-orm';
 
 @Injectable()
 export class SubmissionsService {
@@ -12,8 +12,8 @@ export class SubmissionsService {
     if (!test) throw new NotFoundException('Test not found');
 
     return db.query.submissions.findMany({
-      where: eq(submissions.testId, testId),
-      orderBy: (s, { desc }) => [desc(s.startedAt)],
+      where: and(eq(submissions.testId, testId), isNotNull(submissions.submittedAt)),
+      orderBy: (s, { desc }) => [desc(s.submittedAt)],
     });
   }
 

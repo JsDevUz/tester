@@ -76,7 +76,16 @@ export class DeliveryService {
 
     let score = 0;
     let total = 0;
-    const answerResults: Array<{ questionId: string; isCorrect: boolean | null }> = [];
+    const answerResults: Array<{
+      questionId: string;
+      questionText: string;
+      questionType: string;
+      isCorrect: boolean | null;
+      correctOptionIds: string[];
+      options: Array<{ id: string; text: string }>;
+      selectedOptionIds: string[];
+      textAnswer: string | null;
+    }> = [];
 
     const answerRows = answerItems.map((item) => {
       const question = questionMap.get(item.questionId);
@@ -94,7 +103,16 @@ export class DeliveryService {
         if (isCorrect) score++;
       }
 
-      answerResults.push({ questionId: item.questionId, isCorrect });
+      answerResults.push({
+        questionId: item.questionId,
+        questionText: question.text,
+        questionType: question.type,
+        isCorrect,
+        correctOptionIds: question.options.filter((o) => o.isCorrect).map((o) => o.id),
+        options: question.options.map((o) => ({ id: o.id, text: o.text })),
+        selectedOptionIds: item.selectedOptionIds,
+        textAnswer: item.textAnswer ?? null,
+      });
 
       return {
         submissionId,
