@@ -13,6 +13,7 @@ export interface Test {
   oneByOne: boolean;
   deadline: string | null;
   createdAt: string;
+  slug: string | null;
 }
 
 export interface TestDetail extends Test {
