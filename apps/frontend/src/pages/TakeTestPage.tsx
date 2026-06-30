@@ -104,6 +104,7 @@ export function TakeTestPage() {
     };
 
     const handleVisibility = () => {
+      console.log('[auto] visibilitychange:', document.visibilityState);
       if (document.visibilityState === 'hidden') sendSubmit();
     };
 
@@ -112,14 +113,16 @@ export function TakeTestPage() {
       e.preventDefault();
     };
 
-    // blur: boshqa ilovaga o'tganda — 1 soniya kutib, focus qaytmasa submit
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
     const handleBlur = () => {
+      console.log('[auto] blur, hasFocus:', document.hasFocus(), 'visibility:', document.visibilityState);
       blurTimer = setTimeout(() => {
+        console.log('[auto] blur timeout, hasFocus:', document.hasFocus());
         if (!document.hasFocus()) sendSubmit();
       }, 1000);
     };
     const handleFocus = () => {
+      console.log('[auto] focus');
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
     };
 
