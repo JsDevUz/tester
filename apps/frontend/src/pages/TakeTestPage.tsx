@@ -91,8 +91,10 @@ export function TakeTestPage() {
     if (!submissionId) return;
 
     const sendSubmit = () => {
-      // Don't submit if questions haven't loaded yet or already submitting via button
-      if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
+      if (submittingRef.current || orderedQuestionsRef.current.length === 0) {
+        console.log('[autosubmit] skipped', { submitting: submittingRef.current, qLen: orderedQuestionsRef.current.length });
+        return;
+      }
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -100,16 +102,19 @@ export function TakeTestPage() {
       }));
       const url = `${getPublicBaseUrl()}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      console.log('[autosubmit] sending beacon to', url, 'answers:', answers.length);
+      const ok = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      console.log('[autosubmit] beacon result:', ok);
     };
 
     const handleVisibility = () => {
+      console.log('[visibility]', document.visibilityState);
       if (document.visibilityState === 'hidden') {
         sendSubmit();
       } else if (document.visibilityState === 'visible' && !submittingRef.current) {
-        // After returning, check if beacon succeeded and redirect
         setTimeout(() => {
           apiGetSubmission(submissionId).then((sub) => {
+            console.log('[autosubmit] check status:', sub.status);
             if (sub.status === 'submitted') {
               navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
             }
