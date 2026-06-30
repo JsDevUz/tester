@@ -7,51 +7,75 @@ interface Props {
   onContextMenu: (e: React.MouseEvent) => void;
 }
 
+// Lighten a hex color by mixing with white
+function lighten(hex: string, amount: number): string {
+  const n = parseInt(hex.replace('#', ''), 16);
+  const r = Math.min(255, Math.round(((n >> 16) & 0xff) + (255 - ((n >> 16) & 0xff)) * amount));
+  const g = Math.min(255, Math.round(((n >> 8) & 0xff) + (255 - ((n >> 8) & 0xff)) * amount));
+  const b = Math.min(255, Math.round((n & 0xff) + (255 - (n & 0xff)) * amount));
+  return `rgb(${r},${g},${b})`;
+}
+
 export function FolderCard({ folder, testCount, onDoubleClick, onContextMenu }: Props) {
-  const color = folder.color ?? '#6B7280';
+  const base = folder.color ?? '#5B6A8A';
+  const light = lighten(base, 0.28);
+  const dark = lighten(base, -0.1 < 0 ? 0 : 0);
 
   return (
     <div
       onDoubleClick={onDoubleClick}
       onContextMenu={onContextMenu}
-      className="flex flex-col items-center gap-2 p-4 rounded-2xl cursor-pointer hover:bg-white/70 active:scale-95 select-none w-40 transition-all duration-100"
+      className="flex flex-col items-center gap-2.5 p-3 rounded-2xl cursor-pointer hover:bg-black/5 active:scale-95 select-none transition-all duration-100"
+      style={{ width: 140 }}
     >
-      <div className="relative w-28 h-20">
-        <svg viewBox="0 0 112 80" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-full drop-shadow-md">
-          {/* Back tab */}
-          <path
-            d="M4 22C4 18.686 6.686 16 10 16H38C40.2 16 42.2 17.1 43.4 18.9L47 24H102C105.314 24 108 26.686 108 30V70C108 73.314 105.314 76 102 76H10C6.686 76 4 73.314 4 70V22Z"
-            fill={color}
-            opacity="0.3"
-          />
-          {/* Body */}
-          <path
-            d="M4 30C4 26.686 6.686 24 10 24H102C105.314 24 108 26.686 108 30V70C108 73.314 105.314 76 102 76H10C6.686 76 4 73.314 4 70V30Z"
-            fill={color}
-            opacity="0.82"
-          />
-          {/* Top shine */}
-          <path
-            d="M4 30C4 26.686 6.686 24 10 24H102C105.314 24 108 26.686 108 30V42H4V30Z"
-            fill="white"
-            opacity="0.1"
-          />
-          {/* Papers sticking out */}
-          <rect x="28" y="12" width="22" height="28" rx="3" fill="white" opacity="0.5" transform="rotate(-8 28 12)" />
-          <rect x="44" y="10" width="22" height="30" rx="3" fill="white" opacity="0.4" transform="rotate(4 44 10)" />
-          <rect x="36" y="10" width="22" height="32" rx="3" fill="white" opacity="0.6" />
-        </svg>
-        {/* Color badge */}
-        <div
-          className="absolute bottom-1 left-2 w-5 h-5 rounded-full border-2 border-white shadow"
-          style={{ backgroundColor: color }}
-        />
-      </div>
+      {/* macOS-style folder icon */}
+      <svg width="120" height="96" viewBox="0 0 120 96" fill="none" xmlns="http://www.w3.org/2000/svg" className="drop-shadow-lg">
+        <defs>
+          <linearGradient id={`body-${folder.id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={light} />
+            <stop offset="100%" stopColor={base} />
+          </linearGradient>
+          <linearGradient id={`tab-${folder.id}`} x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor={lighten(base, 0.18)} />
+            <stop offset="100%" stopColor={lighten(base, 0.05)} />
+          </linearGradient>
+        </defs>
 
-      <div className="text-center">
-        <p className="text-[13px] font-semibold text-gray-800 leading-tight line-clamp-2">{folder.name}</p>
+        {/* Back tab (top-left rounded) */}
+        <path
+          d="M6 28C6 24.686 8.686 22 12 22H42C44.5 22 46.8 23.3 48.1 25.4L52 32H108C111.314 32 114 34.686 114 38V84C114 87.314 111.314 90 108 90H12C8.686 90 6 87.314 6 84V28Z"
+          fill={`url(#tab-${folder.id})`}
+        />
+
+        {/* Main folder body */}
+        <path
+          d="M6 38C6 34.686 8.686 32 12 32H108C111.314 32 114 34.686 114 38V84C114 87.314 111.314 90 108 90H12C8.686 90 6 87.314 6 84V38Z"
+          fill={`url(#body-${folder.id})`}
+        />
+
+        {/* Inner highlight line at top of body */}
+        <path
+          d="M6 38C6 34.686 8.686 32 12 32H108C111.314 32 114 34.686 114 38V46H6V38Z"
+          fill="white"
+          fillOpacity="0.12"
+        />
+
+        {/* Bottom inner shadow */}
+        <path
+          d="M6 78H114V84C114 87.314 111.314 90 108 90H12C8.686 90 6 87.314 6 84V78Z"
+          fill="black"
+          fillOpacity="0.06"
+        />
+
+        {/* Subtle center gloss */}
+        <ellipse cx="60" cy="60" rx="38" ry="18" fill="white" fillOpacity="0.04" />
+      </svg>
+
+      {/* Name + count */}
+      <div className="text-center w-full px-1">
+        <p className="text-[13px] font-medium text-gray-800 leading-snug line-clamp-2 break-words">{folder.name}</p>
         {testCount !== undefined && (
-          <p className="text-[11px] text-gray-400 mt-0.5">{testCount} ta test</p>
+          <p className="text-[11px] text-gray-400 mt-0.5">{testCount} Files</p>
         )}
       </div>
     </div>
