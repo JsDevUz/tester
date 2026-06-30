@@ -101,20 +101,8 @@ export function TakeTestPage() {
       }
     };
 
-    const checkAndRedirect = () => {
-      apiGetSubmission(submissionId).then((sub) => {
-        if (sub.status === 'submitted') {
-          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-        }
-      }).catch(() => {});
-    };
-
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        sendSubmit();
-      } else if (document.visibilityState === 'visible') {
-        checkAndRedirect();
-      }
+      if (document.visibilityState === 'hidden') sendSubmit();
     };
 
     const handleBeforeUnload = () => { sendSubmit(); };
@@ -127,7 +115,6 @@ export function TakeTestPage() {
     };
     const handleFocus = () => {
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
-      checkAndRedirect();
     };
 
     window.addEventListener('pagehide', sendSubmit);
