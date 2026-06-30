@@ -35,7 +35,7 @@ export function DashboardPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <Toolbar />
-      <div className="flex-1 p-6 max-w-5xl mx-auto w-full">
+      <div className="flex-1 p-6 max-w-5xl mx-auto w-full pb-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>
           <button
@@ -73,6 +73,7 @@ export function DashboardPage() {
           onClose={() => setEditFolder(null)}
         />
       )}
+      <p className="fixed bottom-3 right-4 text-[10px] text-gray-300 select-none">v1.0</p>
       {confirmDelete && (
         <>
           <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
