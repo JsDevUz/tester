@@ -104,17 +104,19 @@ export function TakeTestPage() {
       }
     };
 
+    let submitSent = false;
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
         sendSubmit();
-      } else if (document.visibilityState === 'visible') {
+        submitSent = true;
+      } else if (document.visibilityState === 'visible' && submitSent) {
         setTimeout(() => {
           apiGetSubmission(submissionId).then((sub) => {
             if (sub.status === 'submitted') {
               navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
             }
           }).catch(() => {});
-        }, 500);
+        }, 800);
       }
     };
 
