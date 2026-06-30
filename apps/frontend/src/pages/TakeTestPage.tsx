@@ -32,7 +32,6 @@ export function TakeTestPage() {
   const [textMap, setTextMap] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [showExitConfirm, setShowExitConfirm] = useState(false);
   const [exitSubmitting, setExitSubmitting] = useState(false);
 
   // Refs for auto-submit — useState values are stale in event listeners
@@ -47,9 +46,15 @@ export function TakeTestPage() {
   useEffect(() => { orderedQuestionsRef.current = orderedQuestions; }, [orderedQuestions]);
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
 
+  // Block in-app navigation (back button) while test is active
+  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
+    !submittingRef.current &&
+    orderedQuestionsRef.current.length > 0 &&
+    currentLocation.pathname !== nextLocation.pathname
+  );
+
   useEffect(() => {
     if (!slug || !submissionId) return;
-    // Guard: if already submitted, redirect to result immediately
     apiGetSubmission(submissionId).then((sub) => {
       if (sub.status === 'submitted') {
         navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
@@ -71,7 +76,6 @@ export function TakeTestPage() {
     });
   }, [slug]);
 
-  // Single effect: starts interval when timeLeft transitions from null to a value
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
     const id = setInterval(() => {
@@ -83,12 +87,11 @@ export function TakeTestPage() {
     return () => clearInterval(id);
   }, [timeLeft === null]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-submit when timeLeft hits 0
   useEffect(() => {
     if (timeLeft === 0) handleSubmit();
   }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-submit on page hide/close
+  // Auto-submit on page hide/close/tab switch
   useEffect(() => {
     if (!submissionId) return;
 
@@ -109,15 +112,19 @@ export function TakeTestPage() {
       }
     };
 
+    const checkAndRedirect = () => {
+      apiGetSubmission(submissionId).then((sub) => {
+        if (sub.status === 'submitted') {
+          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+        }
+      }).catch(() => {});
+    };
+
     const handleVisibility = () => {
       if (document.visibilityState === 'hidden') {
         sendSubmit();
       } else if (document.visibilityState === 'visible') {
-        apiGetSubmission(submissionId).then((sub) => {
-          if (sub.status === 'submitted') {
-            navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-          }
-        }).catch(() => {});
+        checkAndRedirect();
       }
     };
 
@@ -134,25 +141,17 @@ export function TakeTestPage() {
     };
     const handleFocus = () => {
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
-      apiGetSubmission(submissionId).then((sub) => {
-        if (sub.status === 'submitted') {
-          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-        }
-      }).catch(() => {});
+      checkAndRedirect();
     };
-
-    const handlePopState = () => { sendSubmit(); };
 
     window.addEventListener('pagehide', sendSubmit);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    window.addEventListener('popstate', handlePopState);
     document.addEventListener('visibilitychange', handleVisibility);
     window.addEventListener('blur', handleBlur);
     window.addEventListener('focus', handleFocus);
     return () => {
       window.removeEventListener('pagehide', sendSubmit);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
       document.removeEventListener('visibilitychange', handleVisibility);
       window.removeEventListener('blur', handleBlur);
       window.removeEventListener('focus', handleFocus);
@@ -174,7 +173,27 @@ export function TakeTestPage() {
       sessionStorage.setItem('submissionResult', JSON.stringify(result));
       navigate(`/t/${slug}/result?sid=${submissionId}`);
     } catch {
+      submittingRef.current = false;
       setSubmitting(false);
+    }
+  }
+
+  async function handleExitAndSubmit() {
+    setExitSubmitting(true);
+    submittingRef.current = true;
+    const answers = orderedQuestionsRef.current.map((q) => ({
+      questionId: q.id,
+      selectedOptionIds: selectedMapRef.current[q.id] ?? [],
+      textAnswer: textMapRef.current[q.id] ?? null,
+    }));
+    try {
+      const result = await apiSubmitAnswers(submissionId, answers);
+      sessionStorage.setItem('submissionResult', JSON.stringify(result));
+      blocker.proceed?.();
+    } catch {
+      submittingRef.current = false;
+      setExitSubmitting(false);
+      blocker.proceed?.();
     }
   }
 
@@ -237,7 +256,6 @@ export function TakeTestPage() {
           />
         ) : q.type === 'arrange' ? (
           <div className="flex flex-col gap-3">
-            {/* Answer zone — placed tokens */}
             <div className="min-h-12 p-2 border-2 border-dashed border-indigo-200 rounded-xl flex flex-wrap gap-2 items-center bg-indigo-50/30">
               {selected.length === 0 && <span className="text-xs text-gray-300 px-1">Bo'laklarni bosib joylashtiring...</span>}
               {selected.map((id) => {
@@ -251,7 +269,6 @@ export function TakeTestPage() {
                 ) : null;
               })}
             </div>
-            {/* Token bank */}
             <div className="flex flex-wrap gap-2">
               {q.options
                 .filter((o) => !selected.includes(o.id))
@@ -332,6 +349,36 @@ export function TakeTestPage() {
           )}
         </div>
       </div>
+
+      {/* Back navigation confirmation dialog */}
+      {blocker.state === 'blocked' && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30" />
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+              <p className="text-base font-semibold text-gray-800 mb-2">Testdan chiqmoqchimisiz?</p>
+              <p className="text-sm text-gray-500 mb-6">
+                Chiqsangiz, javoblaringiz avtomatik topshiriladi va test yakunlanadi.
+              </p>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => blocker.reset?.()}
+                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-gray-300"
+                >
+                  Davom etish
+                </button>
+                <button
+                  onClick={handleExitAndSubmit}
+                  disabled={exitSubmitting}
+                  className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 disabled:opacity-50"
+                >
+                  {exitSubmitting ? 'Topshirilmoqda...' : 'Chiqish'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
