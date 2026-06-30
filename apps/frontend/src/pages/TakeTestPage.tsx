@@ -49,7 +49,10 @@ export function TakeTestPage() {
       if (sub.status === 'submitted') {
         navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
       }
-    }).catch(() => {});
+    }).catch(() => {
+      // Submission topilmadi — entry sahifasiga qaytarish
+      navigate(`/t/${slug}`, { replace: true });
+    });
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
