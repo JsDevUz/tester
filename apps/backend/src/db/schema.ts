@@ -1,4 +1,5 @@
 import { pgTable, text, uuid, timestamp, integer, boolean } from 'drizzle-orm/pg-core';
+import { relations } from 'drizzle-orm';
 
 export const admins = pgTable('admins', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -49,3 +50,16 @@ export const options = pgTable('options', {
   isCorrect: boolean('is_correct').notNull().default(false),
   orderIndex: integer('order_index').notNull().default(0),
 });
+
+export const testsRelations = relations(tests, ({ many }) => ({
+  questions: many(questions),
+}));
+
+export const questionsRelations = relations(questions, ({ one, many }) => ({
+  test: one(tests, { fields: [questions.testId], references: [tests.id] }),
+  options: many(options),
+}));
+
+export const optionsRelations = relations(options, ({ one }) => ({
+  question: one(questions, { fields: [options.questionId], references: [questions.id] }),
+}));
