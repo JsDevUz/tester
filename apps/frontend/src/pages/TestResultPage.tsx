@@ -3,20 +3,36 @@ import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { apiGetSubmission, type SubmissionResult } from '../api/delivery';
 
+export function getCachedSubmissionResult(raw: string | null, submissionId: string | null) {
+  if (!raw) return null;
+
+  try {
+    const parsed = JSON.parse(raw) as SubmissionResult;
+    if (submissionId && parsed.submissionId !== submissionId) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
 export function TestResultPage() {
   const [searchParams] = useSearchParams();
   const [result, setResult] = useState<SubmissionResult | null>(null);
 
   useEffect(() => {
+    const sid = searchParams.get('sid');
+
     // Try sessionStorage first (just submitted)
     const raw = sessionStorage.getItem('submissionResult');
-    if (raw) {
-      setResult(JSON.parse(raw));
+    const cachedResult = getCachedSubmissionResult(raw, sid);
+    if (cachedResult) {
+      setResult(cachedResult);
       sessionStorage.removeItem('submissionResult');
       return;
     }
+    if (raw) sessionStorage.removeItem('submissionResult');
+
     // Fallback: load from backend via sid param (e.g. navigated back)
-    const sid = searchParams.get('sid');
     if (sid) {
       apiGetSubmission(sid).then((sub) => {
         if (sub.status === 'submitted') {

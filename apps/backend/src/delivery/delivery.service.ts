@@ -3,6 +3,23 @@ import { db } from '../db';
 import { tests, submissions, answers, questions, options } from '../db/schema';
 import { eq } from 'drizzle-orm';
 
+export function evaluateObjectiveAnswer(
+  questionType: string,
+  correctOptionIds: string[],
+  selectedOptionIds: string[],
+) {
+  if (correctOptionIds.length === 0) return false;
+  if (questionType === 'arrange') {
+    return correctOptionIds.length === selectedOptionIds.length &&
+      correctOptionIds.every((id, i) => id === selectedOptionIds[i]);
+  }
+
+  const correctIds = new Set(correctOptionIds);
+  const selectedIds = new Set(selectedOptionIds);
+  return correctIds.size === selectedIds.size &&
+    [...correctIds].every((id) => selectedIds.has(id));
+}
+
 @Injectable()
 export class DeliveryService {
   async getTestBySlug(slug: string) {
@@ -131,11 +148,8 @@ export class DeliveryService {
 
       if (question.type === 'single' || question.type === 'multi') {
         total++;
-        const correctIds = new Set(question.options.filter((o) => o.isCorrect).map((o) => o.id));
-        const selectedIds = new Set(item.selectedOptionIds);
-        isCorrect =
-          correctIds.size === selectedIds.size &&
-          [...correctIds].every((id) => selectedIds.has(id));
+        const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
+        isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
         if (isCorrect) score++;
       } else if (question.type === 'arrange') {
         total++;
@@ -143,9 +157,7 @@ export class DeliveryService {
           .filter((o) => o.isCorrect)
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((o) => o.id);
-        isCorrect =
-          correctOrder.length === item.selectedOptionIds.length &&
-          correctOrder.every((id, i) => id === item.selectedOptionIds[i]);
+        isCorrect = evaluateObjectiveAnswer(question.type, correctOrder, item.selectedOptionIds);
         if (isCorrect) score++;
       }
 

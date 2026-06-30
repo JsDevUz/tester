@@ -21,9 +21,9 @@ export function normalizePublicBaseUrl(rawBaseUrl: string | undefined) {
 }
 
 export function getApiBaseUrl() {
-  return normalizeApiBaseUrl(import.meta.env.VITE_API_URL);
+  return normalizeApiBaseUrl(import.meta.env?.VITE_API_URL);
 }
 
 export function getPublicBaseUrl() {
-  return normalizePublicBaseUrl(import.meta.env.VITE_API_URL);
+  return normalizePublicBaseUrl(import.meta.env?.VITE_API_URL);
 }

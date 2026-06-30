@@ -142,7 +142,7 @@ export function TakeTestPage() {
     try {
       const result = await apiSubmitAnswers(submissionId, answers);
       sessionStorage.setItem('submissionResult', JSON.stringify(result));
-      navigate(`/t/${slug}/result`);
+      navigate(`/t/${slug}/result?sid=${submissionId}`);
     } catch {
       setSubmitting(false);
     }
