@@ -108,7 +108,15 @@ export function TakeTestPage() {
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') sendSubmit();
+      if (document.visibilityState === 'hidden') {
+        sendSubmit();
+      } else if (document.visibilityState === 'visible') {
+        apiGetSubmission(submissionId).then((sub) => {
+          if (sub.status === 'submitted') {
+            navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+          }
+        }).catch(() => {});
+      }
     };
 
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -124,6 +132,11 @@ export function TakeTestPage() {
     };
     const handleFocus = () => {
       if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; }
+      apiGetSubmission(submissionId).then((sub) => {
+        if (sub.status === 'submitted') {
+          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+        }
+      }).catch(() => {});
     };
 
     window.addEventListener('pagehide', sendSubmit);
