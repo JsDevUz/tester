@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams, useSearchParams, useNavigate, useBlocker } from 'react-router-dom';
+import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
 import { getPublicBaseUrl } from '../api/baseUrl';
@@ -32,26 +32,16 @@ export function TakeTestPage() {
   const [textMap, setTextMap] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [exitSubmitting, setExitSubmitting] = useState(false);
 
-  // Refs for auto-submit — useState values are stale in event listeners
   const selectedMapRef = useRef<Record<string, string[]>>({});
   const textMapRef = useRef<Record<string, string>>({});
   const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
   const submittingRef = useRef(false);
 
-  // Keep refs in sync
   useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
   useEffect(() => { textMapRef.current = textMap; }, [textMap]);
   useEffect(() => { orderedQuestionsRef.current = orderedQuestions; }, [orderedQuestions]);
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
-
-  // Block in-app navigation (back button) while test is active
-  const blocker = useBlocker(({ currentLocation, nextLocation }) =>
-    !submittingRef.current &&
-    orderedQuestionsRef.current.length > 0 &&
-    currentLocation.pathname !== nextLocation.pathname
-  );
 
   useEffect(() => {
     if (!slug || !submissionId) return;
@@ -91,7 +81,6 @@ export function TakeTestPage() {
     if (timeLeft === 0) handleSubmit();
   }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Auto-submit on page hide/close/tab switch
   useEffect(() => {
     if (!submissionId) return;
 
@@ -128,9 +117,7 @@ export function TakeTestPage() {
       }
     };
 
-    const handleBeforeUnload = () => {
-      sendSubmit();
-    };
+    const handleBeforeUnload = () => { sendSubmit(); };
 
     let blurTimer: ReturnType<typeof setTimeout> | null = null;
     const handleBlur = () => {
@@ -174,25 +161,6 @@ export function TakeTestPage() {
     } catch {
       submittingRef.current = false;
       setSubmitting(false);
-    }
-  }
-
-  async function handleExitAndSubmit() {
-    setExitSubmitting(true);
-    submittingRef.current = true;
-    const answers = orderedQuestionsRef.current.map((q) => ({
-      questionId: q.id,
-      selectedOptionIds: selectedMapRef.current[q.id] ?? [],
-      textAnswer: textMapRef.current[q.id] ?? null,
-    }));
-    try {
-      const result = await apiSubmitAnswers(submissionId, answers);
-      sessionStorage.setItem('submissionResult', JSON.stringify(result));
-      blocker.proceed?.();
-    } catch {
-      submittingRef.current = false;
-      setExitSubmitting(false);
-      blocker.proceed?.();
     }
   }
 
@@ -348,36 +316,6 @@ export function TakeTestPage() {
           )}
         </div>
       </div>
-
-      {/* Back navigation confirmation dialog */}
-      {blocker.state === 'blocked' && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/30" />
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-              <p className="text-base font-semibold text-gray-800 mb-2">Testdan chiqmoqchimisiz?</p>
-              <p className="text-sm text-gray-500 mb-6">
-                Chiqsangiz, javoblaringiz avtomatik topshiriladi va test yakunlanadi.
-              </p>
-              <div className="flex gap-3">
-                <button
-                  onClick={() => blocker.reset?.()}
-                  className="flex-1 px-4 py-2.5 border border-gray-200 rounded-xl text-sm text-gray-600 hover:border-gray-300"
-                >
-                  Davom etish
-                </button>
-                <button
-                  onClick={handleExitAndSubmit}
-                  disabled={exitSubmitting}
-                  className="flex-1 px-4 py-2.5 bg-red-500 text-white rounded-xl text-sm hover:bg-red-600 disabled:opacity-50"
-                >
-                  {exitSubmitting ? 'Topshirilmoqda...' : 'Chiqish'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
-      )}
     </div>
   );
 }
