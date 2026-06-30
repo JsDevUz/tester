@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle, Circle, CheckCheck } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { apiGetSubmission, type SubmissionResult } from '../api/delivery';
 
 export function TestResultPage() {
@@ -70,26 +70,8 @@ export function TestResultPage() {
                       {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300">—</span>}
                     </span>
                   </div>
-                  {a.questionType === 'open' ? (
-                    <p className="text-xs text-gray-500 pl-5">{a.textAnswer ?? '(javob berilmagan)'}</p>
-                  ) : (
-                    <div className="flex flex-col gap-1 pl-5">
-                      {a.options.map((opt) => {
-                        const selected = a.selectedOptionIds.includes(opt.id);
-                        const correct = a.correctOptionIds.includes(opt.id);
-                        return (
-                          <div key={opt.id} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg ${
-                            correct ? 'bg-green-100 text-green-700' :
-                            selected ? 'bg-red-100 text-red-600' :
-                            'text-gray-400'
-                          }`}>
-                            {selected ? <Circle size={10} className="fill-current shrink-0" /> : <Circle size={10} className="shrink-0 opacity-40" />}
-                            <span>{opt.text}</span>
-                            {correct && <CheckCheck size={11} className="ml-auto opacity-60 shrink-0" />}
-                          </div>
-                        );
-                      })}
-                    </div>
+                  {a.questionType === 'open' && a.textAnswer && (
+                    <p className="text-xs text-gray-500 pl-5">{a.textAnswer}</p>
                   )}
                 </div>
               ))}

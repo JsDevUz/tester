@@ -49,8 +49,6 @@ export interface AnswerResultItem {
   questionText: string;
   questionType: string;
   isCorrect: boolean | null;
-  correctOptionIds: string[];
-  options: Array<{ id: string; text: string }>;
   selectedOptionIds: string[];
   textAnswer: string | null;
 }
