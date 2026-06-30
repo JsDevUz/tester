@@ -72,6 +72,7 @@ export function QuestionEditorPage() {
         {tab === 'manual' ? (
           editingQuestion ? (
             <QuestionForm
+              key={editingQuestion.id}
               initial={{
                 text: editingQuestion.text,
                 type: editingQuestion.type,
@@ -82,7 +83,7 @@ export function QuestionEditorPage() {
               onSubmit={handleEditQuestion}
             />
           ) : (
-            <QuestionForm onSubmit={handleAddQuestion} />
+            <QuestionForm key="new" onSubmit={handleAddQuestion} />
           )
         ) : (
           <BulkImportTab onImport={handleBulkImport} />

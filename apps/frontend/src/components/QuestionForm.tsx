@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 
 interface OptionInput {
   text: string;
@@ -26,16 +26,6 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
       ? initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect }))
       : [{ text: '', isCorrect: false }, { text: '', isCorrect: false }]
   );
-
-  useEffect(() => {
-    if (!initial) return;
-    setText(initial.text);
-    setType(initial.type);
-    setOpts(initial.options.length
-      ? initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect }))
-      : [{ text: '', isCorrect: false }, { text: '', isCorrect: false }]
-    );
-  }, [initial]);
 
   function addOption() {
     setOpts([...opts, { text: '', isCorrect: false }]);
