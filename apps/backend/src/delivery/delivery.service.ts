@@ -111,7 +111,8 @@ export class DeliveryService {
     let score = 0;
     let total = 0;
 
-    // Safe answer results — never expose correct option IDs or option texts to client
+    // Safe answer results — options included only when showResults='immediately',
+    // marked with isCorrectOption boolean (never raw correctOptionIds)
     const safeAnswers: Array<{
       questionId: string;
       questionText: string;
@@ -119,6 +120,7 @@ export class DeliveryService {
       isCorrect: boolean | null;
       selectedOptionIds: string[];
       textAnswer: string | null;
+      options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
     }> = [];
 
     const answerRows = answerItems.map((item) => {
@@ -154,6 +156,11 @@ export class DeliveryService {
         isCorrect,
         selectedOptionIds: item.selectedOptionIds,
         textAnswer: item.textAnswer ?? null,
+        options: question.options.map((o) => ({
+          id: o.id,
+          text: o.text,
+          isCorrectOption: !!o.isCorrect,
+        })),
       });
 
       return {

@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import { CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle, Circle } from 'lucide-react';
 import { apiGetSubmission, type SubmissionResult } from '../api/delivery';
 
 export function TestResultPage() {
@@ -70,9 +70,25 @@ export function TestResultPage() {
                       {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300">—</span>}
                     </span>
                   </div>
-                  {a.questionType === 'open' && a.textAnswer && (
-                    <p className="text-xs text-gray-500 pl-5">{a.textAnswer}</p>
-                  )}
+                  {a.questionType === 'open' ? (
+                    a.textAnswer && <p className="text-xs text-gray-500 pl-5">{a.textAnswer}</p>
+                  ) : a.options && a.options.length > 0 ? (
+                    <div className="flex flex-col gap-1 pl-5 mt-1">
+                      {a.options.map((opt) => {
+                        const selected = a.selectedOptionIds.includes(opt.id);
+                        return (
+                          <div key={opt.id} className={`flex items-center gap-1.5 text-xs px-2 py-1 rounded-lg ${
+                            opt.isCorrectOption ? 'bg-green-100 text-green-700' :
+                            selected ? 'bg-red-100 text-red-600' :
+                            'text-gray-400'
+                          }`}>
+                            <Circle size={9} className={`shrink-0 ${selected ? 'fill-current' : 'opacity-30'}`} />
+                            <span>{opt.text}</span>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  ) : null}
                 </div>
               ))}
             </div>

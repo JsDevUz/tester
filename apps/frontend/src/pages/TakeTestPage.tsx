@@ -89,9 +89,7 @@ export function TakeTestPage() {
   useEffect(() => {
     if (!submissionId) return;
 
-    const autoSubmit = () => {
-      if (submittingRef.current) return;
-      submittingRef.current = true;
+    const sendSubmit = () => {
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -100,24 +98,20 @@ export function TakeTestPage() {
       const base = (import.meta.env.VITE_API_URL ?? '').replace(/\/api\/v1\/?$/, '');
       const url = `${base}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      // fetch with keepalive works on iOS Safari; sendBeacon as fallback
-      try {
-        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
-      } catch {
-        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
-      }
+      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };
 
     const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') autoSubmit();
+      if (document.visibilityState === 'hidden' && !submittingRef.current) {
+        sendSubmit();
+      }
     };
 
-    window.addEventListener('pagehide', autoSubmit);
+    window.addEventListener('pagehide', sendSubmit);
     document.addEventListener('visibilitychange', handleVisibility);
     return () => {
-      window.removeEventListener('pagehide', autoSubmit);
+      window.removeEventListener('pagehide', sendSubmit);
       document.removeEventListener('visibilitychange', handleVisibility);
-      autoSubmit();
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 

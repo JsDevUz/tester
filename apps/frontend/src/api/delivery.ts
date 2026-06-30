@@ -51,6 +51,7 @@ export interface AnswerResultItem {
   isCorrect: boolean | null;
   selectedOptionIds: string[];
   textAnswer: string | null;
+  options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
 }
 
 export interface SubmissionResult {
