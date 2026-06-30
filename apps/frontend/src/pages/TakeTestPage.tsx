@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
-import { getApiBaseUrl } from '../api/baseUrl';
+import { getPublicBaseUrl } from '../api/baseUrl';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
@@ -99,7 +99,7 @@ export function TakeTestPage() {
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
         textAnswer: textMapRef.current[q.id] ?? null,
       }));
-      const url = `${getApiBaseUrl()}/public/submissions/${submissionId}/submit`;
+      const url = `${getPublicBaseUrl()}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
       autoSubmitSentRef.current = navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
     };

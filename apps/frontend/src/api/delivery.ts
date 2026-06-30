@@ -1,9 +1,9 @@
 import axios from 'axios';
 import { useLoadingStore } from '../store/loadingStore';
-import { getApiBaseUrl } from './baseUrl';
+import { getPublicBaseUrl } from './baseUrl';
 
 const publicClient = axios.create({
-  baseURL: getApiBaseUrl(),
+  baseURL: getPublicBaseUrl(),
 });
 
 publicClient.interceptors.request.use((config) => {
