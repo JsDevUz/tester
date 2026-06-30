@@ -100,7 +100,11 @@ export function TakeTestPage() {
       const base = getPublicBaseUrl() || window.location.origin;
       const url = `${base}/public/submissions/${submissionId}/submit`;
       const body = JSON.stringify({ answers });
-      navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      try {
+        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+      } catch {
+        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+      }
     };
 
     const handleVisibility = () => {
