@@ -2,22 +2,29 @@ import { useState } from 'react';
 
 interface Props {
   onImport: (text: string) => Promise<number>;
+  defaultValue?: string;
 }
 
-const HINT = `# Question text
-+ Correct answer
-- Wrong answer 1
-- Wrong answer 2
+const HINT = `# Yagona/ko'p tanlov savoli
++ To'g'ri javob
+- Noto'g'ri javob 1
+- Noto'g'ri javob 2
 
-# Multi-correct question
-+ First correct
-+ Second correct
-- Wrong one
+# Ko'p to'g'ri javob
++ Birinchi to'g'ri
++ Ikkinchi to'g'ri
+- Noto'g'ri
 
-# Open question (no options needed)`;
+# Ochiq savol (variantsiz)
 
-export function BulkImportTab({ onImport }: Props) {
-  const [text, setText] = useState('');
+# Gap tuzish savoli
+> Birinchi bo'lak
+> Ikkinchi bo'lak
+> Uchinchi bo'lak
+~ Chalg'ituvchi bo'lak`;
+
+export function BulkImportTab({ onImport, defaultValue = '' }: Props) {
+  const [text, setText] = useState(defaultValue);
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);

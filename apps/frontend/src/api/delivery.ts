@@ -13,8 +13,10 @@ export interface PublicOption {
 export interface PublicQuestion {
   id: string;
   text: string;
-  type: 'single' | 'multi' | 'open';
+  type: 'single' | 'multi' | 'open' | 'arrange';
   orderIndex: number;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
   options: PublicOption[];
 }
 

@@ -4,7 +4,7 @@ import { apiAddQuestion, apiBulkImport, apiUpdateQuestion, apiDeleteQuestion, ty
 interface QuestionState {
   questions: Question[];
   setQuestions: (questions: Question[]) => void;
-  addQuestion: (testId: string, data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }> }) => Promise<void>;
+  addQuestion: (testId: string, data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null }) => Promise<void>;
   bulkImport: (testId: string, text: string) => Promise<number>;
   updateQuestion: (id: string, data: { text?: string; type?: string; orderIndex?: number }) => Promise<void>;
   deleteQuestion: (id: string) => Promise<void>;

@@ -36,6 +36,8 @@ export class QuestionsService {
     text: string;
     type: string;
     options: Array<{ text: string; isCorrect: boolean; orderIndex?: number }>;
+    imageUrl?: string;
+    audioUrl?: string;
   }) {
     await this.verifyTestOwnership(testId, adminId);
     const existing = await db.query.questions.findMany({ where: eq(questions.testId, testId) });
@@ -44,6 +46,8 @@ export class QuestionsService {
       text: data.text,
       type: data.type,
       orderIndex: existing.length,
+      imageUrl: data.imageUrl ?? null,
+      audioUrl: data.audioUrl ?? null,
     }).returning();
 
     const insertedOptions = data.options.length > 0
@@ -89,7 +93,7 @@ export class QuestionsService {
     return { imported: parsed.length };
   }
 
-  async updateQuestion(id: string, adminId: string, data: { text?: string; type?: string; orderIndex?: number }) {
+  async updateQuestion(id: string, adminId: string, data: { text?: string; type?: string; orderIndex?: number; imageUrl?: string; audioUrl?: string }) {
     await this.verifyQuestionOwnership(id, adminId);
     const [question] = await db.update(questions).set(data).where(eq(questions.id, id)).returning();
     return question;

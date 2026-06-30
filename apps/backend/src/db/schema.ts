@@ -41,6 +41,8 @@ export const questions = pgTable('questions', {
   text: text('text').notNull(),
   type: text('type').notNull().default('single'),
   orderIndex: integer('order_index').notNull().default(0),
+  imageUrl: text('image_url'),
+  audioUrl: text('audio_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

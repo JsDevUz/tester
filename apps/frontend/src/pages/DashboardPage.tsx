@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Toolbar } from '../components/Toolbar';
 import { FolderCard } from '../components/FolderCard';
-import { FolderContextMenu } from '../components/FolderContextMenu';
 import { NewFolderModal } from '../components/NewFolderModal';
 import { useFolderStore } from '../stores/folderStore';
 import type { Folder } from '../api/folders';
@@ -12,14 +11,9 @@ export function DashboardPage() {
   const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [editFolder, setEditFolder] = useState<Folder | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; folder: Folder } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Folder | null>(null);
 
   useEffect(() => { fetchFolders(); }, []);
-
-  function handleContextMenu(e: React.MouseEvent, folder: Folder) {
-    e.preventDefault();
-    setMenu({ x: e.clientX, y: e.clientY, folder });
-  }
 
   async function handleCreate(name: string, color: string) {
     await createFolder(name, color);
@@ -33,9 +27,9 @@ export function DashboardPage() {
   }
 
   async function handleDelete() {
-    if (!menu) return;
-    await deleteFolder(menu.folder.id);
-    setMenu(null);
+    if (!confirmDelete) return;
+    await deleteFolder(confirmDelete.id);
+    setConfirmDelete(null);
   }
 
   return (
@@ -57,8 +51,9 @@ export function DashboardPage() {
               key={folder.id}
               folder={folder}
               testCount={folder.testCount}
-              onDoubleClick={() => navigate(`/folders/${folder.id}`)}
-              onContextMenu={(e) => handleContextMenu(e, folder)}
+              onClick={() => navigate(`/folders/${folder.id}`)}
+              onEdit={() => setEditFolder(folder)}
+              onDelete={() => setConfirmDelete(folder)}
             />
           ))}
           {folders.length === 0 && (
@@ -78,15 +73,20 @@ export function DashboardPage() {
           onClose={() => setEditFolder(null)}
         />
       )}
-      {menu && (
-        <FolderContextMenu
-          x={menu.x}
-          y={menu.y}
-          onRename={() => { setEditFolder(menu.folder); setMenu(null); }}
-          onChangeColor={() => { setEditFolder(menu.folder); setMenu(null); }}
-          onDelete={handleDelete}
-          onClose={() => setMenu(null)}
-        />
+      {confirmDelete && (
+        <>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
+              <p className="text-sm font-medium text-gray-800 mb-1">Papkani o'chirish</p>
+              <p className="text-sm text-gray-400 mb-5">"{confirmDelete.name}" papkasi va undagi barcha testlar o'chiriladimi?</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setConfirmDelete(null)} className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700">Bekor qilish</button>
+                <button onClick={handleDelete} className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">O'chirish</button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
     </div>
   );

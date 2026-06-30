@@ -3,6 +3,9 @@ import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, type PublicTest, type PublicQuestion } from '../api/delivery';
 
+const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
+function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
+
 function seededShuffle<T>(arr: T[], seed: string): T[] {
   const result = [...arr];
   let h = 0;
@@ -86,6 +89,21 @@ export function TakeTestPage() {
     });
   }
 
+  function arrangeAdd(questionId: string, optionId: string) {
+    setSelectedMap((prev) => {
+      const current = prev[questionId] ?? [];
+      if (current.includes(optionId)) return prev;
+      return { ...prev, [questionId]: [...current, optionId] };
+    });
+  }
+
+  function arrangeRemove(questionId: string, optionId: string) {
+    setSelectedMap((prev) => ({
+      ...prev,
+      [questionId]: (prev[questionId] ?? []).filter((id) => id !== optionId),
+    }));
+  }
+
   if (!test) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
       <p className="text-gray-400">Yuklanmoqda...</p>
@@ -103,7 +121,15 @@ export function TakeTestPage() {
     return (
       <div key={q.id} className="bg-white rounded-2xl border border-gray-100 p-5">
         <p className="text-xs text-gray-400 mb-1">{idx + 1}. savol</p>
-        <p className="text-sm font-medium text-gray-800 mb-4">{q.text}</p>
+        <p className="text-sm font-medium text-gray-800 mb-3">{q.text}</p>
+        {q.imageUrl && (
+          <div className="mb-3 flex justify-center">
+            <img src={mediaUrl(q.imageUrl)} alt="" className="rounded-xl object-contain max-h-64 max-w-full border border-gray-100" />
+          </div>
+        )}
+        {q.audioUrl && (
+          <audio src={mediaUrl(q.audioUrl)} controls className="mb-3 w-full h-9" />
+        )}
         {q.type === 'open' ? (
           <textarea
             value={textMap[q.id] ?? ''} rows={3}
@@ -111,6 +137,41 @@ export function TakeTestPage() {
             placeholder="Javobingizni yozing..."
             className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
           />
+        ) : q.type === 'arrange' ? (
+          <div className="flex flex-col gap-3">
+            {/* Answer zone — placed tokens */}
+            <div className="min-h-12 p-2 border-2 border-dashed border-indigo-200 rounded-xl flex flex-wrap gap-2 items-center bg-indigo-50/30">
+              {selected.length === 0 && <span className="text-xs text-gray-300 px-1">Bo'laklarni bosib joylashtiring...</span>}
+              {selected.map((id) => {
+                const opt = q.options.find((o) => o.id === id);
+                return opt ? (
+                  <button key={id} type="button"
+                    onClick={() => arrangeRemove(q.id, id)}
+                    className="px-3 py-1.5 bg-indigo-500 text-white rounded-lg text-sm shadow-sm hover:bg-indigo-600 transition-colors">
+                    {opt.text}
+                  </button>
+                ) : null;
+              })}
+            </div>
+            {/* Token bank */}
+            <div className="flex flex-wrap gap-2">
+              {q.options
+                .filter((o) => !selected.includes(o.id))
+                .map((opt) => (
+                  <button key={opt.id} type="button"
+                    onClick={() => arrangeAdd(q.id, opt.id)}
+                    className="px-3 py-1.5 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                    {opt.text}
+                  </button>
+                ))}
+            </div>
+            {selected.length > 0 && (
+              <button type="button" onClick={() => setSelectedMap((p) => ({ ...p, [q.id]: [] }))}
+                className="text-xs text-gray-400 hover:text-red-400 self-start">
+                Tozalash
+              </button>
+            )}
+          </div>
         ) : (
           <div className="flex flex-col gap-2">
             {q.options.map((opt) => {

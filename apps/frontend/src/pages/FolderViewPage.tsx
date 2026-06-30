@@ -14,7 +14,7 @@ export function FolderViewPage() {
   const { folders, fetchFolders } = useFolderStore();
   const [showModal, setShowModal] = useState(false);
   const [editTest, setEditTest] = useState<Test | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; test: Test } | null>(null);
+  const [confirmDelete, setConfirmDelete] = useState<Test | null>(null);
 
   const folder = folders.find((f) => f.id === folderId);
 
@@ -36,17 +36,16 @@ export function FolderViewPage() {
   }
 
   async function handleDelete() {
-    if (!menu) return;
-    if (!confirm(`"${menu.test.name}" testini o'chirishni tasdiqlaysizmi?`)) return;
-    await deleteTest(menu.test.id);
-    setMenu(null);
+    if (!confirmDelete) return;
+    await deleteTest(confirmDelete.id);
+    setConfirmDelete(null);
   }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <Toolbar />
-      <div className="flex-1 p-6">
-        <div className="flex items-center justify-between mb-4">
+      <div className="flex-1 p-6 max-w-6xl mx-auto w-full">
+        <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Papkalar</button>
             <span className="text-gray-400">/</span>
@@ -57,13 +56,15 @@ export function FolderViewPage() {
             + Yangi test
           </button>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
           {tests.map((test) => (
             <TestCard
               key={test.id}
               test={test}
-              onDoubleClick={() => navigate(`/tests/${test.id}/edit`)}
-              onContextMenu={(e) => { e.preventDefault(); setMenu({ x: e.clientX, y: e.clientY, test }); }}
+              onEdit={() => navigate(`/tests/${test.id}/edit`)}
+              onSettings={() => setEditTest(test)}
+              onDelete={() => setConfirmDelete(test)}
+              onResults={() => navigate(`/tests/${test.id}/submissions`)}
             />
           ))}
           {tests.length === 0 && (
@@ -93,31 +94,20 @@ export function FolderViewPage() {
           onClose={() => setEditTest(null)}
         />
       )}
-      {menu && (
+      {confirmDelete && (
         <>
-          <div className="fixed inset-0 z-40" onClick={() => setMenu(null)} />
-          <div
-            className="fixed z-50 bg-white rounded-xl shadow-xl border border-gray-100 py-1 min-w-[140px]"
-            style={{ top: menu.y, left: menu.x }}
-          >
-            <button
-              onClick={() => { navigate(`/tests/${menu.test.id}/submissions`); setMenu(null); }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Natijalar
-            </button>
-            <button
-              onClick={() => { setEditTest(menu.test); setMenu(null); }}
-              className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-50"
-            >
-              Sozlamalar
-            </button>
-            <button
-              onClick={handleDelete}
-              className="w-full text-left px-4 py-2 text-sm text-red-500 hover:bg-red-50"
-            >
-              O'chirish
-            </button>
+          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
+          <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
+              <p className="text-sm text-gray-700 mb-1 font-medium">Testni o'chirish</p>
+              <p className="text-sm text-gray-400 mb-5">"{confirmDelete.name}" o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.</p>
+              <div className="flex gap-2 justify-end">
+                <button onClick={() => setConfirmDelete(null)}
+                  className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700">Bekor qilish</button>
+                <button onClick={handleDelete}
+                  className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600">O'chirish</button>
+              </div>
+            </div>
           </div>
         </>
       )}

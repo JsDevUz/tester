@@ -12,16 +12,27 @@ export interface Question {
   id: string;
   testId: string;
   text: string;
-  type: 'single' | 'multi' | 'open';
+  type: 'single' | 'multi' | 'open' | 'arrange';
   orderIndex: number;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
   createdAt: string;
   options: Option[];
+}
+
+export async function apiUploadMedia(file: File): Promise<{ url: string; type: 'image' | 'audio' }> {
+  const form = new FormData();
+  form.append('file', file);
+  const res = await client.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return res.data;
 }
 
 export async function apiAddQuestion(testId: string, data: {
   text: string;
   type: string;
   options: Array<{ text: string; isCorrect: boolean }>;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
 }): Promise<Question> {
   const res = await client.post(`/tests/${testId}/questions`, data);
   return res.data;

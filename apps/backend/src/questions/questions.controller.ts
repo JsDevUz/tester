@@ -12,14 +12,18 @@ class OptionDto {
 
 class CreateQuestionDto {
   @IsString() @MinLength(1) text: string;
-  @IsIn(['single', 'multi', 'open']) type: string;
+  @IsIn(['single', 'multi', 'open', 'arrange']) type: string;
   @IsArray() @ValidateNested({ each: true }) @Type(() => OptionDto) options: OptionDto[];
+  @IsOptional() @IsString() imageUrl?: string;
+  @IsOptional() @IsString() audioUrl?: string;
 }
 
 class UpdateQuestionDto {
   @IsOptional() @IsString() @MinLength(1) text?: string;
-  @IsOptional() @IsIn(['single', 'multi', 'open']) type?: string;
+  @IsOptional() @IsIn(['single', 'multi', 'open', 'arrange']) type?: string;
   @IsOptional() @IsInt() @Min(0) orderIndex?: number;
+  @IsOptional() @IsString() imageUrl?: string;
+  @IsOptional() @IsString() audioUrl?: string;
 }
 
 class BulkImportDto {

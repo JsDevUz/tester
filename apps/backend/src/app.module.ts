@@ -6,6 +6,7 @@ import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { DeliveryModule } from './delivery/delivery.module';
 import { SubmissionsModule } from './submissions/submissions.module';
+import { UploadModule } from './upload/upload.module';
 import 'dotenv/config';
 
 @Module({
@@ -17,6 +18,7 @@ import 'dotenv/config';
     QuestionsModule,
     DeliveryModule,
     SubmissionsModule,
+    UploadModule,
   ],
 })
 export class AppModule {}

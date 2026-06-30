@@ -1,12 +1,17 @@
 {
   "name": "test-platform",
   "private": true,
-  "workspaces": ["apps/*"],
+  "workspaces": [
+    "apps/*"
+  ],
   "engines": {
     "node": ">=20"
   },
   "scripts": {
     "dev:backend": "npm run start:dev --workspace=apps/backend",
     "dev:frontend": "npm run dev --workspace=apps/frontend"
+  },
+  "devDependencies": {
+    "@types/multer": "^2.1.0"
   }
 }

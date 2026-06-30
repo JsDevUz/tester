@@ -32,6 +32,9 @@ export class DeliveryService {
         text: q.text,
         type: q.type,
         orderIndex: q.orderIndex,
+        imageUrl: q.imageUrl,
+        audioUrl: q.audioUrl,
+        // For arrange questions expose all options (correct+distractors) without revealing isCorrect
         options: q.options.map((o) => ({ id: o.id, text: o.text, orderIndex: o.orderIndex })),
       })),
     };
@@ -100,6 +103,17 @@ export class DeliveryService {
         isCorrect =
           correctIds.size === selectedIds.size &&
           [...correctIds].every((id) => selectedIds.has(id));
+        if (isCorrect) score++;
+      } else if (question.type === 'arrange') {
+        total++;
+        // Correct order: options with isCorrect=true sorted by orderIndex
+        const correctOrder = question.options
+          .filter((o) => o.isCorrect)
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((o) => o.id);
+        isCorrect =
+          correctOrder.length === item.selectedOptionIds.length &&
+          correctOrder.every((id, i) => id === item.selectedOptionIds[i]);
         if (isCorrect) score++;
       }
 
