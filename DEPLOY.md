@@ -5,6 +5,7 @@ Bu loyiha Docker Compose bilan uchta asosiy servisda yuradi:
 - `db`: PostgreSQL
 - `backend`: NestJS API, ichki port `3000`
 - `web`: Nginx orqali React build va `/api/*` proxy
+- `caddy`: HTTPS reverse proxy, tashqi `80` va `443`
 
 ## 1. VPS tayyorlash
 
@@ -37,11 +38,15 @@ Quyidagilarni albatta almashtiring:
 - `SUPER_ADMIN_EMAIL`
 - `SUPER_ADMIN_PASSWORD`
 - `FRONTEND_URL`
+- `DOMAIN`
+- `ACME_EMAIL`
 
-Server IP bilan boshlayotgan bo'lsangiz:
+Domain bilan ishlatayotgan bo'lsangiz:
 
 ```env
-FRONTEND_URL=http://YOUR_SERVER_IP
+DOMAIN=test.jamm.uz
+ACME_EMAIL=admin@example.com
+FRONTEND_URL=https://test.jamm.uz
 VITE_API_URL=
 ```
 

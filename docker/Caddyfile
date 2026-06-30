@@ -1,0 +1,8 @@
+{
+    email {$ACME_EMAIL:admin@example.com}
+}
+
+{$DOMAIN:test.jamm.uz} {
+    encode gzip zstd
+    reverse_proxy web:80
+}
