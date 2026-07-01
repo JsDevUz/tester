@@ -50,6 +50,13 @@
       "when": 1782907200000,
       "tag": "0006_telegram_link_last_name",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "7",
+      "when": 1782900331845,
+      "tag": "0007_right_wild_child",
+      "breakpoints": true
     }
   ]
 }
