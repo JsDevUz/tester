@@ -28,6 +28,7 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
     volumes:
       - uploads_data:/app/apps/backend/uploads
     depends_on:
