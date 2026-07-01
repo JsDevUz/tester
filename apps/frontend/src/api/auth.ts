@@ -23,7 +23,7 @@ export async function apiRequestRegistration(input: { name: string; email: strin
   return res.data;
 }
 
-export async function apiVerifyRegistration(input: { phone: string; code: string }) {
+export async function apiVerifyRegistration(input: { code: string }) {
   const res = await client.post('/auth/register/verify', input);
   return res.data;
 }

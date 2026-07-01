@@ -4,7 +4,7 @@ import { JwtAuthGuard } from './jwt-auth.guard';
 import { IsEmail, IsString, MinLength } from 'class-validator';
 
 class LoginDto {
-  @IsEmail() email: string;
+  @IsString() @MinLength(3) email: string;
   @IsString() @MinLength(1) password: string;
 }
 
@@ -15,7 +15,6 @@ class RegisterRequestDto {
 }
 
 class RegisterVerifyDto {
-  @IsString() @MinLength(7) phone: string;
   @IsString() @MinLength(4) code: string;
 }
 
@@ -47,7 +46,7 @@ export class AuthController {
   @Post('register/verify')
   @HttpCode(200)
   verifyRegistration(@Body() dto: RegisterVerifyDto) {
-    return this.authService.verifyRegistration(dto.phone, dto.code);
+    return this.authService.verifyRegistration(dto.code);
   }
 
   @Post('password/reset/request')

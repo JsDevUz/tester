@@ -14,7 +14,12 @@ export class AuthService {
   ) {}
 
   async login(email: string, password: string) {
-    const user = await db.query.users.findFirst({ where: eq(users.email, email) });
+    const login = email.trim();
+    const user = await db.query.users.findFirst({
+      where: login.includes('@')
+        ? eq(users.email, login.toLowerCase())
+        : eq(users.phone, this.telegramService.normalizePhone(login)),
+    });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -60,9 +65,9 @@ export class AuthService {
     return { ok: true };
   }
 
-  async verifyRegistration(phoneInput: string, code: string) {
-    const phone = this.telegramService.normalizePhone(phoneInput);
-    const authCode = await this.verifyAuthCode(phone, 'register', code);
+  async verifyRegistration(code: string) {
+    const authCode = await this.verifyRegistrationCode(code);
+    const phone = authCode.phone;
 
     if (!authCode.email || !authCode.name) {
       throw new BadRequestException("Ro'yxatdan o'tish so'rovi topilmadi.");
@@ -161,6 +166,25 @@ export class AuthService {
 
     await db.update(authCodes).set({ usedAt: new Date() }).where(eq(authCodes.id, authCode.id));
     return authCode;
+  }
+
+  private async verifyRegistrationCode(code: string) {
+    const candidates = await db.query.authCodes.findMany({
+      where: and(eq(authCodes.purpose, 'register'), isNull(authCodes.usedAt)),
+      orderBy: [desc(authCodes.createdAt)],
+      limit: 20,
+    });
+
+    for (const authCode of candidates) {
+      if (authCode.expiresAt.getTime() < Date.now()) continue;
+      const valid = await bcrypt.compare(code, authCode.codeHash);
+      if (!valid) continue;
+
+      await db.update(authCodes).set({ usedAt: new Date() }).where(eq(authCodes.id, authCode.id));
+      return authCode;
+    }
+
+    throw new BadRequestException("Kod noto'g'ri yoki muddati tugagan.");
   }
 
   private async findUserByPhoneOrEmail(phoneOrEmail: string) {

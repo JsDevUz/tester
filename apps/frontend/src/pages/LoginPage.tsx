@@ -4,7 +4,6 @@ import { useAuthStore } from '../stores/authStore';
 import {
   apiGetMe,
   apiRequestPasswordReset,
-  apiRequestRegistration,
   apiVerifyPasswordReset,
   apiVerifyRegistration,
 } from '../api/auth';
@@ -17,11 +16,8 @@ export function LoginPage() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
   const [phoneOrEmail, setPhoneOrEmail] = useState('');
   const [code, setCode] = useState('');
-  const [registerCodeSent, setRegisterCodeSent] = useState(false);
   const [resetCodeSent, setResetCodeSent] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -58,16 +54,10 @@ export function LoginPage() {
     setMessage('');
     setLoading(true);
     try {
-      if (!registerCodeSent) {
-        await apiRequestRegistration({ name, email, phone });
-        setRegisterCodeSent(true);
-        setMessage("Kod Telegram botga yuborildi.");
-      } else {
-        await apiVerifyRegistration({ phone, code });
-        setMessage("Login va parol Telegram botga yuborildi. Endi kirishingiz mumkin.");
-        setMode('login');
-        setPassword('');
-      }
+      await apiVerifyRegistration({ code });
+      setMessage("Login va parol Telegram botga yuborildi. Endi kirishingiz mumkin.");
+      setMode('login');
+      setPassword('');
     } catch (err: any) {
       setError(err.response?.data?.message ?? "Ro'yxatdan o'tib bo'lmadi");
     } finally {
@@ -124,10 +114,10 @@ export function LoginPage() {
         {mode === 'login' && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <input
-              type="email"
+              type="text"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email"
+              placeholder="Email yoki telefon"
               className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
             />
             <input
@@ -149,42 +139,31 @@ export function LoginPage() {
 
         {mode === 'register' && (
           <form onSubmit={handleRegister} className="flex flex-col gap-4">
-            {!registerCodeSent ? (
-              <>
-                <input
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                  placeholder="Ism"
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="Email"
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-                <input
-                  value={phone}
-                  onChange={(e) => setPhone(e.target.value)}
-                  placeholder="+998..."
-                  className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-                />
-              </>
-            ) : (
-              <input
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Telegram kod"
-                className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-              />
-            )}
+            <div className="rounded-xl border border-indigo-100 bg-indigo-50 px-4 py-3 text-center text-sm text-gray-600">
+              {botUsername ? (
+                <>
+                  <a href={botLink} target="_blank" rel="noreferrer" className="font-semibold text-indigo-600 underline">
+                    {botUsername.startsWith('@') ? botUsername : `@${botUsername}`}
+                  </a>{' '}
+                  botiga kiring va kontaktingizni yuboring. Bot sizga kod beradi.
+                </>
+              ) : (
+                "Telegram botga /start bosib kontaktingizni yuboring. Bot sizga kod beradi."
+              )}
+            </div>
+            <input
+              value={code}
+              onChange={(e) => setCode(e.target.value)}
+              placeholder="Telegram kod"
+              inputMode="numeric"
+              className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            />
             <button
               type="submit"
-              disabled={loading}
+              disabled={loading || !code.trim()}
               className="bg-indigo-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 disabled:opacity-50"
             >
-              {registerCodeSent ? 'Tasdiqlash' : 'Kod olish'}
+              Tasdiqlash
             </button>
           </form>
         )}

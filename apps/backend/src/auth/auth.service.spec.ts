@@ -7,7 +7,7 @@ jest.mock('../db', () => ({
   db: {
     query: {
       users: { findFirst: jest.fn() },
-      authCodes: { findFirst: jest.fn() },
+      authCodes: { findFirst: jest.fn(), findMany: jest.fn() },
     },
     insert: jest.fn(),
     update: jest.fn(),
@@ -57,7 +57,7 @@ describe('AuthService telegram auth', () => {
       expiresAt: new Date(Date.now() + 60_000),
       usedAt: null,
     };
-    (db.query.authCodes.findFirst as jest.Mock).mockResolvedValue(authCode);
+    (db.query.authCodes.findMany as jest.Mock).mockResolvedValue([authCode]);
     (db.query.users.findFirst as jest.Mock).mockResolvedValue(null);
     mockInsertReturning({
       id: 'user-1',
@@ -70,7 +70,7 @@ describe('AuthService telegram auth', () => {
 
     const service = new AuthService(jwtService as any, telegramService as any);
 
-    const result = await (service as any).verifyRegistration('+998 90 111 22 33', '123456');
+    const result = await (service as any).verifyRegistration('123456');
 
     expect(result.user.role).toBe('student');
     expect(db.insert).toHaveBeenCalled();

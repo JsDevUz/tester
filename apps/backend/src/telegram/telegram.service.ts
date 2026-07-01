@@ -1,13 +1,14 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { db } from '../db';
-import { userTelegramLinks } from '../db/schema';
+import { authCodes, userTelegramLinks, users } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import * as bcrypt from 'bcrypt';
 
 interface TelegramMessage {
   chat?: { id?: number | string };
-  from?: { id?: number | string; first_name?: string };
+  from?: { id?: number | string; first_name?: string; last_name?: string };
   text?: string;
-  contact?: { phone_number?: string; user_id?: number | string; first_name?: string };
+  contact?: { phone_number?: string; user_id?: number | string; first_name?: string; last_name?: string };
 }
 
 interface TelegramUpdate {
@@ -48,16 +49,31 @@ export class TelegramService {
       const telegramChatId = String(message.chat.id);
       const telegramUserId = String(message.contact.user_id ?? message.from?.id ?? '');
       const firstName = message.contact.first_name ?? message.from?.first_name ?? null;
+      const lastName = message.contact.last_name ?? message.from?.last_name ?? null;
 
       await db
         .insert(userTelegramLinks)
-        .values({ phone, telegramChatId, telegramUserId, firstName })
+        .values({ phone, telegramChatId, telegramUserId, firstName, lastName })
         .onConflictDoUpdate({
           target: userTelegramLinks.phone,
-          set: { telegramChatId, telegramUserId, firstName },
+          set: { telegramChatId, telegramUserId, firstName, lastName },
         });
 
-      await this.sendMessage(telegramChatId, "Kontakt bog'landi. Endi saytdan kod olishingiz mumkin.", {
+      const existingUser = await db.query.users.findFirst({ where: eq(users.phone, phone) });
+      if (existingUser) {
+        await this.sendMessage(telegramChatId, "Kontakt bog'langan. Siz bu raqam bilan login qilishingiz mumkin.", {
+          reply_markup: { remove_keyboard: true },
+        });
+        return;
+      }
+
+      const code = await this.createRegisterCode({
+        phone,
+        telegramChatId,
+        name: this.buildDisplayName(firstName, lastName),
+      });
+
+      await this.sendMessage(telegramChatId, `Ro'yxatdan o'tish kodi: ${code}\nKod 5 daqiqa amal qiladi.`, {
         reply_markup: { remove_keyboard: true },
       });
     }
@@ -108,5 +124,32 @@ export class TelegramService {
       this.logger.error(`Telegram sendMessage failed with ${response.status}`);
       throw new BadRequestException('Telegram xabar yuborilmadi.');
     }
+  }
+
+  private async createRegisterCode(input: { phone: string; telegramChatId: string; name: string }) {
+    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const codeHash = await bcrypt.hash(code, 10);
+
+    await db.insert(authCodes).values({
+      phone: input.phone,
+      email: this.buildLogin(input.phone),
+      name: input.name,
+      telegramChatId: input.telegramChatId,
+      purpose: 'register',
+      codeHash,
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+    });
+
+    return code;
+  }
+
+  private buildDisplayName(firstName: string | null, lastName: string | null) {
+    const name = [firstName, lastName].filter(Boolean).join(' ').trim();
+    return name || 'Telegram foydalanuvchi';
+  }
+
+  private buildLogin(phone: string) {
+    const digits = phone.replace(/\D/g, '');
+    return `u${digits}@telegram.local`;
   }
 }
