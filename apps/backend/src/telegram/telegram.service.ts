@@ -51,7 +51,7 @@ export class TelegramService {
         }
 
         const code = await this.createLoginCode({ phone: link.phone, telegramChatId: chatId });
-        await this.sendMessage(chatId, `Kirish kodi:\n\`${code}\`\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`, { parse_mode: 'Markdown' });
+        await this.sendMessage(chatId, `Kirish kodi: ${code}\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`);
         return;
       }
 
@@ -94,8 +94,7 @@ export class TelegramService {
         telegramChatId,
       });
 
-      await this.sendMessage(telegramChatId, `Kirish kodi:\n\`${code}\`\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`, {
-        parse_mode: 'Markdown',
+      await this.sendMessage(telegramChatId, `Kirish kodi: ${code}\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`, {
         reply_markup: { remove_keyboard: true },
       });
     }

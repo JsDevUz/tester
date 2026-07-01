@@ -11,27 +11,25 @@ export class GroqService {
       return false;
     }
 
-    const qLower = question.toLowerCase().replace(/[?'"]/g, '').trim();
     const aLower = studentAnswer.toLowerCase().trim();
     const hintLower = correctAnswer.toLowerCase().trim();
-    // Reject if student just echoed the question or hint verbatim
-    if (aLower === qLower || aLower === hintLower || qLower.includes(aLower) && aLower.split(' ').length <= 2) {
-      return false;
-    }
+    // Reject exact hint match (handled by exact-match before AI call, but safety net)
+    if (aLower === hintLower) return true;
 
     const prompt = `You are a strict answer checker. Respond ONLY with "true" or "false".
 
 Question: "${question}"
-Expected answer hint: "${correctAnswer}"
+Correct answer: "${correctAnswer}"
 Student answer: "${studentAnswer}"
 
 Rules:
-- Return "true" ONLY if the student answer conveys the same meaning as the hint
-- Language and spelling do not matter — same meaning = true
-- Synonyms are acceptable
-- If the student copied the question text or the hint word-for-word → "false"
-- If the student answer is just the subject/topic name from the question (e.g. question asks "what is X?" and student writes "X") → "false"
-- If the answer is off-topic or nonsensical → "false"
+- The student answer must mean the SAME THING as the correct answer
+- Spelling mistakes and language differences are OK if the meaning matches
+- Synonyms that mean exactly the same thing are OK
+- REJECT if the student answer describes or explains the correct answer instead of stating it (e.g. correct="O'zbekiston", student="O'zbekiston poytaxti" → false)
+- REJECT if the student answer is a related concept but not the same (e.g. correct="O'zbekiston", student="Toshkent" → false)
+- REJECT if the student answer includes words from the question without adding the correct answer
+- REJECT if the answer is vague, partial, or just restates the question topic
 
 Reply with exactly one word: true or false`;
 
