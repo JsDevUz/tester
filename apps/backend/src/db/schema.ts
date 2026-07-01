@@ -26,6 +26,8 @@ export const users = pgTable('users', {
 export const authCodes = pgTable('auth_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
   phone: text('phone').notNull(),
+  email: text('email'),
+  name: text('name'),
   telegramChatId: text('telegram_chat_id'),
   purpose: text('purpose').notNull(),
   codeHash: text('code_hash').notNull(),

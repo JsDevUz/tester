@@ -1,0 +1,2 @@
+ALTER TABLE auth_codes ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE auth_codes ADD COLUMN IF NOT EXISTS name text;

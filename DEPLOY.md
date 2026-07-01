@@ -40,6 +40,9 @@ Quyidagilarni albatta almashtiring:
 - `FRONTEND_URL`
 - `DOMAIN`
 - `ACME_EMAIL`
+- `TELEGRAM_BOT_TOKEN`
+- `TELEGRAM_BOT_USERNAME`
+- `TELEGRAM_WEBHOOK_SECRET`
 
 Domain bilan ishlatayotgan bo'lsangiz:
 
@@ -47,10 +50,20 @@ Domain bilan ishlatayotgan bo'lsangiz:
 DOMAIN=test.jamm.uz
 ACME_EMAIL=admin@example.com
 FRONTEND_URL=https://test.jamm.uz
+APP_URL=https://test.jamm.uz
 VITE_API_URL=
+VITE_TELEGRAM_BOT_USERNAME=YourBotUsername
 ```
 
 `VITE_API_URL` bo'sh tursa frontend API'ga shu domen/IP ichidagi `/api/v1` orqali boradi.
+
+Telegram webhookni bot token va secret bilan ulang:
+
+```bash
+curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
+  -d "url=https://test.jamm.uz/api/v1/telegram/webhook" \
+  -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
+```
 
 ## 3. Build va ishga tushirish
 

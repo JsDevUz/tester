@@ -24,6 +24,10 @@ services:
       DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
       JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
       FRONTEND_URL: ${FRONTEND_URL:-http://localhost}
+      APP_URL: ${APP_URL:-http://localhost}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
+      TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
+      TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
     volumes:
       - uploads_data:/app/apps/backend/uploads
     depends_on:
@@ -36,6 +40,7 @@ services:
       dockerfile: Dockerfile.frontend
       args:
         VITE_API_URL: ${VITE_API_URL:-}
+        VITE_TELEGRAM_BOT_USERNAME: ${VITE_TELEGRAM_BOT_USERNAME:-}
     restart: unless-stopped
     expose:
       - "80"

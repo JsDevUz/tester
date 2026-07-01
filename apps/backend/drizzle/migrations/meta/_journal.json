@@ -36,6 +36,13 @@
       "when": 1782900000000,
       "tag": "0004_users_auth",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1782903600000,
+      "tag": "0005_auth_code_metadata",
+      "breakpoints": true
     }
   ]
 }

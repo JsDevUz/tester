@@ -17,3 +17,23 @@ export async function apiGetMe(): Promise<Admin> {
   const res = await client.get('/auth/me');
   return res.data;
 }
+
+export async function apiRequestRegistration(input: { name: string; email: string; phone: string }) {
+  const res = await client.post('/auth/register/request', input);
+  return res.data;
+}
+
+export async function apiVerifyRegistration(input: { phone: string; code: string }) {
+  const res = await client.post('/auth/register/verify', input);
+  return res.data;
+}
+
+export async function apiRequestPasswordReset(phoneOrEmail: string) {
+  const res = await client.post('/auth/password/reset/request', { phoneOrEmail });
+  return res.data;
+}
+
+export async function apiVerifyPasswordReset(input: { phoneOrEmail: string; code: string }) {
+  const res = await client.post('/auth/password/reset/verify', input);
+  return res.data;
+}
