@@ -12,7 +12,7 @@ export interface Question {
   id: string;
   testId: string;
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
   orderIndex: number;
   imageUrl?: string | null;
   audioUrl?: string | null;
