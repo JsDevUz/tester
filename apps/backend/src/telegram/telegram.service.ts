@@ -29,9 +29,20 @@ export class TelegramService {
     const message = (update as TelegramUpdate)?.message;
     if (!message?.chat?.id) return;
 
-    if (message.text?.startsWith('/start')) {
+    if (message.text?.startsWith('/start') || message.text?.startsWith('/login')) {
+      const chatId = String(message.chat.id);
+      const link = await db.query.userTelegramLinks.findFirst({
+        where: eq(userTelegramLinks.telegramChatId, chatId),
+      });
+
+      if (link) {
+        const code = await this.createLoginCode({ phone: link.phone, telegramChatId: chatId });
+        await this.sendMessage(chatId, `Kirish kodi: ${code}\nKod 1 daqiqa amal qiladi.`);
+        return;
+      }
+
       await this.sendMessage(
-        String(message.chat.id),
+        chatId,
         "Assalomu alaykum! Saytga kirish uchun kontaktingizni yuboring.",
         {
           reply_markup: {

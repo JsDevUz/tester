@@ -38,6 +38,7 @@ export class QuestionsService {
     options: Array<{ text: string; isCorrect: boolean; orderIndex?: number }>;
     imageUrl?: string;
     audioUrl?: string;
+    correctAnswer?: string | null;
   }) {
     await this.verifyTestOwnership(testId, adminId);
     if ((data.type === 'single' || data.type === 'multi') && data.options.length > 0) {
@@ -52,6 +53,7 @@ export class QuestionsService {
       orderIndex: existing.length,
       imageUrl: data.imageUrl ?? null,
       audioUrl: data.audioUrl ?? null,
+      correctAnswer: data.correctAnswer ?? null,
     }).returning();
 
     const insertedOptions = data.options.length > 0
@@ -80,6 +82,7 @@ export class QuestionsService {
         text: q.text,
         type: q.type,
         orderIndex: orderOffset++,
+        correctAnswer: q.correctAnswer ?? null,
       }).returning();
 
       if (q.options.length > 0) {
@@ -97,7 +100,7 @@ export class QuestionsService {
     return { imported: parsed.length };
   }
 
-  async updateQuestion(id: string, adminId: string, data: { text?: string; type?: string; orderIndex?: number; imageUrl?: string; audioUrl?: string }) {
+  async updateQuestion(id: string, adminId: string, data: { text?: string; type?: string; orderIndex?: number; imageUrl?: string; audioUrl?: string; correctAnswer?: string | null }) {
     await this.verifyQuestionOwnership(id, adminId);
     const [question] = await db.update(questions).set(data).where(eq(questions.id, id)).returning();
     return question;

@@ -8,6 +8,7 @@ interface ParsedQuestion {
   text: string;
   type: 'single' | 'multi' | 'open' | 'arrange';
   options: ParsedOption[];
+  correctAnswer?: string;
 }
 
 export function parseBulk(input: string): ParsedQuestion[] {
@@ -29,6 +30,8 @@ export function parseBulk(input: string): ParsedQuestion[] {
       // arrange: distractor token
       current.type = 'arrange';
       current.options.push({ text: line.slice(2).trim(), isCorrect: false, orderIndex: 0 });
+    } else if (line.startsWith('= ') && current) {
+      current.correctAnswer = line.slice(2).trim();
     } else if (line.startsWith('+ ') && current) {
       current.options.push({ text: line.slice(2).trim(), isCorrect: true, orderIndex: 0 });
     } else if (line.startsWith('- ') && current) {

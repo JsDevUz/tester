@@ -2,6 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { db } from '../db';
 import { tests, submissions, answers, questions, options } from '../db/schema';
 import { eq } from 'drizzle-orm';
+import { GroqService } from '../groq/groq.service';
 
 export function evaluateObjectiveAnswer(
   questionType: string,
@@ -22,6 +23,8 @@ export function evaluateObjectiveAnswer(
 
 @Injectable()
 export class DeliveryService {
+  constructor(private readonly groqService: GroqService) {}
+
   async getTestBySlug(slug: string) {
     const test = await db.query.tests.findFirst({
       where: eq(tests.slug, slug),
@@ -152,6 +155,12 @@ export class DeliveryService {
         const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
         isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
         if (isCorrect) score++;
+      } else if (question.type === 'open') {
+        if (question.correctAnswer && item.textAnswer?.trim()) {
+          total++;
+          isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+          if (isCorrect) score++;
+        }
       } else if (question.type === 'arrange') {
         total++;
         const correctOrder = question.options

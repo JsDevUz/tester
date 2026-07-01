@@ -79,6 +79,7 @@ export const questions = pgTable('questions', {
   orderIndex: integer('order_index').notNull().default(0),
   imageUrl: text('image_url'),
   audioUrl: text('audio_url'),
+  correctAnswer: text('correct_answer'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

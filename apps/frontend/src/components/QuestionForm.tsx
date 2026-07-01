@@ -14,6 +14,7 @@ interface InitialValues {
   options: OptionInput[];
   imageUrl?: string | null;
   audioUrl?: string | null;
+  correctAnswer?: string | null;
 }
 
 interface Props {
@@ -23,6 +24,7 @@ interface Props {
     options: OptionInput[];
     imageUrl?: string | null;
     audioUrl?: string | null;
+    correctAnswer?: string | null;
   }) => void;
   initial?: InitialValues;
   submitLabel?: string;
@@ -65,6 +67,7 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
     return [];
   });
 
+  const [correctAnswer, setCorrectAnswer] = useState<string>(initial?.correctAnswer ?? '');
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
   const [audioUrl, setAudioUrl] = useState<string | null>(initial?.audioUrl ?? null);
   const [uploading, setUploading] = useState(false);
@@ -119,7 +122,7 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
     }
     setUploadError(null);
 
-    onSubmit({ text: text.trim(), type, options, imageUrl, audioUrl });
+    onSubmit({ text: text.trim(), type, options, imageUrl, audioUrl, correctAnswer: correctAnswer.trim() || null });
 
     // reset
     setText('');
@@ -127,6 +130,7 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
     setOpts([{ text: '', isCorrect: false }, { text: '', isCorrect: false }]);
     setCorrectTokens(['', '']);
     setDistractors([]);
+    setCorrectAnswer('');
     setImageUrl(null);
     setAudioUrl(null);
   }
@@ -249,6 +253,15 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
             </div>
           )}
         </div>
+      )}
+
+      {type === 'open' && (
+        <input
+          value={correctAnswer}
+          onChange={(e) => setCorrectAnswer(e.target.value)}
+          placeholder="To'g'ri javob (AI tekshirish uchun)..."
+          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+        />
       )}
 
       {(type === 'single' || type === 'multi') && (
