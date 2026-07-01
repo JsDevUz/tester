@@ -30,8 +30,7 @@ function SortableItem({ id, pos, text }: { id: string; pos: number; text: string
   );
 }
 
-function ReorderQuestion({ questionId, optionIds, options, onChange }: {
-  questionId: string;
+function ReorderQuestion({ optionIds, options, onChange }: {
   optionIds: string[];
   options: { id: string; text: string }[];
   onChange: (ids: string[]) => void;
@@ -431,7 +430,6 @@ export function TakeTestPage() {
           <div className="flex flex-col gap-2">
             <p className="text-xs text-gray-400 mb-1">Ushlab suring va to'g'ri tartibga soling</p>
             <ReorderQuestion
-              questionId={q.id}
               optionIds={selected}
               options={q.options}
               onChange={(ids) => setSelectedMap((p) => ({ ...p, [q.id]: ids }))}

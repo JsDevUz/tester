@@ -45,7 +45,7 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
           key={q.id}
           initial={{
             text: q.text,
-            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder',
+            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank',
             options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
@@ -71,8 +71,17 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
             q.type === 'arrange' ? 'bg-amber-100 text-amber-600' :
             q.type === 'truefalse' ? 'bg-green-100 text-green-600' :
             q.type === 'reorder' ? 'bg-orange-100 text-orange-600' :
+            q.type === 'matching' ? 'bg-cyan-100 text-cyan-600' :
+            q.type === 'fillblank' ? 'bg-pink-100 text-pink-600' :
             'bg-gray-100 text-gray-500'}`}>
-            {q.type === 'single' ? 'Yagona' : q.type === 'multi' ? "Ko'p tanlov" : q.type === 'arrange' ? 'Gap tuzish' : q.type === 'truefalse' ? "To'g'ri/Noto'g'ri" : q.type === 'reorder' ? 'Tartibga solish' : 'Ochiq'}
+            {q.type === 'single' ? 'Yagona' :
+             q.type === 'multi' ? "Ko'p tanlov" :
+             q.type === 'arrange' ? 'Gap tuzish' :
+             q.type === 'truefalse' ? "To'g'ri/Noto'g'ri" :
+             q.type === 'reorder' ? 'Tartibga solish' :
+             q.type === 'matching' ? 'Moslashtirish' :
+             q.type === 'fillblank' ? "Bo'sh joy" :
+             'Ochiq'}
           </span>
           {q.imageUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400"><Image size={10} /> rasm</span>}
           {q.audioUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-purple-400"><Music size={10} /> audio</span>}

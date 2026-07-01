@@ -58,7 +58,7 @@ export function SubmissionDetailPage() {
                 <div className="flex flex-col gap-1.5">
                   {a.options.map((opt) => {
                     const studentSelected = a.selectedOptionIds.includes(opt.id);
-                    const isCorrectOpt = a.correctOptionIds.includes(opt.id);
+                    const isCorrectOpt = opt.isCorrectOption;
                     return (
                       <div key={opt.id} className={`text-xs px-3 py-2 rounded-lg flex items-center gap-2 ${
                         isCorrectOpt ? 'bg-green-50 text-green-700' :
