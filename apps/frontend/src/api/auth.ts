@@ -13,6 +13,11 @@ export async function apiLogin(email: string, password: string): Promise<{ acces
   return res.data;
 }
 
+export async function apiTelegramLogin(code: string): Promise<{ access_token: string; admin: Admin; user: Admin }> {
+  const res = await client.post('/auth/telegram/verify', { code });
+  return res.data;
+}
+
 export async function apiGetMe(): Promise<Admin> {
   const res = await client.get('/auth/me');
   return res.data;

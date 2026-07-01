@@ -18,6 +18,10 @@ class RegisterVerifyDto {
   @IsString() @MinLength(4) code: string;
 }
 
+class TelegramCodeDto {
+  @IsString() @MinLength(4) code: string;
+}
+
 class PasswordResetRequestDto {
   @IsString() @MinLength(3) phoneOrEmail: string;
 }
@@ -47,6 +51,12 @@ export class AuthController {
   @HttpCode(200)
   verifyRegistration(@Body() dto: RegisterVerifyDto) {
     return this.authService.verifyRegistration(dto.code);
+  }
+
+  @Post('telegram/verify')
+  @HttpCode(200)
+  verifyTelegramCode(@Body() dto: TelegramCodeDto) {
+    return this.authService.verifyTelegramCode(dto.code);
   }
 
   @Post('password/reset/request')

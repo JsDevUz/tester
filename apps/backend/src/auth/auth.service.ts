@@ -101,6 +101,14 @@ export class AuthService {
     return { ok: true, user };
   }
 
+  async verifyTelegramCode(code: string) {
+    const authCode = await this.verifyCodeByPurpose(code, 'login');
+    const user = await db.query.users.findFirst({ where: eq(users.phone, authCode.phone) });
+    if (!user) throw new BadRequestException("Foydalanuvchi topilmadi. Botga /start bosib, kontakt yuboring.");
+
+    return this.createAuthResponse(user);
+  }
+
   async requestPasswordReset(phoneOrEmail: string) {
     const user = await this.findUserByPhoneOrEmail(phoneOrEmail);
     if (!user?.phone) return { ok: true };
@@ -146,7 +154,7 @@ export class AuthService {
       telegramChatId,
       purpose: input.purpose,
       codeHash,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 60 * 1000),
     });
   }
 
@@ -169,8 +177,12 @@ export class AuthService {
   }
 
   private async verifyRegistrationCode(code: string) {
+    return this.verifyCodeByPurpose(code, 'register');
+  }
+
+  private async verifyCodeByPurpose(code: string, purpose: string) {
     const candidates = await db.query.authCodes.findMany({
-      where: and(eq(authCodes.purpose, 'register'), isNull(authCodes.usedAt)),
+      where: and(eq(authCodes.purpose, purpose), isNull(authCodes.usedAt)),
       orderBy: [desc(authCodes.createdAt)],
       limit: 20,
     });
@@ -185,6 +197,35 @@ export class AuthService {
     }
 
     throw new BadRequestException("Kod noto'g'ri yoki muddati tugagan.");
+  }
+
+  private createAuthResponse(user: {
+    id: string;
+    email: string;
+    name: string;
+    role: string;
+    phone: string | null;
+  }) {
+    const token = this.jwtService.sign({
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+    });
+
+    const safeUser = {
+      id: user.id,
+      email: user.email,
+      name: user.name,
+      role: user.role,
+      phone: user.phone,
+    };
+
+    return {
+      access_token: token,
+      user: safeUser,
+      admin: safeUser,
+    };
   }
 
   private async findUserByPhoneOrEmail(phoneOrEmail: string) {

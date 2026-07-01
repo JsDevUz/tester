@@ -32,7 +32,7 @@ export class TelegramService {
     if (message.text?.startsWith('/start')) {
       await this.sendMessage(
         String(message.chat.id),
-        "Assalomu alaykum! Ro'yxatdan o'tish va parol tiklash uchun kontaktingizni yuboring.",
+        "Assalomu alaykum! Saytga kirish uchun kontaktingizni yuboring.",
         {
           reply_markup: {
             keyboard: [[{ text: 'Kontaktni yuborish', request_contact: true }]],
@@ -59,21 +59,17 @@ export class TelegramService {
           set: { telegramChatId, telegramUserId, firstName, lastName },
         });
 
-      const existingUser = await db.query.users.findFirst({ where: eq(users.phone, phone) });
-      if (existingUser) {
-        await this.sendMessage(telegramChatId, "Kontakt bog'langan. Siz bu raqam bilan login qilishingiz mumkin.", {
-          reply_markup: { remove_keyboard: true },
-        });
-        return;
-      }
-
-      const code = await this.createRegisterCode({
+      await this.findOrCreateTelegramUser({
         phone,
-        telegramChatId,
         name: this.buildDisplayName(firstName, lastName),
       });
 
-      await this.sendMessage(telegramChatId, `Ro'yxatdan o'tish kodi: ${code}\nKod 5 daqiqa amal qiladi.`, {
+      const code = await this.createLoginCode({
+        phone,
+        telegramChatId,
+      });
+
+      await this.sendMessage(telegramChatId, `Kirish kodi: ${code}\nKod 1 daqiqa amal qiladi.`, {
         reply_markup: { remove_keyboard: true },
       });
     }
@@ -90,7 +86,7 @@ export class TelegramService {
     }
 
     const title = purpose === 'register' ? "Ro'yxatdan o'tish kodi" : 'Parolni tiklash kodi';
-    await this.sendMessage(link.telegramChatId, `${title}: ${code}\nKod 5 daqiqa amal qiladi.`);
+    await this.sendMessage(link.telegramChatId, `${title}: ${code}\nKod 1 daqiqa amal qiladi.`);
     return link.telegramChatId;
   }
 
@@ -126,21 +122,39 @@ export class TelegramService {
     }
   }
 
-  private async createRegisterCode(input: { phone: string; telegramChatId: string; name: string }) {
+  private async createLoginCode(input: { phone: string; telegramChatId: string }) {
     const code = String(Math.floor(100000 + Math.random() * 900000));
     const codeHash = await bcrypt.hash(code, 10);
 
     await db.insert(authCodes).values({
       phone: input.phone,
       email: this.buildLogin(input.phone),
-      name: input.name,
       telegramChatId: input.telegramChatId,
-      purpose: 'register',
+      purpose: 'login',
       codeHash,
-      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+      expiresAt: new Date(Date.now() + 60 * 1000),
     });
 
     return code;
+  }
+
+  private async findOrCreateTelegramUser(input: { phone: string; name: string }) {
+    const existingUser = await db.query.users.findFirst({ where: eq(users.phone, input.phone) });
+    if (existingUser) return existingUser;
+
+    const passwordHash = await bcrypt.hash(Math.random().toString(36), 10);
+    const [user] = await db
+      .insert(users)
+      .values({
+        email: this.buildLogin(input.phone),
+        passwordHash,
+        name: input.name,
+        phone: input.phone,
+        role: 'student',
+      })
+      .returning();
+
+    return user;
   }
 
   private buildDisplayName(firstName: string | null, lastName: string | null) {

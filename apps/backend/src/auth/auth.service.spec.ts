@@ -102,4 +102,32 @@ describe('AuthService telegram auth', () => {
       BadRequestException,
     );
   });
+
+  it('logs in a Telegram user with a one-time code', async () => {
+    (db.query.authCodes.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'code-1',
+        phone: '+998901112233',
+        purpose: 'login',
+        codeHash: 'hashed-code',
+        expiresAt: new Date(Date.now() + 60_000),
+        usedAt: null,
+      },
+    ]);
+    (db.query.users.findFirst as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'u998901112233@telegram.local',
+      name: 'Student One',
+      role: 'student',
+      phone: '+998901112233',
+    });
+    mockUpdate();
+
+    const service = new AuthService(jwtService as any, telegramService as any);
+
+    const result = await service.verifyTelegramCode('123456');
+
+    expect(result.access_token).toBe('signed-token');
+    expect(result.user.phone).toBe('+998901112233');
+  });
 });
