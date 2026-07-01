@@ -6,7 +6,7 @@ const CODE_LENGTH = 6;
 
 export function LoginPage() {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
-  const botLink = botUsername ? `https://t.me/${botUsername.replace('@', '')}` : '';
+  const botLink = botUsername ? `tg://resolve?domain=${botUsername.replace('@', '')}` : '';
   const displayBot = botUsername ? (botUsername.startsWith('@') ? botUsername : `@${botUsername}`) : '@BirKodBot';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -101,7 +101,7 @@ export function LoginPage() {
             <h1 className="text-2xl font-black leading-none text-[#070d1d]">Kodni Kiriting</h1>
             <p className="mt-5 max-w-100 text-center text-sm font-medium leading-relaxed text-[#333746]">
               <a
-                href={botLink || `https://t.me/BirKodBot`}
+                href={botLink || `tg://resolve?domain=BirKodBot`}
                 target="_blank"
                 rel="noreferrer"
                 className="mr-2 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4 hover:text-indigo-600"
