@@ -32,20 +32,20 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+    <div className="h-[210px] bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
       {/* Header */}
-      <div className="px-4 pt-4 pb-3">
+      <div className="h-[88px] px-4 pt-4 pb-3 shrink-0">
         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Test</p>
         <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{test.name}</p>
-        {test.description && (
-          <p className="text-[11px] text-gray-400 line-clamp-2 leading-snug mt-1">{test.description}</p>
-        )}
+        <p className="min-h-[28px] text-[11px] text-gray-400 line-clamp-2 leading-snug mt-1">
+          {test.description || '\u00A0'}
+        </p>
       </div>
 
       {/* Dark action bar */}
-      <div className="bg-gray-900 px-4 py-2.5 flex items-center justify-between">
-        <div className="flex items-center gap-1.5 min-w-0">
+      <div className="h-[52px] bg-gray-900 px-4 flex items-center justify-between shrink-0">
+        <div className="flex items-center gap-1.5 min-w-0 max-w-[98px]">
           <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`} />
           <span className="text-[11px] text-gray-300 truncate">{status.label}</span>
         </div>
@@ -58,36 +58,36 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
       </div>
 
       {/* Info list — like feature list in the reference */}
-      <div className="px-4 py-3 flex flex-col gap-2">
-        <div className="flex items-center gap-2 text-xs text-gray-600">
+      <div className="px-4 py-3 flex flex-1 flex-col gap-2 min-h-0">
+        <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
           <Clock size={13} className="text-gray-400 shrink-0" />
-          <span>{test.timeLimit ? `${test.timeLimit} daqiqa` : 'Vaqt cheklanmagan'}</span>
+          <span className="truncate">{test.timeLimit ? `${test.timeLimit} daqiqa` : 'Vaqt cheklanmagan'}</span>
         </div>
-        <div className="flex items-center gap-2 text-xs text-gray-600">
+        <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
           <Shuffle size={13} className="text-gray-400 shrink-0" />
-          <span>{test.shuffleQuestions ? "Savollar aralashtiriladi" : "Savollar tartibli"}</span>
+          <span className="truncate">{test.shuffleQuestions ? "Savollar aralashtiriladi" : "Savollar tartibli"}</span>
         </div>
         {test.deadline ? (
-          <div className="flex items-center gap-2 text-xs text-gray-600">
+          <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
             <Calendar size={13} className="text-gray-400 shrink-0" />
-            <span>{new Date(test.deadline).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <span className="truncate">{new Date(test.deadline).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
           </div>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-gray-400">
+          <div className="flex h-4 items-center gap-2 text-xs text-gray-400">
             <Calendar size={13} className="shrink-0" />
-            <span>Muddat belgilanmagan</span>
+            <span className="truncate">Muddat belgilanmagan</span>
           </div>
         )}
         {test.slug ? (
           <button onClick={copyLink}
-            className="flex items-center gap-2 text-xs text-indigo-500 hover:text-indigo-700 transition-colors text-left">
+            className="flex h-4 items-center gap-2 text-xs text-indigo-500 hover:text-indigo-700 transition-colors text-left">
             {copied ? <Check size={13} className="shrink-0" /> : <Link2 size={13} className="shrink-0" />}
-            <span>{copied ? 'Nusxalandi!' : 'Havola nusxalash'}</span>
+            <span className="truncate">{copied ? 'Nusxalandi!' : 'Havola nusxalash'}</span>
           </button>
         ) : (
-          <div className="flex items-center gap-2 text-xs text-gray-300">
+          <div className="flex h-4 items-center gap-2 text-xs text-gray-300">
             <Link2 size={13} className="shrink-0" />
-            <span>Havola yo'q</span>
+            <span className="truncate">Havola yo'q</span>
           </div>
         )}
       </div>
