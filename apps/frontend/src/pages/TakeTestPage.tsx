@@ -102,6 +102,21 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
     setPendingLeft(null);
   }
 
+  const COLORS = ['indigo', 'rose', 'amber', 'teal', 'violet', 'orange', 'cyan', 'pink'];
+  const colorMap: Record<string, string> = {};
+  pairedLeftIds.forEach((lid, i) => { colorMap[lid] = COLORS[i % COLORS.length]; });
+
+  const colorClasses: Record<string, { left: string; right: string; dot: string }> = {
+    indigo: { left: 'bg-indigo-50 border-indigo-400 text-indigo-700', right: 'bg-indigo-50 border-indigo-400 text-indigo-700', dot: 'bg-indigo-400' },
+    rose:   { left: 'bg-rose-50 border-rose-400 text-rose-700',       right: 'bg-rose-50 border-rose-400 text-rose-700',       dot: 'bg-rose-400' },
+    amber:  { left: 'bg-amber-50 border-amber-400 text-amber-700',    right: 'bg-amber-50 border-amber-400 text-amber-700',    dot: 'bg-amber-400' },
+    teal:   { left: 'bg-teal-50 border-teal-400 text-teal-700',       right: 'bg-teal-50 border-teal-400 text-teal-700',       dot: 'bg-teal-400' },
+    violet: { left: 'bg-violet-50 border-violet-400 text-violet-700', right: 'bg-violet-50 border-violet-400 text-violet-700', dot: 'bg-violet-400' },
+    orange: { left: 'bg-orange-50 border-orange-400 text-orange-700', right: 'bg-orange-50 border-orange-400 text-orange-700', dot: 'bg-orange-400' },
+    cyan:   { left: 'bg-cyan-50 border-cyan-400 text-cyan-700',       right: 'bg-cyan-50 border-cyan-400 text-cyan-700',       dot: 'bg-cyan-400' },
+    pink:   { left: 'bg-pink-50 border-pink-400 text-pink-700',       right: 'bg-pink-50 border-pink-400 text-pink-700',       dot: 'bg-pink-400' },
+  };
+
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-gray-400">Chap tomondagini bosing, keyin mos o'ng tomondagini bosing</p>
@@ -111,13 +126,15 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
             const pairIdx = pairedLeftIds.indexOf(opt.id);
             const isPaired = pairIdx !== -1;
             const isPending = pendingLeft === opt.id;
+            const color = isPaired ? colorMap[opt.id] : null;
             return (
               <button key={opt.id} type="button" onClick={() => tapLeft(opt.id)}
-                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors ${
+                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors flex items-center gap-2 ${
                   isPending ? 'bg-indigo-500 text-white border-indigo-500' :
-                  isPaired ? 'bg-indigo-50 border-indigo-300 text-indigo-700' :
+                  color ? colorClasses[color].left :
                   'bg-white border-gray-200 text-gray-700 hover:border-indigo-300'
                 }`}>
+                {isPaired && color && <span className={`w-2 h-2 rounded-full shrink-0 ${colorClasses[color].dot}`} />}
                 {opt.text}
               </button>
             );
@@ -125,15 +142,19 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
         </div>
         <div className="flex flex-col gap-2">
           {rights.map((opt) => {
-            const isPaired = pairedRightIds.includes(opt.id);
+            const pairIdx = pairedRightIds.indexOf(opt.id);
+            const isPaired = pairIdx !== -1;
+            const leftId = isPaired ? pairedLeftIds[pairIdx] : null;
+            const color = leftId ? colorMap[leftId] : null;
             return (
               <button key={opt.id} type="button" onClick={() => tapRight(opt.id)}
                 disabled={!pendingLeft && !isPaired}
-                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors ${
-                  isPaired ? 'bg-green-50 border-green-300 text-green-700' :
+                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors flex items-center gap-2 ${
+                  color ? colorClasses[color].right :
                   pendingLeft ? 'bg-white border-gray-200 text-gray-700 hover:border-green-400 hover:bg-green-50' :
                   'bg-gray-50 border-gray-100 text-gray-400'
                 }`}>
+                {isPaired && color && <span className={`w-2 h-2 rounded-full shrink-0 ${colorClasses[color].dot}`} />}
                 {opt.text}
               </button>
             );
