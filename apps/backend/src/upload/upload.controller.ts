@@ -7,6 +7,8 @@ import { diskStorage } from 'multer';
 import { extname, join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 
 const UPLOAD_DIR = join(process.cwd(), 'uploads');
 if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -15,7 +17,8 @@ const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('teacher', 'super')
 @Controller('upload')
 export class UploadController {
   @Post()

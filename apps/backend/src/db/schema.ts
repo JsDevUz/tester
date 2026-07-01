@@ -10,9 +10,42 @@ export const admins = pgTable('admins', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+export const users = pgTable('users', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  email: text('email').unique().notNull(),
+  username: text('username').unique(),
+  passwordHash: text('password_hash').notNull(),
+  name: text('name').notNull(),
+  role: text('role').notNull().default('student'),
+  phone: text('phone').unique(),
+  telegramChatId: text('telegram_chat_id'),
+  telegramUserId: text('telegram_user_id'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const authCodes = pgTable('auth_codes', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  phone: text('phone').notNull(),
+  telegramChatId: text('telegram_chat_id'),
+  purpose: text('purpose').notNull(),
+  codeHash: text('code_hash').notNull(),
+  expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
+  usedAt: timestamp('used_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const userTelegramLinks = pgTable('user_telegram_links', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  phone: text('phone').unique().notNull(),
+  telegramChatId: text('telegram_chat_id').notNull(),
+  telegramUserId: text('telegram_user_id'),
+  firstName: text('first_name'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
 export const folders = pgTable('folders', {
   id: uuid('id').primaryKey().defaultRandom(),
-  adminId: uuid('admin_id').notNull().references(() => admins.id, { onDelete: 'cascade' }),
+  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   color: text('color').notNull().default('#6366f1'),
   icon: text('icon').notNull().default('folder'),
@@ -22,7 +55,7 @@ export const folders = pgTable('folders', {
 export const tests = pgTable('tests', {
   id: uuid('id').primaryKey().defaultRandom(),
   folderId: uuid('folder_id').notNull().references(() => folders.id, { onDelete: 'cascade' }),
-  adminId: uuid('admin_id').notNull().references(() => admins.id, { onDelete: 'cascade' }),
+  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull(),
   description: text('description'),
   timeLimit: integer('time_limit'),
@@ -57,6 +90,7 @@ export const options = pgTable('options', {
 export const submissions = pgTable('submissions', {
   id: uuid('id').primaryKey().defaultRandom(),
   testId: uuid('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').references(() => users.id, { onDelete: 'set null' }),
   studentName: text('student_name').notNull(),
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
@@ -78,6 +112,17 @@ export const testsRelations = relations(tests, ({ many }) => ({
   submissions: many(submissions),
 }));
 
+export const usersRelations = relations(users, ({ many }) => ({
+  folders: many(folders),
+  tests: many(tests),
+  submissions: many(submissions),
+}));
+
+export const foldersRelations = relations(folders, ({ one, many }) => ({
+  owner: one(users, { fields: [folders.adminId], references: [users.id] }),
+  tests: many(tests),
+}));
+
 export const questionsRelations = relations(questions, ({ one, many }) => ({
   test: one(tests, { fields: [questions.testId], references: [tests.id] }),
   options: many(options),
@@ -89,6 +134,7 @@ export const optionsRelations = relations(options, ({ one }) => ({
 
 export const submissionsRelations = relations(submissions, ({ one, many }) => ({
   test: one(tests, { fields: [submissions.testId], references: [tests.id] }),
+  user: one(users, { fields: [submissions.userId], references: [users.id] }),
   answers: many(answers),
 }));
 

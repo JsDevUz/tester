@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Req, HttpCode } from '@nestjs/common';
 import { TestsService } from './tests.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { IsString, IsOptional, IsInt, IsBoolean, IsIn, Min, IsDateString, MinLength } from 'class-validator';
 
 class CreateTestDto {
@@ -26,7 +28,8 @@ class UpdateTestDto {
   @IsOptional() @IsDateString() deadline?: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('teacher', 'super')
 @Controller('tests')
 export class TestsController {
   constructor(private testsService: TestsService) {}

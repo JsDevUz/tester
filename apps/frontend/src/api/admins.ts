@@ -11,6 +11,11 @@ export async function apiCreateAdmin(email: string, password: string, name: stri
   return res.data;
 }
 
+export async function apiUpdateUserRole(id: string, role: Admin['role']): Promise<Admin> {
+  const res = await client.patch(`/admins/${id}/role`, { role });
+  return res.data;
+}
+
 export async function apiDeleteAdmin(id: string): Promise<void> {
   await client.delete(`/admins/${id}`);
 }

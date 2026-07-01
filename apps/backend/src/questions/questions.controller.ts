@@ -1,6 +1,8 @@
 import { Controller, Post, Patch, Delete, Param, Body, UseGuards, Req, HttpCode } from '@nestjs/common';
 import { QuestionsService } from './questions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { IsString, IsOptional, IsBoolean, IsInt, IsArray, IsIn, MinLength, ValidateNested, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
@@ -36,7 +38,8 @@ class UpdateOptionDto {
   @IsOptional() @IsInt() @Min(0) orderIndex?: number;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('teacher', 'super')
 @Controller()
 export class QuestionsController {
   constructor(private questionsService: QuestionsService) {}

@@ -1,5 +1,5 @@
 import { db } from './index';
-import { admins } from './schema';
+import { admins, users } from './schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -13,9 +13,7 @@ async function seed() {
     throw new Error('SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env');
   }
 
-  const existing = await db.query.admins.findFirst({
-    where: eq(admins.email, email),
-  });
+  const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
 
   if (existing) {
     console.log(`Super admin already exists: ${email}`);
@@ -23,7 +21,8 @@ async function seed() {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.insert(admins).values({ email, passwordHash, name, role: 'super' });
+  const [user] = await db.insert(users).values({ email, passwordHash, name, role: 'super' }).returning();
+  await db.insert(admins).values({ id: user.id, email, passwordHash, name, role: 'super' }).onConflictDoNothing();
   console.log(`Super admin created: ${email}`);
   process.exit(0);
 }

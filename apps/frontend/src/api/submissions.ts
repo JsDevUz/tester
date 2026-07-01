@@ -3,6 +3,7 @@ import client from './client';
 export interface Submission {
   id: string;
   testId: string;
+  testName?: string;
   studentName: string;
   startedAt: string;
   submittedAt: string | null;
@@ -27,6 +28,11 @@ export interface SubmissionDetail extends Submission {
 
 export async function apiGetSubmissions(testId: string): Promise<Submission[]> {
   const res = await client.get(`/tests/${testId}/submissions`);
+  return res.data;
+}
+
+export async function apiGetMySubmissions(): Promise<Submission[]> {
+  const res = await client.get('/me/submissions');
   return res.data;
 }
 

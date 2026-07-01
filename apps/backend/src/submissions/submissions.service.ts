@@ -17,6 +17,25 @@ export class SubmissionsService {
     });
   }
 
+  async findMine(userId: string) {
+    const rows = await db.query.submissions.findMany({
+      where: and(eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
+      with: { test: true },
+      orderBy: (s, { desc }) => [desc(s.submittedAt)],
+    });
+
+    return rows.map((submission) => ({
+      id: submission.id,
+      testId: submission.testId,
+      testName: submission.test.name,
+      studentName: submission.studentName,
+      startedAt: submission.startedAt,
+      submittedAt: submission.submittedAt,
+      score: submission.score,
+      total: submission.total,
+    }));
+  }
+
   async deleteOne(submissionId: string, adminId: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),

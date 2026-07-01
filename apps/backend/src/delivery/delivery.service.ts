@@ -56,12 +56,13 @@ export class DeliveryService {
     };
   }
 
-  async startSubmission(slug: string, studentName: string) {
+  async startSubmission(slug: string, studentName: string, userId?: string) {
     const test = await db.query.tests.findFirst({ where: eq(tests.slug, slug) });
     if (!test) throw new NotFoundException('Test not found');
 
     const [submission] = await db.insert(submissions).values({
       testId: test.id,
+      userId,
       studentName,
     }).returning();
 

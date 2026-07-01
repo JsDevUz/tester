@@ -1,6 +1,8 @@
 import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req, HttpCode } from '@nestjs/common';
 import { FoldersService } from './folders.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
 import { IsOptional, IsString, MinLength } from 'class-validator';
 
 class CreateFolderDto {
@@ -15,7 +17,8 @@ class UpdateFolderDto {
   @IsOptional() @IsString() icon?: string;
 }
 
-@UseGuards(JwtAuthGuard)
+@UseGuards(JwtAuthGuard, RolesGuard)
+@Roles('teacher', 'super')
 @Controller('folders')
 export class FoldersController {
   constructor(private foldersService: FoldersService) {}

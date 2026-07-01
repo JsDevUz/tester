@@ -9,13 +9,20 @@ import { TakeTestPage } from './pages/TakeTestPage';
 import { TestResultPage } from './pages/TestResultPage';
 import { SubmissionsPage } from './pages/SubmissionsPage';
 import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
+import { StudentHistoryPage } from './pages/StudentHistoryPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TopProgressBar } from './components/TopProgressBar';
+import { useAuthStore } from './stores/authStore';
+
+function HomeRoute() {
+  const admin = useAuthStore((s) => s.admin);
+  return admin?.role === 'student' ? <StudentHistoryPage /> : <DashboardPage />;
+}
 
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
-  { path: '/', element: <PrivateRoute><DashboardPage /></PrivateRoute> },
+  { path: '/', element: <PrivateRoute><HomeRoute /></PrivateRoute> },
   { path: '/folders/:id', element: <PrivateRoute><FolderViewPage /></PrivateRoute> },
   { path: '/tests/:id/edit', element: <PrivateRoute><QuestionEditorPage /></PrivateRoute> },
   { path: '/tests/:id/submissions', element: <PrivateRoute><SubmissionsPage /></PrivateRoute> },

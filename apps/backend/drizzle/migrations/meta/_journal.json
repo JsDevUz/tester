@@ -22,6 +22,20 @@
       "when": 1782816535982,
       "tag": "0002_dapper_shotgun",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1782820000000,
+      "tag": "0003_question_media",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1782900000000,
+      "tag": "0004_users_auth",
+      "breakpoints": true
     }
   ]
 }

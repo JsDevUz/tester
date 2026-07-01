@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, Calendar } from 'lucide-react';
 import { apiGetPublicTest, apiStartSubmission, apiGetSubmission, type PublicTest } from '../api/delivery';
+import { useAuthStore } from '../stores/authStore';
 
 export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -12,6 +13,11 @@ export function TakeTestEntryPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const admin = useAuthStore((s) => s.admin);
+
+  useEffect(() => {
+    if (admin?.name && !name) setName(admin.name);
+  }, [admin?.name]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!slug) return;
