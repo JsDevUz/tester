@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Circle, CheckCheck } from 'lucide-react';
+import { CheckCircle2, XCircle, Circle, CheckCheck, UserRoundCheck } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
 
@@ -66,8 +66,19 @@ export function SubmissionDetailPage() {
                         'text-gray-500'
                       }`}>
                         {studentSelected ? <Circle size={10} className="fill-current shrink-0" /> : <Circle size={10} className="shrink-0 opacity-30" />}
-                        <span>{opt.text}</span>
-                        {isCorrectOpt && <span className="ml-auto flex items-center gap-0.5 text-[10px]"><CheckCheck size={10} /> to'g'ri</span>}
+                        <span className="min-w-0 flex-1">{opt.text}</span>
+                        <span className="ml-auto flex shrink-0 items-center gap-1">
+                          {studentSelected && (
+                            <span className="flex items-center gap-0.5 text-[10px]">
+                              <UserRoundCheck size={10} /> O'quvchi javobi
+                            </span>
+                          )}
+                          {isCorrectOpt && (
+                            <span className="flex items-center gap-0.5 text-[10px]">
+                              <CheckCheck size={10} /> To'g'ri javob
+                            </span>
+                          )}
+                        </span>
                       </div>
                     );
                   })}
