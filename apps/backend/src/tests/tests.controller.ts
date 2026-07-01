@@ -14,6 +14,7 @@ class CreateTestDto {
   @IsOptional() @IsBoolean() shuffleQuestions?: boolean;
   @IsOptional() @IsBoolean() shuffleOptions?: boolean;
   @IsOptional() @IsBoolean() oneByOne?: boolean;
+  @IsOptional() @IsBoolean() requireAuth?: boolean;
   @IsOptional() @IsDateString() deadline?: string;
 }
 
@@ -25,6 +26,7 @@ class UpdateTestDto {
   @IsOptional() @IsBoolean() shuffleQuestions?: boolean;
   @IsOptional() @IsBoolean() shuffleOptions?: boolean;
   @IsOptional() @IsBoolean() oneByOne?: boolean;
+  @IsOptional() @IsBoolean() requireAuth?: boolean;
   @IsOptional() @IsDateString() deadline?: string;
 }
 

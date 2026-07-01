@@ -57,6 +57,13 @@
       "when": 1782900331845,
       "tag": "0007_right_wild_child",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "7",
+      "when": 1782902259533,
+      "tag": "0008_premium_wallow",
+      "breakpoints": true
     }
   ]
 }

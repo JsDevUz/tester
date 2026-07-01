@@ -62,8 +62,13 @@ export function TakeTestEntryPage() {
     try {
       const { submissionId } = await apiStartSubmission(slug, name.trim());
       navigate(`/t/${slug}/take?sid=${submissionId}`);
-    } catch {
-      setError("Xato yuz berdi. Qayta urinib ko'ring.");
+    } catch (err: any) {
+      const msg = err?.response?.data?.message;
+      if (msg === 'AUTH_REQUIRED') {
+        navigate(`/login?redirect=/t/${slug}`);
+      } else {
+        setError("Xato yuz berdi. Qayta urinib ko'ring.");
+      }
     } finally {
       setStarting(false);
     }
@@ -78,6 +83,19 @@ export function TakeTestEntryPage() {
   if (error || !test) return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
       <p className="text-red-400">{error ?? 'Test topilmadi.'}</p>
+    </div>
+  );
+
+  if ((test as any).requireAuth && !token) return (
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center p-4">
+      <div className="bg-white rounded-2xl shadow-2xl p-8 w-full max-w-md text-center">
+        <p className="text-lg font-semibold text-gray-800 mb-2">Kirish talab etiladi</p>
+        <p className="text-sm text-gray-400 mb-6">Bu test faqat tizimga kirgan foydalanuvchilar uchun.</p>
+        <button onClick={() => navigate(`/login?redirect=/t/${slug}`)}
+          className="bg-indigo-500 text-white px-6 py-2.5 rounded-xl text-sm hover:bg-indigo-600">
+          Kirish
+        </button>
+      </div>
     </div>
   );
 

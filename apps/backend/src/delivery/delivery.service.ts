@@ -46,6 +46,7 @@ export class DeliveryService {
       shuffleQuestions: test.shuffleQuestions,
       shuffleOptions: test.shuffleOptions,
       oneByOne: test.oneByOne,
+      requireAuth: test.requireAuth,
       deadline: test.deadline,
       questions: test.questions.map((q) => ({
         id: q.id,
@@ -62,6 +63,7 @@ export class DeliveryService {
   async startSubmission(slug: string, studentName: string, userId?: string) {
     const test = await db.query.tests.findFirst({ where: eq(tests.slug, slug) });
     if (!test) throw new NotFoundException('Test not found');
+    if (test.requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
 
     const [submission] = await db.insert(submissions).values({
       testId: test.id,

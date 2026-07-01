@@ -18,6 +18,7 @@ export function TestSettingsModal({ folderId, onSubmit, onClose, initial, title 
   const [shuffleQuestions, setShuffleQuestions] = useState(initial?.shuffleQuestions ?? false);
   const [shuffleOptions, setShuffleOptions] = useState(initial?.shuffleOptions ?? false);
   const [oneByOne, setOneByOne] = useState(initial?.oneByOne ?? false);
+  const [requireAuth, setRequireAuth] = useState(initial?.requireAuth ?? false);
   const [hasDeadline, setHasDeadline] = useState(!!initial?.deadline);
   const [deadline, setDeadline] = useState(initial?.deadline?.slice(0, 16) ?? '');
 
@@ -33,6 +34,7 @@ export function TestSettingsModal({ folderId, onSubmit, onClose, initial, title 
       shuffleQuestions,
       shuffleOptions,
       oneByOne,
+      requireAuth,
       deadline: hasDeadline && deadline ? new Date(deadline).toISOString() : undefined,
     });
   }
@@ -83,6 +85,10 @@ export function TestSettingsModal({ folderId, onSubmit, onClose, initial, title 
             <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleOptions(e.target.checked)} className="w-4 h-4" />
               Javob variantlarini aralashtirish
+            </label>
+            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+              <input type="checkbox" checked={requireAuth} onChange={(e) => setRequireAuth(e.target.checked)} className="w-4 h-4" />
+              Faqat ro'yxatdan o'tganlar uchun
             </label>
           </div>
           <div>

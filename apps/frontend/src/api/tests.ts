@@ -11,6 +11,7 @@ export interface Test {
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   oneByOne: boolean;
+  requireAuth: boolean;
   deadline: string | null;
   createdAt: string;
   slug: string | null;
@@ -29,6 +30,7 @@ export type CreateTestData = {
   shuffleQuestions?: boolean;
   shuffleOptions?: boolean;
   oneByOne?: boolean;
+  requireAuth?: boolean;
   deadline?: string;
 };
 

@@ -66,6 +66,7 @@ export const tests = pgTable('tests', {
   shuffleQuestions: boolean('shuffle_questions').notNull().default(false),
   shuffleOptions: boolean('shuffle_options').notNull().default(false),
   oneByOne: boolean('one_by_one').notNull().default(false),
+  requireAuth: boolean('require_auth').notNull().default(false),
   deadline: timestamp('deadline', { withTimezone: true }),
   slug: varchar('slug', { length: 8 }).unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),

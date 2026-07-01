@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuthStore } from '../stores/authStore';
 
 const CODE_LENGTH = 6;
@@ -18,6 +18,8 @@ export function LoginPage() {
   const { login, loginWithTelegramCode } = useAuthStore();
   const token = useAuthStore((s) => s.token);
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const redirectTo = searchParams.get('redirect') ?? '/';
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const codeDigits = useMemo(() => {
     const digits = code.slice(0, CODE_LENGTH).split('');
@@ -25,7 +27,7 @@ export function LoginPage() {
   }, [code]);
 
   useEffect(() => {
-    if (token) { navigate('/', { replace: true }); return; }
+    if (token) { navigate(redirectTo, { replace: true }); return; }
   }, [token]);
 
   useEffect(() => {
@@ -39,7 +41,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await login(email, password);
-      navigate('/');
+      navigate(redirectTo);
     } catch {
       setError('Email yoki parol noto\'g\'ri');
     } finally {
@@ -59,7 +61,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await loginWithTelegramCode(code);
-      navigate('/');
+      navigate(redirectTo);
     } catch (err: any) {
       setError(err.response?.data?.message ?? "Kod noto'g'ri yoki muddati tugagan");
     } finally {

@@ -43,6 +43,7 @@ export interface PublicTest {
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   oneByOne: boolean;
+  requireAuth: boolean;
   deadline: string | null;
   questions: PublicQuestion[];
 }
