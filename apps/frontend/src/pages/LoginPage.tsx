@@ -16,12 +16,17 @@ export function LoginPage() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { login, loginWithTelegramCode } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
   const navigate = useNavigate();
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const codeDigits = useMemo(() => {
     const digits = code.slice(0, CODE_LENGTH).split('');
     return Array.from({ length: CODE_LENGTH }, (_, index) => digits[index] ?? '');
   }, [code]);
+
+  useEffect(() => {
+    if (token) { navigate('/', { replace: true }); return; }
+  }, [token]);
 
   useEffect(() => {
     if (showPasswordLogin || code.length !== CODE_LENGTH || loading) return;
@@ -93,19 +98,19 @@ export function LoginPage() {
       <div className="w-full max-w-[560px] text-center">
         {!showPasswordLogin && (
           <form onSubmit={handleTelegramLogin} className="flex flex-col items-center">
-            <h1 className="text-[40px] font-black leading-none text-[#070d1d] sm:text-[48px]">Kodni Kiriting</h1>
-            <p className="mt-9 max-w-[560px] text-center text-[20px] font-semibold leading-[2] text-[#333746] sm:text-[24px]">
+            <h1 className="text-2xl font-black leading-none text-[#070d1d]">Kodni Kiriting</h1>
+            <p className="mt-5 max-w-100 text-center text-sm font-medium leading-relaxed text-[#333746]">
               <a
-                href={botLink || undefined}
-                target={botLink ? '_blank' : undefined}
-                rel={botLink ? 'noreferrer' : undefined}
-                className="mr-5 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4"
+                href={botLink || `https://t.me/BirKodBot`}
+                target="_blank"
+                rel="noreferrer"
+                className="mr-2 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4 hover:text-indigo-600"
               >
                 {displayBot}
               </a>
               telegram botiga kiring va 1 daqiqalik kodingizni oling.
             </p>
-            <div className="mt-14 flex w-full justify-center gap-2.5 sm:gap-4">
+            <div className="mt-8 flex w-full justify-center gap-2">
               {codeDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -119,7 +124,7 @@ export function LoginPage() {
                   inputMode="numeric"
                   autoComplete={index === 0 ? 'one-time-code' : 'off'}
                   aria-label={`Kod raqami ${index + 1}`}
-                  className="h-16 w-11 rounded-[20px] border-[2.5px] border-[#cfd1d4] bg-white text-center text-2xl font-semibold text-[#070d1d] outline-none transition focus:border-[#070d1d] sm:h-20 sm:w-14 sm:rounded-[24px] sm:text-3xl"
+                  className="h-12 w-9 rounded-xl border-2 border-[#cfd1d4] bg-white text-center text-xl font-semibold text-[#070d1d] outline-none transition focus:border-[#070d1d]"
                 />
               ))}
             </div>

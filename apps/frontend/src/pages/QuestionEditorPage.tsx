@@ -45,7 +45,7 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
           key={q.id}
           initial={{
             text: q.text,
-            type: q.type as 'single' | 'multi' | 'open',
+            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder',
             options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
@@ -69,8 +69,10 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
             q.type === 'single' ? 'bg-blue-100 text-blue-600' :
             q.type === 'multi' ? 'bg-purple-100 text-purple-600' :
             q.type === 'arrange' ? 'bg-amber-100 text-amber-600' :
+            q.type === 'truefalse' ? 'bg-green-100 text-green-600' :
+            q.type === 'reorder' ? 'bg-orange-100 text-orange-600' :
             'bg-gray-100 text-gray-500'}`}>
-            {q.type === 'single' ? 'Yagona' : q.type === 'multi' ? "Ko'p tanlov" : q.type === 'arrange' ? 'Gap tuzish' : 'Ochiq'}
+            {q.type === 'single' ? 'Yagona' : q.type === 'multi' ? "Ko'p tanlov" : q.type === 'arrange' ? 'Gap tuzish' : q.type === 'truefalse' ? "To'g'ri/Noto'g'ri" : q.type === 'reorder' ? 'Tartibga solish' : 'Ochiq'}
           </span>
           {q.imageUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400"><Image size={10} /> rasm</span>}
           {q.audioUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-purple-400"><Music size={10} /> audio</span>}
@@ -160,17 +162,50 @@ export function QuestionEditorPage() {
 
   function questionsToBulkText(): string {
     return questions.map((q) => {
-      const lines: string[] = [`# ${q.text}`];
-      if (q.type === 'open') return lines.join('\n');
+      if (q.type === 'open') {
+        const lines = [`# ${q.text}`];
+        for (const o of q.options.filter((o) => o.isCorrect)) lines.push(`+ ${o.text}`);
+        if (q.correctAnswer) lines.push(`@ ${q.correctAnswer}`);
+        return lines.join('\n');
+      }
+      if (q.type === 'single' || q.type === 'multi') {
+        const lines = [`# ${q.text}`];
+        for (const o of q.options) lines.push(`${o.isCorrect ? '+' : '-'} ${o.text}`);
+        return lines.join('\n');
+      }
+      if (q.type === 'truefalse') {
+        const correctIsTrue = q.options.find((o) => o.isCorrect)?.text === "To'g'ri";
+        return `${correctIsTrue ? '#? ' : '#?f '}${q.text}`;
+      }
+      if (q.type === 'reorder') {
+        const lines = [`#> ${q.text}`];
+        const sorted = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        for (const o of sorted) lines.push(`> ${o.text}`);
+        return lines.join('\n');
+      }
       if (q.type === 'arrange') {
+        const lines = [`# ${q.text}`];
         const correct = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
         const distractors = q.options.filter((o) => !o.isCorrect);
         for (const o of correct) lines.push(`> ${o.text}`);
         for (const o of distractors) lines.push(`~ ${o.text}`);
         return lines.join('\n');
       }
-      for (const o of q.options) lines.push(`${o.isCorrect ? '+' : '-'} ${o.text}`);
-      return lines.join('\n');
+      if (q.type === 'fillblank') {
+        const lines = [`#= ${q.text}`];
+        if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
+        return lines.join('\n');
+      }
+      if (q.type === 'matching') {
+        const lines = [`#| ${q.text}`];
+        const lefts = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const rights = [...q.options].filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        for (let i = 0; i < lefts.length; i++) {
+          lines.push(`| ${lefts[i].text} :: ${rights[i]?.text ?? ''}`);
+        }
+        return lines.join('\n');
+      }
+      return `# ${q.text}`;
     }).join('\n\n');
   }
 

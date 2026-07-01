@@ -32,7 +32,7 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
   }
 
   return (
-    <div className="h-[210px] bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
+    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
       {/* Header */}
       <div className="h-[88px] px-4 pt-4 pb-3 shrink-0">

@@ -14,15 +14,17 @@ export interface Submission {
 export interface AnswerDetail {
   questionId: string;
   questionText: string;
-  questionType: 'single' | 'multi' | 'open';
+  questionType: string;
   selectedOptionIds: string[];
   textAnswer: string | null;
+  correctAnswer?: string | null;
   isCorrect: boolean | null;
-  correctOptionIds: string[];
-  options: Array<{ id: string; text: string; isCorrect: boolean }>;
+  options: Array<{ id: string; text: string; isCorrectOption: boolean }>;
 }
 
 export interface SubmissionDetail extends Submission {
+  testName?: string;
+  showResults?: string;
   answers: AnswerDetail[];
 }
 
@@ -33,6 +35,11 @@ export async function apiGetSubmissions(testId: string): Promise<Submission[]> {
 
 export async function apiGetMySubmissions(): Promise<Submission[]> {
   const res = await client.get('/me/submissions');
+  return res.data;
+}
+
+export async function apiGetMySubmissionDetail(id: string): Promise<SubmissionDetail> {
+  const res = await client.get(`/me/submissions/${id}`);
   return res.data;
 }
 

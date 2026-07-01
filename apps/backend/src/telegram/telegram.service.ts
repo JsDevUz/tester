@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { db } from '../db';
 import { authCodes, userTelegramLinks, users } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, gt } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 
 interface TelegramMessage {
@@ -36,8 +36,22 @@ export class TelegramService {
       });
 
       if (link) {
+        // Check if there's an active code not yet expired
+        const existing = await db.query.authCodes.findFirst({
+          where: and(
+            eq(authCodes.phone, link.phone),
+            eq(authCodes.purpose, 'login'),
+            gt(authCodes.expiresAt, new Date()),
+          ),
+        });
+
+        if (existing) {
+          await this.sendMessage(chatId, `⏳ Avvalgi kod hali amal qiladi.\n1 daqiqa kuting, so'ng qayta /login bosing.`);
+          return;
+        }
+
         const code = await this.createLoginCode({ phone: link.phone, telegramChatId: chatId });
-        await this.sendMessage(chatId, `Kirish kodi: ${code}\nKod 1 daqiqa amal qiladi.`);
+        await this.sendMessage(chatId, `Kirish kodi:\n\`${code}\`\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`, { parse_mode: 'Markdown' });
         return;
       }
 
@@ -80,7 +94,8 @@ export class TelegramService {
         telegramChatId,
       });
 
-      await this.sendMessage(telegramChatId, `Kirish kodi: ${code}\nKod 1 daqiqa amal qiladi.`, {
+      await this.sendMessage(telegramChatId, `Kirish kodi:\n\`${code}\`\n\n1 daqiqadan keyin yangi kod olish uchun /login bosing.`, {
+        parse_mode: 'Markdown',
         reply_markup: { remove_keyboard: true },
       });
     }

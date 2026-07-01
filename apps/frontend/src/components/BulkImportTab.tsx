@@ -6,21 +6,46 @@ interface Props {
   bulkText?: string;
 }
 
-const SAMPLE_BULK_TEXT = `# O'zbekiston poytaxti qaysi shahar?
-+ Toshkent
-- Samarqand
-- Buxoro
+const SAMPLE_BULK_TEXT = `# Yagona tanlov savoli
++ To'g'ri javob
+- Noto'g'ri variant
+- Noto'g'ri variant
 
-# Qaysi javoblar dasturlash tillari?
-+ JavaScript
-+ Python
-- HTML
+# Ko'p tanlov (bir nechta + bo'lsa multi bo'ladi)
++ To'g'ri variant 1
++ To'g'ri variant 2
+- Noto'g'ri variant
 
-# Gapni to'g'ri tartiblang
+# Ochiq javob — faqat AI tekshiradi
+@ O'zbekiston poytaxti
+
+# Ochiq javob — aniq variantlar + AI fallback
++ toshkent
++ Toshkent shahri
+@ O'zbekiston poytaxti
+
+#? To'g'ri/Noto'g'ri — to'g'ri javob "To'g'ri":
+
+#?f To'g'ri/Noto'g'ri — to'g'ri javob "Noto'g'ri":
+
+# Gap tuzish (> to'g'ri tartib, ~ chalg'ituvchi):
 > Men
-> test
-> ishlayapman
-~ bugun`;
+> maktabga
+> boraman
+~ emas
+
+#> Tartibga solish (> elementlar, aralashtiriladi):
+> Birinchi
+> Ikkinchi
+> Uchinchi
+
+#= Bo'sh joy to'ldirish:
+= to'g'ri javob
+
+#| Moslashtirish (| chap :: o'ng):
+| Ingliz tili :: English
+| Rus tili :: Russian
+| Fransuz tili :: French`;
 
 export function BulkImportTab({ onImport, bulkText = '' }: Props) {
   const [text, setText] = useState('');

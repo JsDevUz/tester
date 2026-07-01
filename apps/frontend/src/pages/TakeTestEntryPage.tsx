@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { Clock, Calendar } from 'lucide-react';
 import { apiGetPublicTest, apiStartSubmission, apiGetSubmission, type PublicTest } from '../api/delivery';
+import { apiGetMe } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
 
 export function TakeTestEntryPage() {
@@ -13,11 +14,16 @@ export function TakeTestEntryPage() {
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const admin = useAuthStore((s) => s.admin);
+  const adminName = useAuthStore((s) => s.admin?.name ?? null);
+  const token = useAuthStore((s) => s.token);
+  const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (admin?.name && !name) setName(admin.name);
-  }, [admin?.name]); // eslint-disable-line react-hooks/exhaustive-deps
+    if (adminName) { setLoggedInName(adminName); setName(adminName); return; }
+    if (token) {
+      apiGetMe().then((me) => { setLoggedInName(me.name); setName(me.name); }).catch(() => {});
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!slug) return;
@@ -98,11 +104,17 @@ export function TakeTestEntryPage() {
           )}
         </div>
         <form onSubmit={handleStart} className="flex flex-col gap-3">
-          <input
-            autoFocus value={name} onChange={(e) => setName(e.target.value)}
-            placeholder="Ismingizni kiriting"
-            className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-400"
-          />
+          {loggedInName ? (
+            <div className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-base text-gray-700">
+              {loggedInName}
+            </div>
+          ) : (
+            <input
+              autoFocus value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Ismingizni kiriting"
+              className="w-full border border-gray-200 rounded-xl px-4 py-3 text-base outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+          )}
           <button
             type="submit" disabled={!name.trim() || starting}
             className="w-full bg-indigo-500 text-white rounded-xl py-3 text-base font-medium hover:bg-indigo-600 disabled:opacity-40"

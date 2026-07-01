@@ -10,7 +10,7 @@ interface OptionInput {
 
 interface InitialValues {
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
   options: OptionInput[];
   imageUrl?: string | null;
   audioUrl?: string | null;
@@ -39,20 +39,24 @@ const TYPE_LABELS: Record<string, string> = {
   multi: "Ko'p tanlov",
   open: 'Ochiq javob',
   arrange: 'Gap tuzish',
+  truefalse: "To'g'ri/Noto'g'ri",
+  reorder: 'Tartibga solish',
+  matching: 'Moslashtirish',
+  fillblank: "Bo'sh joy",
 };
 
 export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props) {
   const [text, setText] = useState(initial?.text ?? '');
-  const [type, setType] = useState<'single' | 'multi' | 'open' | 'arrange'>(initial?.type ?? 'single');
+  const [type, setType] = useState<'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank'>(initial?.type ?? 'single');
   const [opts, setOpts] = useState<OptionInput[]>(() => {
     if (initial?.options.length) {
       return initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect, orderIndex: o.orderIndex }));
     }
     return [{ text: '', isCorrect: false }, { text: '', isCorrect: false }];
   });
-  // arrange: correct tokens in order + distractors
+  // arrange/reorder: correct tokens in order + distractors (arrange only)
   const [correctTokens, setCorrectTokens] = useState<string[]>(() => {
-    if (initial?.type === 'arrange') {
+    if (initial?.type === 'arrange' || initial?.type === 'reorder') {
       return initial.options
         .filter((o) => o.isCorrect)
         .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
@@ -68,6 +72,24 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
   });
 
   const [correctAnswer, setCorrectAnswer] = useState<string>(initial?.correctAnswer ?? '');
+  // matching: array of { left, right } pairs
+  const [matchPairs, setMatchPairs] = useState<{ left: string; right: string }[]>(() => {
+    if (initial?.type === 'matching' && initial.options.length) {
+      const lefts = initial.options.filter((o) => o.isCorrect).sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      const rights = initial.options.filter((o) => !o.isCorrect).sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0));
+      return lefts.map((l, i) => ({ left: l.text, right: rights[i]?.text ?? '' }));
+    }
+    return [{ left: '', right: '' }, { left: '', right: '' }];
+  });
+  // truefalse: which option is correct — 'true' | 'false' | null (not selected)
+  const [tfCorrect, setTfCorrect] = useState<'true' | 'false' | null>(() => {
+    if (initial?.type === 'truefalse' && initial.options.length) {
+      const correct = initial.options.find((o) => o.isCorrect);
+      if (correct?.text === "To'g'ri") return 'true';
+      if (correct?.text === "Noto'g'ri") return 'false';
+    }
+    return null;
+  });
   const [imageUrl, setImageUrl] = useState<string | null>(initial?.imageUrl ?? null);
   const [audioUrl, setAudioUrl] = useState<string | null>(initial?.audioUrl ?? null);
   const [uploading, setUploading] = useState(false);
@@ -113,6 +135,25 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
         ...validTokens.map((t, i) => ({ text: t.trim(), isCorrect: true, orderIndex: i })),
         ...validDistractors.map((d) => ({ text: d.trim(), isCorrect: false, orderIndex: 0 })),
       ];
+    } else if (type === 'reorder') {
+      const validTokens = correctTokens.filter((t) => t.trim());
+      if (validTokens.length < 2) return;
+      options = validTokens.map((t, i) => ({ text: t.trim(), isCorrect: true, orderIndex: i }));
+    } else if (type === 'truefalse') {
+      if (!tfCorrect) { setUploadError("To'g'ri yoki Noto'g'rini tanlang"); return; }
+      options = [
+        { text: "To'g'ri", isCorrect: tfCorrect === 'true', orderIndex: 0 },
+        { text: "Noto'g'ri", isCorrect: tfCorrect === 'false', orderIndex: 1 },
+      ];
+    } else if (type === 'matching') {
+      const valid = matchPairs.filter((p) => p.left.trim() && p.right.trim());
+      if (valid.length < 2) { setUploadError('Kamida 2 ta juft kiriting'); return; }
+      options = valid.flatMap((p, i) => [
+        { text: p.left.trim(), isCorrect: true, orderIndex: i },
+        { text: p.right.trim(), isCorrect: false, orderIndex: i },
+      ]);
+    } else if (type === 'fillblank') {
+      options = [];
     } else {
       options = opts.filter((o) => o.text.trim());
       if ((type === 'single' || type === 'multi') && options.length > 0) {
@@ -126,11 +167,13 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
 
     // reset
     setText('');
-    setType('single');
+    setType(initial ? type : 'single');
     setOpts([{ text: '', isCorrect: false }, { text: '', isCorrect: false }]);
     setCorrectTokens(['', '']);
     setDistractors([]);
     setCorrectAnswer('');
+    setTfCorrect(null);
+    setMatchPairs([{ left: '', right: '' }, { left: '', right: '' }]);
     setImageUrl(null);
     setAudioUrl(null);
   }
@@ -177,7 +220,7 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
 
       {/* Type selector */}
       <div className="flex gap-2 flex-wrap">
-        {(['single', 'multi', 'open', 'arrange'] as const).map((t) => (
+        {(['single', 'multi', 'open', 'arrange', 'truefalse', 'reorder', 'matching', 'fillblank'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setType(t)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-500 hover:border-indigo-300'}`}>
             {TYPE_LABELS[t]}
@@ -186,6 +229,114 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
       </div>
 
       {/* Options by type */}
+      {type === 'truefalse' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">To'g'ri javobni tanlang:</p>
+          <div className="flex gap-2">
+            <button type="button" onClick={() => setTfCorrect('true')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${
+                tfCorrect === 'true'
+                  ? 'bg-green-500 text-white border-green-500'
+                  : 'border-gray-200 text-gray-500 hover:border-green-300 hover:text-green-600'
+              }`}>
+              ✓ To'g'ri
+            </button>
+            <button type="button" onClick={() => setTfCorrect('false')}
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border-2 text-sm font-medium transition-colors ${
+                tfCorrect === 'false'
+                  ? 'bg-red-400 text-white border-red-400'
+                  : 'border-gray-200 text-gray-500 hover:border-red-300 hover:text-red-500'
+              }`}>
+              ✗ Noto'g'ri
+            </button>
+          </div>
+        </div>
+      )}
+
+      {type === 'fillblank' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">Savol matnida <code className="bg-gray-100 px-1 rounded">___</code> yozing, to'g'ri javobni kiriting:</p>
+          <input
+            value={correctAnswer}
+            onChange={(e) => setCorrectAnswer(e.target.value)}
+            placeholder="To'g'ri javob..."
+            className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+        </div>
+      )}
+
+      {type === 'matching' && (
+        <div className="flex flex-col gap-2">
+          <div className="grid grid-cols-2 gap-1 mb-1">
+            <p className="text-xs text-gray-500 font-medium px-1">Chap (savol)</p>
+            <p className="text-xs text-gray-500 font-medium px-1">O'ng (javob)</p>
+          </div>
+          {matchPairs.map((pair, i) => (
+            <div key={i} className="grid grid-cols-2 gap-2 items-center">
+              <input value={pair.left}
+                onChange={(e) => setMatchPairs(matchPairs.map((p, idx) => idx === i ? { ...p, left: e.target.value } : p))}
+                placeholder={`Savol ${i + 1}`}
+                className="border border-indigo-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50/30"
+              />
+              <div className="flex gap-1 items-center">
+                <input value={pair.right}
+                  onChange={(e) => setMatchPairs(matchPairs.map((p, idx) => idx === i ? { ...p, right: e.target.value } : p))}
+                  placeholder={`Javob ${i + 1}`}
+                  className="flex-1 border border-green-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-400 bg-green-50/30"
+                />
+                {matchPairs.length > 2 && (
+                  <button type="button" onClick={() => setMatchPairs(matchPairs.filter((_, idx) => idx !== i))}
+                    className="text-gray-300 hover:text-red-400 shrink-0"><Trash2 size={13} /></button>
+                )}
+              </div>
+            </div>
+          ))}
+          <button type="button" onClick={() => setMatchPairs([...matchPairs, { left: '', right: '' }])}
+            className="text-xs text-indigo-500 hover:text-indigo-700 self-start flex items-center gap-1">
+            <Plus size={12} /> Juft qo'shish
+          </button>
+        </div>
+      )}
+
+      {type === 'reorder' && (
+        <div className="flex flex-col gap-3">
+          <p className="text-xs text-gray-500 flex items-center gap-1">
+            <GripHorizontal size={12} /> To'g'ri tartibni kiriting (o'quvchi aralashtirilib beriladi)
+          </p>
+          <div className="flex flex-col gap-1.5">
+            {correctTokens.map((tok, i) => (
+              <div key={i} className="flex items-center gap-2">
+                <span className="text-[10px] text-indigo-400 font-mono w-5 text-right shrink-0">{i + 1}.</span>
+                <input
+                  value={tok}
+                  onChange={(e) => setCorrectTokens(correctTokens.map((t, idx) => idx === i ? e.target.value : t))}
+                  placeholder={`Element ${i + 1}`}
+                  className="flex-1 border border-indigo-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50/40"
+                />
+                {correctTokens.length > 2 && (
+                  <button type="button" onClick={() => setCorrectTokens(correctTokens.filter((_, idx) => idx !== i))}
+                    className="text-gray-300 hover:text-red-400"><Trash2 size={13} /></button>
+                )}
+              </div>
+            ))}
+            <button type="button" onClick={() => setCorrectTokens([...correctTokens, ''])}
+              className="text-xs text-indigo-500 hover:text-indigo-700 self-start flex items-center gap-1 mt-0.5">
+              <Plus size={12} /> Element qo'shish
+            </button>
+          </div>
+          {correctTokens.filter(t => t.trim()).length >= 2 && (
+            <div className="bg-gray-50 rounded-xl p-3">
+              <p className="text-[10px] text-gray-400 mb-2">O'quvchiga ko'rinishi (aralashtirilgan):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {[...correctTokens.filter(t => t.trim())].sort(() => Math.random() - 0.5).map((tok, i) => (
+                  <span key={i} className="px-2.5 py-1 bg-white border border-gray-200 rounded-lg text-sm text-gray-700 shadow-sm">{tok}</span>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {type === 'arrange' && (
         <div className="flex flex-col gap-3">
           {/* Correct tokens in order */}
@@ -256,12 +407,39 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
       )}
 
       {type === 'open' && (
-        <input
-          value={correctAnswer}
-          onChange={(e) => setCorrectAnswer(e.target.value)}
-          placeholder="To'g'ri javob (AI tekshirish uchun)..."
-          className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
-        />
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">To'g'ri javoblar (agar o'quvchi yozsa — to'g'ri hisoblanadi):</p>
+          {opts.filter((o) => o.isCorrect).map((opt, i) => (
+            <div key={i} className="flex items-center gap-2">
+              <span className="w-4 h-4 rounded-full bg-green-400 shrink-0" />
+              <input
+                value={opt.text}
+                onChange={(e) => setOpts(opts.map((o, idx) => idx === opts.indexOf(opt) ? { ...o, text: e.target.value } : o))}
+                placeholder={`To'g'ri variant ${i + 1}`}
+                className="flex-1 border border-green-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-green-400"
+              />
+              <button type="button" onClick={() => setOpts(opts.filter((o) => o !== opt))} className="text-gray-300 hover:text-red-400 text-lg leading-none">×</button>
+            </div>
+          ))}
+          <button type="button"
+            onClick={() => setOpts([...opts, { text: '', isCorrect: true }])}
+            className="text-xs text-green-600 hover:text-green-700 self-start">
+            + To'g'ri javob qo'shish
+          </button>
+          <div className="mt-1">
+            <div className="flex items-center justify-between mb-1">
+              <p className="text-xs text-gray-400">AI uchun qo'shimcha ko'rsatma (ixtiyoriy):</p>
+              <span className={`text-[10px] ${correctAnswer.length > 30 ? 'text-red-400' : 'text-gray-300'}`}>{correctAnswer.length}/30</span>
+            </div>
+            <input
+              value={correctAnswer}
+              onChange={(e) => { if (e.target.value.length <= 30) setCorrectAnswer(e.target.value); }}
+              placeholder="Masalan: O'zbekiston poytaxti..."
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            />
+            <p className="text-[10px] text-gray-400 mt-1">Agar o'quvchi javobi yuqoridagi variantlarga mos kelmasa, AI shu ko'rsatma asosida tekshiradi.</p>
+          </div>
+        </div>
       )}
 
       {(type === 'single' || type === 'multi') && (

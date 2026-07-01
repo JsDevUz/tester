@@ -14,6 +14,11 @@ export class SubmissionsController {
     return this.submissionsService.findMine(req.user.id);
   }
 
+  @Get('me/submissions/:id')
+  findMineOne(@Param('id') id: string, @Req() req: any) {
+    return this.submissionsService.findMineOne(id, req.user.id);
+  }
+
   @Get('tests/:testId/submissions')
   @Roles('teacher', 'super')
   findByTest(@Param('testId') testId: string, @Req() req: any) {

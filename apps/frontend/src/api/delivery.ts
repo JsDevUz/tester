@@ -27,7 +27,7 @@ export interface PublicOption {
 export interface PublicQuestion {
   id: string;
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
   orderIndex: number;
   imageUrl?: string | null;
   audioUrl?: string | null;
@@ -54,6 +54,7 @@ export interface AnswerResultItem {
   isCorrect: boolean | null;
   selectedOptionIds: string[];
   textAnswer: string | null;
+  correctAnswer?: string | null;
   options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
 }
 
@@ -76,6 +77,11 @@ export async function apiGetSubmission(submissionId: string): Promise<
   | { status: 'submitted'; score: number; total: number; showResults: string; deadline: string | null }
 > {
   const res = await publicClient.get(`/public/submissions/${submissionId}`);
+  return res.data;
+}
+
+export async function apiGetSubmissionResult(submissionId: string): Promise<SubmissionResult> {
+  const res = await publicClient.get(`/public/submissions/${submissionId}/result`);
   return res.data;
 }
 

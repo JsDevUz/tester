@@ -99,6 +99,48 @@ export class DeliveryService {
     };
   }
 
+  async getSubmissionResult(submissionId: string) {
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+      with: {
+        answers: {
+          with: { question: { with: { options: {} } } },
+        },
+      },
+    });
+    if (!submission) throw new NotFoundException('Submission not found');
+    if (!submission.submittedAt) throw new BadRequestException('Submission not yet submitted');
+
+    const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
+    const showAnswers = test?.showResults === 'immediately';
+
+    const safeAnswers = showAnswers
+      ? (submission as any).answers.map((a: any) => ({
+          questionId: a.questionId,
+          questionText: a.question?.text ?? '',
+          questionType: a.question?.type ?? '',
+          isCorrect: a.isCorrect,
+          selectedOptionIds: a.selectedOptionIds ?? [],
+          textAnswer: a.textAnswer ?? null,
+          correctAnswer: a.question?.correctAnswer ?? null,
+          options: (a.question?.options ?? []).map((o: any) => ({
+            id: o.id,
+            text: o.text,
+            isCorrectOption: !!o.isCorrect,
+          })),
+        }))
+      : [];
+
+    return {
+      submissionId,
+      score: submission.score,
+      total: submission.total,
+      showResults: test?.showResults ?? 'hidden',
+      deadline: test?.deadline ?? null,
+      answers: safeAnswers,
+    };
+  }
+
   async submitAnswers(submissionId: string, answerItems: Array<{
     questionId: string;
     selectedOptionIds: string[];
@@ -141,6 +183,7 @@ export class DeliveryService {
       isCorrect: boolean | null;
       selectedOptionIds: string[];
       textAnswer: string | null;
+      correctAnswer: string | null;
       options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
     }> = [];
 
@@ -156,19 +199,63 @@ export class DeliveryService {
         isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
         if (isCorrect) score++;
       } else if (question.type === 'open') {
-        if (question.correctAnswer && item.textAnswer?.trim()) {
+        if (item.textAnswer?.trim()) {
           total++;
-          isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+          const studentLower = item.textAnswer.trim().toLowerCase();
+          // First: check against manual correct options (exact match)
+          const manualOptions = question.options.filter((o) => o.isCorrect);
+          if (manualOptions.length > 0) {
+            const exactMatch = manualOptions.some((o) => o.text.trim().toLowerCase() === studentLower);
+            if (exactMatch) {
+              isCorrect = true;
+            } else if (question.correctAnswer) {
+              // Fallback to AI only if correctAnswer hint provided
+              isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+            } else {
+              isCorrect = false;
+            }
+          } else if (question.correctAnswer) {
+            isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+          }
           if (isCorrect) score++;
         }
-      } else if (question.type === 'arrange') {
+      } else if (question.type === 'arrange' || question.type === 'reorder') {
         total++;
         const correctOrder = question.options
           .filter((o) => o.isCorrect)
           .sort((a, b) => a.orderIndex - b.orderIndex)
           .map((o) => o.id);
-        isCorrect = evaluateObjectiveAnswer(question.type, correctOrder, item.selectedOptionIds);
+        isCorrect = evaluateObjectiveAnswer('arrange', correctOrder, item.selectedOptionIds);
         if (isCorrect) score++;
+      } else if (question.type === 'truefalse') {
+        total++;
+        const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
+        isCorrect = evaluateObjectiveAnswer('single', correctIds, item.selectedOptionIds);
+        if (isCorrect) score++;
+      } else if (question.type === 'matching') {
+        // options: pairs saved as orderIndex=pairIndex, isCorrect=true(left)/false(right)
+        // student sends selectedOptionIds: [leftId, rightId, leftId, rightId, ...]
+        total++;
+        const pairs = question.options;
+        const lefts = pairs.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const rights = pairs.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const studentIds = item.selectedOptionIds;
+        let allMatch = lefts.length > 0 && lefts.length === rights.length;
+        for (let i = 0; i < lefts.length && allMatch; i++) {
+          if (studentIds[i * 2] !== lefts[i].id || studentIds[i * 2 + 1] !== rights[i].id) {
+            allMatch = false;
+          }
+        }
+        isCorrect = allMatch;
+        if (isCorrect) score++;
+      } else if (question.type === 'fillblank') {
+        if (question.correctAnswer && item.textAnswer?.trim()) {
+          total++;
+          const correct = question.correctAnswer.trim().toLowerCase();
+          const student = item.textAnswer.trim().toLowerCase();
+          isCorrect = correct === student;
+          if (isCorrect) score++;
+        }
       }
 
       safeAnswers.push({
@@ -178,6 +265,7 @@ export class DeliveryService {
         isCorrect,
         selectedOptionIds: item.selectedOptionIds,
         textAnswer: item.textAnswer ?? null,
+        correctAnswer: question.correctAnswer ?? null,
         options: question.options.map((o) => ({
           id: o.id,
           text: o.text,

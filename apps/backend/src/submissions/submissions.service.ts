@@ -46,6 +46,42 @@ export class SubmissionsService {
     await db.delete(submissions).where(eq(submissions.id, submissionId));
   }
 
+  async findMineOne(submissionId: string, userId: string) {
+    const submission = await db.query.submissions.findFirst({
+      where: and(eq(submissions.id, submissionId), eq(submissions.userId, userId)),
+      with: {
+        test: true,
+        answers: {
+          with: { question: { with: { options: {} } } },
+        },
+      },
+    });
+    if (!submission) throw new NotFoundException('Submission not found');
+
+    const showAnswers = submission.test.showResults === 'immediately';
+
+    return {
+      id: submission.id,
+      testName: submission.test.name,
+      studentName: submission.studentName,
+      startedAt: submission.startedAt,
+      submittedAt: submission.submittedAt,
+      score: submission.score,
+      total: submission.total,
+      showResults: submission.test.showResults,
+      answers: showAnswers ? submission.answers.map((a) => ({
+        questionId: a.questionId,
+        questionText: a.question.text,
+        questionType: a.question.type,
+        selectedOptionIds: a.selectedOptionIds,
+        textAnswer: a.textAnswer,
+        correctAnswer: a.question.correctAnswer ?? null,
+        isCorrect: a.isCorrect,
+        options: a.question.options.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
+      })) : [],
+    };
+  }
+
   async findOne(submissionId: string, adminId: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),

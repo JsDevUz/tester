@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Circle } from 'lucide-react';
-import { apiGetSubmission, type SubmissionResult } from '../api/delivery';
+import { apiGetSubmissionResult, type SubmissionResult } from '../api/delivery';
 
 export function getCachedSubmissionResult(raw: string | null, submissionId: string | null) {
   if (!raw) return null;
@@ -34,18 +34,7 @@ export function TestResultPage() {
 
     // Fallback: load from backend via sid param (e.g. navigated back)
     if (sid) {
-      apiGetSubmission(sid).then((sub) => {
-        if (sub.status === 'submitted') {
-          setResult({
-            submissionId: sid,
-            score: sub.score ?? 0,
-            total: sub.total ?? 0,
-            showResults: sub.showResults as SubmissionResult['showResults'],
-            deadline: sub.deadline,
-            answers: [],
-          });
-        }
-      }).catch(() => {});
+      apiGetSubmissionResult(sid).then((res) => { console.log('[result]', res); setResult(res); }).catch(() => {});
     }
   }, []);
 
@@ -86,8 +75,39 @@ export function TestResultPage() {
                       {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300">—</span>}
                     </span>
                   </div>
-                  {a.questionType === 'open' ? (
-                    a.textAnswer && <p className="text-xs text-gray-500 pl-5">{a.textAnswer}</p>
+                  {(a.questionType === 'open' || a.questionType === 'fillblank') ? (
+                    <div className="pl-5 flex flex-col gap-1 mt-1">
+                      <p className="text-xs italic text-gray-600">{a.textAnswer || '—'}</p>
+                      {a.isCorrect === false && a.correctAnswer && (
+                        <p className="text-xs text-green-600">To'g'ri: {a.correctAnswer}</p>
+                      )}
+                    </div>
+                  ) : a.questionType === 'matching' ? (
+                    <div className="flex flex-col gap-1 pl-5 mt-1">
+                      {(() => {
+                        const lefts = (a.options ?? []).filter((o) => o.isCorrectOption);
+                        const rights = (a.options ?? []).filter((o) => !o.isCorrectOption);
+                        return lefts.map((left, idx) => {
+                          const correctRight = rights[idx];
+                          const studentRightId = a.selectedOptionIds[idx * 2 + 1];
+                          const studentRight = (a.options ?? []).find((o) => o.id === studentRightId);
+                          const pairCorrect = studentRightId === correctRight?.id;
+                          return (
+                            <div key={left.id} className={`text-xs px-2 py-1.5 rounded-lg ${pairCorrect ? 'bg-green-100' : 'bg-red-50'}`}>
+                              <span className="font-medium text-gray-700">{left.text}</span>
+                              <span className="text-gray-400 mx-1">→</span>
+                              {pairCorrect
+                                ? <span className="text-green-700">{correctRight?.text}</span>
+                                : <>
+                                    <span className="text-red-500 line-through">{studentRight?.text ?? '—'}</span>
+                                    <span className="text-green-600 ml-1">({correctRight?.text})</span>
+                                  </>
+                              }
+                            </div>
+                          );
+                        });
+                      })()}
+                    </div>
                   ) : a.options && a.options.length > 0 ? (
                     <div className="flex flex-col gap-1 pl-5 mt-1">
                       {a.options.map((opt) => {

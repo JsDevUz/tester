@@ -26,6 +26,11 @@ export class DeliveryController {
     return this.deliveryService.getSubmission(id);
   }
 
+  @Get('submissions/:id/result')
+  getSubmissionResult(@Param('id') id: string) {
+    return this.deliveryService.getSubmissionResult(id);
+  }
+
   @Post('submissions/:id/submit')
   @HttpCode(200)
   submitAnswers(@Param('id') id: string, @Body() dto: SubmitAnswersDto) {

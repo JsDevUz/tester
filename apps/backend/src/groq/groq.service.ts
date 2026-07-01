@@ -12,10 +12,15 @@ export class GroqService {
     }
 
     const prompt = `Savol: "${question}"
-To'g'ri javob: "${correctAnswer}"
+Ko'rsatma: "${correctAnswer}"
 O'quvchi javobi: "${studentAnswer}"
 
-O'quvchi javobi to'g'ri javob ma'nosiga mos keladi yoki yo'qligini aniqlang.
+Qoidalar:
+- Til farqi muhim emas (lotin, kirill, rus, ingliz — bir xil ma'no bo'lsa to'g'ri)
+- Imlo xatolari muhim emas, ma'no to'g'ri bo'lsa yetarli
+- Sinonimlar ham to'g'ri hisoblanadi
+- Ko'rsatma — to'g'ri javob uchun yo'nalish, o'quvchi javobi shu ma'noga mos kelsa to'g'ri
+
 Faqat "true" yoki "false" deb javob bering, boshqa hech narsa yozmang.`;
 
     try {
