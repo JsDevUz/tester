@@ -7,7 +7,7 @@ const CODE_LENGTH = 6;
 export function LoginPage() {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as string | undefined;
   const botLink = botUsername ? `https://t.me/${botUsername.replace('@', '')}` : '';
-  const displayBot = botUsername ? (botUsername.startsWith('@') ? botUsername : `@${botUsername}`) : '@qirikkibot';
+  const displayBot = botUsername ? (botUsername.startsWith('@') ? botUsername : `@${botUsername}`) : '@BirKodBot';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [code, setCode] = useState('');
@@ -90,31 +90,22 @@ export function LoginPage() {
 
   return (
     <div className="min-h-screen bg-white flex items-center justify-center px-5 py-10">
-      <div className="w-full max-w-[720px] text-center">
-        <div className="mx-auto mb-20 flex h-28 w-36 items-center justify-center">
-          <span className="relative inline-block h-28 w-24">
-            <span className="absolute left-1 top-0 h-24 w-16 -skew-x-[25deg] rounded-[14px] bg-[#ff6b2f]" />
-            <span className="absolute left-9 top-9 h-20 w-16 -skew-x-[25deg] rounded-[12px] bg-white" />
-            <span className="absolute left-0 top-12 h-11 w-24 -skew-x-[25deg] rounded-[10px] bg-[#ff6b2f]" />
-          </span>
-          <span className="-ml-8 mt-5 text-[94px] font-black leading-none text-[#252629]">2</span>
-        </div>
-
+      <div className="w-full max-w-[560px] text-center">
         {!showPasswordLogin && (
           <form onSubmit={handleTelegramLogin} className="flex flex-col items-center">
-            <h1 className="text-[54px] font-black leading-none text-[#070d1d] sm:text-[64px]">Kodni Kiriting</h1>
-            <p className="mt-14 max-w-[720px] text-center text-[28px] font-semibold leading-[2.1] text-[#333746] sm:text-[34px]">
+            <h1 className="text-[40px] font-black leading-none text-[#070d1d] sm:text-[48px]">Kodni Kiriting</h1>
+            <p className="mt-9 max-w-[560px] text-center text-[20px] font-semibold leading-[2] text-[#333746] sm:text-[24px]">
               <a
                 href={botLink || undefined}
                 target={botLink ? '_blank' : undefined}
                 rel={botLink ? 'noreferrer' : undefined}
-                className="mr-8 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4"
+                className="mr-5 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4"
               >
                 {displayBot}
               </a>
               telegram botiga kiring va 1 daqiqalik kodingizni oling.
             </p>
-            <div className="mt-20 flex w-full justify-center gap-2 sm:gap-5">
+            <div className="mt-14 flex w-full justify-center gap-2.5 sm:gap-4">
               {codeDigits.map((digit, index) => (
                 <input
                   key={index}
@@ -128,7 +119,7 @@ export function LoginPage() {
                   inputMode="numeric"
                   autoComplete={index === 0 ? 'one-time-code' : 'off'}
                   aria-label={`Kod raqami ${index + 1}`}
-                  className="h-20 w-12 rounded-[24px] border-[3px] border-[#cfd1d4] bg-white text-center text-3xl font-semibold text-[#070d1d] outline-none transition focus:border-[#070d1d] sm:h-28 sm:w-20 sm:rounded-[30px] sm:text-4xl"
+                  className="h-16 w-11 rounded-[20px] border-[2.5px] border-[#cfd1d4] bg-white text-center text-2xl font-semibold text-[#070d1d] outline-none transition focus:border-[#070d1d] sm:h-20 sm:w-14 sm:rounded-[24px] sm:text-3xl"
                 />
               ))}
             </div>
