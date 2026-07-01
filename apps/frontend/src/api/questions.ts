@@ -16,6 +16,7 @@ export interface Question {
   orderIndex: number;
   imageUrl?: string | null;
   audioUrl?: string | null;
+  correctAnswer?: string | null;
   createdAt: string;
   options: Option[];
 }
@@ -33,6 +34,7 @@ export async function apiAddQuestion(testId: string, data: {
   options: Array<{ text: string; isCorrect: boolean }>;
   imageUrl?: string | null;
   audioUrl?: string | null;
+  correctAnswer?: string | null;
 }): Promise<Question> {
   const res = await client.post(`/tests/${testId}/questions`, data);
   return res.data;

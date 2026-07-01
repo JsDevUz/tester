@@ -9,7 +9,7 @@ import { apiGetTest } from '../api/tests';
 import type { TestDetail } from '../api/tests';
 import type { Question } from '../api/questions';
 
-type SaveData = { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null };
+type SaveData = { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null; correctAnswer?: string | null };
 
 interface InlineCardProps {
   index: number;
@@ -49,6 +49,7 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
             options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
+            correctAnswer: q.correctAnswer,
           }}
           submitLabel={saving ? 'Saqlanmoqda...' : 'Saqlash'}
           onCancel={() => setEditing(false)}

@@ -18,6 +18,7 @@ class CreateQuestionDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => OptionDto) options: OptionDto[];
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() audioUrl?: string;
+  @IsOptional() @IsString() correctAnswer?: string;
 }
 
 class UpdateQuestionDto {
@@ -26,6 +27,7 @@ class UpdateQuestionDto {
   @IsOptional() @IsInt() @Min(0) orderIndex?: number;
   @IsOptional() @IsString() imageUrl?: string;
   @IsOptional() @IsString() audioUrl?: string;
+  @IsOptional() @IsString() correctAnswer?: string;
 }
 
 class BulkImportDto {

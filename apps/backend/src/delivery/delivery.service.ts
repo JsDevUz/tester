@@ -144,7 +144,7 @@ export class DeliveryService {
       options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
     }> = [];
 
-    const answerRows = answerItems.map((item) => {
+    const answerRows = await Promise.all(answerItems.map(async (item) => {
       const question = questionMap.get(item.questionId);
       if (!question) return null;
 
@@ -192,7 +192,7 @@ export class DeliveryService {
         textAnswer: item.textAnswer ?? null,
         isCorrect,
       };
-    }).filter(Boolean) as any[];
+    })).then(rows => rows.filter(Boolean)) as any[];
 
     if (answerRows.length > 0) {
       await db.insert(answers).values(answerRows);
