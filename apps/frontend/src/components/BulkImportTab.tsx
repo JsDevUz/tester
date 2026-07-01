@@ -19,7 +19,7 @@ const SAMPLE_BULK_TEXT = `# Yagona tanlov savoli
 # Ochiq javob — faqat AI tekshiradi
 @ O'zbekiston poytaxti
 
-# Ochiq javob — aniq variantlar + AI fallback
+#~ Ochiq javob — aniq variantlar + AI fallback
 + toshkent
 + Toshkent shahri
 @ O'zbekiston poytaxti

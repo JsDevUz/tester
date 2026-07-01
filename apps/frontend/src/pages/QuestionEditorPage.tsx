@@ -172,8 +172,10 @@ export function QuestionEditorPage() {
   function questionsToBulkText(): string {
     return questions.map((q) => {
       if (q.type === 'open') {
-        const lines = [`# ${q.text}`];
-        for (const o of q.options.filter((o) => o.isCorrect)) lines.push(`+ ${o.text}`);
+        const correctOpts = q.options.filter((o) => o.isCorrect);
+        const prefix = correctOpts.length > 0 ? '#~ ' : '# ';
+        const lines = [`${prefix}${q.text}`];
+        for (const o of correctOpts) lines.push(`+ ${o.text}`);
         if (q.correctAnswer) lines.push(`@ ${q.correctAnswer}`);
         return lines.join('\n');
       }

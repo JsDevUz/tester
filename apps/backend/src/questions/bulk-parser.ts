@@ -51,6 +51,11 @@ export function parseBulk(input: string): ParsedQuestion[] {
       push();
       current = { text: line.slice(3).trim(), type: 'matching', options: [] };
       orderIdx = 0;
+    } else if (line.startsWith('#~ ')) {
+      // Explicit open question (with + correct variants and @ AI hint)
+      push();
+      current = { text: line.slice(3).trim(), type: 'open', options: [] };
+      orderIdx = 0;
     } else if (line.startsWith('# ')) {
       push();
       current = { text: line.slice(2).trim(), type: 'open', options: [] };
