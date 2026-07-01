@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useSearchParams, useNavigate } from 'react-router-dom';
 import { Clock } from 'lucide-react';
 import { apiGetPublicTest, apiSubmitAnswers, apiGetSubmission, type PublicTest, type PublicQuestion } from '../api/delivery';
@@ -72,8 +72,8 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
   selected: string[];
   onSelect: (ids: string[]) => void;
 }) {
-  const lefts = options.filter((_, i) => i % 2 === 0); // isCorrect=true stored at even index
-  const rights = options.filter((_, i) => i % 2 !== 0);
+  const lefts = useMemo(() => [...options.filter((_, i) => i % 2 === 0)].sort(() => Math.random() - 0.5), []);
+  const rights = useMemo(() => [...options.filter((_, i) => i % 2 !== 0)].sort(() => Math.random() - 0.5), []);
   const [pendingLeft, setPendingLeft] = useState<string | null>(null);
 
   // selected = [leftId, rightId, leftId, rightId, ...]
