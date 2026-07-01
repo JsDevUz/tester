@@ -119,7 +119,6 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
                   'bg-white border-gray-200 text-gray-700 hover:border-indigo-300'
                 }`}>
                 {opt.text}
-                {isPaired && <span className="ml-1 text-xs text-indigo-400">↔ {pairedRightIds[pairIdx] ? rights.find(r => r.id === pairedRightIds[pairIdx])?.text : ''}</span>}
               </button>
             );
           })}

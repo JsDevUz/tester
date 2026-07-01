@@ -12,14 +12,16 @@ export class GroqService {
     }
 
     const prompt = `Savol: "${question}"
-Ko'rsatma: "${correctAnswer}"
+To'g'ri javob ko'rsatmasi: "${correctAnswer}"
 O'quvchi javobi: "${studentAnswer}"
 
 Qoidalar:
+- O'quvchi javobi savol va ko'rsatmaga MAZMUNIY mos kelishi shart
 - Til farqi muhim emas (lotin, kirill, rus, ingliz — bir xil ma'no bo'lsa to'g'ri)
 - Imlo xatolari muhim emas, ma'no to'g'ri bo'lsa yetarli
-- Sinonimlar ham to'g'ri hisoblanadi
-- Ko'rsatma — to'g'ri javob uchun yo'nalish, o'quvchi javobi shu ma'noga mos kelsa to'g'ri
+- Sinonimlar to'g'ri hisoblanadi
+- Agar o'quvchi savol matnini yoki ko'rsatmani aynan yozib qo'ysa — bu NOTO'G'RI, "false" qaytaring
+- Agar javob mavzudan butunlay tashqarida bo'lsa — "false" qaytaring
 
 Faqat "true" yoki "false" deb javob bering, boshqa hech narsa yozmang.`;
 
