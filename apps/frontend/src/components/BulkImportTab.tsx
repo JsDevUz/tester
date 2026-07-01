@@ -1,10 +1,26 @@
 import { useState } from 'react';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Clipboard } from 'lucide-react';
 
 interface Props {
   onImport: (text: string) => Promise<number>;
   bulkText?: string;
 }
+
+const SAMPLE_BULK_TEXT = `# O'zbekiston poytaxti qaysi shahar?
++ Toshkent
+- Samarqand
+- Buxoro
+
+# Qaysi javoblar dasturlash tillari?
++ JavaScript
++ Python
+- HTML
+
+# Gapni to'g'ri tartiblang
+> Men
+> test
+> ishlayapman
+~ bugun`;
 
 export function BulkImportTab({ onImport, bulkText = '' }: Props) {
   const [text, setText] = useState('');
@@ -19,6 +35,12 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
       setCopied(true);
       setTimeout(() => setCopied(false), 1500);
     });
+  }
+
+  function insertSample() {
+    setText(SAMPLE_BULK_TEXT);
+    setPreview(null);
+    setResult(null);
   }
 
   function handlePreview() {
@@ -45,6 +67,27 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
+      <div className="rounded-xl border border-indigo-100 bg-white/80 p-4">
+        <div className="flex items-center justify-between gap-3 mb-3">
+          <div>
+            <h3 className="text-sm font-semibold text-gray-700">Namuna pattern</h3>
+            <p className="text-xs text-gray-400 mt-0.5">
+              # savol, + to'g'ri javob, - noto'g'ri javob, &gt; tartib, ~ ortiqcha variant
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={insertSample}
+            className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-indigo-100 rounded-lg text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors bg-white"
+          >
+            <Clipboard size={12} />
+            Namunani qo'yish
+          </button>
+        </div>
+        <pre className="max-h-44 overflow-auto rounded-lg bg-slate-900 px-3 py-2 text-xs leading-5 text-slate-100 whitespace-pre-wrap">
+          {SAMPLE_BULK_TEXT}
+        </pre>
+      </div>
       {bulkText && (
         <div className="flex justify-end">
           <button type="button" onClick={copyBulk}
