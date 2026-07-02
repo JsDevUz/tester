@@ -15,6 +15,7 @@ export function TestSettingsModal({ folderId, onSubmit, onClose, initial, title 
   const [hasTimeLimit, setHasTimeLimit] = useState(!!initial?.timeLimit);
   const [timeLimit, setTimeLimit] = useState(initial?.timeLimit ?? 30);
   const [showResults, setShowResults] = useState(initial?.showResults ?? 'immediately');
+  const isPerQuestion = showResults === 'per_question';
   const [shuffleQuestions, setShuffleQuestions] = useState(initial?.shuffleQuestions ?? false);
   const [shuffleOptions, setShuffleOptions] = useState(initial?.shuffleOptions ?? false);
   const [oneByOne, setOneByOne] = useState(initial?.oneByOne ?? false);
@@ -66,17 +67,22 @@ export function TestSettingsModal({ folderId, onSubmit, onClose, initial, title 
           </div>
           <div>
             <label className="text-xs text-gray-500 mb-1 block">Natijalarni ko'rsatish</label>
-            <select value={showResults} onChange={(e) => setShowResults(e.target.value as 'immediately' | 'after_deadline' | 'hidden')}
+            <select value={showResults} onChange={(e) => {
+              const v = e.target.value as 'immediately' | 'after_deadline' | 'hidden' | 'per_question';
+              setShowResults(v);
+              if (v === 'per_question') setOneByOne(true);
+            }}
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400">
               <option value="immediately">Topshirilgandan keyin darhol</option>
+              <option value="per_question">Har bir savolda javobni ko'rsat (birin-ketin)</option>
               <option value="after_deadline">Muddat tugagandan keyin</option>
               <option value="hidden">Ko'rsatilmasin</option>
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
-              <input type="checkbox" checked={oneByOne} onChange={(e) => setOneByOne(e.target.checked)} className="w-4 h-4" />
-              Savollarni birin-ketin ko'rsatish
+            <label className={`flex items-center gap-3 text-sm cursor-pointer ${isPerQuestion ? 'text-gray-400' : 'text-gray-700'}`}>
+              <input type="checkbox" checked={oneByOne} disabled={isPerQuestion} onChange={(e) => setOneByOne(e.target.checked)} className="w-4 h-4" />
+              Savollarni birin-ketin ko'rsatish{isPerQuestion && ' (avtomatik)'}
             </label>
             <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQuestions(e.target.checked)} className="w-4 h-4" />

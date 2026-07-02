@@ -33,8 +33,8 @@ export async function apiGetSubmissions(testId: string): Promise<Submission[]> {
   return res.data;
 }
 
-export async function apiGetMySubmissions(): Promise<Submission[]> {
-  const res = await client.get('/me/submissions');
+export async function apiGetMySubmissions(limit = 10, offset = 0): Promise<Submission[]> {
+  const res = await client.get('/me/submissions', { params: { limit, offset } });
   return res.data;
 }
 

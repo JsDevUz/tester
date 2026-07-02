@@ -10,7 +10,7 @@ class CreateTestDto {
   @IsString() @MinLength(1) name: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() @Min(1) timeLimit?: number;
-  @IsOptional() @IsIn(['immediately', 'after_deadline', 'hidden']) showResults?: string;
+  @IsOptional() @IsIn(['immediately', 'after_deadline', 'hidden', 'per_question']) showResults?: string;
   @IsOptional() @IsBoolean() shuffleQuestions?: boolean;
   @IsOptional() @IsBoolean() shuffleOptions?: boolean;
   @IsOptional() @IsBoolean() oneByOne?: boolean;
@@ -22,7 +22,7 @@ class UpdateTestDto {
   @IsOptional() @IsString() @MinLength(1) name?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsInt() @Min(1) timeLimit?: number;
-  @IsOptional() @IsIn(['immediately', 'after_deadline', 'hidden']) showResults?: string;
+  @IsOptional() @IsIn(['immediately', 'after_deadline', 'hidden', 'per_question']) showResults?: string;
   @IsOptional() @IsBoolean() shuffleQuestions?: boolean;
   @IsOptional() @IsBoolean() shuffleOptions?: boolean;
   @IsOptional() @IsBoolean() oneByOne?: boolean;

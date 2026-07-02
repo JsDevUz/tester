@@ -17,11 +17,13 @@ export class SubmissionsService {
     });
   }
 
-  async findMine(userId: string) {
+  async findMine(userId: string, limit = 10, offset = 0) {
     const rows = await db.query.submissions.findMany({
       where: and(eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
       with: { test: true },
       orderBy: (s, { desc }) => [desc(s.submittedAt)],
+      limit,
+      offset,
     });
 
     return rows.map((submission) => ({

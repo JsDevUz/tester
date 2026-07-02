@@ -39,7 +39,7 @@ export interface PublicTest {
   name: string;
   description: string | null;
   timeLimit: number | null;
-  showResults: 'immediately' | 'after_deadline' | 'hidden';
+  showResults: 'immediately' | 'after_deadline' | 'hidden' | 'per_question';
   shuffleQuestions: boolean;
   shuffleOptions: boolean;
   oneByOne: boolean;
@@ -64,7 +64,7 @@ export interface SubmissionResult {
   submissionId: string;
   score: number;
   total: number;
-  showResults: 'immediately' | 'after_deadline' | 'hidden';
+  showResults: 'immediately' | 'after_deadline' | 'hidden' | 'per_question';
   deadline: string | null;
   answers: AnswerResultItem[];
 }
@@ -89,6 +89,16 @@ export async function apiGetSubmissionResult(submissionId: string): Promise<Subm
 
 export async function apiStartSubmission(slug: string, studentName: string): Promise<{ submissionId: string }> {
   const res = await publicClient.post('/public/submissions', { slug, studentName });
+  return res.data;
+}
+
+export async function apiCheckAnswer(
+  submissionId: string,
+  questionId: string,
+  selectedOptionIds: string[],
+  textAnswer: string | null,
+): Promise<{ isCorrect: boolean | null; correctAnswer: string | null }> {
+  const res = await publicClient.post(`/public/submissions/${submissionId}/check`, { questionId, selectedOptionIds, textAnswer });
   return res.data;
 }
 

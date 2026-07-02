@@ -144,6 +144,82 @@ export class DeliveryService {
     };
   }
 
+  async checkAnswer(submissionId: string, item: {
+    questionId: string;
+    selectedOptionIds: string[];
+    textAnswer: string | null;
+  }) {
+    const submission = await db.query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
+    if (!submission) throw new NotFoundException('Submission not found');
+
+    const test = await db.query.tests.findFirst({
+      where: eq(tests.id, submission.testId),
+      with: { questions: { with: { options: {} } } },
+    });
+    if (!test) throw new NotFoundException('Test not found');
+
+    const question = test.questions.find((q) => q.id === item.questionId);
+    if (!question) throw new NotFoundException('Question not found');
+
+    let isCorrect: boolean | null = null;
+
+    if (question.type === 'single' || question.type === 'multi') {
+      const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
+      isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
+    } else if (question.type === 'truefalse') {
+      const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
+      isCorrect = evaluateObjectiveAnswer('single', correctIds, item.selectedOptionIds);
+    } else if (question.type === 'arrange' || question.type === 'reorder') {
+      const correctOrder = question.options
+        .filter((o) => o.isCorrect)
+        .sort((a, b) => a.orderIndex - b.orderIndex)
+        .map((o) => o.id);
+      isCorrect = evaluateObjectiveAnswer('arrange', correctOrder, item.selectedOptionIds);
+    } else if (question.type === 'matching') {
+      const lefts = question.options.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+      const rights = question.options.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+      let allMatch = lefts.length > 0 && lefts.length === rights.length;
+      for (let i = 0; i < lefts.length && allMatch; i++) {
+        if (item.selectedOptionIds[i * 2] !== lefts[i].id || item.selectedOptionIds[i * 2 + 1] !== rights[i].id) allMatch = false;
+      }
+      isCorrect = allMatch;
+    } else if (question.type === 'fillblank') {
+      if (question.correctAnswer && item.textAnswer?.trim()) {
+        isCorrect = question.correctAnswer.trim().toLowerCase() === item.textAnswer.trim().toLowerCase();
+      }
+    } else if (question.type === 'open') {
+      if (item.textAnswer?.trim()) {
+        const manualOptions = question.options.filter((o) => o.isCorrect);
+        if (manualOptions.length > 0) {
+          isCorrect = manualOptions.some((o) => o.text.trim().toLowerCase() === item.textAnswer!.trim().toLowerCase());
+          if (!isCorrect && question.correctAnswer) {
+            isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+          }
+        } else if (question.correctAnswer) {
+          isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
+        }
+      }
+    } else if (question.type === 'slider') {
+      if (question.correctAnswer && item.textAnswer?.trim()) {
+        const correct = parseFloat(question.correctAnswer);
+        const student = parseFloat(item.textAnswer.trim());
+        const tolerance = question.options[2] ? parseFloat(question.options[2].text) : 1;
+        isCorrect = !isNaN(student) && Math.abs(student - correct) <= tolerance;
+      }
+    } else if (question.type === 'droppin') {
+      if (question.correctAnswer && item.textAnswer?.trim()) {
+        const [cx, cy] = question.correctAnswer.split(',').map(Number);
+        const [sx, sy] = item.textAnswer.trim().split(',').map(Number);
+        const dist = Math.sqrt((cx - sx) ** 2 + (cy - sy) ** 2);
+        const radiusPct = question.options[0] ? parseFloat(question.options[0].text) / 100 : 0.08;
+        isCorrect = dist <= radiusPct;
+      }
+    }
+
+    const correctAnswer = question.correctAnswer ?? null;
+    return { isCorrect, correctAnswer };
+  }
+
   async submitAnswers(submissionId: string, answerItems: Array<{
     questionId: string;
     selectedOptionIds: string[];

@@ -1,4 +1,4 @@
-import { Controller, Delete, Get, HttpCode, Param, Req, UseGuards } from '@nestjs/common';
+import { Controller, Delete, Get, HttpCode, Param, Query, Req, UseGuards } from '@nestjs/common';
 import { SubmissionsService } from './submissions.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -10,8 +10,8 @@ export class SubmissionsController {
   constructor(private readonly submissionsService: SubmissionsService) {}
 
   @Get('me/submissions')
-  findMine(@Req() req: any) {
-    return this.submissionsService.findMine(req.user.id);
+  findMine(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+    return this.submissionsService.findMine(req.user.id, limit ? parseInt(limit) : 10, offset ? parseInt(offset) : 0);
   }
 
   @Get('me/submissions/:id')

@@ -37,6 +37,12 @@ export class DeliveryController {
     return this.deliveryService.submitAnswers(id, dto.answers);
   }
 
+  @Post('submissions/:id/check')
+  @HttpCode(200)
+  checkAnswer(@Param('id') id: string, @Body() body: { questionId: string; selectedOptionIds: string[]; textAnswer: string | null }) {
+    return this.deliveryService.checkAnswer(id, body);
+  }
+
   private getOptionalUserId(authorization?: string) {
     const token = authorization?.startsWith('Bearer ') ? authorization.slice(7) : null;
     if (!token) return undefined;
