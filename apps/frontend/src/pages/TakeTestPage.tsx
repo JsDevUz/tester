@@ -402,7 +402,7 @@ export function TakeTestPage() {
     try {
       const result = await apiSubmitAnswers(submissionId, answers);
       sessionStorage.setItem('submissionResult', JSON.stringify(result));
-      navigate(`/t/${slug}/result?sid=${submissionId}`);
+      navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
     } catch {
       submittingRef.current = false;
       setSubmitting(false);
@@ -469,7 +469,7 @@ export function TakeTestPage() {
           {badge && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>}
         </div>
         <p className="font-medium text-gray-800 mb-3" style={{ fontSize: 'var(--q-fs, 16px)' }}>{q.text}</p>
-        {q.imageUrl && (
+        {q.imageUrl && q.type !== 'droppin' && (
           <div className="mb-3 flex justify-center">
             <img src={mediaUrl(q.imageUrl)} alt="" className="rounded-xl object-contain max-h-64 max-w-full border border-gray-100" />
           </div>
@@ -636,7 +636,7 @@ export function TakeTestPage() {
         <div className="max-w-2xl mx-auto">
           {isOneByOne ? (
             <div className="flex gap-3">
-              {currentIdx > 0 && (
+              {currentIdx > 0 && !isLast && (
                 <button onClick={() => setCurrentIdx((i) => i - 1)}
                   className="px-6 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl text-base font-medium hover:bg-gray-50 shrink-0">
                   ← Oldingi

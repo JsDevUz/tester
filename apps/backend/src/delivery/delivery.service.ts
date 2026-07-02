@@ -125,6 +125,7 @@ export class DeliveryService {
           selectedOptionIds: a.selectedOptionIds ?? [],
           textAnswer: a.textAnswer ?? null,
           correctAnswer: a.question?.correctAnswer ?? null,
+          imageUrl: a.question?.imageUrl ?? null,
           options: (a.question?.options ?? []).map((o: any) => ({
             id: o.id,
             text: o.text,
@@ -287,6 +288,7 @@ export class DeliveryService {
         selectedOptionIds: item.selectedOptionIds,
         textAnswer: item.textAnswer ?? null,
         correctAnswer: question.correctAnswer ?? null,
+        imageUrl: question.imageUrl ?? null,
         options: question.options.map((o) => ({
           id: o.id,
           text: o.text,

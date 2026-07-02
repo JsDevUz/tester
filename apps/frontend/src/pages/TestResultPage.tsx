@@ -108,6 +108,37 @@ export function TestResultPage() {
                         });
                       })()}
                     </div>
+                  ) : a.questionType === 'slider' ? (
+                    <div className="pl-5 mt-1 text-xs text-gray-600">
+                      Javob: <span className="font-medium">{a.textAnswer || '—'}</span>
+                      {a.isCorrect === false && a.correctAnswer && (
+                        <span className="text-green-600 ml-2">To'g'ri: {a.correctAnswer}</span>
+                      )}
+                    </div>
+                  ) : a.questionType === 'droppin' ? (
+                    <div className="pl-5 mt-2">
+                      {a.imageUrl ? (() => {
+                        const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? '';
+                        const imgSrc = a.imageUrl.startsWith('http') ? a.imageUrl : `${BACKEND}${a.imageUrl}`;
+                        const student = a.textAnswer?.split(',').map(Number);
+                        const correct = a.correctAnswer?.split(',').map(Number);
+                        return (
+                          <div className="relative inline-block w-full max-w-xs">
+                            <img src={imgSrc} alt="" className="w-full rounded-xl border border-gray-100" />
+                            {student && student.length === 2 && (
+                              <div style={{ left: `${student[0] * 100}%`, top: `${student[1] * 100}%` }}
+                                className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md bg-red-500" />
+                            )}
+                            {correct && correct.length === 2 && a.isCorrect === false && (
+                              <div style={{ left: `${correct[0] * 100}%`, top: `${correct[1] * 100}%` }}
+                                className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white shadow-md bg-green-500" />
+                            )}
+                          </div>
+                        );
+                      })() : (
+                        <p className="text-xs text-gray-400">Rasm yo'q</p>
+                      )}
+                    </div>
                   ) : a.options && a.options.length > 0 ? (
                     <div className="flex flex-col gap-1 pl-5 mt-1">
                       {a.options.map((opt) => {
