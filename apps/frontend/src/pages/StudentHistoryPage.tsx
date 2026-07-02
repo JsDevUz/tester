@@ -111,7 +111,7 @@ export function StudentHistoryPage() {
                   {(a.questionType === 'open' || a.questionType === 'fillblank') ? (
                     <div className="pl-4 flex flex-col gap-1">
                       <p className="text-xs text-gray-600 italic">{a.textAnswer || '—'}</p>
-                      {a.isCorrect === false && a.correctAnswer && a.questionType === 'fillblank' && (
+                      {a.isCorrect !== true && a.correctAnswer && (
                         <p className="text-xs text-green-600">To'g'ri: {a.correctAnswer}</p>
                       )}
                     </div>

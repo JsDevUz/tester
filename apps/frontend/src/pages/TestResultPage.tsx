@@ -78,7 +78,7 @@ export function TestResultPage() {
                   {(a.questionType === 'open' || a.questionType === 'fillblank') ? (
                     <div className="pl-5 flex flex-col gap-1 mt-1">
                       <p className="text-xs italic text-gray-600">{a.textAnswer || '—'}</p>
-                      {a.isCorrect === false && a.correctAnswer && a.questionType === 'fillblank' && (
+                      {a.isCorrect !== true && a.correctAnswer && (
                         <p className="text-xs text-green-600">To'g'ri: {a.correctAnswer}</p>
                       )}
                     </div>
