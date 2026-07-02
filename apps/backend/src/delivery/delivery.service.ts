@@ -187,6 +187,7 @@ export class DeliveryService {
       selectedOptionIds: string[];
       textAnswer: string | null;
       correctAnswer: string | null;
+      imageUrl?: string | null;
       options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
     }> = [];
 
