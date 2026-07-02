@@ -27,7 +27,7 @@ export interface PublicOption {
 export interface PublicQuestion {
   id: string;
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin';
   orderIndex: number;
   imageUrl?: string | null;
   audioUrl?: string | null;

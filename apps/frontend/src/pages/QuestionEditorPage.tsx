@@ -45,7 +45,7 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
           key={q.id}
           initial={{
             text: q.text,
-            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank',
+            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin',
             options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
@@ -73,6 +73,8 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
             q.type === 'reorder' ? 'bg-orange-100 text-orange-600' :
             q.type === 'matching' ? 'bg-cyan-100 text-cyan-600' :
             q.type === 'fillblank' ? 'bg-pink-100 text-pink-600' :
+            q.type === 'slider' ? 'bg-sky-100 text-sky-600' :
+            q.type === 'droppin' ? 'bg-lime-100 text-lime-600' :
             'bg-gray-100 text-gray-500'}`}>
             {q.type === 'single' ? 'Yagona' :
              q.type === 'multi' ? "Ko'p tanlov" :
@@ -81,6 +83,8 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
              q.type === 'reorder' ? 'Tartibga solish' :
              q.type === 'matching' ? 'Moslashtirish' :
              q.type === 'fillblank' ? "Bo'sh joy" :
+             q.type === 'slider' ? 'Slider' :
+             q.type === 'droppin' ? 'Drop Pin' :
              'Ochiq'}
           </span>
           {q.imageUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400"><Image size={10} /> rasm</span>}
@@ -214,6 +218,20 @@ export function QuestionEditorPage() {
         for (let i = 0; i < lefts.length; i++) {
           lines.push(`| ${lefts[i].text} :: ${rights[i]?.text ?? ''}`);
         }
+        return lines.join('\n');
+      }
+      if (q.type === 'slider') {
+        const lines = [`#$ ${q.text}`];
+        const min = q.options[0]?.text ?? '0';
+        const max = q.options[1]?.text ?? '100';
+        const step = q.options[2]?.text ?? '1';
+        lines.push(`= ${q.correctAnswer ?? ''}`);
+        lines.push(`~ ${min}..${max} step ${step}`);
+        return lines.join('\n');
+      }
+      if (q.type === 'droppin') {
+        const lines = [`#@ ${q.text}`];
+        if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
         return lines.join('\n');
       }
       return `# ${q.text}`;

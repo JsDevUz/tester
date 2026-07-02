@@ -21,7 +21,7 @@ function SortableItem({ id, pos, text }: { id: string; pos: number; text: string
         isDragging ? 'bg-indigo-50 border-indigo-400 shadow-lg z-50 opacity-90' : 'bg-white border-gray-200'
       }`}>
       <span className="text-gray-300 text-sm font-mono w-5 shrink-0">{pos + 1}.</span>
-      <span className="flex-1 text-base text-gray-800">{text}</span>
+      <span className="flex-1 text-gray-800" style={{ fontSize: 'var(--q-fs, 16px)' }}>{text}</span>
       <span {...attributes} {...listeners}
         className="touch-none cursor-grab active:cursor-grabbing text-gray-300 text-2xl px-1 select-none">
         ⠿
@@ -129,7 +129,8 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
             const color = isPaired ? colorMap[opt.id] : null;
             return (
               <button key={opt.id} type="button" onClick={() => tapLeft(opt.id)}
-                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors flex items-center gap-2 ${
+                style={{ fontSize: 'var(--q-fs, 14px)' }}
+                className={`px-3 py-2.5 rounded-xl border-2 text-left transition-colors flex items-center gap-2 ${
                   isPending ? 'bg-indigo-500 text-white border-indigo-500' :
                   color ? colorClasses[color].left :
                   'bg-white border-gray-200 text-gray-700 hover:border-indigo-300'
@@ -149,7 +150,8 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
             return (
               <button key={opt.id} type="button" onClick={() => tapRight(opt.id)}
                 disabled={!pendingLeft && !isPaired}
-                className={`px-3 py-2.5 rounded-xl border-2 text-sm text-left transition-colors flex items-center gap-2 ${
+                style={{ fontSize: 'var(--q-fs, 14px)' }}
+                className={`px-3 py-2.5 rounded-xl border-2 text-left transition-colors flex items-center gap-2 ${
                   color ? colorClasses[color].right :
                   pendingLeft ? 'bg-white border-gray-200 text-gray-700 hover:border-green-400 hover:bg-green-50' :
                   'bg-gray-50 border-gray-100 text-gray-400'
@@ -163,6 +165,74 @@ function MatchingQuestion({ questionId: _qid, options, selected, onSelect }: {
       </div>
       {selected.length > 0 && (
         <button type="button" onClick={() => { onSelect([]); setPendingLeft(null); }}
+          className="text-xs text-gray-400 hover:text-red-400 self-start">Tozalash</button>
+      )}
+    </div>
+  );
+}
+
+function SliderQuestion({
+  options, value, onChange,
+}: { options: { text: string }[]; value: string; onChange: (v: string) => void }) {
+  const min = options[0] ? parseFloat(options[0].text) : 0;
+  const max = options[1] ? parseFloat(options[1].text) : 100;
+  const step = options[2] ? parseFloat(options[2].text) : 1;
+  const current = value !== '' ? parseFloat(value) : Math.round((min + max) / 2);
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="text-center text-3xl font-bold text-indigo-600">{current}</div>
+      <input
+        type="range" min={min} max={max} step={step}
+        value={current}
+        onChange={(e) => onChange(e.target.value)}
+        className="w-full accent-indigo-500 h-2 cursor-pointer"
+      />
+      <div className="flex justify-between text-xs text-gray-400">
+        <span>{min}</span>
+        <span>{max}</span>
+      </div>
+    </div>
+  );
+}
+
+function DropPinQuestion({
+  imageUrl, value, onChange,
+}: { imageUrl: string; value: string; onChange: (v: string) => void }) {
+  const pin = value ? value.split(',').map(Number) : null;
+
+  function handleClick(e: React.MouseEvent<HTMLDivElement>) {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = ((e.clientX - rect.left) / rect.width).toFixed(4);
+    const y = ((e.clientY - rect.top) / rect.height).toFixed(4);
+    onChange(`${x},${y}`);
+  }
+
+  return (
+    <div className="flex flex-col gap-2">
+      <p className="text-xs text-gray-400">Rasmda to'g'ri joyni bosing</p>
+      <div
+        className="relative w-full rounded-xl overflow-hidden border border-gray-200 cursor-crosshair select-none"
+        onClick={handleClick}
+      >
+        {imageUrl ? (
+          <img src={imageUrl} alt="" className="w-full object-contain pointer-events-none" draggable={false} />
+        ) : (
+          <div className="w-full h-48 bg-gray-100 flex items-center justify-center text-gray-400 text-sm">Rasm yo'q</div>
+        )}
+        {pin && (
+          <div
+            className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${parseFloat(pin[0].toString()) * 100}%`, top: `${parseFloat(pin[1].toString()) * 100}%` }}
+          >
+            <div className="w-6 h-6 rounded-full bg-red-500 border-2 border-white shadow-lg flex items-center justify-center">
+              <div className="w-2 h-2 rounded-full bg-white" />
+            </div>
+          </div>
+        )}
+      </div>
+      {pin && (
+        <button type="button" onClick={() => onChange('')}
           className="text-xs text-gray-400 hover:text-red-400 self-start">Tozalash</button>
       )}
     </div>
@@ -194,6 +264,7 @@ export function TakeTestPage() {
   const [textMap, setTextMap] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [fontSize, setFontSize] = useState(16);
 
   const selectedMapRef = useRef<Record<string, string[]>>({});
   const textMapRef = useRef<Record<string, string>>({});
@@ -383,6 +454,8 @@ export function TakeTestPage() {
     reorder:   { label: 'Tartibga solish',    cls: 'bg-orange-100 text-orange-600' },
     matching:  { label: 'Moslashtirish',      cls: 'bg-teal-100 text-teal-600' },
     fillblank: { label: "Bo'sh joy",          cls: 'bg-pink-100 text-pink-600' },
+    slider:    { label: 'Slider',             cls: 'bg-cyan-100 text-cyan-600' },
+    droppin:   { label: 'Drop Pin',           cls: 'bg-lime-100 text-lime-600' },
   };
 
 
@@ -395,7 +468,7 @@ export function TakeTestPage() {
           <p className="text-sm text-gray-400">{idx + 1}. savol</p>
           {badge && <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${badge.cls}`}>{badge.label}</span>}
         </div>
-        <p className="text-base font-medium text-gray-800 mb-3">{q.text}</p>
+        <p className="font-medium text-gray-800 mb-3" style={{ fontSize: 'var(--q-fs, 16px)' }}>{q.text}</p>
         {q.imageUrl && (
           <div className="mb-3 flex justify-center">
             <img src={mediaUrl(q.imageUrl)} alt="" className="rounded-xl object-contain max-h-64 max-w-full border border-gray-100" />
@@ -404,14 +477,27 @@ export function TakeTestPage() {
         {q.audioUrl && (
           <audio src={mediaUrl(q.audioUrl)} controls className="mb-3 w-full h-9" />
         )}
-        {q.type === 'fillblank' ? (
+        {q.type === 'slider' ? (
+          <SliderQuestion
+            options={q.options}
+            value={textMap[q.id] ?? ''}
+            onChange={(v) => setTextMap((prev) => ({ ...prev, [q.id]: v }))}
+          />
+        ) : q.type === 'droppin' ? (
+          <DropPinQuestion
+            imageUrl={q.imageUrl ? mediaUrl(q.imageUrl) : ''}
+            value={textMap[q.id] ?? ''}
+            onChange={(v) => setTextMap((prev) => ({ ...prev, [q.id]: v }))}
+          />
+        ) : q.type === 'fillblank' ? (
           <div>
             <p className="text-xs text-gray-400 mb-2">Bo'sh joyni to'ldiring (<code className="bg-gray-100 px-1 rounded">___</code>):</p>
             <input
               value={textMap[q.id] ?? ''}
               onChange={(e) => setTextMap((prev) => ({ ...prev, [q.id]: e.target.value }))}
               placeholder="Javobingizni yozing..."
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-base outline-none focus:ring-2 focus:ring-pink-400"
+              className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-pink-400"
+              style={{ fontSize: 'var(--q-fs, 16px)' }}
             />
           </div>
         ) : q.type === 'matching' ? (
@@ -426,7 +512,8 @@ export function TakeTestPage() {
             value={textMap[q.id] ?? ''} rows={3}
             onChange={(e) => setTextMap((prev) => ({ ...prev, [q.id]: e.target.value }))}
             placeholder="Javobingizni yozing..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2 text-base outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            className="w-full border border-gray-200 rounded-xl px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+            style={{ fontSize: 'var(--q-fs, 16px)' }}
           />
         ) : q.type === 'truefalse' ? (
           <div className="flex gap-3">
@@ -436,7 +523,8 @@ export function TakeTestPage() {
               return (
                 <button key={opt.id} type="button"
                   onClick={() => toggleOption(q.id, opt.id, 'single')}
-                  className={`flex-1 py-4 rounded-xl border-2 text-base font-semibold transition-colors ${
+                  style={{ fontSize: 'var(--q-fs, 16px)' }}
+                  className={`flex-1 py-4 rounded-xl border-2 font-semibold transition-colors ${
                     checked
                       ? isTrue ? 'bg-green-500 text-white border-green-500' : 'bg-red-400 text-white border-red-400'
                       : 'border-gray-200 text-gray-700 hover:border-gray-300'
@@ -464,7 +552,8 @@ export function TakeTestPage() {
                 return opt ? (
                   <button key={id} type="button"
                     onClick={() => arrangeRemove(q.id, id)}
-                    className="px-3 py-2 bg-indigo-500 text-white rounded-lg text-base shadow-sm hover:bg-indigo-600 transition-colors">
+                    style={{ fontSize: 'var(--q-fs, 16px)' }}
+                    className="px-3 py-2 bg-indigo-500 text-white rounded-lg shadow-sm hover:bg-indigo-600 transition-colors">
                     {opt.text}
                   </button>
                 ) : null;
@@ -476,7 +565,8 @@ export function TakeTestPage() {
                 .map((opt) => (
                   <button key={opt.id} type="button"
                     onClick={() => arrangeAdd(q.id, opt.id)}
-                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-base text-gray-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 transition-colors">
+                    style={{ fontSize: 'var(--q-fs, 16px)' }}
+                    className="px-3 py-2 bg-white border border-gray-200 rounded-lg text-gray-700 shadow-sm hover:border-indigo-400 hover:text-indigo-600 transition-colors">
                     {opt.text}
                   </button>
                 ))}
@@ -495,7 +585,8 @@ export function TakeTestPage() {
               return (
                 <button key={opt.id} type="button"
                   onClick={() => toggleOption(q.id, opt.id, q.type as 'single' | 'multi')}
-                  className={`text-left px-4 py-3 rounded-xl border text-base transition-colors ${checked ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-700 hover:border-indigo-300'}`}
+                  style={{ fontSize: 'var(--q-fs, 16px)' }}
+                  className={`text-left px-4 py-3 rounded-xl border transition-colors ${checked ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-700 hover:border-indigo-300'}`}
                 >
                   {opt.text}
                 </button>
@@ -508,43 +599,64 @@ export function TakeTestPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col notranslate" translate="no">
-      <div className="bg-white border-b border-gray-100 px-6 py-4 flex items-center justify-between">
-        <span className="text-base font-medium text-gray-700">{test.name}</span>
-        {timeLeft !== null && (
-          <span className={`font-mono text-base ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
-            <Clock size={15} className="inline mr-1" />{formatTime(timeLeft)}
-          </span>
-        )}
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col notranslate" translate="no" style={{ '--q-fs': fontSize + 'px' } as React.CSSProperties}>
+      <div className="bg-white border-b border-gray-100 px-4 py-3 flex items-center justify-between gap-2">
+        <span className="text-sm font-medium text-gray-700 truncate flex-1">{test.name}</span>
+        <div className="flex items-center gap-1 shrink-0">
+          <button onClick={() => setFontSize((s) => Math.max(12, s - 2))}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 text-base font-bold select-none">
+            A-
+          </button>
+          <button onClick={() => setFontSize((s) => Math.min(24, s + 2))}
+            className="w-8 h-8 flex items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 text-lg font-bold select-none">
+            A+
+          </button>
+          {timeLeft !== null && (
+            <span className={`font-mono text-sm ml-1 ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
+              <Clock size={13} className="inline mr-0.5" />{formatTime(timeLeft)}
+            </span>
+          )}
+        </div>
       </div>
       {isOneByOne && (
         <div className="h-1 bg-gray-100">
-          <div
-            className="h-1 bg-indigo-500 transition-all"
-            style={{ width: `${((currentIdx + 1) / orderedQuestions.length) * 100}%` }}
-          />
+          <div className="h-1 bg-indigo-500 transition-all"
+            style={{ width: `${((currentIdx + 1) / orderedQuestions.length) * 100}%` }} />
         </div>
       )}
-      <div className="flex-1 p-6 max-w-2xl mx-auto w-full flex flex-col gap-4">
+      <div className="flex-1 overflow-y-auto p-6 max-w-2xl mx-auto w-full flex flex-col gap-4 pb-28">
         {isOneByOne && (
           <p className="text-xs text-gray-400 text-right">{currentIdx + 1} / {orderedQuestions.length}</p>
         )}
         {questions.map((q, i) => renderQuestion(q, isOneByOne ? currentIdx : i))}
-        <div className="flex justify-between gap-2 mt-2">
-          {isOneByOne && currentIdx > 0 ? (
-            <button onClick={() => setCurrentIdx((i) => i - 1)}
-              className="px-5 py-3 bg-white border border-gray-200 text-gray-600 rounded-xl text-base hover:border-gray-300">
-              Oldingi
-            </button>
-          ) : <span />}
-          {isOneByOne && !isLast ? (
-            <button onClick={() => setCurrentIdx((i) => i + 1)}
-              className="px-5 py-3 bg-indigo-500 text-white rounded-xl text-base hover:bg-indigo-600">
-              Keyingi
-            </button>
+      </div>
+
+      {/* Fixed bottom buttons */}
+      <div className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-sm border-t border-gray-100 px-6 py-4">
+        <div className="max-w-2xl mx-auto">
+          {isOneByOne ? (
+            <div className="flex gap-3">
+              {currentIdx > 0 && (
+                <button onClick={() => setCurrentIdx((i) => i - 1)}
+                  className="px-6 py-4 bg-white border border-gray-200 text-gray-600 rounded-2xl text-base font-medium hover:bg-gray-50 shrink-0">
+                  ← Oldingi
+                </button>
+              )}
+              {!isLast ? (
+                <button onClick={() => setCurrentIdx((i) => i + 1)}
+                  className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl text-base font-semibold hover:bg-indigo-600 shadow-md shadow-indigo-100">
+                  Keyingi →
+                </button>
+              ) : (
+                <button onClick={handleSubmit} disabled={submitting}
+                  className="flex-1 py-4 bg-green-500 text-white rounded-2xl text-base font-semibold hover:bg-green-600 disabled:opacity-40 shadow-md shadow-green-100">
+                  {submitting ? 'Topshirilmoqda...' : 'Topshirish ✓'}
+                </button>
+              )}
+            </div>
           ) : (
             <button onClick={handleSubmit} disabled={submitting}
-              className="px-5 py-3 bg-green-500 text-white rounded-xl text-base hover:bg-green-600 disabled:opacity-40">
+              className="w-full py-4 bg-green-500 text-white rounded-2xl text-base font-semibold hover:bg-green-600 disabled:opacity-40">
               {submitting ? 'Topshirilmoqda...' : 'Topshirish'}
             </button>
           )}

@@ -1,4 +1,38 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
+
+function DropPinEditor({ imageUrl, correctAnswer, radiusPct, onChange }: {
+  imageUrl: string; correctAnswer: string; radiusPct: number; onChange: (v: string) => void;
+}) {
+  const [containerW, setContainerW] = useState(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleClick = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    setContainerW(rect.width);
+    const x = ((e.clientX - rect.left) / rect.width).toFixed(4);
+    const y = ((e.clientY - rect.top) / rect.height).toFixed(4);
+    onChange(`${x},${y}`);
+  }, [onChange]);
+
+  const pin = correctAnswer ? correctAnswer.split(',').map(Number) : null;
+  const radiusPx = (radiusPct / 100) * (containerW || containerRef.current?.getBoundingClientRect().width || 300);
+
+  return (
+    <div ref={containerRef} className="relative w-full cursor-crosshair" onClick={handleClick}>
+      <img src={imageUrl} alt="" className="w-full rounded-xl object-contain border border-gray-200 select-none pointer-events-none" draggable={false} />
+      {pin && (
+        <>
+          <div className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full border-2 border-red-400/50 bg-red-100/30"
+            style={{ left: `${pin[0] * 100}%`, top: `${pin[1] * 100}%`, width: radiusPx * 2, height: radiusPx * 2 }} />
+          <div className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
+            style={{ left: `${pin[0] * 100}%`, top: `${pin[1] * 100}%` }}>
+            <div className="w-5 h-5 rounded-full bg-red-500 border-2 border-white shadow-lg" />
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
 import { Image, Music, X, Upload, GripHorizontal, Plus, Trash2 } from 'lucide-react';
 import { apiUploadMedia } from '../api/questions';
 
@@ -10,7 +44,7 @@ interface OptionInput {
 
 interface InitialValues {
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin';
   options: OptionInput[];
   imageUrl?: string | null;
   audioUrl?: string | null;
@@ -43,11 +77,13 @@ const TYPE_LABELS: Record<string, string> = {
   reorder: 'Tartibga solish',
   matching: 'Moslashtirish',
   fillblank: "Bo'sh joy",
+  slider: 'Slider',
+  droppin: 'Drop Pin',
 };
 
 export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props) {
   const [text, setText] = useState(initial?.text ?? '');
-  const [type, setType] = useState<'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank'>(initial?.type ?? 'single');
+  const [type, setType] = useState<'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin'>(initial?.type ?? 'single');
   const [opts, setOpts] = useState<OptionInput[]>(() => {
     if (initial?.options.length) {
       return initial.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect, orderIndex: o.orderIndex }));
@@ -154,6 +190,15 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
       ]);
     } else if (type === 'fillblank') {
       options = [];
+    } else if (type === 'slider') {
+      // options[0]=min, options[1]=max, options[2]=step
+      options = [
+        { text: opts[0]?.text || '0', isCorrect: false, orderIndex: 0 },
+        { text: opts[1]?.text || '100', isCorrect: false, orderIndex: 1 },
+        { text: opts[2]?.text || '1', isCorrect: false, orderIndex: 2 },
+      ];
+    } else if (type === 'droppin') {
+      options = [{ text: opts[0]?.text || '8', isCorrect: false, orderIndex: 0 }];
     } else {
       options = opts.filter((o) => o.text.trim());
       if ((type === 'single' || type === 'multi') && options.length > 0) {
@@ -220,7 +265,7 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
 
       {/* Type selector */}
       <div className="flex gap-2 flex-wrap">
-        {(['single', 'multi', 'open', 'arrange', 'truefalse', 'reorder', 'matching', 'fillblank'] as const).map((t) => (
+        {(['single', 'multi', 'open', 'arrange', 'truefalse', 'reorder', 'matching', 'fillblank', 'slider', 'droppin'] as const).map((t) => (
           <button key={t} type="button" onClick={() => setType(t)}
             className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? 'bg-indigo-500 text-white border-indigo-500' : 'border-gray-200 text-gray-500 hover:border-indigo-300'}`}>
             {TYPE_LABELS[t]}
@@ -262,6 +307,71 @@ export function QuestionForm({ onSubmit, initial, submitLabel, onCancel }: Props
             placeholder="To'g'ri javob..."
             className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
           />
+        </div>
+      )}
+
+      {type === 'slider' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">Slider sozlamalari:</p>
+          <div className="grid grid-cols-3 gap-2">
+            <div>
+              <label className="text-[10px] text-gray-400">Min</label>
+              <input type="number" placeholder="0"
+                value={opts[0]?.text ?? ''}
+                onChange={(e) => setOpts([{ text: e.target.value, isCorrect: false }, opts[1] ?? { text: '', isCorrect: false }, opts[2] ?? { text: '', isCorrect: false }])}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400">Max</label>
+              <input type="number" placeholder="100"
+                value={opts[1]?.text ?? ''}
+                onChange={(e) => setOpts([opts[0] ?? { text: '', isCorrect: false }, { text: e.target.value, isCorrect: false }, opts[2] ?? { text: '', isCorrect: false }])}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
+            </div>
+            <div>
+              <label className="text-[10px] text-gray-400">Qadam</label>
+              <input type="number" placeholder="1"
+                value={opts[2]?.text ?? ''}
+                onChange={(e) => setOpts([opts[0] ?? { text: '', isCorrect: false }, opts[1] ?? { text: '', isCorrect: false }, { text: e.target.value, isCorrect: false }])}
+                className="w-full border border-gray-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400" />
+            </div>
+          </div>
+          <div>
+            <label className="text-[10px] text-gray-400">To'g'ri qiymat</label>
+            <input type="number"
+              value={correctAnswer}
+              onChange={(e) => setCorrectAnswer(e.target.value)}
+              placeholder="Masalan: 42"
+              className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+            />
+          </div>
+        </div>
+      )}
+
+      {type === 'droppin' && (
+        <div className="flex flex-col gap-2">
+          <p className="text-xs text-gray-400">Rasm yuklang va to'g'ri joyni bosing:</p>
+          <div className="flex items-center gap-2">
+            <label className="text-[10px] text-gray-400 shrink-0">Radius (1–30%):</label>
+            <input type="number" min={1} max={30}
+              value={opts[0]?.text ?? '8'}
+              onChange={(e) => setOpts([{ text: e.target.value, isCorrect: false }])}
+              className="w-20 border border-gray-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-lime-400" />
+            <span className="text-[10px] text-gray-400">% (katta = keng, kichik = aniq)</span>
+          </div>
+          {imageUrl ? (
+            <DropPinEditor
+              imageUrl={mediaUrl(imageUrl)}
+              correctAnswer={correctAnswer}
+              radiusPct={parseFloat(opts[0]?.text ?? '8')}
+              onChange={setCorrectAnswer}
+            />
+          ) : (
+            <div className="text-xs text-gray-400 bg-gray-50 rounded-xl p-4 text-center border border-dashed border-gray-200">
+              Yuqoridan rasm yuklang, keyin to'g'ri joyni bosing
+            </div>
+          )}
+          {correctAnswer && <p className="text-[10px] text-gray-400">Pin: {correctAnswer} | Radius: {opts[0]?.text ?? '8'}%</p>}
         </div>
       )}
 

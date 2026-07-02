@@ -6,7 +6,7 @@ interface ParsedOption {
 
 interface ParsedQuestion {
   text: string;
-  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank';
+  type: 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin';
   options: ParsedOption[];
   correctAnswer?: string;
 }
@@ -50,6 +50,16 @@ export function parseBulk(input: string): ParsedQuestion[] {
     } else if (line.startsWith('#| ')) {
       push();
       current = { text: line.slice(3).trim(), type: 'matching', options: [] };
+      orderIdx = 0;
+    } else if (line.startsWith('#$ ')) {
+      // Slider question: #$ Savol matni
+      push();
+      current = { text: line.slice(3).trim(), type: 'slider', options: [] };
+      orderIdx = 0;
+    } else if (line.startsWith('#@ ')) {
+      // Drop pin question: #@ Savol matni
+      push();
+      current = { text: line.slice(3).trim(), type: 'droppin', options: [] };
       orderIdx = 0;
     } else if (line.startsWith('#~ ')) {
       // Explicit open question (with + correct variants and @ AI hint)
@@ -99,7 +109,7 @@ export function parseBulk(input: string): ParsedQuestion[] {
   push();
 
   return result.map((q) => {
-    if (['arrange', 'reorder', 'truefalse', 'matching', 'fillblank'].includes(q.type)) return q;
+    if (['arrange', 'reorder', 'truefalse', 'matching', 'fillblank', 'slider', 'droppin'].includes(q.type)) return q;
     const correctCount = q.options.filter((o) => o.isCorrect).length;
     if (q.options.length === 0) { q.type = 'open'; return q; }
     if (correctCount === 0) return null;

@@ -258,6 +258,25 @@ export class DeliveryService {
           isCorrect = correct === student;
           if (isCorrect) score++;
         }
+      } else if (question.type === 'slider') {
+        if (question.correctAnswer && item.textAnswer?.trim()) {
+          total++;
+          const correct = parseFloat(question.correctAnswer);
+          const student = parseFloat(item.textAnswer.trim());
+          const tolerance = question.options[2] ? parseFloat(question.options[2].text) : 1;
+          isCorrect = !isNaN(student) && Math.abs(student - correct) <= tolerance;
+          if (isCorrect) score++;
+        }
+      } else if (question.type === 'droppin') {
+        if (question.correctAnswer && item.textAnswer?.trim()) {
+          total++;
+          const [cx, cy] = question.correctAnswer.split(',').map(Number);
+          const [sx, sy] = item.textAnswer.trim().split(',').map(Number);
+          const dist = Math.sqrt((cx - sx) ** 2 + (cy - sy) ** 2);
+          const radiusPct = question.options[0] ? parseFloat(question.options[0].text) / 100 : 0.08;
+          isCorrect = dist <= radiusPct;
+          if (isCorrect) score++;
+        }
       }
 
       safeAnswers.push({
