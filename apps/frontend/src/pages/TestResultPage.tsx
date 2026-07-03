@@ -57,7 +57,7 @@ export function TestResultPage() {
       <div className="flex-1 overflow-y-auto px-5 pt-8 pb-4">
 
         {/* Score hero */}
-        {result.showResults === 'immediately' ? (
+        {(result.showResults === 'immediately' || result.showResults === 'per_question') ? (
           <>
             <div className="text-center mb-8">
               <div className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 ${

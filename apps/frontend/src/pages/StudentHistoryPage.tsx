@@ -163,7 +163,7 @@ export function StudentHistoryPage() {
                 </div>
               )}
 
-              {detail && detail.showResults !== 'immediately' && (
+              {detail && detail.showResults !== 'immediately' && detail.showResults !== 'per_question' && (
                 <div className="flex flex-col items-center text-center py-10">
                   <Clock size={32} className="text-indigo-300 mb-3" />
                   <p className="text-sm text-gray-500">
@@ -174,11 +174,11 @@ export function StudentHistoryPage() {
                 </div>
               )}
 
-              {detail?.showResults === 'immediately' && detail.answers.length === 0 && (
+              {(detail?.showResults === 'immediately' || detail?.showResults === 'per_question') && detail.answers.length === 0 && (
                 <p className="text-center text-sm text-gray-400 py-8">Javoblar topilmadi.</p>
               )}
 
-              {detail?.showResults === 'immediately' && detail.answers.map((a, i) => (
+              {(detail?.showResults === 'immediately' || detail?.showResults === 'per_question') && detail.answers.map((a, i) => (
                 <div key={a.questionId} className={`rounded-2xl border-2 px-4 py-4 ${
                   a.isCorrect === true ? 'border-green-100 bg-green-50/50' :
                   a.isCorrect === false ? 'border-red-100 bg-red-50/50' :

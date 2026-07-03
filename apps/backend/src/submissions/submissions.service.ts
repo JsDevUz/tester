@@ -60,7 +60,7 @@ export class SubmissionsService {
     });
     if (!submission) throw new NotFoundException('Submission not found');
 
-    const showAnswers = submission.test.showResults === 'immediately';
+    const showAnswers = submission.test.showResults === 'immediately' || submission.test.showResults === 'per_question';
 
     return {
       id: submission.id,

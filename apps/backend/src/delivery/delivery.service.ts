@@ -114,7 +114,7 @@ export class DeliveryService {
     if (!submission.submittedAt) throw new BadRequestException('Submission not yet submitted');
 
     const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
-    const showAnswers = test?.showResults === 'immediately';
+    const showAnswers = test?.showResults === 'immediately' || test?.showResults === 'per_question';
 
     const safeAnswers = showAnswers
       ? (submission as any).answers.map((a: any) => ({
@@ -160,6 +160,12 @@ export class DeliveryService {
 
     const question = test.questions.find((q) => q.id === item.questionId);
     if (!question) throw new NotFoundException('Question not found');
+
+    // Javob umuman berilmagan bo'lsa — noto'g'ri deb baholanadi
+    const hasAnswer = (item.selectedOptionIds?.length ?? 0) > 0 || !!item.textAnswer?.trim();
+    if (!hasAnswer) {
+      return { isCorrect: false, correctAnswer: this.correctAnswerText(question) };
+    }
 
     let isCorrect: boolean | null = null;
 
@@ -216,8 +222,15 @@ export class DeliveryService {
       }
     }
 
-    const correctAnswer = question.correctAnswer ?? null;
-    return { isCorrect, correctAnswer };
+    return { isCorrect, correctAnswer: this.correctAnswerText(question) };
+  }
+
+  // Feedback uchun to'g'ri javob matni: correctAnswer bo'lmasa to'g'ri variant matnlari
+  private correctAnswerText(question: { correctAnswer: string | null; type: string; options: Array<{ text: string; isCorrect: boolean }> }): string | null {
+    if (question.correctAnswer) return question.correctAnswer;
+    if (question.type === 'droppin') return null;
+    const correctTexts = question.options.filter((o) => o.isCorrect).map((o) => o.text);
+    return correctTexts.length > 0 ? correctTexts.join(', ') : null;
   }
 
   async submitAnswers(submissionId: string, answerItems: Array<{
@@ -390,9 +403,9 @@ export class DeliveryService {
       .set({ submittedAt: new Date(), score, total })
       .where(eq(submissions.id, submissionId));
 
-    // Only return answer breakdown if showResults === 'immediately'
+    // Only return answer breakdown if showResults === 'immediately' or 'per_question'
     // For other modes, never send per-question correctness to client
-    const showAnswers = test.showResults === 'immediately';
+    const showAnswers = test.showResults === 'immediately' || test.showResults === 'per_question';
 
     return {
       submissionId,
