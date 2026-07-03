@@ -12,6 +12,8 @@ import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
 import { StudentHistoryPage } from './pages/StudentHistoryPage';
 import { LiveCreatePage } from './pages/LiveCreatePage';
 import { LiveHostPage } from './pages/LiveHostPage';
+import { LiveJoinPage } from './pages/LiveJoinPage';
+import { LivePlayPage } from './pages/LivePlayPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -34,6 +36,8 @@ const router = createBrowserRouter([
   { path: '/t/:slug/result', element: <TestResultPage /> },
   { path: '/live', element: <PrivateRoute><LiveCreatePage /></PrivateRoute> },
   { path: '/live/host/:pin', element: <PrivateRoute><LiveHostPage /></PrivateRoute> },
+  { path: '/live/join', element: <LiveJoinPage /> },
+  { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/admins', element: <SuperAdminRoute><AdminsPage /></SuperAdminRoute> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
