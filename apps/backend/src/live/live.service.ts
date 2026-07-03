@@ -145,10 +145,7 @@ export class LiveService {
     const answered = this.answeredCount(s);
     this.broadcaster.toRoom(s.pin, 'question:progress', { answered, total: s.players.size });
 
-    if (answered >= s.players.size) {
-      if (s.questionTimer) { clearTimeout(s.questionTimer); s.questionTimer = null; }
-      this.reveal(s);
-    }
+    this.maybeRevealEarly(s);
   }
 
   async end(pin: string, adminId: string) {
@@ -170,6 +167,7 @@ export class LiveService {
         if (p.socketId === socketId) {
           p.socketId = null;
           if (s.status === 'lobby') this.broadcastLobby(s);
+          if (s.status === 'question') this.maybeRevealEarly(s);
           return;
         }
       }
@@ -177,6 +175,20 @@ export class LiveService {
   }
 
   // ── Ichki state machine ─────────────────────────────────────
+
+  // Hamma *ulangan* o'yinchi javob bergan bo'lsa darhol reveal.
+  // Uzilgan o'yinchilar (socketId === null) kutilmaydi, lekin ular
+  // question:progress dagi answered/total hisobida qolaveradi.
+  private maybeRevealEarly(s: LiveSession) {
+    if (s.status !== 'question') return;
+    const q = s.questions[s.currentIdx];
+    const connected = [...s.players.values()].filter((p) => p.socketId !== null);
+    if (connected.length === 0) return;
+    if (connected.every((p) => p.answers.has(q.id))) {
+      if (s.questionTimer) { clearTimeout(s.questionTimer); s.questionTimer = null; }
+      this.reveal(s);
+    }
+  }
 
   private startQuestion(s: LiveSession, idx: number) {
     s.status = 'question';

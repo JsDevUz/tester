@@ -166,6 +166,29 @@ describe('LiveService state machine', () => {
     expect(events.some((e) => e.event === 'game:finished')).toBe(true);
   });
 
+  it("uzilgan o'yinchi early revealni bloklamaydi (javobdan keyin uzilish)", () => {
+    const { service, events, pin } = setup();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.playerJoin(pin, { id: 'u2', name: 'Vali' }, 's2');
+    service.start(pin, 'admin1');
+    service.answer(pin, 'u1', 'q1', ['o2']);
+    expect(events.some((e) => e.event === 'question:reveal')).toBe(false);
+    service.handleDisconnect('s2'); // javob bermagan o'yinchi uzildi
+    expect(events.some((e) => e.event === 'question:reveal')).toBe(true);
+  });
+
+  it("javob bermagan o'yinchi uzilsa qolganlar kutmaydi (uzilishdan keyin javob)", () => {
+    const { service, events, pin } = setup();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.playerJoin(pin, { id: 'u2', name: 'Vali' }, 's2');
+    service.start(pin, 'admin1');
+    service.handleDisconnect('s2'); // u2 javob bermay uzildi
+    service.answer(pin, 'u1', 'q1', ['o2']); // yagona ulangan o'yinchi javob berdi
+    expect(events.some((e) => e.event === 'question:reveal')).toBe(true);
+  });
+
   it("noto'g'ri PIN NOT_FOUND", () => {
     const { service } = setup();
     expect(() => service.start('000000', 'admin1')).toThrow('NOT_FOUND');
