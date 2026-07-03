@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Clock, Shuffle, Calendar, Link2, Check, BarChart2, Settings2, Trash2, Pencil } from 'lucide-react';
+import { Clock, Shuffle, Calendar, Link2, Check, BarChart2, Settings2, Trash2, Pencil, Radio } from 'lucide-react';
 import type { Test } from '../api/tests';
 
 interface Props {
@@ -8,6 +8,7 @@ interface Props {
   onSettings: () => void;
   onDelete: () => void;
   onResults: () => void;
+  onLive: () => void;
 }
 
 const STATUS: Record<string, { label: string; dot: string }> = {
@@ -19,7 +20,7 @@ const STATUS: Record<string, { label: string; dot: string }> = {
 const actionButtonClass = 'w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors';
 const actionIconSize = 17;
 
-export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Props) {
+export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive }: Props) {
   const [copied, setCopied] = useState(false);
   const status = STATUS[test.showResults] ?? STATUS.immediately;
 
@@ -50,6 +51,7 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults }: Prop
           <span className="text-[11px] text-gray-300 truncate">{status.label}</span>
         </div>
         <div className="flex items-center gap-2.5 shrink-0 ml-3">
+          <button onClick={onLive}     title="Live o'yin"  className={actionButtonClass}><Radio     size={actionIconSize} /></button>
           <button onClick={onResults}  title="Natijalar"  className={actionButtonClass}><BarChart2 size={actionIconSize} /></button>
           <button onClick={onEdit}     title="Savollar"   className={actionButtonClass}><Pencil    size={actionIconSize} /></button>
           <button onClick={onSettings} title="Sozlamalar" className={actionButtonClass}><Settings2 size={actionIconSize} /></button>

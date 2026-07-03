@@ -14,6 +14,12 @@ export function Toolbar() {
     <div className="h-12 bg-white/80 backdrop-blur border-b border-gray-200 flex items-center justify-between px-4">
       <span className="font-medium text-gray-700">{admin?.name}</span>
       <div className="flex gap-2">
+        <button
+          onClick={() => navigate(admin?.role === 'student' ? '/live/join' : '/live')}
+          className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
+        >
+          Live o'yin
+        </button>
         {admin?.role === 'super' && (
           <button
             onClick={() => navigate('/admins')}

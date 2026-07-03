@@ -65,6 +65,7 @@ export function FolderViewPage() {
               onSettings={() => setEditTest(test)}
               onDelete={() => setConfirmDelete(test)}
               onResults={() => navigate(`/tests/${test.id}/submissions`)}
+              onLive={() => navigate(`/live?testId=${test.id}`)}
             />
           ))}
           {tests.length === 0 && (
