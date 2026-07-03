@@ -101,6 +101,7 @@ export const submissions = pgTable('submissions', {
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
   score: integer('score'),
   total: integer('total'),
+  mode: text('mode').notNull().default('normal'),
 });
 
 export const answers = pgTable('answers', {
