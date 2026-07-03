@@ -18,6 +18,7 @@ export interface AnswerDetail {
   selectedOptionIds: string[];
   textAnswer: string | null;
   correctAnswer?: string | null;
+  imageUrl?: string | null;
   isCorrect: boolean | null;
   options: Array<{ id: string; text: string; isCorrectOption: boolean }>;
 }
@@ -28,8 +29,8 @@ export interface SubmissionDetail extends Submission {
   answers: AnswerDetail[];
 }
 
-export async function apiGetSubmissions(testId: string): Promise<Submission[]> {
-  const res = await client.get(`/tests/${testId}/submissions`);
+export async function apiGetSubmissions(testId: string, limit = 10, offset = 0): Promise<Submission[]> {
+  const res = await client.get(`/tests/${testId}/submissions`, { params: { limit, offset } });
   return res.data;
 }
 

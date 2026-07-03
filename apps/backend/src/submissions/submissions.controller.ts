@@ -21,8 +21,8 @@ export class SubmissionsController {
 
   @Get('tests/:testId/submissions')
   @Roles('teacher', 'super')
-  findByTest(@Param('testId') testId: string, @Req() req: any) {
-    return this.submissionsService.findByTest(testId, req.admin.id);
+  findByTest(@Param('testId') testId: string, @Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+    return this.submissionsService.findByTest(testId, req.admin.id, limit ? parseInt(limit) : 10, offset ? parseInt(offset) : 0);
   }
 
   @Get('submissions/:id')

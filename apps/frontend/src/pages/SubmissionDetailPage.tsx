@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Circle, CheckCheck, UserRoundCheck } from 'lucide-react';
+import { ChevronLeft } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
+import { AnswerResultCard } from '../components/AnswerResultCard';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
 
 export function SubmissionDetailPage() {
@@ -15,77 +16,54 @@ export function SubmissionDetailPage() {
   }, [id]);
 
   if (error) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
       <p className="text-red-400">Natija topilmadi.</p>
     </div>
   );
 
   if (!detail) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
-      <p className="text-gray-400">Yuklanmoqda...</p>
+    <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+      <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-500 animate-spin" />
     </div>
   );
 
+  const pct = detail.total ? Math.round(((detail.score ?? 0) / detail.total) * 100) : 0;
+  const isGood = pct >= 70;
+  const isMid = pct >= 40 && pct < 70;
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
+    <div className="min-h-screen bg-gray-50 flex flex-col">
       <Toolbar />
-      <div className="flex-1 p-6 max-w-2xl mx-auto w-full">
-        <div className="flex items-center gap-2 mb-4">
-          <button onClick={() => navigate(-1)} className="text-gray-400 hover:text-gray-600 text-sm">← Natijalar</button>
-          <span className="text-gray-400">/</span>
-          <h2 className="text-sm font-medium text-gray-700">{detail.studentName}</h2>
-          <span className="ml-auto text-xs font-medium bg-indigo-100 text-indigo-700 px-2 py-1 rounded-lg">
-            {detail.score} / {detail.total}
-          </span>
+      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-5">
+        {/* Header */}
+        <button onClick={() => navigate(-1)}
+          className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-4 transition-colors">
+          <ChevronLeft size={16} /> Natijalar
+        </button>
+
+        <div className="bg-white rounded-2xl border-2 border-gray-100 px-5 py-4 flex items-center justify-between gap-3 mb-4">
+          <div className="min-w-0">
+            <p className="text-base font-bold text-gray-900 truncate">{detail.studentName}</p>
+            <p className="text-xs text-gray-400 mt-0.5">
+              {detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : 'Topshirilmagan'}
+            </p>
+          </div>
+          <div className="text-right shrink-0">
+            <p className={`text-xl font-black ${isGood ? 'text-green-500' : isMid ? 'text-amber-500' : 'text-red-400'}`}>
+              {pct}%
+            </p>
+            <p className="text-xs text-gray-400">{detail.score} / {detail.total}</p>
+          </div>
         </div>
 
-        <div className="flex flex-col gap-4">
+        {/* Answers */}
+        <div className="flex flex-col gap-3">
           {detail.answers.map((a, i) => (
-            <div key={a.questionId} className="bg-white rounded-2xl border border-gray-100 p-5">
-              <div className="flex items-start gap-2 mb-3">
-                <span className="text-xs text-gray-400 mt-0.5">{i + 1}.</span>
-                <p className="text-sm font-medium text-gray-800 flex-1">{a.questionText}</p>
-                <span className="shrink-0">
-                  {a.isCorrect === true ? <CheckCircle2 size={16} className="text-green-500" /> : a.isCorrect === false ? <XCircle size={16} className="text-red-400" /> : <span className="text-gray-300 text-sm">—</span>}
-                </span>
-              </div>
-
-              {a.questionType === 'open' ? (
-                <p className="text-sm text-gray-600 bg-gray-50 rounded-lg px-3 py-2">
-                  {a.textAnswer ?? '(javob berilmagan)'}
-                </p>
-              ) : (
-                <div className="flex flex-col gap-1.5">
-                  {a.options.map((opt) => {
-                    const studentSelected = a.selectedOptionIds.includes(opt.id);
-                    const isCorrectOpt = opt.isCorrectOption;
-                    return (
-                      <div key={opt.id} className={`text-xs px-3 py-2 rounded-lg flex items-center gap-2 ${
-                        isCorrectOpt ? 'bg-green-50 text-green-700' :
-                        studentSelected ? 'bg-red-50 text-red-600' :
-                        'text-gray-500'
-                      }`}>
-                        {studentSelected ? <Circle size={10} className="fill-current shrink-0" /> : <Circle size={10} className="shrink-0 opacity-30" />}
-                        <span className="min-w-0 flex-1">{opt.text}</span>
-                        <span className="ml-auto flex shrink-0 items-center gap-1">
-                          {studentSelected && (
-                            <span className="flex items-center gap-0.5 text-[10px]">
-                              <UserRoundCheck size={10} /> O'quvchi javobi
-                            </span>
-                          )}
-                          {isCorrectOpt && (
-                            <span className="flex items-center gap-0.5 text-[10px]">
-                              <CheckCheck size={10} /> To'g'ri javob
-                            </span>
-                          )}
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+            <AnswerResultCard key={a.questionId} answer={a} index={i} />
           ))}
+          {detail.answers.length === 0 && (
+            <p className="text-center text-sm text-gray-400 py-8">Javoblar topilmadi.</p>
+          )}
         </div>
       </div>
     </div>

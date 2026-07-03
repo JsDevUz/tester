@@ -5,7 +5,7 @@ import { and, eq, isNotNull } from 'drizzle-orm';
 
 @Injectable()
 export class SubmissionsService {
-  async findByTest(testId: string, adminId: string) {
+  async findByTest(testId: string, adminId: string, limit = 10, offset = 0) {
     const test = await db.query.tests.findFirst({
       where: and(eq(tests.id, testId), eq(tests.adminId, adminId)),
     });
@@ -14,6 +14,8 @@ export class SubmissionsService {
     return db.query.submissions.findMany({
       where: and(eq(submissions.testId, testId), isNotNull(submissions.submittedAt)),
       orderBy: (s, { desc }) => [desc(s.submittedAt)],
+      limit,
+      offset,
     });
   }
 
@@ -105,17 +107,20 @@ export class SubmissionsService {
       score: submission.score,
       total: submission.total,
       testId: submission.testId,
+      testName: submission.test.name,
       answers: submission.answers.map((a) => ({
         questionId: a.questionId,
         questionText: a.question.text,
         questionType: a.question.type,
         selectedOptionIds: a.selectedOptionIds,
         textAnswer: a.textAnswer,
+        correctAnswer: a.question.correctAnswer ?? null,
+        imageUrl: a.question.imageUrl ?? null,
         isCorrect: a.isCorrect,
         correctOptionIds: a.question.options
           .filter((o) => o.isCorrect)
           .map((o) => o.id),
-        options: a.question.options.map((o) => ({ id: o.id, text: o.text, isCorrect: o.isCorrect })),
+        options: a.question.options.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
       })),
     };
   }
