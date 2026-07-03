@@ -28,17 +28,25 @@ export function LivePlayPage() {
   useEffect(() => {
     const socket = getLiveSocket();
 
-    socket.emit('player:join', { pin, token }, (res: any) => {
-      if (!res?.ok) { setErrorCode(res?.code ?? 'ERROR'); setPhase('error'); return; }
-      const state: WsState = res.state;
-      setPlayers(state.players);
-      setScore(state.me?.score ?? 0);
-      if (state.status === 'lobby') setPhase('lobby');
-      else if (state.currentQuestion) {
-        setQuestion(state.currentQuestion);
-        setPhase(state.me?.answeredCurrent ? 'waiting' : 'question');
-      }
-    });
+    function join() {
+      socket.emit('player:join', { pin, token }, (res: any) => {
+        if (!res?.ok) { setErrorCode(res?.code ?? 'ERROR'); setPhase('error'); return; }
+        const state: WsState = res.state;
+        setPlayers(state.players);
+        setScore(state.me?.score ?? 0);
+        if (state.status === 'lobby') setPhase('lobby');
+        else if (state.status === 'finished') {
+          setLeaderboard(state.leaderboard ?? []);
+          setPhase('finished');
+        } else if (state.currentQuestion) {
+          setQuestion(state.currentQuestion);
+          if (state.status === 'reveal') setPhase('waiting');
+          else setPhase(state.me?.answeredCurrent ? 'waiting' : 'question');
+        }
+      });
+    }
+    join();
+    socket.on('connect', join);
 
     socket.on('lobby:update', (p: { players: Array<{ name: string }> }) => setPlayers(p.players));
     socket.on('question:start', (q: WsQuestion) => {
@@ -56,6 +64,7 @@ export function LivePlayPage() {
 
     timerRef.current = setInterval(() => setNow(Date.now()), 200);
     return () => {
+      socket.off('connect', join);
       socket.off('lobby:update'); socket.off('question:start'); socket.off('question:progress');
       socket.off('question:reveal'); socket.off('game:finished');
       if (timerRef.current) clearInterval(timerRef.current);

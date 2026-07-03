@@ -11,7 +11,9 @@ export class SubmissionsController {
 
   @Get('me/submissions')
   findMine(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
-    return this.submissionsService.findMine(req.user.id, limit ? parseInt(limit) : 10, offset ? parseInt(offset) : 0);
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '') || 10));
+    const o = Math.max(0, parseInt(offset ?? '') || 0);
+    return this.submissionsService.findMine(req.user.id, l, o);
   }
 
   @Get('me/submissions/:id')
@@ -22,7 +24,9 @@ export class SubmissionsController {
   @Get('tests/:testId/submissions')
   @Roles('teacher', 'super')
   findByTest(@Param('testId') testId: string, @Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
-    return this.submissionsService.findByTest(testId, req.admin.id, limit ? parseInt(limit) : 10, offset ? parseInt(offset) : 0);
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '') || 10));
+    const o = Math.max(0, parseInt(offset ?? '') || 0);
+    return this.submissionsService.findByTest(testId, req.admin.id, l, o);
   }
 
   @Get('submissions/:id')

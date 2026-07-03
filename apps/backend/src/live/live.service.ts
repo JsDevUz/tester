@@ -20,9 +20,10 @@ export interface SessionStatePayload {
   totalQuestions: number;
   currentQuestion: {
     id: string; idx: number; total: number; text: string; imageUrl: string | null;
-    type: string; options: Array<{ id: string; text: string }>; endsAt: number;
+    type: string; options: Array<{ id: string; text: string }>; timeSec: number; endsAt: number;
   } | null;
   me: { score: number; answeredCurrent: boolean } | null;
+  leaderboard?: LeaderboardEntry[];
 }
 
 @Injectable()
@@ -93,6 +94,8 @@ export class LiveService {
       hostDisconnectTimer: null,
       players: new Map(),
     });
+    const s = this.sessions.get(pin)!;
+    s.hostDisconnectTimer = setTimeout(() => { void this.finish(s); }, HOST_GRACE_MS);
     return pin;
   }
 
@@ -108,7 +111,7 @@ export class LiveService {
 
   playerJoin(pin: string, user: { id: string; name: string }, socketId: string) {
     const s = this.mustGet(pin);
-    if (s.status === 'finished') throw new Error('NOT_FOUND');
+    if (s.status === 'finished' && !s.players.has(user.id)) throw new Error('NOT_FOUND');
     let player = s.players.get(user.id);
     if (!player) {
       player = { userId: user.id, name: user.name, socketId, score: 0, answers: new Map() };
@@ -136,10 +139,13 @@ export class LiveService {
     if (!player) throw new Error('NOT_FOUND');
     if (player.answers.has(questionId)) throw new Error('ALREADY_ANSWERED');
 
+    const validIds = new Set(q.options.map((o) => o.id));
+    const filteredOptionIds = (selectedOptionIds ?? []).filter((id) => validIds.has(id));
+
     const timeMs = Date.now() - s.questionStartedAt;
-    const isCorrect = isAnswerCorrect(q.correctOptionIds, selectedOptionIds);
+    const isCorrect = isAnswerCorrect(q.correctOptionIds, filteredOptionIds);
     const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
-    player.answers.set(questionId, { selectedOptionIds, isCorrect, points, timeMs });
+    player.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
     player.score += points;
 
     const answered = this.answeredCount(s);
@@ -261,30 +267,34 @@ export class LiveService {
     this.broadcaster.toRoom(s.pin, 'game:finished', {
       leaderboard: buildLeaderboard([...s.players.values()]),
     });
-    await this.persistResults(s);
+    if (s.currentIdx >= 0) await this.persistResults(s);
     setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);
   }
 
   private async persistResults(s: LiveSession) {
     for (const p of s.players.values()) {
-      const answersList = [...p.answers.entries()];
-      const correctCount = answersList.filter(([, a]) => a.isCorrect).length;
-      const [sub] = await db.insert(submissions).values({
-        testId: s.testId,
-        userId: p.userId,
-        studentName: p.name,
-        submittedAt: new Date(),
-        score: correctCount,
-        total: s.questions.length,
-        mode: 'live',
-      }).returning();
-      const rows = answersList.map(([questionId, a]) => ({
-        submissionId: sub.id,
-        questionId,
-        selectedOptionIds: a.selectedOptionIds,
-        isCorrect: a.isCorrect,
-      }));
-      if (rows.length > 0) await db.insert(answers).values(rows);
+      try {
+        const answersList = [...p.answers.entries()];
+        const correctCount = answersList.filter(([, a]) => a.isCorrect).length;
+        const [sub] = await db.insert(submissions).values({
+          testId: s.testId,
+          userId: p.userId,
+          studentName: p.name,
+          submittedAt: new Date(),
+          score: correctCount,
+          total: s.questions.length,
+          mode: 'live',
+        }).returning();
+        const rows = answersList.map(([questionId, a]) => ({
+          submissionId: sub.id,
+          questionId,
+          selectedOptionIds: a.selectedOptionIds,
+          isCorrect: a.isCorrect,
+        }));
+        if (rows.length > 0) await db.insert(answers).values(rows);
+      } catch (e) {
+        console.error(`persistResults: failed to persist player ${p.userId} in session ${s.pin}`, e);
+      }
     }
   }
 
@@ -328,12 +338,14 @@ export class LiveService {
         imageUrl: q.imageUrl,
         type: q.type,
         options: q.options,
+        timeSec: s.questionTimeSec,
         endsAt: s.questionStartedAt + s.questionTimeSec * 1000,
       } : null,
       me: player ? {
         score: player.score,
         answeredCurrent: q ? player.answers.has(q.id) : false,
       } : null,
+      ...(s.status === 'finished' ? { leaderboard: buildLeaderboard([...s.players.values()]) } : {}),
     };
   }
 }

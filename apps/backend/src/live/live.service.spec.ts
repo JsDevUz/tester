@@ -193,4 +193,47 @@ describe('LiveService state machine', () => {
     const { service } = setup();
     expect(() => service.start('000000', 'admin1')).toThrow('NOT_FOUND');
   });
+
+  it('junk option id yuborilsa noto\'g\'ri hisoblanadi va saqlangan javobda filtrlanadi', () => {
+    const { service, pin } = setup();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.start(pin, 'admin1');
+    service.answer(pin, 'u1', 'q1', ['x']);
+    const session: any = (service as any).sessions.get(pin);
+    const player = session.players.get('u1');
+    const a = player.answers.get('q1');
+    expect(a.isCorrect).toBe(false);
+    expect(a.selectedOptionIds).toEqual([]);
+  });
+
+  it('host lobbyda uzilib 120s o\'tsa persistResults chaqirilmaydi, lekin finished broadcast bo\'ladi', () => {
+    const { service, events, pin } = setup();
+    const spy = jest.spyOn(service as any, 'persistResults');
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.handleDisconnect('hs');
+    jest.advanceTimersByTime(120000);
+    expect(spy).not.toHaveBeenCalled();
+    expect(events.some((e) => e.event === 'game:finished')).toBe(true);
+  });
+
+  it('host hech qachon join qilmasa, 120s dan keyin sessiya finished bo\'ladi', () => {
+    const service = new LiveService();
+    const { b, events } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
+    service.initSession('admin1', 'test1', 'Matematika', makeQuestions(), 10);
+    jest.advanceTimersByTime(120000);
+    expect(events.some((e) => e.event === 'game:finished')).toBe(true);
+  });
+
+  it('buildState savol paytida timeSec ni o\'z ichiga oladi', () => {
+    const { service, pin } = setup();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.start(pin, 'admin1');
+    const { state } = service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1new');
+    expect(state.currentQuestion?.timeSec).toBe(10);
+  });
 });

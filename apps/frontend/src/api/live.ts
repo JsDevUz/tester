@@ -6,8 +6,7 @@ const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://
 let socket: Socket | null = null;
 
 export function getLiveSocket(): Socket {
-  if (!socket || socket.disconnected) {
-    socket?.close();
+  if (!socket) {
     socket = io(`${BACKEND}/live`, { transports: ['websocket', 'polling'] });
   }
   return socket;
@@ -59,4 +58,5 @@ export interface WsState {
   questionTimeSec: number; totalQuestions: number;
   currentQuestion: WsQuestion | null;
   me: { score: number; answeredCurrent: boolean } | null;
+  leaderboard?: Array<{ userId: string; name: string; score: number; rank: number }>;
 }

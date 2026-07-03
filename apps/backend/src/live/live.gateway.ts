@@ -8,7 +8,7 @@ import { LiveService } from './live.service';
 
 interface JwtUser { sub: string; name: string; role: string }
 
-@WebSocketGateway({ namespace: '/live', cors: { origin: true } })
+@WebSocketGateway({ namespace: '/live', cors: { origin: process.env.FRONTEND_URL } })
 export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer() server!: Namespace;
 
