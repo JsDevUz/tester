@@ -2,6 +2,7 @@ import { useEffect, useRef, useState, useCallback } from 'react';
 import { CheckCircle2, XCircle, X, ChevronRight, Circle, Clock, Trophy, BookOpen, ThumbsUp } from 'lucide-react';
 import { Toolbar } from '../components/Toolbar';
 import { apiGetMySubmissions, apiGetMySubmissionDetail, type Submission, type SubmissionDetail } from '../api/submissions';
+import { formatDateTime } from '../utils/date';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? '';
 const LIMIT = 10;
@@ -98,7 +99,7 @@ export function StudentHistoryPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{s.testName ?? 'Test'}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {s.submittedAt ? new Date(s.submittedAt).toLocaleString() : 'Topshirilmagan'}
+                      {s.submittedAt ? formatDateTime(s.submittedAt) : 'Topshirilmagan'}
                     </p>
                   </div>
                   <div className="flex items-center gap-2 shrink-0">

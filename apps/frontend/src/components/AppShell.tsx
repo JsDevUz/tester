@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import {
   BookOpen, CreditCard, ClipboardList, Users, School, Settings,
-  FileText, Radio, UserCheck, Hourglass, ShieldCheck, LogOut, X, type LucideIcon,
+  FileText, Radio, UsersRound, Clock3, ShieldCheck, LogOut, X, type LucideIcon,
 } from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
@@ -27,18 +27,28 @@ const SECTIONS: NavSection[] = [
     key: 'practice', label: 'Amaliyotlar', icon: ClipboardList, path: '/',
     subItems: [
       { label: 'Testlar', path: '/', icon: FileText },
-      { label: 'Live musobaqa', path: '/live', icon: Radio },
+      { label: 'Jonli musobaqa', path: '/live', icon: Radio },
     ],
   },
   {
     key: 'students', label: "O'quvchilar", icon: Users, path: '/students',
     subItems: [
-      { label: 'Barchasi', path: '/students', icon: UserCheck },
-      { label: 'Ruxsat kutayotganlar', path: '/students/pending', icon: Hourglass },
+      { label: 'Barchasi', path: '/students', icon: UsersRound },
+      { label: 'Ruxsat kutayotganlar', path: '/students/pending', icon: Clock3 },
     ],
   },
   { key: 'school', label: 'Mening Maktabim', icon: School, path: '/school' },
 ];
+
+function isRouteMatch(pathname: string, path: string) {
+  if (path === '/') {
+    return pathname === '/'
+      || pathname.startsWith('/folders/')
+      || pathname.startsWith('/tests/')
+      || pathname.startsWith('/submissions/');
+  }
+  return pathname === path || pathname.startsWith(path + '/');
+}
 
 export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
@@ -47,9 +57,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const activeSection = SECTIONS.find((s) =>
     s.subItems
-      ? s.subItems.some((si) => location.pathname === si.path || location.pathname.startsWith(si.path + '/'))
-      : location.pathname === s.path || (s.path !== '/' && location.pathname.startsWith(s.path + '/')),
+      ? s.subItems.some((si) => isRouteMatch(location.pathname, si.path))
+      : isRouteMatch(location.pathname, s.path),
   );
+  const activeSubItemPath = activeSection?.subItems
+    ?.filter((item) => isRouteMatch(location.pathname, item.path))
+    .sort((a, b) => b.path.length - a.path.length)[0]?.path;
   // null = "hali qo'lda bosilmagan, joriy faol bo'limni ko'rsat"; '' = "qo'lda yopilgan"; boshqa = qo'lda ochilgan bo'lim
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
@@ -72,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col lg:flex-row gap-3 bg-gray-50 p-3"
+      className="flex flex-col lg:flex-row gap-3 bg-gray-50 p-3 lg:relative"
       style={{
         height: '100dvh',
         paddingTop: 'max(12px, env(safe-area-inset-top))',
@@ -80,7 +93,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       }}
     >
       {/* ── Birinchi qatlam: desktopda chap ikon panel, mobilda pastki tab bar ── */}
-      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto">
+      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto lg:z-10">
         <button onClick={() => navigate('/')} className="hidden lg:block mb-6 shrink-0">
           <img src="/favicon.png" alt="Logo" className="w-9 h-9 rounded-xl object-cover" />
         </button>
@@ -93,6 +106,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             return (
               <button
                 key={section.key}
+                aria-label={section.label}
                 onClick={() => {
                   if (section.subItems) {
                     setOpenKey(isOpen ? '' : section.key);
@@ -101,8 +115,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                     setOpenKey('');
                   }
                 }}
-                title={section.label}
-                className={`relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 ${
+                className={`group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
                   isActive || isOpen
                     ? 'bg-white text-indigo-600'
                     : 'text-gray-400 hover:bg-white/10 hover:text-white'
@@ -115,52 +128,102 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="lg:hidden absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400" />
                 )}
                 <Icon size={20} />
+                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+                  {section.label}
+                </span>
               </button>
             );
           })}
         </nav>
 
+        {/* Adminlar (faqat super admin) va Chiqish — icon ko'rinishida, Settings ustida */}
+        <div className="hidden lg:flex flex-col w-full px-2 gap-1 mb-2">
+          {admin?.role === 'super' && (
+            <button
+              onClick={() => navigate('/admins')}
+              aria-label="Adminlar"
+              className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+            >
+              <ShieldCheck size={20} />
+              <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+                Adminlar
+              </span>
+            </button>
+          )}
+          <button
+            onClick={handleLogout}
+            aria-label="Chiqish"
+            className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+          >
+            <LogOut size={20} />
+            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+              Chiqish
+            </span>
+          </button>
+        </div>
+
         {/* Settings — disabled, desktop only */}
         <button
-          disabled
-          title="Sozlamalar (tez orada)"
-          className="hidden lg:flex w-full aspect-square rounded-xl items-center justify-center text-gray-600 cursor-not-allowed mb-2"
+          type="button"
+          aria-disabled="true"
+          aria-label="Sozlamalar"
+          className="group relative hidden lg:flex w-full aspect-square rounded-xl items-center justify-center text-gray-600 cursor-not-allowed mb-2 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
           <Settings size={20} />
+          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+            Sozlamalar
+          </span>
         </button>
 
         {/* Profil */}
         <button
           onClick={() => setProfileOpen(true)}
-          title={admin?.name ?? ''}
-          className="w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0"
+          aria-label={admin?.name ?? 'Profil'}
+          className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
           {initial}
+          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+            {admin?.name ?? 'Profil'}
+          </span>
         </button>
       </div>
 
-      {/* ── Ikkinchi qatlam (desktop): joriy faol bo'limni avtomatik ochib turadigan yonma-yon panel ── */}
+      {/* ── Ikkinchi qatlam (desktop): sidebar yonida turadigan subpanel ── */}
       {desktopShownSection?.subItems && (
-        <div className="hidden lg:flex relative order-2 shrink-0 bg-white border border-gray-100 flex-col py-5 px-3 w-64">
-          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
-            {desktopShownSection.label}
-          </p>
-          <div className="flex flex-col gap-1">
-            {desktopShownSection.subItems.map((item) => {
+        <div className="hidden lg:flex order-2 shrink-0 flex-col gap-3 w-64 min-h-0">
+          {/* Bo'lim sarlavha kartochkasi */}
+          <div className="bg-white border border-gray-100 rounded-2xl px-3.5 py-3 flex items-center gap-3 shrink-0">
+            <div className="w-9 h-9 rounded-xl bg-indigo-50 text-indigo-500 flex items-center justify-center shrink-0">
+              <desktopShownSection.icon size={18} />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-semibold text-gray-800 truncate">{desktopShownSection.label}</p>
+              <p className="text-xs text-gray-400 truncate">{desktopShownSection.subItems.length} ta bo'lim</p>
+            </div>
+          </div>
+
+          {/* Sub-item ro'yxati */}
+          <div className="min-h-0 bg-white border border-gray-100 rounded-2xl p-2 flex flex-col overflow-y-auto">
+            {desktopShownSection.subItems.map((item, i) => {
               const ItemIcon = item.icon;
-              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+              const isActive = desktopShownSection.key === activeSection?.key && activeSubItemPath === item.path;
               return (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className={`group flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl transition-colors ${
+                  className={`group relative flex items-center gap-3 text-left text-sm px-3 py-3 rounded-xl transition-colors ${
+                    i > 0 ? 'mt-0.5' : ''
+                  } ${
                     isActive
-                      ? 'bg-indigo-50 text-indigo-600 font-semibold'
+                      ? 'bg-indigo-50/70 text-indigo-600 font-semibold'
                       : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
+                  {isActive && (
+                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-1 h-6 rounded-full bg-indigo-500" />
+                  )}
                   <ItemIcon
-                    size={17}
+                    size={18}
                     className={`shrink-0 transition-colors ${
                       isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-600'
                     }`}
@@ -170,44 +233,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               );
             })}
           </div>
-
-          <button
-            onClick={() => setProfileOpen((v) => !v)}
-            className="mt-auto pt-4 border-t border-gray-100 flex items-center gap-2.5 px-2 text-left"
-          >
-            <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0">
-              {initial}
-            </div>
-            <div className="min-w-0">
-              <p className="text-sm font-medium text-gray-800 truncate">{admin?.name}</p>
-              {admin?.phone && <p className="text-xs text-gray-400 truncate">{admin.phone}</p>}
-            </div>
-          </button>
-
-          {/* Profil menyusi (desktop) — sub-panel ichida, uning yuqorisida joylashadi */}
-          {profileOpen && (
-            <>
-              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
-              <div className="absolute z-50 bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-gray-100 shadow-lg p-2">
-                {admin?.role === 'super' && (
-                  <button
-                    onClick={() => { navigate('/admins'); setProfileOpen(false); }}
-                    className="w-full flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                  >
-                    <ShieldCheck size={17} className="text-gray-400 shrink-0" />
-                    Adminlar
-                  </button>
-                )}
-                <button
-                  onClick={handleLogout}
-                  className="w-full flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-                >
-                  <LogOut size={17} className="shrink-0" />
-                  Chiqish
-                </button>
-              </div>
-            </>
-          )}
         </div>
       )}
 
@@ -227,7 +252,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             <div className="flex flex-col gap-1">
               {mobileShownSection.subItems.map((item) => {
                 const ItemIcon = item.icon;
-                const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+                const isActive = mobileShownSection.key === activeSection?.key && activeSubItemPath === item.path;
                 return (
                   <button
                     key={item.path}
@@ -254,7 +279,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Asosiy kontent ── */}
-      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-white rounded-2xl border border-gray-100 overflow-y-auto">{children}</div>
+      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-white rounded-2xl border border-gray-100 overflow-y-auto">
+        {children}
+      </div>
 
       {/* ── Profil menyusi (chiqish / adminlar) — mobilda doim shu yerdan, desktopda faqat
            ikkinchi qatlam panel ochiq bo'lmasa (chunki bo'lsa, o'sha panel ichida bor) ── */}
@@ -271,7 +298,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 {admin?.phone && <p className="text-xs text-gray-400 truncate">{admin.phone}</p>}
               </div>
             </div>
-            <div className="flex flex-col gap-1">
+            <div className="lg:hidden flex flex-col gap-1">
               {admin?.role === 'super' && (
                 <button
                   onClick={() => { navigate('/admins'); setProfileOpen(false); }}

@@ -5,6 +5,7 @@ import { AppShell } from '../components/AppShell';
 import { useTestStore } from '../stores/testStore';
 import { apiGetTest, type TestDetail } from '../api/tests';
 import { apiGetSubmissions, apiDeleteSubmission, type Submission } from '../api/submissions';
+import { formatDateTime } from '../utils/date';
 
 const LIMIT = 10;
 
@@ -125,7 +126,7 @@ export function SubmissionsPage() {
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{sub.studentName}</p>
                     <p className="text-xs text-gray-400 mt-0.5">
-                      {sub.submittedAt ? new Date(sub.submittedAt).toLocaleString() : 'Topshirilmagan'}
+                      {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}
                     </p>
                   </div>
                   <div className="text-right shrink-0">

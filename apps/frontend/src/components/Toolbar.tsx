@@ -18,7 +18,7 @@ export function Toolbar() {
           onClick={() => navigate(admin?.role === 'student' ? '/live/join' : '/live')}
           className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
         >
-          Live o'yin
+          Jonli musobaqa
         </button>
         {admin?.role === 'super' && (
           <button

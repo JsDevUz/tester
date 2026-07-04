@@ -4,6 +4,7 @@ import { Clock, Calendar, ChevronRight, Lock, FileText } from 'lucide-react';
 import { apiGetPublicTest, apiStartSubmission, apiGetSubmission, type PublicTest } from '../api/delivery';
 import { apiGetMe } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
+import { formatDateTime } from '../utils/date';
 
 export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
@@ -136,7 +137,7 @@ export function TakeTestEntryPage() {
                 )}
                 {test.deadline && (
                   <span className="flex items-center gap-1.5 text-sm bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl font-medium">
-                    <Calendar size={13} /> {new Date(test.deadline).toLocaleString()}
+                    <Calendar size={13} /> {formatDateTime(test.deadline)}
                   </span>
                 )}
               </div>

@@ -4,6 +4,7 @@ import { ChevronLeft } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { AnswerResultCard } from '../components/AnswerResultCard';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
+import { formatDateTime } from '../utils/date';
 
 export function SubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -45,7 +46,7 @@ export function SubmissionDetailPage() {
           <div className="min-w-0">
             <p className="text-base font-bold text-gray-900 truncate">{detail.studentName}</p>
             <p className="text-xs text-gray-400 mt-0.5">
-              {detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : 'Topshirilmagan'}
+              {detail.submittedAt ? formatDateTime(detail.submittedAt) : 'Topshirilmagan'}
             </p>
           </div>
           <div className="text-right shrink-0">

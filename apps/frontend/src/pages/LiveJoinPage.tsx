@@ -27,7 +27,7 @@ export function LiveJoinPage() {
         <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6">
           <Radio size={28} className="text-indigo-400" />
         </div>
-        <p className="text-xl font-bold text-gray-900 mb-2">Live o'yinga kirish</p>
+        <p className="text-xl font-bold text-gray-900 mb-2">Jonli musobaqaga kirish</p>
         <p className="text-sm text-gray-400 mb-8">Ustoz bergan 6 xonali PIN kodni kiriting</p>
         <input
           autoFocus inputMode="numeric" maxLength={6} value={pin}

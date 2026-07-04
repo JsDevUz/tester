@@ -43,7 +43,7 @@ export function NewLiveSessionModal({ onClose, initialTestId }: { onClose: () =>
         <div className="flex items-center justify-between px-6 pt-6 pb-2">
           <div className="flex items-center gap-2">
             <Radio size={20} className="text-indigo-500" />
-            <h2 className="text-lg font-bold text-gray-800">Live o'yin yaratish</h2>
+            <h2 className="text-lg font-bold text-gray-800">Jonli musobaqa yaratish</h2>
           </div>
           <button onClick={onClose} className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors">
             <X size={18} />

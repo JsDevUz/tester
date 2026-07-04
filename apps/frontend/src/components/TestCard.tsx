@@ -1,6 +1,7 @@
 import { useState } from 'react';
-import { Clock, Shuffle, Calendar, Link2, Check, BarChart2, Settings2, Trash2, Pencil, Radio } from 'lucide-react';
+import { Clock, Shuffle, Calendar, Link2, Check, BarChart2, Settings2, Trash2, Pencil, Radio, History, type LucideIcon } from 'lucide-react';
 import type { Test } from '../api/tests';
+import { formatDate } from '../utils/date';
 
 interface Props {
   test: Test;
@@ -11,18 +12,37 @@ interface Props {
   onLive: () => void;
 }
 
-const STATUS: Record<string, { label: string; dot: string }> = {
-  immediately: { label: "Natija ko'rinadi", dot: 'bg-green-400' },
-  after_deadline: { label: 'Muddat keyin',   dot: 'bg-orange-400' },
-  hidden:        { label: 'Natija yashirin', dot: 'bg-gray-400' },
-};
-
-const actionButtonClass = 'w-8 h-8 inline-flex items-center justify-center rounded-lg text-gray-400 hover:bg-white/10 hover:text-white transition-colors';
+const actionButtonClass = 'group relative h-9 w-full inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0';
 const actionIconSize = 17;
+
+function ActionButton({
+  label,
+  icon: Icon,
+  onClick,
+  danger,
+}: {
+  label: string;
+  icon: LucideIcon;
+  onClick: () => void;
+  danger?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-label={label}
+      className={`${actionButtonClass} ${danger ? 'hover:text-red-400' : ''}`}
+    >
+      <Icon size={actionIconSize} />
+      <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 shadow-lg shadow-gray-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+        {label}
+      </span>
+    </button>
+  );
+}
 
 export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive }: Props) {
   const [copied, setCopied] = useState(false);
-  const status = STATUS[test.showResults] ?? STATUS.immediately;
 
   async function copyLink(e: React.MouseEvent) {
     e.stopPropagation();
@@ -36,7 +56,7 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive
     <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
 
       {/* Header */}
-      <div className="h-[88px] px-4 pt-4 pb-3 shrink-0">
+      <div className="h-[100px] px-4 pt-4 pb-4 shrink-0">
         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Test</p>
         <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{test.name}</p>
         <p className="min-h-[28px] text-[11px] text-gray-400 line-clamp-2 leading-snug mt-1">
@@ -45,18 +65,12 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive
       </div>
 
       {/* Dark action bar */}
-      <div className="h-[52px] bg-gray-900 px-4 flex items-center justify-between shrink-0">
-        <div className="flex items-center gap-1.5 min-w-0 max-w-[98px]">
-          <span className={`w-1.5 h-1.5 rounded-full shrink-0 ${status.dot}`} />
-          <span className="text-[11px] text-gray-300 truncate">{status.label}</span>
-        </div>
-        <div className="flex items-center gap-2.5 shrink-0 ml-3">
-          <button onClick={onLive}     title="Live o'yin"  className={actionButtonClass}><Radio     size={actionIconSize} /></button>
-          <button onClick={onResults}  title="Natijalar"  className={actionButtonClass}><BarChart2 size={actionIconSize} /></button>
-          <button onClick={onEdit}     title="Savollar"   className={actionButtonClass}><Pencil    size={actionIconSize} /></button>
-          <button onClick={onSettings} title="Sozlamalar" className={actionButtonClass}><Settings2 size={actionIconSize} /></button>
-          <button onClick={onDelete}   title="O'chirish"  className={`${actionButtonClass} hover:text-red-400`}><Trash2   size={actionIconSize} /></button>
-        </div>
+      <div className="h-[52px] bg-gray-900 px-4 grid grid-cols-5 items-center gap-2 shrink-0">
+        <ActionButton label="Jonli musobaqa" icon={Radio} onClick={onLive} />
+        <ActionButton label="Natijalar" icon={BarChart2} onClick={onResults} />
+        <ActionButton label="Savollar" icon={Pencil} onClick={onEdit} />
+        <ActionButton label="Sozlamalar" icon={Settings2} onClick={onSettings} />
+        <ActionButton label="O'chirish" icon={Trash2} onClick={onDelete} danger />
       </div>
 
       {/* Info list — like feature list in the reference */}
@@ -69,10 +83,14 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive
           <Shuffle size={13} className="text-gray-400 shrink-0" />
           <span className="truncate">{test.shuffleQuestions ? "Savollar aralashtiriladi" : "Savollar tartibli"}</span>
         </div>
+        <div className={`flex h-4 items-center gap-2 text-xs ${test.requireAuth ? 'text-gray-600' : 'text-gray-400'}`}>
+          <History size={13} className="text-gray-400 shrink-0" />
+          <span className="truncate">{test.requireAuth ? 'Tarixga saqlanadi' : 'Tarixga saqlanmaydi'}</span>
+        </div>
         {test.deadline ? (
           <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
             <Calendar size={13} className="text-gray-400 shrink-0" />
-            <span className="truncate">{new Date(test.deadline).toLocaleDateString('uz-UZ', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
+            <span className="truncate">{formatDate(test.deadline)}</span>
           </div>
         ) : (
           <div className="flex h-4 items-center gap-2 text-xs text-gray-400">

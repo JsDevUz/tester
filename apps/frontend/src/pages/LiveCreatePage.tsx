@@ -4,6 +4,7 @@ import { Radio, Plus, ChevronRight, Users2, User, Inbox } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { NewLiveSessionModal } from '../components/NewLiveSessionModal';
 import { apiListLiveSessions, type LiveSessionHistoryItem } from '../api/live';
+import { formatDateTime } from '../utils/date';
 
 const LIMIT = 20;
 
@@ -47,15 +48,15 @@ export function LiveCreatePage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-        <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+        <div className="flex-1 w-full px-6 py-6">
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-2 min-w-0">
               <Radio size={20} className="text-indigo-500 shrink-0" />
-              <h2 className="text-lg font-bold text-gray-800 truncate">Live musobaqalar</h2>
+              <h2 className="text-lg font-bold text-gray-800 truncate">Jonli musobaqalar</h2>
             </div>
-            <button onClick={() => setShowModal(true)} title="Yangi live yaratish"
+            <button onClick={() => setShowModal(true)} title="Yangi jonli musobaqa yaratish"
               className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100 shrink-0">
-              <Plus size={16} /> <span className="hidden sm:inline">Yangi live yaratish</span>
+              <Plus size={16} /> <span className="hidden sm:inline">Yangi jonli musobaqa</span>
             </button>
           </div>
 
@@ -80,7 +81,7 @@ export function LiveCreatePage() {
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold text-gray-800 truncate">{s.testName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">{new Date(s.createdAt).toLocaleString()}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{formatDateTime(s.createdAt)}</p>
                   </div>
                   <span className={`text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 ${
                     s.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'

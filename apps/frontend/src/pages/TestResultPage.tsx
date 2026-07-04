@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { CheckCircle2, XCircle, Circle, Clock, Trophy, BookOpen, ThumbsUp } from 'lucide-react';
 import { apiGetSubmissionResult, type SubmissionResult } from '../api/delivery';
+import { formatDateTime } from '../utils/date';
 
 export function getCachedSubmissionResult(raw: string | null, submissionId: string | null) {
   if (!raw) return null;
@@ -197,7 +198,7 @@ export function TestResultPage() {
             <p className="text-sm text-gray-400 leading-relaxed">
               Natijalar{' '}
               {result.deadline
-                ? <span className="text-indigo-500 font-medium">{new Date(result.deadline).toLocaleString()}</span>
+                ? <span className="text-indigo-500 font-medium">{formatDateTime(result.deadline)}</span>
                 : 'deadline'}{' '}
               dan keyin ochiladi.
             </p>
