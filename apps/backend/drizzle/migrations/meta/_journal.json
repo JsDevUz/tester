@@ -71,6 +71,13 @@
       "when": 1783050849789,
       "tag": "0009_ambitious_chat",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1783300000000,
+      "tag": "0010_rename_submission_mode",
+      "breakpoints": true
     }
   ]
 }
