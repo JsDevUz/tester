@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Req, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Query, Req, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
 import { IsString, IsInt, IsIn, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -20,6 +20,13 @@ export class LiveController {
   @Get('tests')
   listTests(@Req() req: any) {
     return this.liveService.listTests(req.admin.id);
+  }
+
+  @Get('sessions')
+  listSessions(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+    const l = Math.min(100, Math.max(1, parseInt(limit ?? '20', 10) || 20));
+    const o = Math.max(0, parseInt(offset ?? '0', 10) || 0);
+    return this.liveService.listSessionHistory(req.admin.id, l, o);
   }
 
   @Post('sessions')
