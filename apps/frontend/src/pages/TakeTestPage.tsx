@@ -470,6 +470,22 @@ export function TakeTestPage() {
   const currentFeedback = currentQ ? feedbackMap[currentQ.id] : undefined;
   const isChecked = !!currentFeedback;
 
+  function isQuestionAnswered(q: PublicQuestion): boolean {
+    const sel = selectedMap[q.id];
+    if (sel && sel.length > 0) return true;
+    const txt = textMap[q.id];
+    return !!txt && txt.trim().length > 0;
+  }
+
+  // per_question: faqat tekshirilgan (yoki joriy) savolga sakrash mumkin — javob berish
+  // majburiy ketma-ketligini buzmaslik uchun. Boshqa oneByOne rejimlarda erkin sakrash.
+  function canJumpTo(idx: number): boolean {
+    if (!isPerQuestion) return true;
+    if (idx <= currentIdx) return true;
+    const q = orderedQuestions[idx];
+    return !!(q && feedbackMap[q.id]);
+  }
+
   const OPTION_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
   function renderQuestionBody(q: PublicQuestion, inCard = false) {
@@ -635,9 +651,12 @@ export function TakeTestPage() {
     >
       {/* ── HEADER ── */}
       <div
-        className="shrink-0 px-4 flex items-center justify-between gap-2 bg-white"
+        className="shrink-0 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4 bg-white lg:border-b lg:border-gray-100"
         style={{ paddingTop: 'env(safe-area-inset-top)', height: 'calc(52px + env(safe-area-inset-top))' }}
       >
+        {/* Test nomi — faqat desktop */}
+        <span className="hidden lg:block text-sm font-semibold text-gray-700 truncate max-w-xs">{test.name}</span>
+
         {/* Font size controls */}
         <div className="flex items-center gap-0.5 shrink-0">
           <button onClick={() => setFontSize((s) => Math.max(12, s - 2))}
@@ -657,11 +676,11 @@ export function TakeTestPage() {
             <span className="text-gray-300 font-normal"> / {orderedQuestions.length}</span>
           </span>
         ) : (
-          <span className="text-sm font-medium text-gray-600 truncate max-w-[160px]">{test.name}</span>
+          <span className="text-sm font-medium text-gray-600 truncate max-w-[160px] lg:hidden">{test.name}</span>
         )}
 
         {/* Timer */}
-        <div className="shrink-0 w-16 flex justify-end">
+        <div className="shrink-0 w-16 lg:w-auto flex justify-end">
           {timeLeft !== null ? (
             <span className={`font-mono text-sm font-medium ${timeLeft < 60 ? 'text-red-500' : 'text-gray-500'}`}>
               <Clock size={12} className="inline mr-0.5 -mt-0.5" />{formatTime(timeLeft)}
@@ -685,110 +704,162 @@ export function TakeTestPage() {
       {/* ── CONTENT ── */}
       {isOneByOne ? (
         // ─── ONE BY ONE / PER QUESTION ───────────────────────────
-        <>
-          {/* Scrollable question area */}
-          <div className="flex-1 min-h-0 overflow-y-auto">
-            {currentQ && (() => {
-              return (
-                <div className="flex flex-col min-h-full">
-                  {/* ── Question zone ── */}
-                  <div className="px-5 pt-6 pb-5">
-                    <p
-                      className="font-bold text-gray-900 leading-snug"
-                      style={{ fontSize: `calc(var(--q-fs, 16px) + 2px)` }}
-                    >
-                      {currentQ.text}
-                    </p>
-                    {currentQ.imageUrl && currentQ.type !== 'droppin' && (
-                      <img
-                        src={mediaUrl(currentQ.imageUrl)} alt=""
-                        className="w-full rounded-2xl object-cover mt-4"
-                        style={{ maxHeight: 220 }}
-                      />
-                    )}
-                    {currentQ.audioUrl && (
-                      <audio src={mediaUrl(currentQ.audioUrl)} controls className="w-full h-9 mt-4" />
-                    )}
+        <div className="flex-1 min-h-0 flex flex-col lg:flex-row-reverse">
+          {/* ── DESKTOP: savol navigatori (chap panel) ── */}
+          <div className="hidden lg:flex lg:flex-col lg:w-64 xl:w-72 shrink-0 border-l border-gray-100 bg-gray-50/60 px-5 py-6 overflow-y-auto">
+            <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-4">Savollar</p>
+            <div className="grid grid-cols-5 gap-2">
+              {orderedQuestions.map((q, i) => {
+                const answered = isQuestionAnswered(q);
+                const isCurrent = i === currentIdx;
+                const jumpable = canJumpTo(i);
+                const checkedQ = isPerQuestion && !!feedbackMap[q.id];
+                return (
+                  <button
+                    key={q.id}
+                    disabled={!jumpable}
+                    onClick={() => jumpable && setCurrentIdx(i)}
+                    title={checkedQ ? (feedbackMap[q.id].isCorrect ? "To'g'ri" : "Noto'g'ri") : undefined}
+                    className={`aspect-square rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${
+                      isCurrent
+                        ? 'bg-indigo-500 text-white shadow-md shadow-indigo-200'
+                        : checkedQ
+                        ? feedbackMap[q.id].isCorrect
+                          ? 'bg-green-100 text-green-700 hover:bg-green-200'
+                          : 'bg-red-100 text-red-600 hover:bg-red-200'
+                        : answered
+                        ? 'bg-indigo-100 text-indigo-700 hover:bg-indigo-200'
+                        : jumpable
+                        ? 'bg-white border-2 border-gray-200 text-gray-500 hover:border-indigo-300'
+                        : 'bg-gray-100 text-gray-300 cursor-not-allowed'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                );
+              })}
+            </div>
+            <div className="mt-6 flex flex-col gap-2 text-xs text-gray-500">
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-md bg-indigo-100 shrink-0" /> Javob berilgan
+              </div>
+              <div className="flex items-center gap-2">
+                <span className="w-3.5 h-3.5 rounded-md bg-white border-2 border-gray-200 shrink-0" /> Javobsiz
+              </div>
+              {isPerQuestion && (
+                <div className="flex items-center gap-2">
+                  <span className="w-3.5 h-3.5 rounded-md bg-gray-100 shrink-0" /> Hali ochilmagan
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── O'NG USTUN: savol + variantlar + feedback + tugmalar ── */}
+          <div className="flex-1 min-h-0 flex flex-col">
+            {/* Scrollable question area */}
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              {currentQ && (() => {
+                return (
+                  <div className="flex flex-col min-h-full lg:max-w-3xl lg:mx-auto lg:w-full">
+                    {/* ── Question zone ── */}
+                    <div className="px-5 lg:px-8 pt-6 lg:pt-10 pb-5">
+                      <p
+                        className="font-bold text-gray-900 leading-snug"
+                        style={{ fontSize: `calc(var(--q-fs, 16px) + 2px)` }}
+                      >
+                        {currentQ.text}
+                      </p>
+                      {currentQ.imageUrl && currentQ.type !== 'droppin' && (
+                        <img
+                          src={mediaUrl(currentQ.imageUrl)} alt=""
+                          className="w-full rounded-2xl object-cover mt-4"
+                          style={{ maxHeight: 220 }}
+                        />
+                      )}
+                      {currentQ.audioUrl && (
+                        <audio src={mediaUrl(currentQ.audioUrl)} controls className="w-full h-9 mt-4" />
+                      )}
+                    </div>
+
+                    {/* ── Divider ── */}
+                    <div className="h-px bg-gray-100 mx-5 lg:mx-8" />
+
+                    {/* ── Options zone ── */}
+                    <div className="px-5 lg:px-8 pt-5 pb-6 flex flex-col gap-3">
+                      {renderQuestionBody(currentQ, true)}
+                    </div>
                   </div>
+                );
+              })()}
+            </div>
 
-                  {/* ── Divider ── */}
-                  <div className="h-px bg-gray-100 mx-5" />
-
-                  {/* ── Options zone ── */}
-                  <div className="px-5 pt-5 pb-6 flex flex-col gap-3">
-                    {renderQuestionBody(currentQ, true)}
+            {/* ── FEEDBACK PANEL (per_question) ── */}
+            {isPerQuestion && currentQ && feedbackMap[currentQ.id] && (() => {
+              const fb = feedbackMap[currentQ.id];
+              const correct = fb.isCorrect === true;
+              const incorrect = fb.isCorrect === false;
+              return (
+                <div className={`shrink-0 px-5 lg:px-8 py-4 border-t-2 ${
+                  correct ? 'bg-green-50 border-green-200' :
+                  incorrect ? 'bg-red-50 border-red-200' :
+                  'bg-gray-50 border-gray-200'
+                }`}>
+                  <div className="lg:max-w-3xl lg:mx-auto flex items-center gap-3">
+                    {correct
+                      ? <CheckCircle2 size={22} className="text-green-500 shrink-0" />
+                      : incorrect
+                      ? <XCircle size={22} className="text-red-400 shrink-0" />
+                      : null}
+                    <div>
+                      <p className={`font-semibold ${
+                        correct ? 'text-green-700' : incorrect ? 'text-red-600' : 'text-gray-600'
+                      }`}>
+                        {correct ? "To'g'ri!" : incorrect ? "Noto'g'ri" : "Javob qabul qilindi"}
+                      </p>
+                      {fb.correctAnswer && incorrect && (
+                        <p className="text-xs text-green-600 mt-0.5">To'g'ri javob: {fb.correctAnswer}</p>
+                      )}
+                    </div>
                   </div>
                 </div>
               );
             })()}
-          </div>
 
-          {/* ── FEEDBACK PANEL (per_question) ── */}
-          {isPerQuestion && currentQ && feedbackMap[currentQ.id] && (() => {
-            const fb = feedbackMap[currentQ.id];
-            const correct = fb.isCorrect === true;
-            const incorrect = fb.isCorrect === false;
-            return (
-              <div className={`shrink-0 px-5 py-4 border-t-2 ${
-                correct ? 'bg-green-50 border-green-200' :
-                incorrect ? 'bg-red-50 border-red-200' :
-                'bg-gray-50 border-gray-200'
-              }`}>
-                <div className="flex items-center gap-3">
-                  {correct
-                    ? <CheckCircle2 size={22} className="text-green-500 shrink-0" />
-                    : incorrect
-                    ? <XCircle size={22} className="text-red-400 shrink-0" />
-                    : null}
-                  <div>
-                    <p className={`font-semibold ${
-                      correct ? 'text-green-700' : incorrect ? 'text-red-600' : 'text-gray-600'
-                    }`}>
-                      {correct ? "To'g'ri!" : incorrect ? "Noto'g'ri" : "Javob qabul qilindi"}
-                    </p>
-                    {fb.correctAnswer && incorrect && (
-                      <p className="text-xs text-green-600 mt-0.5">To'g'ri javob: {fb.correctAnswer}</p>
-                    )}
-                  </div>
-                </div>
-              </div>
-            );
-          })()}
-
-          {/* ── BOTTOM BUTTONS ── */}
-          <div
-            className="shrink-0 px-4 pt-3 pb-4 bg-white border-t border-gray-100 flex gap-3"
-            style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
-          >
-            {isPerQuestion ? (
-              isChecked ? (
-                isLast ? (
-                  <button onClick={handleSubmit} disabled={submitting}
-                    className="flex-1 py-4 bg-green-500 text-white rounded-2xl font-semibold text-base hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
-                    {submitting ? 'Topshirilmoqda...' : 'Yakunlash ✓'}
-                  </button>
+            {/* ── BOTTOM BUTTONS ── */}
+            <div
+              className="shrink-0 px-4 lg:px-8 pt-3 pb-4 bg-white border-t border-gray-100 flex gap-3"
+              style={{ paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}
+            >
+              <div className="lg:max-w-3xl lg:mx-auto flex gap-3 w-full">
+              {isPerQuestion ? (
+                isChecked ? (
+                  isLast ? (
+                    <button onClick={handleSubmit} disabled={submitting}
+                      className="flex-1 py-4 bg-green-500 text-white rounded-2xl font-semibold text-base hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
+                      {submitting ? 'Topshirilmoqda...' : 'Yakunlash ✓'}
+                    </button>
+                  ) : (
+                    <button onClick={() => setCurrentIdx((i) => i + 1)}
+                      className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100">
+                      Keyingi →
+                    </button>
+                  )
                 ) : (
-                  <button onClick={() => setCurrentIdx((i) => i + 1)}
-                    className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100">
-                    Keyingi →
+                  <button onClick={handleCheck} disabled={checking}
+                    className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-100">
+                    {checking ? 'Tekshirilmoqda...' : 'Tekshirish'}
                   </button>
                 )
               ) : (
-                <button onClick={handleCheck} disabled={checking}
-                  className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 disabled:opacity-50 transition-colors shadow-lg shadow-indigo-100">
-                  {checking ? 'Tekshirilmoqda...' : 'Tekshirish'}
-                </button>
-              )
-            ) : (
-              <>
-                {currentIdx > 0 && (
-                  <button onClick={() => setCurrentIdx((i) => i - 1)}
-                    className="px-5 py-4 bg-white border-2 border-gray-200 text-gray-600 rounded-2xl font-medium text-base hover:bg-gray-50 transition-colors shrink-0">
-                    ← Oldingi
-                  </button>
-                )}
-                {!isLast ? (
-                  <button onClick={() => setCurrentIdx((i) => i + 1)}
+                <>
+                  {currentIdx > 0 && (
+                    <button onClick={() => setCurrentIdx((i) => i - 1)}
+                      className="px-5 py-4 bg-white border-2 border-gray-200 text-gray-600 rounded-2xl font-medium text-base hover:bg-gray-50 transition-colors shrink-0">
+                      ← Oldingi
+                    </button>
+                  )}
+                  {!isLast ? (
+                    <button onClick={() => setCurrentIdx((i) => i + 1)}
                     className="flex-1 py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100">
                     Keyingi →
                   </button>
@@ -799,9 +870,11 @@ export function TakeTestPage() {
                   </button>
                 )}
               </>
-            )}
+              )}
+              </div>
+            </div>
           </div>
-        </>
+        </div>
       ) : (
         // ─── ALL AT ONCE ───────────────────────────────────────────
         <>
