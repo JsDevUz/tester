@@ -46,8 +46,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       ? s.subItems.some((si) => location.pathname === si.path || location.pathname.startsWith(si.path + '/'))
       : location.pathname === s.path || (s.path !== '/' && location.pathname.startsWith(s.path + '/')),
   );
-  const [hoveredKey, setHoveredKey] = useState<string | null>(null);
-  const shownSection = SECTIONS.find((s) => s.key === hoveredKey) ?? activeSection;
+  // null = "hali qo'lda bosilmagan, joriy faol bo'limni ko'rsat"; '' = "qo'lda yopilgan"; boshqa = qo'lda ochilgan bo'lim
+  const [openKey, setOpenKey] = useState<string | null>(null);
+  const shownSection = openKey === null
+    ? activeSection
+    : openKey === ''
+      ? undefined
+      : SECTIONS.find((s) => s.key === openKey);
 
   const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? '?';
 
@@ -63,14 +68,21 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {SECTIONS.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection?.key === section.key;
+            const isOpen = shownSection?.key === section.key;
             return (
               <button
                 key={section.key}
-                onMouseEnter={() => setHoveredKey(section.key)}
-                onClick={() => navigate(section.subItems ? section.subItems[0].path : section.path)}
+                onClick={() => {
+                  if (section.subItems) {
+                    setOpenKey(isOpen ? '' : section.key);
+                  } else {
+                    navigate(section.path);
+                    setOpenKey('');
+                  }
+                }}
                 title={section.label}
                 className={`w-full aspect-square rounded-xl flex items-center justify-center transition-colors ${
-                  isActive ? 'bg-white text-gray-900' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                  isActive || isOpen ? 'bg-white text-gray-900' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
                 }`}
               >
                 <Icon size={20} />
@@ -100,10 +112,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Ikkinchi qatlam: kengaytirilgan sidebar (faqat sub-items bo'lsa) ── */}
       {shownSection?.subItems && (
-        <div
-          onMouseLeave={() => setHoveredKey(null)}
-          className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col py-5 px-3"
-        >
+        <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col py-5 px-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
             {shownSection.label}
           </p>
