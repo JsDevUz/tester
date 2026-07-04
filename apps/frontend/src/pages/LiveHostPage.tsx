@@ -97,6 +97,15 @@ export function LiveHostPage() {
 
   const remainingPct = question ? Math.max(0, (question.endsAt - now) / (question.timeSec * 1000)) * 100 : 0;
 
+  const teamsWithoutCaptain = teams.filter((t) => !t.captainUserId);
+  const hasEnoughTeams = teams.length >= 2;
+  const teamGameReady = hasEnoughTeams && teamsWithoutCaptain.length === 0;
+  const teamGameNotReadyReason = !hasEnoughTeams
+    ? "Kamida 2 ta guruh va har birida sardor kerak"
+    : teamsWithoutCaptain.length > 0
+      ? `${teamsWithoutCaptain.map((t) => t.name).join(', ')}'da sardor tayinlanmagan`
+      : null;
+
   return (
     <div className="flex flex-col bg-white notranslate" translate="no"
       style={{ minHeight: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'max(16px, env(safe-area-inset-bottom))' }}>
@@ -195,8 +204,11 @@ export function LiveHostPage() {
           </div>
 
           <div className="mt-auto pb-4">
-            <button onClick={handleStartTeamGame}
-              className="w-full py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition-colors shadow-lg shadow-green-100">
+            {teamGameNotReadyReason && (
+              <p className="text-xs text-center text-amber-600 mb-2">{teamGameNotReadyReason}</p>
+            )}
+            <button onClick={handleStartTeamGame} disabled={!teamGameReady}
+              className="w-full py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
               Boshlash
             </button>
           </div>
