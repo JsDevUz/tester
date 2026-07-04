@@ -26,6 +26,8 @@ export interface SessionStatePayload {
   } | null;
   me: { score: number; answeredCurrent: boolean } | null;
   leaderboard?: LeaderboardEntry[];
+  teams?: Array<{ id: string; name: string; captainUserId: string | null; members: Array<{ userId: string; name: string }> }>;
+  unassigned?: Array<{ userId: string; name: string }>;
 }
 
 @Injectable()
@@ -171,6 +173,7 @@ export class LiveService {
       player.socketId = socketId; // reconnect
     }
     this.broadcastLobby(s);
+    if (s.mode === 'team') this.broadcastTeamUpdate(s);
     return { state: this.buildState(s, player) };
   }
 
@@ -220,6 +223,18 @@ export class LiveService {
     if (!team) throw new Error('TEAM_NOT_FOUND');
     if (!team.memberUserIds.has(userId)) throw new Error('NOT_TEAM_MEMBER');
     team.captainUserId = userId;
+    this.broadcastTeamUpdate(s);
+  }
+
+  removeTeam(pin: string, adminId: string, teamId: string): void {
+    const s = this.mustGet(pin);
+    if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    this.mustBeTeamMode(s);
+    const team = s.teams!.get(teamId);
+    if (!team) throw new Error('TEAM_NOT_FOUND');
+    // Guruh a'zolari taqsimlanmaganlar ro'yxatiga qaytariladi, yo'qolib ketmaydi.
+    for (const uid of team.memberUserIds) s.unassignedUserIds!.add(uid);
+    s.teams!.delete(teamId);
     this.broadcastTeamUpdate(s);
   }
 
@@ -307,16 +322,21 @@ export class LiveService {
     }
   }
 
-  private broadcastTeamUpdate(s: LiveSession): void {
-    if (!s.teams || !s.unassignedUserIds) return;
+  private buildTeamUpdatePayload(s: LiveSession): { teams: Array<{ id: string; name: string; captainUserId: string | null; members: Array<{ userId: string; name: string }> }>; unassigned: Array<{ userId: string; name: string }> } | null {
+    if (!s.teams || !s.unassignedUserIds) return null;
     const nameOf = (userId: string) => s.players.get(userId)?.name ?? '?';
-    this.broadcaster.toRoom(s.pin, 'team:update', {
+    return {
       teams: [...s.teams.values()].map((t) => ({
         id: t.id, name: t.name, captainUserId: t.captainUserId,
         members: [...t.memberUserIds].map((uid) => ({ userId: uid, name: nameOf(uid) })),
       })),
       unassigned: [...s.unassignedUserIds].map((uid) => ({ userId: uid, name: nameOf(uid) })),
-    });
+    };
+  }
+
+  private broadcastTeamUpdate(s: LiveSession): void {
+    const payload = this.buildTeamUpdatePayload(s);
+    if (payload) this.broadcaster.toRoom(s.pin, 'team:update', payload);
   }
 
   answer(pin: string, userId: string, questionId: string, selectedOptionIds: string[], textAnswer: string | null = null) {
@@ -630,6 +650,7 @@ export class LiveService {
         answeredCurrent: q ? player.answers.has(q.id) : false,
       } : null,
       ...(s.status === 'finished' ? { leaderboard: buildLeaderboard([...s.players.values()]) } : {}),
+      ...(this.buildTeamUpdatePayload(s) ?? {}),
     };
   }
 }

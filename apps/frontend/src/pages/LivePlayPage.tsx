@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { CheckCircle2, XCircle, Hourglass, Trophy, Users } from 'lucide-react';
+import { CheckCircle2, XCircle, Hourglass, Trophy, Users, Crown } from 'lucide-react';
 import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState, type WsTeamUpdate, type WsSuggestionUpdate } from '../api/live';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
@@ -220,7 +220,7 @@ export function LivePlayPage() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   const [isTeamMode, setIsTeamMode] = useState(false);
-  const [myTeam, setMyTeam] = useState<{ id: string; name: string } | null>(null);
+  const [myTeam, setMyTeam] = useState<{ id: string; name: string; captainUserId: string | null; members: Array<{ userId: string; name: string }> } | null>(null);
   const [isCaptain, setIsCaptain] = useState(false);
   const [suggestedOptionIds, setSuggestedOptionIds] = useState<string[]>([]);
   const [suggestionCounts, setSuggestionCounts] = useState<Record<string, number>>({});
@@ -272,7 +272,7 @@ export function LivePlayPage() {
       if (!myUserId) return;
       const team = u.teams.find((t) => t.members.some((m) => m.userId === myUserId));
       if (team) {
-        setMyTeam({ id: team.id, name: team.name });
+        setMyTeam({ id: team.id, name: team.name, captainUserId: team.captainUserId, members: team.members });
         setIsCaptain(team.captainUserId === myUserId);
         setPhase((prev) => (prev === 'connecting' || prev === 'lobby') ? 'team_waiting' : prev);
       } else {
@@ -410,7 +410,19 @@ export function LivePlayPage() {
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
           <Hourglass size={32} className="text-indigo-300 mb-4 animate-pulse" />
           <p className="text-lg font-bold text-gray-900 mb-2">{myTeam?.name ?? 'Guruh kutilmoqda'}</p>
-          <p className="text-sm text-gray-400 mb-2">{isCaptain ? 'Siz sardorsiz' : "Siz a'zosiz"}</p>
+          <p className="text-sm text-gray-400 mb-4">{isCaptain ? 'Siz sardorsiz' : "Siz a'zosiz"}</p>
+          {myTeam && myTeam.members.length > 0 && (
+            <div className="w-full max-w-xs flex flex-col gap-1.5 mb-4">
+              {myTeam.members.map((m) => (
+                <div key={m.userId} className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl text-sm">
+                  {m.userId === myTeam.captainUserId
+                    ? <Crown size={14} className="text-amber-500 shrink-0" />
+                    : <Users size={14} className="text-gray-300 shrink-0" />}
+                  <span className="text-gray-700 font-medium truncate">{m.name}</span>
+                </div>
+              ))}
+            </div>
+          )}
           <p className="text-sm text-gray-400">Ustoz o'yinni boshlashini kuting...</p>
         </div>
       )}

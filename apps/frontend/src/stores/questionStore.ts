@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { apiAddQuestion, apiBulkImport, apiUpdateQuestion, apiDeleteQuestion, type Question } from '../api/questions';
+import { apiAddQuestion, apiBulkImport, apiUpdateQuestion, apiReplaceQuestion, apiDeleteQuestion, type Question } from '../api/questions';
 
 interface QuestionState {
   questions: Question[];
@@ -7,6 +7,7 @@ interface QuestionState {
   addQuestion: (testId: string, data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null; correctAnswer?: string | null }) => Promise<void>;
   bulkImport: (testId: string, text: string) => Promise<number>;
   updateQuestion: (id: string, data: { text?: string; type?: string; orderIndex?: number }) => Promise<void>;
+  replaceQuestion: (id: string, data: { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null; correctAnswer?: string | null }) => Promise<void>;
   deleteQuestion: (id: string) => Promise<void>;
 }
 
@@ -23,6 +24,10 @@ export const useQuestionStore = create<QuestionState>((set, get) => ({
   },
   updateQuestion: async (id, data) => {
     const updated = await apiUpdateQuestion(id, data);
+    set({ questions: get().questions.map((q) => (q.id === id ? updated : q)) });
+  },
+  replaceQuestion: async (id, data) => {
+    const updated = await apiReplaceQuestion(id, data);
     set({ questions: get().questions.map((q) => (q.id === id ? updated : q)) });
   },
   deleteQuestion: async (id) => {

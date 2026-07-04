@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, Play, Square, CheckCircle2, Trophy, Crown, GripVertical } from 'lucide-react';
+import { Users, Play, Square, CheckCircle2, Trophy, Crown, GripVertical, X } from 'lucide-react';
 import {
   DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
   useDraggable, useDroppable, type DragEndEvent, type DragStartEvent,
@@ -38,7 +38,7 @@ function DraggablePlayerChip({ id, name, isCaptain, onSetCaptain }: {
 function DroppableTeamColumn({ id, children, highlight }: { id: string; children: React.ReactNode; highlight?: boolean }) {
   const { setNodeRef, isOver } = useDroppable({ id });
   return (
-    <div ref={setNodeRef} className={`rounded-2xl border-2 p-4 transition-colors ${
+    <div ref={setNodeRef} className={`rounded-2xl border-2 p-4 transition-colors h-full flex flex-col ${
       isOver ? 'border-indigo-400 bg-indigo-50/50' : highlight ? 'border-red-200 bg-red-50/50' : 'border-gray-100'
     }`}>
       {children}
@@ -79,6 +79,8 @@ export function LiveHostPage() {
         const state: WsState = res.state;
         setTestName(state.testName);
         setPlayers(state.players);
+        if (state.teams) setTeams(state.teams);
+        if (state.unassigned) setUnassigned(state.unassigned);
         if (state.status === 'lobby') setPhase('lobby');
         else if (state.status === 'team_assign') { setIsTeamMode(true); setPhase('team_assign'); }
         else if (state.status === 'finished') {
@@ -129,6 +131,9 @@ export function LiveHostPage() {
   }
   function handleSetCaptain(teamId: string, userId: string) {
     getLiveSocket().emit('host:setCaptain', { pin, token, teamId, userId }, () => { setCaptainDisconnectedTeamId(null); });
+  }
+  function handleRemoveTeam(teamId: string) {
+    getLiveSocket().emit('host:removeTeam', { pin, token, teamId }, () => {});
   }
   function handleStartTeamGame() {
     getLiveSocket().emit('host:startTeam', { pin, token }, (res: any) => {
@@ -242,26 +247,32 @@ export function LiveHostPage() {
                   ))}
                   {unassigned.length === 0 && <p className="text-xs text-gray-300 text-center py-4">Hammasi taqsimlandi</p>}
                 </div>
-                <p className="text-xs text-gray-300 mt-2">O'quvchini sudrab guruhga tashlang</p>
+                <p className="text-xs text-gray-300 mt-2">O'quvchini guruh ustiga torting</p>
               </div>
 
               {/* Guruhlar */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 content-start">
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 auto-rows-fr gap-4 content-start">
                 {teams.map((team) => (
                   <DroppableTeamColumn key={team.id} id={team.id} highlight={captainDisconnectedTeamId === team.id}>
-                    <p className="font-semibold text-gray-800 mb-2">{team.name}</p>
+                    <div className="flex items-center justify-between mb-2">
+                      <p className="font-semibold text-gray-800">{team.name}</p>
+                      <button type="button" onClick={() => handleRemoveTeam(team.id)} title="Guruhni o'chirish"
+                        className="text-gray-300 hover:text-red-400 transition-colors">
+                        <X size={15} />
+                      </button>
+                    </div>
                     {captainDisconnectedTeamId === team.id && (
                       <p className="text-xs text-red-500 mb-2">Sardor uzildi — yangi sardor tayinlang</p>
                     )}
-                    <div className="flex flex-col gap-1.5 min-h-[60px]">
+                    <div className="flex flex-col gap-1.5 min-h-[60px] flex-1">
                       {team.members.map((m) => (
                         <DraggablePlayerChip key={m.userId} id={m.userId} name={m.name}
                           isCaptain={team.captainUserId === m.userId}
                           onSetCaptain={() => handleSetCaptain(team.id, m.userId)} />
                       ))}
                       {team.members.length === 0 && (
-                        <p className="text-xs text-gray-300 border-2 border-dashed border-gray-200 rounded-xl py-3 text-center">
-                          O'quvchini shu yerga sudrab tashlang
+                        <p className="text-xs text-gray-300 border-2 border-dashed border-gray-200 rounded-xl py-3 text-center flex-1 flex items-center justify-center">
+                          Bu yerga torting
                         </p>
                       )}
                     </div>

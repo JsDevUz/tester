@@ -100,6 +100,14 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:removeTeam')
+  hostRemoveTeam(@MessageBody() body: { pin: string; token: string; teamId: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.removeTeam(body.pin, user.sub, body.teamId);
+    });
+  }
+
   @SubscribeMessage('host:startTeam')
   hostStartTeam(@MessageBody() body: { pin: string; token: string }) {
     return this.run(() => {

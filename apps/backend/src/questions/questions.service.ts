@@ -106,6 +106,42 @@ export class QuestionsService {
     return question;
   }
 
+  async replaceQuestion(id: string, adminId: string, data: {
+    text: string;
+    type: string;
+    options: Array<{ text: string; isCorrect: boolean; orderIndex?: number }>;
+    imageUrl?: string | null;
+    audioUrl?: string | null;
+    correctAnswer?: string | null;
+  }) {
+    await this.verifyQuestionOwnership(id, adminId);
+    if ((data.type === 'single' || data.type === 'multi') && data.options.length > 0) {
+      const hasCorrect = data.options.some((o) => o.isCorrect);
+      if (!hasCorrect) throw new BadRequestException('Kamida bitta to\'g\'ri javob belgilanishi shart');
+    }
+    const [question] = await db.update(questions).set({
+      text: data.text,
+      type: data.type,
+      imageUrl: data.imageUrl ?? null,
+      audioUrl: data.audioUrl ?? null,
+      correctAnswer: data.correctAnswer ?? null,
+    }).where(eq(questions.id, id)).returning();
+
+    await db.delete(options).where(eq(options.questionId, id));
+    const insertedOptions = data.options.length > 0
+      ? await db.insert(options).values(
+          data.options.map((o, i) => ({
+            questionId: id,
+            text: o.text,
+            isCorrect: o.isCorrect,
+            orderIndex: o.orderIndex ?? i,
+          }))
+        ).returning()
+      : [];
+
+    return { ...question, options: insertedOptions };
+  }
+
   async removeQuestion(id: string, adminId: string) {
     await this.verifyQuestionOwnership(id, adminId);
     await db.delete(questions).where(eq(questions.id, id));

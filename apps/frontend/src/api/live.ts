@@ -84,6 +84,8 @@ export interface WsState {
   currentQuestion: WsQuestion | null;
   me: { score: number; answeredCurrent: boolean } | null;
   leaderboard?: Array<{ userId: string; name: string; score: number; rank: number }>;
+  teams?: WsTeam[];
+  unassigned?: WsTeamMember[];
 }
 
 export interface WsTeamMember {

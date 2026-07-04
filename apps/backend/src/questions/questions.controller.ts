@@ -87,6 +87,11 @@ export class QuestionsController {
     return this.questionsService.updateQuestion(id, req.admin.id, dto);
   }
 
+  @Patch('questions/:id/replace')
+  replaceQuestion(@Param('id') id: string, @Body() dto: CreateQuestionDto, @Req() req: any) {
+    return this.questionsService.replaceQuestion(id, req.admin.id, dto);
+  }
+
   @Delete('questions/:id')
   @HttpCode(204)
   removeQuestion(@Param('id') id: string, @Req() req: any) {

@@ -50,6 +50,18 @@ export async function apiUpdateQuestion(id: string, data: { text?: string; type?
   return res.data;
 }
 
+export async function apiReplaceQuestion(id: string, data: {
+  text: string;
+  type: string;
+  options: Array<{ text: string; isCorrect: boolean }>;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  correctAnswer?: string | null;
+}): Promise<Question> {
+  const res = await client.patch(`/questions/${id}/replace`, data);
+  return res.data;
+}
+
 export async function apiDeleteQuestion(id: string): Promise<void> {
   await client.delete(`/questions/${id}`);
 }

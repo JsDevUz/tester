@@ -142,7 +142,7 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
 export function QuestionEditorPage() {
   const { id: testId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { questions, setQuestions, addQuestion, bulkImport, deleteQuestion } = useQuestionStore();
+  const { questions, setQuestions, addQuestion, bulkImport, replaceQuestion, deleteQuestion } = useQuestionStore();
   const [test, setTest] = useState<TestDetail | null>(null);
   const [tab, setTab] = useState<'manual' | 'bulk'>('manual');
 
@@ -160,9 +160,7 @@ export function QuestionEditorPage() {
   }
 
   async function handleSaveQuestion(q: Question, data: SaveData) {
-    if (!testId) return;
-    await deleteQuestion(q.id);
-    await addQuestion(testId, data);
+    await replaceQuestion(q.id, data);
   }
 
   async function handleBulkImport(text: string) {
