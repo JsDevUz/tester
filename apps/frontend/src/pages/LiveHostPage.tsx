@@ -1,7 +1,50 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Users, Play, Square, CheckCircle2, Trophy } from 'lucide-react';
+import { Users, Play, Square, CheckCircle2, Trophy, Crown, GripVertical } from 'lucide-react';
+import {
+  DndContext, DragOverlay, PointerSensor, useSensor, useSensors,
+  useDraggable, useDroppable, type DragEndEvent, type DragStartEvent,
+} from '@dnd-kit/core';
 import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState, type WsTeam, type WsTeamMember, type WsTeamUpdate } from '../api/live';
+
+const UNASSIGNED_DROP_ID = '__unassigned__';
+
+function DraggablePlayerChip({ id, name, isCaptain, onSetCaptain }: {
+  id: string; name: string; isCaptain?: boolean; onSetCaptain?: () => void;
+}) {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({ id });
+  return (
+    <div
+      ref={setNodeRef}
+      style={transform ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` } : undefined}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium select-none ${
+        isDragging ? 'opacity-30' : ''
+      } ${isCaptain ? 'bg-amber-50 text-amber-700' : 'bg-gray-50 text-gray-700'}`}
+    >
+      <button type="button" {...attributes} {...listeners} className="cursor-grab active:cursor-grabbing text-gray-300 hover:text-gray-500 touch-none">
+        <GripVertical size={14} />
+      </button>
+      <span className="flex-1">{name}</span>
+      {onSetCaptain && (
+        <button type="button" onClick={onSetCaptain} title="Sardor qilib tayinlash"
+          className={`shrink-0 ${isCaptain ? 'text-amber-500' : 'text-gray-300 hover:text-amber-500'}`}>
+          <Crown size={14} />
+        </button>
+      )}
+    </div>
+  );
+}
+
+function DroppableTeamColumn({ id, children, highlight }: { id: string; children: React.ReactNode; highlight?: boolean }) {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  return (
+    <div ref={setNodeRef} className={`rounded-2xl border-2 p-4 transition-colors ${
+      isOver ? 'border-indigo-400 bg-indigo-50/50' : highlight ? 'border-red-200 bg-red-50/50' : 'border-gray-100'
+    }`}>
+      {children}
+    </div>
+  );
+}
 
 type Phase = 'connecting' | 'lobby' | 'team_assign' | 'question' | 'reveal' | 'finished' | 'error';
 
@@ -9,6 +52,7 @@ export function LiveHostPage() {
   const { pin } = useParams<{ pin: string }>();
   const navigate = useNavigate();
   const token = localStorage.getItem('token') ?? '';
+  const dndSensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));
 
   const [phase, setPhase] = useState<Phase>('connecting');
   const [players, setPlayers] = useState<Array<{ name: string }>>([]);
@@ -21,7 +65,7 @@ export function LiveHostPage() {
   const [isTeamMode, setIsTeamMode] = useState(false);
   const [teams, setTeams] = useState<WsTeam[]>([]);
   const [unassigned, setUnassigned] = useState<WsTeamMember[]>([]);
-  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [draggingName, setDraggingName] = useState<string | null>(null);
   const [captainDisconnectedTeamId, setCaptainDisconnectedTeamId] = useState<string | null>(null);
   const [newTeamName, setNewTeamName] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -82,7 +126,6 @@ export function LiveHostPage() {
   }
   function handleAssignPlayer(userId: string, teamId: string) {
     getLiveSocket().emit('host:assignPlayer', { pin, token, userId, teamId }, () => {});
-    setSelectedPlayer(null);
   }
   function handleSetCaptain(teamId: string, userId: string) {
     getLiveSocket().emit('host:setCaptain', { pin, token, teamId, userId }, () => { setCaptainDisconnectedTeamId(null); });
@@ -93,6 +136,22 @@ export function LiveHostPage() {
         alert("Har bir guruhda kamida bitta sardor tayinlanishi kerak.");
       }
     });
+  }
+
+  function handleDragStart(event: DragStartEvent) {
+    const userId = String(event.active.id);
+    const all = [...unassigned, ...teams.flatMap((t) => t.members)];
+    setDraggingName(all.find((m) => m.userId === userId)?.name ?? null);
+  }
+
+  function handleDragEnd(event: DragEndEvent) {
+    setDraggingName(null);
+    const { active, over } = event;
+    if (!over) return;
+    const userId = String(active.id);
+    const targetId = String(over.id);
+    if (targetId === UNASSIGNED_DROP_ID) return; // qaytarib unassigned qilish qo'llab-quvvatlanmaydi
+    handleAssignPlayer(userId, targetId);
   }
 
   const remainingPct = question ? Math.max(0, (question.endsAt - now) / (question.timeSec * 1000)) * 100 : 0;
@@ -146,81 +205,94 @@ export function LiveHostPage() {
       )}
 
       {phase === 'team_assign' && (
-        <div className="flex-1 flex flex-col px-5 pt-6 overflow-y-auto">
-          <p className="text-sm text-gray-400 mb-1">{testName} · Jamoaviy</p>
-          <div className="flex items-center gap-3 mb-5">
-            <p className="text-sm font-semibold text-gray-700">PIN:</p>
-            <p className="text-3xl font-black text-indigo-500 tracking-[0.15em]">{pin}</p>
-            <span className="text-xs text-gray-400 flex items-center gap-1 ml-auto">
-              <Users size={14} /> {players.length} o'yinchi
-            </span>
-          </div>
-          <p className="text-lg font-bold text-gray-900 mb-4">Guruhlarga taqsimlash</p>
+        <DndContext sensors={dndSensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
+          <div className="flex-1 flex flex-col px-8 pt-6 pb-6 max-w-6xl mx-auto w-full">
+            <div className="flex items-center gap-4 mb-1">
+              <p className="text-sm text-gray-400">{testName} · Jamoaviy</p>
+              <span className="text-xs text-gray-400 flex items-center gap-1 ml-auto">
+                <Users size={14} /> {players.length} o'yinchi
+              </span>
+            </div>
+            <div className="flex items-center gap-3 mb-6">
+              <p className="text-sm font-semibold text-gray-700">PIN:</p>
+              <p className="text-3xl font-black text-indigo-500 tracking-[0.15em]">{pin}</p>
+            </div>
 
-          <div className="flex gap-2 mb-5">
-            <input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)}
-              placeholder="Guruh nomi (masalan Guruh 1)"
-              className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400" />
-            <button onClick={handleCreateTeam}
-              className="px-4 py-2.5 bg-indigo-500 text-white rounded-2xl text-sm font-semibold hover:bg-indigo-600 transition-colors">
-              Guruh qo'shish
-            </button>
-          </div>
-
-          <p className="text-xs font-semibold text-gray-500 mb-2">Taqsimlanmagan o'quvchilar ({unassigned.length})</p>
-          <div className="flex flex-wrap gap-2 mb-6">
-            {unassigned.map((p) => (
-              <button key={p.userId} onClick={() => setSelectedPlayer(p.userId)}
-                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
-                  selectedPlayer === p.userId ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-indigo-50'
-                }`}>
-                {p.name}
-              </button>
-            ))}
-            {unassigned.length === 0 && <p className="text-xs text-gray-300">Hammasi taqsimlandi</p>}
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
-            {teams.map((team) => (
-              <div key={team.id} className={`rounded-2xl border-2 p-4 ${
-                captainDisconnectedTeamId === team.id ? 'border-red-200 bg-red-50/50' : 'border-gray-100'
-              }`}>
-                <p className="font-semibold text-gray-800 mb-2">{team.name}</p>
-                {captainDisconnectedTeamId === team.id && (
-                  <p className="text-xs text-red-500 mb-2">Sardor uzildi — yangi sardor tayinlang</p>
-                )}
-                <div className="flex flex-col gap-1.5">
-                  {team.members.map((m) => (
-                    <button key={m.userId}
-                      onClick={() => selectedPlayer ? handleAssignPlayer(selectedPlayer, team.id) : handleSetCaptain(team.id, m.userId)}
-                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-colors ${
-                        team.captainUserId === m.userId ? 'bg-amber-50 text-amber-700 font-semibold' : 'bg-gray-50 text-gray-700 hover:bg-indigo-50'
-                      }`}>
-                      <span>{m.name}</span>
-                      {team.captainUserId === m.userId && <span className="text-xs">Sardor</span>}
-                    </button>
-                  ))}
-                  {team.members.length === 0 && (
-                    <button onClick={() => selectedPlayer && handleAssignPlayer(selectedPlayer, team.id)}
-                      className="text-xs text-gray-300 border-2 border-dashed border-gray-200 rounded-xl py-3 hover:border-indigo-200 transition-colors">
-                      O'quvchini shu yerga qo'shish uchun avval yuqoridan tanlang
-                    </button>
-                  )}
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-gray-900">Guruhlarga taqsimlash</h2>
+              <div className="flex gap-2">
+                <input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') handleCreateTeam(); }}
+                  placeholder="Guruh nomi (masalan Guruh 1)"
+                  className="w-64 bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400" />
+                <button onClick={handleCreateTeam}
+                  className="px-4 py-2.5 bg-indigo-500 text-white rounded-2xl text-sm font-semibold hover:bg-indigo-600 transition-colors whitespace-nowrap">
+                  Guruh qo'shish
+                </button>
               </div>
-            ))}
+            </div>
+
+            <div className="grid grid-cols-[240px_1fr] gap-5 flex-1 min-h-0">
+              {/* Taqsimlanmagan o'quvchilar */}
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-2">Taqsimlanmagan ({unassigned.length})</p>
+                <div className="rounded-2xl border-2 border-dashed border-gray-200 p-3 flex flex-col gap-1.5 min-h-[120px]">
+                  {unassigned.map((p) => (
+                    <DraggablePlayerChip key={p.userId} id={p.userId} name={p.name} />
+                  ))}
+                  {unassigned.length === 0 && <p className="text-xs text-gray-300 text-center py-4">Hammasi taqsimlandi</p>}
+                </div>
+                <p className="text-xs text-gray-300 mt-2">O'quvchini sudrab guruhga tashlang</p>
+              </div>
+
+              {/* Guruhlar */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4 content-start">
+                {teams.map((team) => (
+                  <DroppableTeamColumn key={team.id} id={team.id} highlight={captainDisconnectedTeamId === team.id}>
+                    <p className="font-semibold text-gray-800 mb-2">{team.name}</p>
+                    {captainDisconnectedTeamId === team.id && (
+                      <p className="text-xs text-red-500 mb-2">Sardor uzildi — yangi sardor tayinlang</p>
+                    )}
+                    <div className="flex flex-col gap-1.5 min-h-[60px]">
+                      {team.members.map((m) => (
+                        <DraggablePlayerChip key={m.userId} id={m.userId} name={m.name}
+                          isCaptain={team.captainUserId === m.userId}
+                          onSetCaptain={() => handleSetCaptain(team.id, m.userId)} />
+                      ))}
+                      {team.members.length === 0 && (
+                        <p className="text-xs text-gray-300 border-2 border-dashed border-gray-200 rounded-xl py-3 text-center">
+                          O'quvchini shu yerga sudrab tashlang
+                        </p>
+                      )}
+                    </div>
+                  </DroppableTeamColumn>
+                ))}
+                {teams.length === 0 && (
+                  <p className="text-sm text-gray-300 col-span-full text-center py-8">Hali guruh yo'q — yuqoridan qo'shing</p>
+                )}
+              </div>
+            </div>
+
+            <div className="mt-6 max-w-sm ml-auto w-full">
+              {teamGameNotReadyReason && (
+                <p className="text-xs text-center text-amber-600 mb-2">{teamGameNotReadyReason}</p>
+              )}
+              <button onClick={handleStartTeamGame} disabled={!teamGameReady}
+                className="w-full py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
+                Boshlash
+              </button>
+            </div>
           </div>
 
-          <div className="mt-auto pb-4">
-            {teamGameNotReadyReason && (
-              <p className="text-xs text-center text-amber-600 mb-2">{teamGameNotReadyReason}</p>
+          <DragOverlay>
+            {draggingName && (
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white shadow-lg border-2 border-indigo-300 text-gray-700">
+                <GripVertical size={14} className="text-gray-300" />
+                {draggingName}
+              </div>
             )}
-            <button onClick={handleStartTeamGame} disabled={!teamGameReady}
-              className="w-full py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
-              Boshlash
-            </button>
-          </div>
-        </div>
+          </DragOverlay>
+        </DndContext>
       )}
 
       {(phase === 'question' || phase === 'reveal') && question && (
