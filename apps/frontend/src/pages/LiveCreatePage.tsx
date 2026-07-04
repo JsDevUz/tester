@@ -48,14 +48,14 @@ export function LiveCreatePage() {
     <AppShell>
       <div className="min-h-screen bg-gray-50 flex flex-col">
         <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-          <div className="flex items-center justify-between mb-6">
-            <div className="flex items-center gap-2">
-              <Radio size={20} className="text-indigo-500" />
-              <h2 className="text-lg font-bold text-gray-800">Live musobaqalar</h2>
+          <div className="flex items-center justify-between gap-3 mb-6">
+            <div className="flex items-center gap-2 min-w-0">
+              <Radio size={20} className="text-indigo-500 shrink-0" />
+              <h2 className="text-lg font-bold text-gray-800 truncate">Live musobaqalar</h2>
             </div>
-            <button onClick={() => setShowModal(true)}
-              className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100">
-              <Plus size={16} /> Yangi live yaratish
+            <button onClick={() => setShowModal(true)} title="Yangi live yaratish"
+              className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100 shrink-0">
+              <Plus size={16} /> <span className="hidden sm:inline">Yangi live yaratish</span>
             </button>
           </div>
 
