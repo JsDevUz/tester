@@ -53,11 +53,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   // null = "hali qo'lda bosilmagan, joriy faol bo'limni ko'rsat"; '' = "qo'lda yopilgan"; boshqa = qo'lda ochilgan bo'lim
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
-  const shownSection = openKey === null
+  // Desktop: sub-panel joriy faol bo'limni avtomatik ochib turadi (agar qo'lda yopilmagan bo'lsa).
+  const desktopShownSection = openKey === null
     ? activeSection
     : openKey === ''
       ? undefined
       : SECTIONS.find((s) => s.key === openKey);
+  // Mobil: bottom sheet FAQAT qo'lda ochilganda ko'rinadi — sahifa o'zgarganda
+  // yoki orqaga qaytilganda o'zi qayta ochilib qolmasligi kerak.
+  const mobileShownSection = openKey ? SECTIONS.find((s) => s.key === openKey) : undefined;
 
   const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? '?';
 
@@ -67,7 +71,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   }
 
   return (
-    <div className="h-screen flex flex-col lg:flex-row gap-3 bg-gray-50 p-3">
+    <div
+      className="flex flex-col lg:flex-row gap-3 bg-gray-50 p-3"
+      style={{
+        height: '100dvh',
+        paddingTop: 'max(12px, env(safe-area-inset-top))',
+        paddingBottom: 'max(12px, env(safe-area-inset-bottom))',
+      }}
+    >
       {/* ── Birinchi qatlam: desktopda chap ikon panel, mobilda pastki tab bar ── */}
       <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto">
         <button onClick={() => navigate('/')} className="hidden lg:block mb-6 shrink-0">
@@ -78,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           {SECTIONS.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection?.key === section.key;
-            const isOpen = shownSection?.key === section.key;
+            const isOpen = openKey ? openKey === section.key : desktopShownSection?.key === section.key;
             return (
               <button
                 key={section.key}
@@ -128,31 +139,65 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </div>
 
-      {/* ── Ikkinchi qatlam: desktopda yonma-yon panel, mobilda pastdan chiqadigan sheet ── */}
-      {shownSection?.subItems && (
-        <>
-          {/* Mobil overlay fon */}
-          <div
-            className="lg:hidden fixed inset-0 z-40 bg-black/30"
-            onClick={() => setOpenKey('')}
-          />
-          <div
-            className={`
-              order-1 lg:order-2 shrink-0 bg-white border border-gray-100 flex flex-col py-5 px-3
-              fixed lg:static bottom-3 left-3 right-3 z-50 rounded-2xl
-              lg:bottom-auto lg:left-auto lg:right-auto lg:w-64
-            `}
-          >
+      {/* ── Ikkinchi qatlam (desktop): joriy faol bo'limni avtomatik ochib turadigan yonma-yon panel ── */}
+      {desktopShownSection?.subItems && (
+        <div className="hidden lg:flex order-2 shrink-0 bg-white border border-gray-100 flex-col py-5 px-3 w-64">
+          <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
+            {desktopShownSection.label}
+          </p>
+          <div className="flex flex-col gap-1">
+            {desktopShownSection.subItems.map((item) => {
+              const ItemIcon = item.icon;
+              const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+              return (
+                <button
+                  key={item.path}
+                  onClick={() => navigate(item.path)}
+                  className={`group flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-600 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                  }`}
+                >
+                  <ItemIcon
+                    size={17}
+                    className={`shrink-0 transition-colors ${
+                      isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-600'
+                    }`}
+                  />
+                  {item.label}
+                </button>
+              );
+            })}
+          </div>
+
+          <div className="mt-auto pt-4 border-t border-gray-100 flex items-center gap-2.5 px-2">
+            <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0">
+              {initial}
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-medium text-gray-800 truncate">{admin?.name}</p>
+              {admin?.phone && <p className="text-xs text-gray-400 truncate">{admin.phone}</p>}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Ikkinchi qatlam (mobil): faqat qo'lda ochilganda ko'rinadigan bottom sheet ── */}
+      {mobileShownSection?.subItems && (
+        <div className="lg:hidden">
+          <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setOpenKey('')} />
+          <div className="order-1 fixed bottom-3 left-3 right-3 z-50 rounded-2xl bg-white border border-gray-100 flex flex-col py-5 px-3">
             <div className="flex items-center justify-between px-3 mb-3">
               <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide">
-                {shownSection.label}
+                {mobileShownSection.label}
               </p>
-              <button onClick={() => setOpenKey('')} className="lg:hidden text-gray-300 hover:text-gray-500">
+              <button onClick={() => setOpenKey('')} className="text-gray-300 hover:text-gray-500">
                 <X size={18} />
               </button>
             </div>
             <div className="flex flex-col gap-1">
-              {shownSection.subItems.map((item) => {
+              {mobileShownSection.subItems.map((item) => {
                 const ItemIcon = item.icon;
                 const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
                 return (
@@ -176,19 +221,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 );
               })}
             </div>
-
-            {/* Profil ma'lumoti — desktop only (mobilda profil tugmasi orqali) */}
-            <div className="hidden lg:flex mt-auto pt-4 border-t border-gray-100 items-center gap-2.5 px-2">
-              <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0">
-                {initial}
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">{admin?.name}</p>
-                {admin?.phone && <p className="text-xs text-gray-400 truncate">{admin.phone}</p>}
-              </div>
-            </div>
           </div>
-        </>
+        </div>
       )}
 
       {/* ── Asosiy kontent ── */}
