@@ -104,6 +104,20 @@ describe('LiveService state machine', () => {
     expect(() => service.start(pin, 'boshqa-admin')).toThrow('NOT_HOST');
   });
 
+  it("question:start broadcast options isCorrect/orderIndex ni ochib qo'ymaydi", () => {
+    const { service, events, pin } = setup();
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.start(pin, 'admin1');
+    const qs = events.find((e) => e.event === 'question:start');
+    expect(qs).toBeDefined();
+    for (const opt of qs!.payload.options) {
+      expect(Object.keys(opt).sort()).toEqual(['id', 'text']);
+      expect(opt).not.toHaveProperty('isCorrect');
+      expect(opt).not.toHaveProperty('orderIndex');
+    }
+  });
+
   it("hamma javob berganda darhol reveal bo'ladi", async () => {
     const { service, events, pin } = setup();
     service.hostJoin(pin, 'admin1', 'hs');
@@ -364,13 +378,20 @@ describe('LiveService team mode — creation and assignment', () => {
     return { service, events, pin };
   }
 
-  it('initSession with mode "team" starts in lobby with teams as an empty map', () => {
+  it('initSession with mode "team" starts in team_assign (not lobby) with teams as an empty map', () => {
     const { service, pin } = setupTeam();
     const s = (service as any).sessions.get(pin);
     expect(s.mode).toBe('team');
+    expect(s.status).toBe('team_assign');
     expect(s.teams).toBeInstanceOf(Map);
     expect(s.teams.size).toBe(0);
     expect(s.unassignedUserIds).toBeInstanceOf(Set);
+  });
+
+  it('start() rejects a team-mode session (must use startTeamGame instead)', () => {
+    const { service, pin } = setupTeam();
+    service.hostJoin(pin, 'admin1', 'hs');
+    expect(() => service.start(pin, 'admin1')).toThrow('NOT_INDIVIDUAL_MODE');
   });
 
   it('playerJoin in team mode adds the user to unassignedUserIds', () => {

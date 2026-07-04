@@ -89,7 +89,7 @@ export class LiveService {
       hostAdminId: adminId,
       hostSocketId: null,
       questionTimeSec,
-      status: 'lobby',
+      status: mode === 'team' ? 'team_assign' : 'lobby',
       questions,
       currentIdx: -1,
       questionStartedAt: 0,
@@ -134,6 +134,7 @@ export class LiveService {
   start(pin: string, adminId: string) {
     const s = this.mustGet(pin);
     if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    if (s.mode === 'team') throw new Error('NOT_INDIVIDUAL_MODE');
     if (s.status !== 'lobby') throw new Error('ALREADY_STARTED');
     this.startQuestion(s, 0);
   }
@@ -369,7 +370,7 @@ export class LiveService {
       text: q.text,
       imageUrl: q.imageUrl,
       type: q.type,
-      options: q.options,
+      options: q.options.map((o) => ({ id: o.id, text: o.text })),
       timeSec: s.questionTimeSec,
       endsAt: s.questionStartedAt + s.questionTimeSec * 1000,
     });
@@ -570,7 +571,7 @@ export class LiveService {
         text: q.text,
         imageUrl: q.imageUrl,
         type: q.type,
-        options: q.options,
+        options: q.options.map((o) => ({ id: o.id, text: o.text })),
         timeSec: s.questionTimeSec,
         endsAt: s.questionStartedAt + s.questionTimeSec * 1000,
       } : null,
