@@ -235,6 +235,7 @@ export function LivePlayPage() {
         setPlayers(state.players);
         setScore(state.me?.score ?? 0);
         if (state.status === 'lobby') setPhase('lobby');
+        else if (state.status === 'team_assign') setPhase((prev) => prev === 'team_waiting' ? prev : 'team_waiting');
         else if (state.status === 'finished') {
           setLeaderboard(state.leaderboard ?? []);
           setPhase('finished');

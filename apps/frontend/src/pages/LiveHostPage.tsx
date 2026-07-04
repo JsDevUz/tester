@@ -147,6 +147,14 @@ export function LiveHostPage() {
 
       {phase === 'team_assign' && (
         <div className="flex-1 flex flex-col px-5 pt-6 overflow-y-auto">
+          <p className="text-sm text-gray-400 mb-1">{testName} · Jamoaviy</p>
+          <div className="flex items-center gap-3 mb-5">
+            <p className="text-sm font-semibold text-gray-700">PIN:</p>
+            <p className="text-3xl font-black text-indigo-500 tracking-[0.15em]">{pin}</p>
+            <span className="text-xs text-gray-400 flex items-center gap-1 ml-auto">
+              <Users size={14} /> {players.length} o'yinchi
+            </span>
+          </div>
           <p className="text-lg font-bold text-gray-900 mb-4">Guruhlarga taqsimlash</p>
 
           <div className="flex gap-2 mb-5">
