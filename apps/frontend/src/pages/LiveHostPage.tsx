@@ -122,25 +122,33 @@ export function LiveHostPage() {
             </span>
           </div>
           <p className="text-xl font-bold text-gray-900 leading-snug mb-5">{question.text}</p>
-          <div className="flex flex-col gap-2.5">
-            {question.options.map((opt, i) => {
-              const isCorrect = reveal?.correctOptionIds.includes(opt.id);
-              const count = reveal?.distribution[opt.id] ?? 0;
-              return (
-                <div key={opt.id} className={`px-4 py-3.5 rounded-2xl border-2 flex items-center gap-3 ${
-                  phase === 'reveal'
-                    ? isCorrect ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-100 opacity-60'
-                    : 'bg-white border-gray-100'
-                }`}>
-                  <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold flex items-center justify-center shrink-0">
-                    {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][i]}
-                  </span>
-                  <span className="flex-1 text-gray-800">{opt.text}</span>
-                  {phase === 'reveal' && <span className="text-sm font-semibold text-gray-500">{count}</span>}
-                </div>
-              );
-            })}
-          </div>
+          {question.options.length > 0 && question.type !== 'droppin' ? (
+            <div className="flex flex-col gap-2.5">
+              {question.options.map((opt, i) => {
+                const isCorrect = reveal?.correctOptionIds.includes(opt.id);
+                const count = reveal?.distribution[opt.id] ?? 0;
+                return (
+                  <div key={opt.id} className={`px-4 py-3.5 rounded-2xl border-2 flex items-center gap-3 ${
+                    phase === 'reveal'
+                      ? isCorrect ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-100 opacity-60'
+                      : 'bg-white border-gray-100'
+                  }`}>
+                    <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold flex items-center justify-center shrink-0">
+                      {['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'][i]}
+                    </span>
+                    <span className="flex-1 text-gray-800">{opt.text}</span>
+                    {phase === 'reveal' && <span className="text-sm font-semibold text-gray-500">{count}</span>}
+                  </div>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="px-4 py-3.5 rounded-2xl border-2 border-gray-100 bg-gray-50 text-gray-500 text-sm">
+              {phase === 'reveal'
+                ? `To'g'ri javob: ${reveal?.correctAnswer ?? '—'}`
+                : "O'yinchilar javob yozmoqda..."}
+            </div>
+          )}
           {phase === 'reveal' && reveal && (
             <div className="mt-5 bg-indigo-50/50 rounded-2xl p-4">
               <p className="text-xs font-semibold text-gray-500 mb-2">Leaderboard</p>

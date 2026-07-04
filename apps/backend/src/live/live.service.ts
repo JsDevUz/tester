@@ -7,8 +7,9 @@ import {
 } from './live.types';
 import {
   LIVE_TYPES, ALLOWED_TIMES, REVEAL_MS, SESSION_CLEANUP_MS, HOST_GRACE_MS,
-  computePoints, isAnswerCorrect, generatePin, buildLeaderboard,
+  computePoints, generatePin, buildLeaderboard,
 } from './live.logic';
+import { gradeAnswer } from '../grading/grading';
 
 export interface SessionStatePayload {
   pin: string;
@@ -48,7 +49,7 @@ export class LiveService {
     }));
   }
 
-  async createSession(adminId: string, testId: string, questionTimeSec: number) {
+  async createSession(adminId: string, testId: string, questionTimeSec: number, mode: 'individual' | 'team' = 'individual') {
     if (!ALLOWED_TIMES.includes(questionTimeSec)) throw new Error('INVALID_TIME');
     const test = await db.query.tests.findFirst({
       where: and(eq(tests.id, testId), eq(tests.adminId, adminId)),
@@ -61,24 +62,26 @@ export class LiveService {
     });
     if (!test) throw new Error('NOT_FOUND');
 
-    const liveQuestions: LiveQuestion[] = test.questions
-      .filter((q) => (LIVE_TYPES as readonly string[]).includes(q.type))
-      .map((q) => ({
-        id: q.id,
-        text: q.text,
-        imageUrl: q.imageUrl,
-        type: q.type as LiveQuestion['type'],
-        options: q.options.map((o) => ({ id: o.id, text: o.text })),
-        correctOptionIds: q.options.filter((o) => o.isCorrect).map((o) => o.id),
-      }));
+    const liveQuestions: LiveQuestion[] = test.questions.map((q) => ({
+      id: q.id,
+      text: q.text,
+      imageUrl: q.imageUrl,
+      type: q.type as LiveQuestion['type'],
+      options: q.options.map((o) => ({ id: o.id, text: o.text, isCorrect: !!o.isCorrect, orderIndex: o.orderIndex })),
+      correctOptionIds: q.options.filter((o) => o.isCorrect).map((o) => o.id),
+      correctAnswer: q.correctAnswer ?? null,
+    }));
     if (liveQuestions.length === 0) throw new Error('NO_LIVE_QUESTIONS');
 
-    const pin = this.initSession(adminId, test.id, test.name, liveQuestions, questionTimeSec);
+    const pin = this.initSession(adminId, test.id, test.name, liveQuestions, questionTimeSec, mode);
     return { pin };
   }
 
   // testlarda db siz chaqiriladi
-  initSession(adminId: string, testId: string, testName: string, questions: LiveQuestion[], questionTimeSec: number): string {
+  initSession(
+    adminId: string, testId: string, testName: string, questions: LiveQuestion[],
+    questionTimeSec: number, mode: 'individual' | 'team' = 'individual',
+  ): string {
     const pin = generatePin(new Set(this.sessions.keys()));
     this.sessions.set(pin, {
       pin, testId, testName,
@@ -93,6 +96,9 @@ export class LiveService {
       revealTimer: null,
       hostDisconnectTimer: null,
       players: new Map(),
+      mode,
+      teams: null,
+      unassignedUserIds: null,
     });
     const s = this.sessions.get(pin)!;
     s.hostDisconnectTimer = setTimeout(() => { void this.finish(s); }, HOST_GRACE_MS);
@@ -130,7 +136,7 @@ export class LiveService {
     this.startQuestion(s, 0);
   }
 
-  answer(pin: string, userId: string, questionId: string, selectedOptionIds: string[]) {
+  answer(pin: string, userId: string, questionId: string, selectedOptionIds: string[], textAnswer: string | null = null) {
     const s = this.mustGet(pin);
     if (s.status !== 'question') throw new Error('NOT_QUESTION_PHASE');
     const q = s.questions[s.currentIdx];
@@ -141,17 +147,22 @@ export class LiveService {
 
     const validIds = new Set(q.options.map((o) => o.id));
     const filteredOptionIds = (selectedOptionIds ?? []).filter((id) => validIds.has(id));
-
     const timeMs = Date.now() - s.questionStartedAt;
-    const isCorrect = isAnswerCorrect(q.correctOptionIds, filteredOptionIds);
-    const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
-    player.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
-    player.score += points;
 
-    const answered = this.answeredCount(s);
-    this.broadcaster.toRoom(s.pin, 'question:progress', { answered, total: s.players.size });
+    void (async () => {
+      const isCorrect = (await gradeAnswer(
+        { type: q.type, correctAnswer: q.correctAnswer, options: q.options, text: q.text },
+        { selectedOptionIds: filteredOptionIds, textAnswer },
+        async () => false, // individual Live Quiz does not call Groq for 'open' — same as team mode, out of scope for this spec
+      )) ?? false;
+      const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
+      player.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
+      player.score += points;
 
-    this.maybeRevealEarly(s);
+      const answered = this.answeredCount(s);
+      this.broadcaster.toRoom(s.pin, 'question:progress', { answered, total: s.players.size });
+      this.maybeRevealEarly(s);
+    })();
   }
 
   async end(pin: string, adminId: string) {
@@ -230,6 +241,7 @@ export class LiveService {
     const leaderboard = buildLeaderboard([...s.players.values()]);
     this.broadcaster.toRoom(s.pin, 'question:reveal', {
       correctOptionIds: q.correctOptionIds,
+      correctAnswer: q.correctAnswer,
       distribution,
       leaderboard: leaderboard.slice(0, 5),
     });
@@ -239,6 +251,7 @@ export class LiveService {
       const rank = leaderboard.find((e) => e.userId === p.userId)?.rank ?? 0;
       this.broadcaster.toSocket(p.socketId, 'question:reveal', {
         correctOptionIds: q.correctOptionIds,
+        correctAnswer: q.correctAnswer,
         distribution,
         leaderboard: leaderboard.slice(0, 5),
         isCorrect: a?.isCorrect ?? false,

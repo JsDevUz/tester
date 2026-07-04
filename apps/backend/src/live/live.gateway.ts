@@ -75,10 +75,10 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('player:answer')
-  playerAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[] }) {
+  playerAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[]; textAnswer?: string | null }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.liveService.answer(body.pin, user.sub, body.questionId, body.selectedOptionIds ?? []);
+      this.liveService.answer(body.pin, user.sub, body.questionId, body.selectedOptionIds ?? [], body.textAnswer ?? null);
     });
   }
 

@@ -34,16 +34,21 @@ export async function apiCreateLiveSession(testId: string, questionTimeSec: numb
 }
 
 // WS payload tiplari
+export type LiveQuestionType =
+  | 'single' | 'multi' | 'truefalse'
+  | 'slider' | 'droppin' | 'matching' | 'fillblank' | 'open' | 'arrange' | 'reorder';
+
 export interface WsQuestion {
   id: string;
   idx: number; total: number; text: string; imageUrl: string | null;
-  type: 'single' | 'multi' | 'truefalse';
+  type: LiveQuestionType;
   options: Array<{ id: string; text: string }>;
   timeSec: number; endsAt: number;
 }
 
 export interface WsReveal {
   correctOptionIds: string[];
+  correctAnswer: string | null;
   distribution: Record<string, number>;
   leaderboard: Array<{ userId: string; name: string; score: number; rank: number }>;
   isCorrect?: boolean;
