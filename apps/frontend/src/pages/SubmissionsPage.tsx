@@ -136,7 +136,7 @@ export function SubmissionsPage() {
                   </div>
                   <button
                     onClick={(e) => { e.stopPropagation(); setConfirmDelete(sub); }}
-                    className="opacity-0 group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 shrink-0 p-1"
+                    className="lg:opacity-0 lg:group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 shrink-0 p-1"
                   >
                     <Trash2 size={15} />
                   </button>
