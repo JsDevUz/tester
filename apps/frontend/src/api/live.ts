@@ -37,6 +37,22 @@ export async function apiCreateLiveSession(
   return res.data;
 }
 
+export interface LiveSessionHistoryItem {
+  id: string;
+  pin: string;
+  testId: string;
+  testName: string;
+  mode: 'individual' | 'team';
+  status: 'active' | 'finished';
+  createdAt: string;
+  finishedAt: string | null;
+}
+
+export async function apiListLiveSessions(limit: number, offset: number): Promise<LiveSessionHistoryItem[]> {
+  const res = await client.get('/live/sessions', { params: { limit, offset } });
+  return res.data;
+}
+
 // WS payload tiplari
 export type LiveQuestionType =
   | 'single' | 'multi' | 'truefalse'
