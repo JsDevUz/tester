@@ -160,3 +160,7 @@ export const answersRelations = relations(answers, ({ one }) => ({
   submission: one(submissions, { fields: [answers.submissionId], references: [submissions.id] }),
   question: one(questions, { fields: [answers.questionId], references: [questions.id] }),
 }));
+
+export const liveSessionsRelations = relations(liveSessions, ({ one }) => ({
+  test: one(tests, { fields: [liveSessions.testId], references: [tests.id] }),
+}));

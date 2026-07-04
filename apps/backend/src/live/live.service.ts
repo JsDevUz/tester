@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
-import { tests, submissions, answers } from '../db/schema';
+import { tests, submissions, answers, liveSessions } from '../db/schema';
 import {
   LiveSession, LivePlayer, LiveQuestion, LiveBroadcaster, LeaderboardEntry, LiveTeam,
 } from './live.types';
@@ -50,6 +50,26 @@ export class LiveService {
     }));
   }
 
+  async listSessionHistory(adminId: string, limit: number, offset: number) {
+    const rows = await db.query.liveSessions.findMany({
+      where: eq(liveSessions.adminId, adminId),
+      orderBy: (ls, { desc }) => [desc(ls.createdAt)],
+      limit,
+      offset,
+      with: { test: true },
+    });
+    return rows.map((r: any) => ({
+      id: r.id,
+      pin: r.pin,
+      testId: r.testId,
+      testName: r.test?.name ?? '',
+      mode: r.mode,
+      status: r.status,
+      createdAt: r.createdAt,
+      finishedAt: r.finishedAt,
+    }));
+  }
+
   async createSession(adminId: string, testId: string, questionTimeSec: number, mode: 'individual' | 'team' = 'individual') {
     if (!ALLOWED_TIMES.includes(questionTimeSec)) throw new Error('INVALID_TIME');
     const test = await db.query.tests.findFirst({
@@ -75,6 +95,14 @@ export class LiveService {
     if (liveQuestions.length === 0) throw new Error('NO_LIVE_QUESTIONS');
 
     const pin = this.initSession(adminId, test.id, test.name, liveQuestions, questionTimeSec, mode);
+    await db.insert(liveSessions).values({
+      testId: test.id,
+      adminId,
+      pin,
+      mode,
+      questionTimeSec,
+      status: 'active',
+    });
     return { pin };
   }
 
@@ -108,8 +136,19 @@ export class LiveService {
 
   // ── Gateway uchun ───────────────────────────────────────────
 
-  hostJoin(pin: string, adminId: string, socketId: string) {
-    const s = this.mustGet(pin);
+  async hostJoin(pin: string, adminId: string, socketId: string) {
+    const s = this.sessions.get(pin);
+    if (!s) {
+      const staleRow = await db.query.liveSessions.findFirst({
+        where: and(eq(liveSessions.pin, pin), eq(liveSessions.status, 'active')),
+      });
+      if (staleRow) {
+        await db.update(liveSessions)
+          .set({ status: 'finished', finishedAt: new Date() })
+          .where(eq(liveSessions.id, staleRow.id));
+      }
+      throw new Error('NOT_FOUND');
+    }
     if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
     s.hostSocketId = socketId;
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
@@ -473,6 +512,9 @@ export class LiveService {
       if (s.mode === 'team') await this.persistTeamResults(s);
       else await this.persistResults(s);
     }
+    await db.update(liveSessions)
+      .set({ status: 'finished', finishedAt: new Date() })
+      .where(and(eq(liveSessions.pin, s.pin), eq(liveSessions.status, 'active')));
     setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);
   }
 

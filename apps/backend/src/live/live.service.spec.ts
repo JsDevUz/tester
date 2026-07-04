@@ -1,8 +1,18 @@
 import { LiveService } from './live.service';
 import { LiveQuestion, LiveBroadcaster } from './live.types';
+import { db } from '../db';
 
 // db ga tegmaslik uchun persistResults ni mock qilamiz
-jest.mock('../db', () => ({ db: {} }));
+jest.mock('../db', () => ({
+  db: {
+    insert: jest.fn(() => ({ values: () => ({ returning: async () => [{ id: 'row-1' }] }) })),
+    update: jest.fn(() => ({ set: () => ({ where: async () => {} }) })),
+    query: {
+      tests: { findFirst: jest.fn(), findMany: jest.fn() },
+      liveSessions: { findFirst: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
+    },
+  },
+}));
 
 function makeQuestions(): LiveQuestion[] {
   return [
@@ -602,5 +612,96 @@ describe('LiveService team mode — gameplay', () => {
     await Promise.resolve();
     jest.advanceTimersByTime(4000); // reveal -> only 1 question, so this finishes the game
     expect(persistSpy).toHaveBeenCalledTimes(1);
+  });
+});
+
+describe('LiveService — live_sessions persistence', () => {
+  it('createSession inserts a live_sessions row with status "active"', async () => {
+    const insertedRows: any[] = [];
+    (db.insert as jest.Mock).mockImplementation((table: any) => ({
+      values: (vals: any) => {
+        insertedRows.push(vals);
+        return { returning: async () => [{ id: 'row-1', ...vals }] };
+      },
+    }));
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue({
+      id: 'test1', name: 'Matematika', questions: [
+        { id: 'q1', text: 'Q', type: 'single', imageUrl: null, correctAnswer: null,
+          options: [{ id: 'o1', text: 'A', isCorrect: true, orderIndex: 0 }] },
+      ],
+    });
+
+    const service = new LiveService();
+    service.setBroadcaster(makeFakeBroadcaster().b);
+    await service.createSession('admin1', 'test1', 20, 'individual');
+
+    const sessionRow = insertedRows.find((r) => r.pin !== undefined && r.status === 'active');
+    expect(sessionRow).toBeDefined();
+    expect(sessionRow.testId).toBe('test1');
+    expect(sessionRow.adminId).toBe('admin1');
+    expect(sessionRow.mode).toBe('individual');
+    expect(sessionRow.questionTimeSec).toBe(20);
+  });
+
+  it('finish() updates the live_sessions row to status "finished" with a finishedAt timestamp', async () => {
+    const updateCalls: any[] = [];
+    (db.update as jest.Mock).mockImplementation((table: any) => ({
+      set: (vals: any) => {
+        updateCalls.push(vals);
+        return { where: async () => {} };
+      },
+    }));
+    (db.insert as jest.Mock).mockImplementation(() => ({
+      values: () => ({ returning: async () => [{ id: 'row-1' }] }),
+    }));
+
+    const service = new LiveService();
+    const { b } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
+    const pin = service.initSession('admin1', 'test1', 'Matematika', makeQuestions(), 10, 'individual');
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    await (service as any).finish((service as any).sessions.get(pin));
+
+    const finishUpdate = updateCalls.find((u) => u.status === 'finished');
+    expect(finishUpdate).toBeDefined();
+    expect(finishUpdate.finishedAt).toBeInstanceOf(Date);
+  });
+
+  it('hostJoin self-heals a stale active live_sessions row to finished when no in-memory session exists for the pin', async () => {
+    const updateCalls: any[] = [];
+    (db.query as any).liveSessions = {
+      findFirst: jest.fn().mockResolvedValue({ id: 'row-1', pin: '999999', status: 'active' }),
+    };
+    (db.update as jest.Mock).mockImplementation((table: any) => ({
+      set: (vals: any) => {
+        updateCalls.push(vals);
+        return { where: async () => {} };
+      },
+    }));
+
+    const service = new LiveService();
+    service.setBroadcaster(makeFakeBroadcaster().b);
+    await expect(service.hostJoin('999999', 'admin1', 'hs')).rejects.toThrow();
+
+    expect(updateCalls.some((u) => u.status === 'finished')).toBe(true);
+  });
+
+  it('listSessionHistory returns sessions for the given admin, most recent first, with testName joined', async () => {
+    const rows = [
+      { id: 'row-2', pin: '222222', mode: 'team', status: 'finished', createdAt: new Date('2026-01-02'), finishedAt: new Date('2026-01-02'), testId: 'test1', test: { name: 'Fizika' } },
+      { id: 'row-1', pin: '111111', mode: 'individual', status: 'active', createdAt: new Date('2026-01-01'), finishedAt: null, testId: 'test2', test: { name: 'Matematika' } },
+    ];
+    (db.query as any).liveSessions = {
+      findMany: jest.fn().mockResolvedValue(rows),
+    };
+
+    const service = new LiveService();
+    const result = await service.listSessionHistory('admin1', 20, 0);
+
+    expect(result).toHaveLength(2);
+    expect(result[0]).toMatchObject({ id: 'row-2', pin: '222222', testName: 'Fizika', mode: 'team', status: 'finished' });
+    expect(result[1]).toMatchObject({ id: 'row-1', pin: '111111', testName: 'Matematika', mode: 'individual', status: 'active' });
   });
 });

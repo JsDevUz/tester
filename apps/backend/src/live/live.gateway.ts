@@ -46,14 +46,16 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:join')
-  hostJoin(@MessageBody() body: { pin: string; token: string }, @ConnectedSocket() client: Socket) {
-    return this.run(() => {
+  async hostJoin(@MessageBody() body: { pin: string; token: string }, @ConnectedSocket() client: Socket) {
+    try {
       const user = this.verify(body.token);
       if (user.role !== 'teacher' && user.role !== 'super') throw new Error('UNAUTHORIZED');
-      const res = this.liveService.hostJoin(body.pin, user.sub, client.id);
+      const res = await this.liveService.hostJoin(body.pin, user.sub, client.id);
       void client.join(`pin:${body.pin}`);
-      return res;
-    });
+      return { ok: true, ...res };
+    } catch (e: any) {
+      return { ok: false, code: e?.message ?? 'ERROR' };
+    }
   }
 
   @SubscribeMessage('player:join')
