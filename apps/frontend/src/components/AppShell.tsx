@@ -1,17 +1,21 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, CreditCard, ClipboardList, Users, School, Settings } from 'lucide-react';
+import {
+  BookOpen, CreditCard, ClipboardList, Users, School, Settings,
+  FileText, Radio, UserCheck, Hourglass, type LucideIcon,
+} from 'lucide-react';
 import { useAuthStore } from '../stores/authStore';
 
 interface SubItem {
   label: string;
   path: string;
+  icon: LucideIcon;
 }
 
 interface NavSection {
   key: string;
   label: string;
-  icon: typeof BookOpen;
+  icon: LucideIcon;
   path: string;
   subItems?: SubItem[];
 }
@@ -22,15 +26,15 @@ const SECTIONS: NavSection[] = [
   {
     key: 'practice', label: 'Amaliyotlar', icon: ClipboardList, path: '/',
     subItems: [
-      { label: 'Testlar', path: '/' },
-      { label: 'Live musobaqa', path: '/live' },
+      { label: 'Testlar', path: '/', icon: FileText },
+      { label: 'Live musobaqa', path: '/live', icon: Radio },
     ],
   },
   {
     key: 'students', label: "O'quvchilar", icon: Users, path: '/students',
     subItems: [
-      { label: 'Barchasi', path: '/students' },
-      { label: 'Ruxsat kutayotganlar', path: '/students/pending' },
+      { label: 'Barchasi', path: '/students', icon: UserCheck },
+      { label: 'Ruxsat kutayotganlar', path: '/students/pending', icon: Hourglass },
     ],
   },
   { key: 'school', label: 'Mening Maktabim', icon: School, path: '/school' },
@@ -81,10 +85,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   }
                 }}
                 title={section.label}
-                className={`w-full aspect-square rounded-xl flex items-center justify-center transition-colors ${
-                  isActive || isOpen ? 'bg-white text-gray-900' : 'text-gray-400 hover:bg-gray-800 hover:text-white'
+                className={`relative w-full aspect-square rounded-xl flex items-center justify-center transition-colors duration-150 ${
+                  isActive || isOpen
+                    ? 'bg-white text-indigo-600'
+                    : 'text-gray-400 hover:bg-white/10 hover:text-white'
                 }`}
               >
+                {isActive && (
+                  <span className="absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-indigo-400" />
+                )}
                 <Icon size={20} />
               </button>
             );
@@ -112,21 +121,30 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Ikkinchi qatlam: kengaytirilgan sidebar (faqat sub-items bo'lsa) ── */}
       {shownSection?.subItems && (
-        <div className="w-56 shrink-0 bg-white border-r border-gray-100 flex flex-col py-5 px-3">
+        <div className="w-64 shrink-0 bg-white border-r border-gray-100 flex flex-col py-5 px-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
             {shownSection.label}
           </p>
           <div className="flex flex-col gap-1">
             {shownSection.subItems.map((item) => {
+              const ItemIcon = item.icon;
               const isActive = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
               return (
                 <button
                   key={item.path}
                   onClick={() => navigate(item.path)}
-                  className={`text-left text-sm px-3 py-2 rounded-xl transition-colors ${
-                    isActive ? 'bg-indigo-50 text-indigo-600 font-medium' : 'text-gray-600 hover:bg-gray-50'
+                  className={`group flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl transition-colors ${
+                    isActive
+                      ? 'bg-indigo-50 text-indigo-600 font-semibold'
+                      : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
                   }`}
                 >
+                  <ItemIcon
+                    size={17}
+                    className={`shrink-0 transition-colors ${
+                      isActive ? 'text-indigo-500' : 'text-gray-400 group-hover:text-gray-600'
+                    }`}
+                  />
                   {item.label}
                 </button>
               );
