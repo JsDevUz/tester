@@ -669,6 +669,27 @@ describe('LiveService — live_sessions persistence', () => {
     expect(finishUpdate.finishedAt).toBeInstanceOf(Date);
   });
 
+  it('finish() does not throw/reject when db.update rejects (e.g. connection blip)', async () => {
+    (db.update as jest.Mock).mockImplementation(() => ({
+      set: () => ({
+        where: async () => { throw new Error('connection blip'); },
+      }),
+    }));
+    (db.insert as jest.Mock).mockImplementation(() => ({
+      values: () => ({ returning: async () => [{ id: 'row-1' }] }),
+    }));
+
+    const service = new LiveService();
+    const { b } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
+    const pin = service.initSession('admin1', 'test1', 'Matematika', makeQuestions(), 10, 'individual');
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+
+    await expect((service as any).finish((service as any).sessions.get(pin))).resolves.toBeUndefined();
+  });
+
   it('hostJoin self-heals a stale active live_sessions row to finished when no in-memory session exists for the pin', async () => {
     const updateCalls: any[] = [];
     (db.query as any).liveSessions = {

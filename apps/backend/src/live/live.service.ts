@@ -143,9 +143,13 @@ export class LiveService {
         where: and(eq(liveSessions.pin, pin), eq(liveSessions.status, 'active')),
       });
       if (staleRow) {
-        await db.update(liveSessions)
-          .set({ status: 'finished', finishedAt: new Date() })
-          .where(eq(liveSessions.id, staleRow.id));
+        try {
+          await db.update(liveSessions)
+            .set({ status: 'finished', finishedAt: new Date() })
+            .where(eq(liveSessions.id, staleRow.id));
+        } catch (e) {
+          console.error(`hostJoin: failed to self-heal stale session ${pin}`, e);
+        }
       }
       throw new Error('NOT_FOUND');
     }
@@ -512,9 +516,13 @@ export class LiveService {
       if (s.mode === 'team') await this.persistTeamResults(s);
       else await this.persistResults(s);
     }
-    await db.update(liveSessions)
-      .set({ status: 'finished', finishedAt: new Date() })
-      .where(and(eq(liveSessions.pin, s.pin), eq(liveSessions.status, 'active')));
+    try {
+      await db.update(liveSessions)
+        .set({ status: 'finished', finishedAt: new Date() })
+        .where(and(eq(liveSessions.pin, s.pin), eq(liveSessions.status, 'active')));
+    } catch (e) {
+      console.error(`finish: failed to mark session ${s.pin} as finished`, e);
+    }
     setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);
   }
 
