@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Toolbar } from "../components/Toolbar";
+import { AppShell } from "../components/AppShell";
 import { FolderCard } from "../components/FolderCard";
 import { NewFolderModal } from "../components/NewFolderModal";
 import { useFolderStore } from "../stores/folderStore";
@@ -36,8 +36,8 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <div className="flex-1 p-6 max-w-5xl mx-auto w-full pb-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>
@@ -117,6 +117,7 @@ export function DashboardPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }

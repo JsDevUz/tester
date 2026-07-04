@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { TestCard } from '../components/TestCard';
 import { TestSettingsModal } from '../components/TestSettingsModal';
 import { useTestStore } from '../stores/testStore';
@@ -42,8 +42,8 @@ export function FolderViewPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <div className="flex-1 p-6 max-w-6xl mx-auto w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
@@ -113,6 +113,7 @@ export function FolderViewPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }

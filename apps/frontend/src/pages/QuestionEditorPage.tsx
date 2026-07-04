@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Check, Circle, Pencil, Trash2, X, Image, Music } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { QuestionForm } from '../components/QuestionForm';
 import { BulkImportTab } from '../components/BulkImportTab';
 import { useQuestionStore } from '../stores/questionStore';
@@ -239,8 +239,8 @@ export function QuestionEditorPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <div className="flex-1 p-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center gap-2 mb-4">
           <button onClick={() => navigate(`/folders/${test?.folderId}`)} className="text-gray-400 hover:text-gray-600 text-sm">
@@ -283,6 +283,7 @@ export function QuestionEditorPage() {
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }

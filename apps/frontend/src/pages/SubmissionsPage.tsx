@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Copy, Check, Trash2, ChevronRight, ChevronLeft, Inbox } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { useTestStore } from '../stores/testStore';
 import { apiGetTest, type TestDetail } from '../api/tests';
 import { apiGetSubmissions, apiDeleteSubmission, type Submission } from '../api/submissions';
@@ -83,8 +83,8 @@ export function SubmissionsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-5">
         {/* Header */}
         <button onClick={() => navigate(-1)}
@@ -176,6 +176,7 @@ export function SubmissionsPage() {
           </div>
         </>
       )}
-    </div>
+      </div>
+    </AppShell>
   );
 }

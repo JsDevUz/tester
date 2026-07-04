@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { AdminModal } from '../components/AdminModal';
 import { apiListAdmins, apiCreateAdmin, apiDeleteAdmin, apiUpdateUserRole } from '../api/admins';
 import { useAuthStore } from '../stores/authStore';
@@ -37,8 +37,8 @@ export function AdminsPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
       <div className="p-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
@@ -78,6 +78,7 @@ export function AdminsPage() {
         </div>
       </div>
       {showModal && <AdminModal onSubmit={handleCreate} onClose={() => setShowModal(false)} />}
-    </div>
+      </div>
+    </AppShell>
   );
 }

@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ChevronLeft } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { AnswerResultCard } from '../components/AnswerResultCard';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
 
@@ -32,8 +32,8 @@ export function SubmissionDetailPage() {
   const isMid = pct >= 40 && pct < 70;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-5">
         {/* Header */}
         <button onClick={() => navigate(-1)}
@@ -66,6 +66,7 @@ export function SubmissionDetailPage() {
           )}
         </div>
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }

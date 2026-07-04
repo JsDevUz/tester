@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Search, Radio, ChevronRight } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
+import { AppShell } from '../components/AppShell';
 import { apiLiveTests, apiCreateLiveSession, type LiveTestItem } from '../api/live';
 
 const TIMES = [10, 20, 30, 60];
@@ -40,8 +40,8 @@ export function LiveCreatePage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toolbar />
+    <AppShell>
+      <div className="min-h-screen bg-gray-50 flex flex-col">
       <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
         <div className="flex items-center gap-2 mb-5">
           <Radio size={20} className="text-indigo-500" />
@@ -118,6 +118,7 @@ export function LiveCreatePage() {
           {creating ? 'Yaratilmoqda...' : <><span>Sessiya yaratish</span><ChevronRight size={18} /></>}
         </button>
       </div>
-    </div>
+      </div>
+    </AppShell>
   );
 }
