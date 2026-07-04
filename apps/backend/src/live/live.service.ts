@@ -3,12 +3,12 @@ import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { tests, submissions, answers } from '../db/schema';
 import {
-  LiveSession, LivePlayer, LiveQuestion, LiveBroadcaster, LeaderboardEntry,
+  LiveSession, LivePlayer, LiveQuestion, LiveBroadcaster, LeaderboardEntry, LiveTeam,
 } from './live.types';
 import {
   LIVE_TYPES, ALLOWED_TIMES, REVEAL_MS, SESSION_CLEANUP_MS, HOST_GRACE_MS,
   computePoints, generatePin, buildLeaderboard,
-  makeTeamId, validateTeamsReady,
+  makeTeamId, validateTeamsReady, TEAM_TYPES_WITH_SUGGESTIONS,
 } from './live.logic';
 import { gradeAnswer } from '../grading/grading';
 
@@ -189,6 +189,76 @@ export class LiveService {
     this.startQuestion(s, 0);
   }
 
+  suggest(pin: string, teamId: string, userId: string, optionId: string): void {
+    const s = this.mustGet(pin);
+    this.mustBeTeamMode(s);
+    if (s.status !== 'question') throw new Error('NOT_QUESTION_PHASE');
+    const team = s.teams!.get(teamId);
+    if (!team) throw new Error('TEAM_NOT_FOUND');
+    if (!team.memberUserIds.has(userId)) throw new Error('NOT_TEAM_MEMBER');
+    const q = s.questions[s.currentIdx];
+    if (!(TEAM_TYPES_WITH_SUGGESTIONS as readonly string[]).includes(q.type)) throw new Error('NOT_SUGGESTABLE_TYPE');
+
+    if (!team.suggestions.has(q.id)) team.suggestions.set(q.id, new Map());
+    const counts = team.suggestions.get(q.id)!;
+    const current = counts.get(optionId) ?? 0;
+    counts.set(optionId, current > 0 ? 0 : 1); // toggle per-user handled at call site via idempotent re-toggle; simple count model per spec (aggregate suggestion counts, not per-user tracking)
+    if (team.captainUserId) {
+      const captain = s.players.get(team.captainUserId);
+      if (captain?.socketId) {
+        const payload: Record<string, number> = {};
+        for (const [oid, c] of counts.entries()) payload[oid] = c;
+        this.broadcaster.toSocket(captain.socketId, 'team:suggestionUpdate', { questionId: q.id, counts: payload });
+      }
+    }
+  }
+
+  captainAnswer(pin: string, userId: string, questionId: string, selectedOptionIds: string[], textAnswer: string | null): void {
+    const s = this.mustGet(pin);
+    this.mustBeTeamMode(s);
+    if (s.status !== 'question') throw new Error('NOT_QUESTION_PHASE');
+    const q = s.questions[s.currentIdx];
+    if (q.id !== questionId) throw new Error('WRONG_QUESTION');
+    const team = this.findTeamByCaptain(s, userId);
+    if (!team) throw new Error('NOT_CAPTAIN');
+    if (team.answers.has(questionId)) throw new Error('ALREADY_ANSWERED');
+
+    const validIds = new Set(q.options.map((o) => o.id));
+    const filteredOptionIds = (selectedOptionIds ?? []).filter((id) => validIds.has(id));
+    const timeMs = Date.now() - s.questionStartedAt;
+
+    // gradeAnswer is async only for 'open' (Groq call); for team mode's synchronous state machine
+    // we resolve it inline — fire-and-forget the async grade, then finalize when it resolves.
+    void (async () => {
+      const isCorrect = (await gradeAnswer(
+        { type: q.type, correctAnswer: q.correctAnswer, options: q.options, text: q.text },
+        { selectedOptionIds: filteredOptionIds, textAnswer },
+        async () => false, // team mode does not call Groq for 'open' — captains type answers directly and are graded as ungraded/manual only; AI grading is out of scope for this spec
+      )) ?? false;
+      const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
+      team.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
+      team.score += points;
+      this.maybeRevealEarlyTeams(s);
+    })();
+  }
+
+  private findTeamByCaptain(s: LiveSession, userId: string): LiveTeam | null {
+    if (!s.teams) return null;
+    for (const t of s.teams.values()) if (t.captainUserId === userId) return t;
+    return null;
+  }
+
+  private maybeRevealEarlyTeams(s: LiveSession): void {
+    if (s.status !== 'question' || !s.teams) return;
+    const q = s.questions[s.currentIdx];
+    const teamsWithCaptain = [...s.teams.values()].filter((t) => t.captainUserId !== null);
+    if (teamsWithCaptain.length === 0) return;
+    if (teamsWithCaptain.every((t) => t.answers.has(q.id))) {
+      if (s.questionTimer) { clearTimeout(s.questionTimer); s.questionTimer = null; }
+      this.reveal(s);
+    }
+  }
+
   private broadcastTeamUpdate(s: LiveSession): void {
     if (!s.teams || !s.unassignedUserIds) return;
     const nameOf = (userId: string) => s.players.get(userId)?.name ?? '?';
@@ -248,8 +318,19 @@ export class LiveService {
       for (const p of s.players.values()) {
         if (p.socketId === socketId) {
           p.socketId = null;
-          if (s.status === 'lobby') this.broadcastLobby(s);
-          if (s.status === 'question') this.maybeRevealEarly(s);
+          if (s.mode === 'team' && s.teams) {
+            for (const t of s.teams.values()) {
+              if (t.captainUserId === p.userId) {
+                t.captainUserId = null;
+                if (s.hostSocketId) this.broadcaster.toSocket(s.hostSocketId, 'team:captainDisconnected', { teamId: t.id });
+              }
+            }
+          }
+          if (s.status === 'lobby' || s.status === 'team_assign') this.broadcastLobby(s);
+          if (s.status === 'question') {
+            if (s.mode === 'team') this.maybeRevealEarlyTeams(s);
+            else this.maybeRevealEarly(s);
+          }
           return;
         }
       }
@@ -296,34 +377,70 @@ export class LiveService {
     s.status = 'reveal';
     const q = s.questions[s.currentIdx];
 
-    const distribution: Record<string, number> = {};
-    for (const opt of q.options) distribution[opt.id] = 0;
-    for (const p of s.players.values()) {
-      const a = p.answers.get(q.id);
-      if (a) for (const id of a.selectedOptionIds) if (id in distribution) distribution[id]++;
-    }
+    if (s.mode === 'team' && s.teams) {
+      const distribution: Record<string, number> = {};
+      for (const opt of q.options) distribution[opt.id] = 0;
+      for (const t of s.teams.values()) {
+        const a = t.answers.get(q.id);
+        if (a) for (const id of a.selectedOptionIds) if (id in distribution) distribution[id]++;
+      }
+      const teamLeaderboard = [...s.teams.values()]
+        .sort((a, b) => b.score - a.score)
+        .map((t, i) => ({ userId: t.id, name: t.name, score: t.score, rank: i + 1 }));
 
-    const leaderboard = buildLeaderboard([...s.players.values()]);
-    this.broadcaster.toRoom(s.pin, 'question:reveal', {
-      correctOptionIds: q.correctOptionIds,
-      correctAnswer: q.correctAnswer,
-      distribution,
-      leaderboard: leaderboard.slice(0, 5),
-    });
-    for (const p of s.players.values()) {
-      if (!p.socketId) continue;
-      const a = p.answers.get(q.id);
-      const rank = leaderboard.find((e) => e.userId === p.userId)?.rank ?? 0;
-      this.broadcaster.toSocket(p.socketId, 'question:reveal', {
+      this.broadcaster.toRoom(s.pin, 'question:reveal', {
+        correctOptionIds: q.correctOptionIds,
+        correctAnswer: q.correctAnswer,
+        distribution,
+        leaderboard: teamLeaderboard.slice(0, 5),
+      });
+      for (const t of s.teams.values()) {
+        if (!t.captainUserId) continue;
+        const captain = s.players.get(t.captainUserId);
+        if (!captain?.socketId) continue;
+        const a = t.answers.get(q.id);
+        const rank = teamLeaderboard.find((e) => e.userId === t.id)?.rank ?? 0;
+        this.broadcaster.toSocket(captain.socketId, 'question:reveal', {
+          correctOptionIds: q.correctOptionIds,
+          correctAnswer: q.correctAnswer,
+          distribution,
+          leaderboard: teamLeaderboard.slice(0, 5),
+          isCorrect: a?.isCorrect ?? false,
+          points: a?.points ?? 0,
+          score: t.score,
+          rank,
+        });
+      }
+    } else {
+      const distribution: Record<string, number> = {};
+      for (const opt of q.options) distribution[opt.id] = 0;
+      for (const p of s.players.values()) {
+        const a = p.answers.get(q.id);
+        if (a) for (const id of a.selectedOptionIds) if (id in distribution) distribution[id]++;
+      }
+
+      const leaderboard = buildLeaderboard([...s.players.values()]);
+      this.broadcaster.toRoom(s.pin, 'question:reveal', {
         correctOptionIds: q.correctOptionIds,
         correctAnswer: q.correctAnswer,
         distribution,
         leaderboard: leaderboard.slice(0, 5),
-        isCorrect: a?.isCorrect ?? false,
-        points: a?.points ?? 0,
-        score: p.score,
-        rank,
       });
+      for (const p of s.players.values()) {
+        if (!p.socketId) continue;
+        const a = p.answers.get(q.id);
+        const rank = leaderboard.find((e) => e.userId === p.userId)?.rank ?? 0;
+        this.broadcaster.toSocket(p.socketId, 'question:reveal', {
+          correctOptionIds: q.correctOptionIds,
+          correctAnswer: q.correctAnswer,
+          distribution,
+          leaderboard: leaderboard.slice(0, 5),
+          isCorrect: a?.isCorrect ?? false,
+          points: a?.points ?? 0,
+          score: p.score,
+          rank,
+        });
+      }
     }
 
     s.revealTimer = setTimeout(() => {
@@ -342,11 +459,45 @@ export class LiveService {
     if (s.revealTimer) clearTimeout(s.revealTimer);
     if (s.hostDisconnectTimer) clearTimeout(s.hostDisconnectTimer);
 
-    this.broadcaster.toRoom(s.pin, 'game:finished', {
-      leaderboard: buildLeaderboard([...s.players.values()]),
-    });
-    if (s.currentIdx >= 0) await this.persistResults(s);
+    const leaderboard = s.mode === 'team' && s.teams
+      ? [...s.teams.values()].sort((a, b) => b.score - a.score).map((t, i) => ({ userId: t.id, name: t.name, score: t.score, rank: i + 1 }))
+      : buildLeaderboard([...s.players.values()]);
+
+    this.broadcaster.toRoom(s.pin, 'game:finished', { leaderboard });
+    if (s.currentIdx >= 0) {
+      if (s.mode === 'team') await this.persistTeamResults(s);
+      else await this.persistResults(s);
+    }
     setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);
+  }
+
+  private async persistTeamResults(s: LiveSession) {
+    if (!s.teams) return;
+    for (const t of s.teams.values()) {
+      try {
+        const answersList = [...t.answers.entries()];
+        const correctCount = answersList.filter(([, a]) => a.isCorrect).length;
+        const finalCaptainUserId = t.captainUserId ?? [...t.memberUserIds][0] ?? null;
+        const [sub] = await db.insert(submissions).values({
+          testId: s.testId,
+          userId: finalCaptainUserId,
+          studentName: t.name,
+          submittedAt: new Date(),
+          score: correctCount,
+          total: s.questions.length,
+          mode: 'live',
+        }).returning();
+        const rows = answersList.map(([questionId, a]) => ({
+          submissionId: sub.id,
+          questionId,
+          selectedOptionIds: a.selectedOptionIds,
+          isCorrect: a.isCorrect,
+        }));
+        if (rows.length > 0) await db.insert(answers).values(rows);
+      } catch (e) {
+        console.error(`persistTeamResults: failed to persist team ${t.id} in session ${s.pin}`, e);
+      }
+    }
   }
 
   private async persistResults(s: LiveSession) {

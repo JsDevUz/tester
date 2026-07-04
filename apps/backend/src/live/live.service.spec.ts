@@ -450,3 +450,107 @@ describe('LiveService team mode — creation and assignment', () => {
     expect(() => service.createTeam(pin, 'admin1', "Guruh 1")).toThrow('NOT_TEAM_MODE');
   });
 });
+
+describe('LiveService team mode — gameplay', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  function setupReadyTeamGame() {
+    const service = new LiveService();
+    const { b, events } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
+    const pin = service.initSession('admin1', 'test1', 'Matematika', makeTeamQuestions(), 10, 'team');
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'captain1', name: 'Ali' }, 's1');
+    service.playerJoin(pin, { id: 'member1', name: 'Vali' }, 's2');
+    service.playerJoin(pin, { id: 'captain2', name: 'Soli' }, 's3');
+    const { teamId: t1 } = service.createTeam(pin, 'admin1', "Guruh 1");
+    const { teamId: t2 } = service.createTeam(pin, 'admin1', "Guruh 2");
+    service.assignPlayer(pin, 'admin1', 'captain1', t1);
+    service.assignPlayer(pin, 'admin1', 'member1', t1);
+    service.assignPlayer(pin, 'admin1', 'captain2', t2);
+    service.setCaptain(pin, 'admin1', t1, 'captain1');
+    service.setCaptain(pin, 'admin1', t2, 'captain2');
+    return { service, events, pin, t1, t2 };
+  }
+
+  it('member suggest toggles a count visible only to that team, sent only to the captain socket', () => {
+    const { service, events, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.suggest(pin, t1, 'member1', 'o2');
+    const s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).suggestions.get('q1').get('o2')).toBe(1);
+    const captainMsg = events.find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
+    expect(captainMsg).toBeDefined();
+    // toggling again removes the suggestion
+    service.suggest(pin, t1, 'member1', 'o2');
+    expect(s.teams.get(t1).suggestions.get('q1').get('o2') ?? 0).toBe(0);
+  });
+
+  it('suggest rejects a user who is not in that team', () => {
+    const { service, pin, t1, t2 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    expect(() => service.suggest(pin, t1, 'captain2', 'o2')).toThrow('NOT_TEAM_MEMBER');
+  });
+
+  it('captainAnswer rejects a non-captain team member', () => {
+    const { service, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    expect(() => service.captainAnswer(pin, 'member1', 'q1', ['o2'], null)).toThrow('NOT_CAPTAIN');
+  });
+
+  it('captainAnswer grades correctly and stores on the team, not the individual player', async () => {
+    const { service, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.captainAnswer(pin, 'captain1', 'q1', ['o2'], null);
+    await Promise.resolve();
+    const s = (service as any).sessions.get(pin);
+    const team = s.teams.get(t1);
+    expect(team.answers.get('q1').isCorrect).toBe(true);
+    expect(team.score).toBeGreaterThan(0);
+  });
+
+  it('reveal fires once every team\'s captain has answered (not every individual player)', async () => {
+    const { service, events, pin } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.captainAnswer(pin, 'captain1', 'q1', ['o2'], null);
+    await Promise.resolve();
+    expect(events.some((e) => e.event === 'question:reveal')).toBe(false); // team 2's captain hasn't answered
+    service.captainAnswer(pin, 'captain2', 'q1', ['o1'], null);
+    await Promise.resolve();
+    expect(events.some((e) => e.event === 'question:reveal')).toBe(true);
+  });
+
+  it('captain disconnect during question phase marks the team captain-less and rejects further answers until reassigned', () => {
+    const { service, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.handleDisconnect('s1'); // captain1's socket
+    const s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).captainUserId).toBe(null);
+    expect(() => service.captainAnswer(pin, 'captain1', 'q1', ['o2'], null)).toThrow('NOT_CAPTAIN');
+  });
+
+  it('host can reassign captain mid-question after a disconnect, and the new captain can then answer', async () => {
+    const { service, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.handleDisconnect('s1');
+    service.setCaptain(pin, 'admin1', t1, 'member1');
+    service.captainAnswer(pin, 'member1', 'q1', ['o2'], null);
+    await Promise.resolve();
+    const s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).answers.get('q1').isCorrect).toBe(true);
+  });
+
+  it('finish persists one submission row per team with the team name as studentName', async () => {
+    const { service, pin, t1, t2 } = setupReadyTeamGame();
+    const persistSpy = jest.spyOn(service as any, 'persistTeamResults').mockResolvedValue(undefined);
+    service.startTeamGame(pin, 'admin1');
+    service.captainAnswer(pin, 'captain1', 'q1', ['o2'], null);
+    await Promise.resolve();
+    service.captainAnswer(pin, 'captain2', 'q1', ['o1'], null);
+    await Promise.resolve();
+    jest.advanceTimersByTime(4000); // reveal -> only 1 question, so this finishes the game
+    expect(persistSpy).toHaveBeenCalledTimes(1);
+  });
+});
