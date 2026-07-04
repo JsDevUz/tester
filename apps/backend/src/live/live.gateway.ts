@@ -74,6 +74,54 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:createTeam')
+  hostCreateTeam(@MessageBody() body: { pin: string; token: string; name: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      return this.liveService.createTeam(body.pin, user.sub, body.name);
+    });
+  }
+
+  @SubscribeMessage('host:assignPlayer')
+  hostAssignPlayer(@MessageBody() body: { pin: string; token: string; userId: string; teamId: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.assignPlayer(body.pin, user.sub, body.userId, body.teamId);
+    });
+  }
+
+  @SubscribeMessage('host:setCaptain')
+  hostSetCaptain(@MessageBody() body: { pin: string; token: string; teamId: string; userId: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.setCaptain(body.pin, user.sub, body.teamId, body.userId);
+    });
+  }
+
+  @SubscribeMessage('host:startTeam')
+  hostStartTeam(@MessageBody() body: { pin: string; token: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.startTeamGame(body.pin, user.sub);
+    });
+  }
+
+  @SubscribeMessage('member:suggest')
+  memberSuggest(@MessageBody() body: { pin: string; token: string; teamId: string; optionId: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.suggest(body.pin, body.teamId, user.sub, body.optionId);
+    });
+  }
+
+  @SubscribeMessage('captain:answer')
+  captainAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[]; textAnswer: string | null }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.liveService.captainAnswer(body.pin, user.sub, body.questionId, body.selectedOptionIds ?? [], body.textAnswer ?? null);
+    });
+  }
+
   @SubscribeMessage('player:answer')
   playerAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[]; textAnswer?: string | null }) {
     return this.run(() => {
