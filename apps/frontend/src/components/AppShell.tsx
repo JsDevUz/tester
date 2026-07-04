@@ -141,7 +141,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Ikkinchi qatlam (desktop): joriy faol bo'limni avtomatik ochib turadigan yonma-yon panel ── */}
       {desktopShownSection?.subItems && (
-        <div className="hidden lg:flex order-2 shrink-0 bg-white border border-gray-100 flex-col py-5 px-3 w-64">
+        <div className="hidden lg:flex relative order-2 shrink-0 bg-white border border-gray-100 flex-col py-5 px-3 w-64">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
             {desktopShownSection.label}
           </p>
@@ -171,7 +171,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             })}
           </div>
 
-          <div className="mt-auto pt-4 border-t border-gray-100 flex items-center gap-2.5 px-2">
+          <button
+            onClick={() => setProfileOpen((v) => !v)}
+            className="mt-auto pt-4 border-t border-gray-100 flex items-center gap-2.5 px-2 text-left"
+          >
             <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0">
               {initial}
             </div>
@@ -179,7 +182,32 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               <p className="text-sm font-medium text-gray-800 truncate">{admin?.name}</p>
               {admin?.phone && <p className="text-xs text-gray-400 truncate">{admin.phone}</p>}
             </div>
-          </div>
+          </button>
+
+          {/* Profil menyusi (desktop) — sub-panel ichida, uning yuqorisida joylashadi */}
+          {profileOpen && (
+            <>
+              <div className="fixed inset-0 z-40" onClick={() => setProfileOpen(false)} />
+              <div className="absolute z-50 bottom-full left-3 right-3 mb-2 bg-white rounded-2xl border border-gray-100 shadow-lg p-2">
+                {admin?.role === 'super' && (
+                  <button
+                    onClick={() => { navigate('/admins'); setProfileOpen(false); }}
+                    className="w-full flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
+                  >
+                    <ShieldCheck size={17} className="text-gray-400 shrink-0" />
+                    Adminlar
+                  </button>
+                )}
+                <button
+                  onClick={handleLogout}
+                  className="w-full flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
+                >
+                  <LogOut size={17} className="shrink-0" />
+                  Chiqish
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 
@@ -228,8 +256,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       {/* ── Asosiy kontent ── */}
       <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-white rounded-2xl border border-gray-100 overflow-y-auto">{children}</div>
 
-      {/* ── Profil menyusi (chiqish / adminlar) ── */}
-      {profileOpen && (
+      {/* ── Profil menyusi (chiqish / adminlar) — mobilda doim shu yerdan, desktopda faqat
+           ikkinchi qatlam panel ochiq bo'lmasa (chunki bo'lsa, o'sha panel ichida bor) ── */}
+      {profileOpen && !desktopShownSection?.subItems && (
         <>
           <div className="fixed inset-0 z-40 bg-black/30" onClick={() => setProfileOpen(false)} />
           <div className="fixed z-50 bottom-3 left-3 right-3 lg:bottom-16 lg:left-3 lg:right-auto lg:w-64 bg-white rounded-2xl border border-gray-100 p-4">
