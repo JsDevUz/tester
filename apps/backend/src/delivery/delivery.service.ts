@@ -3,23 +3,9 @@ import { db } from '../db';
 import { tests, submissions, answers, questions, options } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
+import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
-export function evaluateObjectiveAnswer(
-  questionType: string,
-  correctOptionIds: string[],
-  selectedOptionIds: string[],
-) {
-  if (correctOptionIds.length === 0) return false;
-  if (questionType === 'arrange') {
-    return correctOptionIds.length === selectedOptionIds.length &&
-      correctOptionIds.every((id, i) => id === selectedOptionIds[i]);
-  }
-
-  const correctIds = new Set(correctOptionIds);
-  const selectedIds = new Set(selectedOptionIds);
-  return correctIds.size === selectedIds.size &&
-    [...correctIds].every((id) => selectedIds.has(id));
-}
+export { evaluateObjectiveAnswer };
 
 @Injectable()
 export class DeliveryService {
@@ -167,60 +153,11 @@ export class DeliveryService {
       return { isCorrect: false, correctAnswer: this.correctAnswerText(question) };
     }
 
-    let isCorrect: boolean | null = null;
-
-    if (question.type === 'single' || question.type === 'multi') {
-      const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
-      isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
-    } else if (question.type === 'truefalse') {
-      const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
-      isCorrect = evaluateObjectiveAnswer('single', correctIds, item.selectedOptionIds);
-    } else if (question.type === 'arrange' || question.type === 'reorder') {
-      const correctOrder = question.options
-        .filter((o) => o.isCorrect)
-        .sort((a, b) => a.orderIndex - b.orderIndex)
-        .map((o) => o.id);
-      isCorrect = evaluateObjectiveAnswer('arrange', correctOrder, item.selectedOptionIds);
-    } else if (question.type === 'matching') {
-      const lefts = question.options.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-      const rights = question.options.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-      let allMatch = lefts.length > 0 && lefts.length === rights.length;
-      for (let i = 0; i < lefts.length && allMatch; i++) {
-        if (item.selectedOptionIds[i * 2] !== lefts[i].id || item.selectedOptionIds[i * 2 + 1] !== rights[i].id) allMatch = false;
-      }
-      isCorrect = allMatch;
-    } else if (question.type === 'fillblank') {
-      if (question.correctAnswer && item.textAnswer?.trim()) {
-        isCorrect = question.correctAnswer.trim().toLowerCase() === item.textAnswer.trim().toLowerCase();
-      }
-    } else if (question.type === 'open') {
-      if (item.textAnswer?.trim()) {
-        const manualOptions = question.options.filter((o) => o.isCorrect);
-        if (manualOptions.length > 0) {
-          isCorrect = manualOptions.some((o) => o.text.trim().toLowerCase() === item.textAnswer!.trim().toLowerCase());
-          if (!isCorrect && question.correctAnswer) {
-            isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
-          }
-        } else if (question.correctAnswer) {
-          isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
-        }
-      }
-    } else if (question.type === 'slider') {
-      if (question.correctAnswer && item.textAnswer?.trim()) {
-        const correct = parseFloat(question.correctAnswer);
-        const student = parseFloat(item.textAnswer.trim());
-        const tolerance = question.options[2] ? parseFloat(question.options[2].text) : 1;
-        isCorrect = !isNaN(student) && Math.abs(student - correct) <= tolerance;
-      }
-    } else if (question.type === 'droppin') {
-      if (question.correctAnswer && item.textAnswer?.trim()) {
-        const [cx, cy] = question.correctAnswer.split(',').map(Number);
-        const [sx, sy] = item.textAnswer.trim().split(',').map(Number);
-        const dist = Math.sqrt((cx - sx) ** 2 + (cy - sy) ** 2);
-        const radiusPct = question.options[0] ? parseFloat(question.options[0].text) / 100 : 0.08;
-        isCorrect = dist <= radiusPct;
-      }
-    }
+    const isCorrect = await gradeAnswer(
+      { type: question.type, correctAnswer: question.correctAnswer, options: question.options, text: question.text },
+      { selectedOptionIds: item.selectedOptionIds, textAnswer: item.textAnswer },
+      (qText, hint, studentAnswer) => this.groqService.checkOpenAnswer(qText, hint, studentAnswer),
+    );
 
     return { isCorrect, correctAnswer: this.correctAnswerText(question) };
   }
@@ -286,86 +223,51 @@ export class DeliveryService {
 
       let isCorrect: boolean | null = null;
 
+      const gradeInput = { selectedOptionIds: item.selectedOptionIds, textAnswer: item.textAnswer };
+      const gradableQuestion = { type: question.type, correctAnswer: question.correctAnswer, options: question.options, text: question.text };
+      const checkOpenAnswer = (qText: string, hint: string, studentAnswer: string) =>
+        this.groqService.checkOpenAnswer(qText, hint, studentAnswer);
+
       if (question.type === 'single' || question.type === 'multi') {
         total++;
-        const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
-        isCorrect = evaluateObjectiveAnswer(question.type, correctIds, item.selectedOptionIds);
+        isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'open') {
         if (item.textAnswer?.trim()) {
           total++;
-          const studentLower = item.textAnswer.trim().toLowerCase();
-          // First: check against manual correct options (exact match)
-          const manualOptions = question.options.filter((o) => o.isCorrect);
-          if (manualOptions.length > 0) {
-            const exactMatch = manualOptions.some((o) => o.text.trim().toLowerCase() === studentLower);
-            if (exactMatch) {
-              isCorrect = true;
-            } else if (question.correctAnswer) {
-              // Fallback to AI only if correctAnswer hint provided
-              isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
-            } else {
-              isCorrect = false;
-            }
-          } else if (question.correctAnswer) {
-            isCorrect = await this.groqService.checkOpenAnswer(question.text, question.correctAnswer, item.textAnswer);
-          }
+          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
           if (isCorrect) score++;
         }
       } else if (question.type === 'arrange' || question.type === 'reorder') {
         total++;
-        const correctOrder = question.options
-          .filter((o) => o.isCorrect)
-          .sort((a, b) => a.orderIndex - b.orderIndex)
-          .map((o) => o.id);
-        isCorrect = evaluateObjectiveAnswer('arrange', correctOrder, item.selectedOptionIds);
+        isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'truefalse') {
         total++;
-        const correctIds = question.options.filter((o) => o.isCorrect).map((o) => o.id);
-        isCorrect = evaluateObjectiveAnswer('single', correctIds, item.selectedOptionIds);
+        isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'matching') {
         // options: pairs saved as orderIndex=pairIndex, isCorrect=true(left)/false(right)
         // student sends selectedOptionIds: [leftId, rightId, leftId, rightId, ...]
         total++;
-        const pairs = question.options;
-        const lefts = pairs.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        const rights = pairs.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        const studentIds = item.selectedOptionIds;
-        let allMatch = lefts.length > 0 && lefts.length === rights.length;
-        for (let i = 0; i < lefts.length && allMatch; i++) {
-          if (studentIds[i * 2] !== lefts[i].id || studentIds[i * 2 + 1] !== rights[i].id) {
-            allMatch = false;
-          }
-        }
-        isCorrect = allMatch;
+        isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'fillblank') {
         if (question.correctAnswer && item.textAnswer?.trim()) {
           total++;
-          const correct = question.correctAnswer.trim().toLowerCase();
-          const student = item.textAnswer.trim().toLowerCase();
-          isCorrect = correct === student;
+          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
           if (isCorrect) score++;
         }
       } else if (question.type === 'slider') {
         if (question.correctAnswer && item.textAnswer?.trim()) {
           total++;
-          const correct = parseFloat(question.correctAnswer);
-          const student = parseFloat(item.textAnswer.trim());
-          const tolerance = question.options[2] ? parseFloat(question.options[2].text) : 1;
-          isCorrect = !isNaN(student) && Math.abs(student - correct) <= tolerance;
+          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
           if (isCorrect) score++;
         }
       } else if (question.type === 'droppin') {
         if (question.correctAnswer && item.textAnswer?.trim()) {
           total++;
-          const [cx, cy] = question.correctAnswer.split(',').map(Number);
-          const [sx, sy] = item.textAnswer.trim().split(',').map(Number);
-          const dist = Math.sqrt((cx - sx) ** 2 + (cy - sy) ** 2);
-          const radiusPct = question.options[0] ? parseFloat(question.options[0].text) / 100 : 0.08;
-          isCorrect = dist <= radiusPct;
+          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer);
           if (isCorrect) score++;
         }
       }
