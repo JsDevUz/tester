@@ -200,14 +200,18 @@ export class LiveService {
     if (!(TEAM_TYPES_WITH_SUGGESTIONS as readonly string[]).includes(q.type)) throw new Error('NOT_SUGGESTABLE_TYPE');
 
     if (!team.suggestions.has(q.id)) team.suggestions.set(q.id, new Map());
-    const counts = team.suggestions.get(q.id)!;
-    const current = counts.get(optionId) ?? 0;
-    counts.set(optionId, current > 0 ? 0 : 1); // toggle per-user handled at call site via idempotent re-toggle; simple count model per spec (aggregate suggestion counts, not per-user tracking)
+    const perUser = team.suggestions.get(q.id)!;
+    const current = perUser.get(userId);
+    if (current === optionId) {
+      perUser.delete(userId); // un-suggest
+    } else {
+      perUser.set(userId, optionId); // set new, or replace prior choice
+    }
     if (team.captainUserId) {
       const captain = s.players.get(team.captainUserId);
       if (captain?.socketId) {
         const payload: Record<string, number> = {};
-        for (const [oid, c] of counts.entries()) payload[oid] = c;
+        for (const oid of perUser.values()) payload[oid] = (payload[oid] ?? 0) + 1;
         this.broadcaster.toSocket(captain.socketId, 'team:suggestionUpdate', { questionId: q.id, counts: payload });
       }
     }

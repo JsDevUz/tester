@@ -480,12 +480,41 @@ describe('LiveService team mode — gameplay', () => {
     service.startTeamGame(pin, 'admin1');
     service.suggest(pin, t1, 'member1', 'o2');
     const s = (service as any).sessions.get(pin);
-    expect(s.teams.get(t1).suggestions.get('q1').get('o2')).toBe(1);
+    expect(s.teams.get(t1).suggestions.get('q1').get('member1')).toBe('o2');
     const captainMsg = events.find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
     expect(captainMsg).toBeDefined();
+    expect(captainMsg.payload).toEqual({ questionId: 'q1', counts: { o2: 1 } });
     // toggling again removes the suggestion
     service.suggest(pin, t1, 'member1', 'o2');
-    expect(s.teams.get(t1).suggestions.get('q1').get('o2') ?? 0).toBe(0);
+    expect(s.teams.get(t1).suggestions.get('q1').has('member1')).toBe(false);
+  });
+
+  it('two different users suggesting the same option both count toward it', () => {
+    const { service, events, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.assignPlayer(pin, 'admin1', 'captain2', t1); // move captain2 into t1 as a second member
+    service.suggest(pin, t1, 'member1', 'o2');
+    service.suggest(pin, t1, 'captain2', 'o2');
+    const s = (service as any).sessions.get(pin);
+    const perUser = s.teams.get(t1).suggestions.get('q1');
+    expect(perUser.get('member1')).toBe('o2');
+    expect(perUser.get('captain2')).toBe('o2');
+    const lastMsg = [...events].reverse().find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
+    expect(lastMsg.payload).toEqual({ questionId: 'q1', counts: { o2: 2 } });
+    // captain never sees per-user data, only aggregated counts
+    expect(lastMsg.payload).not.toHaveProperty('userId');
+    expect(Object.keys(lastMsg.payload)).toEqual(['questionId', 'counts']);
+  });
+
+  it('a user changing their suggestion moves their contribution between options', () => {
+    const { service, events, pin, t1 } = setupReadyTeamGame();
+    service.startTeamGame(pin, 'admin1');
+    service.suggest(pin, t1, 'member1', 'o2');
+    service.suggest(pin, t1, 'member1', 'o1');
+    const s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).suggestions.get('q1').get('member1')).toBe('o1');
+    const lastMsg = [...events].reverse().find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
+    expect(lastMsg.payload).toEqual({ questionId: 'q1', counts: { o1: 1 } });
   });
 
   it('suggest rejects a user who is not in that team', () => {

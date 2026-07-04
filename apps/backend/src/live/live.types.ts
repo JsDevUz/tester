@@ -43,7 +43,7 @@ export interface LiveTeam {
   memberUserIds: Set<string>;
   score: number;
   answers: Map<string, PlayerAnswer>;
-  suggestions: Map<string, Map<string, number>>; // questionId -> optionId -> count
+  suggestions: Map<string, Map<string, string>>; // questionId -> userId -> optionId
 }
 
 export type LiveStatus = 'lobby' | 'team_assign' | 'question' | 'reveal' | 'finished';
