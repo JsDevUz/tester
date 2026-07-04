@@ -1,124 +1,113 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { Search, Radio, ChevronRight } from 'lucide-react';
+import { Radio, Plus, ChevronRight, Users2, User, Inbox } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
-import { apiLiveTests, apiCreateLiveSession, type LiveTestItem } from '../api/live';
+import { NewLiveSessionModal } from '../components/NewLiveSessionModal';
+import { apiListLiveSessions, type LiveSessionHistoryItem } from '../api/live';
 
-const TIMES = [10, 20, 30, 60];
+const LIMIT = 20;
 
 export function LiveCreatePage() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-  const [tests, setTests] = useState<LiveTestItem[]>([]);
-  const [query, setQuery] = useState('');
-  const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('testId'));
-  const [timeSec, setTimeSec] = useState(20);
-  const [mode, setMode] = useState<'individual' | 'team'>('individual');
-  const [creating, setCreating] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [sessions, setSessions] = useState<LiveSessionHistoryItem[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [loadingMore, setLoadingMore] = useState(false);
+  const [hasMore, setHasMore] = useState(true);
+  const [showModal, setShowModal] = useState(!!searchParams.get('testId'));
+  const offsetRef = useRef(0);
 
-  useEffect(() => { apiLiveTests().then(setTests); }, []);
-
-  const filtered = tests.filter((t) => t.name.toLowerCase().includes(query.toLowerCase()));
-  const selected = tests.find((t) => t.id === selectedId) ?? null;
-
-  async function handleCreate() {
-    if (!selectedId || creating) return;
-    setCreating(true);
-    setError(null);
-    try {
-      const { pin } = await apiCreateLiveSession(selectedId, timeSec, mode);
-      navigate(`/live/host/${pin}`);
-    } catch (e: any) {
-      const msg = e?.response?.data?.message;
-      setError(msg === 'NO_LIVE_QUESTIONS'
-        ? "Bu testda live uchun mos savol yo'q (yagona / ko'p tanlov / to'g'ri-noto'g'ri kerak)."
-        : "Xato yuz berdi. Qayta urinib ko'ring.");
-    } finally {
-      setCreating(false);
+  async function loadMore(reset = false) {
+    if (reset) {
+      offsetRef.current = 0;
+      setSessions([]);
+      setHasMore(true);
+      setLoading(true);
+    } else {
+      setLoadingMore(true);
     }
+    try {
+      const rows = await apiListLiveSessions(LIMIT, offsetRef.current);
+      setSessions((prev) => reset ? rows : [...prev, ...rows]);
+      offsetRef.current += rows.length;
+      if (rows.length < LIMIT) setHasMore(false);
+    } finally {
+      setLoading(false);
+      setLoadingMore(false);
+    }
+  }
+
+  useEffect(() => { loadMore(true); }, []);
+
+  function handleRowClick(s: LiveSessionHistoryItem) {
+    if (s.status === 'active') navigate(`/live/host/${s.pin}`);
+    else navigate(`/tests/${s.testId}/submissions`);
   }
 
   return (
     <AppShell>
       <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
-        <div className="flex items-center gap-2 mb-5">
-          <Radio size={20} className="text-indigo-500" />
-          <h2 className="text-lg font-bold text-gray-800">Live o'yin yaratish</h2>
-        </div>
-
-        {/* Test tanlash */}
-        <p className="text-sm font-semibold text-gray-700 mb-2">Test tanlang</p>
-        <div className="relative mb-2">
-          <Search size={15} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300" />
-          <input
-            value={query} onChange={(e) => setQuery(e.target.value)}
-            placeholder="Test nomini qidiring..."
-            className="w-full bg-white border-2 border-gray-100 rounded-2xl pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
-          />
-        </div>
-        <div className="flex flex-col gap-1.5 mb-6 max-h-72 overflow-y-auto">
-          {filtered.map((t) => (
-            <button key={t.id} onClick={() => setSelectedId(t.id)}
-              className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition-all flex items-center justify-between gap-2 ${
-                selectedId === t.id
-                  ? 'bg-indigo-500 border-indigo-500 text-white'
-                  : 'bg-white border-gray-100 text-gray-700 hover:border-indigo-200'
-              }`}>
-              <span className="text-sm font-medium truncate">{t.name}</span>
-              <span className={`text-xs shrink-0 ${selectedId === t.id ? 'text-white/70' : 'text-gray-400'}`}>
-                {t.liveQuestionCount} savol
-              </span>
+        <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-6">
+          <div className="flex items-center justify-between mb-6">
+            <div className="flex items-center gap-2">
+              <Radio size={20} className="text-indigo-500" />
+              <h2 className="text-lg font-bold text-gray-800">Live musobaqalar</h2>
+            </div>
+            <button onClick={() => setShowModal(true)}
+              className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white px-4 py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100">
+              <Plus size={16} /> Yangi live yaratish
             </button>
-          ))}
-          {filtered.length === 0 && <p className="text-sm text-gray-400 text-center py-4">Test topilmadi</p>}
+          </div>
+
+          {loading ? (
+            <div className="flex justify-center py-16">
+              <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-500 animate-spin" />
+            </div>
+          ) : sessions.length === 0 ? (
+            <div className="text-center py-16 text-gray-400">
+              <Inbox size={36} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Hali live sessiya yaratilmagan.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {sessions.map((s) => (
+                <button key={s.id} onClick={() => handleRowClick(s)}
+                  className="w-full bg-white rounded-2xl border-2 border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left">
+                  <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                    s.mode === 'team' ? 'bg-purple-50' : 'bg-blue-50'
+                  }`}>
+                    {s.mode === 'team' ? <Users2 size={16} className="text-purple-500" /> : <User size={16} className="text-blue-500" />}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold text-gray-800 truncate">{s.testName}</p>
+                    <p className="text-xs text-gray-400 mt-0.5">{new Date(s.createdAt).toLocaleString()}</p>
+                  </div>
+                  <span className={`text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 ${
+                    s.status === 'active' ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-gray-500'
+                  }`}>
+                    {s.status === 'active' ? 'Faol' : 'Tugagan'}
+                  </span>
+                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
+                </button>
+              ))}
+
+              {hasMore && (
+                <button onClick={() => loadMore(false)} disabled={loadingMore}
+                  className="mt-2 py-3 text-sm font-medium text-indigo-500 hover:text-indigo-600 disabled:opacity-50 transition-colors">
+                  {loadingMore ? 'Yuklanmoqda...' : 'Ko\'proq yuklash'}
+                </button>
+              )}
+            </div>
+          )}
         </div>
-
-        {/* Vaqt tanlash */}
-        <p className="text-sm font-semibold text-gray-700 mb-2">Har savolga vaqt</p>
-        <div className="flex gap-2 mb-6">
-          {TIMES.map((t) => (
-            <button key={t} onClick={() => setTimeSec(t)}
-              className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
-                timeSec === t
-                  ? 'bg-indigo-500 border-indigo-500 text-white'
-                  : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
-              }`}>
-              {t}s
-            </button>
-          ))}
-        </div>
-
-        {/* Rejim tanlash */}
-        <p className="text-sm font-semibold text-gray-700 mb-2">O'yin rejimi</p>
-        <div className="flex gap-2 mb-6">
-          <button onClick={() => setMode('individual')}
-            className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
-              mode === 'individual'
-                ? 'bg-indigo-500 border-indigo-500 text-white'
-                : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
-            }`}>
-            Yakka
-          </button>
-          <button onClick={() => setMode('team')}
-            className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
-              mode === 'team'
-                ? 'bg-indigo-500 border-indigo-500 text-white'
-                : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
-            }`}>
-            Jamoaviy
-          </button>
-        </div>
-
-        {error && <p className="text-sm text-red-400 mb-3">{error}</p>}
-
-        <button onClick={handleCreate} disabled={!selected || creating}
-          className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base flex items-center justify-center gap-2 hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100">
-          {creating ? 'Yaratilmoqda...' : <><span>Sessiya yaratish</span><ChevronRight size={18} /></>}
-        </button>
       </div>
-      </div>
+
+      {showModal && (
+        <NewLiveSessionModal
+          initialTestId={searchParams.get('testId')}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </AppShell>
   );
 }
