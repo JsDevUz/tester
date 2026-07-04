@@ -78,6 +78,13 @@
       "when": 1783300000000,
       "tag": "0010_rename_submission_mode",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1783159049506,
+      "tag": "0011_live_sessions",
+      "breakpoints": true
     }
   ]
 }

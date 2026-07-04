@@ -84,6 +84,18 @@ export const questions = pgTable('questions', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+export const liveSessions = pgTable('live_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  testId: uuid('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
+  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  pin: varchar('pin', { length: 6 }).notNull(),
+  mode: text('mode').notNull(),
+  questionTimeSec: integer('question_time_sec').notNull(),
+  status: text('status').notNull().default('active'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  finishedAt: timestamp('finished_at', { withTimezone: true }),
+});
+
 export const options = pgTable('options', {
   id: uuid('id').primaryKey().defaultRandom(),
   questionId: uuid('question_id').notNull().references(() => questions.id, { onDelete: 'cascade' }),
