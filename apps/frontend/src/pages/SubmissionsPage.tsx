@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Copy, Check, Trash2, ChevronRight, ChevronLeft, Inbox } from 'lucide-react';
+import { Trash2, ChevronLeft, Inbox } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useTestStore } from '../stores/testStore';
 import { apiGetTest, type TestDetail } from '../api/tests';
@@ -21,7 +21,6 @@ export function SubmissionsPage() {
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
   const [hasMore, setHasMore] = useState(true);
-  const [copied, setCopied] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
@@ -67,15 +66,6 @@ export function SubmissionsPage() {
     return () => observer.disconnect();
   }, [observerCallback]);
 
-  const shareLink = test?.slug ? `${window.location.origin}/t/${test.slug}` : '';
-
-  async function copyLink() {
-    if (!shareLink) return;
-    await navigator.clipboard.writeText(shareLink);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
-  }
-
   async function handleDelete() {
     if (!confirmDelete) return;
     await apiDeleteSubmission(confirmDelete.id);
@@ -85,24 +75,14 @@ export function SubmissionsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
-      <div className="flex-1 max-w-2xl mx-auto w-full px-4 py-5">
+      <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex-1 w-full px-6 py-5">
         {/* Header */}
         <button onClick={() => navigate(-1)}
           className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-3 transition-colors">
           <ChevronLeft size={16} /> Orqaga
         </button>
         <h2 className="text-lg font-bold text-gray-800 mb-4">{test?.name ?? 'Test'} — Natijalar</h2>
-
-        {shareLink && (
-          <div className="bg-white rounded-2xl border-2 border-gray-100 px-4 py-3 flex items-center gap-3 mb-4">
-            <span className="text-xs text-gray-400 flex-1 truncate">{shareLink}</span>
-            <button onClick={copyLink} className="flex items-center gap-1 text-xs font-medium text-indigo-500 hover:text-indigo-700 shrink-0 transition-colors">
-              {copied ? <Check size={12} /> : <Copy size={12} />}
-              {copied ? 'Nusxalandi' : 'Nusxalash'}
-            </button>
-          </div>
-        )}
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -114,37 +94,58 @@ export function SubmissionsPage() {
             <p className="text-sm">Hali natijalar yo'q.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
-            {submissions.map((sub) => {
-              const pct = sub.total ? Math.round(((sub.score ?? 0) / sub.total) * 100) : 0;
-              const isGood = pct >= 70;
-              const isMid = pct >= 40 && pct < 70;
-              return (
-                <div key={sub.id}
-                  onClick={() => navigate(`/submissions/${sub.id}`)}
-                  className="group bg-white rounded-2xl border-2 border-gray-100 px-4 py-4 flex items-center gap-3 cursor-pointer hover:border-indigo-200 hover:bg-indigo-50/30 transition-all active:scale-[0.99]">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">{sub.studentName}</p>
-                    <p className="text-xs text-gray-400 mt-0.5">
-                      {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}
-                    </p>
-                  </div>
-                  <div className="text-right shrink-0">
-                    <p className={`text-sm font-bold ${isGood ? 'text-green-500' : isMid ? 'text-amber-500' : 'text-red-400'}`}>
-                      {pct}%
-                    </p>
-                    <p className="text-xs text-gray-400">{sub.score ?? 0}/{sub.total ?? 0}</p>
-                  </div>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setConfirmDelete(sub); }}
-                    className="lg:opacity-0 lg:group-hover:opacity-100 transition-opacity text-gray-300 hover:text-red-400 shrink-0 p-1"
-                  >
-                    <Trash2 size={15} />
-                  </button>
-                  <ChevronRight size={16} className="text-gray-300 shrink-0" />
-                </div>
-              );
-            })}
+          <div>
+            <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
+              <table className="w-full min-w-[720px] text-left">
+                <thead className="bg-[#f9f9f9] text-xs font-semibold uppercase tracking-wide text-gray-400">
+                  <tr>
+                    <th className="px-5 py-3">O'quvchi</th>
+                    <th className="px-5 py-3">Topshirgan vaqti</th>
+                    <th className="px-5 py-3 text-right">Foiz</th>
+                    <th className="px-5 py-3 text-right">Ball</th>
+                    <th className="w-16 px-4 py-3 text-right">Amal</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {submissions.map((sub) => {
+                    const pct = sub.total ? Math.round(((sub.score ?? 0) / sub.total) * 100) : 0;
+                    const isGood = pct >= 70;
+                    const isMid = pct >= 40 && pct < 70;
+                    return (
+                      <tr
+                        key={sub.id}
+                        onClick={() => navigate(`/submissions/${sub.id}`)}
+                        className="group cursor-pointer transition-colors hover:bg-indigo-50/40"
+                      >
+                        <td className="px-5 py-4">
+                          <p className="text-sm font-semibold text-gray-800">{sub.studentName}</p>
+                        </td>
+                        <td className="px-5 py-4 text-sm text-gray-500">
+                          {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}
+                        </td>
+                        <td className="px-5 py-4 text-right">
+                          <span className={`text-sm font-bold ${isGood ? 'text-green-500' : isMid ? 'text-amber-500' : 'text-red-400'}`}>
+                            {pct}%
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-right text-sm text-gray-500">
+                          {sub.score ?? 0}/{sub.total ?? 0}
+                        </td>
+                        <td className="px-4 py-4 text-right">
+                          <button
+                            onClick={(e) => { e.stopPropagation(); setConfirmDelete(sub); }}
+                            className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                            aria-label="Natijani o'chirish"
+                          >
+                            <Trash2 size={16} />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* Sentinel for infinite scroll */}
             <div ref={sentinelRef} className="py-2 flex justify-center">

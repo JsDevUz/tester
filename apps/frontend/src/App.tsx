@@ -10,6 +10,7 @@ import { TestResultPage } from './pages/TestResultPage';
 import { SubmissionsPage } from './pages/SubmissionsPage';
 import { SubmissionDetailPage } from './pages/SubmissionDetailPage';
 import { StudentHistoryPage } from './pages/StudentHistoryPage';
+import { StudentSubmissionDetailPage } from './pages/StudentSubmissionDetailPage';
 import { LiveCreatePage } from './pages/LiveCreatePage';
 import { LiveHostPage } from './pages/LiveHostPage';
 import { LiveJoinPage } from './pages/LiveJoinPage';
@@ -32,6 +33,7 @@ const router = createBrowserRouter([
   { path: '/tests/:id/edit', element: <PrivateRoute><QuestionEditorPage /></PrivateRoute> },
   { path: '/tests/:id/submissions', element: <PrivateRoute><SubmissionsPage /></PrivateRoute> },
   { path: '/submissions/:id', element: <PrivateRoute><SubmissionDetailPage /></PrivateRoute> },
+  { path: '/history/:id', element: <PrivateRoute><StudentSubmissionDetailPage /></PrivateRoute> },
   { path: '/t/:slug', element: <TakeTestEntryPage /> },
   { path: '/t/:slug/take', element: <TakeTestPage /> },
   { path: '/t/:slug/result', element: <TestResultPage /> },

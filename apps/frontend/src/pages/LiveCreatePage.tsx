@@ -47,7 +47,7 @@ export function LiveCreatePage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-gray-50 flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
         <div className="flex-1 w-full px-6 py-6">
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-2 min-w-0">

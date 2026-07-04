@@ -37,7 +37,7 @@ export function DashboardPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
+      <div className="min-h-screen bg-white flex flex-col">
       <div className="flex-1 w-full p-6 pb-10">
         <div className="flex items-center justify-between mb-6">
           <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>

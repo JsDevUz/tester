@@ -43,8 +43,8 @@ export function FolderViewPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
-      <div className="flex-1 p-6 max-w-6xl mx-auto w-full">
+      <div className="min-h-screen bg-white flex flex-col">
+      <div className="flex-1 p-6 w-full">
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-2">
             <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Papkalar</button>

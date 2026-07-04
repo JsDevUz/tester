@@ -85,7 +85,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col lg:flex-row gap-3 bg-gray-50 p-3 lg:relative"
+      className="flex flex-col lg:flex-row gap-3 bg-[#f9f9f9] p-3 lg:relative"
       style={{
         height: '100dvh',
         paddingTop: 'max(12px, env(safe-area-inset-top))',
