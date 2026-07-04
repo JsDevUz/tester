@@ -1,12 +1,12 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { CheckCircle2, XCircle, Hourglass, Trophy, Users } from 'lucide-react';
-import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState } from '../api/live';
+import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState, type WsTeamUpdate, type WsSuggestionUpdate } from '../api/live';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 const LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
 
-type Phase = 'connecting' | 'lobby' | 'question' | 'waiting' | 'reveal' | 'finished' | 'error';
+type Phase = 'connecting' | 'lobby' | 'team_waiting' | 'question' | 'waiting' | 'reveal' | 'finished' | 'error';
 
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
 
@@ -219,6 +219,12 @@ export function LivePlayPage() {
   const [now, setNow] = useState(Date.now());
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
+  const [isTeamMode, setIsTeamMode] = useState(false);
+  const [myTeam, setMyTeam] = useState<{ id: string; name: string } | null>(null);
+  const [isCaptain, setIsCaptain] = useState(false);
+  const [suggestedOptionIds, setSuggestedOptionIds] = useState<string[]>([]);
+  const [suggestionCounts, setSuggestionCounts] = useState<Record<string, number>>({});
+
   useEffect(() => {
     const socket = getLiveSocket();
 
@@ -244,7 +250,9 @@ export function LivePlayPage() {
 
     socket.on('lobby:update', (p: { players: Array<{ name: string }> }) => setPlayers(p.players));
     socket.on('question:start', (q: WsQuestion) => {
-      setQuestion(q); setSelected([]); setTextAnswer(''); setReveal(null); setPhase('question');
+      setQuestion(q); setSelected([]); setTextAnswer(''); setReveal(null);
+      setSuggestedOptionIds([]); setSuggestionCounts({});
+      setPhase('question');
     });
     socket.on('question:progress', (p: { answered: number; total: number }) => setProgress(p));
     socket.on('question:reveal', (r: WsReveal) => {
@@ -255,12 +263,30 @@ export function LivePlayPage() {
     socket.on('game:finished', (g: { leaderboard: WsReveal['leaderboard'] }) => {
       setLeaderboard(g.leaderboard); setPhase('finished');
     });
+    socket.on('team:update', (u: WsTeamUpdate) => {
+      setIsTeamMode(true);
+      const myUserId = (() => {
+        try { return JSON.parse(atob(token.split('.')[1])).sub as string; } catch { return null; }
+      })();
+      if (!myUserId) return;
+      const team = u.teams.find((t) => t.members.some((m) => m.userId === myUserId));
+      if (team) {
+        setMyTeam({ id: team.id, name: team.name });
+        setIsCaptain(team.captainUserId === myUserId);
+        setPhase((prev) => (prev === 'connecting' || prev === 'lobby') ? 'team_waiting' : prev);
+      } else {
+        setMyTeam(null);
+        setIsCaptain(false);
+      }
+    });
+    socket.on('team:suggestionUpdate', (u: WsSuggestionUpdate) => setSuggestionCounts(u.counts));
 
     timerRef.current = setInterval(() => setNow(Date.now()), 200);
     return () => {
       socket.off('connect', join);
       socket.off('lobby:update'); socket.off('question:start'); socket.off('question:progress');
       socket.off('question:reveal'); socket.off('game:finished');
+      socket.off('team:update'); socket.off('team:suggestionUpdate');
       if (timerRef.current) clearInterval(timerRef.current);
       closeLiveSocket();
     };
@@ -268,18 +294,80 @@ export function LivePlayPage() {
 
   function submitAnswer(ids: string[], text: string | null = null) {
     if (!question) return;
-    getLiveSocket().emit('player:answer', { pin, token, questionId: question.id, selectedOptionIds: ids, textAnswer: text }, (res: any) => {
+    const event = isTeamMode ? 'captain:answer' : 'player:answer';
+    const payload = isTeamMode
+      ? { pin, token, questionId: question.id, selectedOptionIds: ids, textAnswer: text }
+      : { pin, token, questionId: question.id, selectedOptionIds: ids, textAnswer: text };
+    getLiveSocket().emit(event, payload, (res: any) => {
       if (res?.ok) setPhase('waiting');
     });
   }
 
   function tapOption(id: string) {
     if (!question || phase !== 'question') return;
-    if (question.type === 'multi') {
+    if (isTeamMode && !isCaptain) {
+      tapSuggest(id);
+      return;
+    }
+    if (question.type === 'multi' || isTeamMode) {
       setSelected((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
     } else {
       submitAnswer([id]);
     }
+  }
+
+  function tapSuggest(optionId: string) {
+    if (!myTeam || isCaptain) return;
+    getLiveSocket().emit('member:suggest', { pin, token, teamId: myTeam.id, optionId }, () => {});
+    setSuggestedOptionIds((prev) => prev.includes(optionId) ? prev.filter((id) => id !== optionId) : [...prev, optionId]);
+  }
+
+  function renderCaptainInput() {
+    if (!question) return null;
+    if (question.type === 'open' || question.type === 'fillblank') {
+      return (
+        <div className="flex flex-col gap-3">
+          <textarea id="captain-text-input" rows={3}
+            placeholder="Javobni kiriting..."
+            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3 text-base outline-none focus:border-indigo-400" />
+          <button onClick={() => {
+            const el = document.getElementById('captain-text-input') as HTMLTextAreaElement;
+            submitAnswer([], el?.value ?? '');
+          }} className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 transition-colors">
+            Javob berish
+          </button>
+        </div>
+      );
+    }
+    if (question.type === 'slider') {
+      return (
+        <div className="flex flex-col gap-3">
+          <input id="captain-slider-input" type="range" min={0} max={100} defaultValue={50} className="w-full accent-indigo-500" />
+          <button onClick={() => {
+            const el = document.getElementById('captain-slider-input') as HTMLInputElement;
+            submitAnswer([], el?.value ?? '50');
+          }} className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 transition-colors">
+            Javob berish
+          </button>
+        </div>
+      );
+    }
+    // matching/arrange/reorder/droppin: minimal fallback — captain confirms verbally coordinated answer is out of scope
+    // for this plan's UI depth; render a simple text fallback so the flow is never blocked.
+    return (
+      <div className="flex flex-col gap-3">
+        <p className="text-sm text-gray-400">Bu savol turi uchun ovozli kelishilgan javobni yozing (vergul bilan ajrating).</p>
+        <textarea id="captain-fallback-input" rows={2}
+          className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3 text-base outline-none focus:border-indigo-400" />
+        <button onClick={() => {
+          const el = document.getElementById('captain-fallback-input') as HTMLTextAreaElement;
+          const ids = (el?.value ?? '').split(',').map((s) => s.trim()).filter(Boolean);
+          submitAnswer(ids, null);
+        }} className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 transition-colors">
+          Javob berish
+        </button>
+      </div>
+    );
   }
 
   const remainingPct = question ? Math.max(0, (question.endsAt - now) / (question.timeSec * 1000)) * 100 : 0;
@@ -317,6 +405,15 @@ export function LivePlayPage() {
         </div>
       )}
 
+      {phase === 'team_waiting' && (
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <Hourglass size={32} className="text-indigo-300 mb-4 animate-pulse" />
+          <p className="text-lg font-bold text-gray-900 mb-2">{myTeam?.name ?? 'Guruh kutilmoqda'}</p>
+          <p className="text-sm text-gray-400 mb-2">{isCaptain ? 'Siz sardorsiz' : "Siz a'zosiz"}</p>
+          <p className="text-sm text-gray-400">Ustoz o'yinni boshlashini kuting...</p>
+        </div>
+      )}
+
       {(phase === 'question' || phase === 'waiting' || phase === 'reveal') && question && (
         <div className="flex-1 flex flex-col min-h-0">
           <div className="shrink-0 px-5 pt-3">
@@ -343,10 +440,18 @@ export function LivePlayPage() {
                 <p className="font-semibold text-gray-800 mb-1">Javob qabul qilindi</p>
                 <p className="text-sm text-gray-400">{progress.answered} / {progress.total} javob berdi</p>
               </div>
+            ) : isTeamMode && !isCaptain && !['single', 'multi', 'truefalse'].includes(question.type) ? (
+              <div className="flex flex-col items-center py-10 text-center">
+                <p className="font-semibold text-gray-700 mb-1">Sardoringiz javob bermoqda...</p>
+                <p className="text-sm text-gray-400">{myTeam?.name}</p>
+              </div>
+            ) : isTeamMode && isCaptain && !['single', 'multi', 'truefalse'].includes(question.type) ? (
+              renderCaptainInput()
             ) : question.type === 'single' || question.type === 'multi' || question.type === 'truefalse' ? (
               <div className="flex flex-col gap-2.5 pb-4">
                 {question.options.map((opt, i) => {
                   const isSel = selected.includes(opt.id);
+                  const isSuggested = suggestedOptionIds.includes(opt.id);
                   const isCorrect = reveal?.correctOptionIds.includes(opt.id);
                   return (
                     <button key={opt.id} onClick={() => tapOption(opt.id)}
@@ -354,12 +459,17 @@ export function LivePlayPage() {
                       className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border-2 transition-all active:scale-[0.99] ${
                         phase === 'reveal'
                           ? isCorrect ? 'bg-green-50 border-green-300' : 'bg-gray-50 border-gray-100 opacity-60'
-                          : isSel ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-gray-100 text-gray-800 hover:border-indigo-200'
+                          : (isTeamMode && !isCaptain ? isSuggested : isSel) ? 'bg-indigo-500 border-indigo-500 text-white' : 'bg-white border-gray-100 text-gray-800 hover:border-indigo-200'
                       }`}>
                       <span className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                        isSel && phase !== 'reveal' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
+                        (isTeamMode && !isCaptain ? isSuggested : isSel) && phase !== 'reveal' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500'
                       }`}>{LABELS[i]}</span>
-                      <span className="leading-snug">{opt.text}</span>
+                      <span className="leading-snug flex-1">{opt.text}</span>
+                      {isTeamMode && isCaptain && suggestionCounts[opt.id] > 0 && (
+                        <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg shrink-0">
+                          {suggestionCounts[opt.id]}
+                        </span>
+                      )}
                     </button>
                   );
                 })}
@@ -417,7 +527,7 @@ export function LivePlayPage() {
             )}
           </div>
 
-          {phase === 'question' && (
+          {!isTeamMode && phase === 'question' && (
             question.type === 'multi' || question.type === 'fillblank' || question.type === 'open' ||
             question.type === 'slider' || question.type === 'droppin' || question.type === 'matching' ||
             question.type === 'arrange' || question.type === 'reorder'
@@ -439,6 +549,15 @@ export function LivePlayPage() {
                   question.type === 'reorder' ? false :
                   !textAnswer.trim()
                 }
+                className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100">
+                Javob berish
+              </button>
+            </div>
+          )}
+
+          {isTeamMode && isCaptain && ['single', 'multi', 'truefalse'].includes(question.type) && phase === 'question' && (
+            <div className="shrink-0 px-5 pt-2 pb-2">
+              <button onClick={() => submitAnswer(selected)} disabled={selected.length === 0}
                 className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100">
                 Javob berish
               </button>
