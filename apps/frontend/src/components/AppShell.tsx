@@ -61,9 +61,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? '?';
 
   return (
-    <div className="min-h-screen flex bg-gray-50">
+    <div className="h-screen flex gap-3 bg-gray-50 p-3">
       {/* ── Birinchi qatlam: ikon panel ── */}
-      <div className="w-16 shrink-0 bg-gray-900 flex flex-col items-center py-4">
+      <div className="w-16 shrink-0 bg-gray-900 rounded-2xl flex flex-col items-center py-4">
         <button onClick={() => navigate('/')} className="mb-6 shrink-0">
           <img src="/favicon.png" alt="Logo" className="w-9 h-9 rounded-xl object-cover" />
         </button>
@@ -121,7 +121,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* ── Ikkinchi qatlam: kengaytirilgan sidebar (faqat sub-items bo'lsa) ── */}
       {shownSection?.subItems && (
-        <div className="w-64 shrink-0 bg-white border-r border-gray-100 flex flex-col py-5 px-3">
+        <div className="w-64 shrink-0 bg-white rounded-2xl border border-gray-100 flex flex-col py-5 px-3">
           <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide px-3 mb-3">
             {shownSection.label}
           </p>
@@ -165,7 +165,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       )}
 
       {/* ── Asosiy kontent ── */}
-      <div className="flex-1 min-w-0">{children}</div>
+      <div className="flex-1 min-w-0 bg-white rounded-2xl border border-gray-100 overflow-y-auto">{children}</div>
     </div>
   );
 }
