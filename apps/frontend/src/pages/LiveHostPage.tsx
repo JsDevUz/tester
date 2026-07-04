@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Users, Play, Square, CheckCircle2, Trophy } from 'lucide-react';
-import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState } from '../api/live';
+import { getLiveSocket, closeLiveSocket, type WsQuestion, type WsReveal, type WsState, type WsTeam, type WsTeamMember, type WsTeamUpdate } from '../api/live';
 
-type Phase = 'connecting' | 'lobby' | 'question' | 'reveal' | 'finished' | 'error';
+type Phase = 'connecting' | 'lobby' | 'team_assign' | 'question' | 'reveal' | 'finished' | 'error';
 
 export function LiveHostPage() {
   const { pin } = useParams<{ pin: string }>();
@@ -18,6 +18,12 @@ export function LiveHostPage() {
   const [reveal, setReveal] = useState<WsReveal | null>(null);
   const [leaderboard, setLeaderboard] = useState<WsReveal['leaderboard']>([]);
   const [now, setNow] = useState(Date.now());
+  const [isTeamMode, setIsTeamMode] = useState(false);
+  const [teams, setTeams] = useState<WsTeam[]>([]);
+  const [unassigned, setUnassigned] = useState<WsTeamMember[]>([]);
+  const [selectedPlayer, setSelectedPlayer] = useState<string | null>(null);
+  const [captainDisconnectedTeamId, setCaptainDisconnectedTeamId] = useState<string | null>(null);
+  const [newTeamName, setNewTeamName] = useState('');
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   useEffect(() => {
@@ -30,6 +36,7 @@ export function LiveHostPage() {
         setTestName(state.testName);
         setPlayers(state.players);
         if (state.status === 'lobby') setPhase('lobby');
+        else if (state.status === 'team_assign') { setIsTeamMode(true); setPhase('team_assign'); }
         else if (state.status === 'finished') {
           setLeaderboard(state.leaderboard ?? []);
           setPhase('finished');
@@ -48,12 +55,15 @@ export function LiveHostPage() {
     socket.on('game:finished', (g: { leaderboard: WsReveal['leaderboard'] }) => {
       setLeaderboard(g.leaderboard); setPhase('finished');
     });
+    socket.on('team:update', (u: WsTeamUpdate) => { setTeams(u.teams); setUnassigned(u.unassigned); });
+    socket.on('team:captainDisconnected', (d: { teamId: string }) => setCaptainDisconnectedTeamId(d.teamId));
 
     timerRef.current = setInterval(() => setNow(Date.now()), 200);
     return () => {
       socket.off('connect', join);
       socket.off('lobby:update'); socket.off('question:start'); socket.off('question:progress');
       socket.off('question:reveal'); socket.off('game:finished');
+      socket.off('team:update'); socket.off('team:captainDisconnected');
       if (timerRef.current) clearInterval(timerRef.current);
       closeLiveSocket();
     };
@@ -64,6 +74,25 @@ export function LiveHostPage() {
   }
   function handleEnd() {
     getLiveSocket().emit('host:end', { pin, token }, () => {});
+  }
+  function handleCreateTeam() {
+    if (!newTeamName.trim()) return;
+    getLiveSocket().emit('host:createTeam', { pin, token, name: newTeamName.trim() }, () => {});
+    setNewTeamName('');
+  }
+  function handleAssignPlayer(userId: string, teamId: string) {
+    getLiveSocket().emit('host:assignPlayer', { pin, token, userId, teamId }, () => {});
+    setSelectedPlayer(null);
+  }
+  function handleSetCaptain(teamId: string, userId: string) {
+    getLiveSocket().emit('host:setCaptain', { pin, token, teamId, userId }, () => { setCaptainDisconnectedTeamId(null); });
+  }
+  function handleStartTeamGame() {
+    getLiveSocket().emit('host:startTeam', { pin, token }, (res: any) => {
+      if (!res?.ok && res?.code === 'TEAM_NOT_READY') {
+        alert("Har bir guruhda kamida bitta sardor tayinlanishi kerak.");
+      }
+    });
   }
 
   const remainingPct = question ? Math.max(0, (question.endsAt - now) / (question.timeSec * 1000)) * 100 : 0;
@@ -88,7 +117,7 @@ export function LiveHostPage() {
 
       {phase === 'lobby' && (
         <div className="flex-1 flex flex-col items-center px-6 pt-10">
-          <p className="text-sm text-gray-400 mb-1">{testName}</p>
+          <p className="text-sm text-gray-400 mb-1">{testName}{isTeamMode && ' · Jamoaviy'}</p>
           <p className="text-sm font-semibold text-gray-700 mb-3">O'yin PIN kodi</p>
           <p className="text-6xl font-black text-indigo-500 tracking-[0.2em] mb-8">{pin}</p>
           <div className="flex items-center gap-2 text-gray-500 mb-4">
@@ -104,6 +133,73 @@ export function LiveHostPage() {
             className="w-full max-w-xs py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100">
             <Play size={18} /> Boshlash
           </button>
+        </div>
+      )}
+
+      {phase === 'team_assign' && (
+        <div className="flex-1 flex flex-col px-5 pt-6 overflow-y-auto">
+          <p className="text-lg font-bold text-gray-900 mb-4">Guruhlarga taqsimlash</p>
+
+          <div className="flex gap-2 mb-5">
+            <input value={newTeamName} onChange={(e) => setNewTeamName(e.target.value)}
+              placeholder="Guruh nomi (masalan Guruh 1)"
+              className="flex-1 bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400" />
+            <button onClick={handleCreateTeam}
+              className="px-4 py-2.5 bg-indigo-500 text-white rounded-2xl text-sm font-semibold hover:bg-indigo-600 transition-colors">
+              Guruh qo'shish
+            </button>
+          </div>
+
+          <p className="text-xs font-semibold text-gray-500 mb-2">Taqsimlanmagan o'quvchilar ({unassigned.length})</p>
+          <div className="flex flex-wrap gap-2 mb-6">
+            {unassigned.map((p) => (
+              <button key={p.userId} onClick={() => setSelectedPlayer(p.userId)}
+                className={`px-3 py-1.5 rounded-xl text-sm font-medium transition-colors ${
+                  selectedPlayer === p.userId ? 'bg-indigo-500 text-white' : 'bg-gray-100 text-gray-700 hover:bg-indigo-50'
+                }`}>
+                {p.name}
+              </button>
+            ))}
+            {unassigned.length === 0 && <p className="text-xs text-gray-300">Hammasi taqsimlandi</p>}
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+            {teams.map((team) => (
+              <div key={team.id} className={`rounded-2xl border-2 p-4 ${
+                captainDisconnectedTeamId === team.id ? 'border-red-200 bg-red-50/50' : 'border-gray-100'
+              }`}>
+                <p className="font-semibold text-gray-800 mb-2">{team.name}</p>
+                {captainDisconnectedTeamId === team.id && (
+                  <p className="text-xs text-red-500 mb-2">Sardor uzildi — yangi sardor tayinlang</p>
+                )}
+                <div className="flex flex-col gap-1.5">
+                  {team.members.map((m) => (
+                    <button key={m.userId}
+                      onClick={() => selectedPlayer ? handleAssignPlayer(selectedPlayer, team.id) : handleSetCaptain(team.id, m.userId)}
+                      className={`flex items-center justify-between px-3 py-2 rounded-xl text-sm transition-colors ${
+                        team.captainUserId === m.userId ? 'bg-amber-50 text-amber-700 font-semibold' : 'bg-gray-50 text-gray-700 hover:bg-indigo-50'
+                      }`}>
+                      <span>{m.name}</span>
+                      {team.captainUserId === m.userId && <span className="text-xs">Sardor</span>}
+                    </button>
+                  ))}
+                  {team.members.length === 0 && (
+                    <button onClick={() => selectedPlayer && handleAssignPlayer(selectedPlayer, team.id)}
+                      className="text-xs text-gray-300 border-2 border-dashed border-gray-200 rounded-xl py-3 hover:border-indigo-200 transition-colors">
+                      O'quvchini shu yerga qo'shish uchun avval yuqoridan tanlang
+                    </button>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
+
+          <div className="mt-auto pb-4">
+            <button onClick={handleStartTeamGame}
+              className="w-full py-4 bg-green-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-green-600 transition-colors shadow-lg shadow-green-100">
+              Boshlash
+            </button>
+          </div>
         </div>
       )}
 

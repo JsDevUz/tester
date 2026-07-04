@@ -13,6 +13,7 @@ export function LiveCreatePage() {
   const [query, setQuery] = useState('');
   const [selectedId, setSelectedId] = useState<string | null>(searchParams.get('testId'));
   const [timeSec, setTimeSec] = useState(20);
+  const [mode, setMode] = useState<'individual' | 'team'>('individual');
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -26,7 +27,7 @@ export function LiveCreatePage() {
     setCreating(true);
     setError(null);
     try {
-      const { pin } = await apiCreateLiveSession(selectedId, timeSec);
+      const { pin } = await apiCreateLiveSession(selectedId, timeSec, mode);
       navigate(`/live/host/${pin}`);
     } catch (e: any) {
       const msg = e?.response?.data?.message;
@@ -87,6 +88,27 @@ export function LiveCreatePage() {
               {t}s
             </button>
           ))}
+        </div>
+
+        {/* Rejim tanlash */}
+        <p className="text-sm font-semibold text-gray-700 mb-2">O'yin rejimi</p>
+        <div className="flex gap-2 mb-6">
+          <button onClick={() => setMode('individual')}
+            className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+              mode === 'individual'
+                ? 'bg-indigo-500 border-indigo-500 text-white'
+                : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
+            }`}>
+            Yakka
+          </button>
+          <button onClick={() => setMode('team')}
+            className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+              mode === 'team'
+                ? 'bg-indigo-500 border-indigo-500 text-white'
+                : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
+            }`}>
+            Jamoaviy
+          </button>
         </div>
 
         {error && <p className="text-sm text-red-400 mb-3">{error}</p>}

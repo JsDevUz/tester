@@ -28,8 +28,12 @@ export async function apiLiveTests(): Promise<LiveTestItem[]> {
   return res.data;
 }
 
-export async function apiCreateLiveSession(testId: string, questionTimeSec: number): Promise<{ pin: string }> {
-  const res = await client.post('/live/sessions', { testId, questionTimeSec });
+export async function apiCreateLiveSession(
+  testId: string,
+  questionTimeSec: number,
+  mode: 'individual' | 'team' = 'individual',
+): Promise<{ pin: string }> {
+  const res = await client.post('/live/sessions', { testId, questionTimeSec, mode });
   return res.data;
 }
 
@@ -64,4 +68,26 @@ export interface WsState {
   currentQuestion: WsQuestion | null;
   me: { score: number; answeredCurrent: boolean } | null;
   leaderboard?: Array<{ userId: string; name: string; score: number; rank: number }>;
+}
+
+export interface WsTeamMember {
+  userId: string;
+  name: string;
+}
+
+export interface WsTeam {
+  id: string;
+  name: string;
+  captainUserId: string | null;
+  members: WsTeamMember[];
+}
+
+export interface WsTeamUpdate {
+  teams: WsTeam[];
+  unassigned: WsTeamMember[];
+}
+
+export interface WsSuggestionUpdate {
+  questionId: string;
+  counts: Record<string, number>;
 }
