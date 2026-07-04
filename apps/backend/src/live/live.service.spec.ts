@@ -337,3 +337,116 @@ describe('LiveService individual mode — all 10 question types', () => {
     expect(LIVE_TYPES).toEqual(['single', 'multi', 'truefalse']);
   });
 });
+
+function makeTeamQuestions(): LiveQuestion[] {
+  return [
+    {
+      id: 'q1', text: '2+2=?', imageUrl: null, type: 'single', correctAnswer: null,
+      options: [
+        { id: 'o1', text: '3', isCorrect: false, orderIndex: 0 },
+        { id: 'o2', text: '4', isCorrect: true, orderIndex: 1 },
+      ],
+      correctOptionIds: ['o2'],
+    },
+  ];
+}
+
+describe('LiveService team mode — creation and assignment', () => {
+  beforeEach(() => { jest.useFakeTimers(); });
+  afterEach(() => { jest.useRealTimers(); });
+
+  function setupTeam() {
+    const service = new LiveService();
+    const { b, events } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
+    const pin = service.initSession('admin1', 'test1', 'Matematika', makeTeamQuestions(), 10, 'team');
+    return { service, events, pin };
+  }
+
+  it('initSession with mode "team" starts in lobby with teams as an empty map', () => {
+    const { service, pin } = setupTeam();
+    const s = (service as any).sessions.get(pin);
+    expect(s.mode).toBe('team');
+    expect(s.teams).toBeInstanceOf(Map);
+    expect(s.teams.size).toBe(0);
+    expect(s.unassignedUserIds).toBeInstanceOf(Set);
+  });
+
+  it('playerJoin in team mode adds the user to unassignedUserIds', () => {
+    const { service, pin } = setupTeam();
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    const s = (service as any).sessions.get(pin);
+    expect(s.unassignedUserIds.has('u1')).toBe(true);
+  });
+
+  it('createTeam adds a team with a sequential id and broadcasts team:update', () => {
+    const { service, events, pin } = setupTeam();
+    service.hostJoin(pin, 'admin1', 'hs');
+    const { teamId } = service.createTeam(pin, 'admin1', "Guruh 1");
+    expect(teamId).toBe('team-1');
+    expect(events.some((e) => e.event === 'team:update')).toBe(true);
+  });
+
+  it('createTeam rejects non-host', () => {
+    const { service, pin } = setupTeam();
+    expect(() => service.createTeam(pin, 'not-admin', "Guruh 1")).toThrow('NOT_HOST');
+  });
+
+  it('assignPlayer moves a user from unassigned into the team, and out of any previous team', () => {
+    const { service, pin } = setupTeam();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    const { teamId: t1 } = service.createTeam(pin, 'admin1', "Guruh 1");
+    const { teamId: t2 } = service.createTeam(pin, 'admin1', "Guruh 2");
+    service.assignPlayer(pin, 'admin1', 'u1', t1);
+    let s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).memberUserIds.has('u1')).toBe(true);
+    expect(s.unassignedUserIds.has('u1')).toBe(false);
+
+    service.assignPlayer(pin, 'admin1', 'u1', t2);
+    s = (service as any).sessions.get(pin);
+    expect(s.teams.get(t1).memberUserIds.has('u1')).toBe(false);
+    expect(s.teams.get(t2).memberUserIds.has('u1')).toBe(true);
+  });
+
+  it('setCaptain requires the user to already be a team member', () => {
+    const { service, pin } = setupTeam();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    const { teamId } = service.createTeam(pin, 'admin1', "Guruh 1");
+    expect(() => service.setCaptain(pin, 'admin1', teamId, 'u1')).toThrow('NOT_TEAM_MEMBER');
+    service.assignPlayer(pin, 'admin1', 'u1', teamId);
+    service.setCaptain(pin, 'admin1', teamId, 'u1');
+    const s = (service as any).sessions.get(pin);
+    expect(s.teams.get(teamId).captainUserId).toBe('u1');
+  });
+
+  it('startTeamGame rejects when fewer than 2 teams or a team lacks a captain', () => {
+    const { service, pin } = setupTeam();
+    service.hostJoin(pin, 'admin1', 'hs');
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    const { teamId: t1 } = service.createTeam(pin, 'admin1', "Guruh 1");
+    service.assignPlayer(pin, 'admin1', 'u1', t1);
+    service.setCaptain(pin, 'admin1', t1, 'u1');
+    expect(() => service.startTeamGame(pin, 'admin1')).toThrow('TEAM_NOT_READY');
+
+    const { teamId: t2 } = service.createTeam(pin, 'admin1', "Guruh 2");
+    service.playerJoin(pin, { id: 'u2', name: 'Vali' }, 's2');
+    service.assignPlayer(pin, 'admin1', 'u2', t2);
+    expect(() => service.startTeamGame(pin, 'admin1')).toThrow('TEAM_NOT_READY'); // team 2 has no captain yet
+
+    service.setCaptain(pin, 'admin1', t2, 'u2');
+    service.startTeamGame(pin, 'admin1'); // now succeeds
+    const s = (service as any).sessions.get(pin);
+    expect(s.status).toBe('question');
+  });
+
+  it('createTeam/assignPlayer/setCaptain reject when session mode is "individual"', () => {
+    const service = new LiveService();
+    const { b } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    const pin = service.initSession('admin1', 'test1', 'Matematika', makeTeamQuestions(), 10, 'individual');
+    expect(() => service.createTeam(pin, 'admin1', "Guruh 1")).toThrow('NOT_TEAM_MODE');
+  });
+});

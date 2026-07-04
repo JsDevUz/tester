@@ -8,6 +8,7 @@ import {
 import {
   LIVE_TYPES, ALLOWED_TIMES, REVEAL_MS, SESSION_CLEANUP_MS, HOST_GRACE_MS,
   computePoints, generatePin, buildLeaderboard,
+  makeTeamId, validateTeamsReady,
 } from './live.logic';
 import { gradeAnswer } from '../grading/grading';
 
@@ -97,8 +98,8 @@ export class LiveService {
       hostDisconnectTimer: null,
       players: new Map(),
       mode,
-      teams: null,
-      unassignedUserIds: null,
+      teams: mode === 'team' ? new Map() : null,
+      unassignedUserIds: mode === 'team' ? new Set() : null,
     });
     const s = this.sessions.get(pin)!;
     s.hostDisconnectTimer = setTimeout(() => { void this.finish(s); }, HOST_GRACE_MS);
@@ -122,6 +123,7 @@ export class LiveService {
     if (!player) {
       player = { userId: user.id, name: user.name, socketId, score: 0, answers: new Map() };
       s.players.set(user.id, player);
+      if (s.mode === 'team' && s.unassignedUserIds) s.unassignedUserIds.add(user.id);
     } else {
       player.socketId = socketId; // reconnect
     }
@@ -134,6 +136,69 @@ export class LiveService {
     if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
     if (s.status !== 'lobby') throw new Error('ALREADY_STARTED');
     this.startQuestion(s, 0);
+  }
+
+  private mustBeTeamMode(s: LiveSession): void {
+    if (s.mode !== 'team' || !s.teams || !s.unassignedUserIds) throw new Error('NOT_TEAM_MODE');
+  }
+
+  createTeam(pin: string, adminId: string, name: string): { teamId: string } {
+    const s = this.mustGet(pin);
+    if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    this.mustBeTeamMode(s);
+    const teamId = makeTeamId(s.teams!.size + 1);
+    s.teams!.set(teamId, {
+      id: teamId, name, captainUserId: null,
+      memberUserIds: new Set(), score: 0,
+      answers: new Map(), suggestions: new Map(),
+    });
+    this.broadcastTeamUpdate(s);
+    return { teamId };
+  }
+
+  assignPlayer(pin: string, adminId: string, userId: string, teamId: string): void {
+    const s = this.mustGet(pin);
+    if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    this.mustBeTeamMode(s);
+    const team = s.teams!.get(teamId);
+    if (!team) throw new Error('TEAM_NOT_FOUND');
+    for (const t of s.teams!.values()) t.memberUserIds.delete(userId);
+    s.unassignedUserIds!.delete(userId);
+    team.memberUserIds.add(userId);
+    this.broadcastTeamUpdate(s);
+  }
+
+  setCaptain(pin: string, adminId: string, teamId: string, userId: string): void {
+    const s = this.mustGet(pin);
+    if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    this.mustBeTeamMode(s);
+    const team = s.teams!.get(teamId);
+    if (!team) throw new Error('TEAM_NOT_FOUND');
+    if (!team.memberUserIds.has(userId)) throw new Error('NOT_TEAM_MEMBER');
+    team.captainUserId = userId;
+    this.broadcastTeamUpdate(s);
+  }
+
+  startTeamGame(pin: string, adminId: string): void {
+    const s = this.mustGet(pin);
+    if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
+    this.mustBeTeamMode(s);
+    if (s.status !== 'lobby' && s.status !== 'team_assign') throw new Error('ALREADY_STARTED');
+    const { ready } = validateTeamsReady([...s.teams!.values()]);
+    if (!ready) throw new Error('TEAM_NOT_READY');
+    this.startQuestion(s, 0);
+  }
+
+  private broadcastTeamUpdate(s: LiveSession): void {
+    if (!s.teams || !s.unassignedUserIds) return;
+    const nameOf = (userId: string) => s.players.get(userId)?.name ?? '?';
+    this.broadcaster.toRoom(s.pin, 'team:update', {
+      teams: [...s.teams.values()].map((t) => ({
+        id: t.id, name: t.name, captainUserId: t.captainUserId,
+        members: [...t.memberUserIds].map((uid) => ({ userId: uid, name: nameOf(uid) })),
+      })),
+      unassigned: [...s.unassignedUserIds].map((uid) => ({ userId: uid, name: nameOf(uid) })),
+    });
   }
 
   answer(pin: string, userId: string, questionId: string, selectedOptionIds: string[], textAnswer: string | null = null) {
