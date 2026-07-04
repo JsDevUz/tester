@@ -76,13 +76,13 @@ export function SubmissionsPage() {
   return (
     <AppShell>
       <div className="min-h-screen bg-white flex flex-col">
-      <div className="flex-1 w-full px-6 py-5">
+      <div className="flex-1 w-full px-4 py-4 sm:px-6 sm:py-5">
         {/* Header */}
         <button onClick={() => navigate(-1)}
-          className="flex items-center gap-1 text-sm text-gray-400 hover:text-gray-600 mb-3 transition-colors">
-          <ChevronLeft size={16} /> Orqaga
+          className="flex items-center gap-1 text-xs sm:text-sm text-gray-400 hover:text-gray-600 mb-3 transition-colors">
+          <ChevronLeft size={15} /> Orqaga
         </button>
-        <h2 className="text-lg font-bold text-gray-800 mb-4">{test?.name ?? 'Test'} — Natijalar</h2>
+        <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-4 leading-snug">{test?.name ?? 'Test'} — Natijalar</h2>
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -95,7 +95,42 @@ export function SubmissionsPage() {
           </div>
         ) : (
           <div>
-            <div className="overflow-x-auto rounded-2xl border border-gray-100 bg-white">
+            <div className="md:hidden flex flex-col gap-2">
+              {submissions.map((sub) => {
+                const pct = sub.total ? Math.round(((sub.score ?? 0) / sub.total) * 100) : 0;
+                const isGood = pct >= 70;
+                const isMid = pct >= 40 && pct < 70;
+                return (
+                  <div
+                    key={sub.id}
+                    onClick={() => navigate(`/submissions/${sub.id}`)}
+                    className="bg-white rounded-xl border border-gray-100 px-3.5 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+                  >
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-semibold text-gray-800 truncate">{sub.studentName}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">
+                        {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}
+                      </p>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <p className={`text-sm font-bold ${isGood ? 'text-green-500' : isMid ? 'text-amber-500' : 'text-red-400'}`}>
+                        {pct}%
+                      </p>
+                      <p className="text-xs text-gray-400">{sub.score ?? 0}/{sub.total ?? 0}</p>
+                    </div>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); setConfirmDelete(sub); }}
+                      className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                      aria-label="Natijani o'chirish"
+                    >
+                      <Trash2 size={15} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-100 bg-white">
               <table className="w-full min-w-[720px] text-left">
                 <thead className="bg-[#f9f9f9] text-xs font-semibold uppercase tracking-wide text-gray-400">
                   <tr>
