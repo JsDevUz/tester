@@ -1,15 +1,22 @@
 export interface LiveOption {
   id: string;
   text: string;
+  isCorrect: boolean;
+  orderIndex: number;
 }
+
+export type LiveQuestionType =
+  | 'single' | 'multi' | 'truefalse'
+  | 'slider' | 'droppin' | 'matching' | 'fillblank' | 'open' | 'arrange' | 'reorder';
 
 export interface LiveQuestion {
   id: string;
   text: string;
   imageUrl: string | null;
-  type: 'single' | 'multi' | 'truefalse';
+  type: LiveQuestionType;
   options: LiveOption[];
   correctOptionIds: string[];
+  correctAnswer: string | null;
 }
 
 export interface PlayerAnswer {
@@ -27,7 +34,19 @@ export interface LivePlayer {
   answers: Map<string, PlayerAnswer>; // questionId → javob
 }
 
-export type LiveStatus = 'lobby' | 'question' | 'reveal' | 'finished';
+export type LiveGameMode = 'individual' | 'team';
+
+export interface LiveTeam {
+  id: string;
+  name: string;
+  captainUserId: string | null;
+  memberUserIds: Set<string>;
+  score: number;
+  answers: Map<string, PlayerAnswer>;
+  suggestions: Map<string, Map<string, number>>; // questionId -> optionId -> count
+}
+
+export type LiveStatus = 'lobby' | 'team_assign' | 'question' | 'reveal' | 'finished';
 
 export interface LiveSession {
   pin: string;
@@ -44,6 +63,9 @@ export interface LiveSession {
   revealTimer: NodeJS.Timeout | null;
   hostDisconnectTimer: NodeJS.Timeout | null;
   players: Map<string, LivePlayer>; // userId → player
+  mode: LiveGameMode;
+  teams: Map<string, LiveTeam> | null;
+  unassignedUserIds: Set<string> | null;
 }
 
 export interface LeaderboardEntry {

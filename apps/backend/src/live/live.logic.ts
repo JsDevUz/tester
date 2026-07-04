@@ -1,6 +1,17 @@
-import { LivePlayer, LeaderboardEntry } from './live.types';
+import { LivePlayer, LeaderboardEntry, LiveTeam } from './live.types';
 
 export const LIVE_TYPES = ['single', 'multi', 'truefalse'] as const;
+export const TEAM_TYPES_WITH_SUGGESTIONS = ['single', 'multi', 'truefalse'] as const;
+
+export function makeTeamId(n: number): string {
+  return `team-${n}`;
+}
+
+export function validateTeamsReady(teams: LiveTeam[]): { ready: boolean; missingCaptainTeamIds: string[] } {
+  const missingCaptainTeamIds = teams.filter((t) => !t.captainUserId).map((t) => t.id);
+  const ready = teams.length >= 2 && missingCaptainTeamIds.length === 0;
+  return { ready, missingCaptainTeamIds };
+}
 export const ALLOWED_TIMES = [10, 20, 30, 60];
 export const REVEAL_MS = 4000;
 export const SESSION_CLEANUP_MS = 60000;

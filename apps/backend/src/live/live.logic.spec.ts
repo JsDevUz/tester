@@ -1,5 +1,9 @@
-import { computePoints, isAnswerCorrect, generatePin, buildLeaderboard } from './live.logic';
-import { LivePlayer } from './live.types';
+import { computePoints, isAnswerCorrect, generatePin, buildLeaderboard, makeTeamId, validateTeamsReady, TEAM_TYPES_WITH_SUGGESTIONS } from './live.logic';
+import { LivePlayer, LiveTeam } from './live.types';
+
+function makeTeam(id: string, captainUserId: string | null): LiveTeam {
+  return { id, name: id, captainUserId, memberUserIds: new Set(), score: 0, answers: new Map(), suggestions: new Map() };
+}
 
 function makePlayer(userId: string, name: string, score: number): LivePlayer {
   return { userId, name, socketId: null, score, answers: new Map() };
@@ -80,5 +84,36 @@ describe('buildLeaderboard', () => {
     ]);
     expect(lb.map((e) => e.name)).toEqual(['Vali', 'Soli', 'Ali']);
     expect(lb.map((e) => e.rank)).toEqual([1, 2, 3]);
+  });
+});
+
+describe('makeTeamId', () => {
+  it('formats sequential team ids', () => {
+    expect(makeTeamId(1)).toBe('team-1');
+    expect(makeTeamId(2)).toBe('team-2');
+  });
+});
+
+describe('validateTeamsReady', () => {
+  it('ready when every team has a captain and there are at least 2 teams', () => {
+    const result = validateTeamsReady([makeTeam('team-1', 'u1'), makeTeam('team-2', 'u2')]);
+    expect(result).toEqual({ ready: true, missingCaptainTeamIds: [] });
+  });
+
+  it('not ready with fewer than 2 teams', () => {
+    const result = validateTeamsReady([makeTeam('team-1', 'u1')]);
+    expect(result.ready).toBe(false);
+  });
+
+  it('lists teams missing a captain', () => {
+    const result = validateTeamsReady([makeTeam('team-1', 'u1'), makeTeam('team-2', null)]);
+    expect(result.ready).toBe(false);
+    expect(result.missingCaptainTeamIds).toEqual(['team-2']);
+  });
+});
+
+describe('TEAM_TYPES_WITH_SUGGESTIONS', () => {
+  it('contains exactly the option-based types', () => {
+    expect(TEAM_TYPES_WITH_SUGGESTIONS).toEqual(['single', 'multi', 'truefalse']);
   });
 });
