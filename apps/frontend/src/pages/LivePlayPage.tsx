@@ -416,7 +416,7 @@ export function LivePlayPage() {
       )}
 
       {(phase === 'question' || phase === 'waiting' || phase === 'reveal') && question && (
-        <div className="flex-1 flex flex-col min-h-0">
+        <div className="flex-1 flex flex-col min-h-0 lg:max-w-2xl lg:mx-auto lg:w-full">
           <div className="shrink-0 px-5 pt-3">
             <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
               <div className={`h-full rounded-full transition-all ${remainingPct < 20 ? 'bg-red-400' : 'bg-indigo-500'}`}

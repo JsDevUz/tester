@@ -296,7 +296,7 @@ export function LiveHostPage() {
       )}
 
       {(phase === 'question' || phase === 'reveal') && question && (
-        <div className="flex-1 flex flex-col px-5 pt-4">
+        <div className="flex-1 flex flex-col px-5 pt-4 lg:max-w-2xl lg:mx-auto lg:w-full">
           {/* Timer bar */}
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
             <div className={`h-full rounded-full transition-all ${remainingPct < 20 ? 'bg-red-400' : 'bg-indigo-500'}`}

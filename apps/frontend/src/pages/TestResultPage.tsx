@@ -47,14 +47,17 @@ export function TestResultPage() {
 
   return (
     <div
-      className="flex flex-col bg-white notranslate"
+      className="flex flex-col bg-white lg:bg-gray-50 notranslate"
       translate="no"
       style={{ minHeight: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
     >
-      {/* Top accent bar */}
-      <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
+      {/* Top accent bar — mobile only, desktop card has its own */}
+      <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 lg:hidden" />
 
-      <div className="flex-1 overflow-y-auto px-5 pt-8 pb-4">
+      <div className="flex-1 lg:flex lg:justify-center lg:py-10">
+      <div className="lg:w-full lg:max-w-2xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-gray-100 lg:overflow-hidden lg:self-start">
+      <div className="hidden lg:block h-1.5 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
+      <div className="px-5 lg:px-8 pt-8 pb-4 lg:pb-10">
 
         {/* Score hero */}
         {(result.showResults === 'immediately' || result.showResults === 'per_question') ? (
@@ -208,6 +211,8 @@ export function TestResultPage() {
             <p className="text-sm text-gray-400">Test qabul qilindi.</p>
           </div>
         )}
+      </div>
+      </div>
       </div>
     </div>
   );

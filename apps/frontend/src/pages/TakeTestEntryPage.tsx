@@ -102,74 +102,80 @@ export function TakeTestEntryPage() {
 
   return (
     <div
-      className="flex flex-col bg-white notranslate"
+      className="flex flex-col bg-white lg:bg-gray-50 notranslate"
       translate="no"
       style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
     >
-      {/* Top accent bar */}
-      <div className="shrink-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400" />
+      {/* Top accent bar — mobile only, desktop card has its own */}
+      <div className="shrink-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 lg:hidden" />
 
-      {/* Scrollable content */}
-      <div className="flex-1 overflow-y-auto px-6 pt-10 pb-4">
-        {/* Icon */}
-        <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6">
-          <FileText size={28} className="text-indigo-400" />
+      <div className="flex-1 overflow-y-auto lg:flex lg:items-center lg:justify-center">
+        <div className="lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-gray-100 lg:overflow-hidden">
+          <div className="hidden lg:block h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400" />
+
+          {/* Scrollable content */}
+          <div className="px-6 lg:px-10 pt-10 pb-4 lg:py-10">
+            {/* Icon */}
+            <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6">
+              <FileText size={28} className="text-indigo-400" />
+            </div>
+
+            {/* Title & description */}
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">{test.name}</h1>
+            {test.description && (
+              <p className="text-base text-gray-500 mb-5 leading-relaxed">{test.description}</p>
+            )}
+
+            {/* Meta chips */}
+            {(test.timeLimit || test.deadline) && (
+              <div className="flex gap-2 flex-wrap mb-6">
+                {test.timeLimit && (
+                  <span className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl font-medium">
+                    <Clock size={13} /> {test.timeLimit} daqiqa
+                  </span>
+                )}
+                {test.deadline && (
+                  <span className="flex items-center gap-1.5 text-sm bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl font-medium">
+                    <Calendar size={13} /> {new Date(test.deadline).toLocaleString()}
+                  </span>
+                )}
+              </div>
+            )}
+
+            {/* Divider */}
+            <div className="h-px bg-gray-100 mb-6" />
+
+            {/* Name field */}
+            <p className="text-sm font-semibold text-gray-700 mb-2">Ismingiz</p>
+            {loggedInName ? (
+              <div className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base text-gray-700 mb-2">
+                {loggedInName}
+              </div>
+            ) : (
+              <input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleStart(e as any); }}
+                placeholder="Ismingizni kiriting"
+                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
+              />
+            )}
+
+            {error && <p className="text-sm text-red-400 mt-1">{error}</p>}
+          </div>
+
+          {/* Bottom button */}
+          <div className="shrink-0 px-6 lg:px-10 pt-3 pb-6 lg:pb-10">
+            <button
+              onClick={handleStart}
+              disabled={!name.trim() || starting}
+              className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base flex items-center justify-center gap-2 hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
+            >
+              {starting ? 'Boshlanmoqda...' : <><span>Testni boshlash</span><ChevronRight size={18} /></>}
+            </button>
+          </div>
         </div>
-
-        {/* Title & description */}
-        <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">{test.name}</h1>
-        {test.description && (
-          <p className="text-base text-gray-500 mb-5 leading-relaxed">{test.description}</p>
-        )}
-
-        {/* Meta chips */}
-        {(test.timeLimit || test.deadline) && (
-          <div className="flex gap-2 flex-wrap mb-6">
-            {test.timeLimit && (
-              <span className="flex items-center gap-1.5 text-sm bg-blue-50 text-blue-600 px-3 py-1.5 rounded-xl font-medium">
-                <Clock size={13} /> {test.timeLimit} daqiqa
-              </span>
-            )}
-            {test.deadline && (
-              <span className="flex items-center gap-1.5 text-sm bg-orange-50 text-orange-600 px-3 py-1.5 rounded-xl font-medium">
-                <Calendar size={13} /> {new Date(test.deadline).toLocaleString()}
-              </span>
-            )}
-          </div>
-        )}
-
-        {/* Divider */}
-        <div className="h-px bg-gray-100 mb-6" />
-
-        {/* Name field */}
-        <p className="text-sm font-semibold text-gray-700 mb-2">Ismingiz</p>
-        {loggedInName ? (
-          <div className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base text-gray-700 mb-2">
-            {loggedInName}
-          </div>
-        ) : (
-          <input
-            autoFocus
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleStart(e as any); }}
-            placeholder="Ismingizni kiriting"
-            className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
-          />
-        )}
-
-        {error && <p className="text-sm text-red-400 mt-1">{error}</p>}
-      </div>
-
-      {/* Bottom button */}
-      <div className="shrink-0 px-6 pt-3">
-        <button
-          onClick={handleStart}
-          disabled={!name.trim() || starting}
-          className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base flex items-center justify-center gap-2 hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
-        >
-          {starting ? 'Boshlanmoqda...' : <><span>Testni boshlash</span><ChevronRight size={18} /></>}
-        </button>
       </div>
     </div>
   );
