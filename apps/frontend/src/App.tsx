@@ -16,6 +16,7 @@ import { LiveHostPage } from './pages/LiveHostPage';
 import { LiveJoinPage } from './pages/LiveJoinPage';
 import { LivePlayPage } from './pages/LivePlayPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
+import { CoursesPage } from './pages/CoursesPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -41,7 +42,7 @@ const router = createBrowserRouter([
   { path: '/live/host/:pin', element: <PrivateRoute><LiveHostPage /></PrivateRoute> },
   { path: '/live/join', element: <LiveJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
-  { path: '/lessons', element: <PrivateRoute><ComingSoonPage title="Darslar" /></PrivateRoute> },
+  { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
   { path: '/payments', element: <PrivateRoute><ComingSoonPage title="To'lovlar" /></PrivateRoute> },
   { path: '/students', element: <PrivateRoute><ComingSoonPage title="O'quvchilar — Barchasi" /></PrivateRoute> },
   { path: '/students/pending', element: <PrivateRoute><ComingSoonPage title="Ruxsat kutayotganlar" /></PrivateRoute> },

@@ -18,13 +18,16 @@ To'rtta bosqich, bitta sahifa (`/lessons`, `CoursesPage.tsx`) ichida ichki state
 ```typescript
 interface ContentBlock {
   id: string;
-  type: 'video' | 'image' | 'file' | 'embed';
+  type: 'editor' | 'video' | 'image' | 'file';
   // video/image/file: mahalliy fayl nomi va vaqtinchalik object URL (URL.createObjectURL)
   fileName?: string;
   previewUrl?: string;
-  // embed: tashqi havola (YouTube/Vimeo va h.k.)
-  embedUrl?: string;
+  // editor: Tiptap (rich-text) chiqishi, HTML sifatida
+  html?: string;
 }
+```
+
+Foydalanuvchi bilan aniqlashtirishdan so'ng "Embed" blok tushunchasi "Tahrirchi" (Tiptap asosidagi rich-text) blokiga almashtirildi. Blok tanlash panelida (rasmdagi ko'p variantlarga mos) qo'shimcha turlar — Audio, Tugma, Xabar, Chek-list, Bo'lish belgisi, Notion — vizual jihatdan ko'rsatiladi, lekin `disabled` holatda (bosilmaydi), chunki ular hozirgi qamrovga kirmaydi.
 
 interface Lesson {
   id: string;
@@ -48,7 +51,7 @@ interface Course {
 }
 ```
 
-Kontent — Tiptap emas, oddiy ketma-ket **bloklar ro'yxati** (`ContentBlock[]`) sifatida modellanadi (rich-text join emas — chunki blok turlari faqat media/embed, matn formatlashning o'zi talab qilinmagan; agar keyinchalik erkin matn bloki kerak bo'lsa, `type: 'text'` va `html: string` maydoni bilan kengaytiriladi). Bu YAGNI: Tiptap kabi og'ir kutubxonani hozircha kiritmaymiz, chunki hozirgi talab faqat 4 turdagi blokni ketma-ket qo'shish/o'chirish/qayta tartiblash.
+Kontent ketma-ket **bloklar ro'yxati** (`ContentBlock[]`) sifatida modellanadi. To'rtta faol blok turi: `editor` (Tiptap rich-text), `video`, `image`, `file` (uchtasi ham mahalliy fayl tanlash orqali, `URL.createObjectURL` bilan vaqtinchalik preview).
 
 ## Store
 
@@ -57,19 +60,21 @@ Kontent — Tiptap emas, oddiy ketma-ket **bloklar ro'yxati** (`ContentBlock[]`)
 - `addCourse(title)`, `renameCourse(id, title)`, `deleteCourse(id)`
 - `addModule(courseId, title)`, `renameModule(courseId, moduleId, title)`, `deleteModule(courseId, moduleId)`
 - `addLesson(courseId, moduleId, title)`, `renameLesson(...)`, `deleteLesson(...)`, `toggleLessonStatus(...)`
-- `addBlock(courseId, moduleId, lessonId, block)`, `removeBlock(...)`, `reorderBlocks(...)`
+- `addBlock(courseId, moduleId, lessonId, block)`, `updateBlock(..., blockId, data)`, `removeBlock(...)`
 
 Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmagani uchun).
 
 ## Komponentlar
 
-- `apps/frontend/src/pages/CoursesPage.tsx` — asosiy sahifa, ichki `view` state (`'courses' | 'modules' | 'lessons' | 'editor'`) va tanlangan `courseId`/`moduleId`/`lessonId` orqali qaysi komponent ko'rsatilishini boshqaradi.
+- `apps/frontend/src/pages/CoursesPage.tsx` — asosiy sahifa, ichki `state: ViewState` (discriminated union: `'courses' | 'modules' | 'lessons' | 'editor'`) orqali qaysi komponent ko'rsatilishini va tanlangan `courseId`/`moduleId`/`lessonId`ni boshqaradi.
 - `apps/frontend/src/components/course/CourseGrid.tsx` — bosqich 1.
 - `apps/frontend/src/components/course/ModulesView.tsx` — bosqich 2.
 - `apps/frontend/src/components/course/LessonsView.tsx` — bosqich 3.
-- `apps/frontend/src/components/course/LessonEditorView.tsx` — bosqich 4: dars sarlavhasi, holat tugmasi, bo'sh holat ("Ichki kontentini to'ldiring") yoki mavjud bloklar ro'yxati, va pastda `BlockPicker`.
-- `apps/frontend/src/components/course/BlockPicker.tsx` — 4 ta kartochka-tugma (Video, Image, File, Embed). Video/Image/File bosilsa yashirin `<input type="file">` ochiladi; Embed bosilsa inline URL input ko'rsatiladi.
-- `apps/frontend/src/components/course/ContentBlockView.tsx` — bitta blokni ko'rsatish (preview + o'chirish tugmasi). Video: `<video>` player, Image: `<img>`, File: fayl nomi + ikonka, Embed: iframe (agar YouTube/Vimeo linkka mos kelsa) yoki oddiy havola.
+- `apps/frontend/src/components/course/LessonEditorView.tsx` — bosqich 4: dars sarlavhasi (inline tahrirlanadigan), holat tugmasi, bo'sh holat ("Ichki kontentini to'ldiring") yoki mavjud bloklar ro'yxati, va pastda `BlockPicker`.
+- `apps/frontend/src/components/course/BlockPicker.tsx` — Tahrirchi/Video/Rasm/Fayl kartochkalari faol; Audio/Tugma/Xabar/Chek-list/Bo'lish belgisi/Notion kartochkalari vizual jihatdan ko'rsatiladi, lekin `disabled` (rasmdagi to'liq variant to'plamiga mos, lekin faqat qamrovga kirgan turlar ishlaydi).
+- `apps/frontend/src/components/course/EditorBlock.tsx` — Tiptap (`@tiptap/react` + `@tiptap/starter-kit`) o'rab oluvchi komponent, `html` orqali boshqariladi.
+- `apps/frontend/src/components/course/ContentBlockView.tsx` — bitta blokni ko'rsatish (preview + o'chirish tugmasi). `editor`: `EditorBlock`, `video`: `<video>` player, `image`: `<img>`, `file`: fayl nomi + ikonka.
+- `apps/frontend/src/components/course/PromptModal.tsx` — kurs/modul/dars nomi kiritish uchun qayta ishlatiladigan oddiy modal.
 
 ## AppShell integratsiyasi
 
