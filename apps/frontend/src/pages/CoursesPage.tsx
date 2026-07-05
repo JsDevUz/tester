@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Sparkles } from 'lucide-react';
+import { GraduationCap, MousePointerClick } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { CourseTreePanel } from '../components/course/CourseTreePanel';
 import { LessonEditorView } from '../components/course/LessonEditorView';
@@ -33,7 +33,7 @@ export function CoursesPage() {
     return (
       <AppShell>
         <div className="flex h-full flex-col items-center justify-center px-6 text-center">
-          <Sparkles size={32} className="mb-4 text-indigo-200" />
+          <GraduationCap size={32} className="mb-4 text-indigo-200" />
           <p className="mb-2 text-lg font-bold text-gray-900">Hali kurs yaratilmagan</p>
           <p className="mb-6 text-sm text-gray-400">Boshlash uchun birinchi kursingizni yarating.</p>
           <button
@@ -75,7 +75,7 @@ export function CoursesPage() {
             />
           ) : (
             <div className="flex h-full flex-col items-center justify-center px-6 text-center text-gray-300">
-              <Sparkles size={28} className="mb-3 opacity-50" />
+              <MousePointerClick size={28} className="mb-3 opacity-50" />
               <p className="text-sm">Chapdan darsni tanlang</p>
             </div>
           )}

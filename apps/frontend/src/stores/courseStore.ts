@@ -11,6 +11,8 @@ export interface ContentBlock {
   html?: string;
   // video: YouTube (yoki boshqa) tashqi havola, fayl yuklash o'rniga/bilan birga
   embedUrl?: string;
+  // video/image/file: o'qituvchi kiritgan ko'rinadigan nom (fileName'dan mustaqil, u asl fayl nomini saqlaydi)
+  label?: string;
 }
 
 export interface Lesson {
@@ -52,6 +54,7 @@ interface CourseState {
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock) => void;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => void;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
+  moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
 }
 
 function newId(): string {
@@ -251,6 +254,33 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                           ? l
                           : { ...l, blocks: l.blocks.filter((b) => b.id !== blockId) },
                       ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  moveBlock: (courseId, moduleId, lessonId, blockId, direction) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) => {
+                        if (l.id !== lessonId) return l;
+                        const index = l.blocks.findIndex((b) => b.id === blockId);
+                        const swapWith = direction === 'up' ? index - 1 : index + 1;
+                        if (index === -1 || swapWith < 0 || swapWith >= l.blocks.length) return l;
+                        const blocks = [...l.blocks];
+                        [blocks[index], blocks[swapWith]] = [blocks[swapWith], blocks[index]];
+                        return { ...l, blocks };
+                      }),
                     },
               ),
             },

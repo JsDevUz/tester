@@ -1,4 +1,5 @@
-import { Sparkles } from 'lucide-react';
+import { useState } from 'react';
+import { NotebookPen } from 'lucide-react';
 import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
 import { BlockPicker } from './BlockPicker';
 import { ContentBlockView } from './ContentBlockView';
@@ -14,20 +15,28 @@ function newId(): string {
 }
 
 export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorViewProps) {
-  const { courses, renameLesson, toggleLessonStatus, addBlock, updateBlock, removeBlock } = useCourseStore();
+  const { courses, renameLesson, toggleLessonStatus, addBlock, updateBlock, removeBlock, moveBlock } = useCourseStore();
   const lesson = courses
     .find((c) => c.id === courseId)
     ?.modules.find((m) => m.id === moduleId)
     ?.lessons.find((l) => l.id === lessonId);
 
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
+
   if (!lesson) return null;
 
+  function collapseAllExisting() {
+    setCollapsedBlockIds(new Set(lesson!.blocks.map((b) => b.id)));
+  }
+
   function handlePickEditor() {
+    collapseAllExisting();
     const block: ContentBlock = { id: newId(), type: 'editor', html: '' };
     addBlock(courseId, moduleId, lessonId, block);
   }
 
   function handlePickFile(type: 'video' | 'image' | 'file', file: File) {
+    collapseAllExisting();
     const block: ContentBlock = {
       id: newId(),
       type,
@@ -35,6 +44,15 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
       previewUrl: type === 'file' ? undefined : URL.createObjectURL(file),
     };
     addBlock(courseId, moduleId, lessonId, block);
+  }
+
+  function toggleCollapse(blockId: string) {
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
   }
 
   function handleChangeBlockHtml(blockId: string, html: string) {
@@ -45,8 +63,8 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
     updateBlock(courseId, moduleId, lessonId, blockId, { embedUrl });
   }
 
-  function handleChangeBlockFileName(blockId: string, fileName: string) {
-    updateBlock(courseId, moduleId, lessonId, blockId, { fileName });
+  function handleChangeBlockLabel(blockId: string, label: string) {
+    updateBlock(courseId, moduleId, lessonId, blockId, { label });
   }
 
   function handleBlockPickFile(blockId: string, file: File) {
@@ -78,7 +96,7 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
 
       {lesson.blocks.length === 0 && (
         <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
-          <Sparkles size={30} className="mx-auto mb-3 text-indigo-200" />
+          <NotebookPen size={30} className="mx-auto mb-3 text-indigo-200" />
           <p className="text-sm font-semibold text-gray-700">Ichki kontentini to'ldiring</p>
           <p className="mt-1 text-xs text-gray-400">Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing</p>
         </div>
@@ -90,12 +108,18 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
             <ContentBlockView
               key={block.id}
               index={index}
+              isFirst={index === 0}
+              isLast={index === lesson.blocks.length - 1}
               block={block}
+              collapsed={collapsedBlockIds.has(block.id)}
+              onToggleCollapse={() => toggleCollapse(block.id)}
               onChangeHtml={(html) => handleChangeBlockHtml(block.id, html)}
               onChangeEmbedUrl={(embedUrl) => handleChangeBlockEmbedUrl(block.id, embedUrl)}
-              onChangeFileName={(fileName) => handleChangeBlockFileName(block.id, fileName)}
+              onChangeLabel={(label) => handleChangeBlockLabel(block.id, label)}
               onPickFile={(file) => handleBlockPickFile(block.id, file)}
               onRemove={() => removeBlock(courseId, moduleId, lessonId, block.id)}
+              onMoveUp={() => moveBlock(courseId, moduleId, lessonId, block.id, 'up')}
+              onMoveDown={() => moveBlock(courseId, moduleId, lessonId, block.id, 'down')}
             />
           ))}
         </div>
