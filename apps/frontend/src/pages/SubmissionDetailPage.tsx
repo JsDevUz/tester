@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ChevronLeft } from 'lucide-react';
+import { AlertTriangle, ChevronLeft } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { AnswerResultCard } from '../components/AnswerResultCard';
 import { apiGetSubmission, type SubmissionDetail } from '../api/submissions';
@@ -31,6 +31,7 @@ export function SubmissionDetailPage() {
   const pct = detail.total ? Math.round(((detail.score ?? 0) / detail.total) * 100) : 0;
   const isGood = pct >= 70;
   const isMid = pct >= 40 && pct < 70;
+  const isViolation = detail.mode === 'violation';
 
   return (
     <AppShell>
@@ -56,6 +57,13 @@ export function SubmissionDetailPage() {
             <p className="text-xs text-gray-400">{detail.score} / {detail.total}</p>
           </div>
         </div>
+
+        {isViolation && (
+          <div className="mb-4 flex items-start gap-2 rounded-2xl border-2 border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600">
+            <AlertTriangle size={18} className="mt-0.5 shrink-0" />
+            <span>Taqiqlangan harakat aniqlanganligi sababli yakunlandi.</span>
+          </div>
+        )}
 
         {/* Answers */}
         <div className="flex flex-col gap-3">

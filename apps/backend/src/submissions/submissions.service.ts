@@ -37,6 +37,7 @@ export class SubmissionsService {
       submittedAt: submission.submittedAt,
       score: submission.score,
       total: submission.total,
+      mode: submission.mode,
     }));
   }
 
@@ -72,6 +73,7 @@ export class SubmissionsService {
       submittedAt: submission.submittedAt,
       score: submission.score,
       total: submission.total,
+      mode: submission.mode,
       showResults: submission.test.showResults,
       answers: showAnswers ? submission.answers.map((a) => ({
         questionId: a.questionId,
@@ -106,6 +108,7 @@ export class SubmissionsService {
       submittedAt: submission.submittedAt,
       score: submission.score,
       total: submission.total,
+      mode: submission.mode,
       testId: submission.testId,
       testName: submission.test.name,
       answers: submission.answers.map((a) => ({

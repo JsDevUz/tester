@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Trash2, ChevronLeft, Inbox } from 'lucide-react';
+import { AlertTriangle, Trash2, ChevronLeft, Inbox } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { useTestStore } from '../stores/testStore';
 import { apiGetTest, type TestDetail } from '../api/tests';
@@ -100,6 +100,7 @@ export function SubmissionsPage() {
                 const pct = sub.total ? Math.round(((sub.score ?? 0) / sub.total) * 100) : 0;
                 const isGood = pct >= 70;
                 const isMid = pct >= 40 && pct < 70;
+                const isViolation = sub.mode === 'violation';
                 return (
                   <div
                     key={sub.id}
@@ -107,7 +108,15 @@ export function SubmissionsPage() {
                     className="bg-white rounded-xl border border-gray-100 px-3.5 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-transform"
                   >
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-800 truncate">{sub.studentName}</p>
+                      <div className="flex items-center gap-1.5 min-w-0">
+                        <p className="text-sm font-semibold text-gray-800 truncate">{sub.studentName}</p>
+                        {isViolation && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-500 shrink-0">
+                            <AlertTriangle size={11} />
+                            Taqiqlangan
+                          </span>
+                        )}
+                      </div>
                       <p className="text-xs text-gray-400 mt-0.5">
                         {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}
                       </p>
@@ -146,6 +155,7 @@ export function SubmissionsPage() {
                     const pct = sub.total ? Math.round(((sub.score ?? 0) / sub.total) * 100) : 0;
                     const isGood = pct >= 70;
                     const isMid = pct >= 40 && pct < 70;
+                    const isViolation = sub.mode === 'violation';
                     return (
                       <tr
                         key={sub.id}
@@ -153,7 +163,15 @@ export function SubmissionsPage() {
                         className="group cursor-pointer transition-colors hover:bg-indigo-50/40"
                       >
                         <td className="px-5 py-4">
-                          <p className="text-sm font-semibold text-gray-800">{sub.studentName}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold text-gray-800">{sub.studentName}</p>
+                            {isViolation && (
+                              <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-500">
+                                <AlertTriangle size={12} />
+                                Taqiqlangan harakat
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-4 text-sm text-gray-500">
                           {sub.submittedAt ? formatDateTime(sub.submittedAt) : 'Topshirilmagan'}

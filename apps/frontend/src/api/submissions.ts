@@ -9,6 +9,7 @@ export interface Submission {
   submittedAt: string | null;
   score: number | null;
   total: number | null;
+  mode?: 'normal' | 'violation' | 'live';
 }
 
 export interface AnswerDetail {
