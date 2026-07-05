@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
-// @blocknote/mantine/style.css Mantine CSS'ni 78 ta bare-specifier @import bilan
-// yuklaydi va Vite/PostCSS ularni hal qila olmaydi; shu sabab kerakli CSS'larni
-// mustaqil (bare-importsiz) fayllardan alohida import qilamiz.
-import '@mantine/core/styles.css';
+// @blocknote/mantine/style.css o'zining mantineStyles.css qismida Mantine
+// komponent CSS'larini `@import url("@mantine/core/styles/X.css")` ko'rinishida
+// import qiladi — `url()` ichidagi bare specifier'ni Vite/postcss-import hal
+// qila olmaydi. ./blocknote-mantine.css o'sha ro'yxatni url()siz qayta hosil
+// qiladi, shuning uchun Vite to'g'ri resolve qila oladi va BlockNote'ning
+// Mantine asosidagi UI'si (menyu, popover, tugmalar) to'g'ri stillanadi.
+import './blocknote-mantine.css';
 import '@blocknote/core/style.css';
 import '@blocknote/react/style.css';
 
