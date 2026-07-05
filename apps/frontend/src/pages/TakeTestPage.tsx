@@ -359,33 +359,18 @@ export function TakeTestPage() {
         navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
       }
     };
-    let submitSent = false;
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') { sendSubmit(); submitSent = true; }
-      else if (document.visibilityState === 'visible' && submitSent) {
-        setTimeout(() => {
-          apiGetSubmission(submissionId).then((sub) => {
-            if (sub.status === 'submitted') navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
-          }).catch(() => {});
-        }, 800);
-      }
-    };
+    // Screen lock, app switch, address-bar focus and short browser freezes can fire
+    // visibility/blur on mobile. Those are not reliable "student left the test"
+    // signals, so only submit when the page is actually being unloaded.
     const handleBeforeUnload = () => { sendSubmit(); };
-    let blurTimer: ReturnType<typeof setTimeout> | null = null;
-    const handleBlur = () => { blurTimer = setTimeout(() => { if (!document.hasFocus()) sendSubmit(); }, 1000); };
-    const handleFocus = () => { if (blurTimer) { clearTimeout(blurTimer); blurTimer = null; } };
-    window.addEventListener('pagehide', sendSubmit);
+    const handlePageHide = (event: PageTransitionEvent) => {
+      if (!event.persisted) sendSubmit();
+    };
+    window.addEventListener('pagehide', handlePageHide);
     window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibility);
-    window.addEventListener('blur', handleBlur);
-    window.addEventListener('focus', handleFocus);
     return () => {
-      window.removeEventListener('pagehide', sendSubmit);
+      window.removeEventListener('pagehide', handlePageHide);
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibility);
-      window.removeEventListener('blur', handleBlur);
-      window.removeEventListener('focus', handleFocus);
-      if (blurTimer) clearTimeout(blurTimer);
     };
   }, [submissionId]); // eslint-disable-line react-hooks/exhaustive-deps
 
