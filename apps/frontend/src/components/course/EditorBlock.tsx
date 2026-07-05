@@ -1,7 +1,12 @@
 import { useEffect, useRef, useState } from 'react';
 import { BlockNoteView } from '@blocknote/mantine';
 import { useCreateBlockNote } from '@blocknote/react';
-import '@blocknote/mantine/style.css';
+// @blocknote/mantine/style.css Mantine CSS'ni 78 ta bare-specifier @import bilan
+// yuklaydi va Vite/PostCSS ularni hal qila olmaydi; shu sabab kerakli CSS'larni
+// mustaqil (bare-importsiz) fayllardan alohida import qilamiz.
+import '@mantine/core/styles.css';
+import '@blocknote/core/style.css';
+import '@blocknote/react/style.css';
 
 interface EditorBlockProps {
   html: string;
