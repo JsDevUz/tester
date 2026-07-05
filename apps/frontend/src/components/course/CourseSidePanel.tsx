@@ -1,9 +1,10 @@
 import {
-  LayoutGrid, SlidersHorizontal, Send, Users, UserRound, HelpCircle, ListChecks, ArrowLeft,
+  LayoutGrid, SlidersHorizontal, Send, Users, UserRound, HelpCircle, ListChecks, Brain, ArrowLeft,
 } from 'lucide-react';
 
 interface CourseSidePanelProps {
   onBackToList: () => void;
+  variant?: 'full' | 'lesson';
 }
 
 interface SideTab {
@@ -14,7 +15,7 @@ interface SideTab {
   active?: boolean;
 }
 
-const TABS: SideTab[] = [
+const FULL_TABS: SideTab[] = [
   { key: 'content', label: 'Kontent', description: 'Modullar, darslar va amaliyot', icon: LayoutGrid, active: true },
   { key: 'settings', label: 'Sozlamalar', description: "Ma'lumot va moslashtirish", icon: SlidersHorizontal },
   { key: 'launch', label: 'Ishga tushirish va tariflar', description: 'Savdo va narxlar sozlamalari', icon: Send },
@@ -24,11 +25,18 @@ const TABS: SideTab[] = [
   { key: 'homework', label: 'Vazifalarni tekshirish', description: 'Talabalardan amaliyot', icon: ListChecks },
 ];
 
-export function CourseSidePanel({ onBackToList }: CourseSidePanelProps) {
+const LESSON_TABS: SideTab[] = [
+  { key: 'content', label: 'Kontent', description: 'Darsning kontenti', icon: LayoutGrid, active: true },
+  { key: 'settings', label: 'Sozlamalar', description: 'Dizayn va parametrlar', icon: SlidersHorizontal },
+  { key: 'practice', label: 'Amaliyot', description: 'Uy vazifasi', icon: Brain },
+];
+
+export function CourseSidePanel({ onBackToList, variant = 'full' }: CourseSidePanelProps) {
+  const tabs = variant === 'lesson' ? LESSON_TABS : FULL_TABS;
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
       <div className="rounded-2xl border-2 border-gray-100 bg-white p-2">
-        {TABS.map((tab) => {
+        {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <div
