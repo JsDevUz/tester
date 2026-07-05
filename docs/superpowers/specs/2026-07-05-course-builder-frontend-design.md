@@ -24,7 +24,7 @@ interface ContentBlock {
   // video/image/file: mahalliy fayl nomi va vaqtinchalik object URL (URL.createObjectURL)
   fileName?: string;
   previewUrl?: string;
-  // editor: Tiptap (rich-text) chiqishi, HTML sifatida
+  // editor: BlockNote muharriridan eksport qilingan HTML
   html?: string;
   // video: YouTube (yoki boshqa) tashqi havola — fayl yuklashga alternativ
   embedUrl?: string;
@@ -56,7 +56,7 @@ interface Course {
 
 Kontent ketma-ket **bloklar ro'yxati** (`ContentBlock[]`) sifatida modellanadi. To'rtta faol blok turi:
 
-- **Tahrirchi** (`type: 'editor'`) — Tiptap asosidagi to'liq rich-text muharrir. "+" tugma orqali slash-command uslubidagi mini-menyu ochiladi: Paragraf, Jadval, Ro'yxat, Havola, HTML fragmenti (code block), Sarlavha, Tekshiruv ro'yxati (task list), Ajratuvchi (horizontal rule).
+- **Tahrirchi** (`type: 'editor'`) — BlockNote asosidagi Notion-uslubidagi block editor: "/" bilan slash-komanda menyusi, blok drag-drop, formatlash toolbar, jadval/ro'yxat/tekshiruv-ro'yxati/kod/sarlavha va boshqalar tayyor keladi. Kontent HTML sifatida saqlanadi (`blocksToFullHTML` bilan eksport, `tryParseHTMLToBlocks` bilan qayta o'qish).
 - **Video** (`type: 'video'`) — YouTube havola inputi (iframe orqali ko'rsatiladi) YOKI mahalliy fayl yuklash (drag-drop/bosish orqali, `<video>` preview), ikkalasi ham qo'llab-quvvatlanadi. Qo'shimcha "Videoning nomi" inputi.
 - **Rasm** (`type: 'image'`) — mahalliy fayl tanlash, `<img>` preview.
 - **Fayl** (`type: 'file'`) — mahalliy fayl tanlash, faqat fayl nomi + ikonka ko'rsatiladi (preview yo'q).
@@ -82,7 +82,7 @@ Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmag
 - `apps/frontend/src/components/course/CourseTreePanel.tsx` — chap panel: kurs almashtirish dropdown, qidiruv, modul/dars daraxti (kollaps holati har modul uchun mustaqil `Set<string>` orqali saqlanadi).
 - `apps/frontend/src/components/course/LessonEditorView.tsx` — o'ng panel: dars sarlavhasi (inline tahrirlanadigan), holat tugmasi, bo'sh holat ("Ichki kontentini to'ldiring") yoki mavjud bloklar ro'yxati, va pastda `BlockPicker`.
 - `apps/frontend/src/components/course/BlockPicker.tsx` — blok tanlash kartochkalari (faol: Tahrirchi/Video/Rasm/Fayl; disabled: Audio/Tugma/Xabar/Chek-list/Bo'lish belgisi/Notion).
-- `apps/frontend/src/components/course/EditorBlock.tsx` — Tiptap o'rab oluvchi komponent (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-table*`, `@tiptap/extension-task-list`/`task-item`), slash-command mini-menyu bilan.
+- `apps/frontend/src/components/course/EditorBlock.tsx` — BlockNote (`@blocknote/core`, `@blocknote/react`, `@blocknote/mantine`) o'rab oluvchi komponent. Boshlang'ich `html` bir marta bloklarga parse qilinadi, o'zgarishlar `onChange`da HTML'ga eksport qilinadi.
 - `apps/frontend/src/components/course/ContentBlockView.tsx` — bitta blokni "Blok №N" sarlavha-kartochkasi ichida ko'rsatadi (reorder/kollaps/o'chirish tugmalari bilan), tur bo'yicha ichki kontent (`EditorBlock`, video/image/file preview yoki fayl tanlash maydoni, har uchalasida "nomi" inputi).
 - `apps/frontend/src/components/course/PromptModal.tsx` — kurs/modul/dars nomi kiritish uchun qayta ishlatiladigan oddiy modal.
 
@@ -96,7 +96,7 @@ Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmag
 
 ## Qo'shimcha kutubxonalar
 
-`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm`, `@tiptap/extension-link`, `@tiptap/extension-table`, `@tiptap/extension-table-row`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `@tiptap/extension-code-block`, `@tailwindcss/typography` (Tiptap chiqishini `.prose` orqali stillash uchun).
+`@blocknote/core`, `@blocknote/react`, `@blocknote/mantine`, `@mantine/core`, `@mantine/hooks` (BlockNote'ning Mantine renderi uchun peer dependency'lar). BlockNote Tiptap 3.x'ni transitiv bog'liqlik sifatida o'zi olib keladi, shuning uchun alohida `@tiptap/*` paketlari o'rnatilmaydi.
 
 ## Qamrovdan tashqari (keyingi fazalar)
 

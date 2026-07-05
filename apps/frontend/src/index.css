@@ -1,5 +1,4 @@
 @import "tailwindcss";
-@plugin "@tailwindcss/typography";
 
 html {
   touch-action: pan-x pan-y;
@@ -12,24 +11,10 @@ body {
   background: #f9f9f9;
 }
 
-.ProseMirror table {
-  border-collapse: collapse;
-  width: 100%;
+/* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish */
+.course-editor .bn-editor {
+  padding-inline: 12px;
 }
-.ProseMirror td, .ProseMirror th {
-  border: 1px solid #e5e7eb;
-  padding: 6px 10px;
-}
-.ProseMirror th {
-  background: #f9fafb;
-  font-weight: 600;
-}
-.ProseMirror ul[data-type="taskList"] {
-  list-style: none;
-  padding-left: 0;
-}
-.ProseMirror ul[data-type="taskList"] li {
-  display: flex;
-  align-items: flex-start;
-  gap: 6px;
+.course-editor .bn-container {
+  background: transparent;
 }
