@@ -11,9 +11,12 @@ body {
   background: #f9f9f9;
 }
 
-/* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish */
+/* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish.
+   Chap tomondan qo'shimcha joy — drag-handle va "+" ikonkalari blok matnining
+   chap tashqarisiga chiqadi, konteyner ularni kesib tashlamasligi kerak. */
 .course-editor .bn-editor {
-  padding-inline: 12px;
+  padding-left: 40px;
+  padding-right: 12px;
 }
 .course-editor .bn-container {
   background: transparent;

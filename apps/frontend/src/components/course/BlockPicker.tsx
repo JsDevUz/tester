@@ -87,10 +87,10 @@ export function BlockPicker({ onPickEditor, onPickFile }: BlockPickerProps) {
                   type="button"
                   disabled={item.disabled}
                   onClick={() => (isImage ? openFilePicker('image') : handleClick(item))}
-                  className={`flex flex-col items-center gap-2 rounded-2xl border-2 px-4 py-5 text-sm font-medium transition-colors ${
+                  className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${
                     item.disabled
-                      ? 'cursor-not-allowed border-gray-100 bg-gray-50 text-gray-300'
-                      : 'border-gray-100 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/30'
+                      ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
+                      : 'border-2 border-gray-100 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/30'
                   }`}
                 >
                   <Icon size={22} className={item.disabled ? 'text-gray-300' : 'text-indigo-400'} />

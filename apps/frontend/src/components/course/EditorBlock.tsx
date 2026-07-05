@@ -40,7 +40,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   }
 
   return (
-    <div className="course-editor overflow-hidden rounded-2xl border-2 border-gray-100 bg-white py-2">
+    <div className="course-editor rounded-2xl border-2 border-gray-100 bg-white py-2">
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" />
     </div>
   );
