@@ -2,16 +2,18 @@
 
 ## Maqsad
 
-O'qituvchi uchun kurs → modul → dars ierarxiyasini yaratish va har bir darsga kontent (video, rasm, fayl, embed) qo'shish imkonini beruvchi frontend UI. Bu faza faqat frontend — backend/API yo'q, ma'lumotlar frontend state'ida (zustand) saqlanadi va sahifa yangilansa yo'qoladi. Backend integratsiyasi keyingi alohida faza.
+O'qituvchi uchun kurs → modul → dars ierarxiyasini yaratish va har bir darsga kontent (rich-text, video, rasm, fayl) qo'shish imkonini beruvchi frontend UI. Bu faza faqat frontend — backend/API yo'q, ma'lumotlar frontend state'ida (zustand) saqlanadi va sahifa yangilansa yo'qoladi. Backend integratsiyasi keyingi alohida faza.
 
-## Navigatsiya — bosqichma-bosqich drill-down
+## Navigatsiya — ikki panelli, bitta ekran
 
-To'rtta bosqich, bitta sahifa (`/lessons`, `CoursesPage.tsx`) ichida ichki state bilan almashtiriladi. Har bosqichda "← Orqaga" tugmasi oldingi bosqichga qaytaradi.
+`/lessons` (`CoursesPage.tsx`) — bitta sahifa, ichida ikkita panel yonma-yon (mobil/tor ekranda ustma-ust):
 
-1. **Kurslar ro'yxati** — kartochkalar grid. Har kartochkada kurs nomi va undagi modullar soni. Yuqorida "+ Yangi kurs" tugmasi (modal orqali nom so'raydi).
-2. **Modullar ro'yxati** — tanlangan kurs nomi sarlavha sifatida, "← Orqaga" bilan kurslar ro'yxatiga qaytish. Modullar ro'yxati (nom + ichidagi darslar soni). "+ Yangi modul" tugmasi.
-3. **Darslar ro'yxati** — tanlangan modul nomi sarlavha, "← Orqaga" bilan modullar ro'yxatiga qaytish. Darslar ro'yxati (nom + holat badge: qoralama/e'lon qilingan). "+ Yangi dars" tugmasi.
-4. **Dars tahrirlash** — tanlangan dars nomi (inline tahrirlanadigan input), "← Orqaga" bilan darslar ro'yxatiga qaytish, "E'lon qilish/Qoralama" holatini almashtiruvchi tugma. Pastda kontent tahrirlash maydoni.
+- **Chap panel** (`CourseTreePanel.tsx`, sobit kenglik `w-72`): tepada tanlangan kurs nomi (bosilsa dropdown — boshqa kurslar ro'yxati + "Yangi kurs yaratish"), qidiruv inputi, va pastda **barcha modullar va ularning darslari bitta daraxt sifatida** (har modul mustaqil kollaps/ochiq, ichida darslar ro'yxati). Pastda "+ Modul qo'shish" tugmasi.
+- **O'ng panel**: chap paneldan tanlangan darsning tahrirlash ekrani (`LessonEditorView.tsx`). Hech narsa tanlanmagan bo'lsa — bo'sh holat ("Chapdan darsni tanlang").
+
+Sahifa hech qachon to'liq almashmaydi — faqat chap panelda tanlov o'zgaradi, o'ng panel shunga qarab yangilanadi. Bu avvalgi "bosqichma-bosqich drill-down" yondashuvidan farqli — foydalanuvchi bilan sinovdan so'ng ortiqcha ichma-ichlik keltirib chiqargani sababli ikki panelli daraxt tuzilishga o'zgartirildi.
+
+Agar hali birorta kurs yaratilmagan bo'lsa, butun sahifa o'rniga "Hali kurs yaratilmagan" bo'sh holati va "+ Yangi kurs" tugmasi ko'rsatiladi.
 
 ## Ma'lumotlar modeli (frontend-only)
 
@@ -24,10 +26,9 @@ interface ContentBlock {
   previewUrl?: string;
   // editor: Tiptap (rich-text) chiqishi, HTML sifatida
   html?: string;
+  // video: YouTube (yoki boshqa) tashqi havola — fayl yuklashga alternativ
+  embedUrl?: string;
 }
-```
-
-Foydalanuvchi bilan aniqlashtirishdan so'ng "Embed" blok tushunchasi "Tahrirchi" (Tiptap asosidagi rich-text) blokiga almashtirildi. Blok tanlash panelida (rasmdagi ko'p variantlarga mos) qo'shimcha turlar — Audio, Tugma, Xabar, Chek-list, Bo'lish belgisi, Notion — vizual jihatdan ko'rsatiladi, lekin `disabled` holatda (bosilmaydi), chunki ular hozirgi qamrovga kirmaydi.
 
 interface Lesson {
   id: string;
@@ -51,7 +52,16 @@ interface Course {
 }
 ```
 
-Kontent ketma-ket **bloklar ro'yxati** (`ContentBlock[]`) sifatida modellanadi. To'rtta faol blok turi: `editor` (Tiptap rich-text), `video`, `image`, `file` (uchtasi ham mahalliy fayl tanlash orqali, `URL.createObjectURL` bilan vaqtinchalik preview).
+Kontent ketma-ket **bloklar ro'yxati** (`ContentBlock[]`) sifatida modellanadi. To'rtta faol blok turi:
+
+- **Tahrirchi** (`type: 'editor'`) — Tiptap asosidagi to'liq rich-text muharrir. "+" tugma orqali slash-command uslubidagi mini-menyu ochiladi: Paragraf, Jadval, Ro'yxat, Havola, HTML fragmenti (code block), Sarlavha, Tekshiruv ro'yxati (task list), Ajratuvchi (horizontal rule).
+- **Video** (`type: 'video'`) — YouTube havola inputi (iframe orqali ko'rsatiladi) YOKI mahalliy fayl yuklash (drag-drop/bosish orqali, `<video>` preview), ikkalasi ham qo'llab-quvvatlanadi. Qo'shimcha "Videoning nomi" inputi.
+- **Rasm** (`type: 'image'`) — mahalliy fayl tanlash, `<img>` preview.
+- **Fayl** (`type: 'file'`) — mahalliy fayl tanlash, faqat fayl nomi + ikonka ko'rsatiladi (preview yo'q).
+
+Blok tanlash panelida (`BlockPicker.tsx`) qo'shimcha turlar — Audio, Tugma, Xabar, Chek-list, Bo'lish belgisi, Notion — vizual jihatdan ko'rsatiladi, lekin `disabled` holatda (bosilmaydi), chunki ular hozirgi qamrovga kirmaydi.
+
+Har bir blok kartochkasi "Blok №N" sarlavhasi, tur nomi, kollaps/ochish tugmasi va o'chirish (X) tugmasi bilan ko'rsatiladi (`ContentBlockView.tsx`).
 
 ## Store
 
@@ -66,14 +76,12 @@ Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmag
 
 ## Komponentlar
 
-- `apps/frontend/src/pages/CoursesPage.tsx` — asosiy sahifa, ichki `state: ViewState` (discriminated union: `'courses' | 'modules' | 'lessons' | 'editor'`) orqali qaysi komponent ko'rsatilishini va tanlangan `courseId`/`moduleId`/`lessonId`ni boshqaradi.
-- `apps/frontend/src/components/course/CourseGrid.tsx` — bosqich 1.
-- `apps/frontend/src/components/course/ModulesView.tsx` — bosqich 2.
-- `apps/frontend/src/components/course/LessonsView.tsx` — bosqich 3.
-- `apps/frontend/src/components/course/LessonEditorView.tsx` — bosqich 4: dars sarlavhasi (inline tahrirlanadigan), holat tugmasi, bo'sh holat ("Ichki kontentini to'ldiring") yoki mavjud bloklar ro'yxati, va pastda `BlockPicker`.
-- `apps/frontend/src/components/course/BlockPicker.tsx` — Tahrirchi/Video/Rasm/Fayl kartochkalari faol; Audio/Tugma/Xabar/Chek-list/Bo'lish belgisi/Notion kartochkalari vizual jihatdan ko'rsatiladi, lekin `disabled` (rasmdagi to'liq variant to'plamiga mos, lekin faqat qamrovga kirgan turlar ishlaydi).
-- `apps/frontend/src/components/course/EditorBlock.tsx` — Tiptap (`@tiptap/react` + `@tiptap/starter-kit`) o'rab oluvchi komponent, `html` orqali boshqariladi.
-- `apps/frontend/src/components/course/ContentBlockView.tsx` — bitta blokni ko'rsatish (preview + o'chirish tugmasi). `editor`: `EditorBlock`, `video`: `<video>` player, `image`: `<img>`, `file`: fayl nomi + ikonka.
+- `apps/frontend/src/pages/CoursesPage.tsx` — asosiy sahifa: tanlangan `courseId` va `{ moduleId, lessonId } | null` tanlovni saqlaydi, ikki panelni yonma-yon render qiladi.
+- `apps/frontend/src/components/course/CourseTreePanel.tsx` — chap panel: kurs almashtirish dropdown, qidiruv, modul/dars daraxti (kollaps holati har modul uchun mustaqil `Set<string>` orqali saqlanadi).
+- `apps/frontend/src/components/course/LessonEditorView.tsx` — o'ng panel: dars sarlavhasi (inline tahrirlanadigan), holat tugmasi, bo'sh holat ("Ichki kontentini to'ldiring") yoki mavjud bloklar ro'yxati, va pastda `BlockPicker`.
+- `apps/frontend/src/components/course/BlockPicker.tsx` — blok tanlash kartochkalari (faol: Tahrirchi/Video/Rasm/Fayl; disabled: Audio/Tugma/Xabar/Chek-list/Bo'lish belgisi/Notion).
+- `apps/frontend/src/components/course/EditorBlock.tsx` — Tiptap o'rab oluvchi komponent (`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/extension-link`, `@tiptap/extension-table*`, `@tiptap/extension-task-list`/`task-item`), slash-command mini-menyu bilan.
+- `apps/frontend/src/components/course/ContentBlockView.tsx` — bitta blokni "Blok №N" sarlavha-kartochkasi ichida ko'rsatadi (kollaps/o'chirish tugmalari bilan), tur bo'yicha ichki kontent (`EditorBlock`, video/image/file preview yoki fayl tanlash maydoni).
 - `apps/frontend/src/components/course/PromptModal.tsx` — kurs/modul/dars nomi kiritish uchun qayta ishlatiladigan oddiy modal.
 
 ## AppShell integratsiyasi
@@ -82,7 +90,11 @@ Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmag
 ```tsx
 { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
 ```
-`ComingSoonPage title="Darslar"` o'rniga almashtiriladi. Boshqa AppShell/sidebar o'zgarishi kerak emas — "Darslar" ikonkasi allaqachon bor.
+`ComingSoonPage title="Darslar"` o'rniga almashtirildi. Boshqa AppShell/sidebar o'zgarishi kerak emas — "Darslar" ikonkasi allaqachon bor.
+
+## Qo'shimcha kutubxonalar
+
+`@tiptap/react`, `@tiptap/starter-kit`, `@tiptap/pm`, `@tiptap/extension-link`, `@tiptap/extension-table`, `@tiptap/extension-table-row`, `@tiptap/extension-table-cell`, `@tiptap/extension-table-header`, `@tiptap/extension-task-list`, `@tiptap/extension-task-item`, `@tiptap/extension-code-block`, `@tailwindcss/typography` (Tiptap chiqishini `.prose` orqali stillash uchun).
 
 ## Qamrovdan tashqari (keyingi fazalar)
 
@@ -92,8 +104,8 @@ Barcha ID'lar `crypto.randomUUID()` orqali generatsiya qilinadi (backend bo'lmag
 - Enrollment/ruxsat mexanizmi
 - "Sozlamalar"/"Amaliyot" tablari dars ekranida
 - Drag-and-drop qayta tartiblash (modul/dars/blok)
-- Matn (rich-text) bloki
+- Audio, Tugma, Xabar, Chek-list, Bo'lish belgisi, Notion blok turlari
 
 ## Test strategiyasi
 
-Frontend-only, backend yo'q — vitest/RTL orqali komponent testlari yozilmaydi (loyihada frontend uchun mavjud test infratuzilmasi yo'q, faqat `tsc -b && vite build` orqali tip xatolari tekshiriladi). Qo'lda tekshirish: dev serverda kurs yaratish → modul → dars → har 4 turdagi blok qo'shish/o'chirish oqimini sinash.
+Frontend-only, backend yo'q — vitest/RTL orqali komponent testlari yozilmaydi (loyihada frontend uchun mavjud test infratuzilmasi yo'q, faqat `tsc -b && vite build` orqali tip xatolari tekshiriladi). Qo'lda tekshirish: dev serverda kurs yaratish → modul → dars → har blok turini qo'shish/tahrirlash/o'chirish oqimini sinash.

@@ -1,4 +1,4 @@
-import { ChevronLeft, Sparkles } from 'lucide-react';
+import { Sparkles } from 'lucide-react';
 import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
 import { BlockPicker } from './BlockPicker';
 import { ContentBlockView } from './ContentBlockView';
@@ -7,14 +7,13 @@ interface LessonEditorViewProps {
   courseId: string;
   moduleId: string;
   lessonId: string;
-  onBack: () => void;
 }
 
 function newId(): string {
   return crypto.randomUUID();
 }
 
-export function LessonEditorView({ courseId, moduleId, lessonId, onBack }: LessonEditorViewProps) {
+export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorViewProps) {
   const { courses, renameLesson, toggleLessonStatus, addBlock, updateBlock, removeBlock } = useCourseStore();
   const lesson = courses
     .find((c) => c.id === courseId)
@@ -42,12 +41,23 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBack }: Lesso
     updateBlock(courseId, moduleId, lessonId, blockId, { html });
   }
 
+  function handleChangeBlockEmbedUrl(blockId: string, embedUrl: string) {
+    updateBlock(courseId, moduleId, lessonId, blockId, { embedUrl });
+  }
+
+  function handleChangeBlockFileName(blockId: string, fileName: string) {
+    updateBlock(courseId, moduleId, lessonId, blockId, { fileName });
+  }
+
+  function handleBlockPickFile(blockId: string, file: File) {
+    updateBlock(courseId, moduleId, lessonId, blockId, {
+      fileName: file.name,
+      previewUrl: URL.createObjectURL(file),
+    });
+  }
+
   return (
     <div className="p-6">
-      <button onClick={onBack} className="mb-3 flex items-center gap-1 text-sm text-gray-400 transition-colors hover:text-gray-600">
-        <ChevronLeft size={15} /> Darslar
-      </button>
-
       <div className="mb-6 flex items-center justify-between gap-3">
         <input
           value={lesson.title}
@@ -76,11 +86,15 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBack }: Lesso
 
       {lesson.blocks.length > 0 && (
         <div className="mb-6 flex flex-col gap-3">
-          {lesson.blocks.map((block) => (
+          {lesson.blocks.map((block, index) => (
             <ContentBlockView
               key={block.id}
+              index={index}
               block={block}
               onChangeHtml={(html) => handleChangeBlockHtml(block.id, html)}
+              onChangeEmbedUrl={(embedUrl) => handleChangeBlockEmbedUrl(block.id, embedUrl)}
+              onChangeFileName={(fileName) => handleChangeBlockFileName(block.id, fileName)}
+              onPickFile={(file) => handleBlockPickFile(block.id, file)}
               onRemove={() => removeBlock(courseId, moduleId, lessonId, block.id)}
             />
           ))}

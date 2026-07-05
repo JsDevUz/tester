@@ -9,6 +9,8 @@ export interface ContentBlock {
   previewUrl?: string;
   // editor: Tiptap HTML chiqishi
   html?: string;
+  // video: YouTube (yoki boshqa) tashqi havola, fayl yuklash o'rniga/bilan birga
+  embedUrl?: string;
 }
 
 export interface Lesson {
