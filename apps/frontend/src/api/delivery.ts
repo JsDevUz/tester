@@ -64,6 +64,7 @@ export interface SubmissionResult {
   submissionId: string;
   score: number;
   total: number;
+  mode?: 'normal' | 'violation' | 'live';
   showResults: 'immediately' | 'after_deadline' | 'hidden' | 'per_question';
   deadline: string | null;
   answers: AnswerResultItem[];
@@ -105,7 +106,8 @@ export async function apiCheckAnswer(
 export async function apiSubmitAnswers(
   submissionId: string,
   answers: Array<{ questionId: string; selectedOptionIds: string[]; textAnswer: string | null }>,
+  mode: 'normal' | 'violation' = 'normal',
 ): Promise<SubmissionResult> {
-  const res = await publicClient.post(`/public/submissions/${submissionId}/submit`, { answers });
+  const res = await publicClient.post(`/public/submissions/${submissionId}/submit`, { answers, mode });
   return res.data;
 }

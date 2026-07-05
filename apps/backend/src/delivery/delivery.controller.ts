@@ -34,7 +34,7 @@ export class DeliveryController {
   @Post('submissions/:id/submit')
   @HttpCode(200)
   submitAnswers(@Param('id') id: string, @Body() dto: SubmitAnswersDto) {
-    return this.deliveryService.submitAnswers(id, dto.answers);
+    return this.deliveryService.submitAnswers(id, dto.answers, dto.mode);
   }
 
   @Post('submissions/:id/check')

@@ -45,6 +45,7 @@ export function TestResultPage() {
   const pct = result.total > 0 ? Math.round((result.score / result.total) * 100) : 0;
   const isGood = pct >= 70;
   const isMid = pct >= 40 && pct < 70;
+  const isViolation = result.mode === 'violation';
 
   return (
     <div
@@ -61,6 +62,12 @@ export function TestResultPage() {
       <div className="px-5 lg:px-8 pt-8 pb-4 lg:pb-10">
 
         {/* Score hero */}
+        {isViolation && (
+          <div className="mb-5 rounded-2xl border-2 border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 text-center">
+            Taqiqlangan harakat aniqlanganligi sababli yakunlandi.
+          </div>
+        )}
+
         {(result.showResults === 'immediately' || result.showResults === 'per_question') ? (
           <>
             <div className="text-center mb-8">

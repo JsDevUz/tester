@@ -7,6 +7,37 @@ import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
 export { evaluateObjectiveAnswer };
 
+export function normalizeSubmissionMode(mode?: string | null) {
+  return mode === 'violation' || mode === 'live' ? mode : 'normal';
+}
+
+export function seededShuffle<T>(arr: T[], seed: string): T[] {
+  const result = [...arr];
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (Math.imul(31, h) + seed.charCodeAt(i)) | 0;
+  for (let i = result.length - 1; i > 0; i--) {
+    h = (Math.imul(1664525, h) + 1013904223) | 0;
+    const j = Math.abs(h) % (i + 1);
+    [result[i], result[j]] = [result[j], result[i]];
+  }
+  return result;
+}
+
+export function orderSubmissionAnswersForDisplay<T extends { questionId: string }>(
+  answerItems: T[],
+  questions: Array<{ id: string; orderIndex: number }>,
+  submissionId: string,
+  shuffleQuestions: boolean,
+) {
+  const questionOrder = [...questions].sort((a, b) => a.orderIndex - b.orderIndex);
+  const displayOrder = shuffleQuestions ? seededShuffle(questionOrder, submissionId) : questionOrder;
+  const orderIndex = new Map(displayOrder.map((q, index) => [q.id, index]));
+  return [...answerItems].sort((a, b) =>
+    (orderIndex.get(a.questionId) ?? Number.MAX_SAFE_INTEGER) -
+    (orderIndex.get(b.questionId) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
 @Injectable()
 export class DeliveryService {
   constructor(private readonly groqService: GroqService) {}
@@ -76,6 +107,7 @@ export class DeliveryService {
         total: submission.total,
         showResults: test?.showResults ?? 'hidden',
         deadline: test?.deadline ?? null,
+        mode: normalizeSubmissionMode(submission.mode),
       };
     }
 
@@ -99,31 +131,47 @@ export class DeliveryService {
     if (!submission) throw new NotFoundException('Submission not found');
     if (!submission.submittedAt) throw new BadRequestException('Submission not yet submitted');
 
-    const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
+    const test = await db.query.tests.findFirst({
+      where: eq(tests.id, submission.testId),
+      with: {
+        questions: {
+          orderBy: (q, { asc }) => [asc(q.orderIndex)],
+          with: { options: { orderBy: (o, { asc }) => [asc(o.orderIndex)] } },
+        },
+      },
+    });
     const showAnswers = test?.showResults === 'immediately' || test?.showResults === 'per_question';
+    const questionMap = new Map((test?.questions ?? []).map((q) => [q.id, q]));
 
     const safeAnswers = showAnswers
-      ? (submission as any).answers.map((a: any) => ({
-          questionId: a.questionId,
-          questionText: a.question?.text ?? '',
-          questionType: a.question?.type ?? '',
-          isCorrect: a.isCorrect,
-          selectedOptionIds: a.selectedOptionIds ?? [],
-          textAnswer: a.textAnswer ?? null,
-          correctAnswer: a.question?.correctAnswer ?? null,
-          imageUrl: a.question?.imageUrl ?? null,
-          options: (a.question?.options ?? []).map((o: any) => ({
-            id: o.id,
-            text: o.text,
-            isCorrectOption: !!o.isCorrect,
-          })),
-        }))
+      ? orderSubmissionAnswersForDisplay((submission as any).answers, test?.questions ?? [], submissionId, !!test?.shuffleQuestions)
+        .map((a: any) => {
+          const question = questionMap.get(a.questionId) ?? a.question;
+          const options = question?.options ?? [];
+          const displayOptions = test?.shuffleOptions ? seededShuffle(options, submissionId + a.questionId) : options;
+          return {
+            questionId: a.questionId,
+            questionText: question?.text ?? '',
+            questionType: question?.type ?? '',
+            isCorrect: a.isCorrect,
+            selectedOptionIds: a.selectedOptionIds ?? [],
+            textAnswer: a.textAnswer ?? null,
+            correctAnswer: question?.correctAnswer ?? null,
+            imageUrl: question?.imageUrl ?? null,
+            options: displayOptions.map((o: any) => ({
+              id: o.id,
+              text: o.text,
+              isCorrectOption: !!o.isCorrect,
+            })),
+          };
+        })
       : [];
 
     return {
       submissionId,
       score: submission.score,
       total: submission.total,
+      mode: normalizeSubmissionMode(submission.mode),
       showResults: test?.showResults ?? 'hidden',
       deadline: test?.deadline ?? null,
       answers: safeAnswers,
@@ -140,7 +188,12 @@ export class DeliveryService {
 
     const test = await db.query.tests.findFirst({
       where: eq(tests.id, submission.testId),
-      with: { questions: { with: { options: {} } } },
+      with: {
+        questions: {
+          orderBy: (q, { asc }) => [asc(q.orderIndex)],
+          with: { options: { orderBy: (o, { asc }) => [asc(o.orderIndex)] } },
+        },
+      },
     });
     if (!test) throw new NotFoundException('Test not found');
 
@@ -174,7 +227,7 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }>) {
+  }>, mode?: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
@@ -186,6 +239,7 @@ export class DeliveryService {
         submissionId,
         score: submission.score,
         total: submission.total,
+        mode: normalizeSubmissionMode(submission.mode),
         showResults: test?.showResults ?? 'hidden',
         deadline: test?.deadline ?? null,
         answers: [],
@@ -205,7 +259,7 @@ export class DeliveryService {
 
     // Safe answer results — options included only when showResults='immediately',
     // marked with isCorrectOption boolean (never raw correctOptionIds)
-    const safeAnswers: Array<{
+    type SafeAnswer = {
       questionId: string;
       questionText: string;
       questionType: string;
@@ -215,9 +269,9 @@ export class DeliveryService {
       correctAnswer: string | null;
       imageUrl?: string | null;
       options?: Array<{ id: string; text: string; isCorrectOption: boolean }>;
-    }> = [];
+    };
 
-    const answerRows = await Promise.all(answerItems.map(async (item) => {
+    const gradedRows = await Promise.all(answerItems.map(async (item) => {
       const question = questionMap.get(item.questionId);
       if (!question) return null;
 
@@ -272,7 +326,8 @@ export class DeliveryService {
         }
       }
 
-      safeAnswers.push({
+      const displayOptions = test.shuffleOptions ? seededShuffle(question.options, submissionId + item.questionId) : question.options;
+      const safeAnswer: SafeAnswer = {
         questionId: item.questionId,
         questionText: question.text,
         questionType: question.type,
@@ -281,28 +336,39 @@ export class DeliveryService {
         textAnswer: item.textAnswer ?? null,
         correctAnswer: question.correctAnswer ?? null,
         imageUrl: question.imageUrl ?? null,
-        options: question.options.map((o) => ({
+        options: displayOptions.map((o) => ({
           id: o.id,
           text: o.text,
           isCorrectOption: !!o.isCorrect,
         })),
-      });
+      };
 
       return {
-        submissionId,
-        questionId: item.questionId,
-        selectedOptionIds: item.selectedOptionIds,
-        textAnswer: item.textAnswer ?? null,
-        isCorrect,
+        answerRow: {
+          submissionId,
+          questionId: item.questionId,
+          selectedOptionIds: item.selectedOptionIds,
+          textAnswer: item.textAnswer ?? null,
+          isCorrect,
+        },
+        safeAnswer,
       };
-    })).then(rows => rows.filter(Boolean)) as any[];
+    })).then(rows => rows.filter(Boolean)) as Array<{ answerRow: any; safeAnswer: SafeAnswer }>;
+
+    const answerRows = gradedRows.map((row) => row.answerRow);
+    const safeAnswers = orderSubmissionAnswersForDisplay(
+      gradedRows.map((row) => row.safeAnswer),
+      test.questions,
+      submissionId,
+      test.shuffleQuestions,
+    );
 
     if (answerRows.length > 0) {
       await db.insert(answers).values(answerRows);
     }
 
     await db.update(submissions)
-      .set({ submittedAt: new Date(), score, total })
+      .set({ submittedAt: new Date(), score, total, mode: normalizeSubmissionMode(mode) })
       .where(eq(submissions.id, submissionId));
 
     // Only return answer breakdown if showResults === 'immediately' or 'per_question'
@@ -313,6 +379,7 @@ export class DeliveryService {
       submissionId,
       score,
       total,
+      mode: normalizeSubmissionMode(mode),
       showResults: test.showResults,
       deadline: test.deadline,
       answers: showAnswers ? safeAnswers : [],

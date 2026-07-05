@@ -1,4 +1,4 @@
-import { IsArray, IsUUID, IsOptional, IsString, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsOptional, IsString, IsUUID, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class AnswerItemDto {
@@ -10,4 +10,7 @@ export class AnswerItemDto {
 export class SubmitAnswersDto {
   @IsArray() @ValidateNested({ each: true }) @Type(() => AnswerItemDto)
   answers: AnswerItemDto[];
+
+  @IsOptional() @IsIn(['normal', 'violation'])
+  mode?: 'normal' | 'violation';
 }
