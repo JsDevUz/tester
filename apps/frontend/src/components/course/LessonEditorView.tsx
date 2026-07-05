@@ -3,27 +3,29 @@ import { NotebookPen } from 'lucide-react';
 import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
 import { BlockPicker } from './BlockPicker';
 import { ContentBlockView } from './ContentBlockView';
+import { Breadcrumb } from './Breadcrumb';
 
 interface LessonEditorViewProps {
   courseId: string;
   moduleId: string;
   lessonId: string;
+  onBackToList: () => void;
+  onBackToContent: () => void;
 }
 
 function newId(): string {
   return crypto.randomUUID();
 }
 
-export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorViewProps) {
+export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, onBackToContent }: LessonEditorViewProps) {
   const { courses, renameLesson, toggleLessonStatus, addBlock, updateBlock, removeBlock, moveBlock } = useCourseStore();
-  const lesson = courses
-    .find((c) => c.id === courseId)
-    ?.modules.find((m) => m.id === moduleId)
-    ?.lessons.find((l) => l.id === lessonId);
+  const course = courses.find((c) => c.id === courseId);
+  const module = course?.modules.find((m) => m.id === moduleId);
+  const lesson = module?.lessons.find((l) => l.id === lessonId);
 
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
 
-  if (!lesson) return null;
+  if (!course || !module || !lesson) return null;
 
   function collapseAllExisting() {
     setCollapsedBlockIds(new Set(lesson!.blocks.map((b) => b.id)));
@@ -76,6 +78,14 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
 
   return (
     <div className="p-6">
+      <Breadcrumb
+        items={[
+          { label: 'Kurslar', onClick: onBackToList },
+          { label: course.title, onClick: onBackToContent },
+          { label: module.title, onClick: onBackToContent },
+          { label: lesson.title },
+        ]}
+      />
       <div className="mb-6 flex items-center justify-between gap-3">
         <input
           value={lesson.title}
