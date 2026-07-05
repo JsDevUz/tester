@@ -64,17 +64,23 @@ function ReorderQuestion({ optionIds, options, onChange, locked }: {
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
+const ARABIC_RE = /[؀-ۿ]/;
+function isArabicText(text: string) { return ARABIC_RE.test(text); }
 
-function MatchingQuestion({ questionId: _qid, options, selected, onSelect, locked }: {
+function MatchingQuestion({ questionId, options, selected, onSelect, locked }: {
   questionId: string;
   options: { id: string; text: string }[];
   selected: string[];
   onSelect: (ids: string[]) => void;
   locked?: boolean;
 }) {
-  const lefts = useMemo(() => [...options.filter((_, i) => i % 2 === 0)].sort(() => Math.random() - 0.5), []);
-  const rights = useMemo(() => [...options.filter((_, i) => i % 2 !== 0)].sort(() => Math.random() - 0.5), []);
+  const lefts = useMemo(() => [...options.filter((_, i) => i % 2 === 0)].sort(() => Math.random() - 0.5), [questionId]);
+  const rights = useMemo(() => [...options.filter((_, i) => i % 2 !== 0)].sort(() => Math.random() - 0.5), [questionId]);
   const [pendingLeft, setPendingLeft] = useState<string | null>(null);
+
+  useEffect(() => {
+    setPendingLeft(null);
+  }, [questionId]);
 
   const pairedLeftIds = selected.filter((_, i) => i % 2 === 0);
   const pairedRightIds = selected.filter((_, i) => i % 2 !== 0);
@@ -583,9 +589,11 @@ export function TakeTestPage() {
       </div>
     );
 
-    if (q.type === 'arrange') return (
+    if (q.type === 'arrange') {
+      const rtl = q.options.some((o) => isArabicText(o.text)) || isArabicText(q.text);
+      return (
       <div className="flex flex-col gap-3">
-        <div className="min-h-14 p-3 border-2 border-dashed border-indigo-200 rounded-2xl flex flex-wrap gap-2 items-center bg-indigo-50/40">
+        <div dir={rtl ? 'rtl' : 'ltr'} className="min-h-14 p-3 border-2 border-dashed border-indigo-200 rounded-2xl flex flex-wrap gap-2 items-center bg-indigo-50/40">
           {selected.length === 0 && <span className="text-xs text-gray-300 px-1">Bo'laklarni bosib joylashtiring...</span>}
           {selected.map((id) => {
             const opt = q.options.find((o) => o.id === id);
@@ -598,7 +606,7 @@ export function TakeTestPage() {
             ) : null;
           })}
         </div>
-        <div className="flex flex-wrap gap-2">
+        <div dir={rtl ? 'rtl' : 'ltr'} className="flex flex-wrap gap-2">
           {q.options.filter((o) => !selected.includes(o.id)).map((opt) => (
             <button key={opt.id} type="button" onClick={() => arrangeAdd(q.id, opt.id)}
               style={{ fontSize: 'var(--q-fs, 14px)' }}
@@ -612,7 +620,8 @@ export function TakeTestPage() {
             className="text-xs text-gray-400 hover:text-red-400 self-start transition-colors">Tozalash</button>
         )}
       </div>
-    );
+      );
+    }
 
     // single / multi — professional option cards with letter label
     return (
