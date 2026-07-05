@@ -28,10 +28,10 @@ function PracticeToggleCard() {
       <button
         type="button"
         onClick={() => setEnabled((v) => !v)}
-        className={`relative h-6 w-11 shrink-0 rounded-full transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}
       >
         <span
-          className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition-transform ${
+          className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
             enabled ? 'translate-x-5' : 'translate-x-0.5'
           }`}
         />
@@ -166,7 +166,7 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
         <BlockPicker onPickEditor={handlePickEditor} onPickFile={handlePickFile} />
       </div>
 
-      <div className="w-full shrink-0 sm:w-72">
+      <div className="w-full shrink-0 sm:mt-11 sm:w-72">
         <div className="mb-3">
           <PracticeToggleCard />
         </div>
