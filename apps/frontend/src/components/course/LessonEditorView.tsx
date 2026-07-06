@@ -5,6 +5,7 @@ import { BlockPicker } from "./BlockPicker";
 import { ContentBlockView } from "./ContentBlockView";
 import { Breadcrumb } from "./Breadcrumb";
 import { CourseSidePanel } from "./CourseSidePanel";
+import { PracticeSection } from "./PracticeSection";
 
 interface LessonEditorViewProps {
   courseId: string;
@@ -14,8 +15,13 @@ interface LessonEditorViewProps {
   onBackToContent: () => void;
 }
 
-function PracticeToggleCard() {
-  const [enabled, setEnabled] = useState(false);
+function PracticeToggleCard({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+}) {
   return (
     <div className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
@@ -31,7 +37,7 @@ function PracticeToggleCard() {
       </div>
       <button
         type="button"
-        onClick={() => setEnabled((v) => !v)}
+        onClick={onToggle}
         className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
       >
         <span
@@ -63,6 +69,7 @@ export function LessonEditorView({
     updateBlock,
     removeBlock,
     moveBlock,
+    setLessonPracticeEnabled,
   } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const module = course?.modules.find((m) => m.id === moduleId);
@@ -71,8 +78,17 @@ export function LessonEditorView({
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
     new Set(),
   );
+  const [activeTab, setActiveTab] = useState<"content" | "practice">(
+    "content",
+  );
 
   if (!course || !module || !lesson) return null;
+
+  function handleTogglePractice() {
+    const next = !lesson!.practiceEnabled;
+    setLessonPracticeEnabled(courseId, moduleId, lessonId, next);
+    if (!next && activeTab === "practice") setActiveTab("content");
+  }
 
   function collapseAllExisting() {
     setCollapsedBlockIds(new Set(lesson!.blocks.map((b) => b.id)));
@@ -156,62 +172,87 @@ export function LessonEditorView({
           </button>
         </div>
 
-        {lesson.blocks.length === 0 && (
-          <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
-            <NotebookPen size={30} className="mx-auto mb-3 text-indigo-200" />
-            <p className="text-sm font-semibold text-gray-700">
-              Ichki kontentini to'ldiring
-            </p>
-            <p className="mt-1 text-xs text-gray-400">
-              Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
-            </p>
-          </div>
-        )}
+        {activeTab === "content" ? (
+          <>
+            {lesson.blocks.length === 0 && (
+              <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+                <NotebookPen
+                  size={30}
+                  className="mx-auto mb-3 text-indigo-200"
+                />
+                <p className="text-sm font-semibold text-gray-700">
+                  Ichki kontentini to'ldiring
+                </p>
+                <p className="mt-1 text-xs text-gray-400">
+                  Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
+                </p>
+              </div>
+            )}
 
-        {lesson.blocks.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3">
-            {lesson.blocks.map((block, index) => (
-              <ContentBlockView
-                key={block.id}
-                index={index}
-                isFirst={index === 0}
-                isLast={index === lesson.blocks.length - 1}
-                block={block}
-                collapsed={collapsedBlockIds.has(block.id)}
-                onToggleCollapse={() => toggleCollapse(block.id)}
-                onChangeHtml={(html) => handleChangeBlockHtml(block.id, html)}
-                onChangeEmbedUrl={(embedUrl) =>
-                  handleChangeBlockEmbedUrl(block.id, embedUrl)
-                }
-                onChangeLabel={(label) =>
-                  handleChangeBlockLabel(block.id, label)
-                }
-                onPickFile={(file) => handleBlockPickFile(block.id, file)}
-                onRemove={() =>
-                  removeBlock(courseId, moduleId, lessonId, block.id)
-                }
-                onMoveUp={() =>
-                  moveBlock(courseId, moduleId, lessonId, block.id, "up")
-                }
-                onMoveDown={() =>
-                  moveBlock(courseId, moduleId, lessonId, block.id, "down")
-                }
-              />
-            ))}
-          </div>
-        )}
+            {lesson.blocks.length > 0 && (
+              <div className="mb-6 flex flex-col gap-3">
+                {lesson.blocks.map((block, index) => (
+                  <ContentBlockView
+                    key={block.id}
+                    index={index}
+                    isFirst={index === 0}
+                    isLast={index === lesson.blocks.length - 1}
+                    block={block}
+                    collapsed={collapsedBlockIds.has(block.id)}
+                    onToggleCollapse={() => toggleCollapse(block.id)}
+                    onChangeHtml={(html) =>
+                      handleChangeBlockHtml(block.id, html)
+                    }
+                    onChangeEmbedUrl={(embedUrl) =>
+                      handleChangeBlockEmbedUrl(block.id, embedUrl)
+                    }
+                    onChangeLabel={(label) =>
+                      handleChangeBlockLabel(block.id, label)
+                    }
+                    onPickFile={(file) => handleBlockPickFile(block.id, file)}
+                    onRemove={() =>
+                      removeBlock(courseId, moduleId, lessonId, block.id)
+                    }
+                    onMoveUp={() =>
+                      moveBlock(courseId, moduleId, lessonId, block.id, "up")
+                    }
+                    onMoveDown={() =>
+                      moveBlock(courseId, moduleId, lessonId, block.id, "down")
+                    }
+                  />
+                ))}
+              </div>
+            )}
 
-        <BlockPicker
-          onPickEditor={handlePickEditor}
-          onPickFile={handlePickFile}
-        />
+            <BlockPicker
+              onPickEditor={handlePickEditor}
+              onPickFile={handlePickFile}
+            />
+          </>
+        ) : (
+          <PracticeSection
+            courseId={courseId}
+            moduleId={moduleId}
+            lessonId={lessonId}
+          />
+        )}
       </div>
 
       <div className="w-full shrink-0 sm:mt-25 sm:w-72">
         <div className="mb-3">
-          <PracticeToggleCard />
+          <PracticeToggleCard
+            enabled={lesson.practiceEnabled}
+            onToggle={handleTogglePractice}
+          />
         </div>
-        <CourseSidePanel onBackToList={onBackToList} variant="lesson" />
+        <CourseSidePanel
+          onBackToList={onBackToList}
+          variant="lesson"
+          practiceEnabled={lesson.practiceEnabled}
+          activeTab={activeTab}
+          onSelectContent={() => setActiveTab("content")}
+          onSelectPractice={() => setActiveTab("practice")}
+        />
       </div>
     </div>
   );
