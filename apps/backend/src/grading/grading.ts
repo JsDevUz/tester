@@ -7,6 +7,7 @@ import {
 
 const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 const LATIN_COMBINING_RE = /[\u0300-\u036f]/g;
+const CYRILLIC_RE = /[А-Яа-яЁёҚқҒғҲҳЎў]/;
 const UZ_CYRILLIC_TO_LATIN: Record<string, string> = {
   а: 'a',
   б: 'b',
@@ -61,7 +62,21 @@ export function normalizeAnswerText(value: string): string {
 }
 
 function answerTextMatches(expected: string, actual: string): boolean {
-  return normalizeAnswerText(expected) === normalizeAnswerText(actual);
+  const normalizedExpected = normalizeAnswerText(expected);
+  const normalizedActual = normalizeAnswerText(actual);
+  if (normalizedExpected === normalizedActual) return true;
+
+  const hasCyrillic = CYRILLIC_RE.test(expected) || CYRILLIC_RE.test(actual);
+  const compactLength = Math.min(
+    normalizedExpected.replace(/\s/g, '').length,
+    normalizedActual.replace(/\s/g, '').length,
+  );
+  if (!hasCyrillic || compactLength < 4) return false;
+
+  return (
+    normalizedExpected.replace(/[ao]/g, '@') ===
+    normalizedActual.replace(/[ao]/g, '@')
+  );
 }
 
 export function evaluateObjectiveAnswer(

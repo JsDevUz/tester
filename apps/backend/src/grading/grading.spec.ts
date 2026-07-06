@@ -80,9 +80,16 @@ describe('gradeAnswer', () => {
 
   it('fillblank: accepts cyrillic input for latin correct answer', async () => {
     const question = q({ type: 'fillblank', correctAnswer: 'Toshkent' });
-    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'ТоШкЕНТ' }, noopChecker);
+    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'ТаШкЕНТ' }, noopChecker);
 
     expect(result).toBe(true);
+  });
+
+  it('fillblank: does not loosen latin a/o typos without cyrillic input', async () => {
+    const question = q({ type: 'fillblank', correctAnswer: 'bor' });
+    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'bar' }, noopChecker);
+
+    expect(result).toBe(false);
   });
 
   it('fillblank: accepts Arabic text without harakat', async () => {
