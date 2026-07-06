@@ -15,9 +15,13 @@ export interface ContentBlock {
   label?: string;
 }
 
+export type PracticeBlockType = 'test' | 'image' | 'file' | 'audio';
+
 export interface PracticeBlock {
   id: string;
+  type: PracticeBlockType;
   testId: string | null;
+  description: string;
 }
 
 export interface Lesson {
@@ -66,10 +70,11 @@ interface CourseState {
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
-  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string) => void;
+  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type: PracticeBlockType) => void;
   removePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
   movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
   setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => void;
+  setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => void;
   setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => void;
 }
 
@@ -329,8 +334,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  addPracticeBlock: (courseId, moduleId, lessonId) => {
-    const block: PracticeBlock = { id: newId(), testId: null };
+  addPracticeBlock: (courseId, moduleId, lessonId, type) => {
+    const block: PracticeBlock = { id: newId(), type, testId: null, description: '' };
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -422,6 +427,34 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                               ...l,
                               practiceBlocks: l.practiceBlocks.map((b) =>
                                 b.id === blockId ? { ...b, testId } : b,
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setPracticeBlockDescription: (courseId, moduleId, lessonId, blockId, description) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              practiceBlocks: l.practiceBlocks.map((b) =>
+                                b.id === blockId ? { ...b, description } : b,
                               ),
                             },
                       ),
