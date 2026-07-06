@@ -11,6 +11,15 @@ export function normalizeSubmissionMode(mode?: string | null) {
   return mode === 'violation' || mode === 'live' ? mode : 'normal';
 }
 
+export function normalizeViolationReason(reason?: string | null) {
+  const text = reason?.trim();
+  return text ? text.slice(0, 300) : null;
+}
+
+function sleep(ms: number) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 export function seededShuffle<T>(arr: T[], seed: string): T[] {
   const result = [...arr];
   let h = 0;
@@ -108,6 +117,7 @@ export class DeliveryService {
         showResults: test?.showResults ?? 'hidden',
         deadline: test?.deadline ?? null,
         mode: normalizeSubmissionMode(submission.mode),
+        violationReason: normalizeViolationReason(submission.violationReason),
       };
     }
 
@@ -148,7 +158,9 @@ export class DeliveryService {
         .map((a: any) => {
           const question = questionMap.get(a.questionId) ?? a.question;
           const options = question?.options ?? [];
-          const displayOptions = test?.shuffleOptions ? seededShuffle(options, submissionId + a.questionId) : options;
+          const displayOptions = test?.shuffleOptions && question?.type !== 'matching'
+            ? seededShuffle(options, submissionId + a.questionId)
+            : options;
           return {
             questionId: a.questionId,
             questionText: question?.text ?? '',
@@ -172,6 +184,7 @@ export class DeliveryService {
       score: submission.score,
       total: submission.total,
       mode: normalizeSubmissionMode(submission.mode),
+      violationReason: normalizeViolationReason(submission.violationReason),
       showResults: test?.showResults ?? 'hidden',
       deadline: test?.deadline ?? null,
       answers: safeAnswers,
@@ -228,23 +241,14 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }>, mode?: string) {
+  }>, mode?: string, violationReason?: string | null) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
     if (!submission) throw new NotFoundException('Submission not found');
     if (submission.submittedAt) {
-      // Already submitted — return cached result (beacon may fire multiple times)
-      const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
-      return {
-        submissionId,
-        score: submission.score,
-        total: submission.total,
-        mode: normalizeSubmissionMode(submission.mode),
-        showResults: test?.showResults ?? 'hidden',
-        deadline: test?.deadline ?? null,
-        answers: [],
-      };
+      // Already submitted — return full persisted result (beacon may fire multiple times).
+      return this.getSubmissionResult(submissionId);
     }
 
     const test = await db.query.tests.findFirst({
@@ -329,7 +333,9 @@ export class DeliveryService {
         }
       }
 
-      const displayOptions = test.shuffleOptions ? seededShuffle(question.options, submissionId + item.questionId) : question.options;
+      const displayOptions = test.shuffleOptions && question.type !== 'matching'
+        ? seededShuffle(question.options, submissionId + item.questionId)
+        : question.options;
       const safeAnswer: SafeAnswer = {
         questionId: item.questionId,
         questionText: question.text,
@@ -370,22 +376,23 @@ export class DeliveryService {
     // parallel submit so'rovi (masalan tab yopilganda beacon va foydalanuvchi tugmasi
     // bir vaqtda) bir xil savol uchun ikkita answers qatori yaratib qo'yishining oldini oladi.
     const [updatedSubmission] = await db.update(submissions)
-      .set({ submittedAt: new Date(), score, total, mode: normalizeSubmissionMode(mode) })
+      .set({
+        submittedAt: new Date(),
+        score,
+        total,
+        mode: normalizeSubmissionMode(mode),
+        violationReason: normalizeSubmissionMode(mode) === 'violation'
+          ? normalizeViolationReason(violationReason) ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'
+          : null,
+      })
       .where(and(eq(submissions.id, submissionId), isNull(submissions.submittedAt)))
       .returning();
 
     if (!updatedSubmission) {
-      // Boshqa so'rov ulgurib submit qilgan — o'sha natijani qaytaramiz, qayta yozmaymiz.
-      const already = await db.query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
-      return {
-        submissionId,
-        score: already?.score ?? score,
-        total: already?.total ?? total,
-        mode: normalizeSubmissionMode(already?.mode ?? mode),
-        showResults: test.showResults,
-        deadline: test.deadline,
-        answers: [],
-      };
+      // Boshqa so'rov ulgurib submit qilgan. Answers insert tugashini kutib,
+      // to'liq persisted natijani qaytaramiz.
+      await sleep(120);
+      return this.getSubmissionResult(submissionId);
     }
 
     if (answerRows.length > 0) {
@@ -401,6 +408,9 @@ export class DeliveryService {
       score,
       total,
       mode: normalizeSubmissionMode(mode),
+      violationReason: normalizeSubmissionMode(mode) === 'violation'
+        ? normalizeViolationReason(violationReason) ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'
+        : null,
       showResults: test.showResults,
       deadline: test.deadline,
       answers: showAnswers ? safeAnswers : [],

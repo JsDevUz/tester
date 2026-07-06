@@ -28,11 +28,15 @@ export function TestResultPage() {
     if (cachedResult) {
       setResult(cachedResult);
       sessionStorage.removeItem('submissionResult');
+      if (sid) localStorage.removeItem(`test-draft:${sid}`);
       return;
     }
     if (raw) sessionStorage.removeItem('submissionResult');
     if (sid) {
-      apiGetSubmissionResult(sid).then(setResult).catch(() => {});
+      apiGetSubmissionResult(sid).then((res) => {
+        setResult(res);
+        localStorage.removeItem(`test-draft:${sid}`);
+      }).catch(() => {});
     }
   }, []);
 
@@ -64,7 +68,7 @@ export function TestResultPage() {
         {/* Score hero */}
         {isViolation && (
           <div className="mb-5 rounded-2xl border-2 border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 text-center">
-            Taqiqlangan harakat aniqlanganligi sababli yakunlandi.
+            {result.violationReason ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'}
           </div>
         )}
 
@@ -115,7 +119,10 @@ export function TestResultPage() {
                       <p className="text-xs italic text-gray-600 bg-white/80 px-3 py-2 rounded-xl border border-gray-100">
                         {a.textAnswer || '—'}
                       </p>
-                      {a.isCorrect !== true && a.correctAnswer && (
+                      {a.isCorrect === null && (
+                        <p className="text-xs text-gray-400 px-1">Tekshiruv yakunlanmadi</p>
+                      )}
+                      {a.isCorrect === false && a.correctAnswer && (
                         <p className="text-xs text-green-600 px-1">To'g'ri: <span className="font-medium">{a.correctAnswer}</span></p>
                       )}
                     </div>

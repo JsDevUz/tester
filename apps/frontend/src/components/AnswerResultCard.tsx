@@ -42,7 +42,10 @@ export function AnswerResultCard({ answer: a, index }: { answer: AnswerResultDat
           <p className="text-xs italic text-gray-600 bg-white/80 px-3 py-2 rounded-xl border border-gray-100">
             {a.textAnswer || '—'}
           </p>
-          {a.isCorrect !== true && a.correctAnswer && (
+          {a.isCorrect === null && (
+            <p className="text-xs text-gray-400 px-1">Tekshiruv yakunlanmadi</p>
+          )}
+          {a.isCorrect === false && a.correctAnswer && (
             <p className="text-xs text-green-600 px-1">To'g'ri: <span className="font-medium">{a.correctAnswer}</span></p>
           )}
         </div>

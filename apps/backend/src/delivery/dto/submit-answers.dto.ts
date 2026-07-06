@@ -13,4 +13,7 @@ export class SubmitAnswersDto {
 
   @IsOptional() @IsIn(['normal', 'violation'])
   mode?: 'normal' | 'violation';
+
+  @IsOptional() @IsString()
+  violationReason?: string;
 }

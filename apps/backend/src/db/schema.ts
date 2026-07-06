@@ -114,6 +114,7 @@ export const submissions = pgTable('submissions', {
   score: integer('score'),
   total: integer('total'),
   mode: text('submission_mode').notNull().default('normal'),
+  violationReason: text('violation_reason'),
 });
 
 export const answers = pgTable('answers', {

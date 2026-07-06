@@ -1,5 +1,64 @@
 import { GradableQuestion, GradeInput, OpenAnswerChecker, FillBlankAnswerChecker } from './grading.types';
 
+const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
+const LATIN_COMBINING_RE = /[\u0300-\u036f]/g;
+const UZ_CYRILLIC_TO_LATIN: Record<string, string> = {
+  а: 'a',
+  б: 'b',
+  в: 'v',
+  г: 'g',
+  д: 'd',
+  е: 'e',
+  ё: 'yo',
+  ж: 'j',
+  з: 'z',
+  и: 'i',
+  й: 'y',
+  к: 'k',
+  л: 'l',
+  м: 'm',
+  н: 'n',
+  о: 'o',
+  п: 'p',
+  р: 'r',
+  с: 's',
+  т: 't',
+  у: 'u',
+  ф: 'f',
+  х: 'x',
+  ц: 's',
+  ч: 'ch',
+  ш: 'sh',
+  щ: 'sh',
+  ъ: '',
+  ы: 'i',
+  ь: '',
+  э: 'e',
+  ю: 'yu',
+  я: 'ya',
+  қ: 'q',
+  ғ: "g'",
+  ҳ: 'h',
+  ў: "o'",
+};
+
+export function normalizeAnswerText(value: string): string {
+  return value
+    .normalize('NFKD')
+    .replace(ARABIC_DIACRITICS_RE, '')
+    .replace(LATIN_COMBINING_RE, '')
+    .replace(/\u0640/g, '')
+    .toLowerCase()
+    .replace(/[а-яёқғҳў]/g, (char) => UZ_CYRILLIC_TO_LATIN[char] ?? char)
+    .replace(/[’‘`´ʻʼʹ]/g, "'")
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function answerTextMatches(expected: string, actual: string): boolean {
+  return normalizeAnswerText(expected) === normalizeAnswerText(actual);
+}
+
 export function evaluateObjectiveAnswer(
   questionType: string,
   correctOptionIds: string[],
@@ -64,7 +123,7 @@ export async function gradeAnswer(
 
   if (type === 'fillblank') {
     if (correctAnswer && textAnswer?.trim()) {
-      const exact = correctAnswer.trim().toLowerCase() === textAnswer.trim().toLowerCase();
+      const exact = answerTextMatches(correctAnswer, textAnswer);
       if (exact) return true;
       // Xom taqqoslash mos kelmasa, AI orqali faqat yozilish (harakat/katta-kichik harf/
       // lotin-kirill) farqi ekanini tekshiramiz — ma'no farqiga yoki chin xatoga yo'l qo'ymaymiz.
@@ -78,11 +137,13 @@ export async function gradeAnswer(
     if (!textAnswer?.trim()) return null;
     const manualOptions = options.filter((o) => o.isCorrect);
     if (manualOptions.length > 0) {
-      const exact = manualOptions.some((o) => o.text.trim().toLowerCase() === textAnswer.trim().toLowerCase());
+      const exact = manualOptions.some((o) => answerTextMatches(o.text, textAnswer));
       if (exact) return true;
+      if (correctAnswer && answerTextMatches(correctAnswer, textAnswer)) return true;
       if (correctAnswer) return checkOpenAnswer(text, correctAnswer, textAnswer);
       return false;
     }
+    if (correctAnswer && answerTextMatches(correctAnswer, textAnswer)) return true;
     if (correctAnswer) return checkOpenAnswer(text, correctAnswer, textAnswer);
     return null;
   }

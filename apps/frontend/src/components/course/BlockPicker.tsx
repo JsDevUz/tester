@@ -7,6 +7,8 @@ import {
 interface BlockPickerProps {
   onPickEditor: () => void;
   onPickFile: (type: 'video' | 'image' | 'file', file: File) => void;
+  disabled?: boolean;
+  limitText?: string;
 }
 
 const FILE_ACCEPT: Record<'video' | 'image' | 'file', string> = {
@@ -40,11 +42,12 @@ const ROW_3: BlockItem[] = [
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
 
-export function BlockPicker({ onPickEditor, onPickFile }: BlockPickerProps) {
+export function BlockPicker({ onPickEditor, onPickFile, disabled = false, limitText }: BlockPickerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingTypeRef = useRef<'video' | 'image' | 'file'>('file');
 
   function openFilePicker(type: 'video' | 'image' | 'file') {
+    if (disabled) return;
     pendingTypeRef.current = type;
     if (fileInputRef.current) {
       fileInputRef.current.accept = FILE_ACCEPT[type];
@@ -53,13 +56,17 @@ export function BlockPicker({ onPickEditor, onPickFile }: BlockPickerProps) {
   }
 
   function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
+    if (disabled) {
+      e.target.value = '';
+      return;
+    }
     const file = e.target.files?.[0];
     if (file) onPickFile(pendingTypeRef.current, file);
     e.target.value = '';
   }
 
   function handleClick(item: BlockItem) {
-    if (item.disabled) return;
+    if (disabled || item.disabled) return;
     if (item.key === 'editor') onPickEditor();
     else if (item.key === 'video' || item.key === 'file') openFilePicker(item.key);
   }
@@ -74,7 +81,9 @@ export function BlockPicker({ onPickEditor, onPickFile }: BlockPickerProps) {
   return (
     <div>
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
-      <p className="text-center text-xs text-gray-400 mb-3">Yangi blok qo'shish</p>
+      <p className="text-center text-xs text-gray-400 mb-3">
+        {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
+      </p>
       <div className="flex flex-col gap-3">
         {rows.map((row, i) => (
           <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -85,15 +94,15 @@ export function BlockPicker({ onPickEditor, onPickFile }: BlockPickerProps) {
                 <button
                   key={item.key}
                   type="button"
-                  disabled={item.disabled}
+                  disabled={disabled || item.disabled}
                   onClick={() => (isImage ? openFilePicker('image') : handleClick(item))}
                   className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${
-                    item.disabled
+                    disabled || item.disabled
                       ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
                       : 'border-2 border-gray-100 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/30'
                   }`}
                 >
-                  <Icon size={22} className={item.disabled ? 'text-gray-300' : 'text-indigo-400'} />
+                  <Icon size={22} className={disabled || item.disabled ? 'text-gray-300' : 'text-indigo-400'} />
                   {item.label}
                 </button>
               );

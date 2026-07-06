@@ -1,6 +1,8 @@
 import { create } from 'zustand';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
+export const CONTENT_BLOCK_LIMIT = 7;
+export const PRACTICE_BLOCK_LIMIT = 4;
 
 export interface ContentBlock {
   id: string;
@@ -228,7 +230,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   : {
                       ...m,
                       lessons: m.lessons.map((l) =>
-                        l.id !== lessonId ? l : { ...l, blocks: [...l.blocks, block] },
+                        l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
+                          ? l
+                          : { ...l, blocks: [...l.blocks, block] },
                       ),
                     },
               ),
@@ -348,7 +352,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   : {
                       ...m,
                       lessons: m.lessons.map((l) =>
-                        l.id !== lessonId
+                        l.id !== lessonId || l.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT
                           ? l
                           : { ...l, practiceBlocks: [...l.practiceBlocks, block] },
                       ),

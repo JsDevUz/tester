@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { Inbox } from 'lucide-react';
-import { useCourseStore } from '../../stores/courseStore';
+import { PRACTICE_BLOCK_LIMIT, useCourseStore } from '../../stores/courseStore';
 import { apiListAllTests, type AllTestsItem } from '../../api/tests';
 import { PracticeBlockView } from './PracticeBlockView';
 import { PracticeBlockPicker } from './PracticeBlockPicker';
@@ -30,6 +30,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
   }, []);
 
   if (!lesson) return null;
+  const practiceLimitReached = lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT;
 
   function handlePercentChange(value: string) {
     const percent = value === '' ? null : Math.min(100, Math.max(0, Number(value)));
@@ -65,7 +66,11 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
       )}
 
       <div className="mb-6">
-        <PracticeBlockPicker onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)} />
+        <PracticeBlockPicker
+          disabled={practiceLimitReached}
+          limitText={`Amaliyotda maksimal ${PRACTICE_BLOCK_LIMIT} ta blok`}
+          onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)}
+        />
       </div>
 
       <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">

@@ -19,6 +19,7 @@ import { ComingSoonPage } from './pages/ComingSoonPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
+import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
 import { useAuthStore } from './stores/authStore';
 
@@ -30,16 +31,16 @@ function HomeRoute() {
 const router = createBrowserRouter([
   { path: '/login', element: <LoginPage /> },
   { path: '/', element: <PrivateRoute><HomeRoute /></PrivateRoute> },
-  { path: '/folders/:id', element: <PrivateRoute><FolderViewPage /></PrivateRoute> },
-  { path: '/tests/:id/edit', element: <PrivateRoute><QuestionEditorPage /></PrivateRoute> },
-  { path: '/tests/:id/submissions', element: <PrivateRoute><SubmissionsPage /></PrivateRoute> },
-  { path: '/submissions/:id', element: <PrivateRoute><SubmissionDetailPage /></PrivateRoute> },
+  { path: '/folders/:id', element: <TeacherRoute><FolderViewPage /></TeacherRoute> },
+  { path: '/tests/:id/edit', element: <TeacherRoute><QuestionEditorPage /></TeacherRoute> },
+  { path: '/tests/:id/submissions', element: <TeacherRoute><SubmissionsPage /></TeacherRoute> },
+  { path: '/submissions/:id', element: <TeacherRoute><SubmissionDetailPage /></TeacherRoute> },
   { path: '/history/:id', element: <PrivateRoute><StudentSubmissionDetailPage /></PrivateRoute> },
   { path: '/t/:slug', element: <TakeTestEntryPage /> },
   { path: '/t/:slug/take', element: <TakeTestPage /> },
   { path: '/t/:slug/result', element: <TestResultPage /> },
-  { path: '/live', element: <PrivateRoute><LiveCreatePage /></PrivateRoute> },
-  { path: '/live/host/:pin', element: <PrivateRoute><LiveHostPage /></PrivateRoute> },
+  { path: '/live', element: <TeacherRoute><LiveCreatePage /></TeacherRoute> },
+  { path: '/live/host/:pin', element: <TeacherRoute><LiveHostPage /></TeacherRoute> },
   { path: '/live/join', element: <LiveJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },

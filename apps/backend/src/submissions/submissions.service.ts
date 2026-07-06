@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { submissions, tests } from '../db/schema';
 import { and, eq, isNotNull } from 'drizzle-orm';
+import { normalizeViolationReason, orderSubmissionAnswersForDisplay, seededShuffle } from '../delivery/delivery.service';
 
 @Injectable()
 export class SubmissionsService {
@@ -38,6 +39,7 @@ export class SubmissionsService {
       score: submission.score,
       total: submission.total,
       mode: submission.mode,
+      violationReason: normalizeViolationReason(submission.violationReason),
     }));
   }
 
@@ -64,6 +66,12 @@ export class SubmissionsService {
     if (!submission) throw new NotFoundException('Submission not found');
 
     const showAnswers = submission.test.showResults === 'immediately' || submission.test.showResults === 'per_question';
+    const orderedAnswers = orderSubmissionAnswersForDisplay(
+      submission.answers,
+      submission.answers.map((a) => ({ id: a.questionId, orderIndex: a.question.orderIndex })),
+      submissionId,
+      submission.test.shuffleQuestions,
+    );
 
     return {
       id: submission.id,
@@ -74,17 +82,25 @@ export class SubmissionsService {
       score: submission.score,
       total: submission.total,
       mode: submission.mode,
+      violationReason: normalizeViolationReason(submission.violationReason),
       showResults: submission.test.showResults,
-      answers: showAnswers ? submission.answers.map((a) => ({
-        questionId: a.questionId,
-        questionText: a.question.text,
-        questionType: a.question.type,
-        selectedOptionIds: a.selectedOptionIds,
-        textAnswer: a.textAnswer,
-        correctAnswer: a.question.correctAnswer ?? null,
-        isCorrect: a.isCorrect,
-        options: a.question.options.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
-      })) : [],
+      answers: showAnswers ? orderedAnswers.map((a) => {
+        const sortedOptions = [...a.question.options].sort((x, y) => x.orderIndex - y.orderIndex);
+        const displayOptions = submission.test.shuffleOptions && a.question.type !== 'matching'
+          ? seededShuffle(sortedOptions, submissionId + a.questionId)
+          : sortedOptions;
+        return {
+          questionId: a.questionId,
+          questionText: a.question.text,
+          questionType: a.question.type,
+          selectedOptionIds: a.selectedOptionIds,
+          textAnswer: a.textAnswer,
+          correctAnswer: a.question.correctAnswer ?? null,
+          imageUrl: a.question.imageUrl ?? null,
+          isCorrect: a.isCorrect,
+          options: displayOptions.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
+        };
+      }) : [],
     };
   }
 
@@ -100,6 +116,12 @@ export class SubmissionsService {
     });
     if (!submission) throw new NotFoundException('Submission not found');
     if (submission.test.adminId !== adminId) throw new NotFoundException('Submission not found');
+    const orderedAnswers = orderSubmissionAnswersForDisplay(
+      submission.answers,
+      submission.answers.map((a) => ({ id: a.questionId, orderIndex: a.question.orderIndex })),
+      submissionId,
+      submission.test.shuffleQuestions,
+    );
 
     return {
       id: submission.id,
@@ -109,22 +131,29 @@ export class SubmissionsService {
       score: submission.score,
       total: submission.total,
       mode: submission.mode,
+      violationReason: normalizeViolationReason(submission.violationReason),
       testId: submission.testId,
       testName: submission.test.name,
-      answers: submission.answers.map((a) => ({
-        questionId: a.questionId,
-        questionText: a.question.text,
-        questionType: a.question.type,
-        selectedOptionIds: a.selectedOptionIds,
-        textAnswer: a.textAnswer,
-        correctAnswer: a.question.correctAnswer ?? null,
-        imageUrl: a.question.imageUrl ?? null,
-        isCorrect: a.isCorrect,
-        correctOptionIds: a.question.options
-          .filter((o) => o.isCorrect)
-          .map((o) => o.id),
-        options: a.question.options.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
-      })),
+      answers: orderedAnswers.map((a) => {
+        const sortedOptions = [...a.question.options].sort((x, y) => x.orderIndex - y.orderIndex);
+        const displayOptions = submission.test.shuffleOptions && a.question.type !== 'matching'
+          ? seededShuffle(sortedOptions, submissionId + a.questionId)
+          : sortedOptions;
+        return {
+          questionId: a.questionId,
+          questionText: a.question.text,
+          questionType: a.question.type,
+          selectedOptionIds: a.selectedOptionIds,
+          textAnswer: a.textAnswer,
+          correctAnswer: a.question.correctAnswer ?? null,
+          imageUrl: a.question.imageUrl ?? null,
+          isCorrect: a.isCorrect,
+          correctOptionIds: displayOptions
+            .filter((o) => o.isCorrect)
+            .map((o) => o.id),
+          options: displayOptions.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
+        };
+      }),
     };
   }
 }

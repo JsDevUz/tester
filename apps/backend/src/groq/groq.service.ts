@@ -4,11 +4,11 @@ import { Injectable, Logger } from '@nestjs/common';
 export class GroqService {
   private readonly logger = new Logger(GroqService.name);
 
-  async checkOpenAnswer(question: string, correctAnswer: string, studentAnswer: string): Promise<boolean> {
+  async checkOpenAnswer(question: string, correctAnswer: string, studentAnswer: string): Promise<boolean | null> {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       this.logger.warn('GROQ_API_KEY not set, skipping open answer check');
-      return false;
+      return null;
     }
 
     const aLower = studentAnswer.toLowerCase().trim();
@@ -50,7 +50,7 @@ Reply with exactly one word: true or false`;
 
       if (!res.ok) {
         this.logger.error(`Groq API error: ${res.status}`);
-        return false;
+        return null;
       }
 
       const data = await res.json() as any;
@@ -58,18 +58,18 @@ Reply with exactly one word: true or false`;
       return answer === 'true';
     } catch (e) {
       this.logger.error('Groq request failed', e);
-      return false;
+      return null;
     }
   }
 
   // "fillblank" uchun: sinonimlarga emas, faqat yozilish farqlariga (arab harakatlari,
   // katta-kichik harf, lotin/kirill transliteratsiyasi) ruxsat beruvchi qat'iy tekshiruv.
   // Ma'nosi boshqacha yoki umuman boshqa so'z bo'lsa rad etiladi — "aldab o'tish"ga yo'l yo'q.
-  async checkFillBlankAnswer(correctAnswer: string, studentAnswer: string): Promise<boolean> {
+  async checkFillBlankAnswer(correctAnswer: string, studentAnswer: string): Promise<boolean | null> {
     const apiKey = process.env.GROQ_API_KEY;
     if (!apiKey) {
       this.logger.warn('GROQ_API_KEY not set, skipping fillblank AI check');
-      return false;
+      return null;
     }
 
     const prompt = `You are a strict spelling-variant checker for a fill-in-the-blank exercise. Respond ONLY with "true" or "false".
@@ -106,7 +106,7 @@ Reply with exactly one word: true or false`;
 
       if (!res.ok) {
         this.logger.error(`Groq API error: ${res.status}`);
-        return false;
+        return null;
       }
 
       const data = await res.json() as any;
@@ -114,7 +114,7 @@ Reply with exactly one word: true or false`;
       return answer === 'true';
     } catch (e) {
       this.logger.error('Groq request failed', e);
-      return false;
+      return null;
     }
   }
 }

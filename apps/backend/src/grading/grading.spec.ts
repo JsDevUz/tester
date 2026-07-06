@@ -1,4 +1,4 @@
-import { gradeAnswer, evaluateObjectiveAnswer, type GradableQuestion } from './grading';
+import { gradeAnswer, evaluateObjectiveAnswer, normalizeAnswerText, type GradableQuestion } from './grading';
 
 const noopChecker = async () => false;
 
@@ -23,6 +23,11 @@ describe('evaluateObjectiveAnswer', () => {
 });
 
 describe('gradeAnswer', () => {
+  it('normalizes case, Uzbek cyrillic, and Arabic harakat', () => {
+    expect(normalizeAnswerText('ТоШкЕНТ')).toBe('toshkent');
+    expect(normalizeAnswerText('مِنْ')).toBe('من');
+  });
+
   it('single: correct option selected', async () => {
     const question = q({ type: 'single', options: [
       { id: 'o1', text: 'A', isCorrect: false, orderIndex: 0 },
@@ -73,6 +78,20 @@ describe('gradeAnswer', () => {
     expect(wrong).toBe(false);
   });
 
+  it('fillblank: accepts cyrillic input for latin correct answer', async () => {
+    const question = q({ type: 'fillblank', correctAnswer: 'Toshkent' });
+    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'ТоШкЕНТ' }, noopChecker);
+
+    expect(result).toBe(true);
+  });
+
+  it('fillblank: accepts Arabic text without harakat', async () => {
+    const question = q({ type: 'fillblank', correctAnswer: 'مِنْ' });
+    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'من' }, noopChecker);
+
+    expect(result).toBe(true);
+  });
+
   it('fillblank: no answer given returns null (ungraded), not false', async () => {
     const question = q({ type: 'fillblank', correctAnswer: 'Toshkent' });
     const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: '' }, noopChecker);
@@ -86,6 +105,16 @@ describe('gradeAnswer', () => {
     let checkerCalled = false;
     const checker = async () => { checkerCalled = true; return false; };
     const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'parij' }, checker);
+    expect(result).toBe(true);
+    expect(checkerCalled).toBe(false);
+  });
+
+  it('open: accepts normalized exact correctAnswer before AI checker', async () => {
+    const question = q({ type: 'open', correctAnswer: 'مَنْ', options: [] });
+    let checkerCalled = false;
+    const checker = async () => { checkerCalled = true; return false; };
+    const result = await gradeAnswer(question, { selectedOptionIds: [], textAnswer: 'من' }, checker);
+
     expect(result).toBe(true);
     expect(checkerCalled).toBe(false);
   });

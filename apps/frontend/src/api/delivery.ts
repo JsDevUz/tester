@@ -65,6 +65,7 @@ export interface SubmissionResult {
   score: number;
   total: number;
   mode?: 'normal' | 'violation' | 'live';
+  violationReason?: string | null;
   showResults: 'immediately' | 'after_deadline' | 'hidden' | 'per_question';
   deadline: string | null;
   answers: AnswerResultItem[];
@@ -77,7 +78,15 @@ export async function apiGetPublicTest(slug: string): Promise<PublicTest> {
 
 export async function apiGetSubmission(submissionId: string): Promise<
   | { status: 'in_progress'; testId: string; studentName: string }
-  | { status: 'submitted'; score: number; total: number; showResults: string; deadline: string | null }
+  | {
+      status: 'submitted';
+      score: number;
+      total: number;
+      showResults: string;
+      deadline: string | null;
+      mode?: 'normal' | 'violation' | 'live';
+      violationReason?: string | null;
+    }
 > {
   const res = await publicClient.get(`/public/submissions/${submissionId}`);
   return res.data;
@@ -107,7 +116,8 @@ export async function apiSubmitAnswers(
   submissionId: string,
   answers: Array<{ questionId: string; selectedOptionIds: string[]; textAnswer: string | null }>,
   mode: 'normal' | 'violation' = 'normal',
+  violationReason?: string | null,
 ): Promise<SubmissionResult> {
-  const res = await publicClient.post(`/public/submissions/${submissionId}/submit`, { answers, mode });
+  const res = await publicClient.post(`/public/submissions/${submissionId}/submit`, { answers, mode, violationReason });
   return res.data;
 }

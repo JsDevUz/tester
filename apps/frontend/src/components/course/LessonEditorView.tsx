@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { NotebookPen, Brain } from "lucide-react";
-import { useCourseStore, type ContentBlock } from "../../stores/courseStore";
+import { CONTENT_BLOCK_LIMIT, useCourseStore, type ContentBlock } from "../../stores/courseStore";
 import { BlockPicker } from "./BlockPicker";
 import { ContentBlockView } from "./ContentBlockView";
 import { Breadcrumb } from "./Breadcrumb";
@@ -84,6 +84,8 @@ export function LessonEditorView({
 
   if (!course || !module || !lesson) return null;
 
+  const contentLimitReached = lesson.blocks.length >= CONTENT_BLOCK_LIMIT;
+
   function handleTogglePractice() {
     const next = !lesson!.practiceEnabled;
     setLessonPracticeEnabled(courseId, moduleId, lessonId, next);
@@ -95,12 +97,14 @@ export function LessonEditorView({
   }
 
   function handlePickEditor() {
+    if (contentLimitReached) return;
     collapseAllExisting();
     const block: ContentBlock = { id: newId(), type: "editor", html: "" };
     addBlock(courseId, moduleId, lessonId, block);
   }
 
   function handlePickFile(type: "video" | "image" | "file", file: File) {
+    if (contentLimitReached) return;
     collapseAllExisting();
     const block: ContentBlock = {
       id: newId(),
@@ -227,6 +231,8 @@ export function LessonEditorView({
             <BlockPicker
               onPickEditor={handlePickEditor}
               onPickFile={handlePickFile}
+              disabled={contentLimitReached}
+              limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
             />
           </>
         ) : (

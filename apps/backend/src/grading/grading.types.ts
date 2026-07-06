@@ -21,9 +21,9 @@ export type OpenAnswerChecker = (
   questionText: string,
   correctAnswerHint: string,
   studentAnswer: string,
-) => Promise<boolean>;
+) => Promise<boolean | null>;
 
 export type FillBlankAnswerChecker = (
   correctAnswer: string,
   studentAnswer: string,
-) => Promise<boolean>;
+) => Promise<boolean | null>;

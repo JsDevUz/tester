@@ -66,6 +66,8 @@ const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://
 function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
 const ARABIC_RE = /[؀-ۿ]/;
 function isArabicText(text: string) { return ARABIC_RE.test(text); }
+const VIOLATION_REASON = 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.';
+const draftKey = (submissionId: string) => `test-draft:${submissionId}`;
 
 function MatchingQuestion({ questionId, options, selected, onSelect, locked }: {
   questionId: string;
@@ -74,8 +76,8 @@ function MatchingQuestion({ questionId, options, selected, onSelect, locked }: {
   onSelect: (ids: string[]) => void;
   locked?: boolean;
 }) {
-  const lefts = useMemo(() => [...options.filter((_, i) => i % 2 === 0)].sort(() => Math.random() - 0.5), [questionId]);
-  const rights = useMemo(() => [...options.filter((_, i) => i % 2 !== 0)].sort(() => Math.random() - 0.5), [questionId]);
+  const lefts = useMemo(() => seededShuffle(options.filter((_, i) => i % 2 === 0), `${questionId}:left`), [questionId, options]);
+  const rights = useMemo(() => seededShuffle(options.filter((_, i) => i % 2 !== 0), `${questionId}:right`), [questionId, options]);
   const [pendingLeft, setPendingLeft] = useState<string | null>(null);
 
   useEffect(() => {
@@ -294,6 +296,7 @@ export function TakeTestPage() {
   const textMapRef = useRef<Record<string, string>>({});
   const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
   const submittingRef = useRef(false);
+  const autoSubmitSentRef = useRef(false);
 
   useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
   useEffect(() => { textMapRef.current = textMap; }, [textMap]);
@@ -318,7 +321,7 @@ export function TakeTestPage() {
       const qs = t.shuffleQuestions ? seededShuffle(t.questions, submissionId) : [...t.questions];
       const qsWithOpts = qs.map((q) => ({
         ...q,
-        options: t.shuffleOptions ? seededShuffle(q.options, submissionId + q.id) : q.options,
+        options: t.shuffleOptions && q.type !== 'matching' ? seededShuffle(q.options, submissionId + q.id) : q.options,
       }));
       setOrderedQuestions(qsWithOpts);
       const initSelected: Record<string, string[]> = {};
@@ -327,10 +330,41 @@ export function TakeTestPage() {
           initSelected[q.id] = q.options.map((o) => o.id);
         }
       }
-      setSelectedMap(initSelected);
+      const savedDraft = submissionId ? localStorage.getItem(draftKey(submissionId)) : null;
+      if (savedDraft) {
+        try {
+          const parsed = JSON.parse(savedDraft) as {
+            selectedMap?: Record<string, string[]>;
+            textMap?: Record<string, string>;
+            currentIdx?: number;
+          };
+          const questionIds = new Set(qsWithOpts.map((q) => q.id));
+          const restoredSelected = Object.fromEntries(
+            Object.entries(parsed.selectedMap ?? {}).filter(([id]) => questionIds.has(id)),
+          );
+          const restoredText = Object.fromEntries(
+            Object.entries(parsed.textMap ?? {}).filter(([id]) => questionIds.has(id)),
+          );
+          setSelectedMap({ ...initSelected, ...restoredSelected });
+          setTextMap(restoredText);
+          if (typeof parsed.currentIdx === 'number' && parsed.currentIdx >= 0 && parsed.currentIdx < qsWithOpts.length) {
+            setCurrentIdx(parsed.currentIdx);
+          }
+        } catch {
+          setSelectedMap(initSelected);
+        }
+      } else {
+        setSelectedMap(initSelected);
+      }
       if (t.timeLimit) setTimeLeft(t.timeLimit * 60);
     });
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!submissionId || orderedQuestions.length === 0 || submittingRef.current) return;
+    const payload = JSON.stringify({ selectedMap, textMap, currentIdx, updatedAt: Date.now() });
+    localStorage.setItem(draftKey(submissionId), payload);
+  }, [submissionId, orderedQuestions.length, selectedMap, textMap, currentIdx]);
 
   useEffect(() => {
     if (timeLeft === null || timeLeft <= 0) return;
@@ -350,7 +384,7 @@ export function TakeTestPage() {
   useEffect(() => {
     if (!submissionId) return;
     const sendSubmit = () => {
-      if (submittingRef.current || orderedQuestionsRef.current.length === 0) return;
+      if (submittingRef.current || autoSubmitSentRef.current || orderedQuestionsRef.current.length === 0) return;
       const answers = orderedQuestionsRef.current.map((q) => ({
         questionId: q.id,
         selectedOptionIds: selectedMapRef.current[q.id] ?? [],
@@ -358,11 +392,15 @@ export function TakeTestPage() {
       }));
       const base = getPublicBaseUrl() || window.location.origin;
       const url = `${base}/public/submissions/${submissionId}/submit`;
-      const body = JSON.stringify({ answers, mode: 'violation' });
+      const body = JSON.stringify({ answers, mode: 'violation', violationReason: VIOLATION_REASON });
+      autoSubmitSentRef.current = true;
+      const beacon = () => navigator.sendBeacon?.(url, new Blob([body], { type: 'application/json' }));
       try {
-        fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true });
+        void fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body, keepalive: true })
+          .catch(() => { autoSubmitSentRef.current = false; beacon(); });
       } catch {
-        navigator.sendBeacon(url, new Blob([body], { type: 'application/json' }));
+        autoSubmitSentRef.current = false;
+        beacon();
       }
     };
     let submitSent = false;
@@ -374,6 +412,7 @@ export function TakeTestPage() {
         setTimeout(() => {
           apiGetSubmission(submissionId).then((sub) => {
             if (sub.status === 'submitted') navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+            else autoSubmitSentRef.current = false;
           }).catch(() => {});
         }, 800);
       }
@@ -406,6 +445,7 @@ export function TakeTestPage() {
     try {
       const result = await apiSubmitAnswers(submissionId, answers);
       sessionStorage.setItem('submissionResult', JSON.stringify(result));
+      localStorage.removeItem(draftKey(submissionId));
       navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
     } catch {
       submittingRef.current = false;
@@ -822,7 +862,7 @@ export function TakeTestPage() {
                       <p className={`font-semibold ${
                         correct ? 'text-green-700' : incorrect ? 'text-red-600' : 'text-gray-600'
                       }`}>
-                        {correct ? "To'g'ri!" : incorrect ? "Noto'g'ri" : "Javob qabul qilindi"}
+                        {correct ? "To'g'ri!" : incorrect ? "Noto'g'ri" : "Tekshiruv yakunlanmadi"}
                       </p>
                       {fb.correctAnswer && incorrect && (
                         <p className="text-xs text-green-600 mt-0.5">To'g'ri javob: {fb.correctAnswer}</p>
