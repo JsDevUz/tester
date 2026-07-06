@@ -16,11 +16,10 @@ interface SideTab {
   label: string;
   description: string;
   icon: typeof LayoutGrid;
-  active?: boolean;
 }
 
 const FULL_TABS: SideTab[] = [
-  { key: 'content', label: 'Kontent', description: 'Modullar, darslar va amaliyot', icon: LayoutGrid, active: true },
+  { key: 'content', label: 'Kontent', description: 'Modullar, darslar va amaliyot', icon: LayoutGrid },
   { key: 'settings', label: 'Sozlamalar', description: "Ma'lumot va moslashtirish", icon: SlidersHorizontal },
   { key: 'launch', label: 'Ishga tushirish va tariflar', description: 'Savdo va narxlar sozlamalari', icon: Send },
   { key: 'groups', label: 'Guruhlar', description: "O'quvchilarni ajratish", icon: Users },
