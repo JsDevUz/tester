@@ -15,12 +15,21 @@ export interface ContentBlock {
   label?: string;
 }
 
+export interface PracticeBlock {
+  id: string;
+  testId: string | null;
+}
+
 export interface Lesson {
   id: string;
   title: string;
   orderIndex: number;
   status: 'draft' | 'published';
   blocks: ContentBlock[];
+  practiceEnabled: boolean;
+  practiceBlocks: PracticeBlock[];
+  passThresholdEnabled: boolean;
+  passThresholdPercent: number | null;
 }
 
 export interface Module {
@@ -55,6 +64,13 @@ interface CourseState {
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => void;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
+
+  setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
+  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string) => void;
+  removePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
+  movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
+  setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => void;
+  setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => void;
 }
 
 function newId(): string {
@@ -116,6 +132,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       orderIndex: module.lessons.length,
       status: 'draft',
       blocks: [],
+      practiceEnabled: false,
+      practiceBlocks: [],
+      passThresholdEnabled: false,
+      passThresholdPercent: null,
     };
     set({
       courses: get().courses.map((c) =>
@@ -281,6 +301,157 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                         [blocks[index], blocks[swapWith]] = [blocks[swapWith], blocks[index]];
                         return { ...l, blocks };
                       }),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+
+  setLessonPracticeEnabled: (courseId, moduleId, lessonId, enabled) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id === lessonId ? { ...l, practiceEnabled: enabled } : l,
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addPracticeBlock: (courseId, moduleId, lessonId) => {
+    const block: PracticeBlock = { id: newId(), testId: null };
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : { ...l, practiceBlocks: [...l.practiceBlocks, block] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  removePracticeBlock: (courseId, moduleId, lessonId, blockId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : { ...l, practiceBlocks: l.practiceBlocks.filter((b) => b.id !== blockId) },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  movePracticeBlock: (courseId, moduleId, lessonId, blockId, direction) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) => {
+                        if (l.id !== lessonId) return l;
+                        const index = l.practiceBlocks.findIndex((b) => b.id === blockId);
+                        const swapWith = direction === 'up' ? index - 1 : index + 1;
+                        if (index === -1 || swapWith < 0 || swapWith >= l.practiceBlocks.length) return l;
+                        const practiceBlocks = [...l.practiceBlocks];
+                        [practiceBlocks[index], practiceBlocks[swapWith]] = [practiceBlocks[swapWith], practiceBlocks[index]];
+                        return { ...l, practiceBlocks };
+                      }),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setPracticeBlockTest: (courseId, moduleId, lessonId, blockId, testId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              practiceBlocks: l.practiceBlocks.map((b) =>
+                                b.id === blockId ? { ...b, testId } : b,
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setPassThreshold: (courseId, moduleId, lessonId, data) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              passThresholdEnabled: data.enabled,
+                              passThresholdPercent: data.enabled ? (data.percent ?? l.passThresholdPercent) : null,
+                            },
+                      ),
                     },
               ),
             },
