@@ -22,13 +22,10 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     ?.lessons.find((l) => l.id === lessonId);
 
   const [tests, setTests] = useState<AllTestsItem[]>([]);
-  const [, setLoadingTests] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-    apiListAllTests()
-      .then((items) => { if (!cancelled) setTests(items); })
-      .finally(() => { if (!cancelled) setLoadingTests(false); });
+    apiListAllTests().then((items) => { if (!cancelled) setTests(items); });
     return () => { cancelled = true; };
   }, []);
 
