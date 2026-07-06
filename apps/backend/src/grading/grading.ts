@@ -1,4 +1,9 @@
-import { GradableQuestion, GradeInput, OpenAnswerChecker, FillBlankAnswerChecker } from './grading.types';
+import {
+  GradableQuestion,
+  GradeInput,
+  OpenAnswerChecker,
+  FillBlankAnswerChecker,
+} from './grading.types';
 
 const ARABIC_DIACRITICS_RE = /[\u0610-\u061A\u064B-\u065F\u0670\u06D6-\u06ED]/g;
 const LATIN_COMBINING_RE = /[\u0300-\u036f]/g;
@@ -66,13 +71,17 @@ export function evaluateObjectiveAnswer(
 ): boolean {
   if (correctOptionIds.length === 0) return false;
   if (questionType === 'arrange') {
-    return correctOptionIds.length === selectedOptionIds.length &&
-      correctOptionIds.every((id, i) => id === selectedOptionIds[i]);
+    return (
+      correctOptionIds.length === selectedOptionIds.length &&
+      correctOptionIds.every((id, i) => id === selectedOptionIds[i])
+    );
   }
   const correctIds = new Set(correctOptionIds);
   const selectedIds = new Set(selectedOptionIds);
-  return correctIds.size === selectedIds.size &&
-    [...correctIds].every((id) => selectedIds.has(id));
+  return (
+    correctIds.size === selectedIds.size &&
+    [...correctIds].every((id) => selectedIds.has(id))
+  );
 }
 
 export async function gradeAnswer(
@@ -103,8 +112,12 @@ export async function gradeAnswer(
   }
 
   if (type === 'matching') {
-    const lefts = options.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-    const rights = options.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+    const lefts = options
+      .filter((o) => o.isCorrect)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+    const rights = options
+      .filter((o) => !o.isCorrect)
+      .sort((a, b) => a.orderIndex - b.orderIndex);
     if (lefts.length === 0 || lefts.length !== rights.length) return false;
     if (selectedOptionIds.length !== lefts.length * 2) return false;
     // To'g'ri juftliklar (chap -> o'ng) tartibdan qat'i nazar solishtiriladi,
@@ -127,7 +140,8 @@ export async function gradeAnswer(
       if (exact) return true;
       // Xom taqqoslash mos kelmasa, AI orqali faqat yozilish (harakat/katta-kichik harf/
       // lotin-kirill) farqi ekanini tekshiramiz — ma'no farqiga yoki chin xatoga yo'l qo'ymaymiz.
-      if (checkFillBlankAnswer) return checkFillBlankAnswer(correctAnswer, textAnswer);
+      if (checkFillBlankAnswer)
+        return checkFillBlankAnswer(correctAnswer, textAnswer);
       return false;
     }
     return null;
@@ -137,13 +151,18 @@ export async function gradeAnswer(
     if (!textAnswer?.trim()) return null;
     const manualOptions = options.filter((o) => o.isCorrect);
     if (manualOptions.length > 0) {
-      const exact = manualOptions.some((o) => answerTextMatches(o.text, textAnswer));
+      const exact = manualOptions.some((o) =>
+        answerTextMatches(o.text, textAnswer),
+      );
       if (exact) return true;
-      if (correctAnswer && answerTextMatches(correctAnswer, textAnswer)) return true;
-      if (correctAnswer) return checkOpenAnswer(text, correctAnswer, textAnswer);
+      if (correctAnswer && answerTextMatches(correctAnswer, textAnswer))
+        return true;
+      if (correctAnswer)
+        return checkOpenAnswer(text, correctAnswer, textAnswer);
       return false;
     }
-    if (correctAnswer && answerTextMatches(correctAnswer, textAnswer)) return true;
+    if (correctAnswer && answerTextMatches(correctAnswer, textAnswer))
+      return true;
     if (correctAnswer) return checkOpenAnswer(text, correctAnswer, textAnswer);
     return null;
   }
