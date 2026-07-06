@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
-import { Plus, Inbox } from 'lucide-react';
+import { Inbox } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { apiListAllTests, type AllTestsItem } from '../../api/tests';
 import { PracticeBlockView } from './PracticeBlockView';
+import { PracticeBlockPicker } from './PracticeBlockPicker';
 
 interface PracticeSectionProps {
   courseId: string;
@@ -12,7 +13,8 @@ interface PracticeSectionProps {
 
 export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectionProps) {
   const {
-    courses, addPracticeBlock, removePracticeBlock, movePracticeBlock, setPracticeBlockTest, setPassThreshold,
+    courses, addPracticeBlock, removePracticeBlock, movePracticeBlock, setPracticeBlockTest,
+    setPracticeBlockDescription, setPassThreshold,
   } = useCourseStore();
   const lesson = courses
     .find((c) => c.id === courseId)
@@ -20,7 +22,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     ?.lessons.find((l) => l.id === lessonId);
 
   const [tests, setTests] = useState<AllTestsItem[]>([]);
-  const [loadingTests, setLoadingTests] = useState(true);
+  const [, setLoadingTests] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
@@ -42,8 +44,8 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
       {lesson.practiceBlocks.length === 0 ? (
         <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
           <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
-          <p className="text-sm font-semibold text-gray-700">Hali test qo'shilmagan</p>
-          <p className="mt-1 text-xs text-gray-400">Pastroqdan test qo'shing</p>
+          <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
+          <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
         </div>
       ) : (
         <div className="mb-6 flex flex-col gap-3">
@@ -56,6 +58,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
               block={block}
               tests={tests}
               onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
+              onChangeDescription={(description) => setPracticeBlockDescription(courseId, moduleId, lessonId, block.id, description)}
               onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
               onMoveUp={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'up')}
               onMoveDown={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'down')}
@@ -64,14 +67,9 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
         </div>
       )}
 
-      <button
-        type="button"
-        onClick={() => addPracticeBlock(courseId, moduleId, lessonId)}
-        disabled={loadingTests}
-        className="mb-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-indigo-200 py-3 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Plus size={16} /> Test qo'shish
-      </button>
+      <div className="mb-6">
+        <PracticeBlockPicker onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)} />
+      </div>
 
       <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
         <div className="flex items-center gap-3">
