@@ -1,5 +1,5 @@
-import { ClipboardList, ArrowUp, ArrowDown, X } from 'lucide-react';
-import type { PracticeBlock } from '../../stores/courseStore';
+import { ClipboardList, Image as ImageIcon, Paperclip, Mic, ArrowUp, ArrowDown, X } from 'lucide-react';
+import type { PracticeBlock, PracticeBlockType } from '../../stores/courseStore';
 import type { AllTestsItem } from '../../api/tests';
 
 interface PracticeBlockViewProps {
@@ -9,23 +9,45 @@ interface PracticeBlockViewProps {
   block: PracticeBlock;
   tests: AllTestsItem[];
   onSelectTest: (testId: string) => void;
+  onChangeDescription: (description: string) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
 }
 
+const TYPE_META: Record<PracticeBlockType, { label: string; icon: typeof ClipboardList; placeholder: string }> = {
+  test: { label: 'Test', icon: ClipboardList, placeholder: '' },
+  image: {
+    label: 'Rasm',
+    icon: ImageIcon,
+    placeholder: "Masalan: Yangi mavzu bo'yicha 50ta gap tuzib daftarga yozing va uni rasmga olib yuklang",
+  },
+  file: {
+    label: 'Fayl',
+    icon: Paperclip,
+    placeholder: "Masalan: Uy vazifasini PDF formatida tayyorlab yuklang",
+  },
+  audio: {
+    label: 'Audio',
+    icon: Mic,
+    placeholder: "Masalan: Matnni ovoz chiqarib o'qing va audio yozib yuklang",
+  },
+};
+
 export function PracticeBlockView({
-  index, isFirst, isLast, block, tests, onSelectTest, onRemove, onMoveUp, onMoveDown,
+  index, isFirst, isLast, block, tests, onSelectTest, onChangeDescription, onRemove, onMoveUp, onMoveDown,
 }: PracticeBlockViewProps) {
+  const meta = TYPE_META[block.type];
+  const Icon = meta.icon;
   return (
     <div className="rounded-2xl border-2 border-gray-100 bg-white">
       <div className="flex items-center gap-2.5 px-4 py-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
-          <ClipboardList size={15} />
+          <Icon size={15} />
         </div>
         <div className="min-w-0 flex-1">
           <p className="truncate text-sm font-semibold text-gray-800">Amaliyot bloki №{index + 1}</p>
-          <p className="text-xs text-gray-400">Test</p>
+          <p className="text-xs text-gray-400">{meta.label}</p>
         </div>
         <button
           type="button"
@@ -56,19 +78,34 @@ export function PracticeBlockView({
       </div>
 
       <div className="border-t border-gray-100 px-4 py-4">
-        <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
-        <select
-          value={block.testId ?? ''}
-          onChange={(e) => onSelectTest(e.target.value)}
-          className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-        >
-          <option value="" disabled>Testni tanlang...</option>
-          {tests.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} ({t.questionCount} ta savol)
-            </option>
-          ))}
-        </select>
+        {block.type === 'test' ? (
+          <>
+            <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
+            <select
+              value={block.testId ?? ''}
+              onChange={(e) => onSelectTest(e.target.value)}
+              className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+            >
+              <option value="" disabled>Testni tanlang...</option>
+              {tests.map((t) => (
+                <option key={t.id} value={t.id}>
+                  {t.name} ({t.questionCount} ta savol)
+                </option>
+              ))}
+            </select>
+          </>
+        ) : (
+          <>
+            <p className="mb-1.5 text-sm text-gray-500">Topshiriq matni</p>
+            <textarea
+              value={block.description}
+              onChange={(e) => onChangeDescription(e.target.value)}
+              placeholder={meta.placeholder}
+              rows={3}
+              className="w-full resize-none rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+            />
+          </>
+        )}
       </div>
     </div>
   );
