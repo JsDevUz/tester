@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { NotebookPen, Brain } from 'lucide-react';
-import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
-import { BlockPicker } from './BlockPicker';
-import { ContentBlockView } from './ContentBlockView';
-import { Breadcrumb } from './Breadcrumb';
-import { CourseSidePanel } from './CourseSidePanel';
+import { useState } from "react";
+import { NotebookPen, Brain } from "lucide-react";
+import { useCourseStore, type ContentBlock } from "../../stores/courseStore";
+import { BlockPicker } from "./BlockPicker";
+import { ContentBlockView } from "./ContentBlockView";
+import { Breadcrumb } from "./Breadcrumb";
+import { CourseSidePanel } from "./CourseSidePanel";
 
 interface LessonEditorViewProps {
   courseId: string;
@@ -22,17 +22,21 @@ function PracticeToggleCard() {
         <Brain size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-gray-800">Darsning amaliy qismi</p>
-        <p className="truncate text-xs text-gray-400">Bilimlarni mustahkamlash</p>
+        <p className="truncate text-sm font-semibold text-gray-800">
+          Darsning amaliy qismi
+        </p>
+        <p className="truncate text-xs text-gray-400">
+          Bilimlarni mustahkamlash
+        </p>
       </div>
       <button
         type="button"
         onClick={() => setEnabled((v) => !v)}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
       >
         <span
           className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            enabled ? 'translate-x-5' : 'translate-x-0.5'
+            enabled ? "translate-x-5" : "translate-x-0.5"
           }`}
         />
       </button>
@@ -44,13 +48,29 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
-export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, onBackToContent }: LessonEditorViewProps) {
-  const { courses, renameLesson, toggleLessonStatus, addBlock, updateBlock, removeBlock, moveBlock } = useCourseStore();
+export function LessonEditorView({
+  courseId,
+  moduleId,
+  lessonId,
+  onBackToList,
+  onBackToContent,
+}: LessonEditorViewProps) {
+  const {
+    courses,
+    renameLesson,
+    toggleLessonStatus,
+    addBlock,
+    updateBlock,
+    removeBlock,
+    moveBlock,
+  } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const module = course?.modules.find((m) => m.id === moduleId);
   const lesson = module?.lessons.find((l) => l.id === lessonId);
 
-  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
+    new Set(),
+  );
 
   if (!course || !module || !lesson) return null;
 
@@ -60,17 +80,17 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
 
   function handlePickEditor() {
     collapseAllExisting();
-    const block: ContentBlock = { id: newId(), type: 'editor', html: '' };
+    const block: ContentBlock = { id: newId(), type: "editor", html: "" };
     addBlock(courseId, moduleId, lessonId, block);
   }
 
-  function handlePickFile(type: 'video' | 'image' | 'file', file: File) {
+  function handlePickFile(type: "video" | "image" | "file", file: File) {
     collapseAllExisting();
     const block: ContentBlock = {
       id: newId(),
       type,
       fileName: file.name,
-      previewUrl: type === 'file' ? undefined : URL.createObjectURL(file),
+      previewUrl: type === "file" ? undefined : URL.createObjectURL(file),
     };
     addBlock(courseId, moduleId, lessonId, block);
   }
@@ -108,7 +128,7 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
-            { label: 'Kurslar', onClick: onBackToList },
+            { label: "Kurslar", onClick: onBackToList },
             { label: course.title, onClick: onBackToContent },
             { label: module.title, onClick: onBackToContent },
             { label: lesson.title },
@@ -117,26 +137,34 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
         <div className="mb-6 flex items-center justify-between gap-3">
           <input
             value={lesson.title}
-            onChange={(e) => renameLesson(courseId, moduleId, lessonId, e.target.value)}
+            onChange={(e) =>
+              renameLesson(courseId, moduleId, lessonId, e.target.value)
+            }
             className="min-w-0 flex-1 rounded-xl border-2 border-transparent bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors focus:border-indigo-200"
           />
           <button
             onClick={() => toggleLessonStatus(courseId, moduleId, lessonId)}
             className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-              lesson.status === 'published'
-                ? 'bg-gray-100 text-gray-600 hover:bg-gray-200'
-                : 'bg-indigo-500 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-600'
+              lesson.status === "published"
+                ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                : "bg-indigo-500 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-600"
             }`}
           >
-            {lesson.status === 'published' ? 'Qoralamaga o\'tkazish' : "E'lon qilish"}
+            {lesson.status === "published"
+              ? "Qoralamaga o'tkazish"
+              : "E'lon qilish"}
           </button>
         </div>
 
         {lesson.blocks.length === 0 && (
           <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
             <NotebookPen size={30} className="mx-auto mb-3 text-indigo-200" />
-            <p className="text-sm font-semibold text-gray-700">Ichki kontentini to'ldiring</p>
-            <p className="mt-1 text-xs text-gray-400">Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing</p>
+            <p className="text-sm font-semibold text-gray-700">
+              Ichki kontentini to'ldiring
+            </p>
+            <p className="mt-1 text-xs text-gray-400">
+              Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
+            </p>
           </div>
         )}
 
@@ -152,21 +180,34 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
                 collapsed={collapsedBlockIds.has(block.id)}
                 onToggleCollapse={() => toggleCollapse(block.id)}
                 onChangeHtml={(html) => handleChangeBlockHtml(block.id, html)}
-                onChangeEmbedUrl={(embedUrl) => handleChangeBlockEmbedUrl(block.id, embedUrl)}
-                onChangeLabel={(label) => handleChangeBlockLabel(block.id, label)}
+                onChangeEmbedUrl={(embedUrl) =>
+                  handleChangeBlockEmbedUrl(block.id, embedUrl)
+                }
+                onChangeLabel={(label) =>
+                  handleChangeBlockLabel(block.id, label)
+                }
                 onPickFile={(file) => handleBlockPickFile(block.id, file)}
-                onRemove={() => removeBlock(courseId, moduleId, lessonId, block.id)}
-                onMoveUp={() => moveBlock(courseId, moduleId, lessonId, block.id, 'up')}
-                onMoveDown={() => moveBlock(courseId, moduleId, lessonId, block.id, 'down')}
+                onRemove={() =>
+                  removeBlock(courseId, moduleId, lessonId, block.id)
+                }
+                onMoveUp={() =>
+                  moveBlock(courseId, moduleId, lessonId, block.id, "up")
+                }
+                onMoveDown={() =>
+                  moveBlock(courseId, moduleId, lessonId, block.id, "down")
+                }
               />
             ))}
           </div>
         )}
 
-        <BlockPicker onPickEditor={handlePickEditor} onPickFile={handlePickFile} />
+        <BlockPicker
+          onPickEditor={handlePickEditor}
+          onPickFile={handlePickFile}
+        />
       </div>
 
-      <div className="w-full shrink-0 sm:mt-11 sm:w-72">
+      <div className="w-full shrink-0 sm:mt-25 sm:w-72">
         <div className="mb-3">
           <PracticeToggleCard />
         </div>
