@@ -22,3 +22,8 @@ export type OpenAnswerChecker = (
   correctAnswerHint: string,
   studentAnswer: string,
 ) => Promise<boolean>;
+
+export type FillBlankAnswerChecker = (
+  correctAnswer: string,
+  studentAnswer: string,
+) => Promise<boolean>;

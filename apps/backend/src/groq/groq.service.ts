@@ -61,4 +61,60 @@ Reply with exactly one word: true or false`;
       return false;
     }
   }
+
+  // "fillblank" uchun: sinonimlarga emas, faqat yozilish farqlariga (arab harakatlari,
+  // katta-kichik harf, lotin/kirill transliteratsiyasi) ruxsat beruvchi qat'iy tekshiruv.
+  // Ma'nosi boshqacha yoki umuman boshqa so'z bo'lsa rad etiladi — "aldab o'tish"ga yo'l yo'q.
+  async checkFillBlankAnswer(correctAnswer: string, studentAnswer: string): Promise<boolean> {
+    const apiKey = process.env.GROQ_API_KEY;
+    if (!apiKey) {
+      this.logger.warn('GROQ_API_KEY not set, skipping fillblank AI check');
+      return false;
+    }
+
+    const prompt = `You are a strict spelling-variant checker for a fill-in-the-blank exercise. Respond ONLY with "true" or "false".
+
+Correct answer: "${correctAnswer}"
+Student answer: "${studentAnswer}"
+
+Rules:
+- Accept ONLY if the student answer is the SAME WORD/PHRASE as the correct answer, differing ONLY by:
+  - presence/absence of Arabic diacritics (harakat) — e.g. "مَنْ" vs "من" → true
+  - letter case (uppercase/lowercase) — e.g. "Salom" vs "salom" → true
+  - Latin vs Cyrillic script transliteration of the same word — e.g. "salom" vs "салом" → true
+  - minor punctuation/whitespace differences
+- REJECT if it is a different word, a synonym, a related word, or has a different meaning, even if close
+- REJECT if it is misspelled in a way that isn't just diacritics/case/script (a genuine spelling mistake is wrong)
+- REJECT if the student answer is empty, vague, or unrelated
+
+Reply with exactly one word: true or false`;
+
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          max_tokens: 5,
+          temperature: 0,
+        }),
+      });
+
+      if (!res.ok) {
+        this.logger.error(`Groq API error: ${res.status}`);
+        return false;
+      }
+
+      const data = await res.json() as any;
+      const answer = data.choices?.[0]?.message?.content?.trim().toLowerCase();
+      return answer === 'true';
+    } catch (e) {
+      this.logger.error('Groq request failed', e);
+      return false;
+    }
+  }
 }

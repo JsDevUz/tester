@@ -1,4 +1,4 @@
-import { GradableQuestion, GradeInput, OpenAnswerChecker } from './grading.types';
+import { GradableQuestion, GradeInput, OpenAnswerChecker, FillBlankAnswerChecker } from './grading.types';
 
 export function evaluateObjectiveAnswer(
   questionType: string,
@@ -20,6 +20,7 @@ export async function gradeAnswer(
   question: GradableQuestion,
   input: GradeInput,
   checkOpenAnswer: OpenAnswerChecker,
+  checkFillBlankAnswer?: FillBlankAnswerChecker,
 ): Promise<boolean | null> {
   const { type, options, correctAnswer, text } = question;
   const { selectedOptionIds, textAnswer } = input;
@@ -63,7 +64,12 @@ export async function gradeAnswer(
 
   if (type === 'fillblank') {
     if (correctAnswer && textAnswer?.trim()) {
-      return correctAnswer.trim().toLowerCase() === textAnswer.trim().toLowerCase();
+      const exact = correctAnswer.trim().toLowerCase() === textAnswer.trim().toLowerCase();
+      if (exact) return true;
+      // Xom taqqoslash mos kelmasa, AI orqali faqat yozilish (harakat/katta-kichik harf/
+      // lotin-kirill) farqi ekanini tekshiramiz — ma'no farqiga yoki chin xatoga yo'l qo'ymaymiz.
+      if (checkFillBlankAnswer) return checkFillBlankAnswer(correctAnswer, textAnswer);
+      return false;
     }
     return null;
   }
