@@ -154,9 +154,15 @@ export function TestResultPage() {
                       {(() => {
                         const lefts = (a.options ?? []).filter((o) => o.isCorrectOption);
                         const rights = (a.options ?? []).filter((o) => !o.isCorrectOption);
+                        // Talaba chap elementlarni istalgan tartibda tanlashi mumkin, shuning uchun
+                        // selectedOptionIds'dagi juftliklarni pozitsiya emas, ID orqali bog'laymiz.
+                        const studentPairs = new Map<string, string>();
+                        for (let i = 0; i < a.selectedOptionIds.length; i += 2) {
+                          studentPairs.set(a.selectedOptionIds[i], a.selectedOptionIds[i + 1]);
+                        }
                         return lefts.map((left, idx) => {
                           const correctRight = rights[idx];
-                          const studentRightId = a.selectedOptionIds[idx * 2 + 1];
+                          const studentRightId = studentPairs.get(left.id);
                           const studentRight = (a.options ?? []).find((o) => o.id === studentRightId);
                           const pairCorrect = studentRightId === correctRight?.id;
                           return (

@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { tests, submissions, answers, questions, options } from '../db/schema';
-import { eq } from 'drizzle-orm';
+import { and, eq, isNull } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
 import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
@@ -363,13 +363,31 @@ export class DeliveryService {
       test.shuffleQuestions,
     );
 
+    // Atomik compare-and-swap: faqat submittedAt hali null bo'lsa yozamiz. Bu ikkita
+    // parallel submit so'rovi (masalan tab yopilganda beacon va foydalanuvchi tugmasi
+    // bir vaqtda) bir xil savol uchun ikkita answers qatori yaratib qo'yishining oldini oladi.
+    const [updatedSubmission] = await db.update(submissions)
+      .set({ submittedAt: new Date(), score, total, mode: normalizeSubmissionMode(mode) })
+      .where(and(eq(submissions.id, submissionId), isNull(submissions.submittedAt)))
+      .returning();
+
+    if (!updatedSubmission) {
+      // Boshqa so'rov ulgurib submit qilgan — o'sha natijani qaytaramiz, qayta yozmaymiz.
+      const already = await db.query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
+      return {
+        submissionId,
+        score: already?.score ?? score,
+        total: already?.total ?? total,
+        mode: normalizeSubmissionMode(already?.mode ?? mode),
+        showResults: test.showResults,
+        deadline: test.deadline,
+        answers: [],
+      };
+    }
+
     if (answerRows.length > 0) {
       await db.insert(answers).values(answerRows);
     }
-
-    await db.update(submissions)
-      .set({ submittedAt: new Date(), score, total, mode: normalizeSubmissionMode(mode) })
-      .where(eq(submissions.id, submissionId));
 
     // Only return answer breakdown if showResults === 'immediately' or 'per_question'
     // For other modes, never send per-question correctness to client

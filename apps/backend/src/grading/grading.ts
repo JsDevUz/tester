@@ -45,11 +45,20 @@ export async function gradeAnswer(
   if (type === 'matching') {
     const lefts = options.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
     const rights = options.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-    let allMatch = lefts.length > 0 && lefts.length === rights.length;
-    for (let i = 0; i < lefts.length && allMatch; i++) {
-      if (selectedOptionIds[i * 2] !== lefts[i].id || selectedOptionIds[i * 2 + 1] !== rights[i].id) allMatch = false;
+    if (lefts.length === 0 || lefts.length !== rights.length) return false;
+    if (selectedOptionIds.length !== lefts.length * 2) return false;
+    // To'g'ri juftliklar (chap -> o'ng) tartibdan qat'i nazar solishtiriladi,
+    // chunki talaba chap elementlarni istalgan tartibda tanlashi mumkin.
+    const correctPairs = new Map(lefts.map((l, i) => [l.id, rights[i].id]));
+    const seenLeftIds = new Set<string>();
+    for (let i = 0; i < selectedOptionIds.length; i += 2) {
+      const leftId = selectedOptionIds[i];
+      const rightId = selectedOptionIds[i + 1];
+      if (seenLeftIds.has(leftId)) return false;
+      seenLeftIds.add(leftId);
+      if (correctPairs.get(leftId) !== rightId) return false;
     }
-    return allMatch;
+    return true;
   }
 
   if (type === 'fillblank') {
