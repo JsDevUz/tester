@@ -57,3 +57,18 @@ export async function apiUpdateTest(id: string, data: Partial<Omit<CreateTestDat
 export async function apiDeleteTest(id: string): Promise<void> {
   await client.delete(`/tests/${id}`);
 }
+
+export interface AllTestsItem {
+  id: string;
+  name: string;
+  questionCount: number;
+}
+
+export async function apiListAllTests(): Promise<AllTestsItem[]> {
+  const res = await client.get('/live/tests');
+  return res.data.map((t: { id: string; name: string; liveQuestionCount: number }) => ({
+    id: t.id,
+    name: t.name,
+    questionCount: t.liveQuestionCount,
+  }));
+}
