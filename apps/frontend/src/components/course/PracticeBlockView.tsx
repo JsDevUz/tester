@@ -43,7 +43,7 @@ export function PracticeBlockView({
           title="Pastga surish"
           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
         >
-          <ArrowDown size={16} />
+          <ArrowDown size={15} />
         </button>
         <button
           type="button"
