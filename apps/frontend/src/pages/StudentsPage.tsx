@@ -3,7 +3,7 @@ import { Search, Inbox, GraduationCap } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { formatDate } from "../utils/date";
 
-interface StudentRow {
+export interface StudentRow {
   id: string;
   name: string;
   phone: string;
@@ -37,7 +37,7 @@ function initials(name: string) {
 }
 
 // TODO: mock data — /admins/users kabi backend endpoint ulanganda almashtiriladi
-const MOCK_STUDENTS: StudentRow[] = [
+export const MOCK_STUDENTS: StudentRow[] = [
   {
     id: "1",
     name: "Aziza Karimova",
