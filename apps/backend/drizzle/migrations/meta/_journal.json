@@ -99,6 +99,13 @@
       "when": 1783445364509,
       "tag": "0013_broken_sway",
       "breakpoints": true
+    },
+    {
+      "idx": 14,
+      "version": "7",
+      "when": 1783450795310,
+      "tag": "0014_broken_kate_bishop",
+      "breakpoints": true
     }
   ]
 }

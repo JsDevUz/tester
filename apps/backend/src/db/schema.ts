@@ -62,8 +62,35 @@ export const courses = pgTable('courses', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
-export const coursesRelations = relations(courses, ({ one }) => ({
+export const coursesRelations = relations(courses, ({ one, many }) => ({
   owner: one(users, { fields: [courses.adminId], references: [users.id] }),
+  modules: many(modules),
+}));
+
+export const modules = pgTable('modules', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const lessons = pgTable('lessons', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  moduleId: uuid('module_id').notNull().references(() => modules.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  orderIndex: integer('order_index').notNull().default(0),
+  status: text('status').notNull().default('draft'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const modulesRelations = relations(modules, ({ one, many }) => ({
+  course: one(courses, { fields: [modules.courseId], references: [courses.id] }),
+  lessons: many(lessons),
+}));
+
+export const lessonsRelations = relations(lessons, ({ one }) => ({
+  module: one(modules, { fields: [lessons.moduleId], references: [modules.id] }),
 }));
 
 export const tests = pgTable('tests', {
