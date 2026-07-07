@@ -424,16 +424,19 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   ? m
                   : {
                       ...m,
-                      lessons: m.lessons.map((l) =>
-                        l.id !== lessonId
-                          ? l
-                          : {
-                              ...l,
-                              practiceBlocks: l.practiceBlocks.map((b) =>
-                                b.id === blockId ? { ...b, testId } : b,
-                              ),
-                            },
-                      ),
+                      lessons: m.lessons.map((l) => {
+                        if (l.id !== lessonId) return l;
+                        // Dedup: if setting testId, check no other block has it
+                        if (testId && l.practiceBlocks.some((b) => b.id !== blockId && b.testId === testId)) {
+                          return l; // Silently reject duplicate
+                        }
+                        return {
+                          ...l,
+                          practiceBlocks: l.practiceBlocks.map((b) =>
+                            b.id === blockId ? { ...b, testId } : b,
+                          ),
+                        };
+                      }),
                     },
               ),
             },
