@@ -19,6 +19,9 @@ import { ComingSoonPage } from './pages/ComingSoonPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { AllUsersPage } from './pages/AllUsersPage';
+import { SchoolSettingsPage } from './pages/SchoolSettingsPage';
+import { SchoolStaffPage } from './pages/SchoolStaffPage';
+import { SchoolInvitePage } from './pages/SchoolInvitePage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
@@ -50,7 +53,10 @@ const router = createBrowserRouter([
   { path: '/students', element: <TeacherRoute><AllUsersPage /></TeacherRoute> },
   { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
   { path: '/students/pending', element: <PrivateRoute><ComingSoonPage title="Ruxsat kutayotganlar" /></PrivateRoute> },
-  { path: '/school', element: <PrivateRoute><ComingSoonPage title="Mening Maktabim" /></PrivateRoute> },
+  { path: '/school', element: <Navigate to="/school/settings" replace /> },
+  { path: '/school/settings', element: <PrivateRoute><SchoolSettingsPage /></PrivateRoute> },
+  { path: '/school/staff', element: <PrivateRoute><SchoolStaffPage /></PrivateRoute> },
+  { path: '/school/invite', element: <PrivateRoute><SchoolInvitePage /></PrivateRoute> },
   { path: '/admins', element: <SuperAdminRoute><AdminsPage /></SuperAdminRoute> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
