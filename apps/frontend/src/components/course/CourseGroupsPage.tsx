@@ -35,7 +35,7 @@ function initials(name: string) {
 
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch }: CourseGroupsPageProps) {
   const {
-    courses, addGroup, renameGroup, toggleGroupChat, toggleGroupChannel,
+    courses, addGroup, renameGroup,
     setGroupCurators, addStudentToGroup, removeStudentFromGroup, deleteGroup,
   } = useCourseStore();
   const admin = useAuthStore((s) => s.admin);
@@ -188,14 +188,11 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggleGroupChat(courseId, group.id)}
-                    className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
-                      group.groupChatEnabled ? 'bg-indigo-500' : 'bg-gray-200'
-                    }`}
+                    disabled
+                    title="Tez orada"
+                    className="relative inline-block h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-100 p-0"
                   >
-                    <span className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      group.groupChatEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
+                    <span className="absolute top-0.5 block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow" />
                   </button>
                 </div>
 
@@ -206,14 +203,11 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   </div>
                   <button
                     type="button"
-                    onClick={() => toggleGroupChannel(courseId, group.id)}
-                    className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
-                      group.groupChannelEnabled ? 'bg-indigo-500' : 'bg-gray-200'
-                    }`}
+                    disabled
+                    title="Tez orada"
+                    className="relative inline-block h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-100 p-0"
                   >
-                    <span className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                      group.groupChannelEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                    }`} />
+                    <span className="absolute top-0.5 block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow" />
                   </button>
                 </div>
               </div>
