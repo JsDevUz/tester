@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type ApiCourse } from '../api/courses';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
 export const CONTENT_BLOCK_LIMIT = 7;
@@ -82,9 +83,10 @@ export interface Course {
 
 interface CourseState {
   courses: Course[];
-  addCourse: (title: string) => Course;
-  renameCourse: (courseId: string, title: string) => void;
-  deleteCourse: (courseId: string) => void;
+  loadCourses: () => Promise<void>;
+  addCourse: (title: string) => Promise<Course>;
+  renameCourse: (courseId: string, title: string) => Promise<void>;
+  deleteCourse: (courseId: string) => Promise<void>;
 
   addModule: (courseId: string, title: string) => Module | undefined;
   renameModule: (courseId: string, moduleId: string, title: string) => void;
@@ -128,20 +130,31 @@ function newId(): string {
   return crypto.randomUUID();
 }
 
+function toFrontendCourse(apiCourse: ApiCourse): Course {
+  return { id: apiCourse.id, title: apiCourse.title, modules: [], launches: [], groups: [] };
+}
+
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
 
-  addCourse: (title) => {
-    const course: Course = { id: newId(), title, modules: [], launches: [], groups: [] };
+  loadCourses: async () => {
+    const rows = await apiListCourses();
+    set({ courses: rows.map(toFrontendCourse) });
+  },
+  addCourse: async (title) => {
+    const row = await apiCreateCourse(title);
+    const course = toFrontendCourse(row);
     set({ courses: [...get().courses, course] });
     return course;
   },
-  renameCourse: (courseId, title) => {
+  renameCourse: async (courseId, title) => {
+    await apiRenameCourse(courseId, title);
     set({
       courses: get().courses.map((c) => (c.id === courseId ? { ...c, title } : c)),
     });
   },
-  deleteCourse: (courseId) => {
+  deleteCourse: async (courseId) => {
+    await apiDeleteCourse(courseId);
     set({ courses: get().courses.filter((c) => c.id !== courseId) });
   },
 
