@@ -55,6 +55,17 @@ export const folders = pgTable('folders', {
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
+export const courses = pgTable('courses', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const coursesRelations = relations(courses, ({ one }) => ({
+  owner: one(users, { fields: [courses.adminId], references: [users.id] }),
+}));
+
 export const tests = pgTable('tests', {
   id: uuid('id').primaryKey().defaultRandom(),
   folderId: uuid('folder_id').notNull().references(() => folders.id, { onDelete: 'cascade' }),
@@ -135,6 +146,7 @@ export const usersRelations = relations(users, ({ many }) => ({
   folders: many(folders),
   tests: many(tests),
   submissions: many(submissions),
+  courses: many(courses),
 }));
 
 export const foldersRelations = relations(folders, ({ one, many }) => ({
