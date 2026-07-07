@@ -14,6 +14,8 @@ import {
   ShieldCheck,
   LogOut,
   X,
+  SlidersHorizontal,
+  Link2,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
@@ -60,7 +62,17 @@ const SECTIONS: NavSection[] = [
       },
     ],
   },
-  { key: "school", label: "Mening Maktabim", icon: School, path: "/school" },
+  {
+    key: "school",
+    label: "Mening Maktabim",
+    icon: School,
+    path: "/school/settings",
+    subItems: [
+      { label: "Maktab sozlamalari", path: "/school/settings", icon: SlidersHorizontal },
+      { label: "Mening xodimlarim", path: "/school/staff", icon: UsersRound },
+      { label: "Ro'yxatdan o'tish", path: "/school/invite", icon: Link2 },
+    ],
+  },
 ];
 
 function isRouteMatch(pathname: string, path: string) {
