@@ -5,6 +5,4 @@ CREATE TABLE "courses" (
 	"created_at" timestamp with time zone DEFAULT now()
 );
 --> statement-breakpoint
-ALTER TABLE "submissions" RENAME COLUMN "mode" TO "submission_mode";--> statement-breakpoint
-ALTER TABLE "submissions" ADD COLUMN "violation_reason" text;--> statement-breakpoint
 ALTER TABLE "courses" ADD CONSTRAINT "courses_admin_id_users_id_fk" FOREIGN KEY ("admin_id") REFERENCES "public"."users"("id") ON DELETE cascade ON UPDATE no action;
