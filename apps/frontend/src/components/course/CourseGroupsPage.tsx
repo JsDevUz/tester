@@ -12,6 +12,7 @@ interface CourseGroupsPageProps {
   courseId: string;
   onBackToList: () => void;
   onSelectContent: () => void;
+  onSelectSettings: () => void;
   onSelectLaunch: () => void;
 }
 
@@ -33,7 +34,7 @@ function initials(name: string) {
   return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
-export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch }: CourseGroupsPageProps) {
+export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch }: CourseGroupsPageProps) {
   const {
     courses, addGroup, renameGroup,
     setGroupCurators, addStudentToGroup, removeStudentFromGroup, deleteGroup,
@@ -276,6 +277,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           onBackToList={onBackToList}
           activeFullTab="groups"
           onSelectContent={onSelectContent}
+          onSelectSettings={onSelectSettings}
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={() => {}}
         />

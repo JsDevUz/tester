@@ -9,6 +9,7 @@ interface CourseLaunchPageProps {
   courseId: string;
   onBackToList: () => void;
   onSelectContent: () => void;
+  onSelectSettings: () => void;
   onSelectGroups: () => void;
 }
 
@@ -21,7 +22,7 @@ function formatPlanDateRange(plan: PricingPlan): string {
   return `${start} — ${end}`;
 }
 
-export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectGroups }: CourseLaunchPageProps) {
+export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups }: CourseLaunchPageProps) {
   const { courses, addLaunch, toggleLaunchActive, renameLaunch, addPricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [modalOpen, setModalOpen] = useState(false);
@@ -141,6 +142,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
         onBackToList={onBackToList}
         activeFullTab="launch"
         onSelectContent={onSelectContent}
+        onSelectSettings={onSelectSettings}
         onSelectGroups={onSelectGroups}
         onSelectLaunch={() => {}}
       />

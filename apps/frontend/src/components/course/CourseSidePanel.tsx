@@ -17,7 +17,8 @@ interface CourseSidePanelProps {
   activeTab?: "content" | "practice";
   onSelectPractice?: () => void;
   onSelectContent?: () => void;
-  activeFullTab?: "content" | "launch" | "groups";
+  activeFullTab?: "content" | "settings" | "launch" | "groups";
+  onSelectSettings?: () => void;
   onSelectLaunch?: () => void;
   onSelectGroups?: () => void;
 }
@@ -103,6 +104,7 @@ export function CourseSidePanel({
   onSelectPractice,
   onSelectContent,
   activeFullTab = "content",
+  onSelectSettings,
   onSelectLaunch,
   onSelectGroups,
 }: CourseSidePanelProps) {
@@ -115,7 +117,7 @@ export function CourseSidePanel({
 
   function isTabClickable(key: string): boolean {
     if (variant !== "lesson") {
-      return key === "content" || key === "launch" || key === "groups";
+      return key === "content" || key === "settings" || key === "launch" || key === "groups";
     }
     if (key === "content") return true;
     if (key === "practice") return practiceEnabled;
@@ -126,6 +128,7 @@ export function CourseSidePanel({
     if (!isTabClickable(key)) return;
     if (key === "content") onSelectContent?.();
     if (key === "practice") onSelectPractice?.();
+    if (key === "settings") onSelectSettings?.();
     if (key === "launch") onSelectLaunch?.();
     if (key === "groups") onSelectGroups?.();
   }

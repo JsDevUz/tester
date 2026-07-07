@@ -9,6 +9,7 @@ interface CourseContentPageProps {
   courseId: string;
   onBackToList: () => void;
   onOpenLesson: (moduleId: string, lessonId: string) => void;
+  onSelectSettings?: () => void;
   onSelectLaunch?: () => void;
   onSelectGroups?: () => void;
 }
@@ -18,7 +19,7 @@ type ModalState =
   | { type: 'newLesson'; moduleId: string }
   | null;
 
-export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectLaunch, onSelectGroups }: CourseContentPageProps) {
+export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups }: CourseContentPageProps) {
   const { courses, addModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
@@ -100,7 +101,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                     <button
                       type="button"
                       onClick={() => deleteModule(courseId, module.id)}
-                      className="rounded-lg p-1.5 text-gray-300 opacity-0 transition-colors hover:bg-red-50 hover:text-red-400 group-hover:opacity-100"
+                      className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
                     >
                       <Trash2 size={14} />
                     </button>
@@ -136,7 +137,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                           <button
                             type="button"
                             onClick={() => deleteLesson(courseId, module.id, lesson.id)}
-                            className="rounded-lg p-1.5 text-gray-300 opacity-0 transition-colors hover:bg-red-50 hover:text-red-400 group-hover:opacity-100"
+                            className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
                           >
                             <Trash2 size={13} />
                           </button>
@@ -162,6 +163,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
         onBackToList={onBackToList}
         activeFullTab="content"
         onSelectContent={() => {}}
+        onSelectSettings={onSelectSettings}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
       />
