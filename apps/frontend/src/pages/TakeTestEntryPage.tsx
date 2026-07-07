@@ -185,7 +185,7 @@ export function TakeTestEntryPage() {
             {/* Name field */}
             <p className="text-sm font-semibold text-gray-700 mb-2">Ismingiz</p>
             {loggedInName ? (
-              <div className="w-full bg-gray-50rounded-2xl px-4 py-3.5 text-base text-gray-700 mb-2">
+              <div className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base text-gray-700 mb-2">
                 {loggedInName}
               </div>
             ) : (
@@ -197,7 +197,7 @@ export function TakeTestEntryPage() {
                   if (e.key === "Enter" && name.trim()) handleStart(e as any);
                 }}
                 placeholder="Ismingizni kiriting"
-                className="w-full bg-gray-50rounded-2xl px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
+                className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
               />
             )}
 

@@ -52,7 +52,7 @@ export function LiveJoinPage() {
           value={pin}
           onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
           placeholder="000000"
-          className="w-full max-w-xs text-center text-4xl font-black tracking-[0.3em] bg-gray-50rounded-2xl px-4 py-4 outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-6"
+          className="w-full max-w-xs text-center text-4xl font-black tracking-[0.3em] bg-gray-50 rounded-2xl border border-border px-4 py-4 outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-6"
         />
         <button
           type="submit"

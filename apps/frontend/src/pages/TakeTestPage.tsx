@@ -400,7 +400,7 @@ function DropPinQuestion({
     <div className="flex flex-col gap-2">
       <p className="text-xs text-gray-400">Rasmda to'g'ri joyni bosing</p>
       <div
-        className={`relative w-full rounded-2xl overflow-hiddenselect-none ${locked ? "cursor-default" : "cursor-crosshair"}`}
+        className={`relative w-full rounded-2xl overflow-hidden select-none ${locked ? "cursor-default" : "cursor-crosshair"}`}
         onClick={handleClick}
       >
         {imageUrl ? (
@@ -848,7 +848,7 @@ export function TakeTestPage() {
             }}
             placeholder="Javobingizni yozing..."
             readOnly={locked}
-            className="w-full bg-gray-50rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
         </div>
@@ -864,7 +864,7 @@ export function TakeTestPage() {
           }}
           placeholder="Javobingizni yozing..."
           readOnly={locked}
-          className="w-full bg-gray-50rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
+          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
           style={{ fontSize: "var(--q-fs, 16px)" }}
         />
       );
@@ -965,7 +965,7 @@ export function TakeTestPage() {
                   type="button"
                   onClick={() => arrangeAdd(q.id, opt.id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
-                  className="px-3.5 py-2 bg-whiterounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all"
+                  className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all"
                 >
                   {opt.text}
                 </button>
@@ -1355,7 +1355,7 @@ export function TakeTestPage() {
             {questions.map(
               (q, i) =>
                 q && (
-                  <div key={q.id} className="bg-white rounded-2xlp-5 shadow-sm">
+                  <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm">
                     {/* Header */}
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-bold flex items-center justify-center shrink-0">

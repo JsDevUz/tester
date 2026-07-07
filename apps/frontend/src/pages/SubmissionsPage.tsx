@@ -88,7 +88,7 @@ export function SubmissionsPage() {
   return (
     <AppShell>
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 w-full px-4 py-4 sm:px-6 sm:py-5">
+        <div className="flex-1 w-full px-4 py-4 sm:px-6 sm:py-5 bg-white rounded-2xl">
           {/* Header */}
           <button
             onClick={() => navigate(-1)}
@@ -123,7 +123,7 @@ export function SubmissionsPage() {
                     <div
                       key={sub.id}
                       onClick={() => navigate(`/submissions/${sub.id}`)}
-                      className="bg-white rounded-xlpx-3.5 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+                      className="bg-white rounded-xl px-3.5 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-transform"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">

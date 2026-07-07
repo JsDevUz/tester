@@ -57,7 +57,7 @@ export function StudentSubmissionDetailPage() {
 
         {detail && (
           <>
-            <section className="bg-white rounded-2xlpx-5 py-4 mb-4">
+            <section className="bg-white rounded-2xl px-5 py-4 mb-4">
               <p className="text-lg font-bold text-gray-900">
                 {detail.testName ?? "Test"}
               </p>

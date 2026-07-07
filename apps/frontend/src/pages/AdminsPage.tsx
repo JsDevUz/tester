@@ -90,7 +90,7 @@ export function AdminsPage() {
                         e.target.value as Admin["role"],
                       )
                     }
-                    className="text-xsrounded-lg px-2 py-1 bg-white text-gray-600 disabled:opacity-40"
+                    className="text-xs rounded-lg px-2 py-1 bg-white text-gray-600 disabled:opacity-40"
                   >
                     <option value="student">O'quvchi</option>
                     <option value="teacher">Ustoz</option>

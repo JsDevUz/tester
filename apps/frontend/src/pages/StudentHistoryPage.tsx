@@ -86,7 +86,7 @@ export function StudentHistoryPage() {
                 <button
                   key={s.id}
                   onClick={() => navigate(`/history/${s.id}`)}
-                  className="w-full bg-white rounded-2xlpx-4 py-4 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left active:scale-[0.99]"
+                  className="w-full bg-white rounded-2xl px-4 py-4 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left active:scale-[0.99]"
                 >
                   <div
                     className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${

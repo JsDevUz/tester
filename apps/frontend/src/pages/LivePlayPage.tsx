@@ -99,7 +99,7 @@ function DropPinInput({
     <div className="flex flex-col gap-2">
       <p className="text-xs text-gray-400">Rasmda to'g'ri joyni bosing</p>
       <div
-        className={`relative w-full rounded-2xl overflow-hiddenselect-none ${locked ? "cursor-default" : "cursor-crosshair"}`}
+        className={`relative w-full rounded-2xl overflow-hidden select-none ${locked ? "cursor-default" : "cursor-crosshair"}`}
         onClick={handleClick}
       >
         {imageUrl ? (
@@ -278,7 +278,7 @@ function ArrangeInput({
               type="button"
               disabled={locked}
               onClick={() => onSelect([...selected, opt.id])}
-              className="px-3.5 py-2 bg-whiterounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all text-sm"
+              className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all text-sm"
             >
               {opt.text}
             </button>
@@ -546,7 +546,7 @@ export function LivePlayPage() {
             id="captain-text-input"
             rows={3}
             placeholder="Javobni kiriting..."
-            className="w-full bg-gray-50rounded-2xl px-4 py-3 text-base outline-none focus:border-indigo-400"
+            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-indigo-400"
           />
           <button
             onClick={() => {
@@ -598,7 +598,7 @@ export function LivePlayPage() {
         <textarea
           id="captain-fallback-input"
           rows={2}
-          className="w-full bg-gray-50rounded-2xl px-4 py-3 text-base outline-none focus:border-indigo-400"
+          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-indigo-400"
         />
         <button
           onClick={() => {
@@ -826,7 +826,7 @@ export function LivePlayPage() {
                     disabled={phase === "reveal"}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
                   />
                 </div>
               ) : question.type === "open" ? (
@@ -837,7 +837,7 @@ export function LivePlayPage() {
                     disabled={phase === "reveal"}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50rounded-2xl px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
+                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
                   />
                 </div>
               ) : question.type === "slider" ? (

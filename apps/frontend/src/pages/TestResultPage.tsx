@@ -186,7 +186,7 @@ export function TestResultPage() {
                         </div>
                       ) : a.questionType === "slider" ? (
                         <div className="pl-9 text-xs text-gray-600 flex items-center gap-2">
-                          <span className="bg-white/80px-3 py-1.5 rounded-xl">
+                          <span className="bg-white/80 px-3 py-1.5 rounded-xl">
                             Javob:{" "}
                             <span className="font-medium">
                               {a.textAnswer || "—"}

@@ -39,7 +39,7 @@ function DropPinEditor({
       <img
         src={imageUrl}
         alt=""
-        className="w-full rounded-xl object-containselect-none pointer-events-none"
+        className="w-full rounded-xl object-contain select-none pointer-events-none"
         draggable={false}
       />
       {pin && (
@@ -369,7 +369,7 @@ export function QuestionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xlp-4 flex flex-col gap-3"
+      className="bg-white rounded-2xl p-4 flex flex-col gap-3"
     >
       <textarea
         value={text}
@@ -377,7 +377,7 @@ export function QuestionForm({
         rows={2}
         placeholder="Savol matni..."
         required
-        className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+        className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
       />
 
       {/* Media */}
@@ -521,7 +521,7 @@ export function QuestionForm({
             value={correctAnswer}
             onChange={(e) => setCorrectAnswer(e.target.value)}
             placeholder="To'g'ri javob..."
-            className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
           />
         </div>
       )}
@@ -543,7 +543,7 @@ export function QuestionForm({
                     opts[2] ?? { text: "", isCorrect: false },
                   ])
                 }
-                className="w-fullrounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
             <div>
@@ -559,7 +559,7 @@ export function QuestionForm({
                     opts[2] ?? { text: "", isCorrect: false },
                   ])
                 }
-                className="w-fullrounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
             <div>
@@ -575,7 +575,7 @@ export function QuestionForm({
                     { text: e.target.value, isCorrect: false },
                   ])
                 }
-                className="w-fullrounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
               />
             </div>
           </div>
@@ -586,7 +586,7 @@ export function QuestionForm({
               value={correctAnswer}
               onChange={(e) => setCorrectAnswer(e.target.value)}
               placeholder="Masalan: 42"
-              className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
             />
           </div>
         </div>
@@ -609,7 +609,7 @@ export function QuestionForm({
               onChange={(e) =>
                 setOpts([{ text: e.target.value, isCorrect: false }])
               }
-              className="w-20rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-lime-400"
+              className="w-20 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-lime-400"
             />
             <span className="text-[10px] text-gray-400">
               % (katta = keng, kichik = aniq)
@@ -756,7 +756,7 @@ export function QuestionForm({
                   .map((tok, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 bg-whiterounded-lg text-sm text-gray-700 shadow-sm"
+                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 shadow-sm"
                     >
                       {tok}
                     </span>
@@ -836,7 +836,7 @@ export function QuestionForm({
                       )
                     }
                     placeholder={`Chalg'ituvchi ${i + 1}`}
-                    className="flex-1rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-300"
+                    className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-300"
                   />
                   <button
                     type="button"
@@ -872,7 +872,7 @@ export function QuestionForm({
                   .map((tok, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 bg-whiterounded-lg text-sm text-gray-700 shadow-sm"
+                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 shadow-sm"
                     >
                       {tok}
                     </span>
@@ -941,7 +941,7 @@ export function QuestionForm({
                   setCorrectAnswer(e.target.value);
               }}
               placeholder="Masalan: O'zbekiston poytaxti..."
-              className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
             />
             <p className="text-[10px] text-gray-400 mt-1">
               Agar o'quvchi javobi yuqoridagi variantlarga mos kelmasa, AI shu
@@ -972,7 +972,7 @@ export function QuestionForm({
                   )
                 }
                 placeholder={`Variant ${i + 1}`}
-                className="flex-1rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
               <button
                 type="button"

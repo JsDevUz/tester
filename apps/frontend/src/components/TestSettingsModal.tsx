@@ -69,7 +69,7 @@ export function TestSettingsModal({
               value={name}
               onChange={(e) => setName(e.target.value)}
               placeholder="masalan: Matematika"
-              className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
             />
           </div>
           <div>
@@ -79,7 +79,7 @@ export function TestSettingsModal({
               onChange={(e) => setDescription(e.target.value)}
               rows={2}
               placeholder="Ixtiyoriy tavsif"
-              className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
             />
           </div>
           <div className="flex items-center gap-3">
@@ -99,7 +99,7 @@ export function TestSettingsModal({
                 min={1}
                 value={timeLimit}
                 onChange={(e) => setTimeLimit(Number(e.target.value))}
-                className="w-20rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-20 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
             )}
             {hasTimeLimit && (
@@ -118,7 +118,7 @@ export function TestSettingsModal({
                 setShowResults(v);
                 if (v === "per_question") setOneByOne(true);
               }}
-              className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
             >
               <option value="immediately">Topshirilgandan keyin darhol</option>
               <option value="per_question">
@@ -184,7 +184,7 @@ export function TestSettingsModal({
                 type="datetime-local"
                 value={deadline}
                 onChange={(e) => setDeadline(e.target.value)}
-                className="w-fullrounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
               />
             )}
           </div>

@@ -31,7 +31,7 @@ export function FolderContextMenu({
     <div
       ref={ref}
       style={{ position: "fixed", top: y, left: x, zIndex: 1000 }}
-      className="bg-white rounded-xl shadow-xlpy-1 min-w-36 text-sm"
+      className="bg-white rounded-xl shadow-xl py-1 min-w-36 text-sm"
     >
       <button
         onClick={onRename}

@@ -184,7 +184,7 @@ export function StudentsPage() {
               {/* Mobile: card list */}
               <div className="md:hidden flex flex-col gap-2">
                 {filtered.map((s) => (
-                  <div key={s.id} className="bg-white rounded-2xlpx-3.5 py-3">
+                  <div key={s.id} className="bg-white rounded-2xl px-3.5 py-3">
                     <div className="flex items-center gap-3">
                       <div
                         className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(s.id)}`}

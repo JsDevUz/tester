@@ -92,7 +92,7 @@ export function NewLiveSessionModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Test nomini qidiring..."
-              className="w-full bg-gray-50rounded-2xl pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
+              className="w-full bg-gray-50 rounded-2xl border border-border pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5 mb-6 max-h-56 overflow-y-auto">

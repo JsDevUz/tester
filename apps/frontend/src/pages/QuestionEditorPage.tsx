@@ -94,7 +94,7 @@ function InlineQuestionCard({
   }
 
   return (
-    <div className="bg-white rounded-xlp-4">
+    <div className="bg-white rounded-xl p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <span className="text-xs text-gray-400 mr-2">{index + 1}.</span>
@@ -353,7 +353,7 @@ export function QuestionEditorPage() {
   return (
     <AppShell>
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 p-6 w-full">
+        <div className="flex-1 p-6 w-full bg-white rounded-2xl">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => navigate(`/folders/${test?.folderId}`)}
@@ -370,7 +370,7 @@ export function QuestionEditorPage() {
             </span>
           </div>
 
-          <div className="flex gap-1 mb-4 bg-white rounded-xl p-1w-fit">
+          <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 w-fit">
             {(["manual", "bulk"] as const).map((t) => (
               <button
                 key={t}

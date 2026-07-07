@@ -205,7 +205,7 @@ export function AllUsersPage() {
                 {pageItems.map((u) => (
                   <div
                     key={u.id}
-                    className="bg-white rounded-2xlpx-3.5 py-3 flex items-center gap-3"
+                    className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3"
                   >
                     <div
                       className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(u.id)}`}

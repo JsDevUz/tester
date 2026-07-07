@@ -390,7 +390,7 @@ export function LiveHostPage() {
                     if (e.key === "Enter") handleCreateTeam();
                   }}
                   placeholder="Guruh nomi (masalan Guruh 1)"
-                  className="w-64 bg-gray-50rounded-2xl px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                  className="w-64 bg-gray-50 rounded-2xl border border-border px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
                 />
                 <button
                   onClick={handleCreateTeam}
