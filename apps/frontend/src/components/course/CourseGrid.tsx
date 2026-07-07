@@ -44,7 +44,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
                 key={course.id}
                 type="button"
                 onClick={() => onOpenCourse(course.id)}
-                className="flex flex-col gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                className="flex flex-col gap-3 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-indigo-50/30"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
                   <GraduationCap size={20} />

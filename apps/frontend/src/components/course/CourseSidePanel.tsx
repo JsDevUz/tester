@@ -59,7 +59,7 @@ export function CourseSidePanel({
 
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-2">
+      <div className="rounded-2xl bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = isTabActive(tab.key);

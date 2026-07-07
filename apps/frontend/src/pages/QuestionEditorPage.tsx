@@ -1,15 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
-import { Check, Circle, Pencil, Trash2, X, Image, Music } from 'lucide-react';
-import { AppShell } from '../components/AppShell';
-import { QuestionForm } from '../components/QuestionForm';
-import { BulkImportTab } from '../components/BulkImportTab';
-import { useQuestionStore } from '../stores/questionStore';
-import { apiGetTest } from '../api/tests';
-import type { TestDetail } from '../api/tests';
-import type { Question } from '../api/questions';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate } from "react-router-dom";
+import { Check, Circle, Pencil, Trash2, X, Image, Music } from "lucide-react";
+import { AppShell } from "../components/AppShell";
+import { QuestionForm } from "../components/QuestionForm";
+import { BulkImportTab } from "../components/BulkImportTab";
+import { useQuestionStore } from "../stores/questionStore";
+import { apiGetTest } from "../api/tests";
+import type { TestDetail } from "../api/tests";
+import type { Question } from "../api/questions";
 
-type SaveData = { text: string; type: string; options: Array<{ text: string; isCorrect: boolean }>; imageUrl?: string | null; audioUrl?: string | null; correctAnswer?: string | null };
+type SaveData = {
+  text: string;
+  type: string;
+  options: Array<{ text: string; isCorrect: boolean }>;
+  imageUrl?: string | null;
+  audioUrl?: string | null;
+  correctAnswer?: string | null;
+};
 
 interface InlineCardProps {
   index: number;
@@ -18,10 +25,19 @@ interface InlineCardProps {
   onDelete: () => void;
 }
 
-const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
-function mediaUrl(url: string) { return url.startsWith('http') ? url : `${BACKEND}${url}`; }
+const BACKEND =
+  import.meta.env.VITE_API_URL?.replace("/api/v1", "") ??
+  "http://localhost:3001";
+function mediaUrl(url: string) {
+  return url.startsWith("http") ? url : `${BACKEND}${url}`;
+}
 
-function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCardProps) {
+function InlineQuestionCard({
+  index,
+  question: q,
+  onSave,
+  onDelete,
+}: InlineCardProps) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
 
@@ -36,8 +52,13 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
     return (
       <div className="bg-white rounded-xl border border-indigo-200 p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-400">{index + 1}. savol — tahrirlash</span>
-          <button onClick={() => setEditing(false)} className="text-gray-300 hover:text-gray-500">
+          <span className="text-xs text-gray-400">
+            {index + 1}. savol — tahrirlash
+          </span>
+          <button
+            onClick={() => setEditing(false)}
+            className="text-gray-300 hover:text-gray-500"
+          >
             <X size={16} />
           </button>
         </div>
@@ -45,13 +66,26 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
           key={q.id}
           initial={{
             text: q.text,
-            type: q.type as 'single' | 'multi' | 'open' | 'arrange' | 'truefalse' | 'reorder' | 'matching' | 'fillblank' | 'slider' | 'droppin',
-            options: q.options.map((o) => ({ text: o.text, isCorrect: o.isCorrect })),
+            type: q.type as
+              | "single"
+              | "multi"
+              | "open"
+              | "arrange"
+              | "truefalse"
+              | "reorder"
+              | "matching"
+              | "fillblank"
+              | "slider"
+              | "droppin",
+            options: q.options.map((o) => ({
+              text: o.text,
+              isCorrect: o.isCorrect,
+            })),
             imageUrl: q.imageUrl,
             audioUrl: q.audioUrl,
             correctAnswer: q.correctAnswer,
           }}
-          submitLabel={saving ? 'Saqlanmoqda...' : 'Saqlash'}
+          submitLabel={saving ? "Saqlanmoqda..." : "Saqlash"}
           onCancel={() => setEditing(false)}
           onSubmit={handleSave}
         />
@@ -60,76 +94,137 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4">
+    <div className="bg-white rounded-xlp-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <span className="text-xs text-gray-400 mr-2">{index + 1}.</span>
           <span className="text-sm text-gray-800">{q.text}</span>
-          <span className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${
-            q.type === 'single' ? 'bg-blue-100 text-blue-600' :
-            q.type === 'multi' ? 'bg-purple-100 text-purple-600' :
-            q.type === 'arrange' ? 'bg-amber-100 text-amber-600' :
-            q.type === 'truefalse' ? 'bg-green-100 text-green-600' :
-            q.type === 'reorder' ? 'bg-orange-100 text-orange-600' :
-            q.type === 'matching' ? 'bg-cyan-100 text-cyan-600' :
-            q.type === 'fillblank' ? 'bg-pink-100 text-pink-600' :
-            q.type === 'slider' ? 'bg-sky-100 text-sky-600' :
-            q.type === 'droppin' ? 'bg-lime-100 text-lime-600' :
-            'bg-gray-100 text-gray-500'}`}>
-            {q.type === 'single' ? 'Yagona' :
-             q.type === 'multi' ? "Ko'p tanlov" :
-             q.type === 'arrange' ? 'Gap tuzish' :
-             q.type === 'truefalse' ? "To'g'ri/Noto'g'ri" :
-             q.type === 'reorder' ? 'Tartibga solish' :
-             q.type === 'matching' ? 'Moslashtirish' :
-             q.type === 'fillblank' ? "Bo'sh joy" :
-             q.type === 'slider' ? 'Slider' :
-             q.type === 'droppin' ? 'Drop Pin' :
-             'Ochiq'}
+          <span
+            className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${
+              q.type === "single"
+                ? "bg-blue-100 text-blue-600"
+                : q.type === "multi"
+                  ? "bg-purple-100 text-purple-600"
+                  : q.type === "arrange"
+                    ? "bg-amber-100 text-amber-600"
+                    : q.type === "truefalse"
+                      ? "bg-green-100 text-green-600"
+                      : q.type === "reorder"
+                        ? "bg-orange-100 text-orange-600"
+                        : q.type === "matching"
+                          ? "bg-cyan-100 text-cyan-600"
+                          : q.type === "fillblank"
+                            ? "bg-pink-100 text-pink-600"
+                            : q.type === "slider"
+                              ? "bg-sky-100 text-sky-600"
+                              : q.type === "droppin"
+                                ? "bg-lime-100 text-lime-600"
+                                : "bg-gray-100 text-gray-500"
+            }`}
+          >
+            {q.type === "single"
+              ? "Yagona"
+              : q.type === "multi"
+                ? "Ko'p tanlov"
+                : q.type === "arrange"
+                  ? "Gap tuzish"
+                  : q.type === "truefalse"
+                    ? "To'g'ri/Noto'g'ri"
+                    : q.type === "reorder"
+                      ? "Tartibga solish"
+                      : q.type === "matching"
+                        ? "Moslashtirish"
+                        : q.type === "fillblank"
+                          ? "Bo'sh joy"
+                          : q.type === "slider"
+                            ? "Slider"
+                            : q.type === "droppin"
+                              ? "Drop Pin"
+                              : "Ochiq"}
           </span>
-          {q.imageUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400"><Image size={10} /> rasm</span>}
-          {q.audioUrl && <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-purple-400"><Music size={10} /> audio</span>}
+          {q.imageUrl && (
+            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400">
+              <Image size={10} /> rasm
+            </span>
+          )}
+          {q.audioUrl && (
+            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-purple-400">
+              <Music size={10} /> audio
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-1 shrink-0">
-          <button onClick={() => setEditing(true)} className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors">
+          <button
+            onClick={() => setEditing(true)}
+            className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+          >
             <Pencil size={14} />
           </button>
-          <button onClick={onDelete} className="p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors">
+          <button
+            onClick={onDelete}
+            className="p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+          >
             <Trash2 size={14} />
           </button>
         </div>
       </div>
       {q.imageUrl && (
-        <img src={mediaUrl(q.imageUrl)} alt="" className="mt-2 h-24 w-auto rounded-lg object-cover border border-gray-100" />
+        <img
+          src={mediaUrl(q.imageUrl)}
+          alt=""
+          className="mt-2 h-24 w-auto rounded-lg object-cover border border-border"
+        />
       )}
       {q.audioUrl && (
-        <audio src={mediaUrl(q.audioUrl)} controls className="mt-2 h-8 w-full" />
+        <audio
+          src={mediaUrl(q.audioUrl)}
+          controls
+          className="mt-2 h-8 w-full"
+        />
       )}
-      {q.type === 'arrange' && q.options.length > 0 ? (
+      {q.type === "arrange" && q.options.length > 0 ? (
         <div className="mt-2">
           <div className="flex flex-wrap gap-1 mb-1">
             {q.options
               .filter((o) => o.isCorrect)
               .sort((a, b) => a.orderIndex - b.orderIndex)
               .map((o, i) => (
-                <span key={o.id} className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-lg">
-                  <span className="text-green-400 font-mono">{i + 1}.</span> {o.text}
+                <span
+                  key={o.id}
+                  className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-lg"
+                >
+                  <span className="text-green-400 font-mono">{i + 1}.</span>{" "}
+                  {o.text}
                 </span>
               ))}
           </div>
           {q.options.some((o) => !o.isCorrect) && (
             <div className="flex flex-wrap gap-1">
-              {q.options.filter((o) => !o.isCorrect).map((o) => (
-                <span key={o.id} className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-lg">{o.text}</span>
-              ))}
+              {q.options
+                .filter((o) => !o.isCorrect)
+                .map((o) => (
+                  <span
+                    key={o.id}
+                    className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-lg"
+                  >
+                    {o.text}
+                  </span>
+                ))}
             </div>
           )}
         </div>
       ) : q.options.length > 0 ? (
         <ul className="mt-2 flex flex-col gap-1">
           {q.options.map((o) => (
-            <li key={o.id} className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${o.isCorrect ? 'bg-green-50 text-green-700' : 'text-gray-400'}`}>
-              {o.isCorrect ? <Check size={10} /> : <Circle size={10} className="opacity-30" />}
+            <li
+              key={o.id}
+              className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${o.isCorrect ? "bg-green-50 text-green-700" : "text-gray-400"}`}
+            >
+              {o.isCorrect ? (
+                <Check size={10} />
+              ) : (
+                <Circle size={10} className="opacity-30" />
+              )}
               {o.text}
             </li>
           ))}
@@ -142,9 +237,16 @@ function InlineQuestionCard({ index, question: q, onSave, onDelete }: InlineCard
 export function QuestionEditorPage() {
   const { id: testId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { questions, setQuestions, addQuestion, bulkImport, replaceQuestion, deleteQuestion } = useQuestionStore();
+  const {
+    questions,
+    setQuestions,
+    addQuestion,
+    bulkImport,
+    replaceQuestion,
+    deleteQuestion,
+  } = useQuestionStore();
   const [test, setTest] = useState<TestDetail | null>(null);
-  const [tab, setTab] = useState<'manual' | 'bulk'>('manual');
+  const [tab, setTab] = useState<"manual" | "bulk">("manual");
 
   useEffect(() => {
     if (!testId) return;
@@ -172,115 +274,142 @@ export function QuestionEditorPage() {
   }
 
   function questionsToBulkText(): string {
-    return questions.map((q) => {
-      if (q.type === 'open') {
-        const correctOpts = q.options.filter((o) => o.isCorrect);
-        const prefix = correctOpts.length > 0 ? '#~ ' : '# ';
-        const lines = [`${prefix}${q.text}`];
-        for (const o of correctOpts) lines.push(`+ ${o.text}`);
-        if (q.correctAnswer) lines.push(`@ ${q.correctAnswer}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'single' || q.type === 'multi') {
-        const lines = [`# ${q.text}`];
-        for (const o of q.options) lines.push(`${o.isCorrect ? '+' : '-'} ${o.text}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'truefalse') {
-        const correctIsTrue = q.options.find((o) => o.isCorrect)?.text === "To'g'ri";
-        return `${correctIsTrue ? '#? ' : '#?f '}${q.text}`;
-      }
-      if (q.type === 'reorder') {
-        const lines = [`#> ${q.text}`];
-        const sorted = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        for (const o of sorted) lines.push(`> ${o.text}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'arrange') {
-        const lines = [`# ${q.text}`];
-        const correct = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        const distractors = q.options.filter((o) => !o.isCorrect);
-        for (const o of correct) lines.push(`> ${o.text}`);
-        for (const o of distractors) lines.push(`~ ${o.text}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'fillblank') {
-        const lines = [`#= ${q.text}`];
-        if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'matching') {
-        const lines = [`#| ${q.text}`];
-        const lefts = [...q.options].filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        const rights = [...q.options].filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
-        for (let i = 0; i < lefts.length; i++) {
-          lines.push(`| ${lefts[i].text} :: ${rights[i]?.text ?? ''}`);
+    return questions
+      .map((q) => {
+        if (q.type === "open") {
+          const correctOpts = q.options.filter((o) => o.isCorrect);
+          const prefix = correctOpts.length > 0 ? "#~ " : "# ";
+          const lines = [`${prefix}${q.text}`];
+          for (const o of correctOpts) lines.push(`+ ${o.text}`);
+          if (q.correctAnswer) lines.push(`@ ${q.correctAnswer}`);
+          return lines.join("\n");
         }
-        return lines.join('\n');
-      }
-      if (q.type === 'slider') {
-        const lines = [`#$ ${q.text}`];
-        const min = q.options[0]?.text ?? '0';
-        const max = q.options[1]?.text ?? '100';
-        const step = q.options[2]?.text ?? '1';
-        lines.push(`= ${q.correctAnswer ?? ''}`);
-        lines.push(`~ ${min}..${max} step ${step}`);
-        return lines.join('\n');
-      }
-      if (q.type === 'droppin') {
-        const lines = [`#@ ${q.text}`];
-        if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
-        return lines.join('\n');
-      }
-      return `# ${q.text}`;
-    }).join('\n\n');
+        if (q.type === "single" || q.type === "multi") {
+          const lines = [`# ${q.text}`];
+          for (const o of q.options)
+            lines.push(`${o.isCorrect ? "+" : "-"} ${o.text}`);
+          return lines.join("\n");
+        }
+        if (q.type === "truefalse") {
+          const correctIsTrue =
+            q.options.find((o) => o.isCorrect)?.text === "To'g'ri";
+          return `${correctIsTrue ? "#? " : "#?f "}${q.text}`;
+        }
+        if (q.type === "reorder") {
+          const lines = [`#> ${q.text}`];
+          const sorted = [...q.options]
+            .filter((o) => o.isCorrect)
+            .sort((a, b) => a.orderIndex - b.orderIndex);
+          for (const o of sorted) lines.push(`> ${o.text}`);
+          return lines.join("\n");
+        }
+        if (q.type === "arrange") {
+          const lines = [`# ${q.text}`];
+          const correct = [...q.options]
+            .filter((o) => o.isCorrect)
+            .sort((a, b) => a.orderIndex - b.orderIndex);
+          const distractors = q.options.filter((o) => !o.isCorrect);
+          for (const o of correct) lines.push(`> ${o.text}`);
+          for (const o of distractors) lines.push(`~ ${o.text}`);
+          return lines.join("\n");
+        }
+        if (q.type === "fillblank") {
+          const lines = [`#= ${q.text}`];
+          if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
+          return lines.join("\n");
+        }
+        if (q.type === "matching") {
+          const lines = [`#| ${q.text}`];
+          const lefts = [...q.options]
+            .filter((o) => o.isCorrect)
+            .sort((a, b) => a.orderIndex - b.orderIndex);
+          const rights = [...q.options]
+            .filter((o) => !o.isCorrect)
+            .sort((a, b) => a.orderIndex - b.orderIndex);
+          for (let i = 0; i < lefts.length; i++) {
+            lines.push(`| ${lefts[i].text} :: ${rights[i]?.text ?? ""}`);
+          }
+          return lines.join("\n");
+        }
+        if (q.type === "slider") {
+          const lines = [`#$ ${q.text}`];
+          const min = q.options[0]?.text ?? "0";
+          const max = q.options[1]?.text ?? "100";
+          const step = q.options[2]?.text ?? "1";
+          lines.push(`= ${q.correctAnswer ?? ""}`);
+          lines.push(`~ ${min}..${max} step ${step}`);
+          return lines.join("\n");
+        }
+        if (q.type === "droppin") {
+          const lines = [`#@ ${q.text}`];
+          if (q.correctAnswer) lines.push(`= ${q.correctAnswer}`);
+          return lines.join("\n");
+        }
+        return `# ${q.text}`;
+      })
+      .join("\n\n");
   }
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-white flex flex-col">
-      <div className="flex-1 p-6 w-full">
-        <div className="flex items-center gap-2 mb-4">
-          <button onClick={() => navigate(`/folders/${test?.folderId}`)} className="text-gray-400 hover:text-gray-600 text-sm">
-            ← Orqaga
-          </button>
-          <span className="text-gray-400">/</span>
-          <h2 className="text-sm font-medium text-gray-700">{test?.name ?? 'Test'}</h2>
-          <span className="text-xs text-gray-400 ml-auto">{questions.length} ta savol</span>
-        </div>
-
-        <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 border border-gray-100 w-fit">
-          {(['manual', 'bulk'] as const).map((t) => (
-            <button key={t} onClick={() => setTab(t)}
-              className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? 'bg-indigo-500 text-white' : 'text-gray-500 hover:text-gray-700'}`}>
-              {t === 'manual' ? 'Qo\'lda kiritish' : 'Ommaviy import'}
+      <div className="min-h-screen flex flex-col">
+        <div className="flex-1 p-6 w-full">
+          <div className="flex items-center gap-2 mb-4">
+            <button
+              onClick={() => navigate(`/folders/${test?.folderId}`)}
+              className="text-gray-400 hover:text-gray-600 text-sm"
+            >
+              ← Orqaga
             </button>
-          ))}
-        </div>
+            <span className="text-gray-400">/</span>
+            <h2 className="text-sm font-medium text-gray-700">
+              {test?.name ?? "Test"}
+            </h2>
+            <span className="text-xs text-gray-400 ml-auto">
+              {questions.length} ta savol
+            </span>
+          </div>
 
-        <div>
-          {tab === 'manual' ? (
-            <QuestionForm key="new" onSubmit={handleAddQuestion} />
-          ) : (
-            <BulkImportTab onImport={handleBulkImport} bulkText={questionsToBulkText()} />
-          )}
-        </div>
-
-        {questions.length > 0 && (
-          <div className="mt-6 flex flex-col gap-3">
-            <h3 className="text-sm font-medium text-gray-500">Savollar ({questions.length})</h3>
-            {questions.map((q, i) => (
-              <InlineQuestionCard
-                key={q.id}
-                index={i}
-                question={q}
-                onSave={(data) => handleSaveQuestion(q, data)}
-                onDelete={() => deleteQuestion(q.id)}
-              />
+          <div className="flex gap-1 mb-4 bg-white rounded-xl p-1w-fit">
+            {(["manual", "bulk"] as const).map((t) => (
+              <button
+                key={t}
+                onClick={() => setTab(t)}
+                className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-gray-700"}`}
+              >
+                {t === "manual" ? "Qo'lda kiritish" : "Ommaviy import"}
+              </button>
             ))}
           </div>
-        )}
-      </div>
+
+          <div>
+            {tab === "manual" ? (
+              <QuestionForm key="new" onSubmit={handleAddQuestion} />
+            ) : (
+              <BulkImportTab
+                onImport={handleBulkImport}
+                bulkText={questionsToBulkText()}
+              />
+            )}
+          </div>
+
+          {questions.length > 0 && (
+            <div className="mt-6 flex flex-col gap-3">
+              <h3 className="text-sm font-medium text-gray-500">
+                Savollar ({questions.length})
+              </h3>
+              {questions.map((q, i) => (
+                <InlineQuestionCard
+                  key={q.id}
+                  index={i}
+                  question={q}
+                  onSave={(data) => handleSaveQuestion(q, data)}
+                  onDelete={() => deleteQuestion(q.id)}
+                />
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </AppShell>
   );

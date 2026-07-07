@@ -31,8 +31,8 @@ export function PracticeBlockPicker({ onPickType, disabled = false, limitText }:
               onClick={() => onPickType(item.type)}
               className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${
                 disabled
-                  ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
-                  : 'border-2 border-gray-100 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/30'
+                  ? 'cursor-not-allowed bg-gray-50 text-gray-300'
+                  : 'bg-white text-gray-600 hover:bg-indigo-50/30'
               }`}
             >
               <Icon size={22} className={disabled ? 'text-gray-300' : 'text-indigo-400'} />

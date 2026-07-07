@@ -1,5 +1,9 @@
 @import "tailwindcss";
 
+@theme {
+  --color-border: #d7d8d9;
+}
+
 html {
   touch-action: pan-x pan-y;
   -ms-touch-action: pan-x pan-y;
@@ -8,7 +12,7 @@ html {
 body {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: #f9f9f9;
+  background: #f6f6f6;
 }
 
 /* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish.

@@ -44,7 +44,7 @@ export function ContentBlockView({
   const accept = block.type === 'video' ? 'video/*' : block.type === 'image' ? 'image/*' : '*/*';
 
   return (
-    <div className="rounded-2xl border-2 border-gray-100 bg-white">
+    <div className="rounded-2xl bg-white">
       <div className="flex items-center gap-2.5 px-4 py-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
           <Icon size={15} />
@@ -89,7 +89,7 @@ export function ContentBlockView({
       </div>
 
       {!collapsed && (
-        <div className="border-t border-gray-100 px-4 py-4">
+        <div className="px-4 py-4">
           {block.type === 'editor' && (
             <div className="flex flex-col gap-3">
               <div>
@@ -98,7 +98,7 @@ export function ContentBlockView({
                   value={block.label ?? ''}
                   onChange={(e) => onChangeLabel(e.target.value)}
                   placeholder="Sarlavhani kiriting"
-                  className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 />
               </div>
               <EditorBlock html={block.html ?? ''} onChange={onChangeHtml} />
@@ -116,7 +116,7 @@ export function ContentBlockView({
                       value={block.embedUrl ?? ''}
                       onChange={(e) => onChangeEmbedUrl(e.target.value)}
                       placeholder="Yoki youtube havolasi"
-                      className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 py-2.5 pl-9 pr-4 text-sm outline-none focus:border-indigo-400"
+                      className="w-full rounded-xl bg-gray-50 py-2.5 pl-9 pr-4 text-sm outline-none"
                     />
                   </div>
                 </div>
@@ -124,7 +124,7 @@ export function ContentBlockView({
 
               {!block.embedUrl && (
                 <label
-                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30 ${
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-indigo-50/30 ${
                     block.previewUrl ? 'p-2' : 'py-10'
                   }`}
                 >
@@ -164,7 +164,7 @@ export function ContentBlockView({
                   value={block.label ?? ''}
                   onChange={(e) => onChangeLabel(e.target.value)}
                   placeholder="Nomini kiriting"
-                  className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 />
               </div>
             </div>

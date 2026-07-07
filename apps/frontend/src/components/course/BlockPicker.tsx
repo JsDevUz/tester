@@ -1,7 +1,7 @@
 import { useRef } from 'react';
 import {
   LayoutGrid, Film, Mic, MousePointer2, MessageSquare, ListChecks,
-  Link2, FileStack, Paperclip, Image as ImageIcon, type LucideIcon,
+  Link2, FileStack, Paperclip, Code2, type LucideIcon,
 } from 'lucide-react';
 
 interface BlockPickerProps {
@@ -28,16 +28,17 @@ const ROW_1: BlockItem[] = [
   { key: 'editor', label: 'Tahrirchi', icon: LayoutGrid },
   { key: 'video', label: 'Video', icon: Film },
   { key: 'audio', label: 'Audio', icon: Mic, disabled: true },
+  { key: 'embed', label: 'Embed', icon: Code2, disabled: true },
 ];
 
 const ROW_2: BlockItem[] = [
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'message', label: 'Xabar', icon: MessageSquare, disabled: true },
   { key: 'checklist', label: 'Chek-list', icon: ListChecks, disabled: true },
+  { key: 'divider', label: "Bo'lish belgisi", icon: Link2, disabled: true },
 ];
 
 const ROW_3: BlockItem[] = [
-  { key: 'divider', label: "Bo'lish belgisi", icon: Link2, disabled: true },
   { key: 'notion', label: 'Notion', icon: FileStack, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
@@ -71,12 +72,7 @@ export function BlockPicker({ onPickEditor, onPickFile, disabled = false, limitT
     else if (item.key === 'video' || item.key === 'file') openFilePicker(item.key);
   }
 
-  // "Rasm" alohida ROW_1'ga mos kelmagani uchun uni Video yonida ko'rsatamiz
-  const rows = [
-    [...ROW_1, { key: 'image', label: 'Rasm', icon: ImageIcon } as BlockItem],
-    ROW_2,
-    ROW_3,
-  ];
+  const rows = [ROW_1, ROW_2, ROW_3];
 
   return (
     <div>
@@ -89,20 +85,28 @@ export function BlockPicker({ onPickEditor, onPickFile, disabled = false, limitT
           <div key={i} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             {row.map((item) => {
               const Icon = item.icon;
-              const isImage = item.key === 'image';
+              const isDisabled = disabled || item.disabled;
               return (
                 <button
                   key={item.key}
                   type="button"
-                  disabled={disabled || item.disabled}
-                  onClick={() => (isImage ? openFilePicker('image') : handleClick(item))}
-                  className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${
-                    disabled || item.disabled
-                      ? 'cursor-not-allowed border border-gray-100 bg-gray-50 text-gray-300'
-                      : 'border-2 border-gray-100 bg-white text-gray-600 hover:border-indigo-200 hover:bg-indigo-50/30'
+                  disabled={isDisabled}
+                  onClick={() => handleClick(item)}
+                  className={`group flex flex-col items-center gap-2.5 rounded-2xl px-4 py-5 text-sm font-medium transition-all duration-200 ${
+                    isDisabled
+                      ? 'cursor-not-allowed bg-gray-50/60 text-gray-300'
+                      : 'bg-white text-gray-600 hover:bg-indigo-50/30'
                   }`}
                 >
-                  <Icon size={22} className={disabled || item.disabled ? 'text-gray-300' : 'text-indigo-400'} />
+                  <span
+                    className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
+                      isDisabled
+                        ? 'bg-gray-100 text-gray-300'
+                        : 'bg-indigo-50 text-indigo-500 group-hover:bg-indigo-100'
+                    }`}
+                  >
+                    <Icon size={20} />
+                  </span>
                   {item.label}
                 </button>
               );

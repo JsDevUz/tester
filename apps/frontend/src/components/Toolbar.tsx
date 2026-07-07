@@ -11,7 +11,7 @@ export function Toolbar() {
   }
 
   return (
-    <div className="h-12 bg-white/80 backdrop-blur border-b border-gray-200 flex items-center justify-between px-4">
+    <div className="h-12 bg-white/80 backdrop-blur border-b border-border flex items-center justify-between px-4">
       <span className="font-medium text-gray-700">{admin?.name}</span>
       <div className="flex gap-2">
         <button

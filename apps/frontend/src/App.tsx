@@ -17,6 +17,8 @@ import { LiveJoinPage } from './pages/LiveJoinPage';
 import { LivePlayPage } from './pages/LivePlayPage';
 import { ComingSoonPage } from './pages/ComingSoonPage';
 import { CoursesPage } from './pages/CoursesPage';
+import { StudentsPage } from './pages/StudentsPage';
+import { AllUsersPage } from './pages/AllUsersPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
@@ -45,7 +47,8 @@ const router = createBrowserRouter([
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
   { path: '/payments', element: <PrivateRoute><ComingSoonPage title="To'lovlar" /></PrivateRoute> },
-  { path: '/students', element: <PrivateRoute><ComingSoonPage title="O'quvchilar — Barchasi" /></PrivateRoute> },
+  { path: '/students', element: <TeacherRoute><AllUsersPage /></TeacherRoute> },
+  { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
   { path: '/students/pending', element: <PrivateRoute><ComingSoonPage title="Ruxsat kutayotganlar" /></PrivateRoute> },
   { path: '/school', element: <PrivateRoute><ComingSoonPage title="Mening Maktabim" /></PrivateRoute> },
   { path: '/admins', element: <SuperAdminRoute><AdminsPage /></SuperAdminRoute> },

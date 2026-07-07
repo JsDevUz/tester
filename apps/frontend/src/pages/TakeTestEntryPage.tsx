@@ -1,17 +1,22 @@
-import { useEffect, useState } from 'react';
-import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
-import { Clock, Calendar, ChevronRight, Lock, FileText } from 'lucide-react';
-import { apiGetPublicTest, apiStartSubmission, apiGetSubmission, type PublicTest } from '../api/delivery';
-import { apiGetMe } from '../api/auth';
-import { useAuthStore } from '../stores/authStore';
-import { formatDateTime } from '../utils/date';
+import { useEffect, useState } from "react";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
+import { Clock, Calendar, ChevronRight, Lock, FileText } from "lucide-react";
+import {
+  apiGetPublicTest,
+  apiStartSubmission,
+  apiGetSubmission,
+  type PublicTest,
+} from "../api/delivery";
+import { apiGetMe } from "../api/auth";
+import { useAuthStore } from "../stores/authStore";
+import { formatDateTime } from "../utils/date";
 
 export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const [test, setTest] = useState<PublicTest | null>(null);
-  const [name, setName] = useState('');
+  const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -20,32 +25,44 @@ export function TakeTestEntryPage() {
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
   useEffect(() => {
-    if (adminName) { setLoggedInName(adminName); setName(adminName); return; }
+    if (adminName) {
+      setLoggedInName(adminName);
+      setName(adminName);
+      return;
+    }
     if (token) {
-      apiGetMe().then((me) => { setLoggedInName(me.name); setName(me.name); }).catch(() => {});
+      apiGetMe()
+        .then((me) => {
+          setLoggedInName(me.name);
+          setName(me.name);
+        })
+        .catch(() => {});
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
     if (!slug) return;
-    const sid = searchParams.get('sid');
+    const sid = searchParams.get("sid");
     if (sid) {
       apiGetSubmission(sid)
         .then((sub) => {
-          if (sub.status === 'submitted') {
+          if (sub.status === "submitted") {
             navigate(`/t/${slug}/result?sid=${sid}`, { replace: true });
           } else {
             navigate(`/t/${slug}/take?sid=${sid}`, { replace: true });
           }
         })
         .catch(() => {
-          apiGetPublicTest(slug).then(setTest).catch(() => setError('Test topilmadi.')).finally(() => setLoading(false));
+          apiGetPublicTest(slug)
+            .then(setTest)
+            .catch(() => setError("Test topilmadi."))
+            .finally(() => setLoading(false));
         });
       return;
     }
     apiGetPublicTest(slug)
       .then(setTest)
-      .catch(() => setError('Test topilmadi.'))
+      .catch(() => setError("Test topilmadi."))
       .finally(() => setLoading(false));
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -58,7 +75,7 @@ export function TakeTestEntryPage() {
       navigate(`/t/${slug}/take?sid=${submissionId}`);
     } catch (err: any) {
       const msg = err?.response?.data?.message;
-      if (msg === 'AUTH_REQUIRED') {
+      if (msg === "AUTH_REQUIRED") {
         navigate(`/login?redirect=/t/${slug}`);
       } else {
         setError("Xato yuz berdi. Qayta urinib ko'ring.");
@@ -68,50 +85,65 @@ export function TakeTestEntryPage() {
     }
   }
 
-  if (loading) return (
-    <div className="flex items-center justify-center min-h-screen bg-white">
-      <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
-    </div>
-  );
-
-  if (error || !test) return (
-    <div className="flex items-center justify-center min-h-screen bg-white p-6">
-      <p className="text-red-400 text-center">{error ?? 'Test topilmadi.'}</p>
-    </div>
-  );
-
-  if ((test as any).requireAuth && !token) return (
-    <div
-      className="flex flex-col bg-white"
-      style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
-    >
-      <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
-          <Lock size={28} className="text-indigo-400" />
-        </div>
-        <p className="text-xl font-bold text-gray-900 mb-2">Kirish talab etiladi</p>
-        <p className="text-sm text-gray-400 mb-8">Bu test faqat tizimga kirgan foydalanuvchilar uchun.</p>
-        <button
-          onClick={() => navigate(`/login?redirect=/t/${slug}`)}
-          className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100"
-        >
-          Kirish
-        </button>
+  if (loading)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white">
+        <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
       </div>
-    </div>
-  );
+    );
+
+  if (error || !test)
+    return (
+      <div className="flex items-center justify-center min-h-screen bg-white p-6">
+        <p className="text-red-400 text-center">{error ?? "Test topilmadi."}</p>
+      </div>
+    );
+
+  if ((test as any).requireAuth && !token)
+    return (
+      <div
+        className="flex flex-col bg-white"
+        style={{
+          height: "100dvh",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
+            <Lock size={28} className="text-indigo-400" />
+          </div>
+          <p className="text-xl font-bold text-gray-900 mb-2">
+            Kirish talab etiladi
+          </p>
+          <p className="text-sm text-gray-400 mb-8">
+            Bu test faqat tizimga kirgan foydalanuvchilar uchun.
+          </p>
+          <button
+            onClick={() => navigate(`/login?redirect=/t/${slug}`)}
+            className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100"
+          >
+            Kirish
+          </button>
+        </div>
+      </div>
+    );
 
   return (
     <div
       className="flex flex-col bg-white lg:bg-gray-50 notranslate"
       translate="no"
-      style={{ height: '100dvh', paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'max(24px, env(safe-area-inset-bottom))' }}
+      style={{
+        height: "100dvh",
+        paddingTop: "env(safe-area-inset-top)",
+        paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+      }}
     >
       {/* Top accent bar — mobile only, desktop card has its own */}
       <div className="shrink-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 lg:hidden" />
 
       <div className="flex-1 overflow-y-auto lg:flex lg:items-center lg:justify-center">
-        <div className="lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-gray-100 lg:overflow-hidden">
+        <div className="lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden">
           <div className="hidden lg:block h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400" />
 
           {/* Scrollable content */}
@@ -122,9 +154,13 @@ export function TakeTestEntryPage() {
             </div>
 
             {/* Title & description */}
-            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">{test.name}</h1>
+            <h1 className="text-2xl font-bold text-gray-900 leading-tight mb-2">
+              {test.name}
+            </h1>
             {test.description && (
-              <p className="text-base text-gray-500 mb-5 leading-relaxed">{test.description}</p>
+              <p className="text-base text-gray-500 mb-5 leading-relaxed">
+                {test.description}
+              </p>
             )}
 
             {/* Meta chips */}
@@ -149,7 +185,7 @@ export function TakeTestEntryPage() {
             {/* Name field */}
             <p className="text-sm font-semibold text-gray-700 mb-2">Ismingiz</p>
             {loggedInName ? (
-              <div className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base text-gray-700 mb-2">
+              <div className="w-full bg-gray-50rounded-2xl px-4 py-3.5 text-base text-gray-700 mb-2">
                 {loggedInName}
               </div>
             ) : (
@@ -157,9 +193,11 @@ export function TakeTestEntryPage() {
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter' && name.trim()) handleStart(e as any); }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && name.trim()) handleStart(e as any);
+                }}
                 placeholder="Ismingizni kiriting"
-                className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
+                className="w-full bg-gray-50rounded-2xl px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
               />
             )}
 
@@ -173,7 +211,14 @@ export function TakeTestEntryPage() {
               disabled={!name.trim() || starting}
               className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold text-base flex items-center justify-center gap-2 hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
             >
-              {starting ? 'Boshlanmoqda...' : <><span>Testni boshlash</span><ChevronRight size={18} /></>}
+              {starting ? (
+                "Boshlanmoqda..."
+              ) : (
+                <>
+                  <span>Testni boshlash</span>
+                  <ChevronRight size={18} />
+                </>
+              )}
             </button>
           </div>
         </div>

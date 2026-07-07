@@ -41,7 +41,7 @@ export function PracticeBlockView({
   const meta = TYPE_META[block.type];
   const Icon = meta.icon;
   return (
-    <div className="rounded-2xl border-2 border-gray-100 bg-white">
+    <div className="rounded-2xl bg-white">
       <div className="flex items-center gap-2.5 px-4 py-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
           <Icon size={15} />
@@ -78,7 +78,7 @@ export function PracticeBlockView({
         </button>
       </div>
 
-      <div className="border-t border-gray-100 px-4 py-4">
+      <div className="px-4 py-4">
         {block.type === 'test' ? (
           <>
             <p className="mb-1.5 text-sm text-gray-500">
@@ -88,8 +88,8 @@ export function PracticeBlockView({
               value={block.testId ?? ''}
               onChange={(e) => onSelectTest(e.target.value)}
               disabled={testsLoading}
-              className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed ${
-                block.testId ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50/30'
+              className={`w-full rounded-xl px-4 py-2.5 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
+                block.testId ? 'bg-gray-50' : 'bg-red-50/30'
               }`}
             >
               <option value="" disabled>{testsLoading ? 'Yuklanmoqda...' : 'Testni tanlang...'}</option>
@@ -113,8 +113,8 @@ export function PracticeBlockView({
               onChange={(e) => onChangeDescription(e.target.value)}
               placeholder={meta.placeholder}
               rows={3}
-              className={`w-full resize-none rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
-                block.description.trim() ? 'border-gray-100 bg-gray-50' : 'border-orange-200 bg-orange-50/30'
+              className={`w-full resize-none rounded-xl px-4 py-2.5 text-sm outline-none ${
+                block.description.trim() ? 'bg-gray-50' : 'bg-orange-50/30'
               }`}
             />
             {!block.description.trim() && (

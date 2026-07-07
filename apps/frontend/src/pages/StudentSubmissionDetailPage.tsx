@@ -1,9 +1,12 @@
-import { useEffect, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ChevronLeft, Clock } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
-import { AnswerResultCard } from '../components/AnswerResultCard';
-import { apiGetMySubmissionDetail, type SubmissionDetail } from '../api/submissions';
+import { useEffect, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ChevronLeft, Clock } from "lucide-react";
+import { Toolbar } from "../components/Toolbar";
+import { AnswerResultCard } from "../components/AnswerResultCard";
+import {
+  apiGetMySubmissionDetail,
+  type SubmissionDetail,
+} from "../api/submissions";
 
 export function StudentSubmissionDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -21,11 +24,15 @@ export function StudentSubmissionDetailPage() {
       .finally(() => setLoading(false));
   }, [id]);
 
-  const pct = detail?.total ? Math.round(((detail.score ?? 0) / detail.total) * 100) : 0;
-  const canShowAnswers = detail?.showResults === 'immediately' || detail?.showResults === 'per_question';
+  const pct = detail?.total
+    ? Math.round(((detail.score ?? 0) / detail.total) * 100)
+    : 0;
+  const canShowAnswers =
+    detail?.showResults === "immediately" ||
+    detail?.showResults === "per_question";
 
   return (
-    <div className="min-h-screen bg-[#f9f9f9] flex flex-col">
+    <div className="min-h-screen bg-[#f6f6f6] flex flex-col">
       <Toolbar />
       <main className="flex-1 w-full px-4 py-5 lg:px-8">
         <button
@@ -38,42 +45,52 @@ export function StudentSubmissionDetailPage() {
 
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-500 animate-spin" />
+            <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
           </div>
         )}
 
         {error && (
-          <p className="text-center text-sm text-red-400 py-12">Natija topilmadi.</p>
+          <p className="text-center text-sm text-red-400 py-12">
+            Natija topilmadi.
+          </p>
         )}
 
         {detail && (
           <>
-            <section className="bg-white rounded-2xl border-2 border-gray-100 px-5 py-4 mb-4">
-              <p className="text-lg font-bold text-gray-900">{detail.testName ?? 'Test'}</p>
+            <section className="bg-white rounded-2xlpx-5 py-4 mb-4">
+              <p className="text-lg font-bold text-gray-900">
+                {detail.testName ?? "Test"}
+              </p>
               <p className="text-sm text-gray-400 mt-1">
                 {detail.score} / {detail.total} ball · {pct}%
               </p>
             </section>
 
             {!canShowAnswers && (
-              <section className="bg-white rounded-2xl border-2 border-gray-100 flex flex-col items-center text-center py-12 px-5">
+              <section className="bg-white rounded-2xlflex flex-col items-center text-center py-12 px-5">
                 <Clock size={32} className="text-indigo-300 mb-3" />
                 <p className="text-sm text-gray-500">
-                  {detail.showResults === 'after_deadline'
-                    ? 'Natijalar muddat tugagandan keyin ochiladi.'
-                    : 'Natijalar yashirin.'}
+                  {detail.showResults === "after_deadline"
+                    ? "Natijalar muddat tugagandan keyin ochiladi."
+                    : "Natijalar yashirin."}
                 </p>
               </section>
             )}
 
             {canShowAnswers && detail.answers.length === 0 && (
-              <p className="text-center text-sm text-gray-400 py-8">Javoblar topilmadi.</p>
+              <p className="text-center text-sm text-gray-400 py-8">
+                Javoblar topilmadi.
+              </p>
             )}
 
             {canShowAnswers && (
               <div className="flex flex-col gap-3 pb-8">
                 {detail.answers.map((answer, index) => (
-                  <AnswerResultCard key={answer.questionId} answer={answer} index={index} />
+                  <AnswerResultCard
+                    key={answer.questionId}
+                    answer={answer}
+                    index={index}
+                  />
                 ))}
               </div>
             )}

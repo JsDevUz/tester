@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Copy, Check, Clipboard } from 'lucide-react';
+import { useState } from "react";
+import { Copy, Check, Clipboard } from "lucide-react";
 
 interface Props {
   onImport: (text: string) => Promise<number>;
@@ -47,8 +47,8 @@ const SAMPLE_BULK_TEXT = `# Yagona tanlov savoli
 | Rus tili :: Russian
 | Fransuz tili :: French`;
 
-export function BulkImportTab({ onImport, bulkText = '' }: Props) {
-  const [text, setText] = useState('');
+export function BulkImportTab({ onImport, bulkText = "" }: Props) {
+  const [text, setText] = useState("");
   const [preview, setPreview] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
@@ -69,8 +69,11 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
   }
 
   function handlePreview() {
-    const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-    const count = lines.filter((l) => l.startsWith('# ')).length;
+    const lines = text
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    const count = lines.filter((l) => l.startsWith("# ")).length;
     setPreview(`${count} ta savol import qilinadi.`);
     setResult(null);
   }
@@ -81,10 +84,10 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
     try {
       const imported = await onImport(text);
       setResult(`ok:${imported} ta savol muvaffaqiyatli import qilindi.`);
-      setText('');
+      setText("");
       setPreview(null);
     } catch {
-      setResult('err:Import amalga oshmadi. Formatni tekshiring.');
+      setResult("err:Import amalga oshmadi. Formatni tekshiring.");
     } finally {
       setLoading(false);
     }
@@ -95,9 +98,12 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
       <div className="rounded-xl border border-indigo-100 bg-white/80 p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
-            <h3 className="text-sm font-semibold text-gray-700">Namuna pattern</h3>
+            <h3 className="text-sm font-semibold text-gray-700">
+              Namuna pattern
+            </h3>
             <p className="text-xs text-gray-400 mt-0.5">
-              # savol, + to'g'ri javob, - noto'g'ri javob, &gt; tartib, ~ ortiqcha variant
+              # savol, + to'g'ri javob, - noto'g'ri javob, &gt; tartib, ~
+              ortiqcha variant
             </p>
           </div>
           <button
@@ -115,30 +121,55 @@ export function BulkImportTab({ onImport, bulkText = '' }: Props) {
       </div>
       {bulkText && (
         <div className="flex justify-end">
-          <button type="button" onClick={copyBulk}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors bg-white">
-            {copied ? <Check size={12} className="text-green-500" /> : <Copy size={12} />}
-            {copied ? 'Nusxalandi' : 'Savollarni nusxalash'}
+          <button
+            type="button"
+            onClick={copyBulk}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors bg-white"
+          >
+            {copied ? (
+              <Check size={12} className="text-green-500" />
+            ) : (
+              <Copy size={12} />
+            )}
+            {copied ? "Nusxalandi" : "Savollarni nusxalash"}
           </button>
         </div>
       )}
-      <textarea value={text} onChange={(e) => { setText(e.target.value); setPreview(null); setResult(null); }}
-        rows={10} placeholder="Savollarni shu yerga joylashtiring..."
-        className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y" />
+      <textarea
+        value={text}
+        onChange={(e) => {
+          setText(e.target.value);
+          setPreview(null);
+          setResult(null);
+        }}
+        rows={10}
+        placeholder="Savollarni shu yerga joylashtiring..."
+        className="w-fullrounded-xl px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y"
+      />
       {preview && <p className="text-sm text-gray-600">{preview}</p>}
       {result && (
-        <p className={`text-sm ${result.startsWith('ok:') ? 'text-green-600' : 'text-red-500'}`}>
-          {result.startsWith('ok:') ? result.slice(3) : result.slice(4)}
+        <p
+          className={`text-sm ${result.startsWith("ok:") ? "text-green-600" : "text-red-500"}`}
+        >
+          {result.startsWith("ok:") ? result.slice(3) : result.slice(4)}
         </p>
       )}
       <div className="flex gap-2 justify-end">
-        <button type="button" onClick={handlePreview} disabled={!text.trim()}
-          className="text-sm px-4 py-2 border border-gray-200 rounded-lg hover:bg-gray-50 disabled:opacity-40">
+        <button
+          type="button"
+          onClick={handlePreview}
+          disabled={!text.trim()}
+          className="text-sm px-4 py-2rounded-lg hover:bg-gray-50 disabled:opacity-40"
+        >
           Ko'rish
         </button>
-        <button type="button" onClick={handleImport} disabled={!text.trim() || loading}
-          className="text-sm px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-40">
-          {loading ? 'Yuklanmoqda...' : 'Import qilish'}
+        <button
+          type="button"
+          onClick={handleImport}
+          disabled={!text.trim() || loading}
+          className="text-sm px-4 py-2 bg-indigo-500 text-white rounded-lg hover:bg-indigo-600 disabled:opacity-40"
+        >
+          {loading ? "Yuklanmoqda..." : "Import qilish"}
         </button>
       </div>
     </div>

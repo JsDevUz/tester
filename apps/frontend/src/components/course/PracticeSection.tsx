@@ -78,13 +78,13 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
   return (
     <div>
       {testsError && (
-        <div className="mb-6 rounded-2xl border-2 border-red-100 bg-red-50/50 p-3">
+        <div className="mb-6 rounded-2xl bg-red-50/50 p-3">
           <p className="text-xs text-red-600">{testsError}</p>
         </div>
       )}
 
       {lesson.practiceBlocks.length === 0 ? (
-        <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+        <div className="mb-6 rounded-2xl bg-white py-14 text-center">
           <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
           <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
           <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
@@ -119,7 +119,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
       </div>
 
       {lesson.practiceBlocks.some((b) => b.type === 'test') ? (
-        <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+        <div className="rounded-2xl bg-white p-4">
           <div className="flex items-center gap-3">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
@@ -128,7 +128,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
             <button
               type="button"
               onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
-              className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${
+              className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
                 lesson.passThresholdEnabled ? 'bg-indigo-500' : 'bg-gray-200'
               }`}
             >
@@ -151,7 +151,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
                   value={lesson.passThresholdPercent ?? ''}
                   onChange={(e) => handlePercentChange(e.target.value)}
                   placeholder="70"
-                  className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
+                  className="w-full rounded-xl bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none"
                 />
                 <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
               </div>
@@ -159,7 +159,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
           )}
         </div>
       ) : (
-        <div className="rounded-2xl border-2 border-gray-100 bg-gray-50 p-4 text-center">
+        <div className="rounded-2xl bg-gray-50 p-4 text-center">
           <p className="text-xs text-gray-400">Minimal o'tish bali faqat test blok qo'shilganda qo'llaniladi</p>
         </div>
       )}

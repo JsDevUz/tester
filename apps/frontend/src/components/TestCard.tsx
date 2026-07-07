@@ -1,7 +1,20 @@
-import { useState } from 'react';
-import { Clock, Shuffle, Calendar, Link2, Check, BarChart2, Settings2, Trash2, Pencil, Radio, History, type LucideIcon } from 'lucide-react';
-import type { Test } from '../api/tests';
-import { formatDate } from '../utils/date';
+import { useState } from "react";
+import {
+  Clock,
+  Shuffle,
+  Calendar,
+  Link2,
+  Check,
+  BarChart2,
+  Settings2,
+  Trash2,
+  Pencil,
+  Radio,
+  History,
+  type LucideIcon,
+} from "lucide-react";
+import type { Test } from "../api/tests";
+import { formatDate } from "../utils/date";
 
 interface Props {
   test: Test;
@@ -12,7 +25,8 @@ interface Props {
   onLive: () => void;
 }
 
-const actionButtonClass = 'group relative h-9 w-full inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0';
+const actionButtonClass =
+  "group relative h-9 w-full inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0";
 const actionIconSize = 17;
 
 function ActionButton({
@@ -31,7 +45,7 @@ function ActionButton({
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`${actionButtonClass} ${danger ? 'hover:text-red-400' : ''}`}
+      className={`${actionButtonClass} ${danger ? "hover:text-red-400" : ""}`}
     >
       <Icon size={actionIconSize} />
       <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 shadow-lg shadow-gray-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
@@ -41,26 +55,38 @@ function ActionButton({
   );
 }
 
-export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive }: Props) {
+export function TestCard({
+  test,
+  onEdit,
+  onSettings,
+  onDelete,
+  onResults,
+  onLive,
+}: Props) {
   const [copied, setCopied] = useState(false);
 
   async function copyLink(e: React.MouseEvent) {
     e.stopPropagation();
     if (!test.slug) return;
-    await navigator.clipboard.writeText(`${window.location.origin}/t/${test.slug}`);
+    await navigator.clipboard.writeText(
+      `${window.location.origin}/t/${test.slug}`,
+    );
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-sm border border-gray-100 overflow-hidden flex flex-col">
-
+    <div className="bg-white rounded-3xl shadow-smoverflow-hidden flex flex-col">
       {/* Header */}
       <div className="h-[100px] px-4 pt-4 pb-4 shrink-0">
-        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">Test</p>
-        <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">{test.name}</p>
+        <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">
+          Test
+        </p>
+        <p className="text-sm font-bold text-gray-800 leading-snug line-clamp-1">
+          {test.name}
+        </p>
         <p className="min-h-[28px] text-[11px] text-gray-400 line-clamp-2 leading-snug mt-1">
-          {test.description || '\u00A0'}
+          {test.description || "\u00A0"}
         </p>
       </div>
 
@@ -69,23 +95,42 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive
         <ActionButton label="Jonli musobaqa" icon={Radio} onClick={onLive} />
         <ActionButton label="Natijalar" icon={BarChart2} onClick={onResults} />
         <ActionButton label="Savollar" icon={Pencil} onClick={onEdit} />
-        <ActionButton label="Sozlamalar" icon={Settings2} onClick={onSettings} />
-        <ActionButton label="O'chirish" icon={Trash2} onClick={onDelete} danger />
+        <ActionButton
+          label="Sozlamalar"
+          icon={Settings2}
+          onClick={onSettings}
+        />
+        <ActionButton
+          label="O'chirish"
+          icon={Trash2}
+          onClick={onDelete}
+          danger
+        />
       </div>
 
       {/* Info list — like feature list in the reference */}
       <div className="px-4 py-3 flex flex-1 flex-col gap-2 min-h-0">
         <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
           <Clock size={13} className="text-gray-400 shrink-0" />
-          <span className="truncate">{test.timeLimit ? `${test.timeLimit} daqiqa` : 'Vaqt cheklanmagan'}</span>
+          <span className="truncate">
+            {test.timeLimit ? `${test.timeLimit} daqiqa` : "Vaqt cheklanmagan"}
+          </span>
         </div>
         <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
           <Shuffle size={13} className="text-gray-400 shrink-0" />
-          <span className="truncate">{test.shuffleQuestions ? "Savollar aralashtiriladi" : "Savollar tartibli"}</span>
+          <span className="truncate">
+            {test.shuffleQuestions
+              ? "Savollar aralashtiriladi"
+              : "Savollar tartibli"}
+          </span>
         </div>
-        <div className={`flex h-4 items-center gap-2 text-xs ${test.requireAuth ? 'text-gray-600' : 'text-gray-400'}`}>
+        <div
+          className={`flex h-4 items-center gap-2 text-xs ${test.requireAuth ? "text-gray-600" : "text-gray-400"}`}
+        >
           <History size={13} className="text-gray-400 shrink-0" />
-          <span className="truncate">{test.requireAuth ? 'Tarixga saqlanadi' : 'Tarixga saqlanmaydi'}</span>
+          <span className="truncate">
+            {test.requireAuth ? "Tarixga saqlanadi" : "Tarixga saqlanmaydi"}
+          </span>
         </div>
         {test.deadline ? (
           <div className="flex h-4 items-center gap-2 text-xs text-gray-600">
@@ -99,10 +144,18 @@ export function TestCard({ test, onEdit, onSettings, onDelete, onResults, onLive
           </div>
         )}
         {test.slug ? (
-          <button onClick={copyLink}
-            className="flex h-4 items-center gap-2 text-xs text-indigo-500 hover:text-indigo-700 transition-colors text-left">
-            {copied ? <Check size={13} className="shrink-0" /> : <Link2 size={13} className="shrink-0" />}
-            <span className="truncate">{copied ? 'Nusxalandi!' : 'Havola nusxalash'}</span>
+          <button
+            onClick={copyLink}
+            className="flex h-4 items-center gap-2 text-xs text-indigo-500 hover:text-indigo-700 transition-colors text-left"
+          >
+            {copied ? (
+              <Check size={13} className="shrink-0" />
+            ) : (
+              <Link2 size={13} className="shrink-0" />
+            )}
+            <span className="truncate">
+              {copied ? "Nusxalandi!" : "Havola nusxalash"}
+            </span>
           </button>
         ) : (
           <div className="flex h-4 items-center gap-2 text-xs text-gray-300">
