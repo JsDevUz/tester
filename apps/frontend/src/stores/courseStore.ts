@@ -26,6 +26,33 @@ export interface PracticeBlock {
   description: string;
 }
 
+export interface PricingPlan {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  originalPrice: number | null;
+  groupId: string | null;
+  startDate: string | null;
+  endDate: string | null;
+}
+
+export interface Launch {
+  id: string;
+  name: string;
+  active: boolean;
+  plans: PricingPlan[];
+}
+
+export interface Group {
+  id: string;
+  name: string;
+  groupChatEnabled: boolean;
+  groupChannelEnabled: boolean;
+  curatorIds: string[];
+  studentIds: string[];
+}
+
 export interface Lesson {
   id: string;
   title: string;
@@ -49,6 +76,8 @@ export interface Course {
   id: string;
   title: string;
   modules: Module[];
+  launches: Launch[];
+  groups: Group[];
 }
 
 interface CourseState {
@@ -78,6 +107,21 @@ interface CourseState {
   setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => void;
   setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => void;
   setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => void;
+
+  addLaunch: (courseId: string, name: string) => Launch | undefined;
+  toggleLaunchActive: (courseId: string, launchId: string) => void;
+  renameLaunch: (courseId: string, launchId: string, name: string) => void;
+  addPricingPlan: (courseId: string, launchId: string, plan: Omit<PricingPlan, 'id'>) => void;
+  removePricingPlan: (courseId: string, launchId: string, planId: string) => void;
+
+  addGroup: (courseId: string, name: string) => Group | undefined;
+  renameGroup: (courseId: string, groupId: string, name: string) => void;
+  toggleGroupChat: (courseId: string, groupId: string) => void;
+  toggleGroupChannel: (courseId: string, groupId: string) => void;
+  setGroupCurators: (courseId: string, groupId: string, curatorIds: string[]) => void;
+  addStudentToGroup: (courseId: string, groupId: string, studentId: string) => void;
+  removeStudentFromGroup: (courseId: string, groupId: string, studentId: string) => void;
+  deleteGroup: (courseId: string, groupId: string) => void;
 }
 
 function newId(): string {
@@ -88,7 +132,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
 
   addCourse: (title) => {
-    const course: Course = { id: newId(), title, modules: [] };
+    const course: Course = { id: newId(), title, modules: [], launches: [], groups: [] };
     set({ courses: [...get().courses, course] });
     return course;
   },
@@ -495,6 +539,177 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                     },
               ),
             },
+      ),
+    });
+  },
+
+  addLaunch: (courseId, name) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    if (!course) return undefined;
+    const launch: Launch = { id: newId(), name, active: false, plans: [] };
+    set({
+      courses: get().courses.map((c) =>
+        c.id === courseId ? { ...c, launches: [...c.launches, launch] } : c,
+      ),
+    });
+    return launch;
+  },
+  toggleLaunchActive: (courseId, launchId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              launches: c.launches.map((l) =>
+                l.id === launchId ? { ...l, active: !l.active } : l,
+              ),
+            },
+      ),
+    });
+  },
+  renameLaunch: (courseId, launchId, name) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              launches: c.launches.map((l) => (l.id === launchId ? { ...l, name } : l)),
+            },
+      ),
+    });
+  },
+  addPricingPlan: (courseId, launchId, plan) => {
+    const newPlan: PricingPlan = { ...plan, id: newId() };
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              launches: c.launches.map((l) =>
+                l.id !== launchId ? l : { ...l, plans: [...l.plans, newPlan] },
+              ),
+            },
+      ),
+    });
+  },
+  removePricingPlan: (courseId, launchId, planId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              launches: c.launches.map((l) =>
+                l.id !== launchId ? l : { ...l, plans: l.plans.filter((p) => p.id !== planId) },
+              ),
+            },
+      ),
+    });
+  },
+
+  addGroup: (courseId, name) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    if (!course) return undefined;
+    const group: Group = {
+      id: newId(),
+      name,
+      groupChatEnabled: false,
+      groupChannelEnabled: false,
+      curatorIds: [],
+      studentIds: [],
+    };
+    set({
+      courses: get().courses.map((c) =>
+        c.id === courseId ? { ...c, groups: [...c.groups, group] } : c,
+      ),
+    });
+    return group;
+  },
+  renameGroup: (courseId, groupId, name) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : { ...c, groups: c.groups.map((g) => (g.id === groupId ? { ...g, name } : g)) },
+      ),
+    });
+  },
+  toggleGroupChat: (courseId, groupId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id === groupId ? { ...g, groupChatEnabled: !g.groupChatEnabled } : g,
+              ),
+            },
+      ),
+    });
+  },
+  toggleGroupChannel: (courseId, groupId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id === groupId ? { ...g, groupChannelEnabled: !g.groupChannelEnabled } : g,
+              ),
+            },
+      ),
+    });
+  },
+  setGroupCurators: (courseId, groupId, curatorIds) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : { ...c, groups: c.groups.map((g) => (g.id === groupId ? { ...g, curatorIds } : g)) },
+      ),
+    });
+  },
+  addStudentToGroup: (courseId, groupId, studentId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id !== groupId || g.studentIds.includes(studentId)
+                  ? g
+                  : { ...g, studentIds: [...g.studentIds, studentId] },
+              ),
+            },
+      ),
+    });
+  },
+  removeStudentFromGroup: (courseId, groupId, studentId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id !== groupId
+                  ? g
+                  : { ...g, studentIds: g.studentIds.filter((id) => id !== studentId) },
+              ),
+            },
+      ),
+    });
+  },
+  deleteGroup: (courseId, groupId) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId ? c : { ...c, groups: c.groups.filter((g) => g.id !== groupId) },
       ),
     });
   },
