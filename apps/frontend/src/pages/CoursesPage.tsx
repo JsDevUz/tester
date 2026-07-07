@@ -2,11 +2,15 @@ import { useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { CourseGrid } from '../components/course/CourseGrid';
 import { CourseContentPage } from '../components/course/CourseContentPage';
+import { CourseLaunchPage } from '../components/course/CourseLaunchPage';
+import { CourseGroupsPage } from '../components/course/CourseGroupsPage';
 import { LessonEditorView } from '../components/course/LessonEditorView';
 
 type ViewState =
   | { view: 'list' }
   | { view: 'content'; courseId: string }
+  | { view: 'launch'; courseId: string }
+  | { view: 'groups'; courseId: string }
   | { view: 'editor'; courseId: string; moduleId: string; lessonId: string };
 
 export function CoursesPage() {
@@ -28,6 +32,22 @@ export function CoursesPage() {
           onOpenLesson={(moduleId, lessonId) =>
             setState({ view: 'editor', courseId: state.courseId, moduleId, lessonId })
           }
+        />
+      )}
+      {state.view === 'launch' && (
+        <CourseLaunchPage
+          courseId={state.courseId}
+          onBackToList={backToList}
+          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
+          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
+        />
+      )}
+      {state.view === 'groups' && (
+        <CourseGroupsPage
+          courseId={state.courseId}
+          onBackToList={backToList}
+          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
+          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
         />
       )}
       {state.view === 'editor' && (
