@@ -87,45 +87,51 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
         />
       </div>
 
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
-        <div className="flex items-center gap-3">
-          <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
-            <p className="text-xs text-gray-400">Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars o'tilmagan hisoblanadi</p>
-          </div>
-          <button
-            type="button"
-            onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
-            className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${
-              lesson.passThresholdEnabled ? 'bg-indigo-500' : 'bg-gray-200'
-            }`}
-          >
-            <span
-              className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                lesson.passThresholdEnabled ? 'translate-x-5' : 'translate-x-0.5'
-              }`}
-            />
-          </button>
-        </div>
-
-        {lesson.passThresholdEnabled && (
-          <div className="mt-3">
-            <p className="mb-1.5 text-sm text-gray-500">Minimal foiz</p>
-            <div className="relative">
-              <input
-                type="number"
-                min={0}
-                max={100}
-                value={lesson.passThresholdPercent ?? ''}
-                onChange={(e) => handlePercentChange(e.target.value)}
-                placeholder="70"
-                className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
-              />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+      {lesson.practiceBlocks.some((b) => b.type === 'test') ? (
+        <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+          <div className="flex items-center gap-3">
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
+              <p className="text-xs text-gray-400">Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars o'tilmagan hisoblanadi</p>
             </div>
+            <button
+              type="button"
+              onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
+              className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${
+                lesson.passThresholdEnabled ? 'bg-indigo-500' : 'bg-gray-200'
+              }`}
+            >
+              <span
+                className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
+                  lesson.passThresholdEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                }`}
+              />
+            </button>
           </div>
-        )}
-      </div>
+
+          {lesson.passThresholdEnabled && (
+            <div className="mt-3">
+              <p className="mb-1.5 text-sm text-gray-500">Minimal foiz</p>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  max={100}
+                  value={lesson.passThresholdPercent ?? ''}
+                  onChange={(e) => handlePercentChange(e.target.value)}
+                  placeholder="70"
+                  className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
+                />
+                <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+              </div>
+            </div>
+          )}
+        </div>
+      ) : (
+        <div className="rounded-2xl border-2 border-gray-100 bg-gray-50 p-4 text-center">
+          <p className="text-xs text-gray-400">Minimal o'tish bali faqat test blok qo'shilganda qo'llaniladi</p>
+        </div>
+      )}
     </div>
   );
 }
