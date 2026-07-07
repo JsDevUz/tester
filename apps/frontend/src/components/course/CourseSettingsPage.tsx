@@ -1,6 +1,9 @@
+import { useState } from 'react';
+import { Trash2 } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CourseSettingsPageProps {
   courseId: string;
@@ -13,10 +16,17 @@ interface CourseSettingsPageProps {
 const TITLE_MAX = 80;
 
 export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch, onSelectGroups }: CourseSettingsPageProps) {
-  const { courses, renameCourse } = useCourseStore();
+  const { courses, renameCourse, deleteCourse } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!course) return null;
+
+  function handleConfirmDelete() {
+    deleteCourse(courseId);
+    setConfirmDelete(false);
+    onBackToList();
+  }
 
   return (
     <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -29,7 +39,7 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
           ]}
         />
 
-        <div className="rounded-2xl bg-white p-5">
+        <div className="mb-4 rounded-2xl bg-white p-5">
           <h2 className="mb-1 text-lg font-bold text-gray-800">Ma'lumot va moslashtirish</h2>
           <p className="mb-4 text-sm text-gray-400">Kurs haqidagi asosiy ma'lumotlarni bu yerdan tahrirlashingiz mumkin.</p>
 
@@ -41,6 +51,17 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
           />
           <p className="mt-1 text-right text-xs text-gray-300">{course.title.length} / {TITLE_MAX}</p>
         </div>
+
+        <div className="rounded-2xl bg-white p-5">
+          <h2 className="mb-4 text-lg font-bold text-gray-800">Amallar</h2>
+          <button
+            type="button"
+            onClick={() => setConfirmDelete(true)}
+            className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
+          >
+            <Trash2 size={16} /> Kursni o'chirish
+          </button>
+        </div>
       </div>
 
       <CourseSidePanel
@@ -51,6 +72,15 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
       />
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          title="Kursni o'chirish"
+          description={`"${course.title}" kursi butunlay o'chiriladi. Barcha modullar, darslar, tariflar va guruhlar ham yo'qoladi.`}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }

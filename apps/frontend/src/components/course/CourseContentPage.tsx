@@ -4,6 +4,7 @@ import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { PromptModal } from './PromptModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CourseContentPageProps {
   courseId: string;
@@ -19,11 +20,17 @@ type ModalState =
   | { type: 'newLesson'; moduleId: string }
   | null;
 
+type DeleteTarget =
+  | { type: 'module'; moduleId: string; title: string }
+  | { type: 'lesson'; moduleId: string; lessonId: string; title: string }
+  | null;
+
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups }: CourseContentPageProps) {
   const { courses, addModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<ModalState>(null);
+  const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
   if (!course) return null;
 
@@ -48,6 +55,16 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
     const lesson = addLesson(courseId, modal.moduleId, title);
     setModal(null);
     if (lesson) onOpenLesson(modal.moduleId, lesson.id);
+  }
+
+  function handleConfirmDelete() {
+    if (!deleteTarget) return;
+    if (deleteTarget.type === 'module') {
+      deleteModule(courseId, deleteTarget.moduleId);
+    } else {
+      deleteLesson(courseId, deleteTarget.moduleId, deleteTarget.lessonId);
+    }
+    setDeleteTarget(null);
   }
 
   return (
@@ -100,7 +117,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                     <span className="flex-1 truncate text-sm font-semibold text-gray-700">{module.title}</span>
                     <button
                       type="button"
-                      onClick={() => deleteModule(courseId, module.id)}
+                      onClick={() => setDeleteTarget({ type: 'module', moduleId: module.id, title: module.title })}
                       className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
                     >
                       <Trash2 size={14} />
@@ -136,7 +153,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                           </button>
                           <button
                             type="button"
-                            onClick={() => deleteLesson(courseId, module.id, lesson.id)}
+                            onClick={() => setDeleteTarget({ type: 'lesson', moduleId: module.id, lessonId: lesson.id, title: lesson.title })}
                             className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
                           >
                             <Trash2 size={13} />
@@ -184,6 +201,23 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
           confirmLabel="Yaratish"
           onConfirm={handleCreateLesson}
           onClose={() => setModal(null)}
+        />
+      )}
+
+      {deleteTarget?.type === 'module' && (
+        <ConfirmDeleteModal
+          title="Modulni o'chirish"
+          description={`"${deleteTarget.title}" moduli va undagi barcha darslar o'chiriladi.`}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
+        />
+      )}
+      {deleteTarget?.type === 'lesson' && (
+        <ConfirmDeleteModal
+          title="Darsni o'chirish"
+          description={`"${deleteTarget.title}" darsi va uning kontenti o'chiriladi.`}
+          onConfirm={handleConfirmDelete}
+          onClose={() => setDeleteTarget(null)}
         />
       )}
     </div>

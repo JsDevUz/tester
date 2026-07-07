@@ -7,6 +7,7 @@ import { getMockCurators } from '../../data/mockCurators';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { AddStudentToGroupModal } from './AddStudentToGroupModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -291,28 +292,12 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
         )}
 
         {confirmDelete && (
-          <div
-            className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
-            onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(false); }}
-          >
-            <div className="w-80 rounded-3xl bg-white p-6">
-              <p className="mb-1 text-sm font-semibold text-gray-800">Guruhni o'chirish</p>
-              <p className="mb-5 text-sm text-gray-400">
-                "{group.name}" guruhi o'chiriladi. Chat, kanal va a'zolik ma'lumotlari ham yo'qoladi.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setConfirmDelete(false)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
-                  Bekor qilish
-                </button>
-                <button
-                  onClick={handleConfirmDeleteGroup}
-                  className="rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
-                >
-                  O'chirish
-                </button>
-              </div>
-            </div>
-          </div>
+          <ConfirmDeleteModal
+            title="Guruhni o'chirish"
+            description={`"${group.name}" guruhi o'chiriladi. Chat, kanal va a'zolik ma'lumotlari ham yo'qoladi.`}
+            onConfirm={handleConfirmDeleteGroup}
+            onClose={() => setConfirmDelete(false)}
+          />
         )}
       </div>
     );
