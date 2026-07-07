@@ -1,11 +1,12 @@
 interface ConfirmDeleteModalProps {
   title: string;
   description: string;
+  confirmLabel?: string;
   onConfirm: () => void;
   onClose: () => void;
 }
 
-export function ConfirmDeleteModal({ title, description, onConfirm, onClose }: ConfirmDeleteModalProps) {
+export function ConfirmDeleteModal({ title, description, confirmLabel, onConfirm, onClose }: ConfirmDeleteModalProps) {
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
@@ -22,7 +23,7 @@ export function ConfirmDeleteModal({ title, description, onConfirm, onClose }: C
             onClick={onConfirm}
             className="rounded-xl bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600"
           >
-            O'chirish
+            {confirmLabel ?? "O'chirish"}
           </button>
         </div>
       </div>
