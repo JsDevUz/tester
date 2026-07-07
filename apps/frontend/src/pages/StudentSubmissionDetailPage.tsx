@@ -37,7 +37,7 @@ export function StudentSubmissionDetailPage() {
       <main className="flex-1 w-full px-4 py-5 lg:px-8">
         <button
           onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-400 hover:text-gray-700 transition-colors"
+          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-700 transition-colors"
         >
           <ChevronLeft size={16} />
           Natijalar

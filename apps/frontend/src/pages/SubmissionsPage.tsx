@@ -170,7 +170,7 @@ export function SubmissionsPage() {
 
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-[720px] text-left">
-                  <thead className="border-b border-border text-sm font-medium text-gray-500">
+                  <thead className="text-sm font-medium text-gray-700">
                     <tr>
                       <th className="px-5 py-4">O'quvchi</th>
                       <th className="px-5 py-4">Topshirgan vaqti</th>
@@ -191,7 +191,7 @@ export function SubmissionsPage() {
                         <tr
                           key={sub.id}
                           onClick={() => navigate(`/submissions/${sub.id}`)}
-                          className="group cursor-pointer transition-colors hover:bg-indigo-50/40"
+                          className="group cursor-pointer transition-colors hover:bg-indigo-50/40 rounded-2xl"
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-2">

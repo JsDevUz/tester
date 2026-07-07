@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import {
   BookOpen,
@@ -94,9 +94,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const [openKey, setOpenKey] = useState<string | null>(null);
   const [hoveredKey, setHoveredKey] = useState<string | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const hoverCloseTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const mobileShownSection = openKey
     ? SECTIONS.find((s) => s.key === openKey)
     : undefined;
+  const desktopFlyoutKey = hoveredKey ?? openKey;
 
   const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
@@ -104,6 +106,28 @@ export function AppShell({ children }: { children: React.ReactNode }) {
     logout();
     navigate("/login");
   }
+
+  function clearHoverCloseTimer() {
+    if (hoverCloseTimerRef.current) {
+      clearTimeout(hoverCloseTimerRef.current);
+      hoverCloseTimerRef.current = null;
+    }
+  }
+
+  function handleNavMouseEnter(key: string) {
+    clearHoverCloseTimer();
+    setHoveredKey(key);
+  }
+
+  function handleNavMouseLeave(key: string) {
+    clearHoverCloseTimer();
+    hoverCloseTimerRef.current = setTimeout(() => {
+      setHoveredKey((current) => (current === key ? null : current));
+      hoverCloseTimerRef.current = null;
+    }, 120);
+  }
+
+  useEffect(() => clearHoverCloseTimer, []);
 
   return (
     <div
@@ -133,14 +157,13 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             const isActive = activeSection?.key === section.key;
             const isOpen = openKey === section.key;
             const showFlyout =
-              !!section.subItems &&
-              (hoveredKey === section.key || openKey === section.key);
+              !!section.subItems && desktopFlyoutKey === section.key;
             return (
               <div
                 key={section.key}
                 className="relative lg:w-full"
-                onMouseEnter={() => setHoveredKey(section.key)}
-                onMouseLeave={() => setHoveredKey((key) => key === section.key ? null : key)}
+                onMouseEnter={() => handleNavMouseEnter(section.key)}
+                onMouseLeave={() => handleNavMouseLeave(section.key)}
               >
                 <button
                   aria-label={section.label}
@@ -175,54 +198,62 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
                 {section.subItems && (
                   <div
-                    className={`absolute left-full top-0 z-50 ml-3 hidden w-72 rounded-2xl bg-white p-2 shadow-2xl shadow-gray-900/10 transition-all duration-150 lg:block ${
+                    className={`absolute left-full top-0 z-50 hidden pl-3 lg:block ${
                       showFlyout
-                        ? "pointer-events-auto translate-x-0 opacity-100"
-                        : "pointer-events-none -translate-x-1 opacity-0"
+                        ? "pointer-events-auto"
+                        : "pointer-events-none"
                     }`}
                   >
-                    <div className="mb-1 flex items-center gap-3 px-3 py-3">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
-                        <Icon size={18} />
+                    <div
+                      className={`w-72 rounded-2xl bg-white p-2 shadow-2xl shadow-gray-900/10 transition-all duration-150 ${
+                        showFlyout
+                          ? "translate-x-0 opacity-100"
+                          : "-translate-x-1 opacity-0"
+                      }`}
+                    >
+                      <div className="mb-1 flex items-center gap-3 px-3 py-3">
+                        <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
+                          <Icon size={18} />
+                        </div>
+                        <div className="min-w-0">
+                          <p className="truncate text-sm font-semibold text-gray-800">
+                            {section.label}
+                          </p>
+                          <p className="truncate text-xs text-gray-400">
+                            {section.subItems.length} ta bo'lim
+                          </p>
+                        </div>
                       </div>
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">
-                          {section.label}
-                        </p>
-                        <p className="truncate text-xs text-gray-400">
-                          {section.subItems.length} ta bo'lim
-                        </p>
+                      <div className="flex flex-col gap-1">
+                        {section.subItems.map((item) => {
+                          const ItemIcon = item.icon;
+                          const itemActive =
+                            section.key === activeSection?.key &&
+                            activeSubItemPath === item.path;
+                          return (
+                            <button
+                              key={item.path}
+                              type="button"
+                              onClick={() => {
+                                navigate(item.path);
+                                setOpenKey(null);
+                                setHoveredKey(null);
+                              }}
+                              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors ${
+                                itemActive
+                                  ? "bg-indigo-50 text-indigo-600 font-semibold"
+                                  : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                              }`}
+                            >
+                              <ItemIcon
+                                size={18}
+                                className={itemActive ? "text-indigo-500" : "text-gray-400"}
+                              />
+                              <span className="truncate">{item.label}</span>
+                            </button>
+                          );
+                        })}
                       </div>
-                    </div>
-                    <div className="flex flex-col gap-1">
-                      {section.subItems.map((item) => {
-                        const ItemIcon = item.icon;
-                        const itemActive =
-                          section.key === activeSection?.key &&
-                          activeSubItemPath === item.path;
-                        return (
-                          <button
-                            key={item.path}
-                            type="button"
-                            onClick={() => {
-                              navigate(item.path);
-                              setOpenKey(null);
-                              setHoveredKey(null);
-                            }}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm transition-colors ${
-                              itemActive
-                                ? "bg-indigo-50 text-indigo-600 font-semibold"
-                                : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
-                            }`}
-                          >
-                            <ItemIcon
-                              size={18}
-                              className={itemActive ? "text-indigo-500" : "text-gray-400"}
-                            />
-                            <span className="truncate">{item.label}</span>
-                          </button>
-                        );
-                      })}
                     </div>
                   </div>
                 )}

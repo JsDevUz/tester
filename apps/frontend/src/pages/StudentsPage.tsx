@@ -137,7 +137,7 @@ export function StudentsPage() {
   return (
     <AppShell>
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 min-w-0 w-full px-4 py-4 sm:px-6 sm:py-5 max-w-6xl mx-auto">
+        <div className="flex-1 min-w-0 w-full px-4 py-4 sm:px-6 sm:py-5 max-w-6xl mx-auto  bg-white rounded-2xl">
           {/* Header */}
           <div className="mb-5">
             <h1 className="text-lg sm:text-xl font-bold text-gray-800">
@@ -237,7 +237,7 @@ export function StudentsPage() {
               {/* Desktop: table */}
               <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-210 text-left">
-                  <thead className="border-b border-border text-sm font-medium text-gray-500">
+                  <thead className="text-sm font-medium text-gray-700">
                     <tr>
                       <th className="px-5 py-4">O'quvchi</th>
                       <th className="px-5 py-4">Mahsulot</th>
@@ -251,7 +251,7 @@ export function StudentsPage() {
                     {filtered.map((s) => (
                       <tr
                         key={s.id}
-                        className="transition-colors hover:bg-indigo-50/40"
+                        className="transition-colors hover:bg-indigo-50/40 rounded-2xl"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">

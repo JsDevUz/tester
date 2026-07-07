@@ -395,7 +395,7 @@ export function QuestionEditorPage() {
 
           {questions.length > 0 && (
             <div className="mt-6 flex flex-col gap-3">
-              <h3 className="text-sm font-medium text-gray-500">
+              <h3 className="text-sm font-medium text-gray-700">
                 Savollar ({questions.length})
               </h3>
               {questions.map((q, i) => (

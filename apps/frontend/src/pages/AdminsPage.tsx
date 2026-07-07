@@ -55,7 +55,7 @@ export function AdminsPage() {
               >
                 ← Orqaga
               </button>
-              <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
                 Adminlar
               </h2>
             </div>

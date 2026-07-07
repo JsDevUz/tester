@@ -2009,7 +2009,7 @@ export function DashboardPage() {
       <Toolbar />
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+          <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
             My Folders
           </h2>
           <button
@@ -2125,7 +2125,7 @@ export function AdminsPage() {
             >
               ← Back
             </button>
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+            <h2 className="text-sm font-medium text-gray-700 uppercase tracking-wide">
               Admins
             </h2>
           </div>
