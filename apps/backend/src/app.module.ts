@@ -3,6 +3,7 @@ import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
 import { FoldersModule } from './folders/folders.module';
 import { CoursesModule } from './courses/courses.module';
+import { CourseModulesModule } from './course-modules/course-modules.module';
 import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -18,6 +19,7 @@ import 'dotenv/config';
     AdminsModule,
     FoldersModule,
     CoursesModule,
+    CourseModulesModule,
     TestsModule,
     QuestionsModule,
     DeliveryModule,
