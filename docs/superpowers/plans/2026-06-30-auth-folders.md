@@ -94,6 +94,7 @@ apps/
 ### Task 1: Monorepo Scaffold
 
 **Files:**
+
 - Create: `package.json` (root)
 - Create: `apps/backend/package.json`
 - Create: `apps/backend/tsconfig.json`
@@ -110,6 +111,7 @@ apps/
 - Create: `apps/frontend/src/App.tsx`
 
 **Interfaces:**
+
 - Produces: working `npm run dev` in both apps
 
 - [ ] **Step 1: Create root package.json**
@@ -147,6 +149,7 @@ PORT=3000
 ```
 
 Copy to `.env` and fill in real values:
+
 ```bash
 cp apps/backend/.env.example apps/backend/.env
 ```
@@ -154,15 +157,15 @@ cp apps/backend/.env.example apps/backend/.env
 - [ ] **Step 4: Update backend src/main.ts**
 
 ```typescript
-import { NestFactory } from '@nestjs/core';
-import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { NestFactory } from "@nestjs/core";
+import { AppModule } from "./app.module";
+import { ValidationPipe } from "@nestjs/common";
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  app.setGlobalPrefix('api/v1');
+  app.setGlobalPrefix("api/v1");
   app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
-  app.enableCors({ origin: process.env.FRONTEND_URL || '*' });
+  app.enableCors({ origin: process.env.FRONTEND_URL || "*" });
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();
@@ -182,29 +185,29 @@ npm install -D @types/node
 - [ ] **Step 6: Configure Tailwind in vite.config.ts**
 
 ```typescript
-import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tailwindcss from '@tailwindcss/vite'
+import { defineConfig } from "vite";
+import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   server: { port: 5173 },
-})
+});
 ```
 
 - [ ] **Step 7: Update frontend src/main.tsx**
 
 ```tsx
-import { StrictMode } from 'react'
-import { createRoot } from 'react-dom/client'
-import './index.css'
-import App from './App.tsx'
+import { StrictMode } from "react";
+import { createRoot } from "react-dom/client";
+import "./index.css";
+import App from "./App.tsx";
 
-createRoot(document.getElementById('root')!).render(
+createRoot(document.getElementById("root")!).render(
   <StrictMode>
     <App />
   </StrictMode>,
-)
+);
 ```
 
 - [ ] **Step 8: Replace frontend src/index.css**
@@ -238,48 +241,54 @@ git commit -m "chore: monorepo scaffold with NestJS backend and React frontend"
 ### Task 2: Database Schema + Migrations
 
 **Files:**
+
 - Create: `apps/backend/src/db/schema.ts`
 - Create: `apps/backend/src/db/index.ts`
 - Create: `apps/backend/drizzle.config.ts`
 - Create: `apps/backend/src/db/migrate.ts`
 
 **Interfaces:**
+
 - Produces: `db` (Drizzle instance), `admins` table, `folders` table
 - Produces: `npm run db:migrate` command
 
 - [ ] **Step 1: Create schema**
 
 `apps/backend/src/db/schema.ts`:
-```typescript
-import { pgTable, text, uuid, timestamptz } from 'drizzle-orm/pg-core';
 
-export const admins = pgTable('admins', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').unique().notNull(),
-  passwordHash: text('password_hash').notNull(),
-  name: text('name').notNull(),
-  role: text('role').notNull().default('admin'),
-  createdAt: timestamptz('created_at').defaultNow(),
+```typescript
+import { pgTable, text, uuid, timestamptz } from "drizzle-orm/pg-core";
+
+export const admins = pgTable("admins", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  email: text("email").unique().notNull(),
+  passwordHash: text("password_hash").notNull(),
+  name: text("name").notNull(),
+  role: text("role").notNull().default("admin"),
+  createdAt: timestamptz("created_at").defaultNow(),
 });
 
-export const folders = pgTable('folders', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  adminId: uuid('admin_id').notNull().references(() => admins.id, { onDelete: 'cascade' }),
-  name: text('name').notNull(),
-  color: text('color').notNull().default('#6366f1'),
-  icon: text('icon').notNull().default('folder'),
-  createdAt: timestamptz('created_at').defaultNow(),
+export const folders = pgTable("folders", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  adminId: uuid("admin_id")
+    .notNull()
+    .references(() => admins.id, { onDelete: "cascade" }),
+  name: text("name").notNull(),
+  color: text("color").notNull().default("#6366f1"),
+  icon: text("icon").notNull().default("folder"),
+  createdAt: timestamptz("created_at").defaultNow(),
 });
 ```
 
 - [ ] **Step 2: Create db connection**
 
 `apps/backend/src/db/index.ts`:
+
 ```typescript
-import { drizzle } from 'drizzle-orm/postgres-js';
-import postgres from 'postgres';
-import * as schema from './schema';
-import 'dotenv/config';
+import { drizzle } from "drizzle-orm/postgres-js";
+import postgres from "postgres";
+import * as schema from "./schema";
+import "dotenv/config";
 
 const client = postgres(process.env.DATABASE_URL!);
 export const db = drizzle(client, { schema });
@@ -288,14 +297,15 @@ export const db = drizzle(client, { schema });
 - [ ] **Step 3: Create drizzle config**
 
 `apps/backend/drizzle.config.ts`:
+
 ```typescript
-import type { Config } from 'drizzle-kit';
-import 'dotenv/config';
+import type { Config } from "drizzle-kit";
+import "dotenv/config";
 
 export default {
-  schema: './src/db/schema.ts',
-  out: './drizzle/migrations',
-  dialect: 'postgresql',
+  schema: "./src/db/schema.ts",
+  out: "./drizzle/migrations",
+  dialect: "postgresql",
   dbCredentials: { url: process.env.DATABASE_URL! },
 } satisfies Config;
 ```
@@ -303,6 +313,7 @@ export default {
 - [ ] **Step 4: Add db scripts to backend package.json**
 
 Add to `scripts`:
+
 ```json
 "db:generate": "drizzle-kit generate",
 "db:migrate": "drizzle-kit migrate",
@@ -331,28 +342,33 @@ git commit -m "feat: add database schema and drizzle migrations"
 ### Task 3: Seed Super Admin
 
 **Files:**
+
 - Create: `apps/backend/src/db/seed.ts`
 
 **Interfaces:**
+
 - Consumes: `db` from `../db/index`, `admins` table from `../db/schema`
 - Produces: `npm run seed` creates super admin row in DB
 
 - [ ] **Step 1: Create seed script**
 
 `apps/backend/src/db/seed.ts`:
+
 ```typescript
-import { db } from './index';
-import { admins } from './schema';
-import * as bcrypt from 'bcrypt';
-import 'dotenv/config';
+import { db } from "./index";
+import { admins } from "./schema";
+import * as bcrypt from "bcrypt";
+import "dotenv/config";
 
 async function seed() {
   const email = process.env.SUPER_ADMIN_EMAIL;
   const password = process.env.SUPER_ADMIN_PASSWORD;
-  const name = process.env.SUPER_ADMIN_NAME ?? 'Super Admin';
+  const name = process.env.SUPER_ADMIN_NAME ?? "Super Admin";
 
   if (!email || !password) {
-    throw new Error('SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env');
+    throw new Error(
+      "SUPER_ADMIN_EMAIL and SUPER_ADMIN_PASSWORD must be set in .env",
+    );
   }
 
   const existing = await db.query.admins.findFirst({
@@ -365,22 +381,27 @@ async function seed() {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  await db.insert(admins).values({ email, passwordHash, name, role: 'super' });
+  await db.insert(admins).values({ email, passwordHash, name, role: "super" });
   console.log(`Super admin created: ${email}`);
   process.exit(0);
 }
 
-seed().catch((e) => { console.error(e); process.exit(1); });
+seed().catch((e) => {
+  console.error(e);
+  process.exit(1);
+});
 ```
 
 - [ ] **Step 2: Add seed script to package.json**
 
 Add to `scripts`:
+
 ```json
 "seed": "ts-node -r tsconfig-paths/register src/db/seed.ts"
 ```
 
 Install ts-node if not present:
+
 ```bash
 cd apps/backend && npm install -D ts-node tsconfig-paths
 ```
@@ -413,6 +434,7 @@ git commit -m "feat: add super admin seed script"
 ### Task 4: Auth Module (Backend)
 
 **Files:**
+
 - Create: `apps/backend/src/auth/auth.module.ts`
 - Create: `apps/backend/src/auth/auth.controller.ts`
 - Create: `apps/backend/src/auth/auth.service.ts`
@@ -424,6 +446,7 @@ git commit -m "feat: add super admin seed script"
 - Test: `apps/backend/test/auth.e2e-spec.ts`
 
 **Interfaces:**
+
 - Produces: `POST /api/v1/auth/login` → `{ access_token: string, admin: { id, email, name, role } }`
 - Produces: `GET /api/v1/auth/me` → `{ id, email, name, role }`
 - Produces: `JwtAuthGuard` — attach to any protected route
@@ -433,56 +456,68 @@ git commit -m "feat: add super admin seed script"
 - [ ] **Step 1: Write failing e2e test**
 
 `apps/backend/test/auth.e2e-spec.ts`:
-```typescript
-import { Test } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 
-describe('Auth (e2e)', () => {
+```typescript
+import { Test } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+
+describe("Auth (e2e)", () => {
   let app: INestApplication;
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = module.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix("api/v1");
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
   });
 
   afterAll(() => app.close());
 
-  it('POST /api/v1/auth/login - success', async () => {
+  it("POST /api/v1/auth/login - success", async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: process.env.SUPER_ADMIN_EMAIL, password: process.env.SUPER_ADMIN_PASSWORD });
+      .post("/api/v1/auth/login")
+      .send({
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: process.env.SUPER_ADMIN_PASSWORD,
+      });
     expect(res.status).toBe(200);
-    expect(res.body).toHaveProperty('access_token');
-    expect(res.body.admin.role).toBe('super');
+    expect(res.body).toHaveProperty("access_token");
+    expect(res.body.admin.role).toBe("super");
   });
 
-  it('POST /api/v1/auth/login - wrong password', async () => {
+  it("POST /api/v1/auth/login - wrong password", async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: process.env.SUPER_ADMIN_EMAIL, password: 'wrongpassword' });
+      .post("/api/v1/auth/login")
+      .send({
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: "wrongpassword",
+      });
     expect(res.status).toBe(401);
   });
 
-  it('GET /api/v1/auth/me - with token', async () => {
+  it("GET /api/v1/auth/me - with token", async () => {
     const loginRes = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: process.env.SUPER_ADMIN_EMAIL, password: process.env.SUPER_ADMIN_PASSWORD });
+      .post("/api/v1/auth/login")
+      .send({
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: process.env.SUPER_ADMIN_PASSWORD,
+      });
     const token = loginRes.body.access_token;
 
     const res = await request(app.getHttpServer())
-      .get('/api/v1/auth/me')
-      .set('Authorization', `Bearer ${token}`);
+      .get("/api/v1/auth/me")
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(res.body.email).toBe(process.env.SUPER_ADMIN_EMAIL);
   });
 
-  it('GET /api/v1/auth/me - no token', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/auth/me');
+  it("GET /api/v1/auth/me - no token", async () => {
+    const res = await request(app.getHttpServer()).get("/api/v1/auth/me");
     expect(res.status).toBe(401);
   });
 });
@@ -499,19 +534,21 @@ Expected: FAIL — `AppModule` has no auth routes yet.
 - [ ] **Step 3: Create roles decorator**
 
 `apps/backend/src/auth/roles.decorator.ts`:
+
 ```typescript
-import { SetMetadata } from '@nestjs/common';
-export const ROLES_KEY = 'roles';
+import { SetMetadata } from "@nestjs/common";
+export const ROLES_KEY = "roles";
 export const Roles = (...roles: string[]) => SetMetadata(ROLES_KEY, roles);
 ```
 
 - [ ] **Step 4: Create JWT strategy**
 
 `apps/backend/src/auth/jwt.strategy.ts`:
+
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
+import { Injectable } from "@nestjs/common";
+import { PassportStrategy } from "@nestjs/passport";
+import { ExtractJwt, Strategy } from "passport-jwt";
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
@@ -522,8 +559,18 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
     });
   }
 
-  validate(payload: { sub: string; email: string; name: string; role: string }) {
-    return { id: payload.sub, email: payload.email, name: payload.name, role: payload.role };
+  validate(payload: {
+    sub: string;
+    email: string;
+    name: string;
+    role: string;
+  }) {
+    return {
+      id: payload.sub,
+      email: payload.email,
+      name: payload.name,
+      role: payload.role,
+    };
   }
 }
 ```
@@ -531,21 +578,28 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 - [ ] **Step 5: Create JWT auth guard**
 
 `apps/backend/src/auth/jwt-auth.guard.ts`:
+
 ```typescript
-import { Injectable } from '@nestjs/common';
-import { AuthGuard } from '@nestjs/passport';
+import { Injectable } from "@nestjs/common";
+import { AuthGuard } from "@nestjs/passport";
 
 @Injectable()
-export class JwtAuthGuard extends AuthGuard('jwt') {}
+export class JwtAuthGuard extends AuthGuard("jwt") {}
 ```
 
 - [ ] **Step 6: Create roles guard**
 
 `apps/backend/src/auth/roles.guard.ts`:
+
 ```typescript
-import { Injectable, CanActivate, ExecutionContext, ForbiddenException } from '@nestjs/common';
-import { Reflector } from '@nestjs/core';
-import { ROLES_KEY } from './roles.decorator';
+import {
+  Injectable,
+  CanActivate,
+  ExecutionContext,
+  ForbiddenException,
+} from "@nestjs/common";
+import { Reflector } from "@nestjs/core";
+import { ROLES_KEY } from "./roles.decorator";
 
 @Injectable()
 export class RolesGuard implements CanActivate {
@@ -567,24 +621,27 @@ export class RolesGuard implements CanActivate {
 - [ ] **Step 7: Create auth service**
 
 `apps/backend/src/auth/auth.service.ts`:
+
 ```typescript
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { JwtService } from '@nestjs/jwt';
-import { db } from '../db';
-import { admins } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import * as bcrypt from 'bcrypt';
+import { Injectable, UnauthorizedException } from "@nestjs/common";
+import { JwtService } from "@nestjs/jwt";
+import { db } from "../db";
+import { admins } from "../db/schema";
+import { eq } from "drizzle-orm";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class AuthService {
   constructor(private jwtService: JwtService) {}
 
   async login(email: string, password: string) {
-    const admin = await db.query.admins.findFirst({ where: eq(admins.email, email) });
-    if (!admin) throw new UnauthorizedException('Invalid credentials');
+    const admin = await db.query.admins.findFirst({
+      where: eq(admins.email, email),
+    });
+    if (!admin) throw new UnauthorizedException("Invalid credentials");
 
     const valid = await bcrypt.compare(password, admin.passwordHash);
-    if (!valid) throw new UnauthorizedException('Invalid credentials');
+    if (!valid) throw new UnauthorizedException("Invalid credentials");
 
     const token = this.jwtService.sign({
       sub: admin.id,
@@ -595,7 +652,12 @@ export class AuthService {
 
     return {
       access_token: token,
-      admin: { id: admin.id, email: admin.email, name: admin.name, role: admin.role },
+      admin: {
+        id: admin.id,
+        email: admin.email,
+        name: admin.name,
+        role: admin.role,
+      },
     };
   }
 }
@@ -604,28 +666,29 @@ export class AuthService {
 - [ ] **Step 8: Create auth controller**
 
 `apps/backend/src/auth/auth.controller.ts`:
+
 ```typescript
-import { Controller, Post, Body, Get, UseGuards, Req } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { Controller, Post, Body, Get, UseGuards, Req } from "@nestjs/common";
+import { AuthService } from "./auth.service";
+import { JwtAuthGuard } from "./jwt-auth.guard";
+import { IsEmail, IsString, MinLength } from "class-validator";
 
 class LoginDto {
   @IsEmail() email: string;
   @IsString() @MinLength(1) password: string;
 }
 
-@Controller('auth')
+@Controller("auth")
 export class AuthController {
   constructor(private authService: AuthService) {}
 
-  @Post('login')
+  @Post("login")
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('me')
+  @Get("me")
   me(@Req() req: any) {
     return req.admin;
   }
@@ -635,19 +698,23 @@ export class AuthController {
 - [ ] **Step 9: Create auth module**
 
 `apps/backend/src/auth/auth.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { JwtModule } from '@nestjs/jwt';
-import { PassportModule } from '@nestjs/passport';
-import { AuthController } from './auth.controller';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './jwt.strategy';
-import 'dotenv/config';
+import { Module } from "@nestjs/common";
+import { JwtModule } from "@nestjs/jwt";
+import { PassportModule } from "@nestjs/passport";
+import { AuthController } from "./auth.controller";
+import { AuthService } from "./auth.service";
+import { JwtStrategy } from "./jwt.strategy";
+import "dotenv/config";
 
 @Module({
   imports: [
     PassportModule,
-    JwtModule.register({ secret: process.env.JWT_SECRET!, signOptions: { expiresIn: '1d' } }),
+    JwtModule.register({
+      secret: process.env.JWT_SECRET!,
+      signOptions: { expiresIn: "1d" },
+    }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
@@ -659,10 +726,11 @@ export class AuthModule {}
 - [ ] **Step 10: Register in AppModule**
 
 `apps/backend/src/app.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import 'dotenv/config';
+import { Module } from "@nestjs/common";
+import { AuthModule } from "./auth/auth.module";
+import "dotenv/config";
 
 @Module({
   imports: [AuthModule],
@@ -690,6 +758,7 @@ git commit -m "feat: add JWT auth module with login and me endpoints"
 ### Task 5: Admins Module (Backend)
 
 **Files:**
+
 - Create: `apps/backend/src/admins/admins.module.ts`
 - Create: `apps/backend/src/admins/admins.controller.ts`
 - Create: `apps/backend/src/admins/admins.service.ts`
@@ -697,6 +766,7 @@ git commit -m "feat: add JWT auth module with login and me endpoints"
 - Test: `apps/backend/test/admins.e2e-spec.ts`
 
 **Interfaces:**
+
 - Consumes: `JwtAuthGuard` from `../auth/jwt-auth.guard`, `RolesGuard` from `../auth/roles.guard`, `@Roles` from `../auth/roles.decorator`
 - Produces: `GET /api/v1/admins` → `Array<{ id, email, name, role, createdAt }>` (super only)
 - Produces: `POST /api/v1/admins` body `{ email, password, name }` → `{ id, email, name, role }` (super only)
@@ -705,65 +775,79 @@ git commit -m "feat: add JWT auth module with login and me endpoints"
 - [ ] **Step 1: Write failing e2e test**
 
 `apps/backend/test/admins.e2e-spec.ts`:
-```typescript
-import { Test } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 
-describe('Admins (e2e)', () => {
+```typescript
+import { Test } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+
+describe("Admins (e2e)", () => {
   let app: INestApplication;
   let superToken: string;
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = module.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix("api/v1");
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
 
     const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: process.env.SUPER_ADMIN_EMAIL, password: process.env.SUPER_ADMIN_PASSWORD });
+      .post("/api/v1/auth/login")
+      .send({
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: process.env.SUPER_ADMIN_PASSWORD,
+      });
     superToken = res.body.access_token;
   });
 
   afterAll(() => app.close());
 
-  it('GET /api/v1/admins - super admin sees list', async () => {
+  it("GET /api/v1/admins - super admin sees list", async () => {
     const res = await request(app.getHttpServer())
-      .get('/api/v1/admins')
-      .set('Authorization', `Bearer ${superToken}`);
+      .get("/api/v1/admins")
+      .set("Authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
   });
 
-  it('POST /api/v1/admins - create admin', async () => {
+  it("POST /api/v1/admins - create admin", async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/admins')
-      .set('Authorization', `Bearer ${superToken}`)
-      .send({ email: 'newadmin@test.com', password: 'pass1234', name: 'Test Admin' });
+      .post("/api/v1/admins")
+      .set("Authorization", `Bearer ${superToken}`)
+      .send({
+        email: "newadmin@test.com",
+        password: "pass1234",
+        name: "Test Admin",
+      });
     expect(res.status).toBe(201);
-    expect(res.body.email).toBe('newadmin@test.com');
-    expect(res.body.role).toBe('admin');
-    expect(res.body).not.toHaveProperty('passwordHash');
+    expect(res.body.email).toBe("newadmin@test.com");
+    expect(res.body.role).toBe("admin");
+    expect(res.body).not.toHaveProperty("passwordHash");
   });
 
-  it('DELETE /api/v1/admins/:id - delete admin', async () => {
+  it("DELETE /api/v1/admins/:id - delete admin", async () => {
     const createRes = await request(app.getHttpServer())
-      .post('/api/v1/admins')
-      .set('Authorization', `Bearer ${superToken}`)
-      .send({ email: 'todelete@test.com', password: 'pass1234', name: 'To Delete' });
+      .post("/api/v1/admins")
+      .set("Authorization", `Bearer ${superToken}`)
+      .send({
+        email: "todelete@test.com",
+        password: "pass1234",
+        name: "To Delete",
+      });
     const id = createRes.body.id;
 
     const res = await request(app.getHttpServer())
       .delete(`/api/v1/admins/${id}`)
-      .set('Authorization', `Bearer ${superToken}`);
+      .set("Authorization", `Bearer ${superToken}`);
     expect(res.status).toBe(204);
   });
 
-  it('GET /api/v1/admins - no token returns 401', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/admins');
+  it("GET /api/v1/admins - no token returns 401", async () => {
+    const res = await request(app.getHttpServer()).get("/api/v1/admins");
     expect(res.status).toBe(401);
   });
 });
@@ -780,12 +864,17 @@ Expected: FAIL — routes not found.
 - [ ] **Step 3: Create admins service**
 
 `apps/backend/src/admins/admins.service.ts`:
+
 ```typescript
-import { Injectable, ConflictException, BadRequestException } from '@nestjs/common';
-import { db } from '../db';
-import { admins } from '../db/schema';
-import { eq } from 'drizzle-orm';
-import * as bcrypt from 'bcrypt';
+import {
+  Injectable,
+  ConflictException,
+  BadRequestException,
+} from "@nestjs/common";
+import { db } from "../db";
+import { admins } from "../db/schema";
+import { eq } from "drizzle-orm";
+import * as bcrypt from "bcrypt";
 
 @Injectable()
 export class AdminsService {
@@ -797,19 +886,27 @@ export class AdminsService {
   }
 
   async create(email: string, password: string, name: string) {
-    const existing = await db.query.admins.findFirst({ where: eq(admins.email, email) });
-    if (existing) throw new ConflictException('Email already in use');
+    const existing = await db.query.admins.findFirst({
+      where: eq(admins.email, email),
+    });
+    if (existing) throw new ConflictException("Email already in use");
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [admin] = await db
       .insert(admins)
-      .values({ email, passwordHash, name, role: 'admin' })
-      .returning({ id: admins.id, email: admins.email, name: admins.name, role: admins.role });
+      .values({ email, passwordHash, name, role: "admin" })
+      .returning({
+        id: admins.id,
+        email: admins.email,
+        name: admins.name,
+        role: admins.role,
+      });
     return admin;
   }
 
   async remove(id: string, requestingAdminId: string) {
-    if (id === requestingAdminId) throw new BadRequestException('Cannot delete yourself');
+    if (id === requestingAdminId)
+      throw new BadRequestException("Cannot delete yourself");
     await db.delete(admins).where(eq(admins.id, id));
   }
 }
@@ -818,13 +915,24 @@ export class AdminsService {
 - [ ] **Step 4: Create admins controller**
 
 `apps/backend/src/admins/admins.controller.ts`:
+
 ```typescript
-import { Controller, Get, Post, Delete, Param, Body, UseGuards, Req, HttpCode } from '@nestjs/common';
-import { AdminsService } from './admins.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import {
+  Controller,
+  Get,
+  Post,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+} from "@nestjs/common";
+import { AdminsService } from "./admins.service";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
+import { IsEmail, IsString, MinLength } from "class-validator";
 
 class CreateAdminDto {
   @IsEmail() email: string;
@@ -833,8 +941,8 @@ class CreateAdminDto {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('super')
-@Controller('admins')
+@Roles("super")
+@Controller("admins")
 export class AdminsController {
   constructor(private adminsService: AdminsService) {}
 
@@ -848,9 +956,9 @@ export class AdminsController {
     return this.adminsService.create(dto.email, dto.password, dto.name);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(204)
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param("id") id: string, @Req() req: any) {
     return this.adminsService.remove(id, req.admin.id);
   }
 }
@@ -859,10 +967,11 @@ export class AdminsController {
 - [ ] **Step 5: Create admins module**
 
 `apps/backend/src/admins/admins.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { AdminsController } from './admins.controller';
-import { AdminsService } from './admins.service';
+import { Module } from "@nestjs/common";
+import { AdminsController } from "./admins.controller";
+import { AdminsService } from "./admins.service";
 
 @Module({
   controllers: [AdminsController],
@@ -874,11 +983,12 @@ export class AdminsModule {}
 - [ ] **Step 6: Register in AppModule**
 
 `apps/backend/src/app.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { AdminsModule } from './admins/admins.module';
-import 'dotenv/config';
+import { Module } from "@nestjs/common";
+import { AuthModule } from "./auth/auth.module";
+import { AdminsModule } from "./admins/admins.module";
+import "dotenv/config";
 
 @Module({
   imports: [AuthModule, AdminsModule],
@@ -906,6 +1016,7 @@ git commit -m "feat: add admins module with CRUD for super admin"
 ### Task 6: Folders Module (Backend)
 
 **Files:**
+
 - Create: `apps/backend/src/folders/folders.module.ts`
 - Create: `apps/backend/src/folders/folders.controller.ts`
 - Create: `apps/backend/src/folders/folders.service.ts`
@@ -913,6 +1024,7 @@ git commit -m "feat: add admins module with CRUD for super admin"
 - Test: `apps/backend/test/folders.e2e-spec.ts`
 
 **Interfaces:**
+
 - Consumes: `JwtAuthGuard`, `req.admin.id` (string UUID)
 - Produces: `GET /api/v1/folders` → `Array<{ id, adminId, name, color, icon, createdAt }>`
 - Produces: `POST /api/v1/folders` body `{ name, color?, icon? }` → folder object
@@ -922,70 +1034,76 @@ git commit -m "feat: add admins module with CRUD for super admin"
 - [ ] **Step 1: Write failing e2e test**
 
 `apps/backend/test/folders.e2e-spec.ts`:
-```typescript
-import { Test } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import * as request from 'supertest';
-import { AppModule } from '../src/app.module';
 
-describe('Folders (e2e)', () => {
+```typescript
+import { Test } from "@nestjs/testing";
+import { INestApplication, ValidationPipe } from "@nestjs/common";
+import * as request from "supertest";
+import { AppModule } from "../src/app.module";
+
+describe("Folders (e2e)", () => {
   let app: INestApplication;
   let token: string;
   let folderId: string;
 
   beforeAll(async () => {
-    const module = await Test.createTestingModule({ imports: [AppModule] }).compile();
+    const module = await Test.createTestingModule({
+      imports: [AppModule],
+    }).compile();
     app = module.createNestApplication();
-    app.setGlobalPrefix('api/v1');
+    app.setGlobalPrefix("api/v1");
     app.useGlobalPipes(new ValidationPipe({ whitelist: true }));
     await app.init();
 
     const res = await request(app.getHttpServer())
-      .post('/api/v1/auth/login')
-      .send({ email: process.env.SUPER_ADMIN_EMAIL, password: process.env.SUPER_ADMIN_PASSWORD });
+      .post("/api/v1/auth/login")
+      .send({
+        email: process.env.SUPER_ADMIN_EMAIL,
+        password: process.env.SUPER_ADMIN_PASSWORD,
+      });
     token = res.body.access_token;
   });
 
   afterAll(() => app.close());
 
-  it('POST /api/v1/folders - create folder', async () => {
+  it("POST /api/v1/folders - create folder", async () => {
     const res = await request(app.getHttpServer())
-      .post('/api/v1/folders')
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Math Tests', color: '#ef4444' });
+      .post("/api/v1/folders")
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Math Tests", color: "#ef4444" });
     expect(res.status).toBe(201);
-    expect(res.body.name).toBe('Math Tests');
-    expect(res.body.color).toBe('#ef4444');
+    expect(res.body.name).toBe("Math Tests");
+    expect(res.body.color).toBe("#ef4444");
     folderId = res.body.id;
   });
 
-  it('GET /api/v1/folders - list only own folders', async () => {
+  it("GET /api/v1/folders - list only own folders", async () => {
     const res = await request(app.getHttpServer())
-      .get('/api/v1/folders')
-      .set('Authorization', `Bearer ${token}`);
+      .get("/api/v1/folders")
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(200);
     expect(Array.isArray(res.body)).toBe(true);
     expect(res.body.every((f: any) => f.name !== undefined)).toBe(true);
   });
 
-  it('PATCH /api/v1/folders/:id - rename folder', async () => {
+  it("PATCH /api/v1/folders/:id - rename folder", async () => {
     const res = await request(app.getHttpServer())
       .patch(`/api/v1/folders/${folderId}`)
-      .set('Authorization', `Bearer ${token}`)
-      .send({ name: 'Science Tests' });
+      .set("Authorization", `Bearer ${token}`)
+      .send({ name: "Science Tests" });
     expect(res.status).toBe(200);
-    expect(res.body.name).toBe('Science Tests');
+    expect(res.body.name).toBe("Science Tests");
   });
 
-  it('DELETE /api/v1/folders/:id', async () => {
+  it("DELETE /api/v1/folders/:id", async () => {
     const res = await request(app.getHttpServer())
       .delete(`/api/v1/folders/${folderId}`)
-      .set('Authorization', `Bearer ${token}`);
+      .set("Authorization", `Bearer ${token}`);
     expect(res.status).toBe(204);
   });
 
-  it('GET /api/v1/folders - no token returns 401', async () => {
-    const res = await request(app.getHttpServer()).get('/api/v1/folders');
+  it("GET /api/v1/folders - no token returns 401", async () => {
+    const res = await request(app.getHttpServer()).get("/api/v1/folders");
     expect(res.status).toBe(401);
   });
 });
@@ -1002,11 +1120,12 @@ Expected: FAIL — routes not found.
 - [ ] **Step 3: Create folders service**
 
 `apps/backend/src/folders/folders.service.ts`:
+
 ```typescript
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db';
-import { folders } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { db } from "../db";
+import { folders } from "../db/schema";
+import { and, eq } from "drizzle-orm";
 
 @Injectable()
 export class FoldersService {
@@ -1020,18 +1139,27 @@ export class FoldersService {
   async create(adminId: string, name: string, color?: string, icon?: string) {
     const [folder] = await db
       .insert(folders)
-      .values({ adminId, name, color: color ?? '#6366f1', icon: icon ?? 'folder' })
+      .values({
+        adminId,
+        name,
+        color: color ?? "#6366f1",
+        icon: icon ?? "folder",
+      })
       .returning();
     return folder;
   }
 
-  async update(id: string, adminId: string, data: { name?: string; color?: string; icon?: string }) {
+  async update(
+    id: string,
+    adminId: string,
+    data: { name?: string; color?: string; icon?: string },
+  ) {
     const [folder] = await db
       .update(folders)
       .set(data)
       .where(and(eq(folders.id, id), eq(folders.adminId, adminId)))
       .returning();
-    if (!folder) throw new NotFoundException('Folder not found');
+    if (!folder) throw new NotFoundException("Folder not found");
     return folder;
   }
 
@@ -1040,7 +1168,7 @@ export class FoldersService {
       .delete(folders)
       .where(and(eq(folders.id, id), eq(folders.adminId, adminId)))
       .returning({ id: folders.id });
-    if (!result.length) throw new NotFoundException('Folder not found');
+    if (!result.length) throw new NotFoundException("Folder not found");
   }
 }
 ```
@@ -1048,11 +1176,23 @@ export class FoldersService {
 - [ ] **Step 4: Create folders controller**
 
 `apps/backend/src/folders/folders.controller.ts`:
+
 ```typescript
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req, HttpCode } from '@nestjs/common';
-import { FoldersService } from './folders.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+} from "@nestjs/common";
+import { FoldersService } from "./folders.service";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { IsOptional, IsString, MinLength } from "class-validator";
 
 class CreateFolderDto {
   @IsString() @MinLength(1) name: string;
@@ -1067,7 +1207,7 @@ class UpdateFolderDto {
 }
 
 @UseGuards(JwtAuthGuard)
-@Controller('folders')
+@Controller("folders")
 export class FoldersController {
   constructor(private foldersService: FoldersService) {}
 
@@ -1078,17 +1218,26 @@ export class FoldersController {
 
   @Post()
   create(@Req() req: any, @Body() dto: CreateFolderDto) {
-    return this.foldersService.create(req.admin.id, dto.name, dto.color, dto.icon);
+    return this.foldersService.create(
+      req.admin.id,
+      dto.name,
+      dto.color,
+      dto.icon,
+    );
   }
 
-  @Patch(':id')
-  update(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateFolderDto) {
+  @Patch(":id")
+  update(
+    @Param("id") id: string,
+    @Req() req: any,
+    @Body() dto: UpdateFolderDto,
+  ) {
     return this.foldersService.update(id, req.admin.id, dto);
   }
 
-  @Delete(':id')
+  @Delete(":id")
   @HttpCode(204)
-  remove(@Param('id') id: string, @Req() req: any) {
+  remove(@Param("id") id: string, @Req() req: any) {
     return this.foldersService.remove(id, req.admin.id);
   }
 }
@@ -1097,10 +1246,11 @@ export class FoldersController {
 - [ ] **Step 5: Create folders module**
 
 `apps/backend/src/folders/folders.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { FoldersController } from './folders.controller';
-import { FoldersService } from './folders.service';
+import { Module } from "@nestjs/common";
+import { FoldersController } from "./folders.controller";
+import { FoldersService } from "./folders.service";
 
 @Module({
   controllers: [FoldersController],
@@ -1112,12 +1262,13 @@ export class FoldersModule {}
 - [ ] **Step 6: Register in AppModule**
 
 `apps/backend/src/app.module.ts`:
+
 ```typescript
-import { Module } from '@nestjs/common';
-import { AuthModule } from './auth/auth.module';
-import { AdminsModule } from './admins/admins.module';
-import { FoldersModule } from './folders/folders.module';
-import 'dotenv/config';
+import { Module } from "@nestjs/common";
+import { AuthModule } from "./auth/auth.module";
+import { AdminsModule } from "./admins/admins.module";
+import { FoldersModule } from "./folders/folders.module";
+import "dotenv/config";
 
 @Module({
   imports: [AuthModule, AdminsModule, FoldersModule],
@@ -1145,6 +1296,7 @@ git commit -m "feat: add folders module with admin-scoped CRUD"
 ### Task 7: Frontend — API Client + Stores
 
 **Files:**
+
 - Create: `apps/frontend/src/api/client.ts`
 - Create: `apps/frontend/src/api/auth.ts`
 - Create: `apps/frontend/src/api/folders.ts`
@@ -1153,6 +1305,7 @@ git commit -m "feat: add folders module with admin-scoped CRUD"
 - Create: `apps/frontend/src/stores/folderStore.ts`
 
 **Interfaces:**
+
 - Produces: `useAuthStore()` → `{ token, admin, login(email,password), logout() }`
 - Produces: `useFolderStore()` → `{ folders, fetchFolders(), createFolder(name,color,icon), updateFolder(id,data), deleteFolder(id) }`
 - Produces: `adminApi.list()`, `adminApi.create(email,password,name)`, `adminApi.remove(id)`
@@ -1160,15 +1313,16 @@ git commit -m "feat: add folders module with admin-scoped CRUD"
 - [ ] **Step 1: Create API client**
 
 `apps/frontend/src/api/client.ts`:
+
 ```typescript
-import axios from 'axios';
+import axios from "axios";
 
 const client = axios.create({
   baseURL: `${import.meta.env.VITE_API_URL}/api/v1`,
 });
 
 client.interceptors.request.use((config) => {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
   return config;
 });
@@ -1179,23 +1333,27 @@ export default client;
 - [ ] **Step 2: Create auth API**
 
 `apps/frontend/src/api/auth.ts`:
+
 ```typescript
-import client from './client';
+import client from "./client";
 
 export interface Admin {
   id: string;
   email: string;
   name: string;
-  role: 'super' | 'admin';
+  role: "super" | "admin";
 }
 
-export async function apiLogin(email: string, password: string): Promise<{ access_token: string; admin: Admin }> {
-  const res = await client.post('/auth/login', { email, password });
+export async function apiLogin(
+  email: string,
+  password: string,
+): Promise<{ access_token: string; admin: Admin }> {
+  const res = await client.post("/auth/login", { email, password });
   return res.data;
 }
 
 export async function apiGetMe(): Promise<Admin> {
-  const res = await client.get('/auth/me');
+  const res = await client.get("/auth/me");
   return res.data;
 }
 ```
@@ -1203,8 +1361,9 @@ export async function apiGetMe(): Promise<Admin> {
 - [ ] **Step 3: Create folders API**
 
 `apps/frontend/src/api/folders.ts`:
+
 ```typescript
-import client from './client';
+import client from "./client";
 
 export interface Folder {
   id: string;
@@ -1216,16 +1375,23 @@ export interface Folder {
 }
 
 export async function apiFetchFolders(): Promise<Folder[]> {
-  const res = await client.get('/folders');
+  const res = await client.get("/folders");
   return res.data;
 }
 
-export async function apiCreateFolder(name: string, color?: string, icon?: string): Promise<Folder> {
-  const res = await client.post('/folders', { name, color, icon });
+export async function apiCreateFolder(
+  name: string,
+  color?: string,
+  icon?: string,
+): Promise<Folder> {
+  const res = await client.post("/folders", { name, color, icon });
   return res.data;
 }
 
-export async function apiUpdateFolder(id: string, data: { name?: string; color?: string; icon?: string }): Promise<Folder> {
+export async function apiUpdateFolder(
+  id: string,
+  data: { name?: string; color?: string; icon?: string },
+): Promise<Folder> {
   const res = await client.patch(`/folders/${id}`, data);
   return res.data;
 }
@@ -1238,17 +1404,22 @@ export async function apiDeleteFolder(id: string): Promise<void> {
 - [ ] **Step 4: Create admins API**
 
 `apps/frontend/src/api/admins.ts`:
+
 ```typescript
-import client from './client';
-import type { Admin } from './auth';
+import client from "./client";
+import type { Admin } from "./auth";
 
 export async function apiListAdmins(): Promise<Admin[]> {
-  const res = await client.get('/admins');
+  const res = await client.get("/admins");
   return res.data;
 }
 
-export async function apiCreateAdmin(email: string, password: string, name: string): Promise<Admin> {
-  const res = await client.post('/admins', { email, password, name });
+export async function apiCreateAdmin(
+  email: string,
+  password: string,
+  name: string,
+): Promise<Admin> {
+  const res = await client.post("/admins", { email, password, name });
   return res.data;
 }
 
@@ -1260,9 +1431,10 @@ export async function apiDeleteAdmin(id: string): Promise<void> {
 - [ ] **Step 5: Create auth store**
 
 `apps/frontend/src/stores/authStore.ts`:
+
 ```typescript
-import { create } from 'zustand';
-import { apiLogin, type Admin } from '../api/auth';
+import { create } from "zustand";
+import { apiLogin, type Admin } from "../api/auth";
 
 interface AuthState {
   token: string | null;
@@ -1272,15 +1444,15 @@ interface AuthState {
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
-  token: localStorage.getItem('token'),
+  token: localStorage.getItem("token"),
   admin: null,
   login: async (email, password) => {
     const { access_token, admin } = await apiLogin(email, password);
-    localStorage.setItem('token', access_token);
+    localStorage.setItem("token", access_token);
     set({ token: access_token, admin });
   },
   logout: () => {
-    localStorage.removeItem('token');
+    localStorage.removeItem("token");
     set({ token: null, admin: null });
   },
 }));
@@ -1289,15 +1461,25 @@ export const useAuthStore = create<AuthState>((set) => ({
 - [ ] **Step 6: Create folder store**
 
 `apps/frontend/src/stores/folderStore.ts`:
+
 ```typescript
-import { create } from 'zustand';
-import { apiFetchFolders, apiCreateFolder, apiUpdateFolder, apiDeleteFolder, type Folder } from '../api/folders';
+import { create } from "zustand";
+import {
+  apiFetchFolders,
+  apiCreateFolder,
+  apiUpdateFolder,
+  apiDeleteFolder,
+  type Folder,
+} from "../api/folders";
 
 interface FolderState {
   folders: Folder[];
   fetchFolders: () => Promise<void>;
   createFolder: (name: string, color?: string, icon?: string) => Promise<void>;
-  updateFolder: (id: string, data: { name?: string; color?: string; icon?: string }) => Promise<void>;
+  updateFolder: (
+    id: string,
+    data: { name?: string; color?: string; icon?: string },
+  ) => Promise<void>;
   deleteFolder: (id: string) => Promise<void>;
 }
 
@@ -1325,6 +1507,7 @@ export const useFolderStore = create<FolderState>((set, get) => ({
 - [ ] **Step 7: Add VITE_API_URL to frontend**
 
 Create `apps/frontend/.env`:
+
 ```
 VITE_API_URL=http://localhost:3000
 ```
@@ -1341,6 +1524,7 @@ git commit -m "feat: add frontend API client and Zustand stores"
 ### Task 8: Frontend — Pages & Components
 
 **Files:**
+
 - Create: `apps/frontend/src/components/PrivateRoute.tsx`
 - Create: `apps/frontend/src/components/SuperAdminRoute.tsx`
 - Create: `apps/frontend/src/components/Toolbar.tsx`
@@ -1354,6 +1538,7 @@ git commit -m "feat: add frontend API client and Zustand stores"
 - Modify: `apps/frontend/src/App.tsx`
 
 **Interfaces:**
+
 - Consumes: `useAuthStore()`, `useFolderStore()`, `apiListAdmins`, `apiCreateAdmin`, `apiDeleteAdmin`
 - Produces: working UI at `/login`, `/`, `/admins`
 
@@ -1366,9 +1551,10 @@ cd apps/frontend && npm install react-router-dom
 - [ ] **Step 2: Create PrivateRoute**
 
 `apps/frontend/src/components/PrivateRoute.tsx`:
+
 ```tsx
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { Navigate } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
 
 export function PrivateRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -1379,14 +1565,15 @@ export function PrivateRoute({ children }: { children: React.ReactNode }) {
 - [ ] **Step 3: Create SuperAdminRoute**
 
 `apps/frontend/src/components/SuperAdminRoute.tsx`:
+
 ```tsx
-import { Navigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { Navigate } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
 
 export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const admin = useAuthStore((s) => s.admin);
   if (!admin) return <Navigate to="/login" replace />;
-  if (admin.role !== 'super') return <Navigate to="/" replace />;
+  if (admin.role !== "super") return <Navigate to="/" replace />;
   return <>{children}</>;
 }
 ```
@@ -1394,9 +1581,10 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 - [ ] **Step 4: Create Toolbar**
 
 `apps/frontend/src/components/Toolbar.tsx`:
+
 ```tsx
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
 
 export function Toolbar() {
   const { admin, logout } = useAuthStore();
@@ -1404,16 +1592,16 @@ export function Toolbar() {
 
   function handleLogout() {
     logout();
-    navigate('/login');
+    navigate("/login");
   }
 
   return (
     <div className="h-12 bg-white/80 backdrop-blur border-b border-gray-200 flex items-center justify-between px-4">
       <span className="font-medium text-gray-700">{admin?.name}</span>
       <div className="flex gap-2">
-        {admin?.role === 'super' && (
+        {admin?.role === "super" && (
           <button
-            onClick={() => navigate('/admins')}
+            onClick={() => navigate("/admins")}
             className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
           >
             Admins
@@ -1434,8 +1622,9 @@ export function Toolbar() {
 - [ ] **Step 5: Create FolderCard**
 
 `apps/frontend/src/components/FolderCard.tsx`:
+
 ```tsx
-import type { Folder } from '../api/folders';
+import type { Folder } from "../api/folders";
 
 interface Props {
   folder: Folder;
@@ -1452,7 +1641,10 @@ export function FolderCard({ folder, onDoubleClick, onContextMenu }: Props) {
     >
       <div
         className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-sm"
-        style={{ backgroundColor: folder.color + '22', border: `2px solid ${folder.color}44` }}
+        style={{
+          backgroundColor: folder.color + "22",
+          border: `2px solid ${folder.color}44`,
+        }}
       >
         <span style={{ color: folder.color }}>📁</span>
       </div>
@@ -1467,8 +1659,9 @@ export function FolderCard({ folder, onDoubleClick, onContextMenu }: Props) {
 - [ ] **Step 6: Create FolderContextMenu**
 
 `apps/frontend/src/components/FolderContextMenu.tsx`:
+
 ```tsx
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef } from "react";
 
 interface Props {
   x: number;
@@ -1479,27 +1672,49 @@ interface Props {
   onClose: () => void;
 }
 
-export function FolderContextMenu({ x, y, onRename, onChangeColor, onDelete, onClose }: Props) {
+export function FolderContextMenu({
+  x,
+  y,
+  onRename,
+  onChangeColor,
+  onDelete,
+  onClose,
+}: Props) {
   const ref = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (ref.current && !ref.current.contains(e.target as Node)) onClose();
     }
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
   }, [onClose]);
 
   return (
     <div
       ref={ref}
-      style={{ position: 'fixed', top: y, left: x, zIndex: 1000 }}
+      style={{ position: "fixed", top: y, left: x, zIndex: 1000 }}
       className="bg-white rounded-xl shadow-xl border border-gray-200 py-1 min-w-36 text-sm"
     >
-      <button onClick={onRename} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Rename</button>
-      <button onClick={onChangeColor} className="w-full text-left px-4 py-1.5 hover:bg-gray-50">Change Color</button>
+      <button
+        onClick={onRename}
+        className="w-full text-left px-4 py-1.5 hover:bg-gray-50"
+      >
+        Rename
+      </button>
+      <button
+        onClick={onChangeColor}
+        className="w-full text-left px-4 py-1.5 hover:bg-gray-50"
+      >
+        Change Color
+      </button>
       <div className="border-t border-gray-100 my-1" />
-      <button onClick={onDelete} className="w-full text-left px-4 py-1.5 hover:bg-gray-50 text-red-500">Delete</button>
+      <button
+        onClick={onDelete}
+        className="w-full text-left px-4 py-1.5 hover:bg-gray-50 text-red-500"
+      >
+        Delete
+      </button>
     </div>
   );
 }
@@ -1508,10 +1723,20 @@ export function FolderContextMenu({ x, y, onRename, onChangeColor, onDelete, onC
 - [ ] **Step 7: Create NewFolderModal**
 
 `apps/frontend/src/components/NewFolderModal.tsx`:
-```tsx
-import { useState } from 'react';
 
-const COLORS = ['#6366f1', '#ef4444', '#f59e0b', '#10b981', '#3b82f6', '#8b5cf6', '#ec4899', '#14b8a6'];
+```tsx
+import { useState } from "react";
+
+const COLORS = [
+  "#6366f1",
+  "#ef4444",
+  "#f59e0b",
+  "#10b981",
+  "#3b82f6",
+  "#8b5cf6",
+  "#ec4899",
+  "#14b8a6",
+];
 
 interface Props {
   onSubmit: (name: string, color: string) => void;
@@ -1520,9 +1745,14 @@ interface Props {
   title?: string;
 }
 
-export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder' }: Props) {
-  const [name, setName] = useState(initial?.name ?? '');
-  const [color, setColor] = useState(initial?.color ?? '#6366f1');
+export function NewFolderModal({
+  onSubmit,
+  onClose,
+  initial,
+  title = "New Folder",
+}: Props) {
+  const [name, setName] = useState(initial?.name ?? "");
+  const [color, setColor] = useState(initial?.color ?? "#6366f1");
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -1548,15 +1778,27 @@ export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
-                className="w-7 h-7 rounded-full border-2 transition-transform hover:scale-110"
-                style={{ backgroundColor: c, borderColor: color === c ? '#000' : 'transparent' }}
+                className="w-7 h-7 rounded-full border transition-transform hover:scale-110"
+                style={{
+                  backgroundColor: c,
+                  borderColor: color === c ? "#000" : "transparent",
+                }}
               />
             ))}
           </div>
           <div className="flex gap-2 justify-end">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">
-              {title === 'New Folder' ? 'Create' : 'Save'}
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+            >
+              {title === "New Folder" ? "Create" : "Save"}
             </button>
           </div>
         </form>
@@ -1569,8 +1811,9 @@ export function NewFolderModal({ onSubmit, onClose, initial, title = 'New Folder
 - [ ] **Step 8: Create AdminModal**
 
 `apps/frontend/src/components/AdminModal.tsx`:
+
 ```tsx
-import { useState } from 'react';
+import { useState } from "react";
 
 interface Props {
   onSubmit: (email: string, password: string, name: string) => void;
@@ -1578,14 +1821,17 @@ interface Props {
 }
 
 export function AdminModal({ onSubmit, onClose }: Props) {
-  const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !email || !password) { setError('All fields required'); return; }
+    if (!name || !email || !password) {
+      setError("All fields required");
+      return;
+    }
     onSubmit(email, password, name);
   }
 
@@ -1594,13 +1840,42 @@ export function AdminModal({ onSubmit, onClose }: Props) {
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-80">
         <h2 className="font-semibold text-gray-800 mb-4">Add Admin</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
-          <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Name" className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
-          <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Password (min 6)" type="password" className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400" />
+          <input
+            autoFocus
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Name"
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <input
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder="Email"
+            type="email"
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+          />
+          <input
+            value={password}
+            onChange={(e) => setPassword(e.target.value)}
+            placeholder="Password (min 6)"
+            type="password"
+            className="border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+          />
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <div className="flex gap-2 justify-end mt-1">
-            <button type="button" onClick={onClose} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">Cancel</button>
-            <button type="submit" className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600">Add</button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+            >
+              Add
+            </button>
           </div>
         </form>
       </div>
@@ -1612,31 +1887,32 @@ export function AdminModal({ onSubmit, onClose }: Props) {
 - [ ] **Step 9: Create LoginPage**
 
 `apps/frontend/src/pages/LoginPage.tsx`:
+
 ```tsx
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { useAuthStore } from '../stores/authStore';
-import { apiGetMe } from '../api/auth';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { useAuthStore } from "../stores/authStore";
+import { apiGetMe } from "../api/auth";
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [error, setError] = useState('');
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login } = useAuthStore();
   const navigate = useNavigate();
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError('');
+    setError("");
     setLoading(true);
     try {
       await login(email, password);
       const me = await apiGetMe();
       useAuthStore.setState({ admin: me });
-      navigate('/');
+      navigate("/");
     } catch {
-      setError('Invalid email or password');
+      setError("Invalid email or password");
     } finally {
       setLoading(false);
     }
@@ -1645,7 +1921,9 @@ export function LoginPage() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
       <div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
-        <h1 className="text-xl font-semibold text-gray-800 mb-6 text-center">Admin Panel</h1>
+        <h1 className="text-xl font-semibold text-gray-800 mb-6 text-center">
+          Admin Panel
+        </h1>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             type="email"
@@ -1667,7 +1945,7 @@ export function LoginPage() {
             disabled={loading}
             className="bg-indigo-500 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-600 disabled:opacity-50"
           >
-            {loading ? 'Logging in...' : 'Login'}
+            {loading ? "Logging in..." : "Login"}
           </button>
         </form>
       </div>
@@ -1679,22 +1957,30 @@ export function LoginPage() {
 - [ ] **Step 10: Create DashboardPage**
 
 `apps/frontend/src/pages/DashboardPage.tsx`:
+
 ```tsx
-import { useEffect, useState } from 'react';
-import { Toolbar } from '../components/Toolbar';
-import { FolderCard } from '../components/FolderCard';
-import { FolderContextMenu } from '../components/FolderContextMenu';
-import { NewFolderModal } from '../components/NewFolderModal';
-import { useFolderStore } from '../stores/folderStore';
-import type { Folder } from '../api/folders';
+import { useEffect, useState } from "react";
+import { Toolbar } from "../components/Toolbar";
+import { FolderCard } from "../components/FolderCard";
+import { FolderContextMenu } from "../components/FolderContextMenu";
+import { NewFolderModal } from "../components/NewFolderModal";
+import { useFolderStore } from "../stores/folderStore";
+import type { Folder } from "../api/folders";
 
 export function DashboardPage() {
-  const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } = useFolderStore();
+  const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } =
+    useFolderStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [editFolder, setEditFolder] = useState<Folder | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; folder: Folder } | null>(null);
+  const [menu, setMenu] = useState<{
+    x: number;
+    y: number;
+    folder: Folder;
+  } | null>(null);
 
-  useEffect(() => { fetchFolders(); }, []);
+  useEffect(() => {
+    fetchFolders();
+  }, []);
 
   function handleContextMenu(e: React.MouseEvent, folder: Folder) {
     e.preventDefault();
@@ -1723,7 +2009,9 @@ export function DashboardPage() {
       <Toolbar />
       <div className="flex-1 p-6">
         <div className="flex items-center justify-between mb-4">
-          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">My Folders</h2>
+          <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+            My Folders
+          </h2>
           <button
             onClick={() => setShowNewModal(true)}
             className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
@@ -1736,18 +2024,25 @@ export function DashboardPage() {
             <FolderCard
               key={folder.id}
               folder={folder}
-              onDoubleClick={() => {/* future: navigate to folder tests */}}
+              onDoubleClick={() => {
+                /* future: navigate to folder tests */
+              }}
               onContextMenu={(e) => handleContextMenu(e, folder)}
             />
           ))}
           {folders.length === 0 && (
-            <p className="text-gray-400 text-sm mt-8 w-full text-center">No folders yet. Create one!</p>
+            <p className="text-gray-400 text-sm mt-8 w-full text-center">
+              No folders yet. Create one!
+            </p>
           )}
         </div>
       </div>
 
       {showNewModal && (
-        <NewFolderModal onSubmit={handleCreate} onClose={() => setShowNewModal(false)} />
+        <NewFolderModal
+          onSubmit={handleCreate}
+          onClose={() => setShowNewModal(false)}
+        />
       )}
       {editFolder && (
         <NewFolderModal
@@ -1761,8 +2056,14 @@ export function DashboardPage() {
         <FolderContextMenu
           x={menu.x}
           y={menu.y}
-          onRename={() => { setEditFolder(menu.folder); setMenu(null); }}
-          onChangeColor={() => { setEditFolder(menu.folder); setMenu(null); }}
+          onRename={() => {
+            setEditFolder(menu.folder);
+            setMenu(null);
+          }}
+          onChangeColor={() => {
+            setEditFolder(menu.folder);
+            setMenu(null);
+          }}
           onDelete={handleDelete}
           onClose={() => setMenu(null)}
         />
@@ -1775,14 +2076,15 @@ export function DashboardPage() {
 - [ ] **Step 11: Create AdminsPage**
 
 `apps/frontend/src/pages/AdminsPage.tsx`:
+
 ```tsx
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Toolbar } from '../components/Toolbar';
-import { AdminModal } from '../components/AdminModal';
-import { apiListAdmins, apiCreateAdmin, apiDeleteAdmin } from '../api/admins';
-import { useAuthStore } from '../stores/authStore';
-import type { Admin } from '../api/auth';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { Toolbar } from "../components/Toolbar";
+import { AdminModal } from "../components/AdminModal";
+import { apiListAdmins, apiCreateAdmin, apiDeleteAdmin } from "../api/admins";
+import { useAuthStore } from "../stores/authStore";
+import type { Admin } from "../api/auth";
 
 export function AdminsPage() {
   const [admins, setAdmins] = useState<Admin[]>([]);
@@ -1795,7 +2097,9 @@ export function AdminsPage() {
     setAdmins(list);
   }
 
-  useEffect(() => { load(); }, []);
+  useEffect(() => {
+    load();
+  }, []);
 
   async function handleCreate(email: string, password: string, name: string) {
     await apiCreateAdmin(email, password, name);
@@ -1804,7 +2108,7 @@ export function AdminsPage() {
   }
 
   async function handleDelete(id: string) {
-    if (!confirm('Delete this admin?')) return;
+    if (!confirm("Delete this admin?")) return;
     await apiDeleteAdmin(id);
     load();
   }
@@ -1815,22 +2119,42 @@ export function AdminsPage() {
       <div className="p-6 max-w-2xl mx-auto w-full">
         <div className="flex items-center justify-between mb-4">
           <div className="flex items-center gap-2">
-            <button onClick={() => navigate('/')} className="text-gray-400 hover:text-gray-600 text-sm">← Back</button>
-            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">Admins</h2>
+            <button
+              onClick={() => navigate("/")}
+              className="text-gray-400 hover:text-gray-600 text-sm"
+            >
+              ← Back
+            </button>
+            <h2 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              Admins
+            </h2>
           </div>
-          <button onClick={() => setShowModal(true)} className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600">
+          <button
+            onClick={() => setShowModal(true)}
+            className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
+          >
             + Add Admin
           </button>
         </div>
         <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
           {admins.map((admin) => (
-            <div key={admin.id} className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0">
+            <div
+              key={admin.id}
+              className="flex items-center justify-between px-4 py-3 border-b border-gray-50 last:border-0"
+            >
               <div>
-                <p className="text-sm font-medium text-gray-800">{admin.name}</p>
-                <p className="text-xs text-gray-400">{admin.email} · {admin.role}</p>
+                <p className="text-sm font-medium text-gray-800">
+                  {admin.name}
+                </p>
+                <p className="text-xs text-gray-400">
+                  {admin.email} · {admin.role}
+                </p>
               </div>
               {admin.id !== currentAdmin?.id && (
-                <button onClick={() => handleDelete(admin.id)} className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50">
+                <button
+                  onClick={() => handleDelete(admin.id)}
+                  className="text-xs text-red-400 hover:text-red-600 px-2 py-1 rounded hover:bg-red-50"
+                >
                   Delete
                 </button>
               )}
@@ -1838,7 +2162,12 @@ export function AdminsPage() {
           ))}
         </div>
       </div>
-      {showModal && <AdminModal onSubmit={handleCreate} onClose={() => setShowModal(false)} />}
+      {showModal && (
+        <AdminModal
+          onSubmit={handleCreate}
+          onClose={() => setShowModal(false)}
+        />
+      )}
     </div>
   );
 }
@@ -1847,21 +2176,36 @@ export function AdminsPage() {
 - [ ] **Step 12: Wire up App.tsx with routing**
 
 `apps/frontend/src/App.tsx`:
+
 ```tsx
-import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
-import { LoginPage } from './pages/LoginPage';
-import { DashboardPage } from './pages/DashboardPage';
-import { AdminsPage } from './pages/AdminsPage';
-import { PrivateRoute } from './components/PrivateRoute';
-import { SuperAdminRoute } from './components/SuperAdminRoute';
+import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import { LoginPage } from "./pages/LoginPage";
+import { DashboardPage } from "./pages/DashboardPage";
+import { AdminsPage } from "./pages/AdminsPage";
+import { PrivateRoute } from "./components/PrivateRoute";
+import { SuperAdminRoute } from "./components/SuperAdminRoute";
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/login" element={<LoginPage />} />
-        <Route path="/" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-        <Route path="/admins" element={<SuperAdminRoute><AdminsPage /></SuperAdminRoute>} />
+        <Route
+          path="/"
+          element={
+            <PrivateRoute>
+              <DashboardPage />
+            </PrivateRoute>
+          }
+        />
+        <Route
+          path="/admins"
+          element={
+            <SuperAdminRoute>
+              <AdminsPage />
+            </SuperAdminRoute>
+          }
+        />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </BrowserRouter>
@@ -1889,29 +2233,35 @@ git commit -m "feat: add frontend pages and components (login, dashboard, admins
 ### Task 9: Production Readiness
 
 **Files:**
+
 - Create: `apps/backend/ecosystem.config.js`
 - Create: `nginx.conf.example`
 
 **Interfaces:**
+
 - Produces: VPS deployment instructions
 
 - [ ] **Step 1: Create pm2 ecosystem config**
 
 `apps/backend/ecosystem.config.js`:
+
 ```javascript
 module.exports = {
-  apps: [{
-    name: 'test-platform-api',
-    script: 'dist/main.js',
-    env: { NODE_ENV: 'production' },
-    env_file: '.env',
-  }],
+  apps: [
+    {
+      name: "test-platform-api",
+      script: "dist/main.js",
+      env: { NODE_ENV: "production" },
+      env_file: ".env",
+    },
+  ],
 };
 ```
 
 - [ ] **Step 2: Create nginx config example**
 
 `nginx.conf.example`:
+
 ```nginx
 server {
     listen 80;
@@ -1931,6 +2281,7 @@ server {
 - [ ] **Step 3: Add build script notes to backend package.json**
 
 Ensure these exist in `scripts`:
+
 ```json
 "build": "nest build",
 "start:prod": "node dist/main.js"

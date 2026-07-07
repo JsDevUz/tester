@@ -21,9 +21,11 @@
 ### Task 1: Extend `Lesson` model and add store actions for practice blocks and pass threshold
 
 **Files:**
+
 - Modify: `apps/frontend/src/stores/courseStore.ts`
 
 **Interfaces:**
+
 - Produces: `PracticeBlock` interface (`{ id: string; testId: string | null }`), extended `Lesson` interface (adds `practiceEnabled: boolean`, `practiceBlocks: PracticeBlock[]`, `passThresholdEnabled: boolean`, `passThresholdPercent: number | null`), and six new store actions:
   - `setLessonPracticeEnabled(courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void`
   - `addPracticeBlock(courseId: string, moduleId: string, lessonId: string) => void`
@@ -41,7 +43,7 @@ export interface Lesson {
   id: string;
   title: string;
   orderIndex: number;
-  status: 'draft' | 'published';
+  status: "draft" | "published";
   blocks: ContentBlock[];
 }
 ```
@@ -58,7 +60,7 @@ export interface Lesson {
   id: string;
   title: string;
   orderIndex: number;
-  status: 'draft' | 'published';
+  status: "draft" | "published";
   blocks: ContentBlock[];
   practiceEnabled: boolean;
   practiceBlocks: PracticeBlock[];
@@ -293,9 +295,11 @@ git commit -m "feat(courses): add practiceBlocks and pass-threshold fields to Le
 ### Task 2: `apiListAllTests` — reuse `GET /live/tests` for the test picker
 
 **Files:**
+
 - Modify: `apps/frontend/src/api/tests.ts`
 
 **Interfaces:**
+
 - Produces: `AllTestsItem` interface (`{ id: string; name: string; questionCount: number }`) and `apiListAllTests(): Promise<AllTestsItem[]>`.
 
 This calls the existing backend endpoint `GET /live/tests` (`apps/backend/src/live/live.controller.ts:20`, handler `LiveController.listTests`, delegating to `LiveService.listTests` in `apps/backend/src/live/live.service.ts:42-53`). That endpoint already returns every test owned by the authenticated teacher — no folder scoping, no type filtering — as `{ id, name, liveQuestionCount }[]`. No backend changes are needed for this task.
@@ -305,7 +309,6 @@ This calls the existing backend endpoint `GET /live/tests` (`apps/backend/src/li
 At the end of `apps/frontend/src/api/tests.ts`, add:
 
 ```typescript
-
 export interface AllTestsItem {
   id: string;
   name: string;
@@ -313,12 +316,14 @@ export interface AllTestsItem {
 }
 
 export async function apiListAllTests(): Promise<AllTestsItem[]> {
-  const res = await client.get('/live/tests');
-  return res.data.map((t: { id: string; name: string; liveQuestionCount: number }) => ({
-    id: t.id,
-    name: t.name,
-    questionCount: t.liveQuestionCount,
-  }));
+  const res = await client.get("/live/tests");
+  return res.data.map(
+    (t: { id: string; name: string; liveQuestionCount: number }) => ({
+      id: t.id,
+      name: t.name,
+      questionCount: t.liveQuestionCount,
+    }),
+  );
 }
 ```
 
@@ -339,9 +344,11 @@ git commit -m "feat(tests): add apiListAllTests, reusing the existing /live/test
 ### Task 3: `PracticeBlockView` — one practice-block card (test picker + reorder/delete)
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/PracticeBlockView.tsx`
 
 **Interfaces:**
+
 - Consumes: `PracticeBlock` type from `../../stores/courseStore.ts` (`{ id: string; testId: string | null }`), `AllTestsItem` type from `../../api/tests.ts` (`{ id: string; name: string; questionCount: number }`).
 - Produces: `PracticeBlockView` component with props:
   - `index: number`
@@ -359,9 +366,9 @@ This mirrors `ContentBlockView`'s header row exactly (reorder/delete buttons, "B
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { ClipboardList, ArrowUp, ArrowDown, X } from 'lucide-react';
-import type { PracticeBlock } from '../../stores/courseStore';
-import type { AllTestsItem } from '../../api/tests';
+import { ClipboardList, ArrowUp, ArrowDown, X } from "lucide-react";
+import type { PracticeBlock } from "../../stores/courseStore";
+import type { AllTestsItem } from "../../api/tests";
 
 interface PracticeBlockViewProps {
   index: number;
@@ -376,16 +383,26 @@ interface PracticeBlockViewProps {
 }
 
 export function PracticeBlockView({
-  index, isFirst, isLast, block, tests, onSelectTest, onRemove, onMoveUp, onMoveDown,
+  index,
+  isFirst,
+  isLast,
+  block,
+  tests,
+  onSelectTest,
+  onRemove,
+  onMoveUp,
+  onMoveDown,
 }: PracticeBlockViewProps) {
   return (
-    <div className="rounded-2xl border-2 border-gray-100 bg-white">
+    <div className="rounded-2xl border border-gray-100 bg-white">
       <div className="flex items-center gap-2.5 px-4 py-3">
         <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
           <ClipboardList size={15} />
         </div>
         <div className="min-w-0 flex-1">
-          <p className="truncate text-sm font-semibold text-gray-800">Amaliyot bloki №{index + 1}</p>
+          <p className="truncate text-sm font-semibold text-gray-800">
+            Amaliyot bloki №{index + 1}
+          </p>
           <p className="text-xs text-gray-400">Test</p>
         </div>
         <button
@@ -419,11 +436,13 @@ export function PracticeBlockView({
       <div className="border-t border-gray-100 px-4 py-4">
         <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
         <select
-          value={block.testId ?? ''}
+          value={block.testId ?? ""}
           onChange={(e) => onSelectTest(e.target.value)}
-          className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+          className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
         >
-          <option value="" disabled>Testni tanlang...</option>
+          <option value="" disabled>
+            Testni tanlang...
+          </option>
           {tests.map((t) => (
             <option key={t.id} value={t.id}>
               {t.name} ({t.questionCount} ta savol)
@@ -453,9 +472,11 @@ git commit -m "feat(courses): add PracticeBlockView (test-picker card for practi
 ### Task 4: `PracticeSection` — practice-tab body (test list, add button, pass-threshold card)
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/PracticeSection.tsx`
 
 **Interfaces:**
+
 - Consumes: `useCourseStore` — `courses`, `addPracticeBlock`, `removePracticeBlock`, `movePracticeBlock`, `setPracticeBlockTest`, `setPassThreshold` (all from Task 1). `apiListAllTests` from `../../api/tests.ts` (Task 2). `PracticeBlockView` from `./PracticeBlockView.tsx` (Task 3).
 - Produces: `PracticeSection` component with props:
   - `courseId: string`
@@ -467,11 +488,11 @@ The component looks up its own `lesson` from the store (same pattern as `LessonE
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { useEffect, useState } from 'react';
-import { Plus, Inbox } from 'lucide-react';
-import { useCourseStore } from '../../stores/courseStore';
-import { apiListAllTests, type AllTestsItem } from '../../api/tests';
-import { PracticeBlockView } from './PracticeBlockView';
+import { useEffect, useState } from "react";
+import { Plus, Inbox } from "lucide-react";
+import { useCourseStore } from "../../stores/courseStore";
+import { apiListAllTests, type AllTestsItem } from "../../api/tests";
+import { PracticeBlockView } from "./PracticeBlockView";
 
 interface PracticeSectionProps {
   courseId: string;
@@ -479,9 +500,18 @@ interface PracticeSectionProps {
   lessonId: string;
 }
 
-export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectionProps) {
+export function PracticeSection({
+  courseId,
+  moduleId,
+  lessonId,
+}: PracticeSectionProps) {
   const {
-    courses, addPracticeBlock, removePracticeBlock, movePracticeBlock, setPracticeBlockTest, setPassThreshold,
+    courses,
+    addPracticeBlock,
+    removePracticeBlock,
+    movePracticeBlock,
+    setPracticeBlockTest,
+    setPassThreshold,
   } = useCourseStore();
   const lesson = courses
     .find((c) => c.id === courseId)
@@ -494,24 +524,33 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
   useEffect(() => {
     let cancelled = false;
     apiListAllTests()
-      .then((items) => { if (!cancelled) setTests(items); })
-      .finally(() => { if (!cancelled) setLoadingTests(false); });
-    return () => { cancelled = true; };
+      .then((items) => {
+        if (!cancelled) setTests(items);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingTests(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   if (!lesson) return null;
 
   function handlePercentChange(value: string) {
-    const percent = value === '' ? null : Math.min(100, Math.max(0, Number(value)));
+    const percent =
+      value === "" ? null : Math.min(100, Math.max(0, Number(value)));
     setPassThreshold(courseId, moduleId, lessonId, { enabled: true, percent });
   }
 
   return (
     <div>
       {lesson.practiceBlocks.length === 0 ? (
-        <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+        <div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
           <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
-          <p className="text-sm font-semibold text-gray-700">Hali test qo'shilmagan</p>
+          <p className="text-sm font-semibold text-gray-700">
+            Hali test qo'shilmagan
+          </p>
           <p className="mt-1 text-xs text-gray-400">Pastroqdan test qo'shing</p>
         </div>
       ) : (
@@ -524,10 +563,30 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
               isLast={index === lesson.practiceBlocks.length - 1}
               block={block}
               tests={tests}
-              onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
-              onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
-              onMoveUp={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'up')}
-              onMoveDown={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'down')}
+              onSelectTest={(testId) =>
+                setPracticeBlockTest(
+                  courseId,
+                  moduleId,
+                  lessonId,
+                  block.id,
+                  testId,
+                )
+              }
+              onRemove={() =>
+                removePracticeBlock(courseId, moduleId, lessonId, block.id)
+              }
+              onMoveUp={() =>
+                movePracticeBlock(courseId, moduleId, lessonId, block.id, "up")
+              }
+              onMoveDown={() =>
+                movePracticeBlock(
+                  courseId,
+                  moduleId,
+                  lessonId,
+                  block.id,
+                  "down",
+                )
+              }
             />
           ))}
         </div>
@@ -537,27 +596,38 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
         type="button"
         onClick={() => addPracticeBlock(courseId, moduleId, lessonId)}
         disabled={loadingTests}
-        className="mb-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-indigo-200 py-3 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50"
+        className="mb-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-indigo-200 py-3 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50"
       >
         <Plus size={16} /> Test qo'shish
       </button>
 
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+      <div className="rounded-2xl border border-gray-100 bg-white p-4">
         <div className="flex items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
-            <p className="text-xs text-gray-400">Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars o'tilmagan hisoblanadi</p>
+            <p className="text-sm font-semibold text-gray-800">
+              Minimal o'tish balini talab qilish
+            </p>
+            <p className="text-xs text-gray-400">
+              Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars
+              o'tilmagan hisoblanadi
+            </p>
           </div>
           <button
             type="button"
-            onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
+            onClick={() =>
+              setPassThreshold(courseId, moduleId, lessonId, {
+                enabled: !lesson.passThresholdEnabled,
+              })
+            }
             className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${
-              lesson.passThresholdEnabled ? 'bg-indigo-500' : 'bg-gray-200'
+              lesson.passThresholdEnabled ? "bg-indigo-500" : "bg-gray-200"
             }`}
           >
             <span
               className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                lesson.passThresholdEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                lesson.passThresholdEnabled
+                  ? "translate-x-5"
+                  : "translate-x-0.5"
               }`}
             />
           </button>
@@ -571,12 +641,14 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
                 type="number"
                 min={0}
                 max={100}
-                value={lesson.passThresholdPercent ?? ''}
+                value={lesson.passThresholdPercent ?? ""}
                 onChange={(e) => handlePercentChange(e.target.value)}
                 placeholder="70"
-                className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
+                className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
               />
-              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
+              <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">
+                %
+              </span>
             </div>
           </div>
         )}
@@ -603,9 +675,11 @@ git commit -m "feat(courses): add PracticeSection (test list, add-test button, p
 ### Task 5: `CourseSidePanel` — make "Amaliyot" clickable when practice is enabled
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/CourseSidePanel.tsx`
 
 **Interfaces:**
+
 - Modify: `CourseSidePanelProps` gains two new optional props: `practiceEnabled?: boolean` and `onSelectPractice?: () => void`. Both are optional so the `'full'` variant (used on the course-content page, which has no practice concept) can keep calling `<CourseSidePanel onBackToList={...} />` unchanged.
 - The "content" tab's `active` styling logic also needs a way to represent "which lesson-tab is active" — add an `activeTab?: 'content' | 'practice'` prop (defaults to `'content'`) so the Kontent tab visually deactivates when Amaliyot is showing.
 
@@ -623,7 +697,7 @@ Replace:
 ```tsx
 interface CourseSidePanelProps {
   onBackToList: () => void;
-  variant?: 'full' | 'lesson';
+  variant?: "full" | "lesson";
 }
 ```
 
@@ -632,9 +706,9 @@ With:
 ```tsx
 interface CourseSidePanelProps {
   onBackToList: () => void;
-  variant?: 'full' | 'lesson';
+  variant?: "full" | "lesson";
   practiceEnabled?: boolean;
-  activeTab?: 'content' | 'practice';
+  activeTab?: "content" | "practice";
   onSelectPractice?: () => void;
   onSelectContent?: () => void;
 }
@@ -646,9 +720,25 @@ Replace:
 
 ```tsx
 const LESSON_TABS: SideTab[] = [
-  { key: 'content', label: 'Kontent', description: 'Darsning kontenti', icon: LayoutGrid, active: true },
-  { key: 'settings', label: 'Sozlamalar', description: 'Dizayn va parametrlar', icon: SlidersHorizontal },
-  { key: 'practice', label: 'Amaliyot', description: 'Uy vazifasi', icon: Brain },
+  {
+    key: "content",
+    label: "Kontent",
+    description: "Darsning kontenti",
+    icon: LayoutGrid,
+    active: true,
+  },
+  {
+    key: "settings",
+    label: "Sozlamalar",
+    description: "Dizayn va parametrlar",
+    icon: SlidersHorizontal,
+  },
+  {
+    key: "practice",
+    label: "Amaliyot",
+    description: "Uy vazifasi",
+    icon: Brain,
+  },
 ];
 ```
 
@@ -656,9 +746,24 @@ With:
 
 ```tsx
 const LESSON_TABS: SideTab[] = [
-  { key: 'content', label: 'Kontent', description: 'Darsning kontenti', icon: LayoutGrid },
-  { key: 'settings', label: 'Sozlamalar', description: 'Dizayn va parametrlar', icon: SlidersHorizontal },
-  { key: 'practice', label: 'Amaliyot', description: 'Uy vazifasi', icon: Brain },
+  {
+    key: "content",
+    label: "Kontent",
+    description: "Darsning kontenti",
+    icon: LayoutGrid,
+  },
+  {
+    key: "settings",
+    label: "Sozlamalar",
+    description: "Dizayn va parametrlar",
+    icon: SlidersHorizontal,
+  },
+  {
+    key: "practice",
+    label: "Amaliyot",
+    description: "Uy vazifasi",
+    icon: Brain,
+  },
 ];
 ```
 
@@ -673,7 +778,7 @@ export function CourseSidePanel({ onBackToList, variant = 'full' }: CourseSidePa
   const tabs = variant === 'lesson' ? LESSON_TABS : FULL_TABS;
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-2">
+      <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -726,7 +831,7 @@ export function CourseSidePanel({
 
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-2">
+      <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = isTabActive(tab.key);
@@ -775,9 +880,11 @@ git commit -m "feat(courses): make Amaliyot tab clickable in CourseSidePanel whe
 ### Task 6: Wire `LessonEditorView` — practice toggle, tab switching, PracticeSection
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/LessonEditorView.tsx`
 
 **Interfaces:**
+
 - Consumes: `PracticeSection` from `./PracticeSection.tsx` (Task 4, props `courseId`, `moduleId`, `lessonId`). `CourseSidePanel`'s new props from Task 5 (`practiceEnabled`, `activeTab`, `onSelectPractice`, `onSelectContent`). `setLessonPracticeEnabled` action from `courseStore` (Task 1).
 - Modify: `PracticeToggleCard` stops managing its own `enabled` state and instead takes `enabled: boolean` and `onToggle: () => void` props (so it reflects `lesson.practiceEnabled` instead of local-only state).
 
@@ -791,26 +898,26 @@ Expected: shows the imports, `LessonEditorViewProps` interface, and the `Practic
 Replace:
 
 ```tsx
-import { useState } from 'react';
-import { NotebookPen, Brain } from 'lucide-react';
-import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
-import { BlockPicker } from './BlockPicker';
-import { ContentBlockView } from './ContentBlockView';
-import { Breadcrumb } from './Breadcrumb';
-import { CourseSidePanel } from './CourseSidePanel';
+import { useState } from "react";
+import { NotebookPen, Brain } from "lucide-react";
+import { useCourseStore, type ContentBlock } from "../../stores/courseStore";
+import { BlockPicker } from "./BlockPicker";
+import { ContentBlockView } from "./ContentBlockView";
+import { Breadcrumb } from "./Breadcrumb";
+import { CourseSidePanel } from "./CourseSidePanel";
 ```
 
 With:
 
 ```tsx
-import { useState } from 'react';
-import { NotebookPen, Brain } from 'lucide-react';
-import { useCourseStore, type ContentBlock } from '../../stores/courseStore';
-import { BlockPicker } from './BlockPicker';
-import { ContentBlockView } from './ContentBlockView';
-import { Breadcrumb } from './Breadcrumb';
-import { CourseSidePanel } from './CourseSidePanel';
-import { PracticeSection } from './PracticeSection';
+import { useState } from "react";
+import { NotebookPen, Brain } from "lucide-react";
+import { useCourseStore, type ContentBlock } from "../../stores/courseStore";
+import { BlockPicker } from "./BlockPicker";
+import { ContentBlockView } from "./ContentBlockView";
+import { Breadcrumb } from "./Breadcrumb";
+import { CourseSidePanel } from "./CourseSidePanel";
+import { PracticeSection } from "./PracticeSection";
 ```
 
 - [ ] **Step 3: Make `PracticeToggleCard` a controlled component**
@@ -821,22 +928,26 @@ Replace:
 function PracticeToggleCard() {
   const [enabled, setEnabled] = useState(false);
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
         <Brain size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-gray-800">Darsning amaliy qismi</p>
-        <p className="truncate text-xs text-gray-400">Bilimlarni mustahkamlash</p>
+        <p className="truncate text-sm font-semibold text-gray-800">
+          Darsning amaliy qismi
+        </p>
+        <p className="truncate text-xs text-gray-400">
+          Bilimlarni mustahkamlash
+        </p>
       </div>
       <button
         type="button"
         onClick={() => setEnabled((v) => !v)}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
       >
         <span
           className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            enabled ? 'translate-x-5' : 'translate-x-0.5'
+            enabled ? "translate-x-5" : "translate-x-0.5"
           }`}
         />
       </button>
@@ -848,24 +959,34 @@ function PracticeToggleCard() {
 With:
 
 ```tsx
-function PracticeToggleCard({ enabled, onToggle }: { enabled: boolean; onToggle: () => void }) {
+function PracticeToggleCard({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+}) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
         <Brain size={18} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-gray-800">Darsning amaliy qismi</p>
-        <p className="truncate text-xs text-gray-400">Bilimlarni mustahkamlash</p>
+        <p className="truncate text-sm font-semibold text-gray-800">
+          Darsning amaliy qismi
+        </p>
+        <p className="truncate text-xs text-gray-400">
+          Bilimlarni mustahkamlash
+        </p>
       </div>
       <button
         type="button"
         onClick={onToggle}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? 'bg-indigo-500' : 'bg-gray-200'}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
       >
         <span
           className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            enabled ? 'translate-x-5' : 'translate-x-0.5'
+            enabled ? "translate-x-5" : "translate-x-0.5"
           }`}
         />
       </button>
@@ -919,7 +1040,7 @@ Replace:
 
 ```tsx
         {lesson.blocks.length === 0 && (
-          <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+          <div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
             <NotebookPen size={30} className="mx-auto mb-3 text-indigo-200" />
             <p className="text-sm font-semibold text-gray-700">Ichki kontentini to'ldiring</p>
             <p className="mt-1 text-xs text-gray-400">Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing</p>
@@ -969,7 +1090,7 @@ With:
         {activeTab === 'content' ? (
           <>
             {lesson.blocks.length === 0 && (
-              <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+              <div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
                 <NotebookPen size={30} className="mx-auto mb-3 text-indigo-200" />
                 <p className="text-sm font-semibold text-gray-700">Ichki kontentini to'ldiring</p>
                 <p className="mt-1 text-xs text-gray-400">Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing</p>

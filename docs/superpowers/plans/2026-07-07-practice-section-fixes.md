@@ -4,7 +4,8 @@
 
 **Goal:** Fix critical state-management, validation, and semantic issues in the Amaliyot (Practice) section to ensure data integrity and proper error handling.
 
-**Architecture:** 
+**Architecture:**
+
 - Fix threshold state coupling and validation logic in PracticeSection.tsx
 - Add validation layers (required fields, state consistency checks) in PracticeBlockView + UI warnings
 - Implement test deduplication in courseStore
@@ -31,20 +32,24 @@
 ### Task 1: Fix threshold state coupling and validation
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx:35-38`
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx:97-113`
 - Test: Manual (no jest tests exist for this component)
 
 **Interfaces:**
+
 - Consumes: `setPassThreshold(courseId, moduleId, lessonId, data)` from courseStore
 - Uses: `lesson.passThresholdEnabled`, `lesson.passThresholdPercent`
 
 **Problem:**
+
 - `handlePercentChange` always sends `{ enabled: true }`, coupling input change to toggle state
 - Input cleared → `percent = null` but `enabled = true` → invalid state (threshold required but value unknown)
 - `Number('')` → `NaN` possible (though `type="number"` mitigates in practice)
 
 **Solution:**
+
 - `handlePercentChange` only updates `percent`, preserves `enabled` state
 - Clear input → set `percent = 70` (default) or reject with visual feedback
 - Validate `percent` is 0-100, reject `NaN`
@@ -58,20 +63,20 @@ Replace [PracticeSection.tsx:35-38](apps/frontend/src/components/course/Practice
 ```typescript
 function handlePercentChange(value: string) {
   // Never toggle enabled state — only update percent
-  if (value === '') {
+  if (value === "") {
     // Clear → default to 70
-    setPassThreshold(courseId, moduleId, lessonId, { 
+    setPassThreshold(courseId, moduleId, lessonId, {
       enabled: lesson.passThresholdEnabled,
-      percent: 70 
+      percent: 70,
     });
     return;
   }
   const num = Number(value);
   if (isNaN(num)) return; // Reject NaN silently (type=number prevents, but safety)
   const percent = Math.min(100, Math.max(0, num));
-  setPassThreshold(courseId, moduleId, lessonId, { 
+  setPassThreshold(courseId, moduleId, lessonId, {
     enabled: lesson.passThresholdEnabled,
-    percent 
+    percent,
   });
 }
 ```
@@ -101,20 +106,24 @@ git commit -m "fix(courses): decouple threshold percent input from enabled toggl
 ### Task 2: Add visual validation (required field indicators + error messages)
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeBlockView.tsx:80-111`
 - Modify: `apps/frontend/src/stores/courseStore.ts` — add optional validation helper (non-breaking)
 - Test: Manual (no jest)
 
 **Interfaces:**
+
 - Receives: `block.type`, `block.testId`, `block.description`
 - Shows: inline error/warning text
 
 **Problem:**
+
 - Test blocks can be `testId: null` (not selected)
 - Description blocks can be `description: ''` (empty)
 - No visual feedback; user doesn't know fields are required until save
 
 **Solution:**
+
 - Add `*` (required) indicator next to "Testni tanlang" and "Topshiriq matni" labels
 - Show inline error message if empty (red text below input)
 - Disable remove/move buttons? No — but show warning on top of card if any block is invalid
@@ -135,7 +144,7 @@ In [PracticeBlockView.tsx:80-111](apps/frontend/src/components/course/PracticeBl
       <select
         value={block.testId ?? ''}
         onChange={(e) => onSelectTest(e.target.value)}
-        className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
+        className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
           block.testId ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50/30'
         }`}
       >
@@ -160,7 +169,7 @@ In [PracticeBlockView.tsx:80-111](apps/frontend/src/components/course/PracticeBl
         onChange={(e) => onChangeDescription(e.target.value)}
         placeholder={meta.placeholder}
         rows={3}
-        className={`w-full resize-none rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
+        className={`w-full resize-none rounded-xl border px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
           block.description.trim() ? 'border-gray-100 bg-gray-50' : 'border-orange-200 bg-orange-50/30'
         }`}
       />
@@ -196,18 +205,22 @@ git commit -m "feat(courses): add required field indicators and validation warni
 ### Task 3: Implement test deduplication in courseStore
 
 **Files:**
+
 - Modify: `apps/frontend/src/stores/courseStore.ts:415-441` (setPracticeBlockTest action)
 - Test: Manual (no jest)
 
 **Interfaces:**
+
 - Receives: `testId` string from select dropdown
 - Before setting: check if any other block in same lesson already has this testId
 
 **Problem:**
+
 - Same test can be added to multiple practice blocks
 - Usually a mistake; wastes space and confuses student
 
 **Solution:**
+
 - In `setPracticeBlockTest`, check if another block in the lesson already uses this testId
 - If yes: silently skip (or show info toast)
 - If no or testId is being cleared (`testId = null`): proceed
@@ -276,19 +289,23 @@ git commit -m "feat(courses): prevent duplicate test selection across practice b
 ### Task 4: Add semantic gating for pass threshold (show only if test blocks exist)
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx:76-114` (threshold card)
 - Test: Manual
 
 **Interfaces:**
+
 - Consumes: `lesson.practiceBlocks` array
 - Checks: `practiceBlocks.some(b => b.type === 'test')`
 
 **Problem:**
+
 - Threshold only makes sense for test blocks (they produce scores)
 - If lesson has only image/file/audio (ungradeable), threshold is meaningless
 - Currently always shown, confuses teacher
 
 **Solution:**
+
 - Wrap threshold card in conditional: only show if `practiceBlocks.some(b => b.type === 'test')`
 - If no test blocks: show muted message instead
 
@@ -300,7 +317,7 @@ Replace [PracticeSection.tsx:76-114](apps/frontend/src/components/course/Practic
 
 ```typescript
 {lesson.practiceBlocks.some((b) => b.type === 'test') ? (
-  <div className="rounded-2xl border-2 border-gray-100 bg-white p-4">
+  <div className="rounded-2xl border border-gray-100 bg-white p-4">
     <div className="flex items-center gap-3">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
@@ -332,7 +349,7 @@ Replace [PracticeSection.tsx:76-114](apps/frontend/src/components/course/Practic
             value={lesson.passThresholdPercent ?? ''}
             onChange={(e) => handlePercentChange(e.target.value)}
             placeholder="70"
-            className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
+            className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 pr-9 text-sm outline-none focus:border-indigo-400"
           />
           <span className="absolute right-4 top-1/2 -translate-y-1/2 text-sm text-gray-400">%</span>
         </div>
@@ -340,7 +357,7 @@ Replace [PracticeSection.tsx:76-114](apps/frontend/src/components/course/Practic
     )}
   </div>
 ) : (
-  <div className="rounded-2xl border-2 border-gray-100 bg-gray-50 p-4 text-center">
+  <div className="rounded-2xl border border-gray-100 bg-gray-50 p-4 text-center">
     <p className="text-xs text-gray-400">Minimal o'tish bali faqat test blok qo'shilganda qo'llaniladi</p>
   </div>
 )}
@@ -369,19 +386,23 @@ git commit -m "feat(courses): show pass-threshold only when test blocks exist
 ### Task 5: Add error handling and loading state to test fetch
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx:24-30`
 - Test: Manual
 
 **Interfaces:**
+
 - Consumes: `apiListAllTests()` from api/tests
 - Sets: `tests` state
 - Adds: `error` state, `loading` state
 
 **Problem:**
+
 - `apiListAllTests()` has no `.catch()` → failed fetch leaves tests empty, no error shown
 - No loading indicator
 
 **Solution:**
+
 - Add `.catch()` to log error, set error state
 - Add loading indicator (spinner or skeleton)
 - Show error message if fetch fails
@@ -411,12 +432,14 @@ useEffect(() => {
     })
     .catch((err) => {
       if (!cancelled) {
-        console.error('Failed to load tests:', err);
-        setTestsError('Testlar yuklanmadi. Qayta urinib ko\'ring.');
+        console.error("Failed to load tests:", err);
+        setTestsError("Testlar yuklanmadi. Qayta urinib ko'ring.");
         setTestsLoading(false);
       }
     });
-  return () => { cancelled = true; };
+  return () => {
+    cancelled = true;
+  };
 }, []);
 ```
 
@@ -426,13 +449,13 @@ In the blocks list render, update [PracticeSection.tsx:48-66](apps/frontend/src/
 
 ```typescript
 {testsError && (
-  <div className="mb-6 rounded-2xl border-2 border-red-100 bg-red-50/50 p-3">
+  <div className="mb-6 rounded-2xl border border-red-100 bg-red-50/50 p-3">
     <p className="text-xs text-red-600">{testsError}</p>
   </div>
 )}
 
 {lesson.practiceBlocks.length === 0 ? (
-  <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+  <div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
     <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
     <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
     <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
@@ -486,7 +509,7 @@ And in select render (line 84-95), disable while loading:
   value={block.testId ?? ''}
   onChange={(e) => onSelectTest(e.target.value)}
   disabled={testsLoading}
-  className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed ${
+  className={`w-full rounded-xl border px-4 py-2.5 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed ${
     block.testId ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50/30'
   }`}
 >
@@ -523,18 +546,22 @@ git commit -m "feat(courses): add error handling and loading state for test fetc
 ### Task 6: Implement lazy test loading (fetch only if needed)
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx:24-30`
 - Test: Manual
 
 **Interfaces:**
+
 - Consumes: `lesson.practiceBlocks`
 - Decides: fetch only if any block has `type === 'test'`
 
 **Problem:**
+
 - `useEffect` fetches tests every time PracticeSection mounts, even if no test blocks exist
 - Wastes API call and load time
 
 **Solution:**
+
 - Modify `useEffect` to check if lesson has any test blocks first
 - Only fetch if `lesson.practiceBlocks.some(b => b.type === 'test')`
 - Add `lesson.id` to dependency array (re-fetch if switched to different lesson)
@@ -547,13 +574,13 @@ Replace [PracticeSection.tsx:26-30](apps/frontend/src/components/course/Practice
 
 ```typescript
 useEffect(() => {
-  const hasTestBlocks = lesson.practiceBlocks.some((b) => b.type === 'test');
+  const hasTestBlocks = lesson.practiceBlocks.some((b) => b.type === "test");
   if (!hasTestBlocks) {
     setTests([]);
     setTestsLoading(false);
     return;
   }
-  
+
   let cancelled = false;
   setTestsLoading(true);
   setTestsError(null);
@@ -566,12 +593,14 @@ useEffect(() => {
     })
     .catch((err) => {
       if (!cancelled) {
-        console.error('Failed to load tests:', err);
-        setTestsError('Testlar yuklanmadi. Qayta urinib ko\'ring.');
+        console.error("Failed to load tests:", err);
+        setTestsError("Testlar yuklanmadi. Qayta urinib ko'ring.");
         setTestsLoading(false);
       }
     });
-  return () => { cancelled = true; };
+  return () => {
+    cancelled = true;
+  };
 }, [lesson.practiceBlocks]); // Re-run if blocks change
 ```
 
@@ -598,6 +627,7 @@ git commit -m "feat(courses): lazy-load tests only when test blocks exist
 ### Task 7: Build verification and final smoke test
 
 **Files:**
+
 - Verify: Build passes
 - Verify: No TypeScript errors
 - Test: Manual end-to-end (browser)
@@ -644,7 +674,7 @@ git commit --allow-empty -m "build(courses): practice section fixes — verifica
 
 All tasks passing:
 - Task 1: Threshold state decoupling
-- Task 2: Field validation + required indicators  
+- Task 2: Field validation + required indicators
 - Task 3: Test deduplication
 - Task 4: Semantic gating (threshold only with test blocks)
 - Task 5: Error handling + loading state for test fetch
@@ -653,4 +683,3 @@ All tasks passing:
 
 Ready for review."
 ```
-

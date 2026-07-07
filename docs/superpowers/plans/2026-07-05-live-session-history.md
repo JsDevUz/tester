@@ -42,10 +42,12 @@ apps/frontend/src/pages/LiveCreatePage.tsx         — MODIFIED: rewritten as hi
 ### Task 1: `liveSessions` DB table + migration
 
 **Files:**
+
 - Modify: `apps/backend/src/db/schema.ts`
 - Create: (auto-generated) `apps/backend/drizzle/migrations/00XX_<name>.sql` via drizzle-kit
 
 **Interfaces:**
+
 - Produces (Task 2 consumes): Drizzle table export `liveSessions` with columns `id, testId, adminId, pin, mode, questionTimeSec, status, createdAt, finishedAt`, importable as `import { liveSessions } from '../db/schema'`.
 
 - [ ] **Step 1: Add the table definition**
@@ -53,16 +55,20 @@ apps/frontend/src/pages/LiveCreatePage.tsx         — MODIFIED: rewritten as hi
 Open `apps/backend/src/db/schema.ts` and find the existing `tests` table definition (search for `export const tests = pgTable`). Immediately after the `questions` table definition (search for `export const questions = pgTable`, and insert after its closing `});`), add:
 
 ```typescript
-export const liveSessions = pgTable('live_sessions', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  testId: uuid('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
-  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
-  pin: varchar('pin', { length: 6 }).notNull(),
-  mode: text('mode').notNull(),
-  questionTimeSec: integer('question_time_sec').notNull(),
-  status: text('status').notNull().default('active'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-  finishedAt: timestamp('finished_at', { withTimezone: true }),
+export const liveSessions = pgTable("live_sessions", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  testId: uuid("test_id")
+    .notNull()
+    .references(() => tests.id, { onDelete: "cascade" }),
+  adminId: uuid("admin_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  pin: varchar("pin", { length: 6 }).notNull(),
+  mode: text("mode").notNull(),
+  questionTimeSec: integer("question_time_sec").notNull(),
+  status: text("status").notNull().default("active"),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
+  finishedAt: timestamp("finished_at", { withTimezone: true }),
 });
 ```
 
@@ -95,10 +101,12 @@ git commit -m "feat(live): add live_sessions metadata table"
 ### Task 2: `LiveService` writes/reads `live_sessions` rows (TDD)
 
 **Files:**
+
 - Modify: `apps/backend/src/live/live.service.ts`
 - Modify: `apps/backend/src/live/live.service.spec.ts`
 
 **Interfaces:**
+
 - Consumes: Task 1's `liveSessions` table from `../db/schema`
 - Produces (Task 3 controller consumes):
   ```typescript
@@ -116,31 +124,41 @@ This task makes `LiveService` write a `live_sessions` row on session creation, u
 Read `apps/backend/src/live/live.service.spec.ts` in full first to match its existing `jest.mock('../db', ...)` / fake-broadcaster setup style exactly (the file mocks `db` at the top — find that mock and extend it rather than introducing a second, conflicting one). Add:
 
 ```typescript
-describe('LiveService — live_sessions persistence', () => {
+describe("LiveService — live_sessions persistence", () => {
   it('createSession inserts a live_sessions row with status "active"', async () => {
     const insertedRows: any[] = [];
     (db.insert as jest.Mock).mockImplementation((table: any) => ({
       values: (vals: any) => {
         insertedRows.push(vals);
-        return { returning: async () => [{ id: 'row-1', ...vals }] };
+        return { returning: async () => [{ id: "row-1", ...vals }] };
       },
     }));
     (db.query.tests.findFirst as jest.Mock).mockResolvedValue({
-      id: 'test1', name: 'Matematika', questions: [
-        { id: 'q1', text: 'Q', type: 'single', imageUrl: null, correctAnswer: null,
-          options: [{ id: 'o1', text: 'A', isCorrect: true, orderIndex: 0 }] },
+      id: "test1",
+      name: "Matematika",
+      questions: [
+        {
+          id: "q1",
+          text: "Q",
+          type: "single",
+          imageUrl: null,
+          correctAnswer: null,
+          options: [{ id: "o1", text: "A", isCorrect: true, orderIndex: 0 }],
+        },
       ],
     });
 
     const service = new LiveService();
     service.setBroadcaster(makeFakeBroadcaster().b);
-    await service.createSession('admin1', 'test1', 20, 'individual');
+    await service.createSession("admin1", "test1", 20, "individual");
 
-    const sessionRow = insertedRows.find((r) => r.pin !== undefined && r.status === 'active');
+    const sessionRow = insertedRows.find(
+      (r) => r.pin !== undefined && r.status === "active",
+    );
     expect(sessionRow).toBeDefined();
-    expect(sessionRow.testId).toBe('test1');
-    expect(sessionRow.adminId).toBe('admin1');
-    expect(sessionRow.mode).toBe('individual');
+    expect(sessionRow.testId).toBe("test1");
+    expect(sessionRow.adminId).toBe("admin1");
+    expect(sessionRow.mode).toBe("individual");
     expect(sessionRow.questionTimeSec).toBe(20);
   });
 
@@ -153,27 +171,36 @@ describe('LiveService — live_sessions persistence', () => {
       },
     }));
     (db.insert as jest.Mock).mockImplementation(() => ({
-      values: () => ({ returning: async () => [{ id: 'row-1' }] }),
+      values: () => ({ returning: async () => [{ id: "row-1" }] }),
     }));
 
     const service = new LiveService();
     const { b } = makeFakeBroadcaster();
     service.setBroadcaster(b);
-    jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
-    const pin = service.initSession('admin1', 'test1', 'Matematika', makeQuestions(), 10, 'individual');
-    service.hostJoin(pin, 'admin1', 'hs');
-    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    jest.spyOn(service as any, "persistResults").mockResolvedValue(undefined);
+    const pin = service.initSession(
+      "admin1",
+      "test1",
+      "Matematika",
+      makeQuestions(),
+      10,
+      "individual",
+    );
+    service.hostJoin(pin, "admin1", "hs");
+    service.playerJoin(pin, { id: "u1", name: "Ali" }, "s1");
     await (service as any).finish((service as any).sessions.get(pin));
 
-    const finishUpdate = updateCalls.find((u) => u.status === 'finished');
+    const finishUpdate = updateCalls.find((u) => u.status === "finished");
     expect(finishUpdate).toBeDefined();
     expect(finishUpdate.finishedAt).toBeInstanceOf(Date);
   });
 
-  it('hostJoin self-heals a stale active live_sessions row to finished when no in-memory session exists for the pin', async () => {
+  it("hostJoin self-heals a stale active live_sessions row to finished when no in-memory session exists for the pin", async () => {
     const updateCalls: any[] = [];
     (db.query as any).liveSessions = {
-      findFirst: jest.fn().mockResolvedValue({ id: 'row-1', pin: '999999', status: 'active' }),
+      findFirst: jest
+        .fn()
+        .mockResolvedValue({ id: "row-1", pin: "999999", status: "active" }),
     };
     (db.update as jest.Mock).mockImplementation((table: any) => ({
       set: (vals: any) => {
@@ -184,26 +211,56 @@ describe('LiveService — live_sessions persistence', () => {
 
     const service = new LiveService();
     service.setBroadcaster(makeFakeBroadcaster().b);
-    await expect(service.hostJoin('999999', 'admin1', 'hs')).rejects.toThrow();
+    await expect(service.hostJoin("999999", "admin1", "hs")).rejects.toThrow();
 
-    expect(updateCalls.some((u) => u.status === 'finished')).toBe(true);
+    expect(updateCalls.some((u) => u.status === "finished")).toBe(true);
   });
 
-  it('listSessionHistory returns sessions for the given admin, most recent first, with testName joined', async () => {
+  it("listSessionHistory returns sessions for the given admin, most recent first, with testName joined", async () => {
     const rows = [
-      { id: 'row-2', pin: '222222', mode: 'team', status: 'finished', createdAt: new Date('2026-01-02'), finishedAt: new Date('2026-01-02'), testId: 'test1', test: { name: 'Fizika' } },
-      { id: 'row-1', pin: '111111', mode: 'individual', status: 'active', createdAt: new Date('2026-01-01'), finishedAt: null, testId: 'test2', test: { name: 'Matematika' } },
+      {
+        id: "row-2",
+        pin: "222222",
+        mode: "team",
+        status: "finished",
+        createdAt: new Date("2026-01-02"),
+        finishedAt: new Date("2026-01-02"),
+        testId: "test1",
+        test: { name: "Fizika" },
+      },
+      {
+        id: "row-1",
+        pin: "111111",
+        mode: "individual",
+        status: "active",
+        createdAt: new Date("2026-01-01"),
+        finishedAt: null,
+        testId: "test2",
+        test: { name: "Matematika" },
+      },
     ];
     (db.query as any).liveSessions = {
       findMany: jest.fn().mockResolvedValue(rows),
     };
 
     const service = new LiveService();
-    const result = await service.listSessionHistory('admin1', 20, 0);
+    const result = await service.listSessionHistory("admin1", 20, 0);
 
     expect(result).toHaveLength(2);
-    expect(result[0]).toMatchObject({ id: 'row-2', pin: '222222', testName: 'Fizika', mode: 'team', status: 'finished' });
-    expect(result[1]).toMatchObject({ id: 'row-1', pin: '111111', testName: 'Matematika', mode: 'individual', status: 'active' });
+    expect(result[0]).toMatchObject({
+      id: "row-2",
+      pin: "222222",
+      testName: "Fizika",
+      mode: "team",
+      status: "finished",
+    });
+    expect(result[1]).toMatchObject({
+      id: "row-1",
+      pin: "111111",
+      testName: "Matematika",
+      mode: "individual",
+      status: "active",
+    });
   });
 });
 ```
@@ -220,35 +277,42 @@ Expected: FAIL — `service.listSessionHistory is not a function`, and the `live
 In `apps/backend/src/live/live.service.ts`, update the import line:
 
 ```typescript
-import { tests, submissions, answers, liveSessions } from '../db/schema';
+import { tests, submissions, answers, liveSessions } from "../db/schema";
 ```
 
 In `createSession`, after the `const pin = this.initSession(...)` line and before `return { pin };`, add:
 
 ```typescript
-    await db.insert(liveSessions).values({
-      testId: test.id,
-      adminId,
-      pin,
-      mode,
-      questionTimeSec,
-      status: 'active',
-    });
+await db.insert(liveSessions).values({
+  testId: test.id,
+  adminId,
+  pin,
+  mode,
+  questionTimeSec,
+  status: "active",
+});
 ```
 
 So the full method tail reads:
 
 ```typescript
-    const pin = this.initSession(adminId, test.id, test.name, liveQuestions, questionTimeSec, mode);
-    await db.insert(liveSessions).values({
-      testId: test.id,
-      adminId,
-      pin,
-      mode,
-      questionTimeSec,
-      status: 'active',
-    });
-    return { pin };
+const pin = this.initSession(
+  adminId,
+  test.id,
+  test.name,
+  liveQuestions,
+  questionTimeSec,
+  mode,
+);
+await db.insert(liveSessions).values({
+  testId: test.id,
+  adminId,
+  pin,
+  mode,
+  questionTimeSec,
+  status: "active",
+});
+return { pin };
 ```
 
 - [ ] **Step 4: Update `finish()` to mark the row finished**
@@ -256,9 +320,10 @@ So the full method tail reads:
 In `apps/backend/src/live/live.service.ts`'s `finish()` method, after the existing `if (s.currentIdx >= 0) { ... }` block and before the `setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);` line, add:
 
 ```typescript
-    await db.update(liveSessions)
-      .set({ status: 'finished', finishedAt: new Date() })
-      .where(and(eq(liveSessions.pin, s.pin), eq(liveSessions.status, 'active')));
+await db
+  .update(liveSessions)
+  .set({ status: "finished", finishedAt: new Date() })
+  .where(and(eq(liveSessions.pin, s.pin), eq(liveSessions.status, "active")));
 ```
 
 (`and`/`eq` are already imported at the top of the file from `drizzle-orm`.) The full `finish()` method should now read:
@@ -377,9 +442,11 @@ git commit -m "feat(live): persist session metadata, self-heal stale rows, add h
 ### Task 3: REST endpoint for session history
 
 **Files:**
+
 - Modify: `apps/backend/src/live/live.controller.ts`
 
 **Interfaces:**
+
 - Consumes: Task 2's `LiveService.listSessionHistory(adminId, limit, offset)`
 - Produces (Task 4 frontend consumes): `GET /api/v1/live/sessions?limit=20&offset=0` → `LiveSessionHistoryItem[]` (JSON array, teacher/super only)
 
@@ -388,7 +455,17 @@ git commit -m "feat(live): persist session metadata, self-heal stale rows, add h
 In `apps/backend/src/live/live.controller.ts`, add the `Query` import and a new `@Get('sessions')` handler. Update the import line:
 
 ```typescript
-import { Controller, Post, Get, Body, Query, Req, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Get,
+  Body,
+  Query,
+  Req,
+  UseGuards,
+  BadRequestException,
+  NotFoundException,
+} from "@nestjs/common";
 ```
 
 Add the handler to the `LiveController` class, alongside the existing `listTests`/`create` methods:
@@ -426,20 +503,32 @@ git commit -m "feat(live): add GET /live/sessions history endpoint"
 ### Task 4: Frontend — API client + `NewLiveSessionModal` extraction
 
 **Files:**
+
 - Modify: `apps/frontend/src/api/live.ts`
 - Create: `apps/frontend/src/components/NewLiveSessionModal.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 3's `GET /live/sessions` endpoint
 - Produces (Task 5 consumes):
+
   ```typescript
   export interface LiveSessionHistoryItem {
-    id: string; pin: string; testId: string; testName: string;
-    mode: 'individual' | 'team'; status: 'active' | 'finished';
-    createdAt: string; finishedAt: string | null;
+    id: string;
+    pin: string;
+    testId: string;
+    testName: string;
+    mode: "individual" | "team";
+    status: "active" | "finished";
+    createdAt: string;
+    finishedAt: string | null;
   }
-  export async function apiListLiveSessions(limit: number, offset: number): Promise<LiveSessionHistoryItem[]>
+  export async function apiListLiveSessions(
+    limit: number,
+    offset: number,
+  ): Promise<LiveSessionHistoryItem[]>;
   ```
+
   `NewLiveSessionModal` component: `<NewLiveSessionModal onClose={() => void} />` — self-contained, navigates to `/live/host/:pin` on success (same as today), calls `onClose` when the user dismisses it without creating a session.
 
 - [ ] **Step 1: Add the API function and type**
@@ -452,14 +541,17 @@ export interface LiveSessionHistoryItem {
   pin: string;
   testId: string;
   testName: string;
-  mode: 'individual' | 'team';
-  status: 'active' | 'finished';
+  mode: "individual" | "team";
+  status: "active" | "finished";
   createdAt: string;
   finishedAt: string | null;
 }
 
-export async function apiListLiveSessions(limit: number, offset: number): Promise<LiveSessionHistoryItem[]> {
-  const res = await client.get('/live/sessions', { params: { limit, offset } });
+export async function apiListLiveSessions(
+  limit: number,
+  offset: number,
+): Promise<LiveSessionHistoryItem[]> {
+  const res = await client.get("/live/sessions", { params: { limit, offset } });
   return res.data;
 }
 ```
@@ -529,13 +621,13 @@ export function NewLiveSessionModal({ onClose, initialTestId }: { onClose: () =>
             <input
               value={query} onChange={(e) => setQuery(e.target.value)}
               placeholder="Test nomini qidiring..."
-              className="w-full bg-gray-50 border-2 border-gray-100 rounded-2xl pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
+              className="w-full bg-gray-50 border border-gray-100 rounded-2xl pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5 mb-6 max-h-56 overflow-y-auto">
             {filtered.map((t) => (
               <button key={t.id} onClick={() => setSelectedId(t.id)}
-                className={`w-full text-left px-4 py-3 rounded-2xl border-2 transition-all flex items-center justify-between gap-2 ${
+                className={`w-full text-left px-4 py-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
                   selectedId === t.id
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'bg-white border-gray-100 text-gray-700 hover:border-indigo-200'
@@ -554,7 +646,7 @@ export function NewLiveSessionModal({ onClose, initialTestId }: { onClose: () =>
           <div className="flex gap-2 mb-6">
             {TIMES.map((t) => (
               <button key={t} onClick={() => setTimeSec(t)}
-                className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+                className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                   timeSec === t
                     ? 'bg-indigo-500 border-indigo-500 text-white'
                     : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
@@ -568,7 +660,7 @@ export function NewLiveSessionModal({ onClose, initialTestId }: { onClose: () =>
           <p className="text-sm font-semibold text-gray-700 mb-2">O'yin rejimi</p>
           <div className="flex gap-2 mb-6">
             <button onClick={() => setMode('individual')}
-              className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+              className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                 mode === 'individual'
                   ? 'bg-indigo-500 border-indigo-500 text-white'
                   : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
@@ -576,7 +668,7 @@ export function NewLiveSessionModal({ onClose, initialTestId }: { onClose: () =>
               Yakka
             </button>
             <button onClick={() => setMode('team')}
-              className={`flex-1 py-3 rounded-2xl border-2 font-semibold text-sm transition-all ${
+              className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                 mode === 'team'
                   ? 'bg-indigo-500 border-indigo-500 text-white'
                   : 'bg-white border-gray-100 text-gray-600 hover:border-indigo-200'
@@ -615,9 +707,11 @@ git commit -m "feat(live): extract live-session creation form into a modal compo
 ### Task 5: Frontend — `LiveCreatePage` becomes a history list
 
 **Files:**
+
 - Modify: `apps/frontend/src/pages/LiveCreatePage.tsx`
 
 **Interfaces:**
+
 - Consumes: Task 4's `apiListLiveSessions`, `LiveSessionHistoryItem`, `NewLiveSessionModal`
 
 - [ ] **Step 1: Rewrite the page**
@@ -688,7 +782,7 @@ export function LiveCreatePage() {
 
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="w-7 h-7 rounded-full border-2 border-indigo-200 border-t-indigo-500 animate-spin" />
+              <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
             </div>
           ) : sessions.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -699,7 +793,7 @@ export function LiveCreatePage() {
             <div className="flex flex-col gap-2">
               {sessions.map((s) => (
                 <button key={s.id} onClick={() => handleRowClick(s)}
-                  className="w-full bg-white rounded-2xl border-2 border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left">
+                  className="w-full bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     s.mode === 'team' ? 'bg-purple-50' : 'bg-blue-50'
                   }`}>

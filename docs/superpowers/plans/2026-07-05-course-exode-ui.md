@@ -24,15 +24,17 @@
 ### Task 1: `Breadcrumb` component
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/Breadcrumb.tsx`
 
 **Interfaces:**
+
 - Produces: `Breadcrumb` component with prop `items: Array<{ label: string; onClick?: () => void }>`. The last item renders as bold, non-clickable, current-page text; every earlier item renders as a clickable link-styled button (only if it has an `onClick`); items are separated by a `ChevronRight` icon (from `lucide-react`, size 14, `text-gray-300`).
 
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from "lucide-react";
 
 export interface BreadcrumbItem {
   label: string;
@@ -50,9 +52,15 @@ export function Breadcrumb({ items }: BreadcrumbProps) {
         const isLast = i === items.length - 1;
         return (
           <span key={i} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight size={14} className="shrink-0 text-gray-300" />}
+            {i > 0 && (
+              <ChevronRight size={14} className="shrink-0 text-gray-300" />
+            )}
             {isLast || !item.onClick ? (
-              <span className={isLast ? 'font-semibold text-gray-800' : 'text-gray-400'}>
+              <span
+                className={
+                  isLast ? "font-semibold text-gray-800" : "text-gray-400"
+                }
+              >
                 {item.label}
               </span>
             ) : (
@@ -89,18 +97,27 @@ git commit -m "feat(courses): add reusable Breadcrumb component"
 ### Task 2: `CourseSidePanel` component
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/CourseSidePanel.tsx`
 
 **Interfaces:**
+
 - Consumes: nothing from other new components.
-- Produces: `CourseSidePanel` component with prop `onBackToList: () => void`. Renders a static vertical tab list inside a card (matches the visual weight of other cards in this codebase: `rounded-2xl border-2 border-gray-100 bg-white`), with the "Kontent" tab visually active (indigo background/text) and all other tabs disabled (gray, `cursor-not-allowed`, no click handler). Below the tab list, a "Kurslarga qaytish" button that calls `onBackToList`.
+- Produces: `CourseSidePanel` component with prop `onBackToList: () => void`. Renders a static vertical tab list inside a card (matches the visual weight of other cards in this codebase: `rounded-2xl border border-gray-100 bg-white`), with the "Kontent" tab visually active (indigo background/text) and all other tabs disabled (gray, `cursor-not-allowed`, no click handler). Below the tab list, a "Kurslarga qaytish" button that calls `onBackToList`.
 
 - [ ] **Step 1: Write the component**
 
 ```tsx
 import {
-  LayoutGrid, SlidersHorizontal, Send, Users, UserRound, HelpCircle, ListChecks, ArrowLeft,
-} from 'lucide-react';
+  LayoutGrid,
+  SlidersHorizontal,
+  Send,
+  Users,
+  UserRound,
+  HelpCircle,
+  ListChecks,
+  ArrowLeft,
+} from "lucide-react";
 
 interface CourseSidePanelProps {
   onBackToList: () => void;
@@ -115,19 +132,55 @@ interface SideTab {
 }
 
 const TABS: SideTab[] = [
-  { key: 'content', label: 'Kontent', description: 'Modullar, darslar va amaliyot', icon: LayoutGrid, active: true },
-  { key: 'settings', label: 'Sozlamalar', description: "Ma'lumot va moslashtirish", icon: SlidersHorizontal },
-  { key: 'launch', label: 'Ishga tushirish va tariflar', description: 'Savdo va narxlar sozlamalari', icon: Send },
-  { key: 'groups', label: 'Guruhlar', description: "O'quvchilarni ajratish", icon: Users },
-  { key: 'students', label: "O'quvchilar", description: 'Statistika va taraqqiyot', icon: UserRound },
-  { key: 'faq', label: 'FAQ', description: 'Shubhalarga javoblar', icon: HelpCircle },
-  { key: 'homework', label: 'Vazifalarni tekshirish', description: 'Talabalardan amaliyot', icon: ListChecks },
+  {
+    key: "content",
+    label: "Kontent",
+    description: "Modullar, darslar va amaliyot",
+    icon: LayoutGrid,
+    active: true,
+  },
+  {
+    key: "settings",
+    label: "Sozlamalar",
+    description: "Ma'lumot va moslashtirish",
+    icon: SlidersHorizontal,
+  },
+  {
+    key: "launch",
+    label: "Ishga tushirish va tariflar",
+    description: "Savdo va narxlar sozlamalari",
+    icon: Send,
+  },
+  {
+    key: "groups",
+    label: "Guruhlar",
+    description: "O'quvchilarni ajratish",
+    icon: Users,
+  },
+  {
+    key: "students",
+    label: "O'quvchilar",
+    description: "Statistika va taraqqiyot",
+    icon: UserRound,
+  },
+  {
+    key: "faq",
+    label: "FAQ",
+    description: "Shubhalarga javoblar",
+    icon: HelpCircle,
+  },
+  {
+    key: "homework",
+    label: "Vazifalarni tekshirish",
+    description: "Talabalardan amaliyot",
+    icon: ListChecks,
+  },
 ];
 
 export function CourseSidePanel({ onBackToList }: CourseSidePanelProps) {
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
-      <div className="rounded-2xl border-2 border-gray-100 bg-white p-2">
+      <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
@@ -135,16 +188,23 @@ export function CourseSidePanel({ onBackToList }: CourseSidePanelProps) {
               key={tab.key}
               className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${
                 tab.active
-                  ? 'bg-indigo-50 text-indigo-600'
-                  : 'cursor-not-allowed text-gray-300'
+                  ? "bg-indigo-50 text-indigo-600"
+                  : "cursor-not-allowed text-gray-300"
               }`}
             >
-              <Icon size={18} className={`shrink-0 ${tab.active ? 'text-indigo-500' : 'text-gray-300'}`} />
+              <Icon
+                size={18}
+                className={`shrink-0 ${tab.active ? "text-indigo-500" : "text-gray-300"}`}
+              />
               <div className="min-w-0">
-                <p className={`truncate font-semibold ${tab.active ? 'text-indigo-600' : 'text-gray-400'}`}>
+                <p
+                  className={`truncate font-semibold ${tab.active ? "text-indigo-600" : "text-gray-400"}`}
+                >
                   {tab.label}
                 </p>
-                <p className="truncate text-xs text-gray-300">{tab.description}</p>
+                <p className="truncate text-xs text-gray-300">
+                  {tab.description}
+                </p>
               </div>
             </div>
           );
@@ -180,9 +240,11 @@ git commit -m "feat(courses): add static CourseSidePanel with disabled placehold
 ### Task 3: `CourseGrid` component (course list, stage 1)
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/CourseGrid.tsx`
 
 **Interfaces:**
+
 - Consumes: `useCourseStore` from `apps/frontend/src/stores/courseStore.ts` — specifically `courses: Course[]` and `addCourse: (title: string) => Course`. `Course` has shape `{ id: string; title: string; modules: Module[] }`; `Module` has `{ id: string; lessons: Lesson[] }`.
 - Consumes: `PromptModal` from `./PromptModal` (props: `title`, `placeholder`, `confirmLabel`, `onConfirm: (value: string) => void`, `onClose: () => void`).
 - Produces: `CourseGrid` component with prop `onOpenCourse: (courseId: string) => void`, called when a course card is clicked or right after a new course is created.
@@ -192,10 +254,10 @@ This replicates course-count and lesson-count math already used elsewhere in thi
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { useState } from 'react';
-import { GraduationCap, Layers, Plus, Inbox } from 'lucide-react';
-import { useCourseStore } from '../../stores/courseStore';
-import { PromptModal } from './PromptModal';
+import { useState } from "react";
+import { GraduationCap, Layers, Plus, Inbox } from "lucide-react";
+import { useCourseStore } from "../../stores/courseStore";
+import { PromptModal } from "./PromptModal";
 
 interface CourseGridProps {
   onOpenCourse: (courseId: string) => void;
@@ -232,19 +294,24 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
       ) : (
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => {
-            const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+            const lessonCount = course.modules.reduce(
+              (sum, m) => sum + m.lessons.length,
+              0,
+            );
             return (
               <button
                 key={course.id}
                 type="button"
                 onClick={() => onOpenCourse(course.id)}
-                className="flex flex-col gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
                   <GraduationCap size={20} />
                 </div>
                 <div className="min-w-0">
-                  <p className="truncate font-semibold text-gray-800">{course.title}</p>
+                  <p className="truncate font-semibold text-gray-800">
+                    {course.title}
+                  </p>
                   <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-400">
                     <Layers size={12} />
                     {course.modules.length} modul • {lessonCount} dars
@@ -287,9 +354,11 @@ git commit -m "feat(courses): add CourseGrid (course list stage, filter-free)"
 ### Task 4: `CourseContentPage` component (breadcrumb + Mundarija + collapsible module list, stage 2)
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/CourseContentPage.tsx`
 
 **Interfaces:**
+
 - Consumes: `useCourseStore` — `courses`, `addModule: (courseId, title) => Module | undefined`, `addLesson: (courseId, moduleId, title) => Lesson | undefined`, `deleteModule: (courseId, moduleId) => void`, `deleteLesson: (courseId, moduleId, lessonId) => void`. Types: `Lesson` has `{ id, title, status: 'draft' | 'published' }`.
 - Consumes: `Breadcrumb` from `./Breadcrumb` (Task 1), `CourseSidePanel` from `./CourseSidePanel` (Task 2), `PromptModal` from `./PromptModal`.
 - Produces: `CourseContentPage` component with props:
@@ -302,12 +371,20 @@ The module list is single-column and collapsible: each module row has a chevron 
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { useState } from 'react';
-import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox } from 'lucide-react';
-import { useCourseStore } from '../../stores/courseStore';
-import { Breadcrumb } from './Breadcrumb';
-import { CourseSidePanel } from './CourseSidePanel';
-import { PromptModal } from './PromptModal';
+import { useState } from "react";
+import {
+  ChevronDown,
+  ChevronRight,
+  Layers,
+  FileText,
+  Trash2,
+  Plus,
+  Inbox,
+} from "lucide-react";
+import { useCourseStore } from "../../stores/courseStore";
+import { Breadcrumb } from "./Breadcrumb";
+import { CourseSidePanel } from "./CourseSidePanel";
+import { PromptModal } from "./PromptModal";
 
 interface CourseContentPageProps {
   courseId: string;
@@ -316,19 +393,27 @@ interface CourseContentPageProps {
 }
 
 type ModalState =
-  | { type: 'newModule' }
-  | { type: 'newLesson'; moduleId: string }
-  | null;
+  { type: "newModule" } | { type: "newLesson"; moduleId: string } | null;
 
-export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: CourseContentPageProps) {
-  const { courses, addModule, addLesson, deleteModule, deleteLesson } = useCourseStore();
+export function CourseContentPage({
+  courseId,
+  onBackToList,
+  onOpenLesson,
+}: CourseContentPageProps) {
+  const { courses, addModule, addLesson, deleteModule, deleteLesson } =
+    useCourseStore();
   const course = courses.find((c) => c.id === courseId);
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(
+    new Set(),
+  );
   const [modal, setModal] = useState<ModalState>(null);
 
   if (!course) return null;
 
-  const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const lessonCount = course.modules.reduce(
+    (sum, m) => sum + m.lessons.length,
+    0,
+  );
 
   function toggleModule(moduleId: string) {
     setCollapsedModules((prev) => {
@@ -345,7 +430,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
   }
 
   function handleCreateLesson(title: string) {
-    if (modal?.type !== 'newLesson') return;
+    if (modal?.type !== "newLesson") return;
     const lesson = addLesson(courseId, modal.moduleId, title);
     setModal(null);
     if (lesson) onOpenLesson(modal.moduleId, lesson.id);
@@ -356,22 +441,22 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
-            { label: 'Kurslar', onClick: onBackToList },
+            { label: "Kurslar", onClick: onBackToList },
             { label: course.title },
-            { label: 'Kontent' },
+            { label: "Kontent" },
           ]}
         />
 
-        <div className="mb-4 rounded-2xl border-2 border-gray-100 bg-white p-5">
+        <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-5">
           <h2 className="mb-1 text-lg font-bold text-gray-800">Mundarija</h2>
           <p className="mb-4 text-sm text-gray-400">
-            Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz, nashr qilishingiz yoki
-            o'chirishingiz mumkin.
+            Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz,
+            nashr qilishingiz yoki o'chirishingiz mumkin.
           </p>
           <div className="flex items-center justify-between gap-3">
             <button
               type="button"
-              onClick={() => setModal({ type: 'newModule' })}
+              onClick={() => setModal({ type: "newModule" })}
               className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition-colors hover:bg-indigo-600"
             >
               <Plus size={16} /> Modul qo'shish
@@ -383,7 +468,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
         </div>
 
         {course.modules.length === 0 ? (
-          <div className="rounded-2xl border-2 border-gray-100 bg-white py-16 text-center text-gray-300">
+          <div className="rounded-2xl border border-gray-100 bg-white py-16 text-center text-gray-300">
             <Inbox size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">Hali modul yo'q</p>
           </div>
@@ -392,13 +477,26 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
             {course.modules.map((module) => {
               const collapsed = collapsedModules.has(module.id);
               return (
-                <div key={module.id} className="rounded-2xl border-2 border-gray-100 bg-white">
+                <div
+                  key={module.id}
+                  className="rounded-2xl border border-gray-100 bg-white"
+                >
                   <div className="group flex items-center gap-2 px-4 py-3">
-                    <button type="button" onClick={() => toggleModule(module.id)} className="text-gray-400">
-                      {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                    <button
+                      type="button"
+                      onClick={() => toggleModule(module.id)}
+                      className="text-gray-400"
+                    >
+                      {collapsed ? (
+                        <ChevronRight size={16} />
+                      ) : (
+                        <ChevronDown size={16} />
+                      )}
                     </button>
                     <Layers size={16} className="shrink-0 text-indigo-400" />
-                    <span className="flex-1 truncate text-sm font-semibold text-gray-700">{module.title}</span>
+                    <span className="flex-1 truncate text-sm font-semibold text-gray-700">
+                      {module.title}
+                    </span>
                     <button
                       type="button"
                       onClick={() => deleteModule(courseId, module.id)}
@@ -420,21 +518,30 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
                             onClick={() => onOpenLesson(module.id, lesson.id)}
                             className="flex flex-1 items-center gap-2 truncate text-left"
                           >
-                            <FileText size={14} className="shrink-0 text-gray-300" />
-                            <span className="truncate text-gray-700">{lesson.title}</span>
+                            <FileText
+                              size={14}
+                              className="shrink-0 text-gray-300"
+                            />
+                            <span className="truncate text-gray-700">
+                              {lesson.title}
+                            </span>
                             <span
                               className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                lesson.status === 'published'
-                                  ? 'bg-green-50 text-green-600'
-                                  : 'bg-gray-100 text-gray-500'
+                                lesson.status === "published"
+                                  ? "bg-green-50 text-green-600"
+                                  : "bg-gray-100 text-gray-500"
                               }`}
                             >
-                              {lesson.status === 'published' ? "E'lon qilingan" : 'Qoralama'}
+                              {lesson.status === "published"
+                                ? "E'lon qilingan"
+                                : "Qoralama"}
                             </span>
                           </button>
                           <button
                             type="button"
-                            onClick={() => deleteLesson(courseId, module.id, lesson.id)}
+                            onClick={() =>
+                              deleteLesson(courseId, module.id, lesson.id)
+                            }
                             className="rounded-lg p-1.5 text-gray-300 opacity-0 transition-colors hover:bg-red-50 hover:text-red-400 group-hover:opacity-100"
                           >
                             <Trash2 size={13} />
@@ -443,7 +550,9 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
                       ))}
                       <button
                         type="button"
-                        onClick={() => setModal({ type: 'newLesson', moduleId: module.id })}
+                        onClick={() =>
+                          setModal({ type: "newLesson", moduleId: module.id })
+                        }
                         className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-indigo-400 hover:bg-indigo-50/50"
                       >
                         + Dars qo'shish
@@ -459,7 +568,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
 
       <CourseSidePanel onBackToList={onBackToList} />
 
-      {modal?.type === 'newModule' && (
+      {modal?.type === "newModule" && (
         <PromptModal
           title="Yangi modul"
           placeholder="Modul nomi"
@@ -468,7 +577,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
           onClose={() => setModal(null)}
         />
       )}
-      {modal?.type === 'newLesson' && (
+      {modal?.type === "newLesson" && (
         <PromptModal
           title="Yangi dars"
           placeholder="Dars nomi"
@@ -499,9 +608,11 @@ git commit -m "feat(courses): add CourseContentPage with breadcrumb and collapsi
 ### Task 5: Add breadcrumb to `LessonEditorView` (stage 3)
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/LessonEditorView.tsx`
 
 **Interfaces:**
+
 - Consumes: `Breadcrumb` from `./Breadcrumb` (Task 1).
 - Modify: `LessonEditorViewProps` gains two new required props: `onBackToList: () => void` and `onBackToContent: () => void`. Existing props (`courseId`, `moduleId`, `lessonId`) are unchanged. The component still looks up `course`/`module`/`lesson` from the store the same way it already does for `lesson` — extend that lookup to also keep references to `course` and `module` so their titles are available for the breadcrumb.
 
@@ -513,6 +624,7 @@ Expected: shows the imports and the `LessonEditorViewProps` interface exactly as
 - [ ] **Step 2: Update the props interface and add the course/module lookups**
 
 Replace:
+
 ```tsx
 import { useState } from 'react';
 import { NotebookPen } from 'lucide-react';
@@ -543,6 +655,7 @@ export function LessonEditorView({ courseId, moduleId, lessonId }: LessonEditorV
 ```
 
 With:
+
 ```tsx
 import { useState } from 'react';
 import { NotebookPen } from 'lucide-react';
@@ -577,6 +690,7 @@ export function LessonEditorView({ courseId, moduleId, lessonId, onBackToList, o
 - [ ] **Step 3: Render the breadcrumb above the existing title row**
 
 Replace:
+
 ```tsx
   return (
     <div className="p-6">
@@ -584,6 +698,7 @@ Replace:
 ```
 
 With:
+
 ```tsx
   return (
     <div className="p-6">
@@ -615,10 +730,12 @@ git commit -m "feat(courses): add breadcrumb to LessonEditorView (requires calle
 ### Task 6: Rewire `CoursesPage` to the three-stage flow, remove `CourseTreePanel`
 
 **Files:**
+
 - Modify: `apps/frontend/src/pages/CoursesPage.tsx` (full rewrite)
 - Delete: `apps/frontend/src/components/course/CourseTreePanel.tsx`
 
 **Interfaces:**
+
 - Consumes: `CourseGrid` (Task 3, prop `onOpenCourse`), `CourseContentPage` (Task 4, props `courseId`, `onBackToList`, `onOpenLesson`), `LessonEditorView` (Task 5, props `courseId`, `moduleId`, `lessonId`, `onBackToList`, `onBackToContent`).
 - Produces: `CoursesPage` component (default export used by `apps/frontend/src/App.tsx`'s `/lessons` route — confirm via `grep -n "CoursesPage" apps/frontend/src/App.tsx` that the import path and named export `CoursesPage` stay the same, since this task keeps the export name unchanged).
 
@@ -627,45 +744,54 @@ The empty-state ("Hali kurs yaratilmagan") screen currently shown when there are
 - [ ] **Step 1: Replace the full file**
 
 ```tsx
-import { useState } from 'react';
-import { AppShell } from '../components/AppShell';
-import { CourseGrid } from '../components/course/CourseGrid';
-import { CourseContentPage } from '../components/course/CourseContentPage';
-import { LessonEditorView } from '../components/course/LessonEditorView';
+import { useState } from "react";
+import { AppShell } from "../components/AppShell";
+import { CourseGrid } from "../components/course/CourseGrid";
+import { CourseContentPage } from "../components/course/CourseContentPage";
+import { LessonEditorView } from "../components/course/LessonEditorView";
 
 type ViewState =
-  | { view: 'list' }
-  | { view: 'content'; courseId: string }
-  | { view: 'editor'; courseId: string; moduleId: string; lessonId: string };
+  | { view: "list" }
+  | { view: "content"; courseId: string }
+  | { view: "editor"; courseId: string; moduleId: string; lessonId: string };
 
 export function CoursesPage() {
-  const [state, setState] = useState<ViewState>({ view: 'list' });
+  const [state, setState] = useState<ViewState>({ view: "list" });
 
   function backToList() {
-    setState({ view: 'list' });
+    setState({ view: "list" });
   }
 
   return (
     <AppShell>
-      {state.view === 'list' && (
-        <CourseGrid onOpenCourse={(courseId) => setState({ view: 'content', courseId })} />
+      {state.view === "list" && (
+        <CourseGrid
+          onOpenCourse={(courseId) => setState({ view: "content", courseId })}
+        />
       )}
-      {state.view === 'content' && (
+      {state.view === "content" && (
         <CourseContentPage
           courseId={state.courseId}
           onBackToList={backToList}
           onOpenLesson={(moduleId, lessonId) =>
-            setState({ view: 'editor', courseId: state.courseId, moduleId, lessonId })
+            setState({
+              view: "editor",
+              courseId: state.courseId,
+              moduleId,
+              lessonId,
+            })
           }
         />
       )}
-      {state.view === 'editor' && (
+      {state.view === "editor" && (
         <LessonEditorView
           courseId={state.courseId}
           moduleId={state.moduleId}
           lessonId={state.lessonId}
           onBackToList={backToList}
-          onBackToContent={() => setState({ view: 'content', courseId: state.courseId })}
+          onBackToContent={() =>
+            setState({ view: "content", courseId: state.courseId })
+          }
         />
       )}
     </AppShell>

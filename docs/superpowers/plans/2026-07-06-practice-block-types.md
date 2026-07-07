@@ -20,9 +20,11 @@
 ### Task 1: Extend `PracticeBlock` model — add `type`/`description`, update `addPracticeBlock`, add `setPracticeBlockDescription`
 
 **Files:**
+
 - Modify: `apps/frontend/src/stores/courseStore.ts`
 
 **Interfaces:**
+
 - Produces: `PracticeBlockType = 'test' | 'image' | 'file' | 'audio'`, extended `PracticeBlock` (`{ id: string; type: PracticeBlockType; testId: string | null; description: string }`), changed `addPracticeBlock` signature (`(courseId: string, moduleId: string, lessonId: string, type: PracticeBlockType) => void`), and new action `setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => void`.
 - Consumes: nothing new — this task only touches `courseStore.ts`.
 
@@ -47,7 +49,7 @@ export interface PracticeBlock {
 With:
 
 ```typescript
-export type PracticeBlockType = 'test' | 'image' | 'file' | 'audio';
+export type PracticeBlockType = "test" | "image" | "file" | "audio";
 
 export interface PracticeBlock {
   id: string;
@@ -154,9 +156,11 @@ git commit -m "feat(courses): add type/description fields to PracticeBlock model
 ### Task 2: `PracticeBlockPicker` — four-card type picker for the practice section
 
 **Files:**
+
 - Create: `apps/frontend/src/components/course/PracticeBlockPicker.tsx`
 
 **Interfaces:**
+
 - Consumes: `PracticeBlockType` from `../../stores/courseStore.ts` (Task 1: `'test' | 'image' | 'file' | 'audio'`).
 - Produces: `PracticeBlockPicker` component with prop `onPickType: (type: PracticeBlockType) => void`, called immediately when a card is clicked (no file picker, no intermediate dialog — this section never uploads files, per Global Constraints).
 
@@ -165,24 +169,35 @@ This mirrors the visual pattern of the existing `apps/frontend/src/components/co
 - [ ] **Step 1: Write the component**
 
 ```tsx
-import { ClipboardList, Image as ImageIcon, Paperclip, Mic } from 'lucide-react';
-import type { PracticeBlockType } from '../../stores/courseStore';
+import {
+  ClipboardList,
+  Image as ImageIcon,
+  Paperclip,
+  Mic,
+} from "lucide-react";
+import type { PracticeBlockType } from "../../stores/courseStore";
 
 interface PracticeBlockPickerProps {
   onPickType: (type: PracticeBlockType) => void;
 }
 
-const TYPES: Array<{ type: PracticeBlockType; label: string; icon: typeof ClipboardList }> = [
-  { type: 'test', label: 'Test', icon: ClipboardList },
-  { type: 'image', label: 'Rasm', icon: ImageIcon },
-  { type: 'file', label: 'Fayl', icon: Paperclip },
-  { type: 'audio', label: 'Audio', icon: Mic },
+const TYPES: Array<{
+  type: PracticeBlockType;
+  label: string;
+  icon: typeof ClipboardList;
+}> = [
+  { type: "test", label: "Test", icon: ClipboardList },
+  { type: "image", label: "Rasm", icon: ImageIcon },
+  { type: "file", label: "Fayl", icon: Paperclip },
+  { type: "audio", label: "Audio", icon: Mic },
 ];
 
 export function PracticeBlockPicker({ onPickType }: PracticeBlockPickerProps) {
   return (
     <div>
-      <p className="mb-3 text-center text-xs text-gray-400">Yangi blok qo'shish</p>
+      <p className="mb-3 text-center text-xs text-gray-400">
+        Yangi blok qo'shish
+      </p>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {TYPES.map((item) => {
           const Icon = item.icon;
@@ -191,7 +206,7 @@ export function PracticeBlockPicker({ onPickType }: PracticeBlockPickerProps) {
               key={item.type}
               type="button"
               onClick={() => onPickType(item.type)}
-              className="flex flex-col items-center gap-2 rounded-2xl border-2 border-gray-100 bg-white px-4 py-5 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+              className="flex flex-col items-center gap-2 rounded-2xl border border-gray-100 bg-white px-4 py-5 text-sm font-medium text-gray-600 transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
             >
               <Icon size={22} className="text-indigo-400" />
               {item.label}
@@ -221,9 +236,11 @@ git commit -m "feat(courses): add PracticeBlockPicker (test/image/file/audio typ
 ### Task 3: `PracticeBlockView` — type-specific body (test picker vs. description textarea)
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeBlockView.tsx`
 
 **Interfaces:**
+
 - Consumes: `PracticeBlock` (now with `type`/`description` fields, from Task 1).
 - Modify: `PracticeBlockViewProps` gains `onChangeDescription: (description: string) => void`. Existing props (`index`, `isFirst`, `isLast`, `block`, `tests`, `onSelectTest`, `onRemove`, `onMoveUp`, `onMoveDown`) are unchanged.
 
@@ -337,56 +354,60 @@ With:
 Replace:
 
 ```tsx
-      <div className="border-t border-gray-100 px-4 py-4">
-        <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
-        <select
-          value={block.testId ?? ''}
-          onChange={(e) => onSelectTest(e.target.value)}
-          className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-        >
-          <option value="" disabled>Testni tanlang...</option>
-          {tests.map((t) => (
-            <option key={t.id} value={t.id}>
-              {t.name} ({t.questionCount} ta savol)
-            </option>
-          ))}
-        </select>
-      </div>
+<div className="border-t border-gray-100 px-4 py-4">
+  <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
+  <select
+    value={block.testId ?? ""}
+    onChange={(e) => onSelectTest(e.target.value)}
+    className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+  >
+    <option value="" disabled>
+      Testni tanlang...
+    </option>
+    {tests.map((t) => (
+      <option key={t.id} value={t.id}>
+        {t.name} ({t.questionCount} ta savol)
+      </option>
+    ))}
+  </select>
+</div>
 ```
 
 With:
 
 ```tsx
-      <div className="border-t border-gray-100 px-4 py-4">
-        {block.type === 'test' ? (
-          <>
-            <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
-            <select
-              value={block.testId ?? ''}
-              onChange={(e) => onSelectTest(e.target.value)}
-              className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-            >
-              <option value="" disabled>Testni tanlang...</option>
-              {tests.map((t) => (
-                <option key={t.id} value={t.id}>
-                  {t.name} ({t.questionCount} ta savol)
-                </option>
-              ))}
-            </select>
-          </>
-        ) : (
-          <>
-            <p className="mb-1.5 text-sm text-gray-500">Topshiriq matni</p>
-            <textarea
-              value={block.description}
-              onChange={(e) => onChangeDescription(e.target.value)}
-              placeholder={meta.placeholder}
-              rows={3}
-              className="w-full resize-none rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
-            />
-          </>
-        )}
-      </div>
+<div className="border-t border-gray-100 px-4 py-4">
+  {block.type === "test" ? (
+    <>
+      <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
+      <select
+        value={block.testId ?? ""}
+        onChange={(e) => onSelectTest(e.target.value)}
+        className="w-full rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+      >
+        <option value="" disabled>
+          Testni tanlang...
+        </option>
+        {tests.map((t) => (
+          <option key={t.id} value={t.id}>
+            {t.name} ({t.questionCount} ta savol)
+          </option>
+        ))}
+      </select>
+    </>
+  ) : (
+    <>
+      <p className="mb-1.5 text-sm text-gray-500">Topshiriq matni</p>
+      <textarea
+        value={block.description}
+        onChange={(e) => onChangeDescription(e.target.value)}
+        placeholder={meta.placeholder}
+        rows={3}
+        className="w-full resize-none rounded-xl border border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+      />
+    </>
+  )}
+</div>
 ```
 
 - [ ] **Step 5: Verify the build fails for the expected (still unrelated) reason**
@@ -406,9 +427,11 @@ git commit -m "feat(courses): render type-specific body in PracticeBlockView (te
 ### Task 4: Wire `PracticeSection` — swap add-button for the type picker, pass through the new prop
 
 **Files:**
+
 - Modify: `apps/frontend/src/components/course/PracticeSection.tsx`
 
 **Interfaces:**
+
 - Consumes: `PracticeBlockPicker` (Task 2, prop `onPickType: (type: PracticeBlockType) => void`), `PracticeBlockView`'s new `onChangeDescription` prop (Task 3), `setPracticeBlockDescription` action and `addPracticeBlock`'s new 4-arg signature (both Task 1).
 
 This is the task that resolves both build failures left open by Tasks 1 and 3.
@@ -469,36 +492,56 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 Replace:
 
 ```tsx
-            <PracticeBlockView
-              key={block.id}
-              index={index}
-              isFirst={index === 0}
-              isLast={index === lesson.practiceBlocks.length - 1}
-              block={block}
-              tests={tests}
-              onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
-              onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
-              onMoveUp={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'up')}
-              onMoveDown={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'down')}
-            />
+<PracticeBlockView
+  key={block.id}
+  index={index}
+  isFirst={index === 0}
+  isLast={index === lesson.practiceBlocks.length - 1}
+  block={block}
+  tests={tests}
+  onSelectTest={(testId) =>
+    setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)
+  }
+  onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
+  onMoveUp={() =>
+    movePracticeBlock(courseId, moduleId, lessonId, block.id, "up")
+  }
+  onMoveDown={() =>
+    movePracticeBlock(courseId, moduleId, lessonId, block.id, "down")
+  }
+/>
 ```
 
 With:
 
 ```tsx
-            <PracticeBlockView
-              key={block.id}
-              index={index}
-              isFirst={index === 0}
-              isLast={index === lesson.practiceBlocks.length - 1}
-              block={block}
-              tests={tests}
-              onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
-              onChangeDescription={(description) => setPracticeBlockDescription(courseId, moduleId, lessonId, block.id, description)}
-              onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
-              onMoveUp={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'up')}
-              onMoveDown={() => movePracticeBlock(courseId, moduleId, lessonId, block.id, 'down')}
-            />
+<PracticeBlockView
+  key={block.id}
+  index={index}
+  isFirst={index === 0}
+  isLast={index === lesson.practiceBlocks.length - 1}
+  block={block}
+  tests={tests}
+  onSelectTest={(testId) =>
+    setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)
+  }
+  onChangeDescription={(description) =>
+    setPracticeBlockDescription(
+      courseId,
+      moduleId,
+      lessonId,
+      block.id,
+      description,
+    )
+  }
+  onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}
+  onMoveUp={() =>
+    movePracticeBlock(courseId, moduleId, lessonId, block.id, "up")
+  }
+  onMoveDown={() =>
+    movePracticeBlock(courseId, moduleId, lessonId, block.id, "down")
+  }
+/>
 ```
 
 - [ ] **Step 4: Replace the "+ Test qo'shish" button with `PracticeBlockPicker`**
@@ -506,22 +549,24 @@ With:
 Replace:
 
 ```tsx
-      <button
-        type="button"
-        onClick={() => addPracticeBlock(courseId, moduleId, lessonId)}
-        disabled={loadingTests}
-        className="mb-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border-2 border-dashed border-indigo-200 py-3 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50"
-      >
-        <Plus size={16} /> Test qo'shish
-      </button>
+<button
+  type="button"
+  onClick={() => addPracticeBlock(courseId, moduleId, lessonId)}
+  disabled={loadingTests}
+  className="mb-6 flex w-full items-center justify-center gap-1.5 rounded-2xl border border-dashed border-indigo-200 py-3 text-sm font-semibold text-indigo-500 transition-colors hover:bg-indigo-50/50 disabled:cursor-not-allowed disabled:opacity-50"
+>
+  <Plus size={16} /> Test qo'shish
+</button>
 ```
 
 With:
 
 ```tsx
-      <div className="mb-6">
-        <PracticeBlockPicker onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)} />
-      </div>
+<div className="mb-6">
+  <PracticeBlockPicker
+    onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)}
+  />
+</div>
 ```
 
 Note: the previous `disabled={loadingTests}` guard (which prevented adding a test block while the test list was still loading) is intentionally dropped here — `PracticeBlockPicker`'s four cards are always enabled per its own spec (Task 2), and a teacher adding a block while tests are still loading simply sees an empty/loading `<select>` inside the newly-added test block until `tests` populates, which is the same transient state `PracticeBlockView` already handles today for the empty-tests-array case.
@@ -531,21 +576,21 @@ Note: the previous `disabled={loadingTests}` guard (which prevented adding a tes
 Replace:
 
 ```tsx
-        <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
-          <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
-          <p className="text-sm font-semibold text-gray-700">Hali test qo'shilmagan</p>
-          <p className="mt-1 text-xs text-gray-400">Pastroqdan test qo'shing</p>
-        </div>
+<div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
+  <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
+  <p className="text-sm font-semibold text-gray-700">Hali test qo'shilmagan</p>
+  <p className="mt-1 text-xs text-gray-400">Pastroqdan test qo'shing</p>
+</div>
 ```
 
 With:
 
 ```tsx
-        <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
-          <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
-          <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
-          <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
-        </div>
+<div className="mb-6 rounded-2xl border border-dashed border-gray-200 py-14 text-center">
+  <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
+  <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
+  <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
+</div>
 ```
 
 - [ ] **Step 6: Verify the build succeeds**
