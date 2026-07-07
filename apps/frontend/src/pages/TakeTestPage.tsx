@@ -811,6 +811,11 @@ export function TakeTestPage() {
                   <div className="flex flex-col min-h-full lg:max-w-3xl lg:mx-auto lg:w-full">
                     {/* ── Question zone ── */}
                     <div className="px-5 lg:px-8 pt-6 lg:pt-10 pb-5">
+                      {TYPE_BADGES[currentQ.type] && (
+                        <span className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mb-2 ${TYPE_BADGES[currentQ.type].cls}`}>
+                          {TYPE_BADGES[currentQ.type].label}
+                        </span>
+                      )}
                       <p
                         className="font-bold text-gray-900 leading-snug"
                         style={{ fontSize: `calc(var(--q-fs, 16px) + 2px)` }}
