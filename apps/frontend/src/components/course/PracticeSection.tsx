@@ -37,7 +37,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     if (value === '') {
       // Clear → default to 70
       setPassThreshold(courseId, moduleId, lessonId, {
-        enabled: lesson.passThresholdEnabled,
+        enabled: lesson!.passThresholdEnabled,
         percent: 70
       });
       return;
@@ -46,7 +46,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     if (isNaN(num)) return; // Reject NaN silently (type=number prevents, but safety)
     const percent = Math.min(100, Math.max(0, num));
     setPassThreshold(courseId, moduleId, lessonId, {
-      enabled: lesson.passThresholdEnabled,
+      enabled: lesson!.passThresholdEnabled,
       percent
     });
   }
