@@ -11,8 +11,8 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
   const { courses, addCourse } = useCourseStore();
   const [showModal, setShowModal] = useState(false);
 
-  function handleCreate(title: string) {
-    const course = addCourse(title);
+  async function handleCreate(title: string) {
+    const course = await addCourse(title);
     setShowModal(false);
     onOpenCourse(course.id);
   }

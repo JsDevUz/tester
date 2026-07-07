@@ -22,8 +22,8 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
 
   if (!course) return null;
 
-  function handleConfirmDelete() {
-    deleteCourse(courseId);
+  async function handleConfirmDelete() {
+    await deleteCourse(courseId);
     setConfirmDelete(false);
     onBackToList();
   }
@@ -46,7 +46,7 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
           <p className="mb-1.5 text-sm text-gray-500">Kurs nomi</p>
           <input
             value={course.title}
-            onChange={(e) => renameCourse(courseId, e.target.value.slice(0, TITLE_MAX))}
+            onChange={(e) => void renameCourse(courseId, e.target.value.slice(0, TITLE_MAX))}
             className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
           />
           <p className="mt-1 text-right text-xs text-gray-300">{course.title.length} / {TITLE_MAX}</p>
