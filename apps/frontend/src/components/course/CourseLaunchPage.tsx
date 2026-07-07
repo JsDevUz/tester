@@ -28,7 +28,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
 
   useEffect(() => {
     if (course && course.launches.length === 0) {
-      addLaunch(courseId, 'Запуск №1');
+      addLaunch(courseId, 'Ishga tushirish №1');
     }
   }, [course, courseId, addLaunch]);
 
