@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { AppShell } from '../components/AppShell';
 import { CourseGrid } from '../components/course/CourseGrid';
 import { CourseContentPage } from '../components/course/CourseContentPage';
@@ -6,6 +6,7 @@ import { CourseSettingsPage } from '../components/course/CourseSettingsPage';
 import { CourseLaunchPage } from '../components/course/CourseLaunchPage';
 import { CourseGroupsPage } from '../components/course/CourseGroupsPage';
 import { LessonEditorView } from '../components/course/LessonEditorView';
+import { useCourseStore } from '../stores/courseStore';
 
 type ViewState =
   | { view: 'list' }
@@ -17,6 +18,11 @@ type ViewState =
 
 export function CoursesPage() {
   const [state, setState] = useState<ViewState>({ view: 'list' });
+  const loadCourses = useCourseStore((s) => s.loadCourses);
+
+  useEffect(() => {
+    loadCourses();
+  }, [loadCourses]);
 
   function backToList() {
     setState({ view: 'list' });
