@@ -23,7 +23,7 @@ function PracticeToggleCard({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border-2 border-gray-100 bg-white p-4">
+    <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
         <Brain size={18} />
       </div>
@@ -38,7 +38,7 @@ function PracticeToggleCard({
       <button
         type="button"
         onClick={onToggle}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full border-0 p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
       >
         <span
           className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
@@ -64,7 +64,6 @@ export function LessonEditorView({
   const {
     courses,
     renameLesson,
-    toggleLessonStatus,
     addBlock,
     updateBlock,
     removeBlock,
@@ -160,26 +159,14 @@ export function LessonEditorView({
             onChange={(e) =>
               renameLesson(courseId, moduleId, lessonId, e.target.value)
             }
-            className="min-w-0 flex-1 rounded-xl border-2 border-transparent bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors focus:border-indigo-200"
+            className="min-w-0 flex-1 rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors"
           />
-          <button
-            onClick={() => toggleLessonStatus(courseId, moduleId, lessonId)}
-            className={`shrink-0 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-              lesson.status === "published"
-                ? "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                : "bg-indigo-500 text-white shadow-lg shadow-indigo-100 hover:bg-indigo-600"
-            }`}
-          >
-            {lesson.status === "published"
-              ? "Qoralamaga o'tkazish"
-              : "E'lon qilish"}
-          </button>
         </div>
 
         {activeTab === "content" ? (
           <>
             {lesson.blocks.length === 0 && (
-              <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
+              <div className="mb-6 rounded-2xl bg-white py-14 text-center">
                 <NotebookPen
                   size={30}
                   className="mx-auto mb-3 text-indigo-200"

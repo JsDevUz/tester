@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox } from 'lucide-react';
+import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox, Eye, EyeOff } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
@@ -17,7 +17,7 @@ type ModalState =
   | null;
 
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: CourseContentPageProps) {
-  const { courses, addModule, addLesson, deleteModule, deleteLesson } = useCourseStore();
+  const { courses, addModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<ModalState>(null);
@@ -58,7 +58,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
           ]}
         />
 
-        <div className="mb-4 rounded-2xl border-2 border-gray-100 bg-white p-5">
+        <div className="mb-4 rounded-2xl bg-white p-5">
           <h2 className="mb-1 text-lg font-bold text-gray-800">Mundarija</h2>
           <p className="mb-4 text-sm text-gray-400">
             Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz, nashr qilishingiz yoki
@@ -79,7 +79,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
         </div>
 
         {course.modules.length === 0 ? (
-          <div className="rounded-2xl border-2 border-gray-100 bg-white py-16 text-center text-gray-300">
+          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
             <Inbox size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">Hali modul yo'q</p>
           </div>
@@ -88,7 +88,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
             {course.modules.map((module) => {
               const collapsed = collapsedModules.has(module.id);
               return (
-                <div key={module.id} className="rounded-2xl border-2 border-gray-100 bg-white">
+                <div key={module.id} className="rounded-2xl bg-white">
                   <div className="group flex items-center gap-2 px-4 py-3">
                     <button type="button" onClick={() => toggleModule(module.id)} className="text-gray-400">
                       {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
@@ -105,7 +105,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
                   </div>
 
                   {!collapsed && (
-                    <div className="border-t border-gray-100 px-2 py-2">
+                    <div className="px-2 py-2">
                       {module.lessons.map((lesson) => (
                         <div
                           key={lesson.id}
@@ -118,15 +118,18 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
                           >
                             <FileText size={14} className="shrink-0 text-gray-300" />
                             <span className="truncate text-gray-700">{lesson.title}</span>
-                            <span
-                              className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-                                lesson.status === 'published'
-                                  ? 'bg-green-50 text-green-600'
-                                  : 'bg-gray-100 text-gray-500'
-                              }`}
-                            >
-                              {lesson.status === 'published' ? "E'lon qilingan" : 'Qoralama'}
-                            </span>
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => toggleLessonStatus(courseId, module.id, lesson.id)}
+                            title={lesson.status === 'published' ? "E'lon qilingan — bosib qoralamaga o'tkazish" : "Qoralama — bosib e'lon qilish"}
+                            className={`shrink-0 rounded-lg p-1.5 transition-colors ${
+                              lesson.status === 'published'
+                                ? 'text-green-500 hover:bg-green-50'
+                                : 'text-gray-300 hover:bg-gray-100 hover:text-gray-400'
+                            }`}
+                          >
+                            {lesson.status === 'published' ? <Eye size={15} /> : <EyeOff size={15} />}
                           </button>
                           <button
                             type="button"
