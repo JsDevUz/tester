@@ -33,8 +33,22 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
   const practiceLimitReached = lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT;
 
   function handlePercentChange(value: string) {
-    const percent = value === '' ? null : Math.min(100, Math.max(0, Number(value)));
-    setPassThreshold(courseId, moduleId, lessonId, { enabled: true, percent });
+    // Never toggle enabled state — only update percent
+    if (value === '') {
+      // Clear → default to 70
+      setPassThreshold(courseId, moduleId, lessonId, {
+        enabled: lesson.passThresholdEnabled,
+        percent: 70
+      });
+      return;
+    }
+    const num = Number(value);
+    if (isNaN(num)) return; // Reject NaN silently (type=number prevents, but safety)
+    const percent = Math.min(100, Math.max(0, num));
+    setPassThreshold(courseId, moduleId, lessonId, {
+      enabled: lesson.passThresholdEnabled,
+      percent
+    });
   }
 
   return (

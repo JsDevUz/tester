@@ -80,11 +80,15 @@ export function PracticeBlockView({
       <div className="border-t border-gray-100 px-4 py-4">
         {block.type === 'test' ? (
           <>
-            <p className="mb-1.5 text-sm text-gray-500">Testni tanlang</p>
+            <p className="mb-1.5 text-sm text-gray-500">
+              Testni tanlang <span className="text-red-500">*</span>
+            </p>
             <select
               value={block.testId ?? ''}
               onChange={(e) => onSelectTest(e.target.value)}
-              className="w-full rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+              className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
+                block.testId ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50/30'
+              }`}
             >
               <option value="" disabled>Testni tanlang...</option>
               {tests.map((t) => (
@@ -93,17 +97,27 @@ export function PracticeBlockView({
                 </option>
               ))}
             </select>
+            {!block.testId && (
+              <p className="mt-1 text-xs text-red-500">Test tanlanishi shart</p>
+            )}
           </>
         ) : (
           <>
-            <p className="mb-1.5 text-sm text-gray-500">Topshiriq matni</p>
+            <p className="mb-1.5 text-sm text-gray-500">
+              Topshiriq matni <span className="text-red-500">*</span>
+            </p>
             <textarea
               value={block.description}
               onChange={(e) => onChangeDescription(e.target.value)}
               placeholder={meta.placeholder}
               rows={3}
-              className="w-full resize-none rounded-xl border-2 border-gray-100 bg-gray-50 px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+              className={`w-full resize-none rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
+                block.description.trim() ? 'border-gray-100 bg-gray-50' : 'border-orange-200 bg-orange-50/30'
+              }`}
             />
+            {!block.description.trim() && (
+              <p className="mt-1 text-xs text-orange-500">Topshiriq matni bo'sh bo'lmasligi shart</p>
+            )}
           </>
         )}
       </div>
