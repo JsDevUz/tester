@@ -22,12 +22,36 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     ?.lessons.find((l) => l.id === lessonId);
 
   const [tests, setTests] = useState<AllTestsItem[]>([]);
+  const [testsLoading, setTestsLoading] = useState(false);
+  const [testsError, setTestsError] = useState<string | null>(null);
 
   useEffect(() => {
+    const hasTestBlocks = lesson?.practiceBlocks.some((b) => b.type === 'test') ?? false;
+    if (!hasTestBlocks) {
+      setTests([]);
+      setTestsLoading(false);
+      return;
+    }
+
     let cancelled = false;
-    apiListAllTests().then((items) => { if (!cancelled) setTests(items); });
+    setTestsLoading(true);
+    setTestsError(null);
+    apiListAllTests()
+      .then((items) => {
+        if (!cancelled) {
+          setTests(items);
+          setTestsLoading(false);
+        }
+      })
+      .catch((err) => {
+        if (!cancelled) {
+          console.error('Failed to load tests:', err);
+          setTestsError('Testlar yuklanmadi. Qayta urinib ko\'ring.');
+          setTestsLoading(false);
+        }
+      });
     return () => { cancelled = true; };
-  }, []);
+  }, [lesson?.practiceBlocks]);
 
   if (!lesson) return null;
   const practiceLimitReached = lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT;
@@ -53,6 +77,12 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 
   return (
     <div>
+      {testsError && (
+        <div className="mb-6 rounded-2xl border-2 border-red-100 bg-red-50/50 p-3">
+          <p className="text-xs text-red-600">{testsError}</p>
+        </div>
+      )}
+
       {lesson.practiceBlocks.length === 0 ? (
         <div className="mb-6 rounded-2xl border-2 border-dashed border-gray-200 py-14 text-center">
           <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
@@ -69,6 +99,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
               isLast={index === lesson.practiceBlocks.length - 1}
               block={block}
               tests={tests}
+              testsLoading={testsLoading}
               onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
               onChangeDescription={(description) => setPracticeBlockDescription(courseId, moduleId, lessonId, block.id, description)}
               onRemove={() => removePracticeBlock(courseId, moduleId, lessonId, block.id)}

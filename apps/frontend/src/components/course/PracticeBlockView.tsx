@@ -8,6 +8,7 @@ interface PracticeBlockViewProps {
   isLast: boolean;
   block: PracticeBlock;
   tests: AllTestsItem[];
+  testsLoading?: boolean;
   onSelectTest: (testId: string) => void;
   onChangeDescription: (description: string) => void;
   onRemove: () => void;
@@ -35,7 +36,7 @@ const TYPE_META: Record<PracticeBlockType, { label: string; icon: typeof Clipboa
 };
 
 export function PracticeBlockView({
-  index, isFirst, isLast, block, tests, onSelectTest, onChangeDescription, onRemove, onMoveUp, onMoveDown,
+  index, isFirst, isLast, block, tests, testsLoading, onSelectTest, onChangeDescription, onRemove, onMoveUp, onMoveDown,
 }: PracticeBlockViewProps) {
   const meta = TYPE_META[block.type];
   const Icon = meta.icon;
@@ -86,11 +87,12 @@ export function PracticeBlockView({
             <select
               value={block.testId ?? ''}
               onChange={(e) => onSelectTest(e.target.value)}
-              className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 ${
+              disabled={testsLoading}
+              className={`w-full rounded-xl border-2 px-4 py-2.5 text-sm outline-none focus:border-indigo-400 disabled:opacity-50 disabled:cursor-not-allowed ${
                 block.testId ? 'border-gray-100 bg-gray-50' : 'border-red-200 bg-red-50/30'
               }`}
             >
-              <option value="" disabled>Testni tanlang...</option>
+              <option value="" disabled>{testsLoading ? 'Yuklanmoqda...' : 'Testni tanlang...'}</option>
               {tests.map((t) => (
                 <option key={t.id} value={t.id}>
                   {t.name} ({t.questionCount} ta savol)
