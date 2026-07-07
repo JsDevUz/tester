@@ -14,7 +14,7 @@ interface CourseSidePanelProps {
   onBackToList: () => void;
   variant?: "full" | "lesson";
   practiceEnabled?: boolean;
-  activeTab?: "content" | "practice";
+  activeTab?: "content" | "settings" | "practice";
   onSelectPractice?: () => void;
   onSelectContent?: () => void;
   activeFullTab?: "content" | "settings" | "launch" | "groups";
@@ -120,6 +120,7 @@ export function CourseSidePanel({
       return key === "content" || key === "settings" || key === "launch" || key === "groups";
     }
     if (key === "content") return true;
+    if (key === "settings") return true;
     if (key === "practice") return practiceEnabled;
     return false;
   }

@@ -1,11 +1,12 @@
 import { useState } from "react";
-import { NotebookPen, Brain } from "lucide-react";
+import { NotebookPen, Brain, Trash2 } from "lucide-react";
 import { CONTENT_BLOCK_LIMIT, useCourseStore, type ContentBlock } from "../../stores/courseStore";
 import { BlockPicker } from "./BlockPicker";
 import { ContentBlockView } from "./ContentBlockView";
 import { Breadcrumb } from "./Breadcrumb";
 import { CourseSidePanel } from "./CourseSidePanel";
 import { PracticeSection } from "./PracticeSection";
+import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 
 interface LessonEditorViewProps {
   courseId: string;
@@ -64,6 +65,7 @@ export function LessonEditorView({
   const {
     courses,
     renameLesson,
+    deleteLesson,
     addBlock,
     updateBlock,
     removeBlock,
@@ -77,9 +79,10 @@ export function LessonEditorView({
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
     new Set(),
   );
-  const [activeTab, setActiveTab] = useState<"content" | "practice">(
+  const [activeTab, setActiveTab] = useState<"content" | "settings" | "practice">(
     "content",
   );
+  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!course || !module || !lesson) return null;
 
@@ -163,7 +166,22 @@ export function LessonEditorView({
           />
         </div>
 
-        {activeTab === "content" ? (
+        {activeTab === "settings" ? (
+          <div className="rounded-2xl bg-white p-5">
+            <h2 className="mb-1 text-lg font-bold text-gray-800">Dizayn va parametrlar</h2>
+            <p className="mb-4 text-sm text-gray-400">
+              Dars nomini yuqoridagi maydondan o'zgartirishingiz mumkin.
+            </p>
+
+            <button
+              type="button"
+              onClick={() => setConfirmDelete(true)}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
+            >
+              <Trash2 size={16} /> Darsni o'chirish
+            </button>
+          </div>
+        ) : activeTab === "content" ? (
           <>
             {lesson.blocks.length === 0 && (
               <div className="mb-6 rounded-2xl bg-white py-14 text-center">
@@ -244,9 +262,23 @@ export function LessonEditorView({
           practiceEnabled={lesson.practiceEnabled}
           activeTab={activeTab}
           onSelectContent={() => setActiveTab("content")}
+          onSelectSettings={() => setActiveTab("settings")}
           onSelectPractice={() => setActiveTab("practice")}
         />
       </div>
+
+      {confirmDelete && (
+        <ConfirmDeleteModal
+          title="Darsni o'chirish"
+          description={`"${lesson.title}" darsi va uning kontenti o'chiriladi.`}
+          onConfirm={() => {
+            deleteLesson(courseId, moduleId, lessonId);
+            setConfirmDelete(false);
+            onBackToContent();
+          }}
+          onClose={() => setConfirmDelete(false)}
+        />
+      )}
     </div>
   );
 }
