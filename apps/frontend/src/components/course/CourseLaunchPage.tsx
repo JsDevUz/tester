@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Inbox, Plus } from 'lucide-react';
 import { useCourseStore, type PricingPlan } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
@@ -25,9 +25,12 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
   const { courses, addLaunch, toggleLaunchActive, renameLaunch, addPricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [modalOpen, setModalOpen] = useState(false);
+  const didEnsureLaunch = useRef(false);
 
   useEffect(() => {
+    if (didEnsureLaunch.current) return;
     if (course && course.launches.length === 0) {
+      didEnsureLaunch.current = true;
       addLaunch(courseId, 'Ishga tushirish №1');
     }
   }, [course, courseId, addLaunch]);

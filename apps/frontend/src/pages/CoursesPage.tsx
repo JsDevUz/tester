@@ -32,6 +32,8 @@ export function CoursesPage() {
           onOpenLesson={(moduleId, lessonId) =>
             setState({ view: 'editor', courseId: state.courseId, moduleId, lessonId })
           }
+          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
+          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
         />
       )}
       {state.view === 'launch' && (

@@ -9,6 +9,8 @@ interface CourseContentPageProps {
   courseId: string;
   onBackToList: () => void;
   onOpenLesson: (moduleId: string, lessonId: string) => void;
+  onSelectLaunch?: () => void;
+  onSelectGroups?: () => void;
 }
 
 type ModalState =
@@ -16,7 +18,7 @@ type ModalState =
   | { type: 'newLesson'; moduleId: string }
   | null;
 
-export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: CourseContentPageProps) {
+export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectLaunch, onSelectGroups }: CourseContentPageProps) {
   const { courses, addModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
@@ -156,7 +158,13 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson }: Cour
         )}
       </div>
 
-      <CourseSidePanel onBackToList={onBackToList} />
+      <CourseSidePanel
+        onBackToList={onBackToList}
+        activeFullTab="content"
+        onSelectContent={() => {}}
+        onSelectLaunch={onSelectLaunch}
+        onSelectGroups={onSelectGroups}
+      />
 
       {modal?.type === 'newModule' && (
         <PromptModal
