@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { schools, schoolMembers, users } from '../db/schema';
-import { and, eq, ilike, ne, or } from 'drizzle-orm';
+import { schools, schoolMembers, users, courses, groups, groupMembers, monthlyPayments } from '../db/schema';
+import { and, eq, ilike, isNull, ne, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
 @Injectable()
@@ -69,6 +69,54 @@ export class SchoolsService {
       email: m.student.email,
       role: m.role,
     }));
+  }
+
+  async listAllStudents(adminId: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const members = await db.query.schoolMembers.findMany({
+      where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
+      with: { student: true },
+    });
+
+    const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
+    const courseIds = adminCourses.map((c) => c.id);
+    const adminGroups = courseIds.length
+      ? await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) })
+      : [];
+    const groupIds = adminGroups.map((g) => g.id);
+
+    return Promise.all(
+      members.map(async (m) => {
+        if (groupIds.length === 0) {
+          return {
+            id: m.studentId,
+            name: m.student.name,
+            phone: m.student.phone,
+            productsCount: 0,
+            totalPaid: 0,
+          };
+        }
+        const memberships = await db.query.groupMembers.findMany({
+          where: (gm, { inArray }) =>
+            and(eq(gm.studentId, m.studentId), inArray(gm.groupId, groupIds), isNull(gm.removedAt)),
+        });
+        const memberIds = memberships.map((gm) => gm.id);
+        let totalPaid = 0;
+        if (memberIds.length > 0) {
+          const payments = await db.query.monthlyPayments.findMany({
+            where: (mp, { inArray }) => inArray(mp.groupMemberId, memberIds),
+          });
+          totalPaid = payments.reduce((sum, p) => sum + p.paidAmount, 0);
+        }
+        return {
+          id: m.studentId,
+          name: m.student.name,
+          phone: m.student.phone,
+          productsCount: memberships.length,
+          totalPaid,
+        };
+      }),
+    );
   }
 
   async searchStudents(adminId: string, query: string) {

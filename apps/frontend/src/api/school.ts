@@ -54,6 +54,19 @@ export async function apiGetSchoolStaff(): Promise<ApiSchoolStaffMember[]> {
   return res.data;
 }
 
+export interface ApiSchoolStudent {
+  id: string;
+  name: string;
+  phone: string | null;
+  productsCount: number;
+  totalPaid: number;
+}
+
+export async function apiListAllStudents(): Promise<ApiSchoolStudent[]> {
+  const res = await client.get('/school/students');
+  return res.data;
+}
+
 export async function apiSearchStudents(query: string): Promise<ApiStudentSearchResult[]> {
   const res = await client.get('/school/students/search', { params: { q: query } });
   return res.data;

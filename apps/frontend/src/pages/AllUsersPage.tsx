@@ -1,22 +1,13 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import {
   Search,
   Inbox,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
-
-interface UserRow {
-  id: string;
-  name: string;
-  phone: string;
-  lastSeen: string;
-  productsCount: number;
-  active: boolean;
-}
+import { apiListAllStudents, type ApiSchoolStudent } from "../api/school";
 
 const AVATAR_PALETTES = [
   "bg-indigo-100 text-indigo-600",
@@ -41,93 +32,22 @@ function initials(name: string) {
 
 const PAGE_SIZE = 7;
 
-// TODO: mock data — backend /admins/users endpoint ulanganda almashtiriladi
-const MOCK_USERS: UserRow[] = [
-  {
-    id: "1",
-    name: "Aziza Karimova",
-    phone: "+998901234567",
-    lastSeen: "tarmoqda edi bugun",
-    productsCount: 1,
-    active: true,
-  },
-  {
-    id: "2",
-    name: "+998909876543",
-    phone: "+998909876543",
-    lastSeen: "onlayn bo'lmagan edi",
-    productsCount: 0,
-    active: false,
-  },
-  {
-    id: "3",
-    name: "Malika Yusupova",
-    phone: "+998933456789",
-    lastSeen: "tarmoqda edi kecha",
-    productsCount: 0,
-    active: true,
-  },
-  {
-    id: "4",
-    name: "Sardor Aliyev",
-    phone: "+998941122334",
-    lastSeen: "tarmoqda edi 2 kun oldin",
-    productsCount: 2,
-    active: true,
-  },
-  {
-    id: "5",
-    name: "Nodira Ergasheva",
-    phone: "+998977766554",
-    lastSeen: "onlayn bo'lmagan edi",
-    productsCount: 1,
-    active: true,
-  },
-  {
-    id: "6",
-    name: "Bekzod Nazarov",
-    phone: "+998912233445",
-    lastSeen: "tarmoqda edi 1 hafta oldin",
-    productsCount: 0,
-    active: false,
-  },
-  {
-    id: "7",
-    name: "Dilnoza Tosheva",
-    phone: "+998950011223",
-    lastSeen: "tarmoqda edi bugun",
-    productsCount: 1,
-    active: true,
-  },
-  {
-    id: "8",
-    name: "+998900112233",
-    phone: "+998900112233",
-    lastSeen: "onlayn bo'lmagan edi",
-    productsCount: 0,
-    active: false,
-  },
-  {
-    id: "9",
-    name: "Ravshan Yoqubov",
-    phone: "+998932244556",
-    lastSeen: "tarmoqda edi 3 kun oldin",
-    productsCount: 1,
-    active: true,
-  },
-];
-
 export function AllUsersPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
+  const [users, setUsers] = useState<ApiSchoolStudent[]>([]);
+
+  useEffect(() => {
+    void apiListAllStudents().then(setUsers);
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MOCK_USERS;
-    return MOCK_USERS.filter(
-      (u) => u.name.toLowerCase().includes(q) || u.phone.includes(q),
+    if (!q) return users;
+    return users.filter(
+      (u) => u.name.toLowerCase().includes(q) || (u.phone ?? "").includes(q),
     );
-  }, [query]);
+  }, [query, users]);
 
   const pageCount = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -154,7 +74,7 @@ export function AllUsersPage() {
             </p>
           </div>
 
-          <StudentsSectionTabs />
+          <StudentsSectionTabs counts={{ "/students": users.length, "/students/list": users.length }} />
 
           <div className="relative w-fit max-w-full">
             <Search
@@ -171,13 +91,6 @@ export function AllUsersPage() {
           </div>
 
           <div className="rounded-2xl bg-white p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-700">Foydalanuvchi</p>
-              <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                {filtered.length}
-              </span>
-            </div>
-
             {filtered.length === 0 ? (
               <div className="text-center py-16 text-gray-400">
                 <Inbox size={36} className="mx-auto mb-3 opacity-30" />
@@ -201,19 +114,10 @@ export function AllUsersPage() {
                       {initials(u.name)}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <p className="text-sm font-semibold text-gray-800 truncate">
-                          {u.name}
-                        </p>
-                        {!u.active && (
-                          <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-                            Faol emas
-                          </span>
-                        )}
-                      </div>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {u.lastSeen}
+                      <p className="text-sm font-semibold text-gray-800 truncate">
+                        {u.name}
                       </p>
+                      <p className="text-xs text-gray-400 mt-0.5">—</p>
                     </div>
                     <div className="text-right shrink-0">
                       <span className="inline-flex items-center justify-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-500">
@@ -249,19 +153,10 @@ export function AllUsersPage() {
                               {initials(u.name)}
                             </div>
                             <div className="min-w-0">
-                              <div className="flex items-center gap-2">
-                                <p className="text-sm font-semibold text-gray-800 truncate">
-                                  {u.name}
-                                </p>
-                                {!u.active && (
-                                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-                                    Faol emas
-                                  </span>
-                                )}
-                              </div>
-                              <p className="text-xs text-gray-400 mt-0.5">
-                                {u.lastSeen}
+                              <p className="text-sm font-semibold text-gray-800 truncate">
+                                {u.name}
                               </p>
+                              <p className="text-xs text-gray-400 mt-0.5">—</p>
                             </div>
                           </div>
                         </td>
@@ -282,14 +177,8 @@ export function AllUsersPage() {
                         <td className="px-5 py-4 text-center text-sm text-gray-300">
                           —
                         </td>
-                        <td className="px-5 py-4 text-center">
-                          <span className="inline-flex items-center gap-1.5 text-sm text-gray-300">
-                            <CheckCircle2
-                              size={16}
-                              className="text-green-400"
-                            />
-                            —
-                          </span>
+                        <td className="px-5 py-4 text-center text-sm text-gray-500">
+                          {u.totalPaid > 0 ? u.totalPaid.toLocaleString('uz-UZ') : '—'}
                         </td>
                       </tr>
                     ))}
