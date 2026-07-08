@@ -126,17 +126,94 @@ git commit -m "feat(payments): add paymentMethod/note columns to monthly_payment
 
 ---
 
-### Task 2: `recordPayment` accepts method/note + new `GET /payments` endpoint
+### Task 2: `receiptUrl` column + `recordPayment` accepts method/note/receipt + new `GET /payments` endpoint
 
 **Files:**
+- Modify: `apps/backend/src/db/schema.ts`
+- Create: `apps/backend/drizzle/migrations/0018_<generated-name>.sql`
 - Modify: `apps/backend/src/payments/payments.service.ts`
 - Modify: `apps/backend/src/payments/payments.controller.ts`
 
 **Interfaces:**
 - Consumes: `monthlyPayments.paymentMethod`/`note` from Task 1.
-- Produces: `PaymentsService.recordPayment(paymentId, adminId, amount, discount?, method?, note?)`. `PaymentsService.findAllForAdmin(adminId)` → array of flattened payment rows with display context. `GET /payments` endpoint. Consumed by Task 3's frontend wrapper.
+- Produces: `monthlyPayments.receiptUrl: text (nullable)` — a Backblaze B2 URL for an optional uploaded receipt photo, following the same pattern as other file uploads in this codebase (`StorageService.uploadFile`, existing `/upload` endpoint used by `EditorBlock.tsx`/`QuestionForm.tsx`). `PaymentsService.recordPayment(paymentId, adminId, amount, discount?, method?, note?, receiptUrl?)`. `PaymentsService.findAllForAdmin(adminId)` → array of flattened payment rows with display context, including `receiptUrl`. `GET /payments` endpoint. Consumed by Task 3's frontend wrapper.
 
-- [ ] **Step 1: Update `recordPayment` to accept method/note**
+- [ ] **Step 1: Add the `receiptUrl` column to schema.ts**
+
+In `apps/backend/src/db/schema.ts`, find the `monthlyPayments` table definition (as modified by Task 1, now including `paymentMethod`/`note`):
+
+```typescript
+export const monthlyPayments = pgTable('monthly_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupMemberId: uuid('group_member_id').notNull().references(() => groupMembers.id, { onDelete: 'cascade' }),
+  periodMonth: timestamp('period_month', { withTimezone: true }).notNull(),
+  expectedAmount: integer('expected_amount').notNull(),
+  discountAmount: integer('discount_amount').notNull().default(0),
+  paidAmount: integer('paid_amount').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  paymentMethod: text('payment_method'),
+  note: text('note'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueMemberPeriod: uniqueIndex('monthly_payments_group_member_id_period_month_key').on(table.groupMemberId, table.periodMonth),
+}));
+```
+
+Replace with:
+
+```typescript
+export const monthlyPayments = pgTable('monthly_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupMemberId: uuid('group_member_id').notNull().references(() => groupMembers.id, { onDelete: 'cascade' }),
+  periodMonth: timestamp('period_month', { withTimezone: true }).notNull(),
+  expectedAmount: integer('expected_amount').notNull(),
+  discountAmount: integer('discount_amount').notNull().default(0),
+  paidAmount: integer('paid_amount').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  paymentMethod: text('payment_method'),
+  note: text('note'),
+  receiptUrl: text('receipt_url'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueMemberPeriod: uniqueIndex('monthly_payments_group_member_id_period_month_key').on(table.groupMemberId, table.periodMonth),
+}));
+```
+
+- [ ] **Step 2: Generate and apply the migration**
+
+```bash
+cd apps/backend && npx drizzle-kit generate
+```
+
+Read the generated file in full (this codebase has a known history of `drizzle-kit generate` bundling unrelated already-applied statements):
+
+```bash
+cat apps/backend/drizzle/migrations/0018_*.sql
+```
+
+Expected: only `ALTER TABLE "monthly_payments" ADD COLUMN "receipt_url" text;`. Remove anything else if present.
+
+Apply it:
+
+```bash
+npm run db:migrate
+```
+
+If this fails or no-ops (known `__drizzle_migrations` tracking drift from prior phases), verify and apply manually:
+
+```bash
+psql "$DATABASE_URL" -c "\d monthly_payments"
+```
+
+If `receipt_url` is missing, apply directly:
+
+```bash
+psql "$DATABASE_URL" -f apps/backend/drizzle/migrations/0018_<name>.sql
+```
+
+- [ ] **Step 3: Update `recordPayment` to accept method/note/receiptUrl**
 
 In `apps/backend/src/payments/payments.service.ts`, find:
 
@@ -171,6 +248,7 @@ Replace with:
     discount?: number,
     method?: string,
     note?: string,
+    receiptUrl?: string,
   ) {
     const payment = await this.assertPaymentOwnership(paymentId, adminId);
     const nextPaidAmount = payment.paidAmount + amount;
@@ -185,6 +263,7 @@ Replace with:
         status: nextStatus,
         ...(method !== undefined ? { paymentMethod: method } : {}),
         ...(note !== undefined ? { note } : {}),
+        ...(receiptUrl !== undefined ? { receiptUrl } : {}),
         updatedAt: new Date(),
       })
       .where(eq(monthlyPayments.id, paymentId))
@@ -193,7 +272,7 @@ Replace with:
   }
 ```
 
-- [ ] **Step 2: Add `findAllForAdmin`**
+- [ ] **Step 4: Add `findAllForAdmin`**
 
 In the same file, add this method to the `PaymentsService` class (after `recordPayment`):
 
@@ -239,6 +318,7 @@ In the same file, add this method to the `PaymentsService` class (after `recordP
         status: p.status,
         paymentMethod: p.paymentMethod,
         note: p.note,
+        receiptUrl: p.receiptUrl,
         updatedAt: p.updatedAt,
         studentName: member.student.name,
         studentPhone: member.student.phone,
@@ -252,7 +332,7 @@ In the same file, add this method to the `PaymentsService` class (after `recordP
 
 Ensure `courses` is imported at the top of the file (it should already be, since `assertGroupOwnership` uses it).
 
-- [ ] **Step 3: Add the controller endpoint**
+- [ ] **Step 5: Add the controller endpoint**
 
 In `apps/backend/src/payments/payments.controller.ts`, find:
 
@@ -271,6 +351,7 @@ class RecordPaymentDto {
   @IsOptional() @IsInt() @Min(0) discount?: number;
   @IsOptional() @IsIn(['cash', 'click', 'payme', 'card', 'other']) method?: string;
   @IsOptional() @IsString() note?: string;
+  @IsOptional() @IsString() receiptUrl?: string;
 }
 ```
 
@@ -309,13 +390,23 @@ Replace with:
 
   @Post('payments/:id/pay')
   recordPayment(@Param('id') id: string, @Req() req: any, @Body() dto: RecordPaymentDto) {
-    return this.paymentsService.recordPayment(id, req.admin.id, dto.amount, dto.discount, dto.method, dto.note);
+    return this.paymentsService.recordPayment(
+      id,
+      req.admin.id,
+      dto.amount,
+      dto.discount,
+      dto.method,
+      dto.note,
+      dto.receiptUrl,
+    );
   }
 ```
 
+Note: `receiptUrl` here is a plain string field pointing at an already-uploaded B2 object — this endpoint does NOT handle file upload itself. The teacher's browser uploads the receipt photo to the existing `/upload` endpoint FIRST (reusing `apiUploadMedia` with a new `'payments'` folder, added in Task 5), gets back a URL, then that URL is passed to `recordPayment` alongside the amount. This mirrors how `EditorBlock.tsx` uploads an image then stores its URL, rather than sending raw file bytes through this endpoint.
+
 Note: `@Get('payments')` is placed before `@Get('groups/:id/payments')` — these are different path patterns (`payments` vs `groups/:id/payments`) so there's no route collision, but keeping the more specific/static route first is good practice.
 
-- [ ] **Step 4: Build and test verification**
+- [ ] **Step 6: Build and test verification**
 
 ```bash
 npm run build --workspace=apps/backend
@@ -324,31 +415,74 @@ npm test --workspace=apps/backend
 
 Expected: build succeeds, all 96 existing tests still pass.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 7: Commit**
 
 ```bash
-git add apps/backend/src/payments/
-git commit -m "feat(payments): add GET /payments (all-courses view) + method/note on recordPayment
+git add apps/backend/src/db/schema.ts apps/backend/drizzle/migrations/ apps/backend/src/payments/
+git commit -m "feat(payments): add GET /payments (all-courses view) + method/note/receiptUrl on recordPayment
 
+- receiptUrl (nullable text) added to monthly_payments — points at an
+  already-uploaded Backblaze B2 object, not a raw file upload path
 - findAllForAdmin walks the admin's courses -> groups -> members ->
   monthlyPayments and flattens each row with studentName, studentPhone,
-  courseTitle, groupName, planName for display
-- recordPayment gains optional method/note params, backward compatible
-  with the existing (paymentId, amount, discount) call from
+  courseTitle, groupName, planName, receiptUrl for display
+- recordPayment gains optional method/note/receiptUrl params, backward
+  compatible with the existing (paymentId, amount, discount) call from
   CourseGroupsPage.tsx"
 ```
 
 ---
 
-### Task 3: Frontend API wrapper additions
+### Task 3: Allow a `'payments'` upload folder + Frontend API wrapper additions
 
 **Files:**
+- Modify: `apps/backend/src/upload/upload.controller.ts`
 - Modify: `apps/frontend/src/api/payments.ts`
+- Modify: `apps/frontend/src/api/questions.ts`
 
 **Interfaces:**
-- Produces: `ApiPaymentRow` interface, `apiListAllPayments()`. Updated `apiRecordPayment` signature (backward compatible — new params optional). Consumed by Task 4's `PaymentsPage.tsx`.
+- Modifies: `ALLOWED_FOLDERS` in the existing `/upload` endpoint to also accept `'payments'`.
+- Produces: `ApiPaymentRow` interface, `apiListAllPayments()`. Updated `apiRecordPayment` signature (backward compatible — new params optional). `apiUploadMedia`'s `folder` union type extended to include `'payments'`. Consumed by Task 4's `PaymentsPage.tsx`.
 
-- [ ] **Step 1: Add `ApiPaymentRow` and `apiListAllPayments`**
+- [ ] **Step 1: Allow the `'payments'` upload folder on the backend**
+
+In `apps/backend/src/upload/upload.controller.ts`, find:
+
+```typescript
+const ALLOWED_FOLDERS = ['lessons', 'questions'];
+```
+
+Replace with:
+
+```typescript
+const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments'];
+```
+
+This is the only backend change needed — the existing `/upload` endpoint already streams straight to Backblaze B2 via `StorageService` (no disk writes), and already validates the file is an image (`.jpg/.jpeg/.png/.gif/.webp`) or audio type. A receipt photo is just another image upload into a different B2 folder (`payments/<uuid>.<ext>` instead of `lessons/<uuid>.<ext>`).
+
+- [ ] **Step 2: Extend `apiUploadMedia`'s folder type**
+
+In `apps/frontend/src/api/questions.ts`, find:
+
+```typescript
+export async function apiUploadMedia(
+  file: File,
+  folder: 'lessons' | 'questions' = 'questions',
+): Promise<{ url: string; type: 'image' | 'audio' }> {
+```
+
+Replace with:
+
+```typescript
+export async function apiUploadMedia(
+  file: File,
+  folder: 'lessons' | 'questions' | 'payments' = 'questions',
+): Promise<{ url: string; type: 'image' | 'audio' }> {
+```
+
+The function body is unchanged — this is purely a type-level widening so `PaymentsPage.tsx` can call `apiUploadMedia(file, 'payments')` without a TypeScript error.
+
+- [ ] **Step 3: Add `ApiPaymentRow` and `apiListAllPayments`**
 
 In `apps/frontend/src/api/payments.ts`, find the existing `ApiMonthlyPayment` interface and `apiRecordPayment` function. Add after `ApiMonthlyPayment`:
 
@@ -363,6 +497,7 @@ export interface ApiPaymentRow {
   status: 'pending' | 'partial' | 'paid' | 'debt';
   paymentMethod: string | null;
   note: string | null;
+  receiptUrl: string | null;
   updatedAt: string;
   studentName: string;
   studentPhone: string | null;
@@ -377,7 +512,7 @@ export async function apiListAllPayments(): Promise<ApiPaymentRow[]> {
 }
 ```
 
-- [ ] **Step 2: Update `apiRecordPayment`'s signature**
+- [ ] **Step 4: Update `apiRecordPayment`'s signature**
 
 Find:
 
@@ -401,43 +536,50 @@ export async function apiRecordPayment(
   discount?: number,
   method?: string,
   note?: string,
+  receiptUrl?: string,
 ): Promise<ApiMonthlyPayment> {
-  const res = await client.post(`/payments/${paymentId}/pay`, { amount, discount, method, note });
+  const res = await client.post(`/payments/${paymentId}/pay`, { amount, discount, method, note, receiptUrl });
   return res.data;
 }
 ```
 
-This is backward compatible — the existing call site in `courseStore.ts`'s `recordPayment` action (`apiRecordPayment(paymentId, amount, discount)`) continues to compile and work unchanged, since `method`/`note` are trailing optional params.
+This is backward compatible — the existing call site in `courseStore.ts`'s `recordPayment` action (`apiRecordPayment(paymentId, amount, discount)`) continues to compile and work unchanged, since `method`/`note`/`receiptUrl` are trailing optional params.
 
-- [ ] **Step 3: Build verification**
+- [ ] **Step 5: Build verification**
 
 ```bash
+npm run build --workspace=apps/backend
 npm run build --workspace=apps/frontend
 ```
 
-Expected: passes with zero errors.
+Expected: both pass with zero errors (the backend rebuild here just confirms the one-line `ALLOWED_FOLDERS` change from Step 1 compiles cleanly).
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/frontend/src/api/payments.ts
-git commit -m "feat(payments): add apiListAllPayments + method/note to apiRecordPayment
+git add apps/backend/src/upload/upload.controller.ts apps/frontend/src/api/payments.ts apps/frontend/src/api/questions.ts
+git commit -m "feat(payments): allow 'payments' upload folder + add apiListAllPayments/receiptUrl
 
+- /upload now accepts folder: 'payments' (B2 objects land in a
+  payments/ folder, same StorageService/memoryStorage no-disk-write
+  path as lessons/questions uploads)
+- apiUploadMedia's folder type widened to include 'payments'
 - ApiPaymentRow carries display context (student/course/group/plan
-  names) so PaymentsPage.tsx doesn't need separate lookups
-- apiRecordPayment's new params are trailing and optional — the
-  existing courseStore.ts call site is unaffected"
+  names) plus receiptUrl so PaymentsPage.tsx doesn't need separate
+  lookups
+- apiRecordPayment's new params (method/note/receiptUrl) are trailing
+  and optional — the existing courseStore.ts call site is unaffected"
 ```
 
 ---
 
-### Task 4: Rewrite `PaymentsPage.tsx` to use real data
+### Task 4: Rewrite `PaymentsPage.tsx` to use real data + optional receipt-photo upload
 
 **Files:**
 - Modify: `apps/frontend/src/pages/PaymentsPage.tsx`
 
 **Interfaces:**
-- Consumes: `apiListAllPayments`, `apiRecordPayment` from Task 3.
+- Consumes: `apiListAllPayments`, `apiRecordPayment`, `apiUploadMedia` (from `../api/questions`, folder `'payments'`) from Task 3.
 
 - [ ] **Step 1: Read the current file in full**
 
@@ -572,13 +714,16 @@ import {
   ChevronDown,
   CreditCard,
   Download,
+  Image as ImageIcon,
   Info,
+  Paperclip,
   Search,
   WalletCards,
   X,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { apiListAllPayments, apiRecordPayment, type ApiPaymentRow } from "../api/payments";
+import { apiUploadMedia } from "../api/questions";
 
 type PaymentStatus = "paid" | "partial" | "debt" | "pending";
 type PaymentMethod = "cash" | "click" | "payme" | "card" | "other";
@@ -725,8 +870,14 @@ export function PaymentsPage() {
   const pendingCount = rows.filter((row) => row.status === "pending").length;
   const debtCount = rows.filter((row) => row.status === "debt").length;
 
-  async function handleRecordPayment(paymentId: string, amount: number, method?: PaymentMethod, note?: string) {
-    await apiRecordPayment(paymentId, amount, undefined, method, note);
+  async function handleRecordPayment(
+    paymentId: string,
+    amount: number,
+    method?: PaymentMethod,
+    note?: string,
+    receiptUrl?: string,
+  ) {
+    await apiRecordPayment(paymentId, amount, undefined, method, note, receiptUrl);
     await refresh();
     setModalOpen(false);
   }
@@ -827,7 +978,17 @@ Replace with:
                       <StatusBadge status={row.status} />
                     </td>
                     <td className="px-4 py-3.5 text-sm text-gray-500">
-                      {new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(row.updatedAt))}
+                      <p>{new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(row.updatedAt))}</p>
+                      {row.receiptUrl && (
+                        <a
+                          href={row.receiptUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-500 hover:underline"
+                        >
+                          <ImageIcon size={12} /> Chek
+                        </a>
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -1196,7 +1357,7 @@ function PaymentModal({
   onClose,
 }: {
   rows: ApiPaymentRow[];
-  onSave: (paymentId: string, amount: number, method?: PaymentMethod, note?: string) => Promise<void>;
+  onSave: (paymentId: string, amount: number, method?: PaymentMethod, note?: string, receiptUrl?: string) => Promise<void>;
   onClose: () => void;
 }) {
   const duePayments = useMemo(
@@ -1209,7 +1370,9 @@ function PaymentModal({
   const [amount, setAmount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
+  const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
+  const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
   const selectedRow = duePayments.find((row) => row.id === selectedId) ?? null;
   const filteredPayments = duePayments.filter((row) =>
@@ -1220,11 +1383,24 @@ function PaymentModal({
   const numericAmount = Number(amount.replace(/\D/g, ""));
   const canSave = !!selectedRow && numericAmount > 0;
 
+  function handlePickReceipt(event: React.ChangeEvent<HTMLInputElement>) {
+    const file = event.target.files?.[0];
+    if (file) setReceiptFile(file);
+    event.target.value = "";
+  }
+
   async function handleSave() {
     if (!selectedRow || !canSave) return;
     setSaving(true);
     try {
-      await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined);
+      let receiptUrl: string | undefined;
+      if (receiptFile) {
+        setUploadingReceipt(true);
+        const uploaded = await apiUploadMedia(receiptFile, "payments");
+        receiptUrl = uploaded.url;
+        setUploadingReceipt(false);
+      }
+      await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined, receiptUrl);
     } finally {
       setSaving(false);
     }
@@ -1352,13 +1528,34 @@ function PaymentModal({
               className="w-full resize-none rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none"
             />
           </Field>
+          <Field label="Chek rasmi (ixtiyoriy)" className="sm:col-span-2">
+            <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
+              <input type="file" accept="image/*" className="hidden" onChange={handlePickReceipt} />
+              <Paperclip size={16} className="shrink-0 text-gray-400" />
+              <span className="min-w-0 flex-1 truncate">
+                {receiptFile ? receiptFile.name : "Chek rasmini tanlang"}
+              </span>
+              {receiptFile && (
+                <button
+                  type="button"
+                  onClick={(event) => {
+                    event.preventDefault();
+                    setReceiptFile(null);
+                  }}
+                  className="shrink-0 rounded-lg p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-600"
+                >
+                  <X size={14} />
+                </button>
+              )}
+            </label>
+          </Field>
           <button
             type="button"
             onClick={handleSave}
             disabled={!canSave || saving}
             className="sm:col-span-2 rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
-            {saving ? "Saqlanmoqda..." : "Saqlash"}
+            {uploadingReceipt ? "Chek yuklanmoqda..." : saving ? "Saqlanmoqda..." : "Saqlash"}
           </button>
         </div>
       </div>
@@ -1379,7 +1576,7 @@ Expected: zero errors.
 
 ```bash
 git add apps/frontend/src/pages/PaymentsPage.tsx
-git commit -m "feat(payments): wire PaymentsPage.tsx to real backend data
+git commit -m "feat(payments): wire PaymentsPage.tsx to real backend data + receipt upload
 
 - PAYMENT_ROWS mock array replaced with apiListAllPayments() on mount
 - filter option arrays (course/group/tariff/month) removed as static
@@ -1387,8 +1584,14 @@ git commit -m "feat(payments): wire PaymentsPage.tsx to real backend data
 - PaymentModal reworked: no longer fabricates a brand-new payment row
   (monthly_payments rows are exclusively cron-generated) — instead it
   lists existing pending/partial rows for the teacher to search/select,
-  then records an amount (+ optional method/note) against that row
-  via recordPayment
+  then records an amount (+ optional method/note/receipt) against that
+  row via recordPayment
+- optional receipt photo: on save, if a file was chosen, it's uploaded
+  to Backblaze B2 first via apiUploadMedia(file, 'payments'), then the
+  resulting URL is passed to recordPayment — no raw file bytes ever
+  go through the payments endpoint itself
+- desktop table shows a 'Chek' link to view the uploaded receipt when
+  receiptUrl is present
 - shows an empty state if no pending/partial rows exist yet"
 ```
 
