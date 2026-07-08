@@ -107,6 +107,13 @@ export class GroupsController {
     return this.groupsService.assignCuratorFromStaff(id, req.admin.id, dto.studentId);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Get('groups/pending-plan-assignment')
+  findPendingPlanAssignment(@Req() req: any) {
+    return this.groupsService.findPendingPlanAssignment(req.admin.id);
+  }
+
   @Get('join/:token')
   getJoinPreview(@Param('token') token: string) {
     return this.groupsService.getJoinPreview(token);

@@ -85,6 +85,20 @@ export async function apiAssignCurator(groupId: string, studentId: string): Prom
   return res.data;
 }
 
+export interface ApiPendingPlanAssignment {
+  id: string;
+  studentName: string;
+  studentPhone: string | null;
+  groupName: string;
+  courseTitle: string;
+  joinedAt: string;
+}
+
+export async function apiGetPendingPlanAssignment(): Promise<ApiPendingPlanAssignment[]> {
+  const res = await client.get('/groups/pending-plan-assignment');
+  return res.data;
+}
+
 export async function apiGetJoinPreview(token: string): Promise<{ groupName: string; courseTitle: string }> {
   const res = await client.get(`/join/${token}`);
   return res.data;

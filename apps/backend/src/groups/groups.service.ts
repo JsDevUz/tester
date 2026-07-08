@@ -136,6 +136,40 @@ export class GroupsService {
     return created;
   }
 
+  async findPendingPlanAssignment(adminId: string) {
+    const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
+    const courseIds = adminCourses.map((c) => c.id);
+    if (courseIds.length === 0) return [];
+
+    const adminGroups = await db.query.groups.findMany({
+      where: (g, { inArray }) => inArray(g.courseId, courseIds),
+    });
+    const groupIds = adminGroups.map((g) => g.id);
+    if (groupIds.length === 0) return [];
+
+    const pending = await db.query.groupMembers.findMany({
+      where: (gm, { inArray }) =>
+        and(inArray(gm.groupId, groupIds), isNull(gm.removedAt), isNull(gm.selectedPlanId), eq(gm.role, 'student')),
+      with: { student: true },
+    });
+
+    const groupById = new Map(adminGroups.map((g) => [g.id, g]));
+    const courseById = new Map(adminCourses.map((c) => [c.id, c]));
+
+    return pending.map((m) => {
+      const group = groupById.get(m.groupId);
+      const course = group ? courseById.get(group.courseId) : undefined;
+      return {
+        id: m.id,
+        studentName: m.student.name,
+        studentPhone: m.student.phone,
+        groupName: group?.name ?? '',
+        courseTitle: course?.title ?? '',
+        joinedAt: m.joinedAt,
+      };
+    });
+  }
+
   async getJoinPreview(token: string) {
     const group = await db.query.groups.findFirst({
       where: eq(groups.inviteToken, token),

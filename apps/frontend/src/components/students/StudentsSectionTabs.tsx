@@ -36,16 +36,10 @@ export function StudentsSectionTabs({ counts }: StudentsSectionTabsProps) {
                   : "text-gray-900 hover:bg-white/60"
               }`}
             >
-              <span className="truncate">{tab.label}</span>
-              {count !== undefined && (
-                <span
-                  className={`inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold ${
-                    active ? "bg-indigo-100 text-indigo-600" : "bg-gray-200 text-gray-500"
-                  }`}
-                >
-                  {count}
-                </span>
-              )}
+              <span>
+                {tab.label}
+                {count !== undefined && ` (${count.toLocaleString("uz-UZ")})`}
+              </span>
             </button>
           );
         })}
