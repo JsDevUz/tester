@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NotebookPen, Brain, Trash2 } from "lucide-react";
 import { CONTENT_BLOCK_LIMIT, useCourseStore, type ContentBlock } from "../../stores/courseStore";
 import { BlockPicker } from "./BlockPicker";
@@ -70,6 +70,8 @@ export function LessonEditorView({
     updateBlock,
     removeBlock,
     moveBlock,
+    refreshLessonBlocks,
+    retryVideoBlock,
     setLessonPracticeEnabled,
   } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
@@ -87,6 +89,17 @@ export function LessonEditorView({
   if (!course || !module || !lesson) return null;
 
   const contentLimitReached = lesson.blocks.length >= CONTENT_BLOCK_LIMIT;
+
+  useEffect(() => {
+    const hasProcessingVideo = lesson.blocks.some(
+      (block) => block.type === "video" && (block.processingStatus === "pending" || block.processingStatus === "processing"),
+    );
+    if (!hasProcessingVideo) return;
+    const timer = window.setInterval(() => {
+      void refreshLessonBlocks(courseId, moduleId, lessonId);
+    }, 5000);
+    return () => window.clearInterval(timer);
+  }, [courseId, moduleId, lessonId, lesson.blocks, refreshLessonBlocks]);
 
   function handleTogglePractice() {
     const next = !lesson!.practiceEnabled;
@@ -112,9 +125,11 @@ export function LessonEditorView({
       id: newId(),
       type,
       fileName: file.name,
+      label: file.name,
       previewUrl: type === "file" ? undefined : URL.createObjectURL(file),
+      processingStatus: type === "video" ? "pending" : undefined,
     };
-    void addBlock(courseId, moduleId, lessonId, block);
+    void addBlock(courseId, moduleId, lessonId, block, type === "video" ? file : undefined);
   }
 
   function toggleCollapse(blockId: string) {
@@ -222,6 +237,7 @@ export function LessonEditorView({
                       handleChangeBlockLabel(block.id, label)
                     }
                     onPickFile={(file) => handleBlockPickFile(block.id, file)}
+                    onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
                     onRemove={() =>
                       void removeBlock(courseId, moduleId, lessonId, block.id)
                     }

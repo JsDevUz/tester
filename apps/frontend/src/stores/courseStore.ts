@@ -2,7 +2,16 @@ import { create } from 'zustand';
 import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type ApiCourse } from '../api/courses';
 import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
 import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
-import { apiListBlocks, apiCreateBlock, apiUpdateBlock, apiDeleteBlock, apiReorderBlocks } from '../api/contentBlocks';
+import {
+  apiListBlocks,
+  apiCreateBlock,
+  apiUpdateBlock,
+  apiDeleteBlock,
+  apiReorderBlocks,
+  apiUploadVideoBlock,
+  apiRetryVideoBlock,
+  type ApiContentBlock,
+} from '../api/contentBlocks';
 import {
   apiListGroups, apiCreateGroup, apiUpdateGroup, apiDeleteGroup,
   apiListGroupMembers, apiUpdateGroupMember, apiSetMemberForcedClosed, apiRemoveGroupMember,
@@ -29,6 +38,15 @@ export interface ContentBlock {
   embedUrl?: string;
   // video/image/file: o'qituvchi kiritgan ko'rinadigan nom (fileName'dan mustaqil, u asl fayl nomini saqlaydi)
   label?: string;
+  processingStatus?: 'pending' | 'processing' | 'ready' | 'failed';
+  sourceKey?: string;
+  hlsMasterKey?: string;
+  hlsBaseKey?: string;
+  aesKeyRef?: string;
+  durationSec?: number;
+  errorMessage?: string;
+  processedAt?: string;
+  uploadProgress?: number;
 }
 
 export type PracticeBlockType = 'test' | 'image' | 'file' | 'audio';
@@ -123,10 +141,12 @@ interface CourseState {
   deleteLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
-  addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock) => Promise<void>;
+  addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock, file?: File) => Promise<void>;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => Promise<void>;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
+  refreshLessonBlocks: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  retryVideoBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
   addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type: PracticeBlockType) => void;
@@ -165,6 +185,26 @@ function toFrontendCourse(apiCourse: ApiCourse): Course {
   return { id: apiCourse.id, title: apiCourse.title, modules: [], launches: [], groups: [] };
 }
 
+function toFrontendBlock(b: ApiContentBlock): ContentBlock {
+  return {
+    id: b.id,
+    type: b.type,
+    html: b.html ?? undefined,
+    fileName: b.fileName ?? undefined,
+    previewUrl: b.previewUrl ?? undefined,
+    embedUrl: b.embedUrl ?? undefined,
+    label: b.label ?? undefined,
+    processingStatus: b.processingStatus,
+    sourceKey: b.sourceKey ?? undefined,
+    hlsMasterKey: b.hlsMasterKey ?? undefined,
+    hlsBaseKey: b.hlsBaseKey ?? undefined,
+    aesKeyRef: b.aesKeyRef ?? undefined,
+    durationSec: b.durationSec ?? undefined,
+    errorMessage: b.errorMessage ?? undefined,
+    processedAt: b.processedAt ?? undefined,
+  };
+}
+
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
 
@@ -183,15 +223,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             const lessonList: Lesson[] = await Promise.all(
               lessonRows.map(async (l) => {
                 const blockRows = await apiListBlocks(l.id);
-                const blocks: ContentBlock[] = blockRows.map((b) => ({
-                  id: b.id,
-                  type: b.type,
-                  html: b.html ?? undefined,
-                  fileName: b.fileName ?? undefined,
-                  previewUrl: b.previewUrl ?? undefined,
-                  embedUrl: b.embedUrl ?? undefined,
-                  label: b.label ?? undefined,
-                }));
+                const blocks: ContentBlock[] = blockRows.map(toFrontendBlock);
                 return {
                   id: l.id,
                   title: l.title,
@@ -413,7 +445,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
 
-  addBlock: async (courseId, moduleId, lessonId, block) => {
+  addBlock: async (courseId, moduleId, lessonId, block, file) => {
     const course = get().courses.find((c) => c.id === courseId);
     const module = course?.modules.find((m) => m.id === moduleId);
     const lesson = module?.lessons.find((l) => l.id === lessonId);
@@ -422,15 +454,38 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     let newBlock = block;
     if (block.type === 'editor') {
       const row = await apiCreateBlock(lessonId, 'editor');
-      newBlock = {
-        id: row.id,
-        type: row.type,
-        html: row.html ?? '',
-        fileName: row.fileName ?? undefined,
-        previewUrl: row.previewUrl ?? undefined,
-        embedUrl: row.embedUrl ?? undefined,
-        label: row.label ?? undefined,
-      };
+      newBlock = toFrontendBlock(row);
+      if (newBlock.type === 'editor') newBlock.html = newBlock.html ?? '';
+    } else if (block.type === 'video' && file) {
+      const row = await apiUploadVideoBlock(lessonId, file, block.label ?? file.name, (percent) => {
+        set({
+          courses: get().courses.map((c) =>
+            c.id !== courseId
+              ? c
+              : {
+                  ...c,
+                  modules: c.modules.map((m) =>
+                    m.id !== moduleId
+                      ? m
+                      : {
+                          ...m,
+                          lessons: m.lessons.map((l) =>
+                            l.id !== lessonId
+                              ? l
+                              : {
+                                  ...l,
+                                  blocks: l.blocks.map((b) =>
+                                    b.id === block.id ? { ...b, uploadProgress: percent } : b,
+                                  ),
+                                },
+                          ),
+                        },
+                  ),
+                },
+          ),
+        });
+      });
+      newBlock = toFrontendBlock(row);
     }
 
     set({
@@ -461,8 +516,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const lesson = module?.lessons.find((l) => l.id === lessonId);
     const block = lesson?.blocks.find((b) => b.id === blockId);
 
-    if (block?.type === 'editor') {
-      await apiUpdateBlock(blockId, { html: data.html, label: data.label });
+    if (block?.type === 'editor' || block?.type === 'video') {
+      const row = await apiUpdateBlock(blockId, { html: data.html, label: data.label, embedUrl: data.embedUrl });
+      data = { ...data, ...toFrontendBlock(row) };
     }
 
     set({
@@ -496,7 +552,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const lesson = module?.lessons.find((l) => l.id === lessonId);
     const block = lesson?.blocks.find((b) => b.id === blockId);
 
-    if (block?.type === 'editor') {
+    if (block?.type === 'editor' || block?.type === 'video') {
       await apiDeleteBlock(blockId);
     }
 
@@ -535,9 +591,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const reordered = [...lesson.blocks];
     [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
 
-    const editorBlockIds = reordered.filter((b) => b.type === 'editor').map((b) => b.id);
-    if (editorBlockIds.length > 0) {
-      await apiReorderBlocks(lessonId, editorBlockIds);
+    const persistedBlockIds = reordered.filter((b) => b.type === 'editor' || b.type === 'video').map((b) => b.id);
+    if (persistedBlockIds.length > 0) {
+      await apiReorderBlocks(lessonId, persistedBlockIds);
     }
 
     set({
@@ -553,6 +609,52 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                       ...m,
                       lessons: m.lessons.map((l) =>
                         l.id !== lessonId ? l : { ...l, blocks: reordered },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  refreshLessonBlocks: async (courseId, moduleId, lessonId) => {
+    const blockRows = await apiListBlocks(lessonId);
+    const blocks = blockRows.map(toFrontendBlock);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) => (l.id === lessonId ? { ...l, blocks } : l)),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  retryVideoBlock: async (courseId, moduleId, lessonId, blockId) => {
+    const row = await apiRetryVideoBlock(blockId);
+    const updated = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : { ...l, blocks: l.blocks.map((b) => (b.id === blockId ? updated : b)) },
                       ),
                     },
               ),
