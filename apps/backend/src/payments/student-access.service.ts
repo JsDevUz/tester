@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { db } from '../db';
-import { groupMembers, groups, monthlyPayments } from '../db/schema';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { groupEnrollments, groups, monthlyPayments, schoolMembers } from '../db/schema';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 @Injectable()
 export class StudentAccessService {
@@ -10,14 +10,22 @@ export class StudentAccessService {
     if (courseGroups.length === 0) return false;
     const groupIds = courseGroups.map((g) => g.id);
 
-    const membership = await db.query.groupMembers.findFirst({
-      where: and(eq(groupMembers.studentId, studentId), inArray(groupMembers.groupId, groupIds)),
+    const schoolMemberRows = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, studentId) });
+    const schoolMemberIds = schoolMemberRows.map((m) => m.id);
+    if (schoolMemberIds.length === 0) return false;
+
+    const enrollment = await db.query.groupEnrollments.findFirst({
+      where: and(
+        inArray(groupEnrollments.schoolMemberId, schoolMemberIds),
+        inArray(groupEnrollments.groupId, groupIds),
+        isNull(groupEnrollments.removedAt),
+      ),
     });
-    if (!membership || !membership.selectedPlanId) return false;
-    if (membership.forcedClosed) return false;
+    if (!enrollment || !enrollment.selectedPlanId) return false;
+    if (enrollment.forcedClosed) return false;
 
     const latestPayment = await db.query.monthlyPayments.findFirst({
-      where: eq(monthlyPayments.groupMemberId, membership.id),
+      where: eq(monthlyPayments.enrollmentId, enrollment.id),
       orderBy: [desc(monthlyPayments.periodMonth)],
     });
     if (!latestPayment) return false;
