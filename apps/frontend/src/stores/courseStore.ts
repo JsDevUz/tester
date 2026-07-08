@@ -2,6 +2,7 @@ import { create } from 'zustand';
 import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type ApiCourse } from '../api/courses';
 import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
 import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
+import { apiListBlocks, apiCreateBlock, apiUpdateBlock, apiDeleteBlock, apiReorderBlocks } from '../api/contentBlocks';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
 export const CONTENT_BLOCK_LIMIT = 7;
@@ -99,10 +100,10 @@ interface CourseState {
   deleteLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
-  addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock) => void;
-  updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => void;
-  removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
-  moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
+  addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock) => Promise<void>;
+  updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => Promise<void>;
+  removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
+  moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
   addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type: PracticeBlockType) => void;
@@ -147,17 +148,31 @@ export const useCourseStore = create<CourseState>((set, get) => ({
         const moduleList: Module[] = await Promise.all(
           moduleRows.map(async (moduleRow) => {
             const lessonRows = await apiListLessons(moduleRow.id);
-            const lessonList: Lesson[] = lessonRows.map((l) => ({
-              id: l.id,
-              title: l.title,
-              orderIndex: l.orderIndex,
-              status: l.status,
-              blocks: [],
-              practiceEnabled: false,
-              practiceBlocks: [],
-              passThresholdEnabled: false,
-              passThresholdPercent: null,
-            }));
+            const lessonList: Lesson[] = await Promise.all(
+              lessonRows.map(async (l) => {
+                const blockRows = await apiListBlocks(l.id);
+                const blocks: ContentBlock[] = blockRows.map((b) => ({
+                  id: b.id,
+                  type: b.type,
+                  html: b.html ?? undefined,
+                  fileName: b.fileName ?? undefined,
+                  previewUrl: b.previewUrl ?? undefined,
+                  embedUrl: b.embedUrl ?? undefined,
+                  label: b.label ?? undefined,
+                }));
+                return {
+                  id: l.id,
+                  title: l.title,
+                  orderIndex: l.orderIndex,
+                  status: l.status,
+                  blocks,
+                  practiceEnabled: false,
+                  practiceBlocks: [],
+                  passThresholdEnabled: false,
+                  passThresholdPercent: null,
+                };
+              }),
+            );
             return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
           }),
         );
@@ -304,7 +319,26 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
 
-  addBlock: (courseId, moduleId, lessonId, block) => {
+  addBlock: async (courseId, moduleId, lessonId, block) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
+
+    let newBlock = block;
+    if (block.type === 'editor') {
+      const row = await apiCreateBlock(lessonId, 'editor');
+      newBlock = {
+        id: row.id,
+        type: row.type,
+        html: row.html ?? '',
+        fileName: row.fileName ?? undefined,
+        previewUrl: row.previewUrl ?? undefined,
+        embedUrl: row.embedUrl ?? undefined,
+        label: row.label ?? undefined,
+      };
+    }
+
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -319,7 +353,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                       lessons: m.lessons.map((l) =>
                         l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
                           ? l
-                          : { ...l, blocks: [...l.blocks, block] },
+                          : { ...l, blocks: [...l.blocks, newBlock] },
                       ),
                     },
               ),
@@ -327,7 +361,16 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  updateBlock: (courseId, moduleId, lessonId, blockId, data) => {
+  updateBlock: async (courseId, moduleId, lessonId, blockId, data) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    const block = lesson?.blocks.find((b) => b.id === blockId);
+
+    if (block?.type === 'editor') {
+      await apiUpdateBlock(blockId, { html: data.html, label: data.label });
+    }
+
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -353,7 +396,16 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  removeBlock: (courseId, moduleId, lessonId, blockId) => {
+  removeBlock: async (courseId, moduleId, lessonId, blockId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    const block = lesson?.blocks.find((b) => b.id === blockId);
+
+    if (block?.type === 'editor') {
+      await apiDeleteBlock(blockId);
+    }
+
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -376,7 +428,24 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  moveBlock: (courseId, moduleId, lessonId, blockId, direction) => {
+  moveBlock: async (courseId, moduleId, lessonId, blockId, direction) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+
+    const index = lesson.blocks.findIndex((b) => b.id === blockId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= lesson.blocks.length) return;
+
+    const reordered = [...lesson.blocks];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+    const editorBlockIds = reordered.filter((b) => b.type === 'editor').map((b) => b.id);
+    if (editorBlockIds.length > 0) {
+      await apiReorderBlocks(lessonId, editorBlockIds);
+    }
+
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -388,15 +457,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   ? m
                   : {
                       ...m,
-                      lessons: m.lessons.map((l) => {
-                        if (l.id !== lessonId) return l;
-                        const index = l.blocks.findIndex((b) => b.id === blockId);
-                        const swapWith = direction === 'up' ? index - 1 : index + 1;
-                        if (index === -1 || swapWith < 0 || swapWith >= l.blocks.length) return l;
-                        const blocks = [...l.blocks];
-                        [blocks[index], blocks[swapWith]] = [blocks[swapWith], blocks[index]];
-                        return { ...l, blocks };
-                      }),
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId ? l : { ...l, blocks: reordered },
+                      ),
                     },
               ),
             },
