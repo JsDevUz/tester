@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, groups, groupMembers, monthlyPayments } from '../db/schema';
+import { courses, groups, groupEnrollments, monthlyPayments } from '../db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 
 function computeStatus(expectedAmount: number, discountAmount: number, paidAmount: number): string {
@@ -23,11 +23,11 @@ export class PaymentsService {
 
   async findByGroup(groupId: string, adminId: string) {
     await this.assertGroupOwnership(groupId, adminId);
-    const members = await db.query.groupMembers.findMany({ where: eq(groupMembers.groupId, groupId) });
-    const memberIds = members.map((m) => m.id);
-    if (memberIds.length === 0) return [];
+    const enrollments = await db.query.groupEnrollments.findMany({ where: eq(groupEnrollments.groupId, groupId) });
+    const enrollmentIds = enrollments.map((e) => e.id);
+    if (enrollmentIds.length === 0) return [];
     const payments = await db.query.monthlyPayments.findMany({
-      where: (table, { inArray }) => inArray(table.groupMemberId, memberIds),
+      where: (table, { inArray }) => inArray(table.enrollmentId, enrollmentIds),
       orderBy: [desc(monthlyPayments.periodMonth)],
     });
     return payments;
@@ -36,9 +36,9 @@ export class PaymentsService {
   private async assertPaymentOwnership(paymentId: string, adminId: string) {
     const payment = await db.query.monthlyPayments.findFirst({ where: eq(monthlyPayments.id, paymentId) });
     if (!payment) throw new NotFoundException('Payment not found');
-    const member = await db.query.groupMembers.findFirst({ where: eq(groupMembers.id, payment.groupMemberId) });
-    if (!member) throw new NotFoundException('Payment not found');
-    await this.assertGroupOwnership(member.groupId, adminId);
+    const enrollment = await db.query.groupEnrollments.findFirst({ where: eq(groupEnrollments.id, payment.enrollmentId) });
+    if (!enrollment) throw new NotFoundException('Payment not found');
+    await this.assertGroupOwnership(enrollment.groupId, adminId);
     return payment;
   }
 
@@ -83,29 +83,29 @@ export class PaymentsService {
     const groupIds = courseGroups.map((g) => g.id);
     if (groupIds.length === 0) return [];
 
-    const members = await db.query.groupMembers.findMany({
+    const enrollments = await db.query.groupEnrollments.findMany({
       where: (table, { inArray }) => inArray(table.groupId, groupIds),
-      with: { student: true, selectedPlan: true },
+      with: { schoolMember: { with: { student: true } }, selectedPlan: true },
     });
-    const memberIds = members.map((m) => m.id);
-    if (memberIds.length === 0) return [];
+    const enrollmentIds = enrollments.map((e) => e.id);
+    if (enrollmentIds.length === 0) return [];
 
     const payments = await db.query.monthlyPayments.findMany({
-      where: (table, { inArray }) => inArray(table.groupMemberId, memberIds),
+      where: (table, { inArray }) => inArray(table.enrollmentId, enrollmentIds),
       orderBy: [desc(monthlyPayments.periodMonth)],
     });
 
     const groupById = new Map(courseGroups.map((g) => [g.id, g]));
     const courseById = new Map(adminCourses.map((c) => [c.id, c]));
-    const memberById = new Map(members.map((m) => [m.id, m]));
+    const enrollmentById = new Map(enrollments.map((e) => [e.id, e]));
 
     return payments.map((p) => {
-      const member = memberById.get(p.groupMemberId)!;
-      const group = groupById.get(member.groupId)!;
+      const enrollment = enrollmentById.get(p.enrollmentId)!;
+      const group = groupById.get(enrollment.groupId)!;
       const course = courseById.get(group.courseId)!;
       return {
         id: p.id,
-        groupMemberId: p.groupMemberId,
+        groupMemberId: p.enrollmentId,
         periodMonth: p.periodMonth,
         expectedAmount: p.expectedAmount,
         discountAmount: p.discountAmount,
@@ -115,11 +115,11 @@ export class PaymentsService {
         note: p.note,
         receiptUrl: p.receiptUrl,
         updatedAt: p.updatedAt,
-        studentName: member.student.name,
-        studentPhone: member.student.phone,
+        studentName: enrollment.schoolMember.student.name,
+        studentPhone: enrollment.schoolMember.student.phone,
         courseTitle: course.title,
         groupName: group.name,
-        planName: member.selectedPlan?.name ?? null,
+        planName: enrollment.selectedPlan?.name ?? null,
       };
     });
   }

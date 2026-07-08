@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import { db } from '../db';
-import { groups, groupMembers, monthlyPayments } from '../db/schema';
+import { groups, groupEnrollments, monthlyPayments } from '../db/schema';
 import { and, eq, isNotNull } from 'drizzle-orm';
 
 function startOfMonthUtc(date: Date): Date {
@@ -25,17 +25,17 @@ export class PaymentsCronService {
     const dueGroups = await db.query.groups.findMany({ where: eq(groups.paymentDay, todayDay) });
 
     for (const group of dueGroups) {
-      const members = await db.query.groupMembers.findMany({
-        where: and(eq(groupMembers.groupId, group.id), isNotNull(groupMembers.selectedPlanId)),
+      const enrollments = await db.query.groupEnrollments.findMany({
+        where: and(eq(groupEnrollments.groupId, group.id), isNotNull(groupEnrollments.selectedPlanId)),
         with: { selectedPlan: true },
       });
 
-      for (const member of members) {
-        if (!member.selectedPlan) continue;
+      for (const enrollment of enrollments) {
+        if (!enrollment.selectedPlan) continue;
 
         const existing = await db.query.monthlyPayments.findFirst({
           where: and(
-            eq(monthlyPayments.groupMemberId, member.id),
+            eq(monthlyPayments.enrollmentId, enrollment.id),
             eq(monthlyPayments.periodMonth, currentPeriod),
           ),
         });
@@ -44,7 +44,7 @@ export class PaymentsCronService {
         const previousPeriod = previousMonthStart(currentPeriod);
         const previousPayment = await db.query.monthlyPayments.findFirst({
           where: and(
-            eq(monthlyPayments.groupMemberId, member.id),
+            eq(monthlyPayments.enrollmentId, enrollment.id),
             eq(monthlyPayments.periodMonth, previousPeriod),
           ),
         });
@@ -56,9 +56,9 @@ export class PaymentsCronService {
         }
 
         await db.insert(monthlyPayments).values({
-          groupMemberId: member.id,
+          enrollmentId: enrollment.id,
           periodMonth: currentPeriod,
-          expectedAmount: member.selectedPlan.price,
+          expectedAmount: enrollment.selectedPlan.price,
           discountAmount: 0,
           paidAmount: 0,
           status: 'pending',
