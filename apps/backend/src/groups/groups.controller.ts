@@ -3,7 +3,7 @@ import { GroupsService } from './groups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
 
 class CreateGroupDto {
   @IsString() @MinLength(1) name: string;
@@ -18,7 +18,6 @@ class UpdateGroupDto {
 }
 
 class UpdateMemberDto {
-  @IsOptional() @IsIn(['student', 'curator']) role?: string;
   @IsOptional() @IsUUID() selectedPlanId?: string | null;
 }
 
@@ -27,6 +26,10 @@ class ForceCloseDto {
 }
 
 class AssignCuratorDto {
+  @IsUUID() studentId: string;
+}
+
+class EnrollStudentDto {
   @IsUUID() studentId: string;
 }
 
@@ -109,21 +112,16 @@ export class GroupsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
-  @Get('groups/pending-plan-assignment')
-  findPendingPlanAssignment(@Req() req: any) {
-    return this.groupsService.findPendingPlanAssignment(req.admin.id);
-  }
-
-  @Get('join/:token')
-  getJoinPreview(@Param('token') token: string) {
-    return this.groupsService.getJoinPreview(token);
+  @Post('groups/:id/enroll')
+  enrollStudent(@Param('id') id: string, @Req() req: any, @Body() dto: EnrollStudentDto) {
+    return this.groupsService.enrollStudent(id, req.admin.id, dto.studentId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('student')
-  @Post('join/:token')
-  join(@Param('token') token: string, @Req() req: any) {
-    return this.groupsService.joinByToken(token, req.user.id);
+  @Roles('teacher', 'super')
+  @Get('groups/pending-plan-assignment')
+  findPendingPlanAssignment(@Req() req: any) {
+    return this.groupsService.findPendingPlanAssignment(req.admin.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
