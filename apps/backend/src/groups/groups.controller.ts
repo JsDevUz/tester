@@ -26,6 +26,10 @@ class ForceCloseDto {
   @IsBoolean() forcedClosed: boolean;
 }
 
+class AssignCuratorDto {
+  @IsUUID() studentId: string;
+}
+
 @Controller()
 export class GroupsController {
   constructor(private groupsService: GroupsService) {}
@@ -94,6 +98,13 @@ export class GroupsController {
   @Delete('groups/:id/members/:memberId')
   removeMember(@Param('id') id: string, @Param('memberId') memberId: string, @Req() req: any) {
     return this.groupsService.removeMember(id, memberId, req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Post('groups/:id/curators')
+  assignCurator(@Param('id') id: string, @Req() req: any, @Body() dto: AssignCuratorDto) {
+    return this.groupsService.assignCuratorFromStaff(id, req.admin.id, dto.studentId);
   }
 
   @Get('join/:token')

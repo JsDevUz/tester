@@ -80,6 +80,11 @@ export async function apiRemoveGroupMember(groupId: string, memberId: string): P
   await client.delete(`/groups/${groupId}/members/${memberId}`);
 }
 
+export async function apiAssignCurator(groupId: string, studentId: string): Promise<ApiGroupMember> {
+  const res = await client.post(`/groups/${groupId}/curators`, { studentId });
+  return res.data;
+}
+
 export async function apiGetJoinPreview(token: string): Promise<{ groupName: string; courseTitle: string }> {
   const res = await client.get(`/join/${token}`);
   return res.data;

@@ -141,6 +141,13 @@
       "when": 1783523009067,
       "tag": "0019_heavy_edwin_jarvis",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1783524840911,
+      "tag": "0020_green_titanium_man",
+      "breakpoints": true
     }
   ]
 }

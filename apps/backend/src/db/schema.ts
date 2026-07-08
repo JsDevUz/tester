@@ -153,9 +153,8 @@ export const groupMembers = pgTable('group_members', {
   selectedPlanId: uuid('selected_plan_id').references(() => pricingPlans.id, { onDelete: 'set null' }),
   forcedClosed: boolean('forced_closed').notNull().default(false),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  uniqueGroupStudent: uniqueIndex('group_members_group_id_student_id_key').on(table.groupId, table.studentId),
-}));
+  removedAt: timestamp('removed_at', { withTimezone: true }),
+});
 
 export const monthlyPayments = pgTable('monthly_payments', {
   id: uuid('id').primaryKey().defaultRandom(),

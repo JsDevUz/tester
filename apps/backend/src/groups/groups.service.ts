@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { courses, groups, groupMembers, pricingPlans, monthlyPayments } from '../db/schema';
-import { and, desc, eq } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
 
@@ -58,7 +58,7 @@ export class GroupsService {
   async findMembers(groupId: string, adminId: string) {
     await this.assertGroupOwnership(groupId, adminId);
     const members = await db.query.groupMembers.findMany({
-      where: eq(groupMembers.groupId, groupId),
+      where: and(eq(groupMembers.groupId, groupId), isNull(groupMembers.removedAt)),
       with: { student: true, selectedPlan: true },
     });
     const withLatestPayment = await Promise.all(
@@ -109,8 +109,31 @@ export class GroupsService {
   async removeMember(groupId: string, memberId: string, adminId: string) {
     await this.assertGroupOwnership(groupId, adminId);
     await db
-      .delete(groupMembers)
+      .update(groupMembers)
+      .set({ removedAt: new Date() })
       .where(and(eq(groupMembers.id, memberId), eq(groupMembers.groupId, groupId)));
+  }
+
+  async assignCuratorFromStaff(groupId: string, adminId: string, studentId: string) {
+    await this.assertGroupOwnership(groupId, adminId);
+    const existing = await db.query.groupMembers.findFirst({
+      where: and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, studentId)),
+    });
+
+    if (existing) {
+      const [updated] = await db
+        .update(groupMembers)
+        .set({ role: 'curator', removedAt: null })
+        .where(eq(groupMembers.id, existing.id))
+        .returning();
+      return updated;
+    }
+
+    const [created] = await db
+      .insert(groupMembers)
+      .values({ groupId, studentId, role: 'curator', selectedPlanId: null })
+      .returning();
+    return created;
   }
 
   async getJoinPreview(token: string) {
@@ -129,7 +152,16 @@ export class GroupsService {
     const existing = await db.query.groupMembers.findFirst({
       where: and(eq(groupMembers.groupId, group.id), eq(groupMembers.studentId, studentId)),
     });
-    if (existing) throw new ConflictException('Already a member of this group');
+    if (existing && !existing.removedAt) throw new ConflictException('Already a member of this group');
+
+    if (existing) {
+      const [rejoined] = await db
+        .update(groupMembers)
+        .set({ removedAt: null, role: 'student', joinedAt: new Date() })
+        .where(eq(groupMembers.id, existing.id))
+        .returning();
+      return rejoined;
+    }
 
     const [member] = await db
       .insert(groupMembers)
@@ -140,7 +172,7 @@ export class GroupsService {
 
   async getMyCourses(studentId: string) {
     const memberships = await db.query.groupMembers.findMany({
-      where: eq(groupMembers.studentId, studentId),
+      where: and(eq(groupMembers.studentId, studentId), isNull(groupMembers.removedAt)),
       with: { group: { with: { course: true } }, selectedPlan: true },
     });
 

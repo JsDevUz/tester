@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Inbox, Plus, Users, X, Trash2, Copy, Check } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
+import { useSchoolStore } from '../../stores/schoolStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
@@ -36,8 +37,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const {
     courses, addGroup, renameGroup,
     setMemberRole, removeStudentFromGroup, deleteGroup,
-    setMemberPlan, setMemberForcedClosed, loadGroupPayments,
+    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator,
   } = useCourseStore();
+  const { staff, loaded: staffLoaded, loadStaff } = useSchoolStore();
   const course = courses.find((c) => c.id === courseId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
@@ -51,8 +53,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   useEffect(() => {
     if (group && innerTab === 'settings') {
       void loadGroupPayments(group.id).then(setPayments);
+      if (!staffLoaded) void loadStaff();
     }
-  }, [group?.id, innerTab, loadGroupPayments]);
+  }, [group?.id, innerTab, loadGroupPayments, staffLoaded, loadStaff]);
 
   if (!course) return null;
 
@@ -262,7 +265,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               <div className="rounded-2xl bg-white p-5">
                 <h3 className="mb-4 text-base font-bold text-gray-800">Guruh kuratorlari</h3>
                 <p className="mb-3 text-xs text-gray-400">
-                  O'quvchini kuratorga aylantirish uchun uning yonidagi tugmani bosing
+                  Maktab xodimlaridan birini tanlang — a'zo bo'lmasa avtomatik guruhga qo'shiladi
                 </p>
 
                 {curators.length === 0 ? (
@@ -285,16 +288,18 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   </div>
                 )}
 
-                {students.length > 0 && (
+                {staff.length > 0 && (
                   <select
                     value=""
-                    onChange={(e) => e.target.value && handleToggleCurator(e.target.value, false)}
+                    onChange={(e) => e.target.value && void assignCurator(courseId, group.id, e.target.value)}
                     className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                   >
-                    <option value="">O'quvchini kurator qilish...</option>
-                    {students.map((m) => (
-                      <option key={m.id} value={m.id}>{m.studentName}</option>
-                    ))}
+                    <option value="">Xodimni kurator qilish...</option>
+                    {staff
+                      .filter((s) => !curators.some((c) => c.studentId === s.studentId))
+                      .map((s) => (
+                        <option key={s.id} value={s.studentId}>{s.name}</option>
+                      ))}
                   </select>
                 )}
               </div>
