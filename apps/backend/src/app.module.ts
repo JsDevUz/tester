@@ -9,6 +9,7 @@ import { LessonsModule } from './lessons/lessons.module';
 import { ContentBlocksModule } from './content-blocks/content-blocks.module';
 import { GroupsModule } from './groups/groups.module';
 import { LaunchesModule } from './launches/launches.module';
+import { PaymentsModule } from './payments/payments.module';
 import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -30,6 +31,7 @@ import 'dotenv/config';
     ContentBlocksModule,
     GroupsModule,
     LaunchesModule,
+    PaymentsModule,
     TestsModule,
     QuestionsModule,
     DeliveryModule,
