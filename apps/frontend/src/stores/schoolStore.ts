@@ -1,10 +1,15 @@
 import { create } from 'zustand';
-import { useAuthStore } from './authStore';
+import {
+  apiGetSchool, apiUpdateSchool, apiRegenerateInviteToken,
+  apiGetSchoolStaff, apiSearchStudents, apiAddSchoolStaff, apiRemoveSchoolStaff,
+  type ApiStudentSearchResult,
+} from '../api/school';
 
-export type SchoolStaffRole = 'admin' | 'teacher' | 'curator';
+export type SchoolStaffRole = 'teacher_staff' | 'curator';
 
 export interface SchoolStaff {
   id: string;
+  studentId: string;
   name: string;
   email: string;
   role: SchoolStaffRole;
@@ -13,43 +18,70 @@ export interface SchoolStaff {
 interface SchoolState {
   name: string;
   description: string;
-  staff: SchoolStaff[];
   inviteToken: string;
+  staff: SchoolStaff[];
+  loaded: boolean;
 
-  renameSchool: (name: string) => void;
-  setSchoolDescription: (description: string) => void;
-  addStaff: (data: Omit<SchoolStaff, 'id'>) => void;
-  removeStaff: (staffId: string) => void;
-  regenerateInviteToken: () => void;
-}
-
-function newId(): string {
-  return crypto.randomUUID();
-}
-
-function buildInitialStaff(): SchoolStaff[] {
-  const currentAdminName = useAuthStore.getState().admin?.name ?? 'Administrator';
-  return [
-    { id: newId(), name: currentAdminName, email: 'admin@maktab.uz', role: 'admin' },
-    { id: newId(), name: 'Dilshod Rahimov', email: 'dilshod@maktab.uz', role: 'teacher' },
-    { id: newId(), name: 'Zarina Yoldosheva', email: 'zarina@maktab.uz', role: 'curator' },
-  ];
+  loadSchool: () => Promise<void>;
+  renameSchool: (name: string) => Promise<void>;
+  setSchoolDescription: (description: string) => Promise<void>;
+  regenerateInviteToken: () => Promise<void>;
+  loadStaff: () => Promise<void>;
+  searchStudents: (query: string) => Promise<ApiStudentSearchResult[]>;
+  addStaff: (studentId: string, role: SchoolStaffRole) => Promise<void>;
+  removeStaff: (memberId: string) => Promise<void>;
 }
 
 export const useSchoolStore = create<SchoolState>((set, get) => ({
-  name: 'Mening maktabim',
+  name: '',
   description: '',
-  staff: buildInitialStaff(),
-  inviteToken: newId(),
+  inviteToken: '',
+  staff: [],
+  loaded: false,
 
-  renameSchool: (name) => set({ name }),
-  setSchoolDescription: (description) => set({ description }),
-  addStaff: (data) => {
-    const staffMember: SchoolStaff = { ...data, id: newId() };
-    set({ staff: [...get().staff, staffMember] });
+  loadSchool: async () => {
+    const school = await apiGetSchool();
+    set({ name: school.name, description: school.description, inviteToken: school.inviteToken, loaded: true });
   },
-  removeStaff: (staffId) => {
-    set({ staff: get().staff.filter((s) => s.id !== staffId) });
+
+  renameSchool: async (name) => {
+    await apiUpdateSchool({ name });
+    set({ name });
   },
-  regenerateInviteToken: () => set({ inviteToken: newId() }),
+
+  setSchoolDescription: async (description) => {
+    await apiUpdateSchool({ description });
+    set({ description });
+  },
+
+  regenerateInviteToken: async () => {
+    const school = await apiRegenerateInviteToken();
+    set({ inviteToken: school.inviteToken });
+  },
+
+  loadStaff: async () => {
+    const rows = await apiGetSchoolStaff();
+    set({
+      staff: rows.map((r) => ({ id: r.id, studentId: r.studentId, name: r.name, email: r.email, role: r.role })),
+    });
+  },
+
+  searchStudents: async (query) => {
+    return apiSearchStudents(query);
+  },
+
+  addStaff: async (studentId, role) => {
+    const row = await apiAddSchoolStaff(studentId, role);
+    const staffMember: SchoolStaff = {
+      id: row.id, studentId: row.studentId, name: row.name, email: row.email, role: row.role,
+    };
+    set({
+      staff: [...get().staff.filter((s) => s.studentId !== studentId), staffMember],
+    });
+  },
+
+  removeStaff: async (memberId) => {
+    await apiRemoveSchoolStaff(memberId);
+    set({ staff: get().staff.filter((s) => s.id !== memberId) });
+  },
 }));
