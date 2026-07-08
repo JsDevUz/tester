@@ -7,6 +7,7 @@ import { CoursesModule } from './courses/courses.module';
 import { CourseModulesModule } from './course-modules/course-modules.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { ContentBlocksModule } from './content-blocks/content-blocks.module';
+import { GroupsModule } from './groups/groups.module';
 import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -26,6 +27,7 @@ import 'dotenv/config';
     CourseModulesModule,
     LessonsModule,
     ContentBlocksModule,
+    GroupsModule,
     TestsModule,
     QuestionsModule,
     DeliveryModule,

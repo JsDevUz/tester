@@ -1,0 +1,110 @@
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { GroupsService } from './groups.service';
+import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { RolesGuard } from '../auth/roles.guard';
+import { Roles } from '../auth/roles.decorator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Max, Min, MinLength } from 'class-validator';
+
+class CreateGroupDto {
+  @IsString() @MinLength(1) name: string;
+  @IsOptional() @IsInt() @Min(1) @Max(28) paymentDay?: number;
+}
+
+class UpdateGroupDto {
+  @IsOptional() @IsString() @MinLength(1) name?: string;
+  @IsOptional() @IsBoolean() groupChatEnabled?: boolean;
+  @IsOptional() @IsBoolean() groupChannelEnabled?: boolean;
+  @IsOptional() @IsInt() @Min(1) @Max(28) paymentDay?: number;
+}
+
+class UpdateMemberDto {
+  @IsOptional() @IsIn(['student', 'curator']) role?: string;
+  @IsOptional() @IsUUID() selectedPlanId?: string | null;
+}
+
+class ForceCloseDto {
+  @IsBoolean() forcedClosed: boolean;
+}
+
+@Controller()
+export class GroupsController {
+  constructor(private groupsService: GroupsService) {}
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Get('courses/:courseId/groups')
+  findAll(@Param('courseId') courseId: string, @Req() req: any) {
+    return this.groupsService.findAll(courseId, req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Post('courses/:courseId/groups')
+  create(@Param('courseId') courseId: string, @Req() req: any, @Body() dto: CreateGroupDto) {
+    return this.groupsService.create(courseId, req.admin.id, dto.name, dto.paymentDay ?? 1);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('groups/:id')
+  update(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateGroupDto) {
+    return this.groupsService.update(id, req.admin.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Delete('groups/:id')
+  remove(@Param('id') id: string, @Req() req: any) {
+    return this.groupsService.remove(id, req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Get('groups/:id/members')
+  findMembers(@Param('id') id: string, @Req() req: any) {
+    return this.groupsService.findMembers(id, req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('groups/:id/members/:memberId')
+  updateMember(
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Req() req: any,
+    @Body() dto: UpdateMemberDto,
+  ) {
+    return this.groupsService.updateMember(id, memberId, req.admin.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('groups/:id/members/:memberId/force-close')
+  setForcedClosed(
+    @Param('id') id: string,
+    @Param('memberId') memberId: string,
+    @Req() req: any,
+    @Body() dto: ForceCloseDto,
+  ) {
+    return this.groupsService.setForcedClosed(id, memberId, req.admin.id, dto.forcedClosed);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Delete('groups/:id/members/:memberId')
+  removeMember(@Param('id') id: string, @Param('memberId') memberId: string, @Req() req: any) {
+    return this.groupsService.removeMember(id, memberId, req.admin.id);
+  }
+
+  @Get('join/:token')
+  getJoinPreview(@Param('token') token: string) {
+    return this.groupsService.getJoinPreview(token);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Post('join/:token')
+  join(@Param('token') token: string, @Req() req: any) {
+    return this.groupsService.joinByToken(token, req.user.id);
+  }
+}
