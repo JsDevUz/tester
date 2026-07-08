@@ -1,6 +1,13 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { S3Client, PutObjectCommand, DeleteObjectCommand } from '@aws-sdk/client-s3';
+import {
+  S3Client,
+  PutObjectCommand,
+  DeleteObjectCommand,
+  GetObjectCommand,
+  ListObjectsV2Command,
+} from '@aws-sdk/client-s3';
+import type { Readable } from 'stream';
 
 @Injectable()
 export class StorageService {
@@ -51,9 +58,104 @@ export class StorageService {
     }
   }
 
+  getKeyFromUrlOrKey(value: string): string {
+    const clean = value.trim();
+    if (!clean) return '';
+    if (this.publicDomain && clean.startsWith(this.publicDomain)) {
+      return clean.slice(this.publicDomain.length + 1);
+    }
+    return clean.replace(/^\/+/, '');
+  }
+
+  async uploadBuffer(
+    key: string,
+    buffer: Buffer,
+    contentType: string,
+    cacheControl = 'private, max-age=0, no-store',
+  ): Promise<string> {
+    try {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+          Body: buffer,
+          ContentType: contentType,
+          CacheControl: cacheControl,
+        }),
+      );
+      return key;
+    } catch (error) {
+      console.error('Object storage buffer upload error:', error);
+      throw new InternalServerErrorException('Faylni yuklashda xatolik yuz berdi');
+    }
+  }
+
+  async uploadStream(
+    key: string,
+    stream: Readable,
+    contentType: string,
+    cacheControl = 'private, max-age=0, no-store',
+  ): Promise<string> {
+    try {
+      await this.s3Client.send(
+        new PutObjectCommand({
+          Bucket: this.bucketName,
+          Key: key,
+          Body: stream,
+          ContentType: contentType,
+          CacheControl: cacheControl,
+        }),
+      );
+      return key;
+    } catch (error) {
+      console.error('Object storage stream upload error:', error);
+      throw new InternalServerErrorException('Faylni yuklashda xatolik yuz berdi');
+    }
+  }
+
+  async getObjectStream(key: string): Promise<Readable> {
+    const result = await this.s3Client.send(
+      new GetObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
+    );
+    return result.Body as Readable;
+  }
+
+  async getObjectBuffer(key: string): Promise<Buffer> {
+    const stream = await this.getObjectStream(key);
+    const chunks: Buffer[] = [];
+    for await (const chunk of stream) {
+      chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+    }
+    return Buffer.concat(chunks);
+  }
+
+  async getObjectText(key: string): Promise<string> {
+    return (await this.getObjectBuffer(key)).toString('utf8');
+  }
+
+  async deletePrefix(prefix: string): Promise<void> {
+    const cleanPrefix = this.getKeyFromUrlOrKey(prefix);
+    if (!cleanPrefix) return;
+    let continuationToken: string | undefined;
+    do {
+      const listed = await this.s3Client.send(
+        new ListObjectsV2Command({
+          Bucket: this.bucketName,
+          Prefix: cleanPrefix,
+          ContinuationToken: continuationToken,
+        }),
+      );
+      for (const object of listed.Contents ?? []) {
+        if (object.Key) {
+          await this.deleteFile(object.Key);
+        }
+      }
+      continuationToken = listed.NextContinuationToken;
+    } while (continuationToken);
+  }
+
   async deleteFile(key: string): Promise<boolean> {
-    const cleanKey =
-      this.publicDomain && key.startsWith(this.publicDomain) ? key.slice(this.publicDomain.length + 1) : key;
+    const cleanKey = this.getKeyFromUrlOrKey(key);
     if (!cleanKey) return false;
     try {
       await this.s3Client.send(new DeleteObjectCommand({ Bucket: this.bucketName, Key: cleanKey }));
