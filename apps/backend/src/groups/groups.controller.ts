@@ -107,4 +107,11 @@ export class GroupsController {
   join(@Param('token') token: string, @Req() req: any) {
     return this.groupsService.joinByToken(token, req.user.id);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Get('my/courses')
+  getMyCourses(@Req() req: any) {
+    return this.groupsService.getMyCourses(req.user.id);
+  }
 }

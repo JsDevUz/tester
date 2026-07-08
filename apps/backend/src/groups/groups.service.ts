@@ -3,9 +3,12 @@ import { db } from '../db';
 import { courses, groups, groupMembers, pricingPlans, monthlyPayments } from '../db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import { StudentAccessService } from '../payments/student-access.service';
 
 @Injectable()
 export class GroupsService {
+  constructor(private studentAccessService: StudentAccessService) {}
+
   private async assertGroupOwnership(groupId: string, adminId: string) {
     const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) });
     if (!group) throw new NotFoundException('Group not found');
@@ -133,5 +136,33 @@ export class GroupsService {
       .values({ groupId: group.id, studentId, role: 'student', selectedPlanId: null })
       .returning();
     return member;
+  }
+
+  async getMyCourses(studentId: string) {
+    const memberships = await db.query.groupMembers.findMany({
+      where: eq(groupMembers.studentId, studentId),
+      with: { group: { with: { course: true } }, selectedPlan: true },
+    });
+
+    return Promise.all(
+      memberships.map(async (m) => {
+        const hasAccess = await this.studentAccessService.assertStudentLessonAccess(
+          m.group.courseId,
+          studentId,
+        );
+        const latestPayment = await db.query.monthlyPayments.findFirst({
+          where: eq(monthlyPayments.groupMemberId, m.id),
+          orderBy: [desc(monthlyPayments.periodMonth)],
+        });
+        return {
+          courseId: m.group.courseId,
+          courseTitle: m.group.course.title,
+          groupName: m.group.name,
+          selectedPlanName: m.selectedPlan?.name ?? null,
+          latestPaymentStatus: latestPayment?.status ?? null,
+          hasAccess,
+        };
+      }),
+    );
   }
 }
