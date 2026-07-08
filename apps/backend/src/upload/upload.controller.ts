@@ -12,7 +12,7 @@ import { StorageService } from '../storage/storage.service';
 
 const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
-const ALLOWED_FOLDERS = ['lessons', 'questions'];
+const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 @UseGuards(JwtAuthGuard, RolesGuard)
