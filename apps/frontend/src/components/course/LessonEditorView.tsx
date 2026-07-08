@@ -160,7 +160,7 @@ export function LessonEditorView({
           <input
             value={lesson.title}
             onChange={(e) =>
-              renameLesson(courseId, moduleId, lessonId, e.target.value)
+              void renameLesson(courseId, moduleId, lessonId, e.target.value)
             }
             className="min-w-0 flex-1 rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
           />
@@ -172,7 +172,7 @@ export function LessonEditorView({
             <p className="mb-4 text-sm text-gray-500">Dars nomi</p>
             <input
               value={lesson.title}
-              onChange={(e) => renameLesson(courseId, moduleId, lessonId, e.target.value)}
+              onChange={(e) => void renameLesson(courseId, moduleId, lessonId, e.target.value)}
               className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
             />
 
@@ -274,8 +274,8 @@ export function LessonEditorView({
         <ConfirmDeleteModal
           title="Darsni o'chirish"
           description={`"${lesson.title}" darsi va uning kontenti o'chiriladi.`}
-          onConfirm={() => {
-            deleteLesson(courseId, moduleId, lessonId);
+          onConfirm={async () => {
+            await deleteLesson(courseId, moduleId, lessonId);
             setConfirmDelete(false);
             onBackToContent();
           }}

@@ -26,7 +26,7 @@ type DeleteTarget =
   | null;
 
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups }: CourseContentPageProps) {
-  const { courses, addModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
+  const { courses, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
   const [modal, setModal] = useState<ModalState>(null);
@@ -45,24 +45,24 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
     });
   }
 
-  function handleCreateModule(title: string) {
-    addModule(courseId, title);
+  async function handleCreateModule(title: string) {
+    await addModule(courseId, title);
     setModal(null);
   }
 
-  function handleCreateLesson(title: string) {
+  async function handleCreateLesson(title: string) {
     if (modal?.type !== 'newLesson') return;
-    const lesson = addLesson(courseId, modal.moduleId, title);
+    const lesson = await addLesson(courseId, modal.moduleId, title);
     setModal(null);
     if (lesson) onOpenLesson(modal.moduleId, lesson.id);
   }
 
-  function handleConfirmDelete() {
+  async function handleConfirmDelete() {
     if (!deleteTarget) return;
     if (deleteTarget.type === 'module') {
-      deleteModule(courseId, deleteTarget.moduleId);
+      await deleteModule(courseId, deleteTarget.moduleId);
     } else {
-      deleteLesson(courseId, deleteTarget.moduleId, deleteTarget.lessonId);
+      await deleteLesson(courseId, deleteTarget.moduleId, deleteTarget.lessonId);
     }
     setDeleteTarget(null);
   }
@@ -114,7 +114,12 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                       {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                     </button>
                     <Layers size={16} className="shrink-0 text-indigo-400" />
-                    <span className="flex-1 truncate text-sm font-semibold text-gray-700">{module.title}</span>
+                    <input
+                      value={module.title}
+                      onChange={(e) => void renameModule(courseId, module.id, e.target.value)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="min-w-0 flex-1 truncate rounded-lg bg-transparent px-1 py-0.5 text-sm font-semibold text-gray-700 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
+                    />
                     <button
                       type="button"
                       onClick={() => setDeleteTarget({ type: 'module', moduleId: module.id, title: module.title })}
@@ -141,7 +146,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                           </button>
                           <button
                             type="button"
-                            onClick={() => toggleLessonStatus(courseId, module.id, lesson.id)}
+                            onClick={() => void toggleLessonStatus(courseId, module.id, lesson.id)}
                             title={lesson.status === 'published' ? "E'lon qilingan — bosib qoralamaga o'tkazish" : "Qoralama — bosib e'lon qilish"}
                             className={`shrink-0 rounded-lg p-1.5 transition-colors ${
                               lesson.status === 'published'
