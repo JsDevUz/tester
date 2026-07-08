@@ -165,6 +165,8 @@ export const monthlyPayments = pgTable('monthly_payments', {
   discountAmount: integer('discount_amount').notNull().default(0),
   paidAmount: integer('paid_amount').notNull().default(0),
   status: text('status').notNull().default('pending'),
+  paymentMethod: text('payment_method'),
+  note: text('note'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
