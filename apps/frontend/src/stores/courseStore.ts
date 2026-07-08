@@ -1,5 +1,7 @@
 import { create } from 'zustand';
 import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type ApiCourse } from '../api/courses';
+import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
+import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
 export const CONTENT_BLOCK_LIMIT = 7;
@@ -88,14 +90,14 @@ interface CourseState {
   renameCourse: (courseId: string, title: string) => Promise<void>;
   deleteCourse: (courseId: string) => Promise<void>;
 
-  addModule: (courseId: string, title: string) => Module | undefined;
-  renameModule: (courseId: string, moduleId: string, title: string) => void;
-  deleteModule: (courseId: string, moduleId: string) => void;
+  addModule: (courseId: string, title: string) => Promise<Module | undefined>;
+  renameModule: (courseId: string, moduleId: string, title: string) => Promise<void>;
+  deleteModule: (courseId: string, moduleId: string) => Promise<void>;
 
-  addLesson: (courseId: string, moduleId: string, title: string) => Lesson | undefined;
-  renameLesson: (courseId: string, moduleId: string, lessonId: string, title: string) => void;
-  deleteLesson: (courseId: string, moduleId: string, lessonId: string) => void;
-  toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => void;
+  addLesson: (courseId: string, moduleId: string, title: string) => Promise<Lesson | undefined>;
+  renameLesson: (courseId: string, moduleId: string, lessonId: string, title: string) => Promise<void>;
+  deleteLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock) => void;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => void;
@@ -138,8 +140,31 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
 
   loadCourses: async () => {
-    const rows = await apiListCourses();
-    set({ courses: rows.map(toFrontendCourse) });
+    const courseRows = await apiListCourses();
+    const courses = await Promise.all(
+      courseRows.map(async (courseRow) => {
+        const moduleRows = await apiListModules(courseRow.id);
+        const moduleList: Module[] = await Promise.all(
+          moduleRows.map(async (moduleRow) => {
+            const lessonRows = await apiListLessons(moduleRow.id);
+            const lessonList: Lesson[] = lessonRows.map((l) => ({
+              id: l.id,
+              title: l.title,
+              orderIndex: l.orderIndex,
+              status: l.status,
+              blocks: [],
+              practiceEnabled: false,
+              practiceBlocks: [],
+              passThresholdEnabled: false,
+              passThresholdPercent: null,
+            }));
+            return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
+          }),
+        );
+        return { id: courseRow.id, title: courseRow.title, modules: moduleList, launches: [], groups: [] };
+      }),
+    );
+    set({ courses });
   },
   addCourse: async (title) => {
     const row = await apiCreateCourse(title);
@@ -158,10 +183,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set({ courses: get().courses.filter((c) => c.id !== courseId) });
   },
 
-  addModule: (courseId, title) => {
-    const course = get().courses.find((c) => c.id === courseId);
-    if (!course) return undefined;
-    const module: Module = { id: newId(), title, orderIndex: course.modules.length, lessons: [] };
+  addModule: async (courseId, title) => {
+    const row = await apiCreateModule(courseId, title);
+    const module: Module = { id: row.id, title: row.title, orderIndex: row.orderIndex, lessons: [] };
     set({
       courses: get().courses.map((c) =>
         c.id === courseId ? { ...c, modules: [...c.modules, module] } : c,
@@ -169,7 +193,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
     return module;
   },
-  renameModule: (courseId, moduleId, title) => {
+  renameModule: async (courseId, moduleId, title) => {
+    await apiRenameModule(moduleId, title);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -178,7 +203,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  deleteModule: (courseId, moduleId) => {
+  deleteModule: async (courseId, moduleId) => {
+    await apiDeleteModule(moduleId);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId ? c : { ...c, modules: c.modules.filter((m) => m.id !== moduleId) },
@@ -186,15 +212,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
 
-  addLesson: (courseId, moduleId, title) => {
-    const course = get().courses.find((c) => c.id === courseId);
-    const module = course?.modules.find((m) => m.id === moduleId);
-    if (!module) return undefined;
+  addLesson: async (courseId, moduleId, title) => {
+    const row = await apiCreateLesson(moduleId, title);
     const lesson: Lesson = {
-      id: newId(),
-      title,
-      orderIndex: module.lessons.length,
-      status: 'draft',
+      id: row.id,
+      title: row.title,
+      orderIndex: row.orderIndex,
+      status: row.status,
       blocks: [],
       practiceEnabled: false,
       practiceBlocks: [],
@@ -215,7 +239,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
     return lesson;
   },
-  renameLesson: (courseId, moduleId, lessonId, title) => {
+  renameLesson: async (courseId, moduleId, lessonId, title) => {
+    await apiUpdateLesson(lessonId, { title });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -234,7 +259,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  deleteLesson: (courseId, moduleId, lessonId) => {
+  deleteLesson: async (courseId, moduleId, lessonId) => {
+    await apiDeleteLesson(lessonId);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -250,7 +276,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  toggleLessonStatus: (courseId, moduleId, lessonId) => {
+  toggleLessonStatus: async (courseId, moduleId, lessonId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    const nextStatus = lesson.status === 'draft' ? 'published' : 'draft';
+    await apiUpdateLesson(lessonId, { status: nextStatus });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -263,9 +295,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   : {
                       ...m,
                       lessons: m.lessons.map((l) =>
-                        l.id === lessonId
-                          ? { ...l, status: l.status === 'draft' ? 'published' : 'draft' }
-                          : l,
+                        l.id === lessonId ? { ...l, status: nextStatus } : l,
                       ),
                     },
               ),
