@@ -21,9 +21,13 @@ export interface Question {
   options: Option[];
 }
 
-export async function apiUploadMedia(file: File): Promise<{ url: string; type: 'image' | 'audio' }> {
+export async function apiUploadMedia(
+  file: File,
+  folder: 'lessons' | 'questions' = 'questions',
+): Promise<{ url: string; type: 'image' | 'audio' }> {
   const form = new FormData();
   form.append('file', file);
+  form.append('folder', folder);
   const res = await client.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
   return res.data;
 }
