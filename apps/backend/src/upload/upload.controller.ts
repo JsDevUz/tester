@@ -1,36 +1,30 @@
 import {
-  Controller, Post, UseInterceptors, UploadedFile,
+  Controller, Post, UseInterceptors, UploadedFile, Body,
   BadRequestException, UseGuards,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { diskStorage } from 'multer';
-import { extname, join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-
-const UPLOAD_DIR = join(process.cwd(), 'uploads');
-if (!existsSync(UPLOAD_DIR)) mkdirSync(UPLOAD_DIR, { recursive: true });
+import { StorageService } from '../storage/storage.service';
 
 const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
+const ALLOWED_FOLDERS = ['lessons', 'questions'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('teacher', 'super')
 @Controller('upload')
 export class UploadController {
+  constructor(private storageService: StorageService) {}
+
   @Post()
   @UseInterceptors(
     FileInterceptor('file', {
-      storage: diskStorage({
-        destination: UPLOAD_DIR,
-        filename: (_req, file, cb) => {
-          const unique = `${Date.now()}-${Math.round(Math.random() * 1e6)}`;
-          cb(null, `${unique}${extname(file.originalname).toLowerCase()}`);
-        },
-      }),
+      storage: memoryStorage(),
       limits: { fileSize: MAX_SIZE },
       fileFilter: (_req, file, cb) => {
         const ext = extname(file.originalname).toLowerCase();
@@ -42,11 +36,12 @@ export class UploadController {
       },
     }),
   )
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  uploadFile(@UploadedFile() file: any) {
+  async uploadFile(@UploadedFile() file: Express.Multer.File, @Body('folder') folder?: string) {
     if (!file) throw new BadRequestException('Fayl topilmadi');
+    const targetFolder = ALLOWED_FOLDERS.includes(folder || '') ? (folder as string) : 'questions';
     const ext = extname(file.originalname).toLowerCase();
     const type = ALLOWED_IMAGE.includes(ext) ? 'image' : 'audio';
-    return { url: `/uploads/${file.filename}`, type };
+    const url = await this.storageService.uploadFile(file, targetFolder);
+    return { url, type };
   }
 }

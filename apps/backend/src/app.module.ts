@@ -1,4 +1,5 @@
 import { Module } from '@nestjs/common';
+import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import { AdminsModule } from './admins/admins.module';
 import { FoldersModule } from './folders/folders.module';
@@ -17,6 +18,7 @@ import 'dotenv/config';
 
 @Module({
   imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
     AuthModule,
     AdminsModule,
     FoldersModule,
