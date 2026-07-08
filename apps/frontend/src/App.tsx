@@ -18,8 +18,6 @@ import { LivePlayPage } from './pages/LivePlayPage';
 import { PaymentsPage } from './pages/PaymentsPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { StudentsPage } from './pages/StudentsPage';
-import { AllUsersPage } from './pages/AllUsersPage';
-import { PendingStudentsPage } from './pages/PendingStudentsPage';
 import { SchoolSettingsPage } from './pages/SchoolSettingsPage';
 import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
@@ -57,9 +55,9 @@ const router = createBrowserRouter([
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
   { path: '/payments', element: <PrivateRoute><PaymentsPage /></PrivateRoute> },
-  { path: '/students', element: <TeacherRoute><AllUsersPage /></TeacherRoute> },
+  { path: '/students', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
   { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
-  { path: '/students/pending', element: <TeacherRoute><PendingStudentsPage /></TeacherRoute> },
+  { path: '/students/pending', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
   { path: '/school', element: <Navigate to="/school/settings" replace /> },
   { path: '/school/settings', element: <PrivateRoute><SchoolSettingsPage /></PrivateRoute> },
   { path: '/school/staff', element: <PrivateRoute><SchoolStaffPage /></PrivateRoute> },
