@@ -21,9 +21,11 @@ const { video: _video, audio: _audio, file: _file, ...restBlockSpecs } = default
 const schema = BlockNoteSchema.create({ blockSpecs: restBlockSpecs });
 
 async function uploadFile(file: File) {
-  const { url } = await apiUploadMedia(file);
+  const { url } = await apiUploadMedia(file, 'lessons');
   return url.startsWith('http') ? url : `${BACKEND}${url}`;
 }
+
+const DEBOUNCE_MS = 1500;
 
 // Notion-uslubidagi block editor: "/" bilan komanda menyusi, drag-drop,
 // formatlash toolbar, jadval/ro'yxat/kod va h.k. — BlockNote orqali.
@@ -31,6 +33,10 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   const editor = useCreateBlockNote({ schema, uploadFile });
   const [ready, setReady] = useState(false);
   const initialHtmlRef = useRef(html);
+  const onChangeRef = useRef(onChange);
+  onChangeRef.current = onChange;
+  const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pendingHtmlRef = useRef<string | null>(null);
 
   // Boshlang'ich HTML'ni bir marta BlockNote bloklariga aylantiramiz.
   useEffect(() => {
@@ -47,10 +53,31 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     return () => { cancelled = true; };
   }, [editor]);
 
+  // Component yopilganda (unmount) kutilayotgan o'zgarishni darhol yuboramiz,
+  // aks holda so'nggi tahrirlar debounce oynasi ichida yo'qolib ketishi mumkin.
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+        if (pendingHtmlRef.current !== null) {
+          onChangeRef.current(pendingHtmlRef.current);
+        }
+      }
+    };
+  }, []);
+
   async function handleChange() {
     if (!ready) return;
     const exported = await editor.blocksToFullHTML(editor.document);
-    onChange(exported);
+    pendingHtmlRef.current = exported;
+    if (debounceTimerRef.current) clearTimeout(debounceTimerRef.current);
+    debounceTimerRef.current = setTimeout(() => {
+      if (pendingHtmlRef.current !== null) {
+        onChangeRef.current(pendingHtmlRef.current);
+        pendingHtmlRef.current = null;
+      }
+      debounceTimerRef.current = null;
+    }, DEBOUNCE_MS);
   }
 
   return (

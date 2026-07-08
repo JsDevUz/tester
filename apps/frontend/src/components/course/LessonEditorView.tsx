@@ -102,7 +102,7 @@ export function LessonEditorView({
     if (contentLimitReached) return;
     collapseAllExisting();
     const block: ContentBlock = { id: newId(), type: "editor", html: "" };
-    addBlock(courseId, moduleId, lessonId, block);
+    void addBlock(courseId, moduleId, lessonId, block);
   }
 
   function handlePickFile(type: "video" | "image" | "file", file: File) {
@@ -114,7 +114,7 @@ export function LessonEditorView({
       fileName: file.name,
       previewUrl: type === "file" ? undefined : URL.createObjectURL(file),
     };
-    addBlock(courseId, moduleId, lessonId, block);
+    void addBlock(courseId, moduleId, lessonId, block);
   }
 
   function toggleCollapse(blockId: string) {
@@ -127,19 +127,19 @@ export function LessonEditorView({
   }
 
   function handleChangeBlockHtml(blockId: string, html: string) {
-    updateBlock(courseId, moduleId, lessonId, blockId, { html });
+    void updateBlock(courseId, moduleId, lessonId, blockId, { html });
   }
 
   function handleChangeBlockEmbedUrl(blockId: string, embedUrl: string) {
-    updateBlock(courseId, moduleId, lessonId, blockId, { embedUrl });
+    void updateBlock(courseId, moduleId, lessonId, blockId, { embedUrl });
   }
 
   function handleChangeBlockLabel(blockId: string, label: string) {
-    updateBlock(courseId, moduleId, lessonId, blockId, { label });
+    void updateBlock(courseId, moduleId, lessonId, blockId, { label });
   }
 
   function handleBlockPickFile(blockId: string, file: File) {
-    updateBlock(courseId, moduleId, lessonId, blockId, {
+    void updateBlock(courseId, moduleId, lessonId, blockId, {
       fileName: file.name,
       previewUrl: URL.createObjectURL(file),
     });
@@ -223,13 +223,13 @@ export function LessonEditorView({
                     }
                     onPickFile={(file) => handleBlockPickFile(block.id, file)}
                     onRemove={() =>
-                      removeBlock(courseId, moduleId, lessonId, block.id)
+                      void removeBlock(courseId, moduleId, lessonId, block.id)
                     }
                     onMoveUp={() =>
-                      moveBlock(courseId, moduleId, lessonId, block.id, "up")
+                      void moveBlock(courseId, moduleId, lessonId, block.id, "up")
                     }
                     onMoveDown={() =>
-                      moveBlock(courseId, moduleId, lessonId, block.id, "down")
+                      void moveBlock(courseId, moduleId, lessonId, block.id, "down")
                     }
                   />
                 ))}
