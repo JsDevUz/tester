@@ -99,13 +99,8 @@ export async function apiGetPendingPlanAssignment(): Promise<ApiPendingPlanAssig
   return res.data;
 }
 
-export async function apiGetJoinPreview(token: string): Promise<{ groupName: string; courseTitle: string }> {
-  const res = await client.get(`/join/${token}`);
-  return res.data;
-}
-
-export async function apiJoinGroup(token: string): Promise<ApiGroupMember> {
-  const res = await client.post(`/join/${token}`);
+export async function apiEnrollStudent(groupId: string, studentId: string): Promise<ApiGroupMember> {
+  const res = await client.post(`/groups/${groupId}/enroll`, { studentId });
   return res.data;
 }
 
