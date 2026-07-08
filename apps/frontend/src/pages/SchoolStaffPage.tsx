@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
+import { MOCK_STUDENTS } from './StudentsPage';
 
 const AVATAR_PALETTES = [
   'bg-indigo-100 text-indigo-600',
@@ -93,7 +94,11 @@ export function SchoolStaffPage() {
       </div>
 
       {modalOpen && (
-        <AddStaffModal onConfirm={handleAddStaff} onClose={() => setModalOpen(false)} />
+        <AddStaffModal
+          students={MOCK_STUDENTS}
+          onConfirm={handleAddStaff}
+          onClose={() => setModalOpen(false)}
+        />
       )}
     </AppShell>
   );

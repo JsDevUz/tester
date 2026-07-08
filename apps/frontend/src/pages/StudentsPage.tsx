@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { Search, Inbox, GraduationCap } from "lucide-react";
 import { AppShell } from "../components/AppShell";
+import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
 
 export interface StudentRow {
@@ -136,10 +137,9 @@ export function StudentsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 min-w-0 w-full px-4 py-4 sm:px-6 sm:py-5 max-w-6xl mx-auto  bg-white rounded-2xl">
-          {/* Header */}
-          <div className="mb-5">
+      <div className="min-h-screen p-3 sm:p-4">
+        <div className="flex min-h-full flex-col gap-3">
+          <div className="rounded-2xl bg-white p-4">
             <h1 className="text-lg sm:text-xl font-bold text-gray-800">
               O'quvchilar
             </h1>
@@ -149,40 +149,40 @@ export function StudentsPage() {
             </p>
           </div>
 
-          {/* Search */}
-          <div className="relative mb-5">
+          <StudentsSectionTabs />
+
+          <div className="relative w-fit max-w-full">
             <Search
-              size={16}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-300"
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
             />
             <input
               type="text"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
-              className="w-full rounded-2xlbg-gray-50 pl-10 pr-4 py-3 text-sm outline-none transition-colors focus:border-indigo-300 focus:bg-white"
+              className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
             />
           </div>
 
-          {/* Count */}
-          <div className="flex items-center gap-2 mb-3">
-            <p className="text-sm font-semibold text-gray-700">O'quvchi</p>
-            <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
-              {filtered.length}
-            </span>
-          </div>
-
-          {filtered.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <Inbox size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">
-                {query ? "Hech narsa topilmadi." : "Hali o'quvchilar yo'q."}
-              </p>
+          <div className="rounded-2xl bg-white p-4">
+            <div className="mb-3 flex items-center gap-2">
+              <p className="text-sm font-semibold text-gray-700">O'quvchi</p>
+              <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
+                {filtered.length}
+              </span>
             </div>
-          ) : (
-            <>
-              {/* Mobile: card list */}
-              <div className="md:hidden flex flex-col gap-2">
+
+            {filtered.length === 0 ? (
+              <div className="text-center py-16 text-gray-400">
+                <Inbox size={36} className="mx-auto mb-3 opacity-30" />
+                <p className="text-sm">
+                  {query ? "Hech narsa topilmadi." : "Hali o'quvchilar yo'q."}
+                </p>
+              </div>
+            ) : (
+              <>
+                <div className="md:hidden flex flex-col gap-2">
                 {filtered.map((s) => (
                   <div key={s.id} className="bg-white rounded-2xl px-3.5 py-3">
                     <div className="flex items-center gap-3">
@@ -234,8 +234,7 @@ export function StudentsPage() {
                 ))}
               </div>
 
-              {/* Desktop: table */}
-              <div className="hidden md:block overflow-x-auto">
+                <div className="hidden md:block overflow-x-auto">
                 <table className="w-full min-w-210 text-left">
                   <thead className="text-sm font-medium text-gray-700">
                     <tr>
@@ -251,7 +250,7 @@ export function StudentsPage() {
                     {filtered.map((s) => (
                       <tr
                         key={s.id}
-                        className="transition-colors hover:bg-indigo-50/40 rounded-2xl"
+                        className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
                       >
                         <td className="px-5 py-4">
                           <div className="flex items-center gap-3">
@@ -304,8 +303,9 @@ export function StudentsPage() {
                   </tbody>
                 </table>
               </div>
-            </>
-          )}
+              </>
+            )}
+          </div>
         </div>
       </div>
     </AppShell>

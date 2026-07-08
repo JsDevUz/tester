@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { Radio } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { FolderCard } from "../components/FolderCard";
 import { NewFolderModal } from "../components/NewFolderModal";
@@ -39,14 +40,25 @@ export function DashboardPage() {
     <AppShell>
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 w-full p-6 pb-10">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex items-center justify-between gap-3 mb-6">
             <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>
-            <button
-              onClick={() => setShowNewModal(true)}
-              className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
-            >
-              + Yangi papka
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate("/live")}
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50"
+              >
+                <Radio size={16} />
+                <span className="hidden sm:inline">Jonli musobaqalar</span>
+                <span className="sm:hidden">Jonli</span>
+              </button>
+              <button
+                onClick={() => setShowNewModal(true)}
+                className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
+              >
+                + Yangi papka
+              </button>
+            </div>
           </div>
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {folders.map((folder) => (

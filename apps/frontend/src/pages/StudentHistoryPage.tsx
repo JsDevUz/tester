@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Trophy, BookOpen, ThumbsUp } from "lucide-react";
-import { Toolbar } from "../components/Toolbar";
+import { StudentShell } from "../components/student/StudentShell";
 import { apiGetMySubmissions, type Submission } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
 
@@ -60,10 +60,11 @@ export function StudentHistoryPage() {
   }, [observerCallback]);
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <Toolbar />
-      <div className="flex-1 w-full px-4 py-5 lg:px-8">
-        <h2 className="text-lg font-bold text-gray-800 mb-4">Testlar tarixi</h2>
+    <StudentShell>
+      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
+        <h2 className="mb-3 text-xl font-bold text-gray-900 lg:mb-4 lg:text-lg lg:text-gray-800">
+          Amaliyotlar tarixi
+        </h2>
 
         {loading ? (
           <div className="flex justify-center py-12">
@@ -75,7 +76,7 @@ export function StudentHistoryPage() {
             <p className="text-sm">Hali ishlangan testlar yo'q.</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-2">
+          <div className="flex flex-col lg:gap-2">
             {submissions.map((s) => {
               const pct = s.total
                 ? Math.round(((s.score ?? 0) / s.total) * 100)
@@ -86,10 +87,10 @@ export function StudentHistoryPage() {
                 <button
                   key={s.id}
                   onClick={() => navigate(`/history/${s.id}`)}
-                  className="w-full bg-white rounded-2xl px-4 py-4 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left active:scale-[0.99]"
+                  className="flex w-full items-center gap-3 border-b border-gray-100 bg-white py-3 text-left transition-all active:bg-gray-50 lg:rounded-2xl lg:border-b-0 lg:px-4 lg:py-4 lg:hover:bg-indigo-50/30 lg:active:scale-[0.99]"
                 >
                   <div
-                    className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl lg:h-10 lg:w-10 ${
                       isGood
                         ? "bg-green-50"
                         : isMid
@@ -106,10 +107,10 @@ export function StudentHistoryPage() {
                     )}
                   </div>
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-800 truncate">
+                    <p className="truncate text-[15px] font-semibold text-gray-900 lg:text-sm lg:text-gray-800">
                       {s.testName ?? "Test"}
                     </p>
-                    <p className="text-xs text-gray-400 mt-0.5">
+                    <p className="mt-0.5 text-xs text-gray-400">
                       {s.submittedAt
                         ? formatDateTime(s.submittedAt)
                         : "Topshirilmagan"}
@@ -118,7 +119,7 @@ export function StudentHistoryPage() {
                   <div className="flex items-center gap-2 shrink-0">
                     <div className="text-right">
                       <p
-                        className={`text-sm font-bold ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
+                        className={`text-base font-bold lg:text-sm ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
                       >
                         {pct}%
                       </p>
@@ -143,6 +144,6 @@ export function StudentHistoryPage() {
           </div>
         )}
       </div>
-    </div>
+    </StudentShell>
   );
 }

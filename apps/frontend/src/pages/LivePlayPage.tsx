@@ -8,6 +8,7 @@ import {
   Users,
   Crown,
 } from "lucide-react";
+import { StudentShell } from "../components/student/StudentShell";
 import {
   getLiveSocket,
   closeLiveSocket,
@@ -626,11 +627,11 @@ export function LivePlayPage() {
     reveal && typeof reveal.isCorrect === "boolean" ? reveal : null;
 
   return (
+    <StudentShell>
     <div
-      className="flex flex-col bg-white notranslate"
+      className="flex h-[calc(100vh-2rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl bg-white notranslate"
       translate="no"
       style={{
-        height: "100dvh",
         paddingTop: "env(safe-area-inset-top)",
         paddingBottom: "max(16px, env(safe-area-inset-bottom))",
       }}
@@ -1013,5 +1014,6 @@ export function LivePlayPage() {
         </div>
       )}
     </div>
+    </StudentShell>
   );
 }

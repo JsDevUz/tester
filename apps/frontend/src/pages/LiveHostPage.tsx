@@ -556,7 +556,7 @@ export function LiveHostPage() {
               })}
             </div>
           ) : (
-            <div className="px-4 py-3.5 rounded-2xlbg-gray-50 text-gray-500 text-sm">
+            <div className="px-4 py-3.5 rounded-2xl bg-gray-50 text-gray-500 text-sm">
               {phase === "reveal"
                 ? `To'g'ri javob: ${reveal?.correctAnswer ?? "—"}`
                 : "O'yinchilar javob yozmoqda..."}

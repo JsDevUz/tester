@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { Radio, ChevronRight } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
+import { StudentShell } from "../components/student/StudentShell";
 
 export function LiveJoinPage() {
   const navigate = useNavigate();
@@ -22,15 +23,8 @@ export function LiveJoinPage() {
   }
 
   return (
-    <div
-      className="flex flex-col bg-white notranslate"
-      translate="no"
-      style={{
-        height: "100dvh",
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "max(24px, env(safe-area-inset-bottom))",
-      }}
-    >
+    <StudentShell>
+    <div className="flex min-h-[520px] flex-col overflow-hidden bg-white notranslate lg:rounded-2xl" translate="no">
       <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
       <form
         onSubmit={handleJoin}
@@ -64,5 +58,6 @@ export function LiveJoinPage() {
         </button>
       </form>
     </div>
+    </StudentShell>
   );
 }

@@ -1,8 +1,8 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { ChevronLeft, Clock } from "lucide-react";
-import { Toolbar } from "../components/Toolbar";
 import { AnswerResultCard } from "../components/AnswerResultCard";
+import { StudentShell } from "../components/student/StudentShell";
 import {
   apiGetMySubmissionDetail,
   type SubmissionDetail,
@@ -32,12 +32,11 @@ export function StudentSubmissionDetailPage() {
     detail?.showResults === "per_question";
 
   return (
-    <div className="min-h-screen bg-[#f6f6f6] flex flex-col">
-      <Toolbar />
-      <main className="flex-1 w-full px-4 py-5 lg:px-8">
+    <StudentShell>
+      <main className="mx-auto w-full max-w-3xl px-4 pb-6 pt-5 lg:px-0 lg:pb-0 lg:pt-0">
         <button
           onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-700 transition-colors"
+          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 transition-colors hover:text-gray-700 lg:mb-4"
         >
           <ChevronLeft size={16} />
           Natijalar
@@ -97,6 +96,6 @@ export function StudentSubmissionDetailPage() {
           </>
         )}
       </main>
-    </div>
+    </StudentShell>
   );
 }

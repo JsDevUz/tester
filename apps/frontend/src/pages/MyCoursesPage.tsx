@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { BookOpen, Lock } from 'lucide-react';
-import { Toolbar } from '../components/Toolbar';
+import { StudentShell } from '../components/student/StudentShell';
 import { apiGetMyCourses, type ApiMyCourse } from '../api/groups';
 
 const STATUS_LABEL: Record<string, string> = {
@@ -28,9 +28,8 @@ export function MyCoursesPage() {
   }, []);
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      <Toolbar />
-      <div className="mx-auto w-full max-w-2xl flex-1 p-6">
+    <StudentShell>
+      <div className="rounded-2xl bg-white p-4 sm:p-5">
         <h1 className="mb-4 text-lg font-bold text-gray-800">Mening kurslarim</h1>
 
         {loading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
@@ -44,7 +43,7 @@ export function MyCoursesPage() {
 
         <div className="flex flex-col gap-3">
           {courses.map((c) => (
-            <div key={`${c.courseId}-${c.groupName}`} className="rounded-2xl bg-white p-5">
+            <div key={`${c.courseId}-${c.groupName}`} className="rounded-2xl bg-gray-50 p-4">
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-base font-bold text-gray-800">{c.courseTitle}</p>
@@ -74,6 +73,6 @@ export function MyCoursesPage() {
           ))}
         </div>
       </div>
-    </div>
+    </StudentShell>
   );
 }
