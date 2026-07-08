@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, varchar } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, timestamp, integer, boolean, varchar, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 export const admins = pgTable('admins', {
@@ -65,6 +65,8 @@ export const courses = pgTable('courses', {
 export const coursesRelations = relations(courses, ({ one, many }) => ({
   owner: one(users, { fields: [courses.adminId], references: [users.id] }),
   modules: many(modules),
+  groups: many(groups),
+  launches: many(launches),
 }));
 
 export const modules = pgTable('modules', {
@@ -109,6 +111,91 @@ export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   module: one(modules, { fields: [lessons.moduleId], references: [modules.id] }),
   blocks: many(contentBlocks),
+}));
+
+export const groups = pgTable('groups', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  groupChatEnabled: boolean('group_chat_enabled').notNull().default(false),
+  groupChannelEnabled: boolean('group_channel_enabled').notNull().default(false),
+  inviteToken: text('invite_token').notNull().unique(),
+  paymentDay: integer('payment_day').notNull().default(1),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const launches = pgTable('launches', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  active: boolean('active').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const pricingPlans = pgTable('pricing_plans', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  launchId: uuid('launch_id').notNull().references(() => launches.id, { onDelete: 'cascade' }),
+  groupId: uuid('group_id').references(() => groups.id, { onDelete: 'set null' }),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  price: integer('price').notNull(),
+  originalPrice: integer('original_price'),
+  startDate: timestamp('start_date', { withTimezone: true }),
+  endDate: timestamp('end_date', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const groupMembers = pgTable('group_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupId: uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('student'),
+  selectedPlanId: uuid('selected_plan_id').references(() => pricingPlans.id, { onDelete: 'set null' }),
+  forcedClosed: boolean('forced_closed').notNull().default(false),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueGroupStudent: uniqueIndex('group_members_group_id_student_id_key').on(table.groupId, table.studentId),
+}));
+
+export const monthlyPayments = pgTable('monthly_payments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupMemberId: uuid('group_member_id').notNull().references(() => groupMembers.id, { onDelete: 'cascade' }),
+  periodMonth: timestamp('period_month', { withTimezone: true }).notNull(),
+  expectedAmount: integer('expected_amount').notNull(),
+  discountAmount: integer('discount_amount').notNull().default(0),
+  paidAmount: integer('paid_amount').notNull().default(0),
+  status: text('status').notNull().default('pending'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueMemberPeriod: uniqueIndex('monthly_payments_group_member_id_period_month_key').on(table.groupMemberId, table.periodMonth),
+}));
+
+export const groupsRelations = relations(groups, ({ one, many }) => ({
+  course: one(courses, { fields: [groups.courseId], references: [courses.id] }),
+  members: many(groupMembers),
+  plans: many(pricingPlans),
+}));
+
+export const launchesRelations = relations(launches, ({ one, many }) => ({
+  course: one(courses, { fields: [launches.courseId], references: [courses.id] }),
+  plans: many(pricingPlans),
+}));
+
+export const pricingPlansRelations = relations(pricingPlans, ({ one }) => ({
+  launch: one(launches, { fields: [pricingPlans.launchId], references: [launches.id] }),
+  group: one(groups, { fields: [pricingPlans.groupId], references: [groups.id] }),
+}));
+
+export const groupMembersRelations = relations(groupMembers, ({ one, many }) => ({
+  group: one(groups, { fields: [groupMembers.groupId], references: [groups.id] }),
+  student: one(users, { fields: [groupMembers.studentId], references: [users.id] }),
+  selectedPlan: one(pricingPlans, { fields: [groupMembers.selectedPlanId], references: [pricingPlans.id] }),
+  payments: many(monthlyPayments),
+}));
+
+export const monthlyPaymentsRelations = relations(monthlyPayments, ({ one }) => ({
+  groupMember: one(groupMembers, { fields: [monthlyPayments.groupMemberId], references: [groupMembers.id] }),
 }));
 
 export const tests = pgTable('tests', {
