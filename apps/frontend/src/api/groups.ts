@@ -89,3 +89,17 @@ export async function apiJoinGroup(token: string): Promise<ApiGroupMember> {
   const res = await client.post(`/join/${token}`);
   return res.data;
 }
+
+export interface ApiMyCourse {
+  courseId: string;
+  courseTitle: string;
+  groupName: string;
+  selectedPlanName: string | null;
+  latestPaymentStatus: 'pending' | 'partial' | 'paid' | 'debt' | null;
+  hasAccess: boolean;
+}
+
+export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
+  const res = await client.get('/my/courses');
+  return res.data;
+}

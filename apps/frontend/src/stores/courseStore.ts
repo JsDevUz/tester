@@ -76,6 +76,7 @@ export interface Group {
   inviteToken: string;
   paymentDay: number;
   members: GroupMember[];
+  plans: PricingPlan[];
 }
 
 export interface Lesson {
@@ -219,6 +220,19 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               forcedClosed: m.forcedClosed,
               latestPaymentStatus: m.latestPayment?.status ?? null,
             }));
+            const plans: PricingPlan[] = launchRows
+              .flatMap((l) => l.plans)
+              .filter((p) => p.groupId === groupRow.id)
+              .map((p) => ({
+                id: p.id,
+                name: p.name,
+                description: p.description,
+                price: p.price,
+                originalPrice: p.originalPrice,
+                groupId: p.groupId,
+                startDate: p.startDate,
+                endDate: p.endDate,
+              }));
             return {
               id: groupRow.id,
               name: groupRow.name,
@@ -227,6 +241,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               inviteToken: groupRow.inviteToken,
               paymentDay: groupRow.paymentDay,
               members,
+              plans,
             };
           }),
         );
@@ -813,6 +828,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       inviteToken: row.inviteToken,
       paymentDay: row.paymentDay,
       members: [],
+      plans: [],
     };
     set({
       courses: get().courses.map((c) =>
