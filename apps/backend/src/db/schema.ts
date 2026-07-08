@@ -186,17 +186,6 @@ export const pricingPlansRelations = relations(pricingPlans, ({ one }) => ({
   group: one(groups, { fields: [pricingPlans.groupId], references: [groups.id] }),
 }));
 
-export const groupEnrollmentsRelations = relations(groupEnrollments, ({ one, many }) => ({
-  group: one(groups, { fields: [groupEnrollments.groupId], references: [groups.id] }),
-  schoolMember: one(schoolMembers, { fields: [groupEnrollments.schoolMemberId], references: [schoolMembers.id] }),
-  selectedPlan: one(pricingPlans, { fields: [groupEnrollments.selectedPlanId], references: [pricingPlans.id] }),
-  payments: many(monthlyPayments),
-}));
-
-export const monthlyPaymentsRelations = relations(monthlyPayments, ({ one }) => ({
-  enrollment: one(groupEnrollments, { fields: [monthlyPayments.enrollmentId], references: [groupEnrollments.id] }),
-}));
-
 export const schools = pgTable('schools', {
   id: uuid('id').primaryKey().defaultRandom(),
   adminId: uuid('admin_id').notNull().unique().references(() => admins.id, { onDelete: 'cascade' }),
@@ -236,6 +225,17 @@ export const groupEnrollments = pgTable('group_enrollments', {
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
   removedAt: timestamp('removed_at', { withTimezone: true }),
 });
+
+export const groupEnrollmentsRelations = relations(groupEnrollments, ({ one, many }) => ({
+  group: one(groups, { fields: [groupEnrollments.groupId], references: [groups.id] }),
+  schoolMember: one(schoolMembers, { fields: [groupEnrollments.schoolMemberId], references: [schoolMembers.id] }),
+  selectedPlan: one(pricingPlans, { fields: [groupEnrollments.selectedPlanId], references: [pricingPlans.id] }),
+  payments: many(monthlyPayments),
+}));
+
+export const monthlyPaymentsRelations = relations(monthlyPayments, ({ one }) => ({
+  enrollment: one(groupEnrollments, { fields: [monthlyPayments.enrollmentId], references: [groupEnrollments.id] }),
+}));
 
 export const tests = pgTable('tests', {
   id: uuid('id').primaryKey().defaultRandom(),
