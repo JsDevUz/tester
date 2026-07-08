@@ -15,13 +15,15 @@ import { LiveCreatePage } from './pages/LiveCreatePage';
 import { LiveHostPage } from './pages/LiveHostPage';
 import { LiveJoinPage } from './pages/LiveJoinPage';
 import { LivePlayPage } from './pages/LivePlayPage';
-import { ComingSoonPage } from './pages/ComingSoonPage';
+import { PaymentsPage } from './pages/PaymentsPage';
 import { CoursesPage } from './pages/CoursesPage';
 import { StudentsPage } from './pages/StudentsPage';
 import { AllUsersPage } from './pages/AllUsersPage';
+import { PendingStudentsPage } from './pages/PendingStudentsPage';
 import { SchoolSettingsPage } from './pages/SchoolSettingsPage';
 import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
+import { JoinGroupPage } from './pages/JoinGroupPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
@@ -47,12 +49,13 @@ const router = createBrowserRouter([
   { path: '/live', element: <TeacherRoute><LiveCreatePage /></TeacherRoute> },
   { path: '/live/host/:pin', element: <TeacherRoute><LiveHostPage /></TeacherRoute> },
   { path: '/live/join', element: <LiveJoinPage /> },
+  { path: '/join/:token', element: <JoinGroupPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
-  { path: '/payments', element: <PrivateRoute><ComingSoonPage title="To'lovlar" /></PrivateRoute> },
+  { path: '/payments', element: <PrivateRoute><PaymentsPage /></PrivateRoute> },
   { path: '/students', element: <TeacherRoute><AllUsersPage /></TeacherRoute> },
   { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
-  { path: '/students/pending', element: <PrivateRoute><ComingSoonPage title="Ruxsat kutayotganlar" /></PrivateRoute> },
+  { path: '/students/pending', element: <TeacherRoute><PendingStudentsPage /></TeacherRoute> },
   { path: '/school', element: <Navigate to="/school/settings" replace /> },
   { path: '/school/settings', element: <PrivateRoute><SchoolSettingsPage /></PrivateRoute> },
   { path: '/school/staff', element: <PrivateRoute><SchoolStaffPage /></PrivateRoute> },
