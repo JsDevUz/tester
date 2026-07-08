@@ -1,17 +1,20 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { apiGetJoinPreview, apiJoinGroup } from '../api/groups';
+import { apiGetMe } from '../api/auth';
 import { useAuthStore } from '../stores/authStore';
 
 export function JoinGroupPage() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
+  const authToken = useAuthStore((s) => s.token);
   const student = useAuthStore((s) => s.admin);
 
   const [preview, setPreview] = useState<{ groupName: string; courseTitle: string } | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [joining, setJoining] = useState(false);
   const [joined, setJoined] = useState(false);
+  const [checkingSession, setCheckingSession] = useState(Boolean(authToken && !student));
 
   useEffect(() => {
     if (!token) return;
@@ -19,6 +22,17 @@ export function JoinGroupPage() {
       .then(setPreview)
       .catch(() => setError('Havola topilmadi yoki muddati tugagan.'));
   }, [token]);
+
+  // authStore faqat login() chaqirilganda `admin`ni to'ldiradi — bu sahifa
+  // ko'pincha talaba avvalroq boshqa joyda login qilgan holatda, yangi
+  // tab/havola orqali ochiladi, shunda token bor-u admin hali null bo'ladi.
+  useEffect(() => {
+    if (!authToken || student) return;
+    apiGetMe()
+      .then((me) => useAuthStore.setState({ admin: me }))
+      .catch(() => useAuthStore.getState().logout())
+      .finally(() => setCheckingSession(false));
+  }, [authToken, student]);
 
   async function handleJoin() {
     if (!token) return;
@@ -33,6 +47,14 @@ export function JoinGroupPage() {
     } finally {
       setJoining(false);
     }
+  }
+
+  if (checkingSession) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
+        <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+      </div>
+    );
   }
 
   if (!student) {
