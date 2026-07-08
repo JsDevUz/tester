@@ -1,0 +1,81 @@
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { and, eq } from 'drizzle-orm';
+import { randomUUID } from 'crypto';
+import { extname } from 'path';
+import { db } from '../db';
+import { contentBlocks, courses, lessons, modules } from '../db/schema';
+import { StorageService } from '../storage/storage.service';
+import { VideoJobService } from './video-job.service';
+
+const CONTENT_BLOCK_LIMIT = 7;
+const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.mkv'];
+
+@Injectable()
+export class VideoUploadService {
+  constructor(
+    private readonly storageService: StorageService,
+    private readonly videoJobService: VideoJobService,
+  ) {}
+
+  private async assertLessonOwnership(lessonId: string, adminId: string) {
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+    if (!lesson) throw new NotFoundException('Lesson not found');
+    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
+    if (!module) throw new NotFoundException('Lesson not found');
+    const course = await db.query.courses.findFirst({
+      where: and(eq(courses.id, module.courseId), eq(courses.adminId, adminId)),
+    });
+    if (!course) throw new NotFoundException('Lesson not found');
+    return { lesson, module, course };
+  }
+
+  async uploadVideo(lessonId: string, adminId: string, file: Express.Multer.File, label?: string) {
+    if (!file) throw new BadRequestException('Video fayl topilmadi');
+    const ext = extname(file.originalname).toLowerCase();
+    if (!VIDEO_EXTENSIONS.includes(ext) || !file.mimetype.startsWith('video/')) {
+      throw new BadRequestException('Faqat video fayllar qabul qilinadi');
+    }
+
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({
+        lessonId,
+        type: 'video',
+        orderIndex: existing.length,
+        fileName: file.originalname,
+        label: label?.trim() || file.originalname,
+        processingStatus: 'pending',
+      })
+      .returning();
+
+    const sourceKey = `videos/${lessonId}/${block.id}/source/${randomUUID()}${ext}`;
+    await this.storageService.uploadBuffer(sourceKey, file.buffer, file.mimetype, 'private, max-age=0, no-store');
+
+    const [updated] = await db
+      .update(contentBlocks)
+      .set({ sourceKey, processingStatus: 'pending' })
+      .where(eq(contentBlocks.id, block.id))
+      .returning();
+
+    this.videoJobService.enqueue(block.id);
+    return updated;
+  }
+
+  async retry(blockId: string, adminId: string) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'video') throw new NotFoundException('Video block not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    await db
+      .update(contentBlocks)
+      .set({ processingStatus: 'pending', errorMessage: null })
+      .where(eq(contentBlocks.id, blockId));
+    this.videoJobService.enqueue(blockId);
+    return db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+  }
+}
