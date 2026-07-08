@@ -24,6 +24,7 @@ import { SchoolSettingsPage } from './pages/SchoolSettingsPage';
 import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
 import { JoinGroupPage } from './pages/JoinGroupPage';
+import { MyCoursesPage } from './pages/MyCoursesPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
@@ -52,6 +53,7 @@ const router = createBrowserRouter([
   { path: '/join/:token', element: <JoinGroupPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
+  { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
   { path: '/payments', element: <PrivateRoute><PaymentsPage /></PrivateRoute> },
   { path: '/students', element: <TeacherRoute><AllUsersPage /></TeacherRoute> },
   { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },

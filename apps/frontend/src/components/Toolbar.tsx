@@ -20,6 +20,14 @@ export function Toolbar() {
         >
           Jonli musobaqa
         </button>
+        {admin?.role === 'student' && (
+          <button
+            onClick={() => navigate('/my-courses')}
+            className="text-sm text-gray-500 hover:text-gray-800 px-3 py-1 rounded hover:bg-gray-100"
+          >
+            Mening kurslarim
+          </button>
+        )}
         {admin?.role === 'super' && (
           <button
             onClick={() => navigate('/admins')}
