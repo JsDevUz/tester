@@ -4,7 +4,7 @@ import { Search, Inbox, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
-import { apiListAllStudents, type ApiSchoolStudent } from "../api/school";
+import { apiListAllStudents, apiGetStudentsWithoutGroup, type ApiSchoolStudent, type ApiSchoolStudentWithoutGroup } from "../api/school";
 import {
   apiGetPendingPlanAssignment,
   type ApiPendingPlanAssignment,
@@ -104,6 +104,7 @@ export function StudentsPage() {
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [pendingRows, setPendingRows] = useState<ApiPendingPlanAssignment[]>([]);
+  const [withoutGroupRows, setWithoutGroupRows] = useState<ApiSchoolStudentWithoutGroup[]>([]);
 
   useEffect(() => {
     if (status === "all" || status === "list") {
@@ -113,6 +114,10 @@ export function StudentsPage() {
 
   useEffect(() => {
     void apiGetPendingPlanAssignment().then(setPendingRows);
+  }, []);
+
+  useEffect(() => {
+    void apiGetStudentsWithoutGroup().then(setWithoutGroupRows);
   }, []);
 
   useEffect(() => {
@@ -151,7 +156,7 @@ export function StudentsPage() {
   const tabCounts = {
     "/students": allUsers.length,
     "/students/list": allUsers.length,
-    "/students/pending": pendingRows.length,
+    "/students/pending": pendingRows.length + withoutGroupRows.length,
   };
 
   const title =
@@ -200,7 +205,26 @@ export function StudentsPage() {
           )}
 
           {status === "pending" ? (
-            pendingRows.length === 0 ? (
+            <>
+            {withoutGroupRows.length > 0 && (
+              <div className="rounded-2xl bg-white p-4">
+                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
+                  Guruhga kutilmoqda ({withoutGroupRows.length})
+                </p>
+                <div className="flex flex-col gap-2">
+                  {withoutGroupRows.map((r) => (
+                    <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
+                      <div className="min-w-0">
+                        <p className="truncate text-sm font-semibold text-gray-800">{r.name}</p>
+                        <p className="text-xs text-gray-400">{r.phone ?? ""}</p>
+                      </div>
+                      <p className="shrink-0 text-xs text-gray-400">{formatDate(r.joinedAt)}</p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+            {pendingRows.length === 0 ? (
               <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl bg-white px-4 py-16 text-center text-gray-400">
                 <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-300">
                   <Clock3 size={28} />
@@ -263,7 +287,8 @@ export function StudentsPage() {
                   </table>
                 </div>
               </div>
-            )
+            )}
+            </>
           ) : status === "list" ? (
             <div className="rounded-2xl bg-white">
               {filteredStudents.length === 0 ? (

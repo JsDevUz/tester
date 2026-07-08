@@ -67,6 +67,18 @@ export async function apiListAllStudents(): Promise<ApiSchoolStudent[]> {
   return res.data;
 }
 
+export interface ApiSchoolStudentWithoutGroup {
+  id: string;
+  name: string;
+  phone: string | null;
+  joinedAt: string;
+}
+
+export async function apiGetStudentsWithoutGroup(): Promise<ApiSchoolStudentWithoutGroup[]> {
+  const res = await client.get('/school/students/without-group');
+  return res.data;
+}
+
 export async function apiSearchStudents(query: string): Promise<ApiStudentSearchResult[]> {
   const res = await client.get('/school/students/search', { params: { q: query } });
   return res.data;
