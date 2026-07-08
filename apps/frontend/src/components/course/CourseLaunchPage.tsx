@@ -13,8 +13,6 @@ interface CourseLaunchPageProps {
   onSelectGroups: () => void;
 }
 
-const LAUNCH_NAME_MAX = 65;
-
 function formatPlanDateRange(plan: PricingPlan): string {
   if (!plan.startDate && !plan.endDate) return 'Cheksiz';
   const start = plan.startDate ?? '…';
@@ -23,7 +21,7 @@ function formatPlanDateRange(plan: PricingPlan): string {
 }
 
 export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups }: CourseLaunchPageProps) {
-  const { courses, addLaunch, toggleLaunchActive, renameLaunch, addPricingPlan } = useCourseStore();
+  const { courses, addLaunch, addPricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [modalOpen, setModalOpen] = useState(false);
   const didEnsureLaunch = useRef(false);
@@ -52,53 +50,9 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
           items={[
             { label: 'Kurslar', onClick: onBackToList },
             { label: course.title, onClick: onSelectContent },
-            { label: 'Ishga tushirish va tariflar' },
+            { label: 'Tariflar' },
           ]}
         />
-
-        <div className="mb-4 rounded-2xl bg-white p-5">
-          <h2 className="mb-1 text-lg font-bold text-gray-800">Ishga tushirish sozlamalari</h2>
-          <p className="mb-4 text-sm text-gray-400">Bu yerda ishga tushirish sozlamalarini o'zgartirishingiz mumkin.</p>
-
-          <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5">
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-semibold text-gray-800">
-                {launch.active ? 'Ishga tushirish sotuvda' : 'Ishga tushirish sotuvda emas'}
-              </p>
-              <p className="text-xs text-gray-400">Bosing, ishga tushirish savdo holatini o'zgartirish uchun</p>
-            </div>
-            <span className={`shrink-0 rounded-full px-3 py-1 text-xs font-semibold ${
-              launch.active ? 'bg-green-100 text-green-600' : 'bg-gray-200 text-gray-500'
-            }`}>
-              {launch.active ? 'Faol' : 'Qoralama'}
-            </span>
-            <button
-              type="button"
-              onClick={() => toggleLaunchActive(courseId, launch.id)}
-              className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
-                launch.active ? 'bg-green-500' : 'bg-gray-300'
-              }`}
-            >
-              <span
-                className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  launch.active ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
-              />
-            </button>
-          </div>
-
-          <div className="mt-4">
-            <p className="mb-1.5 text-sm text-gray-500">Ishga tushirish nomi</p>
-            <input
-              value={launch.name}
-              onChange={(e) => renameLaunch(courseId, launch.id, e.target.value.slice(0, LAUNCH_NAME_MAX))}
-              className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-            />
-            <p className="mt-1 text-right text-xs text-gray-300">{launch.name.length} / {LAUNCH_NAME_MAX}</p>
-          </div>
-
-          <p className="mt-4 text-center text-xs text-gray-300">Barchasi saqlandi</p>
-        </div>
 
         <div className="rounded-2xl bg-white p-5">
           <div className="mb-4 flex items-center justify-between gap-3">

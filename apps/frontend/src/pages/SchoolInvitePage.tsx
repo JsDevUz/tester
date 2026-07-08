@@ -10,7 +10,7 @@ export function SchoolInvitePage() {
   const [copied, setCopied] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
 
-  const inviteLink = `${window.location.origin}/join/${inviteToken}`;
+  const inviteLink = `${window.location.origin}/school-invite/${inviteToken}`;
 
   function handleCopy() {
     navigator.clipboard.writeText(inviteLink);
