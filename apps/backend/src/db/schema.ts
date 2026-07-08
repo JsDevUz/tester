@@ -89,8 +89,26 @@ export const modulesRelations = relations(modules, ({ one, many }) => ({
   lessons: many(lessons),
 }));
 
-export const lessonsRelations = relations(lessons, ({ one }) => ({
+export const contentBlocks = pgTable('content_blocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().default('editor'),
+  orderIndex: integer('order_index').notNull().default(0),
+  html: text('html'),
+  fileName: text('file_name'),
+  previewUrl: text('preview_url'),
+  embedUrl: text('embed_url'),
+  label: text('label'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({
+  lesson: one(lessons, { fields: [contentBlocks.lessonId], references: [lessons.id] }),
+}));
+
+export const lessonsRelations = relations(lessons, ({ one, many }) => ({
   module: one(modules, { fields: [lessons.moduleId], references: [modules.id] }),
+  blocks: many(contentBlocks),
 }));
 
 export const tests = pgTable('tests', {
