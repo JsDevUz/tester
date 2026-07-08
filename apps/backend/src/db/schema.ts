@@ -167,6 +167,7 @@ export const monthlyPayments = pgTable('monthly_payments', {
   status: text('status').notNull().default('pending'),
   paymentMethod: text('payment_method'),
   note: text('note'),
+  receiptUrl: text('receipt_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({

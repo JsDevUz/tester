@@ -42,7 +42,15 @@ export class PaymentsService {
     return payment;
   }
 
-  async recordPayment(paymentId: string, adminId: string, amount: number, discount?: number) {
+  async recordPayment(
+    paymentId: string,
+    adminId: string,
+    amount: number,
+    discount?: number,
+    method?: string,
+    note?: string,
+    receiptUrl?: string,
+  ) {
     const payment = await this.assertPaymentOwnership(paymentId, adminId);
     const nextPaidAmount = payment.paidAmount + amount;
     const nextDiscountAmount = discount ?? payment.discountAmount;
@@ -54,10 +62,65 @@ export class PaymentsService {
         paidAmount: nextPaidAmount,
         discountAmount: nextDiscountAmount,
         status: nextStatus,
+        ...(method !== undefined ? { paymentMethod: method } : {}),
+        ...(note !== undefined ? { note } : {}),
+        ...(receiptUrl !== undefined ? { receiptUrl } : {}),
         updatedAt: new Date(),
       })
       .where(eq(monthlyPayments.id, paymentId))
       .returning();
     return updated;
+  }
+
+  async findAllForAdmin(adminId: string) {
+    const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
+    const courseIds = adminCourses.map((c) => c.id);
+    if (courseIds.length === 0) return [];
+
+    const courseGroups = await db.query.groups.findMany({
+      where: (table, { inArray }) => inArray(table.courseId, courseIds),
+    });
+    const groupIds = courseGroups.map((g) => g.id);
+    if (groupIds.length === 0) return [];
+
+    const members = await db.query.groupMembers.findMany({
+      where: (table, { inArray }) => inArray(table.groupId, groupIds),
+      with: { student: true, selectedPlan: true },
+    });
+    const memberIds = members.map((m) => m.id);
+    if (memberIds.length === 0) return [];
+
+    const payments = await db.query.monthlyPayments.findMany({
+      where: (table, { inArray }) => inArray(table.groupMemberId, memberIds),
+      orderBy: [desc(monthlyPayments.periodMonth)],
+    });
+
+    const groupById = new Map(courseGroups.map((g) => [g.id, g]));
+    const courseById = new Map(adminCourses.map((c) => [c.id, c]));
+    const memberById = new Map(members.map((m) => [m.id, m]));
+
+    return payments.map((p) => {
+      const member = memberById.get(p.groupMemberId)!;
+      const group = groupById.get(member.groupId)!;
+      const course = courseById.get(group.courseId)!;
+      return {
+        id: p.id,
+        groupMemberId: p.groupMemberId,
+        periodMonth: p.periodMonth,
+        expectedAmount: p.expectedAmount,
+        discountAmount: p.discountAmount,
+        paidAmount: p.paidAmount,
+        status: p.status,
+        paymentMethod: p.paymentMethod,
+        note: p.note,
+        receiptUrl: p.receiptUrl,
+        updatedAt: p.updatedAt,
+        studentName: member.student.name,
+        studentPhone: member.student.phone,
+        courseTitle: course.title,
+        groupName: group.name,
+        planName: member.selectedPlan?.name ?? null,
+      };
+    });
   }
 }
