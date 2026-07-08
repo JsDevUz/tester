@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { schools, schoolMembers, users, courses, groups, groupMembers, monthlyPayments } from '../db/schema';
+import { schools, schoolMembers, users, courses, groups, groupEnrollments, monthlyPayments } from '../db/schema';
 import { and, eq, ilike, isNull, ne, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 
@@ -96,15 +96,15 @@ export class SchoolsService {
             totalPaid: 0,
           };
         }
-        const memberships = await db.query.groupMembers.findMany({
-          where: (gm, { inArray }) =>
-            and(eq(gm.studentId, m.studentId), inArray(gm.groupId, groupIds), isNull(gm.removedAt)),
+        const memberships = await db.query.groupEnrollments.findMany({
+          where: (e, { inArray }) =>
+            and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
         });
-        const memberIds = memberships.map((gm) => gm.id);
+        const enrollmentIds = memberships.map((e) => e.id);
         let totalPaid = 0;
-        if (memberIds.length > 0) {
+        if (enrollmentIds.length > 0) {
           const payments = await db.query.monthlyPayments.findMany({
-            where: (mp, { inArray }) => inArray(mp.groupMemberId, memberIds),
+            where: (mp, { inArray }) => inArray(mp.enrollmentId, enrollmentIds),
           });
           totalPaid = payments.reduce((sum, p) => sum + p.paidAmount, 0);
         }
@@ -117,6 +117,36 @@ export class SchoolsService {
         };
       }),
     );
+  }
+
+  async findStudentsWithoutGroup(adminId: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const members = await db.query.schoolMembers.findMany({
+      where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
+      with: { student: true },
+    });
+
+    const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
+    const courseIds = adminCourses.map((c) => c.id);
+    const adminGroups = courseIds.length
+      ? await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) })
+      : [];
+    const groupIds = adminGroups.map((g) => g.id);
+
+    const result: { id: string; name: string; phone: string | null; joinedAt: Date | null }[] = [];
+    for (const m of members) {
+      if (groupIds.length === 0) {
+        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, joinedAt: m.joinedAt });
+        continue;
+      }
+      const activeEnrollment = await db.query.groupEnrollments.findFirst({
+        where: (e, { inArray }) => and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
+      });
+      if (!activeEnrollment) {
+        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, joinedAt: m.joinedAt });
+      }
+    }
+    return result;
   }
 
   async searchStudents(adminId: string, query: string) {
