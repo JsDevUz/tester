@@ -1,12 +1,8 @@
 import { useState } from 'react';
-import { Inbox, Plus, Users, X, Trash2 } from 'lucide-react';
+import { Inbox, Plus, Users, X, Trash2, Copy, Check } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
-import { useAuthStore } from '../../stores/authStore';
-import { MOCK_STUDENTS } from '../../pages/StudentsPage';
-import { getMockCurators } from '../../data/mockCurators';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
-import { AddStudentToGroupModal } from './AddStudentToGroupModal';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CourseGroupsPageProps {
@@ -38,56 +34,53 @@ function initials(name: string) {
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch }: CourseGroupsPageProps) {
   const {
     courses, addGroup, renameGroup,
-    setGroupCurators, addStudentToGroup, removeStudentFromGroup, deleteGroup,
+    setMemberRole, removeStudentFromGroup, deleteGroup,
   } = useCourseStore();
-  const admin = useAuthStore((s) => s.admin);
   const course = courses.find((c) => c.id === courseId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
-  const [addStudentModalOpen, setAddStudentModalOpen] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
+  const [linkCopied, setLinkCopied] = useState(false);
 
   if (!course) return null;
   const group = selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
-  const curators = getMockCurators(admin?.name);
 
   function handleCreateGroup() {
     if (!course) return;
-    const newGroup = addGroup(courseId, `Guruh ${course.groups.length + 1}`);
-    if (newGroup) {
-      setSelectedGroupId(newGroup.id);
-      setInnerTab('students');
-    }
-  }
-
-  function handleAddStudents(studentIds: string[]) {
-    if (!group) return;
-    studentIds.forEach((id) => addStudentToGroup(courseId, group.id, id));
-    setAddStudentModalOpen(false);
+    void addGroup(courseId, `Guruh ${course.groups.length + 1}`).then((newGroup) => {
+      if (newGroup) {
+        setSelectedGroupId(newGroup.id);
+        setInnerTab('students');
+      }
+    });
   }
 
   function handleConfirmDeleteGroup() {
     if (!group) return;
-    deleteGroup(courseId, group.id);
+    void deleteGroup(courseId, group.id);
     setSelectedGroupId(null);
     setConfirmDelete(false);
   }
 
-  function handlePickCurator(curatorId: string) {
-    if (!group || !curatorId) return;
-    if (group.curatorIds.includes(curatorId)) return;
-    setGroupCurators(courseId, group.id, [...group.curatorIds, curatorId]);
+  function handleCopyInviteLink() {
+    if (!group) return;
+    const url = `${window.location.origin}/join/${group.inviteToken}`;
+    void navigator.clipboard.writeText(url).then(() => {
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
+    });
   }
 
-  function handleRemoveCurator(curatorId: string) {
+  function handleToggleCurator(memberId: string, isCurator: boolean) {
     if (!group) return;
-    setGroupCurators(courseId, group.id, group.curatorIds.filter((id) => id !== curatorId));
+    void setMemberRole(courseId, group.id, memberId, isCurator ? 'student' : 'curator');
   }
 
   // ─── Holat B: guruh ichki ko'rinishi ───────────────────────────────
   if (group) {
-    const groupStudents = MOCK_STUDENTS.filter((s) => group.studentIds.includes(s.id));
+    const students = group.members.filter((m) => m.role === 'student');
+    const curators = group.members.filter((m) => m.role === 'curator');
 
     return (
       <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -128,40 +121,62 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
                   <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                    {group.studentIds.length}
+                    {students.length}
                   </span>
                 </div>
                 <button
                   type="button"
-                  onClick={() => setAddStudentModalOpen(true)}
-                  className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600"
+                  onClick={handleCopyInviteLink}
+                  className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
                 >
-                  <Plus size={16} /> O'quvchi qo'shish
+                  {linkCopied ? <Check size={16} /> : <Copy size={16} />}
+                  {linkCopied ? 'Nusxalandi' : 'Havolani nusxalash'}
                 </button>
               </div>
 
-              {groupStudents.length === 0 ? (
+              {students.length === 0 ? (
                 <div className="rounded-2xl bg-gray-50 py-14 text-center">
                   <Users size={30} className="mx-auto mb-3 text-indigo-200" />
                   <p className="text-sm font-semibold text-gray-700">O'quvchilar topilmadi</p>
                   <p className="mt-1 text-xs text-gray-400">
-                    Ular guruh tarifi orqali sotib olingandan keyin paydo bo'ladi
+                    Ular yuqoridagi havola orqali guruhga qo'shilgach paydo bo'ladi
                   </p>
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {groupStudents.map((s) => (
-                    <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${paletteFor(s.id)}`}>
-                        {initials(s.name)}
+                  {students.map((m) => (
+                    <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${paletteFor(m.id)}`}>
+                        {initials(m.studentName)}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-800">{s.name}</p>
-                        <p className="text-xs text-gray-400">{s.phone}</p>
+                        <p className="truncate text-sm font-semibold text-gray-800">{m.studentName}</p>
+                        <p className="text-xs text-gray-400">{m.studentPhone ?? ''}</p>
                       </div>
+                      {m.latestPaymentStatus && (
+                        <span
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
+                            m.latestPaymentStatus === 'paid'
+                              ? 'bg-green-100 text-green-600'
+                              : m.latestPaymentStatus === 'partial'
+                                ? 'bg-amber-100 text-amber-600'
+                                : m.latestPaymentStatus === 'debt'
+                                  ? 'bg-red-100 text-red-600'
+                                  : 'bg-gray-200 text-gray-500'
+                          }`}
+                        >
+                          {m.latestPaymentStatus === 'paid'
+                            ? "To'landi"
+                            : m.latestPaymentStatus === 'partial'
+                              ? 'Qisman'
+                              : m.latestPaymentStatus === 'debt'
+                                ? 'Qarz'
+                                : 'Kutilmoqda'}
+                        </span>
+                      )}
                       <button
                         type="button"
-                        onClick={() => removeStudentFromGroup(courseId, group.id, s.id)}
+                        onClick={() => void removeStudentFromGroup(courseId, group.id, m.id)}
                         className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                         aria-label="Guruhdan olib tashlash"
                       >
@@ -179,7 +194,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 <p className="mb-1.5 text-sm text-gray-500">Guruh nomi</p>
                 <input
                   value={group.name}
-                  onChange={(e) => renameGroup(courseId, group.id, e.target.value)}
+                  onChange={(e) => void renameGroup(courseId, group.id, e.target.value)}
                   className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 />
 
@@ -216,39 +231,41 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
               <div className="rounded-2xl bg-white p-5">
                 <h3 className="mb-4 text-base font-bold text-gray-800">Guruh kuratorlari</h3>
-                <select
-                  value=""
-                  onChange={(e) => handlePickCurator(e.target.value)}
-                  className="mb-3 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-                >
-                  <option value="">Kurator tanlang...</option>
-                  {curators.filter((c) => !group.curatorIds.includes(c.id)).map((c) => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
+                <p className="mb-3 text-xs text-gray-400">
+                  O'quvchini kuratorga aylantirish uchun uning yonidagi tugmani bosing
+                </p>
 
-                {group.curatorIds.length === 0 ? (
+                {curators.length === 0 ? (
                   <p className="text-xs text-gray-400">Hozircha kurator tayinlanmagan</p>
                 ) : (
-                  <div className="flex flex-col gap-2">
-                    {group.curatorIds.map((curatorId) => {
-                      const curator = curators.find((c) => c.id === curatorId);
-                      if (!curator) return null;
-                      return (
-                        <div key={curatorId} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2">
-                          <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{curator.name}</p>
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveCurator(curatorId)}
-                            className="shrink-0 rounded-lg p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                            aria-label="Kuratorni olib tashlash"
-                          >
-                            <X size={14} />
-                          </button>
-                        </div>
-                      );
-                    })}
+                  <div className="mb-3 flex flex-col gap-2">
+                    {curators.map((m) => (
+                      <div key={m.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2">
+                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{m.studentName}</p>
+                        <button
+                          type="button"
+                          onClick={() => handleToggleCurator(m.id, true)}
+                          className="shrink-0 rounded-lg p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                          aria-label="Kuratorlikni bekor qilish"
+                        >
+                          <X size={14} />
+                        </button>
+                      </div>
+                    ))}
                   </div>
+                )}
+
+                {students.length > 0 && (
+                  <select
+                    value=""
+                    onChange={(e) => e.target.value && handleToggleCurator(e.target.value, false)}
+                    className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+                  >
+                    <option value="">O'quvchini kurator qilish...</option>
+                    {students.map((m) => (
+                      <option key={m.id} value={m.id}>{m.studentName}</option>
+                    ))}
+                  </select>
                 )}
               </div>
 
@@ -282,14 +299,6 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={() => {}}
         />
-
-        {addStudentModalOpen && (
-          <AddStudentToGroupModal
-            alreadyInGroup={group.studentIds}
-            onConfirm={handleAddStudents}
-            onClose={() => setAddStudentModalOpen(false)}
-          />
-        )}
 
         {confirmDelete && (
           <ConfirmDeleteModal
@@ -340,9 +349,8 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
         ) : (
           <div className="flex flex-col gap-2">
             {course.groups.map((g) => {
-              const curatorNames = g.curatorIds
-                .map((id) => curators.find((c) => c.id === id)?.name)
-                .filter((n): n is string => !!n);
+              const curatorNames = g.members.filter((m) => m.role === 'curator').map((m) => m.studentName);
+              const studentCount = g.members.filter((m) => m.role === 'student').length;
               return (
                 <button
                   key={g.id}
@@ -352,11 +360,11 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 >
                   <div className="mb-1.5 flex items-center gap-1.5 text-xs text-gray-400">
                     <Users size={13} />
-                    {g.studentIds.length} ta ishtirokchi
+                    {studentCount} ta ishtirokchi
                   </div>
                   <p className="mb-1.5 text-base font-bold text-gray-800">{g.name}</p>
                   <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
-                    <span>Cheklovsiz</span>
+                    <span>Har oyning {g.paymentDay}-sanasi</span>
                     <span>•</span>
                     <span>
                       {curatorNames.length === 0
