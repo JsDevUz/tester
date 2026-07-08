@@ -12,6 +12,7 @@ class CreateBlockDto {
 class UpdateBlockDto {
   @IsOptional() @IsString() html?: string;
   @IsOptional() @IsString() @MinLength(0) label?: string;
+  @IsOptional() @IsString() embedUrl?: string;
 }
 
 class ReorderBlocksDto {

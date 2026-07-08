@@ -2,11 +2,14 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { db } from '../db';
 import { courses, modules, lessons, contentBlocks } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
+import { StorageService } from '../storage/storage.service';
 
 const CONTENT_BLOCK_LIMIT = 7;
 
 @Injectable()
 export class ContentBlocksService {
+  constructor(private readonly storageService: StorageService) {}
+
   private async assertLessonOwnership(lessonId: string, adminId: string) {
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) throw new NotFoundException('Lesson not found');
@@ -42,7 +45,7 @@ export class ContentBlocksService {
     return block;
   }
 
-  async update(id: string, adminId: string, data: { html?: string; label?: string }) {
+  async update(id: string, adminId: string, data: { html?: string; label?: string; embedUrl?: string }) {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, id) });
     if (!block) throw new NotFoundException('Block not found');
     await this.assertLessonOwnership(block.lessonId, adminId);
@@ -54,6 +57,9 @@ export class ContentBlocksService {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, id) });
     if (!block) throw new NotFoundException('Block not found');
     await this.assertLessonOwnership(block.lessonId, adminId);
+    if (block.type === 'video') {
+      await this.storageService.deletePrefix(`videos/${block.lessonId}/${block.id}/`);
+    }
     await db.delete(contentBlocks).where(eq(contentBlocks.id, id));
   }
 
