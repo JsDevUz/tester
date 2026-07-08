@@ -1,8 +1,9 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Search, Inbox, GraduationCap } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
+import { apiListAllStudents } from "../api/school";
 
 export interface StudentRow {
   id: string;
@@ -126,6 +127,11 @@ function progressColor(pct: number) {
 
 export function StudentsPage() {
   const [query, setQuery] = useState("");
+  const [totalCount, setTotalCount] = useState(0);
+
+  useEffect(() => {
+    void apiListAllStudents().then((rows) => setTotalCount(rows.length));
+  }, []);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -149,7 +155,13 @@ export function StudentsPage() {
             </p>
           </div>
 
-          <StudentsSectionTabs />
+          <StudentsSectionTabs
+            counts={{
+              "/students": totalCount,
+              "/students/list": totalCount,
+              "/students/pending": 0,
+            }}
+          />
 
           <div className="relative w-fit max-w-full">
             <Search
@@ -165,14 +177,7 @@ export function StudentsPage() {
             />
           </div>
 
-          <div className="rounded-2xl bg-white p-4">
-            <div className="mb-3 flex items-center gap-2">
-              <p className="text-sm font-semibold text-gray-700">O'quvchi</p>
-              <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                {filtered.length}
-              </span>
-            </div>
-
+          <div className="rounded-2xl bg-white">
             {filtered.length === 0 ? (
               <div className="text-center py-16 text-gray-400">
                 <Inbox size={36} className="mx-auto mb-3 opacity-30" />
@@ -183,126 +188,131 @@ export function StudentsPage() {
             ) : (
               <>
                 <div className="md:hidden flex flex-col gap-2">
-                {filtered.map((s) => (
-                  <div key={s.id} className="bg-white rounded-2xl px-3.5 py-3">
-                    <div className="flex items-center gap-3">
-                      <div
-                        className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(s.id)}`}
-                      >
-                        {initials(s.name)}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">
-                            {s.name}
-                          </p>
-                          {!s.active && (
-                            <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-                              Faol emas
-                            </span>
-                          )}
+                  {filtered.map((s) => (
+                    <div
+                      key={s.id}
+                      className="bg-white rounded-2xl px-3.5 py-3"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div
+                          className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(s.id)}`}
+                        >
+                          {initials(s.name)}
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">
-                          {s.phone}
-                        </p>
-                      </div>
-                      <div className="text-right shrink-0">
-                        <p className="text-xs text-gray-400">
-                          {formatDate(s.joinedAt)}
-                        </p>
-                      </div>
-                    </div>
-                    {s.product && (
-                      <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between gap-2 text-xs">
-                        <div className="min-w-0 flex items-center gap-1.5 text-gray-500">
-                          <GraduationCap
-                            size={13}
-                            className="text-gray-300 shrink-0"
-                          />
-                          <span className="truncate">{s.product}</span>
-                        </div>
-                        {s.progress !== null && (
-                          <span
-                            className={`shrink-0 font-semibold ${progressColor(s.progress)}`}
-                          >
-                            {s.progress}%
-                          </span>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-
-                <div className="hidden md:block overflow-x-auto">
-                <table className="w-full min-w-210 text-left">
-                  <thead className="text-sm font-medium text-gray-700">
-                    <tr>
-                      <th className="px-5 py-4">O'quvchi</th>
-                      <th className="px-5 py-4">Mahsulot</th>
-                      <th className="px-5 py-4">Progress</th>
-                      <th className="px-5 py-4">Joriy dars</th>
-                      <th className="px-5 py-4">Tarif</th>
-                      <th className="px-5 py-4">Yozilgan sana</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {filtered.map((s) => (
-                      <tr
-                        key={s.id}
-                        className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
-                      >
-                        <td className="px-5 py-4">
-                          <div className="flex items-center gap-3">
-                            <div
-                              className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(s.id)}`}
-                            >
-                              {initials(s.name)}
-                            </div>
-                            <div className="flex items-center gap-2 min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 truncate">
-                                {s.name}
-                              </p>
-                              {!s.active && (
-                                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-                                  Faol emas
-                                </span>
-                              )}
-                            </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <p className="text-sm font-semibold text-gray-800 truncate">
+                              {s.name}
+                            </p>
+                            {!s.active && (
+                              <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
+                                Faol emas
+                              </span>
+                            )}
                           </div>
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-600">
-                          {s.product ?? (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4">
-                          {s.progress !== null ? (
+                          <p className="text-xs text-gray-400 mt-0.5">
+                            {s.phone}
+                          </p>
+                        </div>
+                        <div className="text-right shrink-0">
+                          <p className="text-xs text-gray-400">
+                            {formatDate(s.joinedAt)}
+                          </p>
+                        </div>
+                      </div>
+                      {s.product && (
+                        <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between gap-2 text-xs">
+                          <div className="min-w-0 flex items-center gap-1.5 text-gray-500">
+                            <GraduationCap
+                              size={13}
+                              className="text-gray-300 shrink-0"
+                            />
+                            <span className="truncate">{s.product}</span>
+                          </div>
+                          {s.progress !== null && (
                             <span
-                              className={`text-sm font-semibold ${progressColor(s.progress)}`}
+                              className={`shrink-0 font-semibold ${progressColor(s.progress)}`}
                             >
                               {s.progress}%
                             </span>
-                          ) : (
-                            <span className="text-sm text-gray-300">—</span>
                           )}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-500">
-                          {s.currentLesson ?? (
-                            <span className="text-gray-300">—</span>
-                          )}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-500">
-                          {s.tariff ?? <span className="text-gray-300">—</span>}
-                        </td>
-                        <td className="px-5 py-4 text-sm text-gray-500">
-                          {formatDate(s.joinedAt)}
-                        </td>
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <div className="hidden md:block overflow-x-auto">
+                  <table className="w-full min-w-210 text-left">
+                    <thead className="text-sm font-medium text-gray-700">
+                      <tr>
+                        <th className="px-5 py-4">O'quvchi</th>
+                        <th className="px-5 py-4">Mahsulot</th>
+                        <th className="px-5 py-4">Progress</th>
+                        <th className="px-5 py-4">Joriy dars</th>
+                        <th className="px-5 py-4">Tarif</th>
+                        <th className="px-5 py-4">Yozilgan sana</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
+                    </thead>
+                    <tbody>
+                      {filtered.map((s) => (
+                        <tr
+                          key={s.id}
+                          className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
+                        >
+                          <td className="px-5 py-4">
+                            <div className="flex items-center gap-3">
+                              <div
+                                className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(s.id)}`}
+                              >
+                                {initials(s.name)}
+                              </div>
+                              <div className="flex items-center gap-2 min-w-0">
+                                <p className="text-sm font-semibold text-gray-800 truncate">
+                                  {s.name}
+                                </p>
+                                {!s.active && (
+                                  <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
+                                    Faol emas
+                                  </span>
+                                )}
+                              </div>
+                            </div>
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-600">
+                            {s.product ?? (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4">
+                            {s.progress !== null ? (
+                              <span
+                                className={`text-sm font-semibold ${progressColor(s.progress)}`}
+                              >
+                                {s.progress}%
+                              </span>
+                            ) : (
+                              <span className="text-sm text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500">
+                            {s.currentLesson ?? (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500">
+                            {s.tariff ?? (
+                              <span className="text-gray-300">—</span>
+                            )}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500">
+                            {formatDate(s.joinedAt)}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </>
             )}
           </div>

@@ -16,7 +16,7 @@ export function PendingStudentsPage() {
             </p>
           </div>
 
-          <StudentsSectionTabs />
+          <StudentsSectionTabs counts={{ "/students/pending": 0 }} />
 
           <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl bg-white px-4 py-16 text-center text-gray-400">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-300">
