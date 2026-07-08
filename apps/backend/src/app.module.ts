@@ -5,6 +5,7 @@ import { FoldersModule } from './folders/folders.module';
 import { CoursesModule } from './courses/courses.module';
 import { CourseModulesModule } from './course-modules/course-modules.module';
 import { LessonsModule } from './lessons/lessons.module';
+import { ContentBlocksModule } from './content-blocks/content-blocks.module';
 import { TestsModule } from './tests/tests.module';
 import { QuestionsModule } from './questions/questions.module';
 import { DeliveryModule } from './delivery/delivery.module';
@@ -22,6 +23,7 @@ import 'dotenv/config';
     CoursesModule,
     CourseModulesModule,
     LessonsModule,
+    ContentBlocksModule,
     TestsModule,
     QuestionsModule,
     DeliveryModule,
