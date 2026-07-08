@@ -101,6 +101,14 @@ export const contentBlocks = pgTable('content_blocks', {
   previewUrl: text('preview_url'),
   embedUrl: text('embed_url'),
   label: text('label'),
+  processingStatus: text('processing_status').notNull().default('ready'),
+  sourceKey: text('source_key'),
+  hlsMasterKey: text('hls_master_key'),
+  hlsBaseKey: text('hls_base_key'),
+  aesKeyRef: text('aes_key_ref'),
+  durationSec: integer('duration_sec'),
+  errorMessage: text('error_message'),
+  processedAt: timestamp('processed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
