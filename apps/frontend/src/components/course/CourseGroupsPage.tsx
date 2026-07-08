@@ -1,11 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Inbox, Plus, Users, X, Trash2, Copy, Check } from 'lucide-react';
+import { Inbox, Plus, Users, X, Trash2 } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { useSchoolStore } from '../../stores/schoolStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import type { ApiMonthlyPayment } from '../../api/payments';
+import { apiListAllStudents, type ApiSchoolStudent } from '../../api/school';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -37,7 +38,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const {
     courses, addGroup, renameGroup,
     setMemberRole, removeStudentFromGroup, deleteGroup,
-    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator,
+    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator, enrollStudent,
   } = useCourseStore();
   const { staff, loaded: staffLoaded, loadStaff } = useSchoolStore();
   const course = courses.find((c) => c.id === courseId);
@@ -45,8 +46,8 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
   const [confirmDelete, setConfirmDelete] = useState(false);
-  const [linkCopied, setLinkCopied] = useState(false);
   const [payments, setPayments] = useState<ApiMonthlyPayment[]>([]);
+  const [schoolStudents, setSchoolStudents] = useState<ApiSchoolStudent[]>([]);
 
   const group = course && selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
 
@@ -54,6 +55,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     if (group && innerTab === 'settings') {
       void loadGroupPayments(group.id).then(setPayments);
       if (!staffLoaded) void loadStaff();
+    }
+    if (group && innerTab === 'students') {
+      void apiListAllStudents().then(setSchoolStudents);
     }
   }, [group?.id, innerTab, loadGroupPayments, staffLoaded, loadStaff]);
 
@@ -74,15 +78,6 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     void deleteGroup(courseId, group.id);
     setSelectedGroupId(null);
     setConfirmDelete(false);
-  }
-
-  function handleCopyInviteLink() {
-    if (!group) return;
-    const url = `${window.location.origin}/join/${group.inviteToken}`;
-    void navigator.clipboard.writeText(url).then(() => {
-      setLinkCopied(true);
-      setTimeout(() => setLinkCopied(false), 2000);
-    });
   }
 
   function handleToggleCurator(memberId: string, isCurator: boolean) {
@@ -137,14 +132,18 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                     {students.length}
                   </span>
                 </div>
-                <button
-                  type="button"
-                  onClick={handleCopyInviteLink}
-                  className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+                <select
+                  value=""
+                  onChange={(e) => e.target.value && void enrollStudent(courseId, group.id, e.target.value)}
+                  className="shrink-0 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 >
-                  {linkCopied ? <Check size={16} /> : <Copy size={16} />}
-                  {linkCopied ? 'Nusxalandi' : 'Havolani nusxalash'}
-                </button>
+                  <option value="">O'quvchi qo'shish...</option>
+                  {schoolStudents
+                    .filter((s) => !students.some((m) => m.studentId === s.id))
+                    .map((s) => (
+                      <option key={s.id} value={s.id}>{s.name}</option>
+                    ))}
+                </select>
               </div>
 
               {students.length === 0 ? (
