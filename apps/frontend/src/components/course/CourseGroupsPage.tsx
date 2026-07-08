@@ -1,9 +1,11 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Inbox, Plus, Users, X, Trash2, Copy, Check } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
+import { RecordPaymentModal } from './RecordPaymentModal';
+import type { ApiMonthlyPayment } from '../../api/payments';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -35,6 +37,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const {
     courses, addGroup, renameGroup,
     setMemberRole, removeStudentFromGroup, deleteGroup,
+    setMemberPlan, setMemberForcedClosed, recordPayment, loadGroupPayments,
   } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
 
@@ -42,9 +45,18 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [linkCopied, setLinkCopied] = useState(false);
+  const [paymentModalMemberId, setPaymentModalMemberId] = useState<string | null>(null);
+  const [payments, setPayments] = useState<ApiMonthlyPayment[]>([]);
+
+  const group = course && selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
+
+  useEffect(() => {
+    if (group && innerTab === 'settings') {
+      void loadGroupPayments(group.id).then(setPayments);
+    }
+  }, [group?.id, innerTab, loadGroupPayments]);
 
   if (!course) return null;
-  const group = selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
 
   function handleCreateGroup() {
     if (!course) return;
@@ -174,6 +186,35 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                                 : 'Kutilmoqda'}
                         </span>
                       )}
+                      <select
+                        value={m.selectedPlanId ?? ''}
+                        onChange={(e) => void setMemberPlan(courseId, group.id, m.id, e.target.value || null)}
+                        className="shrink-0 rounded-lg bg-gray-100 px-2 py-1.5 text-xs outline-none"
+                      >
+                        <option value="">Tarifsiz</option>
+                        {group.plans.map((p) => (
+                          <option key={p.id} value={p.id}>{p.name}</option>
+                        ))}
+                      </select>
+                      {m.selectedPlanId && (
+                        <button
+                          type="button"
+                          onClick={() => setPaymentModalMemberId(m.id)}
+                          className="shrink-0 rounded-lg bg-indigo-50 px-2.5 py-1.5 text-xs font-semibold text-indigo-600 transition-colors hover:bg-indigo-100"
+                        >
+                          To'lov
+                        </button>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => void setMemberForcedClosed(courseId, group.id, m.id, !m.forcedClosed)}
+                        title={m.forcedClosed ? 'Ochish' : 'Majburiy yopish'}
+                        className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
+                          m.forcedClosed ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                        }`}
+                      >
+                        {m.forcedClosed ? 'Yopiq' : 'Ochiq'}
+                      </button>
                       <button
                         type="button"
                         onClick={() => void removeStudentFromGroup(courseId, group.id, m.id)}
@@ -270,6 +311,29 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               </div>
 
               <div className="rounded-2xl bg-white p-5">
+                <h3 className="mb-4 text-base font-bold text-gray-800">To'lovlar tarixi</h3>
+                {payments.length === 0 ? (
+                  <p className="text-xs text-gray-400">Hozircha to'lov yozuvlari yo'q</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {payments.map((p) => {
+                      const member = group.members.find((m) => m.id === p.groupMemberId);
+                      return (
+                        <div key={p.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                          <span className="min-w-0 flex-1 truncate text-gray-700">
+                            {member?.studentName ?? 'Noma\'lum'} — {new Date(p.periodMonth).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })}
+                          </span>
+                          <span className="shrink-0 text-xs text-gray-400">
+                            {p.paidAmount}/{p.expectedAmount - p.discountAmount}
+                          </span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+
+              <div className="rounded-2xl bg-white p-5">
                 <h3 className="mb-4 text-base font-bold text-gray-800">Amallar</h3>
                 <button
                   type="button"
@@ -306,6 +370,27 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
             description={`"${group.name}" guruhi o'chiriladi. Chat, kanal va a'zolik ma'lumotlari ham yo'qoladi.`}
             onConfirm={handleConfirmDeleteGroup}
             onClose={() => setConfirmDelete(false)}
+          />
+        )}
+
+        {paymentModalMemberId && (
+          <RecordPaymentModal
+            studentName={group.members.find((m) => m.id === paymentModalMemberId)?.studentName ?? ''}
+            onConfirm={(amount, discount) => {
+              const memberPayments = payments.filter((p) => p.groupMemberId === paymentModalMemberId);
+              const latest = memberPayments.sort(
+                (a, b) => new Date(b.periodMonth).getTime() - new Date(a.periodMonth).getTime(),
+              )[0];
+              if (!latest) {
+                setPaymentModalMemberId(null);
+                return;
+              }
+              void recordPayment(latest.id, amount, discount).then(() => {
+                void loadGroupPayments(group.id).then(setPayments);
+              });
+              setPaymentModalMemberId(null);
+            }}
+            onClose={() => setPaymentModalMemberId(null)}
           />
         )}
       </div>
