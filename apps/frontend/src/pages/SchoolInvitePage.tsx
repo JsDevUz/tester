@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Check, Copy, RotateCcw } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
@@ -6,9 +6,13 @@ import { ConfirmDeleteModal } from '../components/course/ConfirmDeleteModal';
 import { useSchoolStore } from '../stores/schoolStore';
 
 export function SchoolInvitePage() {
-  const { inviteToken, regenerateInviteToken } = useSchoolStore();
+  const { inviteToken, loaded, loadSchool, regenerateInviteToken } = useSchoolStore();
   const [copied, setCopied] = useState(false);
   const [confirmRegenerate, setConfirmRegenerate] = useState(false);
+
+  useEffect(() => {
+    void loadSchool();
+  }, [loadSchool]);
 
   const inviteLink = `${window.location.origin}/school-invite/${inviteToken}`;
 
@@ -19,8 +23,18 @@ export function SchoolInvitePage() {
   }
 
   function handleConfirmRegenerate() {
-    regenerateInviteToken();
+    void regenerateInviteToken();
     setConfirmRegenerate(false);
+  }
+
+  if (!loaded) {
+    return (
+      <AppShell>
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+        </div>
+      </AppShell>
+    );
   }
 
   return (

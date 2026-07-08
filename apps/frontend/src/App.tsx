@@ -23,6 +23,7 @@ import { PendingStudentsPage } from './pages/PendingStudentsPage';
 import { SchoolSettingsPage } from './pages/SchoolSettingsPage';
 import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
+import { SchoolInviteJoinPage } from './pages/SchoolInviteJoinPage';
 import { JoinGroupPage } from './pages/JoinGroupPage';
 import { MyCoursesPage } from './pages/MyCoursesPage';
 import { PrivateRoute } from './components/PrivateRoute';
@@ -51,6 +52,7 @@ const router = createBrowserRouter([
   { path: '/live/host/:pin', element: <TeacherRoute><LiveHostPage /></TeacherRoute> },
   { path: '/live/join', element: <LiveJoinPage /> },
   { path: '/join/:token', element: <JoinGroupPage /> },
+  { path: '/school-invite/:token', element: <SchoolInviteJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },

@@ -1,3 +1,4 @@
+import { useEffect } from 'react';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { useSchoolStore } from '../stores/schoolStore';
@@ -6,7 +7,21 @@ const NAME_MAX = 50;
 const DESCRIPTION_MAX = 200;
 
 export function SchoolSettingsPage() {
-  const { name, description, renameSchool, setSchoolDescription } = useSchoolStore();
+  const { name, description, loaded, loadSchool, renameSchool, setSchoolDescription } = useSchoolStore();
+
+  useEffect(() => {
+    void loadSchool();
+  }, [loadSchool]);
+
+  if (!loaded) {
+    return (
+      <AppShell>
+        <div className="flex min-h-screen items-center justify-center">
+          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -21,7 +36,7 @@ export function SchoolSettingsPage() {
             <p className="mb-1.5 text-sm text-gray-500">Maktab nomi</p>
             <input
               value={name}
-              onChange={(e) => renameSchool(e.target.value.slice(0, NAME_MAX))}
+              onChange={(e) => void renameSchool(e.target.value.slice(0, NAME_MAX))}
               className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
             />
             <p className="mb-4 mt-1 text-right text-xs text-gray-300">{name.length} / {NAME_MAX}</p>
@@ -29,7 +44,7 @@ export function SchoolSettingsPage() {
             <p className="mb-1.5 text-sm text-gray-500">Tavsif</p>
             <textarea
               value={description}
-              onChange={(e) => setSchoolDescription(e.target.value.slice(0, DESCRIPTION_MAX))}
+              onChange={(e) => void setSchoolDescription(e.target.value.slice(0, DESCRIPTION_MAX))}
               placeholder="Maktabingiz haqida qisqacha ma'lumot"
               rows={3}
               className="w-full resize-none rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"

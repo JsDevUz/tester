@@ -1,10 +1,9 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Inbox, Plus, X } from 'lucide-react';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
-import { MOCK_STUDENTS } from './StudentsPage';
 
 const AVATAR_PALETTES = [
   'bg-indigo-100 text-indigo-600',
@@ -25,18 +24,20 @@ function initials(name: string) {
 }
 
 const ROLE_BADGE: Record<SchoolStaffRole, { label: string; className: string }> = {
-  admin: { label: 'Administrator', className: 'bg-indigo-100 text-indigo-600' },
-  teacher: { label: "O'qituvchi", className: 'bg-teal-100 text-teal-600' },
+  teacher_staff: { label: "O'qituvchi", className: 'bg-teal-100 text-teal-600' },
   curator: { label: 'Kurator', className: 'bg-amber-100 text-amber-600' },
 };
 
 export function SchoolStaffPage() {
-  const { staff, addStaff, removeStaff } = useSchoolStore();
+  const { staff, loadStaff, searchStudents, addStaff, removeStaff } = useSchoolStore();
   const [modalOpen, setModalOpen] = useState(false);
 
-  function handleAddStaff(data: { name: string; email: string; role: SchoolStaffRole }) {
-    addStaff(data);
-    setModalOpen(false);
+  useEffect(() => {
+    void loadStaff();
+  }, [loadStaff]);
+
+  function handleAddStaff(studentId: string, role: SchoolStaffRole) {
+    void addStaff(studentId, role).then(() => setModalOpen(false));
   }
 
   return (
@@ -77,7 +78,7 @@ export function SchoolStaffPage() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => removeStaff(s.id)}
+                      onClick={() => void removeStaff(s.id)}
                       className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                       aria-label="Xodimni olib tashlash"
                     >
@@ -95,7 +96,7 @@ export function SchoolStaffPage() {
 
       {modalOpen && (
         <AddStaffModal
-          students={MOCK_STUDENTS}
+          onSearch={searchStudents}
           onConfirm={handleAddStaff}
           onClose={() => setModalOpen(false)}
         />
