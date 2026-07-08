@@ -17,6 +17,7 @@ import { SubmissionsModule } from './submissions/submissions.module';
 import { UploadModule } from './upload/upload.module';
 import { TelegramModule } from './telegram/telegram.module';
 import { LiveModule } from './live/live.module';
+import { SchoolsModule } from './schools/schools.module';
 import 'dotenv/config';
 
 @Module({
@@ -39,6 +40,7 @@ import 'dotenv/config';
     UploadModule,
     TelegramModule,
     LiveModule,
+    SchoolsModule,
   ],
 })
 export class AppModule {}
