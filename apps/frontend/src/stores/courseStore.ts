@@ -3,6 +3,15 @@ import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type
 import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
 import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
 import { apiListBlocks, apiCreateBlock, apiUpdateBlock, apiDeleteBlock, apiReorderBlocks } from '../api/contentBlocks';
+import {
+  apiListGroups, apiCreateGroup, apiUpdateGroup, apiDeleteGroup,
+  apiListGroupMembers, apiUpdateGroupMember, apiSetMemberForcedClosed, apiRemoveGroupMember,
+} from '../api/groups';
+import {
+  apiListLaunches, apiCreateLaunch, apiUpdateLaunch,
+  apiCreatePricingPlan, apiDeletePricingPlan,
+} from '../api/launches';
+import { apiListGroupPayments, apiRecordPayment, type ApiMonthlyPayment } from '../api/payments';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
 export const CONTENT_BLOCK_LIMIT = 7;
@@ -48,13 +57,25 @@ export interface Launch {
   plans: PricingPlan[];
 }
 
+export interface GroupMember {
+  id: string;
+  studentId: string;
+  studentName: string;
+  studentPhone: string | null;
+  role: 'student' | 'curator';
+  selectedPlanId: string | null;
+  forcedClosed: boolean;
+  latestPaymentStatus: 'pending' | 'partial' | 'paid' | 'debt' | null;
+}
+
 export interface Group {
   id: string;
   name: string;
   groupChatEnabled: boolean;
   groupChannelEnabled: boolean;
-  curatorIds: string[];
-  studentIds: string[];
+  inviteToken: string;
+  paymentDay: number;
+  members: GroupMember[];
 }
 
 export interface Lesson {
@@ -113,20 +134,24 @@ interface CourseState {
   setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => void;
   setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => void;
 
-  addLaunch: (courseId: string, name: string) => Launch | undefined;
-  toggleLaunchActive: (courseId: string, launchId: string) => void;
-  renameLaunch: (courseId: string, launchId: string, name: string) => void;
-  addPricingPlan: (courseId: string, launchId: string, plan: Omit<PricingPlan, 'id'>) => void;
-  removePricingPlan: (courseId: string, launchId: string, planId: string) => void;
+  addLaunch: (courseId: string, name: string) => Promise<Launch | undefined>;
+  toggleLaunchActive: (courseId: string, launchId: string) => Promise<void>;
+  renameLaunch: (courseId: string, launchId: string, name: string) => Promise<void>;
+  addPricingPlan: (courseId: string, launchId: string, plan: Omit<PricingPlan, 'id'>) => Promise<void>;
+  removePricingPlan: (courseId: string, launchId: string, planId: string) => Promise<void>;
 
-  addGroup: (courseId: string, name: string) => Group | undefined;
-  renameGroup: (courseId: string, groupId: string, name: string) => void;
-  toggleGroupChat: (courseId: string, groupId: string) => void;
-  toggleGroupChannel: (courseId: string, groupId: string) => void;
-  setGroupCurators: (courseId: string, groupId: string, curatorIds: string[]) => void;
-  addStudentToGroup: (courseId: string, groupId: string, studentId: string) => void;
-  removeStudentFromGroup: (courseId: string, groupId: string, studentId: string) => void;
-  deleteGroup: (courseId: string, groupId: string) => void;
+  addGroup: (courseId: string, name: string, paymentDay?: number) => Promise<Group | undefined>;
+  renameGroup: (courseId: string, groupId: string, name: string) => Promise<void>;
+  toggleGroupChat: (courseId: string, groupId: string) => Promise<void>;
+  toggleGroupChannel: (courseId: string, groupId: string) => Promise<void>;
+  setMemberRole: (courseId: string, groupId: string, memberId: string, role: 'student' | 'curator') => Promise<void>;
+  setMemberPlan: (courseId: string, groupId: string, memberId: string, planId: string | null) => Promise<void>;
+  setMemberForcedClosed: (courseId: string, groupId: string, memberId: string, forcedClosed: boolean) => Promise<void>;
+  removeStudentFromGroup: (courseId: string, groupId: string, memberId: string) => Promise<void>;
+  deleteGroup: (courseId: string, groupId: string) => Promise<void>;
+
+  loadGroupPayments: (groupId: string) => Promise<ApiMonthlyPayment[]>;
+  recordPayment: (paymentId: string, amount: number, discount?: number) => Promise<ApiMonthlyPayment>;
 }
 
 function newId(): string {
@@ -144,7 +169,11 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const courseRows = await apiListCourses();
     const courses = await Promise.all(
       courseRows.map(async (courseRow) => {
-        const moduleRows = await apiListModules(courseRow.id);
+        const [moduleRows, groupRows, launchRows] = await Promise.all([
+          apiListModules(courseRow.id),
+          apiListGroups(courseRow.id),
+          apiListLaunches(courseRow.id),
+        ]);
         const moduleList: Module[] = await Promise.all(
           moduleRows.map(async (moduleRow) => {
             const lessonRows = await apiListLessons(moduleRow.id);
@@ -176,7 +205,55 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
           }),
         );
-        return { id: courseRow.id, title: courseRow.title, modules: moduleList, launches: [], groups: [] };
+
+        const groupList: Group[] = await Promise.all(
+          groupRows.map(async (groupRow) => {
+            const memberRows = await apiListGroupMembers(groupRow.id);
+            const members: GroupMember[] = memberRows.map((m) => ({
+              id: m.id,
+              studentId: m.studentId,
+              studentName: m.student.name,
+              studentPhone: m.student.phone,
+              role: m.role,
+              selectedPlanId: m.selectedPlanId,
+              forcedClosed: m.forcedClosed,
+              latestPaymentStatus: m.latestPayment?.status ?? null,
+            }));
+            return {
+              id: groupRow.id,
+              name: groupRow.name,
+              groupChatEnabled: groupRow.groupChatEnabled,
+              groupChannelEnabled: groupRow.groupChannelEnabled,
+              inviteToken: groupRow.inviteToken,
+              paymentDay: groupRow.paymentDay,
+              members,
+            };
+          }),
+        );
+
+        const launchList: Launch[] = launchRows.map((launchRow) => ({
+          id: launchRow.id,
+          name: launchRow.name,
+          active: launchRow.active,
+          plans: launchRow.plans.map((p) => ({
+            id: p.id,
+            name: p.name,
+            description: p.description,
+            price: p.price,
+            originalPrice: p.originalPrice,
+            groupId: p.groupId,
+            startDate: p.startDate,
+            endDate: p.endDate,
+          })),
+        }));
+
+        return {
+          id: courseRow.id,
+          title: courseRow.title,
+          modules: moduleList,
+          launches: launchList,
+          groups: groupList,
+        };
       }),
     );
     set({ courses });
@@ -649,10 +726,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
 
-  addLaunch: (courseId, name) => {
-    const course = get().courses.find((c) => c.id === courseId);
-    if (!course) return undefined;
-    const launch: Launch = { id: newId(), name, active: false, plans: [] };
+  addLaunch: async (courseId, name) => {
+    const row = await apiCreateLaunch(courseId, name);
+    const launch: Launch = { id: row.id, name: row.name, active: row.active, plans: [] };
     set({
       courses: get().courses.map((c) =>
         c.id === courseId ? { ...c, launches: [...c.launches, launch] } : c,
@@ -660,34 +736,44 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
     return launch;
   },
-  toggleLaunchActive: (courseId, launchId) => {
+  toggleLaunchActive: async (courseId, launchId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const launch = course?.launches.find((l) => l.id === launchId);
+    if (!launch) return;
+    const updated = await apiUpdateLaunch(launchId, { active: !launch.active });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
           ? c
           : {
               ...c,
-              launches: c.launches.map((l) =>
-                l.id === launchId ? { ...l, active: !l.active } : l,
-              ),
+              launches: c.launches.map((l) => (l.id === launchId ? { ...l, active: updated.active } : l)),
             },
       ),
     });
   },
-  renameLaunch: (courseId, launchId, name) => {
+  renameLaunch: async (courseId, launchId, name) => {
+    await apiUpdateLaunch(launchId, { name });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
           ? c
-          : {
-              ...c,
-              launches: c.launches.map((l) => (l.id === launchId ? { ...l, name } : l)),
-            },
+          : { ...c, launches: c.launches.map((l) => (l.id === launchId ? { ...l, name } : l)) },
       ),
     });
   },
-  addPricingPlan: (courseId, launchId, plan) => {
-    const newPlan: PricingPlan = { ...plan, id: newId() };
+  addPricingPlan: async (courseId, launchId, plan) => {
+    const row = await apiCreatePricingPlan(launchId, plan);
+    const newPlan: PricingPlan = {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      price: row.price,
+      originalPrice: row.originalPrice,
+      groupId: row.groupId,
+      startDate: row.startDate,
+      endDate: row.endDate,
+    };
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -701,7 +787,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  removePricingPlan: (courseId, launchId, planId) => {
+  removePricingPlan: async (courseId, launchId, planId) => {
+    await apiDeletePricingPlan(planId);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -716,16 +803,16 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
 
-  addGroup: (courseId, name) => {
-    const course = get().courses.find((c) => c.id === courseId);
-    if (!course) return undefined;
+  addGroup: async (courseId, name, paymentDay) => {
+    const row = await apiCreateGroup(courseId, name, paymentDay);
     const group: Group = {
-      id: newId(),
-      name,
-      groupChatEnabled: false,
-      groupChannelEnabled: false,
-      curatorIds: [],
-      studentIds: [],
+      id: row.id,
+      name: row.name,
+      groupChatEnabled: row.groupChatEnabled,
+      groupChannelEnabled: row.groupChannelEnabled,
+      inviteToken: row.inviteToken,
+      paymentDay: row.paymentDay,
+      members: [],
     };
     set({
       courses: get().courses.map((c) =>
@@ -734,7 +821,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
     return group;
   },
-  renameGroup: (courseId, groupId, name) => {
+  renameGroup: async (courseId, groupId, name) => {
+    await apiUpdateGroup(groupId, { name });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -743,7 +831,11 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  toggleGroupChat: (courseId, groupId) => {
+  toggleGroupChat: async (courseId, groupId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const group = course?.groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const updated = await apiUpdateGroup(groupId, { groupChatEnabled: !group.groupChatEnabled });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -751,13 +843,17 @@ export const useCourseStore = create<CourseState>((set, get) => ({
           : {
               ...c,
               groups: c.groups.map((g) =>
-                g.id === groupId ? { ...g, groupChatEnabled: !g.groupChatEnabled } : g,
+                g.id === groupId ? { ...g, groupChatEnabled: updated.groupChatEnabled } : g,
               ),
             },
       ),
     });
   },
-  toggleGroupChannel: (courseId, groupId) => {
+  toggleGroupChannel: async (courseId, groupId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const group = course?.groups.find((g) => g.id === groupId);
+    if (!group) return;
+    const updated = await apiUpdateGroup(groupId, { groupChannelEnabled: !group.groupChannelEnabled });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -765,38 +861,14 @@ export const useCourseStore = create<CourseState>((set, get) => ({
           : {
               ...c,
               groups: c.groups.map((g) =>
-                g.id === groupId ? { ...g, groupChannelEnabled: !g.groupChannelEnabled } : g,
+                g.id === groupId ? { ...g, groupChannelEnabled: updated.groupChannelEnabled } : g,
               ),
             },
       ),
     });
   },
-  setGroupCurators: (courseId, groupId, curatorIds) => {
-    set({
-      courses: get().courses.map((c) =>
-        c.id !== courseId
-          ? c
-          : { ...c, groups: c.groups.map((g) => (g.id === groupId ? { ...g, curatorIds } : g)) },
-      ),
-    });
-  },
-  addStudentToGroup: (courseId, groupId, studentId) => {
-    set({
-      courses: get().courses.map((c) =>
-        c.id !== courseId
-          ? c
-          : {
-              ...c,
-              groups: c.groups.map((g) =>
-                g.id !== groupId || g.studentIds.includes(studentId)
-                  ? g
-                  : { ...g, studentIds: [...g.studentIds, studentId] },
-              ),
-            },
-      ),
-    });
-  },
-  removeStudentFromGroup: (courseId, groupId, studentId) => {
+  setMemberRole: async (courseId, groupId, memberId, role) => {
+    await apiUpdateGroupMember(groupId, memberId, { role });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -806,17 +878,83 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               groups: c.groups.map((g) =>
                 g.id !== groupId
                   ? g
-                  : { ...g, studentIds: g.studentIds.filter((id) => id !== studentId) },
+                  : { ...g, members: g.members.map((m) => (m.id === memberId ? { ...m, role } : m)) },
               ),
             },
       ),
     });
   },
-  deleteGroup: (courseId, groupId) => {
+  setMemberPlan: async (courseId, groupId, memberId, planId) => {
+    await apiUpdateGroupMember(groupId, memberId, { selectedPlanId: planId });
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id !== groupId
+                  ? g
+                  : {
+                      ...g,
+                      members: g.members.map((m) =>
+                        m.id === memberId ? { ...m, selectedPlanId: planId } : m,
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setMemberForcedClosed: async (courseId, groupId, memberId, forcedClosed) => {
+    await apiSetMemberForcedClosed(groupId, memberId, forcedClosed);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id !== groupId
+                  ? g
+                  : {
+                      ...g,
+                      members: g.members.map((m) =>
+                        m.id === memberId ? { ...m, forcedClosed } : m,
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  removeStudentFromGroup: async (courseId, groupId, memberId) => {
+    await apiRemoveGroupMember(groupId, memberId);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              groups: c.groups.map((g) =>
+                g.id !== groupId ? g : { ...g, members: g.members.filter((m) => m.id !== memberId) },
+              ),
+            },
+      ),
+    });
+  },
+  deleteGroup: async (courseId, groupId) => {
+    await apiDeleteGroup(groupId);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId ? c : { ...c, groups: c.groups.filter((g) => g.id !== groupId) },
       ),
     });
+  },
+  loadGroupPayments: async (groupId) => {
+    return apiListGroupPayments(groupId);
+  },
+  recordPayment: async (paymentId, amount, discount) => {
+    return apiRecordPayment(paymentId, amount, discount);
   },
 }));
