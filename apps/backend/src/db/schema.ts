@@ -201,6 +201,35 @@ export const monthlyPaymentsRelations = relations(monthlyPayments, ({ one }) => 
   groupMember: one(groupMembers, { fields: [monthlyPayments.groupMemberId], references: [groupMembers.id] }),
 }));
 
+export const schools = pgTable('schools', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  adminId: uuid('admin_id').notNull().unique().references(() => admins.id, { onDelete: 'cascade' }),
+  name: text('name').notNull().default('Mening maktabim'),
+  description: text('description').notNull().default(''),
+  inviteToken: text('invite_token').notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const schoolMembers = pgTable('school_members', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  schoolId: uuid('school_id').notNull().references(() => schools.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  role: text('role').notNull().default('student'),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueSchoolStudent: uniqueIndex('school_members_school_id_student_id_key').on(table.schoolId, table.studentId),
+}));
+
+export const schoolsRelations = relations(schools, ({ one, many }) => ({
+  admin: one(admins, { fields: [schools.adminId], references: [admins.id] }),
+  members: many(schoolMembers),
+}));
+
+export const schoolMembersRelations = relations(schoolMembers, ({ one }) => ({
+  school: one(schools, { fields: [schoolMembers.schoolId], references: [schools.id] }),
+  student: one(users, { fields: [schoolMembers.studentId], references: [users.id] }),
+}));
+
 export const tests = pgTable('tests', {
   id: uuid('id').primaryKey().defaultRandom(),
   folderId: uuid('folder_id').notNull().references(() => folders.id, { onDelete: 'cascade' }),
