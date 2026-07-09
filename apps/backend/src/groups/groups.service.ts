@@ -181,6 +181,19 @@ export class GroupsService {
     return this.findOrCreateEnrollment(groupId, schoolMember.id);
   }
 
+  async demoteCuratorFromStaff(groupId: string, adminId: string, memberId: string) {
+    await this.assertGroupOwnership(groupId, adminId);
+    const enrollment = await db.query.groupEnrollments.findFirst({
+      where: and(eq(groupEnrollments.id, memberId), eq(groupEnrollments.groupId, groupId)),
+      with: { schoolMember: true },
+    });
+    if (!enrollment) throw new NotFoundException('Member not found');
+    if (enrollment.schoolMember.role === 'curator') {
+      await db.update(schoolMembers).set({ role: 'student' }).where(eq(schoolMembers.id, enrollment.schoolMemberId));
+    }
+    return enrollment;
+  }
+
   async findPendingPlanAssignment(adminId: string) {
     const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
     const courseIds = adminCourses.map((c) => c.id);

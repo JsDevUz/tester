@@ -85,6 +85,11 @@ export async function apiAssignCurator(groupId: string, studentId: string): Prom
   return res.data;
 }
 
+export async function apiDemoteCurator(groupId: string, memberId: string): Promise<ApiGroupMember> {
+  const res = await client.post(`/groups/${groupId}/curators/${memberId}/demote`);
+  return res.data;
+}
+
 export interface ApiPendingPlanAssignment {
   id: string;
   studentName: string;

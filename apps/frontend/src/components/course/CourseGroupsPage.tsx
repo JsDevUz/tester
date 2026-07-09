@@ -37,8 +37,8 @@ function initials(name: string) {
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch }: CourseGroupsPageProps) {
   const {
     courses, addGroup, renameGroup,
-    setMemberRole, removeStudentFromGroup, deleteGroup,
-    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator, enrollStudent,
+    removeStudentFromGroup, deleteGroup,
+    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator, demoteCurator, enrollStudent,
   } = useCourseStore();
   const { staff, loaded: staffLoaded, loadStaff } = useSchoolStore();
   const course = courses.find((c) => c.id === courseId);
@@ -80,9 +80,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     setConfirmDelete(false);
   }
 
-  function handleToggleCurator(memberId: string, isCurator: boolean) {
+  function handleRemoveCurator(memberId: string) {
     if (!group) return;
-    void setMemberRole(courseId, group.id, memberId, isCurator ? 'student' : 'curator');
+    void demoteCurator(courseId, group.id, memberId);
   }
 
   // ─── Holat B: guruh ichki ko'rinishi ───────────────────────────────
@@ -264,7 +264,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               <div className="rounded-2xl bg-white p-5">
                 <h3 className="mb-4 text-base font-bold text-gray-800">Guruh kuratorlari</h3>
                 <p className="mb-3 text-xs text-gray-400">
-                  Maktab xodimlaridan birini tanlang — a'zo bo'lmasa avtomatik guruhga qo'shiladi
+                  Maktab xodimlaridan birini tanlang — a'zo bo'lmasa avtomatik guruhga qo'shiladi. Kuratorlik butun maktab bo'yicha beriladi, faqat shu guruhga emas.
                 </p>
 
                 {curators.length === 0 ? (
@@ -276,7 +276,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                         <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{m.studentName}</p>
                         <button
                           type="button"
-                          onClick={() => handleToggleCurator(m.id, true)}
+                          onClick={() => handleRemoveCurator(m.id)}
                           className="shrink-0 rounded-lg p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
                           aria-label="Kuratorlikni bekor qilish"
                         >

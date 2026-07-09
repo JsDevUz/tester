@@ -30,7 +30,7 @@ export class PaymentsService {
       where: (table, { inArray }) => inArray(table.enrollmentId, enrollmentIds),
       orderBy: [desc(monthlyPayments.periodMonth)],
     });
-    return payments;
+    return payments.map((p) => ({ ...p, groupMemberId: p.enrollmentId }));
   }
 
   private async assertPaymentOwnership(paymentId: string, adminId: string) {

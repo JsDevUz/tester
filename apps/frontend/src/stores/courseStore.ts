@@ -15,7 +15,7 @@ import {
 import {
   apiListGroups, apiCreateGroup, apiUpdateGroup, apiDeleteGroup,
   apiListGroupMembers, apiUpdateGroupMember, apiSetMemberForcedClosed, apiRemoveGroupMember,
-  apiAssignCurator, apiEnrollStudent,
+  apiAssignCurator, apiDemoteCurator, apiEnrollStudent,
 } from '../api/groups';
 import {
   apiListLaunches, apiCreateLaunch, apiUpdateLaunch,
@@ -168,6 +168,7 @@ interface CourseState {
   toggleGroupChannel: (courseId: string, groupId: string) => Promise<void>;
   setMemberRole: (courseId: string, groupId: string, memberId: string, role: 'student' | 'curator') => Promise<void>;
   assignCurator: (courseId: string, groupId: string, studentId: string) => Promise<void>;
+  demoteCurator: (courseId: string, groupId: string, memberId: string) => Promise<void>;
   enrollStudent: (courseId: string, groupId: string, studentId: string) => Promise<void>;
   setMemberPlan: (courseId: string, groupId: string, memberId: string, planId: string | null) => Promise<void>;
   setMemberForcedClosed: (courseId: string, groupId: string, memberId: string, forcedClosed: boolean) => Promise<void>;
@@ -1007,6 +1008,27 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
   assignCurator: async (courseId, groupId, studentId) => {
     await apiAssignCurator(groupId, studentId);
+    const memberRows = await apiListGroupMembers(groupId);
+    const members: GroupMember[] = memberRows.map((m) => ({
+      id: m.id,
+      studentId: m.studentId,
+      studentName: m.student.name,
+      studentPhone: m.student.phone,
+      role: m.role,
+      selectedPlanId: m.selectedPlanId,
+      forcedClosed: m.forcedClosed,
+      latestPaymentStatus: m.latestPayment?.status ?? null,
+    }));
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : { ...c, groups: c.groups.map((g) => (g.id !== groupId ? g : { ...g, members })) },
+      ),
+    });
+  },
+  demoteCurator: async (courseId, groupId, memberId) => {
+    await apiDemoteCurator(groupId, memberId);
     const memberRows = await apiListGroupMembers(groupId);
     const members: GroupMember[] = memberRows.map((m) => ({
       id: m.id,

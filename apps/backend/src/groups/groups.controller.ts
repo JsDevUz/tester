@@ -112,6 +112,13 @@ export class GroupsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
+  @Post('groups/:id/curators/:memberId/demote')
+  demoteCurator(@Param('id') id: string, @Param('memberId') memberId: string, @Req() req: any) {
+    return this.groupsService.demoteCuratorFromStaff(id, req.admin.id, memberId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Post('groups/:id/enroll')
   enrollStudent(@Param('id') id: string, @Req() req: any, @Body() dto: EnrollStudentDto) {
     return this.groupsService.enrollStudent(id, req.admin.id, dto.studentId);
