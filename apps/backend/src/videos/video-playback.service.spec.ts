@@ -22,6 +22,7 @@ describe('VideoPlaybackService token verification', () => {
     const svc: any = service();
     const token = svc.signPayload({
       sub: 's1',
+      role: 'student',
       blockId: 'b1',
       courseId: 'c1',
       exp: Math.floor(Date.now() / 1000) + 60,
@@ -34,11 +35,29 @@ describe('VideoPlaybackService token verification', () => {
     const svc: any = service();
     const token = svc.signPayload({
       sub: 's1',
+      role: 'student',
       blockId: 'b1',
       courseId: 'c1',
       exp: Math.floor(Date.now() / 1000) + 60,
     });
 
     expect(() => svc.verifyToken(token, 'b2')).toThrow(ForbiddenException);
+  });
+
+  it('rewrites manifest URLs relative to the manifest endpoint', () => {
+    const svc: any = service();
+    const manifest = [
+      '#EXTM3U',
+      '#EXT-X-KEY:METHOD=AES-128,URI="enc.key",IV=0x123',
+      'segment_000.ts',
+      '#EXT-X-ENDLIST',
+    ].join('\n');
+
+    expect(svc.rewriteManifestUrls(manifest, 'token.value')).toContain(
+      'URI="key?token=token.value"',
+    );
+    expect(svc.rewriteManifestUrls(manifest, 'token.value')).toContain(
+      'segments/segment_000.ts?token=token.value',
+    );
   });
 });

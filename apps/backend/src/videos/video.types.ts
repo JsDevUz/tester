@@ -4,6 +4,7 @@ export const VIDEO_STATUSES: VideoProcessingStatus[] = ['pending', 'processing',
 
 export interface PlaybackTokenPayload {
   sub: string;
+  role: 'student' | 'teacher' | 'super';
   blockId: string;
   courseId: string;
   exp: number;

@@ -58,20 +58,23 @@ export class VideosController {
   }
 
   @Post('videos/:blockId/play')
-  @Roles('student')
+  @Roles('student', 'teacher', 'super')
   startPlayback(@Param('blockId') blockId: string, @Req() req: any) {
-    return this.videoPlaybackService.startPlayback(blockId, req.user.id);
+    return this.videoPlaybackService.startPlayback(blockId, {
+      id: req.user.id,
+      role: req.user.role,
+    });
   }
 
   @Get('videos/:blockId/manifest.m3u8')
-  @Roles('student')
+  @Roles('student', 'teacher', 'super')
   @Header('Content-Type', 'application/vnd.apple.mpegurl')
   getManifest(@Param('blockId') blockId: string, @Query('token') token: string) {
     return this.videoPlaybackService.getManifest(blockId, token);
   }
 
   @Get('videos/:blockId/key')
-  @Roles('student')
+  @Roles('student', 'teacher', 'super')
   async getKey(@Param('blockId') blockId: string, @Query('token') token: string, @Res() res: Response) {
     const key = await this.videoPlaybackService.getKey(blockId, token);
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -80,7 +83,7 @@ export class VideosController {
   }
 
   @Get('videos/:blockId/segments/:fileName')
-  @Roles('student')
+  @Roles('student', 'teacher', 'super')
   @Header('Content-Type', 'video/mp2t')
   getSegment(
     @Param('blockId') blockId: string,

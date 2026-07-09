@@ -1,9 +1,28 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req, HttpCode } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Delete,
+  Param,
+  Body,
+  UseGuards,
+  Req,
+  HttpCode,
+  UploadedFile,
+  UseInterceptors,
+} from '@nestjs/common';
 import { ContentBlocksService } from './content-blocks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { ArrayNotEmpty, IsArray, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { FileInterceptor } from '@nestjs/platform-express';
+import { memoryStorage } from 'multer';
+import { extname } from 'path';
+
+const DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
 
 class CreateBlockDto {
   @IsIn(['editor']) type: string;
@@ -33,6 +52,27 @@ export class ContentBlocksController {
   @Post('lessons/:lessonId/blocks')
   create(@Param('lessonId') lessonId: string, @Req() req: any, @Body() dto: CreateBlockDto) {
     return this.contentBlocksService.create(lessonId, req.admin.id, dto.type);
+  }
+
+  @Post('lessons/:lessonId/files')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 50 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        const ext = extname(file.originalname).toLowerCase();
+        if (DOCUMENT_EXTENSIONS.includes(ext)) cb(null, true);
+        else cb(new BadRequestException('Faqat PDF, Word, PowerPoint yoki Excel fayllar qabul qilinadi'), false);
+      },
+    }),
+  )
+  uploadFileBlock(
+    @Param('lessonId') lessonId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Body('label') label: string | undefined,
+    @Req() req: any,
+  ) {
+    return this.contentBlocksService.uploadFileBlock(lessonId, req.admin.id, file, label);
   }
 
   @Patch('blocks/:id')

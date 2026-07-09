@@ -1,7 +1,7 @@
 import { ForbiddenException, Injectable, NotFoundException, StreamableFile } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { createHmac, timingSafeEqual } from 'crypto';
-import { eq } from 'drizzle-orm';
+import { and, eq } from 'drizzle-orm';
 import { db } from '../db';
 import { contentBlocks, courses, lessons, modules } from '../db/schema';
 import { StudentAccessService } from '../payments/student-access.service';
@@ -69,15 +69,22 @@ export class VideoPlaybackService {
     return { block, lesson, module, course };
   }
 
-  async startPlayback(blockId: string, studentId: string) {
+  async startPlayback(blockId: string, viewer: { id: string; role: 'student' | 'teacher' | 'super' }) {
     const { block, course } = await this.getVideoContext(blockId);
     if (block.processingStatus !== 'ready' || !block.hlsMasterKey) {
       throw new NotFoundException('Video is not ready');
     }
-    const hasAccess = await this.studentAccessService.assertStudentLessonAccess(course.id, studentId);
-    if (!hasAccess) throw new ForbiddenException('Video access denied');
+    if (viewer.role === 'student') {
+      const hasAccess = await this.studentAccessService.assertStudentLessonAccess(course.id, viewer.id);
+      if (!hasAccess) throw new ForbiddenException('Video access denied');
+    } else if (viewer.role === 'teacher') {
+      const ownedCourse = await db.query.courses.findFirst({
+        where: and(eq(courses.id, course.id), eq(courses.adminId, viewer.id)),
+      });
+      if (!ownedCourse) throw new ForbiddenException('Video access denied');
+    }
     const exp = Math.floor(Date.now() / 1000) + this.ttlSeconds();
-    const token = this.signPayload({ sub: studentId, blockId, courseId: course.id, exp });
+    const token = this.signPayload({ sub: viewer.id, role: viewer.role, blockId, courseId: course.id, exp });
     return {
       token,
       expiresAt: new Date(exp * 1000).toISOString(),
@@ -90,14 +97,18 @@ export class VideoPlaybackService {
     const { block } = await this.getVideoContext(blockId);
     if (!block.hlsMasterKey) throw new NotFoundException('Manifest not found');
     const manifest = await this.storageService.getObjectText(block.hlsMasterKey);
+    return this.rewriteManifestUrls(manifest, token);
+  }
+
+  private rewriteManifestUrls(manifest: string, token: string) {
     return manifest
       .split('\n')
       .map((line) => {
         if (line.startsWith('#EXT-X-KEY')) {
-          return line.replace(/URI="[^"]+"/, `URI="/videos/${blockId}/key?token=${encodeURIComponent(token)}"`);
+          return line.replace(/URI="[^"]+"/, `URI="key?token=${encodeURIComponent(token)}"`);
         }
         if (line.trim().endsWith('.ts')) {
-          return `/videos/${blockId}/segments/${line.trim()}?token=${encodeURIComponent(token)}`;
+          return `segments/${line.trim()}?token=${encodeURIComponent(token)}`;
         }
         return line;
       })

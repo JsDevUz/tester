@@ -59,6 +59,26 @@ export async function apiUploadVideoBlock(
   return res.data;
 }
 
+export async function apiUploadFileBlock(
+  lessonId: string,
+  file: File,
+  label?: string,
+  onProgress?: (percent: number) => void,
+): Promise<ApiContentBlock> {
+  const formData = new FormData();
+  formData.append('file', file);
+  if (label) formData.append('label', label);
+  const res = await client.post(`/lessons/${lessonId}/files`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+    onUploadProgress: (event) => {
+      if (event.total && onProgress) {
+        onProgress(Math.round((event.loaded / event.total) * 100));
+      }
+    },
+  });
+  return res.data;
+}
+
 export async function apiRetryVideoBlock(blockId: string): Promise<ApiContentBlock> {
   const res = await client.post(`/blocks/${blockId}/videos/retry`);
   return res.data;

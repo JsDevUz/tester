@@ -67,6 +67,11 @@ export class StorageService {
     return clean.replace(/^\/+/, '');
   }
 
+  getPublicUrl(key: string): string {
+    const cleanKey = this.getKeyFromUrlOrKey(key);
+    return this.publicDomain ? `${this.publicDomain}/${cleanKey}` : cleanKey;
+  }
+
   async uploadBuffer(
     key: string,
     buffer: Buffer,

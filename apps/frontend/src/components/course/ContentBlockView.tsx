@@ -1,6 +1,6 @@
 import {
   Film, Image as ImageIcon, Paperclip, LayoutGrid, ChevronUp, ChevronDown,
-  X, Link2, Plus, ArrowUp, ArrowDown,
+  X, Link2, Plus, ArrowUp, ArrowDown, Loader2, ExternalLink,
 } from 'lucide-react';
 import type { ContentBlock } from '../../stores/courseStore';
 import { EditorBlock } from './EditorBlock';
@@ -36,6 +36,9 @@ export function ContentBlockView({
 }: ContentBlockViewProps) {
   const meta = TYPE_META[block.type];
   const Icon = meta.icon;
+  const isUploadingVideo = block.type === 'video' && block.processingStatus === 'uploading';
+  const isUploadingFile = block.type === 'file' && block.processingStatus === 'uploading';
+  const isUploading = isUploadingVideo || isUploadingFile;
 
   function handleFileInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
@@ -43,7 +46,12 @@ export function ContentBlockView({
     e.target.value = '';
   }
 
-  const accept = block.type === 'video' ? 'video/*' : block.type === 'image' ? 'image/*' : '*/*';
+  const accept =
+    block.type === 'video'
+      ? 'video/*'
+      : block.type === 'image'
+        ? 'image/*'
+        : '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx';
 
   return (
     <div className="rounded-2xl bg-white">
@@ -58,7 +66,7 @@ export function ContentBlockView({
         <button
           type="button"
           onClick={onMoveUp}
-          disabled={isFirst}
+          disabled={isFirst || isUploading}
           title="Yuqoriga surish"
           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
         >
@@ -67,7 +75,7 @@ export function ContentBlockView({
         <button
           type="button"
           onClick={onMoveDown}
-          disabled={isLast}
+          disabled={isLast || isUploading}
           title="Pastga surish"
           className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
         >
@@ -83,8 +91,9 @@ export function ContentBlockView({
         <button
           type="button"
           onClick={onRemove}
+          disabled={isUploading}
           title="Blokni o'chirish"
-          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+          className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-30"
         >
           <X size={16} />
         </button>
@@ -129,28 +138,57 @@ export function ContentBlockView({
               )}
 
               {!block.embedUrl &&
-                block.type === 'video' &&
-                (block.processingStatus === 'pending' || block.processingStatus === 'processing') && (
-                  <div className="rounded-2xl bg-indigo-50/70 px-4 py-5 text-center">
-                    <p className="text-sm font-semibold text-indigo-600">
-                      {block.processingStatus === 'pending' ? 'Video yuklandi, navbatda turibdi' : 'Video HLS formatga tayyorlanmoqda'}
-                    </p>
-                    <p className="mt-1 text-xs text-indigo-400">
-                      Tayyor bo‘lgach shu yerda player ko‘rinadi
-                    </p>
-                    {typeof block.uploadProgress === 'number' && (
-                      <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
-                        <div className="h-full rounded-full bg-indigo-500" style={{ width: `${block.uploadProgress}%` }} />
+                (block.type === 'video' || block.type === 'file') &&
+                (block.processingStatus === 'uploading' ||
+                  block.processingStatus === 'pending' ||
+                  block.processingStatus === 'processing') && (
+                  <div className="rounded-2xl bg-indigo-50/70 px-4 py-5">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-500">
+                        <Loader2 size={18} className="animate-spin" />
                       </div>
-                    )}
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-semibold text-indigo-600">
+                          {block.processingStatus === 'uploading'
+                            ? block.type === 'video'
+                              ? 'Video yuklanmoqda'
+                              : 'Fayl yuklanmoqda'
+                            : block.processingStatus === 'pending'
+                              ? 'Video yuklandi, navbatda turibdi'
+                              : 'Video HLS formatga tayyorlanmoqda'}
+                        </p>
+                        <p className="mt-1 text-xs text-indigo-400">
+                          {block.processingStatus === 'uploading'
+                            ? 'Sahifani yopmang. Yuklash tugagach tayyorlash boshlanadi.'
+                            : 'Tayyor bo‘lgach shu yerda player ko‘rinadi'}
+                        </p>
+                      </div>
+                      {typeof block.uploadProgress === 'number' && (
+                        <span className="shrink-0 text-sm font-bold text-indigo-600">
+                          {block.uploadProgress}%
+                        </span>
+                      )}
+                    </div>
+                    <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
+                      <div
+                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        style={{
+                          width: `${block.processingStatus === 'uploading' ? block.uploadProgress ?? 0 : 100}%`,
+                        }}
+                      />
+                    </div>
                   </div>
-                )}
+              )}
 
-              {!block.embedUrl && block.type === 'video' && block.processingStatus === 'failed' && (
+              {!block.embedUrl &&
+                (block.type === 'video' || block.type === 'file') &&
+                block.processingStatus === 'failed' && (
                 <div className="rounded-2xl bg-red-50 px-4 py-5 text-center">
-                  <p className="text-sm font-semibold text-red-500">Video tayyorlashda xatolik yuz berdi</p>
+                  <p className="text-sm font-semibold text-red-500">
+                    {block.type === 'video' ? 'Video tayyorlashda xatolik yuz berdi' : 'Fayl yuklashda xatolik yuz berdi'}
+                  </p>
                   {block.errorMessage && <p className="mt-1 text-xs text-red-400">{block.errorMessage}</p>}
-                  {onRetryVideo && (
+                  {block.type === 'video' && onRetryVideo && (
                     <button
                       type="button"
                       onClick={onRetryVideo}
@@ -162,7 +200,7 @@ export function ContentBlockView({
                 </div>
               )}
 
-              {!block.embedUrl && block.type !== 'video' && (
+              {!block.embedUrl && block.type !== 'video' && block.processingStatus !== 'uploading' && (
                 <label
                   className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-indigo-50/30 ${
                     block.previewUrl ? 'p-2' : 'py-10'
@@ -173,7 +211,19 @@ export function ContentBlockView({
                     block.type === 'image' ? (
                       <img src={block.previewUrl} alt={block.fileName ?? ''} className="max-h-72 w-full rounded-xl object-contain" />
                     ) : (
-                      <span className="flex items-center gap-2 py-8 text-sm font-medium text-gray-700"><Paperclip size={16} /> {block.fileName}</span>
+                      <a
+                        href={block.previewUrl}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-4 py-5 text-sm font-semibold text-gray-700"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        <span className="flex min-w-0 items-center gap-2">
+                          <Paperclip size={16} className="shrink-0 text-indigo-500" />
+                          <span className="truncate">{block.fileName}</span>
+                        </span>
+                        <ExternalLink size={16} className="shrink-0 text-gray-400" />
+                      </a>
                     )
                   ) : (
                     <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500 text-white">

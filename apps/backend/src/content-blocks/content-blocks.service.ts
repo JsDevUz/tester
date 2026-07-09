@@ -3,8 +3,11 @@ import { db } from '../db';
 import { courses, modules, lessons, contentBlocks } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { StorageService } from '../storage/storage.service';
+import { extname } from 'path';
+import { randomUUID } from 'crypto';
 
 const CONTENT_BLOCK_LIMIT = 7;
+const DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
 
 @Injectable()
 export class ContentBlocksService {
@@ -45,6 +48,45 @@ export class ContentBlocksService {
     return block;
   }
 
+  async uploadFileBlock(lessonId: string, adminId: string, file: Express.Multer.File, label?: string) {
+    if (!file) throw new BadRequestException('Fayl topilmadi');
+    const ext = extname(file.originalname).toLowerCase();
+    if (!DOCUMENT_EXTENSIONS.includes(ext)) {
+      throw new BadRequestException('Faqat PDF, Word, PowerPoint yoki Excel fayllar qabul qilinadi');
+    }
+
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({
+        lessonId,
+        type: 'file',
+        orderIndex: existing.length,
+        fileName: file.originalname,
+        label: label?.trim() || file.originalname,
+      })
+      .returning();
+
+    const key = `lesson-files/${lessonId}/${block.id}/${randomUUID()}${ext}`;
+    await this.storageService.uploadBuffer(
+      key,
+      file.buffer,
+      file.mimetype || 'application/octet-stream',
+      'public, max-age=31536000, immutable',
+    );
+    const [updated] = await db
+      .update(contentBlocks)
+      .set({ previewUrl: this.storageService.getPublicUrl(key) })
+      .where(eq(contentBlocks.id, block.id))
+      .returning();
+    return updated;
+  }
+
   async update(id: string, adminId: string, data: { html?: string; label?: string; embedUrl?: string }) {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, id) });
     if (!block) throw new NotFoundException('Block not found');
@@ -59,6 +101,8 @@ export class ContentBlocksService {
     await this.assertLessonOwnership(block.lessonId, adminId);
     if (block.type === 'video') {
       await this.storageService.deletePrefix(`videos/${block.lessonId}/${block.id}/`);
+    } else if (block.type === 'file' && block.previewUrl) {
+      await this.storageService.deleteFile(block.previewUrl);
     }
     await db.delete(contentBlocks).where(eq(contentBlocks.id, id));
   }

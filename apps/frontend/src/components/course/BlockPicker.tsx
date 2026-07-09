@@ -14,7 +14,7 @@ interface BlockPickerProps {
 const FILE_ACCEPT: Record<'video' | 'image' | 'file', string> = {
   video: 'video/*',
   image: 'image/*',
-  file: '*/*',
+  file: '.pdf,.doc,.docx,.ppt,.pptx,.xls,.xlsx,application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,application/vnd.ms-powerpoint,application/vnd.openxmlformats-officedocument.presentationml.presentation,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
 };
 
 interface BlockItem {

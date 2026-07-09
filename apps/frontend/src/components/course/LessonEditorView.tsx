@@ -126,10 +126,10 @@ export function LessonEditorView({
       type,
       fileName: file.name,
       label: file.name,
-      previewUrl: type === "file" ? undefined : URL.createObjectURL(file),
+      previewUrl: type === "image" ? URL.createObjectURL(file) : undefined,
       processingStatus: type === "video" ? "pending" : undefined,
     };
-    void addBlock(courseId, moduleId, lessonId, block, type === "video" ? file : undefined);
+    void addBlock(courseId, moduleId, lessonId, block, type === "video" || type === "file" ? file : undefined);
   }
 
   function toggleCollapse(blockId: string) {
