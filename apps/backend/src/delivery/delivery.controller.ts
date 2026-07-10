@@ -1,8 +1,12 @@
-import { Controller, Get, Post, Param, Body, Headers, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Param, Body, Headers, HttpCode, Query } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { DeliveryService } from './delivery.service';
 import { StartSubmissionDto } from './dto/start-submission.dto';
 import { SubmitAnswersDto } from './dto/submit-answers.dto';
+
+function isPracticeMode(value?: string) {
+  return value === '1' || value === 'true';
+}
 
 @Controller('public')
 export class DeliveryController {
@@ -12,29 +16,38 @@ export class DeliveryController {
   ) {}
 
   @Get('tests/:slug')
-  getTest(@Param('slug') slug: string) {
-    return this.deliveryService.getTestBySlug(slug);
+  getTest(@Param('slug') slug: string, @Query('practice') practice?: string) {
+    return this.deliveryService.getTestBySlug(slug, isPracticeMode(practice));
   }
 
   @Post('submissions')
-  startSubmission(@Body() dto: StartSubmissionDto, @Headers('authorization') authorization?: string) {
-    return this.deliveryService.startSubmission(dto.slug, dto.studentName, this.getOptionalUserId(authorization));
+  startSubmission(
+    @Body() dto: StartSubmissionDto,
+    @Query('practice') practice: string | undefined,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.deliveryService.startSubmission(
+      dto.slug,
+      dto.studentName,
+      this.getOptionalUserId(authorization),
+      isPracticeMode(practice),
+    );
   }
 
   @Get('submissions/:id')
-  getSubmission(@Param('id') id: string) {
-    return this.deliveryService.getSubmission(id);
+  getSubmission(@Param('id') id: string, @Query('practice') practice?: string) {
+    return this.deliveryService.getSubmission(id, isPracticeMode(practice));
   }
 
   @Get('submissions/:id/result')
-  getSubmissionResult(@Param('id') id: string) {
-    return this.deliveryService.getSubmissionResult(id);
+  getSubmissionResult(@Param('id') id: string, @Query('practice') practice?: string) {
+    return this.deliveryService.getSubmissionResult(id, isPracticeMode(practice));
   }
 
   @Post('submissions/:id/submit')
   @HttpCode(200)
-  submitAnswers(@Param('id') id: string, @Body() dto: SubmitAnswersDto) {
-    return this.deliveryService.submitAnswers(id, dto.answers, dto.mode, dto.violationReason);
+  submitAnswers(@Param('id') id: string, @Body() dto: SubmitAnswersDto, @Query('practice') practice?: string) {
+    return this.deliveryService.submitAnswers(id, dto.answers, dto.mode, dto.violationReason, isPracticeMode(practice));
   }
 
   @Post('submissions/:id/check')

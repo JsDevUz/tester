@@ -1,4 +1,5 @@
 import {
+  applyPracticeOverride,
   evaluateObjectiveAnswer,
   normalizeSubmissionMode,
   orderSubmissionAnswersForDisplay,
@@ -61,5 +62,29 @@ describe('orderSubmissionAnswersForDisplay', () => {
 
     expect(orderSubmissionAnswersForDisplay(answers, questions, 'sid-1', true).map((a) => a.questionId))
       .toEqual(expectedQuestionIds);
+  });
+});
+
+describe('applyPracticeOverride', () => {
+  it('returns the config unchanged when not in practice mode', () => {
+    const config = { showResults: 'hidden', oneByOne: true, requireAuth: false, deadline: new Date('2026-01-01') };
+    expect(applyPracticeOverride(config, false)).toEqual(config);
+  });
+
+  it('forces immediate results, all-at-once, required auth, and no deadline in practice mode', () => {
+    const config = { showResults: 'hidden', oneByOne: true, requireAuth: false, deadline: new Date('2026-01-01') };
+    expect(applyPracticeOverride(config, true)).toEqual({
+      showResults: 'immediately',
+      oneByOne: false,
+      requireAuth: true,
+      deadline: null,
+    });
+  });
+
+  it('does not mutate the original config object', () => {
+    const config = { showResults: 'per_question', oneByOne: true, requireAuth: false, deadline: null };
+    const original = { ...config };
+    applyPracticeOverride(config, true);
+    expect(config).toEqual(original);
   });
 });

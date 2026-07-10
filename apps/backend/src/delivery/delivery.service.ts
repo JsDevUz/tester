@@ -16,6 +16,14 @@ export function normalizeViolationReason(reason?: string | null) {
   return text ? text.slice(0, 300) : null;
 }
 
+export function applyPracticeOverride<T extends { showResults: string; oneByOne: boolean; requireAuth: boolean; deadline: Date | string | null }>(
+  config: T,
+  practiceMode: boolean,
+): T {
+  if (!practiceMode) return config;
+  return { ...config, showResults: 'immediately', oneByOne: false, requireAuth: true, deadline: null };
+}
+
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -51,7 +59,7 @@ export function orderSubmissionAnswersForDisplay<T extends { questionId: string 
 export class DeliveryService {
   constructor(private readonly groqService: GroqService) {}
 
-  async getTestBySlug(slug: string) {
+  async getTestBySlug(slug: string, practiceMode = false) {
     const test = await db.query.tests.findFirst({
       where: eq(tests.slug, slug),
       with: {
@@ -63,17 +71,27 @@ export class DeliveryService {
     });
     if (!test) throw new NotFoundException('Test not found');
 
+    const overridden = applyPracticeOverride(
+      {
+        showResults: test.showResults,
+        oneByOne: test.oneByOne,
+        requireAuth: test.requireAuth,
+        deadline: test.deadline,
+      },
+      practiceMode,
+    );
+
     return {
       id: test.id,
       name: test.name,
       description: test.description,
       timeLimit: test.timeLimit,
-      showResults: test.showResults,
+      showResults: overridden.showResults,
       shuffleQuestions: test.shuffleQuestions,
       shuffleOptions: test.shuffleOptions,
-      oneByOne: test.oneByOne,
-      requireAuth: test.requireAuth,
-      deadline: test.deadline,
+      oneByOne: overridden.oneByOne,
+      requireAuth: overridden.requireAuth,
+      deadline: overridden.deadline,
       questions: test.questions.map((q) => ({
         id: q.id,
         text: q.text,
@@ -86,10 +104,11 @@ export class DeliveryService {
     };
   }
 
-  async startSubmission(slug: string, studentName: string, userId?: string) {
+  async startSubmission(slug: string, studentName: string, userId?: string, practiceMode = false) {
     const test = await db.query.tests.findFirst({ where: eq(tests.slug, slug) });
     if (!test) throw new NotFoundException('Test not found');
-    if (test.requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
+    const requireAuth = practiceMode ? true : test.requireAuth;
+    if (requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
 
     const [submission] = await db.insert(submissions).values({
       testId: test.id,
@@ -101,7 +120,7 @@ export class DeliveryService {
   }
 
   // Resume: return submission state if not yet submitted
-  async getSubmission(submissionId: string) {
+  async getSubmission(submissionId: string, practiceMode = false) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
@@ -110,12 +129,16 @@ export class DeliveryService {
     // Already submitted — return result (respecting showResults)
     if (submission.submittedAt) {
       const test = await db.query.tests.findFirst({ where: eq(tests.id, submission.testId) });
+      const overridden = applyPracticeOverride(
+        { showResults: test?.showResults ?? 'hidden', oneByOne: test?.oneByOne ?? false, requireAuth: test?.requireAuth ?? false, deadline: test?.deadline ?? null },
+        practiceMode,
+      );
       return {
         status: 'submitted' as const,
         score: submission.score,
         total: submission.total,
-        showResults: test?.showResults ?? 'hidden',
-        deadline: test?.deadline ?? null,
+        showResults: overridden.showResults,
+        deadline: overridden.deadline,
         mode: normalizeSubmissionMode(submission.mode),
         violationReason: normalizeViolationReason(submission.violationReason),
       };
@@ -129,7 +152,7 @@ export class DeliveryService {
     };
   }
 
-  async getSubmissionResult(submissionId: string) {
+  async getSubmissionResult(submissionId: string, practiceMode = false) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
       with: {
@@ -150,7 +173,9 @@ export class DeliveryService {
         },
       },
     });
-    const showAnswers = test?.showResults === 'immediately' || test?.showResults === 'per_question';
+    const effectiveShowResults = practiceMode ? 'immediately' : (test?.showResults ?? 'hidden');
+    const effectiveDeadline = practiceMode ? null : (test?.deadline ?? null);
+    const showAnswers = effectiveShowResults === 'immediately' || effectiveShowResults === 'per_question';
     const questionMap = new Map((test?.questions ?? []).map((q) => [q.id, q]));
 
     const safeAnswers = showAnswers
@@ -185,8 +210,8 @@ export class DeliveryService {
       total: submission.total,
       mode: normalizeSubmissionMode(submission.mode),
       violationReason: normalizeViolationReason(submission.violationReason),
-      showResults: test?.showResults ?? 'hidden',
-      deadline: test?.deadline ?? null,
+      showResults: effectiveShowResults,
+      deadline: effectiveDeadline,
       answers: safeAnswers,
     };
   }
@@ -241,14 +266,14 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }>, mode?: string, violationReason?: string | null) {
+  }>, mode?: string, violationReason?: string | null, practiceMode = false) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
     if (!submission) throw new NotFoundException('Submission not found');
     if (submission.submittedAt) {
       // Already submitted — return full persisted result (beacon may fire multiple times).
-      return this.getSubmissionResult(submissionId);
+      return this.getSubmissionResult(submissionId, practiceMode);
     }
 
     const test = await db.query.tests.findFirst({
@@ -392,7 +417,7 @@ export class DeliveryService {
       // Boshqa so'rov ulgurib submit qilgan. Answers insert tugashini kutib,
       // to'liq persisted natijani qaytaramiz.
       await sleep(120);
-      return this.getSubmissionResult(submissionId);
+      return this.getSubmissionResult(submissionId, practiceMode);
     }
 
     if (answerRows.length > 0) {
@@ -401,7 +426,9 @@ export class DeliveryService {
 
     // Only return answer breakdown if showResults === 'immediately' or 'per_question'
     // For other modes, never send per-question correctness to client
-    const showAnswers = test.showResults === 'immediately' || test.showResults === 'per_question';
+    const effectiveShowResults = practiceMode ? 'immediately' : test.showResults;
+    const effectiveDeadline = practiceMode ? null : test.deadline;
+    const showAnswers = effectiveShowResults === 'immediately' || effectiveShowResults === 'per_question';
 
     return {
       submissionId,
@@ -411,8 +438,8 @@ export class DeliveryService {
       violationReason: normalizeSubmissionMode(mode) === 'violation'
         ? normalizeViolationReason(violationReason) ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'
         : null,
-      showResults: test.showResults,
-      deadline: test.deadline,
+      showResults: effectiveShowResults,
+      deadline: effectiveDeadline,
       answers: showAnswers ? safeAnswers : [],
     };
   }
