@@ -3,10 +3,12 @@ import {
   ArrowLeft, BookOpen, CheckCircle2, ChevronDown, ChevronRight, ChevronUp, Download, FileText, Film, Image as ImageIcon,
   Layers3, Loader2, Lock, MessageCircle, Play,
 } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { StudentShell } from '../components/student/StudentShell';
 import {
   apiGetMyCourseDetail,
   apiGetMyCourses,
+  apiMarkLessonComplete,
   type ApiMyCourse,
   type ApiMyCourseDetail,
   type ApiMyLesson,
@@ -14,6 +16,7 @@ import {
 import type { ApiContentBlock } from '../api/contentBlocks';
 import { HlsVideoPlayer } from '../components/course/HlsVideoPlayer';
 import { ImageLightbox } from '../components/student/ImageLightbox';
+import { PracticeScreen } from '../components/student/PracticeScreen';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Kutilmoqda',
@@ -167,12 +170,14 @@ export function MyCoursesPage() {
 }
 
 function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: () => void }) {
+  const navigate = useNavigate();
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
   const [mobileLessonsOpen, setMobileLessonsOpen] = useState(false);
+  const [showPractice, setShowPractice] = useState(false);
 
   useLessonAntiCapture(!loading && !error && Boolean(course));
 
@@ -400,13 +405,26 @@ function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: (
         </aside>
 
         <main className="min-w-0 overflow-hidden px-4 py-4 sm:px-6 lg:px-10 lg:py-6">
-          {selected && (
+          {selected && showPractice ? (
+            <PracticeScreen
+              lesson={selected.lesson}
+              onBack={() => setShowPractice(false)}
+              onStartPractice={(block) => {
+                if (block.testSlug) navigate(`/t/${block.testSlug}?practice=1`);
+              }}
+              onViewSubmission={(block, submissionId) => {
+                if (block.testSlug) navigate(`/t/${block.testSlug}/result?sid=${submissionId}&practice=1`);
+              }}
+            />
+          ) : selected ? (
             <LessonReader
               lesson={selected.lesson}
               moduleTitle={selected.module.title}
               curatorName={course.curatorName}
               lessonNumber={selectedIndex + 1}
               totalLessons={lessons.length}
+              hasPractice={selected.lesson.practiceBlocks.length > 0}
+              onOpenPractice={() => setShowPractice(true)}
               onPrev={() => {
                 const prev = lessons[selectedIndex - 1];
                 if (prev) setSelectedLessonId(prev.lesson.id);
@@ -420,7 +438,7 @@ function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: (
                 }
               }}
             />
-          )}
+          ) : null}
         </main>
       </div>
     </div>
@@ -433,6 +451,8 @@ function LessonReader({
   curatorName,
   lessonNumber,
   totalLessons,
+  hasPractice,
+  onOpenPractice,
   onPrev,
   onNext,
 }: {
@@ -441,11 +461,12 @@ function LessonReader({
   curatorName: string | null;
   lessonNumber: number;
   totalLessons: number;
+  hasPractice: boolean;
+  onOpenPractice: () => void;
   onPrev: () => void;
   onNext: () => void;
 }) {
   const readyBlocks = lesson.blocks.filter((block) => block.type !== 'video' || block.embedUrl || block.processingStatus === 'ready');
-  const hasPractice = false;
 
   return (
     <article className="mx-auto w-full max-w-3xl overflow-hidden pb-12 text-gray-900">
@@ -498,8 +519,12 @@ function LessonReader({
         </button>
         <button
           type="button"
-          onClick={onNext}
-          disabled={lessonNumber >= totalLessons}
+          onClick={async () => {
+            await apiMarkLessonComplete(lesson.id);
+            if (hasPractice) onOpenPractice();
+            else onNext();
+          }}
+          disabled={!hasPractice && lessonNumber >= totalLessons}
           className="rounded-xl bg-[var(--color-indigo-500)] px-3.5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200 sm:px-4"
         >
           {hasPractice ? 'Amaliyot' : 'Keyingi dars'}

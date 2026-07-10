@@ -124,6 +124,24 @@ export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
   return res.data;
 }
 
+export interface ApiMyPracticeSubmission {
+  id: string;
+  submittedAt: string;
+  score: number;
+  total: number;
+}
+
+export interface ApiMyPracticeBlock {
+  id: string;
+  testId: string | null;
+  testSlug: string | null;
+  testName: string | null;
+  description: string;
+  maxScore: number | null;
+  earnedScore: number | null;
+  submissions: ApiMyPracticeSubmission[];
+}
+
 export interface ApiMyLesson {
   id: string;
   moduleId: string;
@@ -132,6 +150,12 @@ export interface ApiMyLesson {
   status: 'draft' | 'published';
   createdAt: string;
   blocks: ApiContentBlock[];
+  practiceBlocks: ApiMyPracticeBlock[];
+  passThresholdEnabled: boolean;
+  passThresholdPercent: number | null;
+  completionScore: number | null;
+  completed: boolean;
+  combinedPracticePercent: number | null;
 }
 
 export interface ApiMyModule {
@@ -152,5 +176,10 @@ export interface ApiMyCourseDetail {
 
 export async function apiGetMyCourseDetail(courseId: string): Promise<ApiMyCourseDetail> {
   const res = await client.get(`/my/courses/${courseId}`);
+  return res.data;
+}
+
+export async function apiMarkLessonComplete(lessonId: string): Promise<{ completedAt: string }> {
+  const res = await client.post(`/lessons/${lessonId}/complete`);
   return res.data;
 }
