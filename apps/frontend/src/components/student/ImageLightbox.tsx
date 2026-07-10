@@ -25,7 +25,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex h-screen w-screen items-center justify-center overflow-hidden bg-black/80 p-0"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <button
@@ -39,7 +39,7 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       <img
         src={src}
         alt={alt ?? ''}
-        className="max-h-full max-w-full rounded-lg object-contain"
+        className="max-h-screen max-w-screen object-contain"
         onClick={(e) => e.stopPropagation()}
       />
     </div>

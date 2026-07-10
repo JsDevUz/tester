@@ -37,8 +37,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`min-h-screen bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage ? "" : "pb-16"}`}>
-      <div className="mx-auto flex min-h-screen w-full max-w-none flex-col lg:min-h-[calc(100vh-2rem)] lg:max-w-6xl lg:flex-row lg:gap-3">
+    <div className={`min-h-[100dvh] bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage ? "" : "pb-16"}`}>
+      <div className="mx-auto flex w-full max-w-none flex-col lg:min-h-[calc(100vh-2rem)] lg:max-w-6xl lg:flex-row lg:gap-3">
         <aside className="hidden w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:flex lg:w-72 lg:self-start">
           <div className="rounded-2xl bg-white p-4">
             <div className="flex items-center gap-3">

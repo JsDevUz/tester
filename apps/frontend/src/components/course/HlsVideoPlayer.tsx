@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
+import { Maximize2, Minimize2 } from 'lucide-react';
 import { apiStartVideoPlayback } from '../../api/contentBlocks';
 import { getApiBaseUrl } from '../../api/baseUrl';
 import { useAuthStore } from '../../stores/authStore';
@@ -9,17 +10,51 @@ interface HlsVideoPlayerProps {
   watermark?: boolean;
 }
 
+function extractWatermarkPhone(phone?: string | null, email?: string | null) {
+  const fromPhone = phone?.replace(/\D/g, '') ?? '';
+  const rawPhone = fromPhone.length >= 7 ? fromPhone : (email?.match(/\d{7,}/)?.[0] ?? '');
+  if (!rawPhone) return '';
+
+  const withoutCountryCode = rawPhone.startsWith('998') ? rawPhone.slice(3) : rawPhone;
+  return btoa(withoutCountryCode);
+}
+
+function quietWatermarkPosition() {
+  const leftZones = [14 + Math.random() * 14, 72 + Math.random() * 14];
+  const topZones = [18 + Math.random() * 12, 68 + Math.random() * 14];
+
+  return {
+    left: Math.round(leftZones[Math.floor(Math.random() * leftZones.length)]),
+    top: Math.round(topZones[Math.floor(Math.random() * topZones.length)]),
+  };
+}
+
 export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerProps) {
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const admin = useAuthStore((s) => s.admin);
   const [error, setError] = useState<string | null>(null);
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
-  const [markPosition, setMarkPosition] = useState({ left: 12, top: 16 });
+  const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
 
-  const watermarkText = [
-    admin?.name ?? "O'quvchi",
-    admin?.phone ?? admin?.email ?? admin?.id?.slice(0, 8),
-  ].filter(Boolean).join(' • ');
+  const watermarkText = extractWatermarkPhone(admin?.phone, admin?.email);
+
+  useEffect(() => {
+    const syncFullscreen = () => {
+      const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
+      const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
+      setIsFullscreen(fullscreenElement === wrapperRef.current);
+    };
+
+    document.addEventListener('fullscreenchange', syncFullscreen);
+    document.addEventListener('webkitfullscreenchange', syncFullscreen);
+
+    return () => {
+      document.removeEventListener('fullscreenchange', syncFullscreen);
+      document.removeEventListener('webkitfullscreenchange', syncFullscreen);
+    };
+  }, []);
 
   useEffect(() => {
     let hls: Hls | null = null;
@@ -63,40 +98,98 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   }, [blockId]);
 
   useEffect(() => {
-    if (!watermark) return undefined;
+    if (!watermark || !watermarkText) return undefined;
 
-    let hideTimer: ReturnType<typeof setTimeout> | undefined;
-    const move = () => {
-      setMarkPosition({
-        left: Math.round(8 + Math.random() * 68),
-        top: Math.round(12 + Math.random() * 66),
-      });
+    let visibleTimer: ReturnType<typeof setTimeout> | undefined;
+    let hiddenTimer: ReturnType<typeof setTimeout> | undefined;
+    let moveTimer: ReturnType<typeof setTimeout> | undefined;
+
+    const show = () => {
       setMarkVisible(true);
-      hideTimer = setTimeout(() => setMarkVisible(false), 2200);
+      visibleTimer = setTimeout(() => {
+        setMarkVisible(false);
+        moveTimer = setTimeout(() => {
+          setMarkPosition(quietWatermarkPosition());
+          hiddenTimer = setTimeout(show, 9000 + Math.random() * 4000);
+        }, 800);
+      }, 3000);
     };
 
-    move();
-    const interval = setInterval(move, 4200);
+    hiddenTimer = setTimeout(show, 2500);
 
     return () => {
-      clearInterval(interval);
-      if (hideTimer) clearTimeout(hideTimer);
+      if (visibleTimer) clearTimeout(visibleTimer);
+      if (hiddenTimer) clearTimeout(hiddenTimer);
+      if (moveTimer) clearTimeout(moveTimer);
     };
-  }, [watermark]);
+  }, [watermark, watermarkText]);
+
+  const toggleFullscreen = async () => {
+    const wrapper = wrapperRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> | void }) | null;
+    const fullscreenDocument = document as Document & { webkitExitFullscreen?: () => Promise<void> | void };
+
+    try {
+      if (document.fullscreenElement) {
+        await document.exitFullscreen();
+        return;
+      }
+
+      if (fullscreenDocument.webkitExitFullscreen && fullscreenDocument.fullscreenElement) {
+        await fullscreenDocument.webkitExitFullscreen();
+        return;
+      }
+
+      if (wrapper?.requestFullscreen) {
+        await wrapper.requestFullscreen();
+        return;
+      }
+
+      await wrapper?.webkitRequestFullscreen?.();
+    } catch {
+      setError('Fullscreen ochilmadi');
+    }
+  };
 
   return (
-    <div className="relative overflow-hidden rounded-2xl bg-black">
-      <video ref={videoRef} controls playsInline className="aspect-video w-full" />
-      {watermark && (
+    <div
+      ref={wrapperRef}
+      className={`relative overflow-hidden bg-black ${
+        isFullscreen
+          ? 'flex h-[100dvh] w-[100dvw] items-center justify-center rounded-none'
+          : 'rounded-2xl'
+      }`}
+      onContextMenu={(e) => e.preventDefault()}
+    >
+      <video
+        ref={videoRef}
+        controls
+        controlsList="nodownload nofullscreen noremoteplayback"
+        disablePictureInPicture
+        playsInline
+        className={isFullscreen ? 'h-[100dvh] w-[100dvw] object-contain' : 'aspect-video w-full'}
+      />
+      {watermark && watermarkText && (
         <div
-          className={`pointer-events-none absolute z-10 max-w-[72%] rounded-full bg-black/35 px-3 py-1.5 text-[11px] font-bold text-white/80 shadow-sm backdrop-blur-sm transition-all duration-500 ${
-            markVisible ? 'scale-100 opacity-100' : 'scale-95 opacity-0'
+          className={`pointer-events-none absolute z-10 px-1 py-0.5 text-[10px] font-semibold tracking-wide text-white/55 transition-opacity duration-700 ${
+            markVisible ? 'opacity-100' : 'opacity-0'
           }`}
-          style={{ left: `${markPosition.left}%`, top: `${markPosition.top}%`, transform: 'translate(-50%, -50%)' }}
+          style={{
+            left: `${markPosition.left}%`,
+            top: `${markPosition.top}%`,
+            transform: 'translate(-50%, -50%)',
+          }}
         >
           <span className="block truncate">{watermarkText}</span>
         </div>
       )}
+      <button
+        type="button"
+        onClick={toggleFullscreen}
+        className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/80 backdrop-blur transition hover:bg-black/70 hover:text-white"
+        aria-label={isFullscreen ? 'Fullscreenni yopish' : 'Fullscreen ochish'}
+      >
+        {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
+      </button>
       {error && <div className="bg-red-50 px-4 py-3 text-sm font-semibold text-red-500">{error}</div>}
     </div>
   );
