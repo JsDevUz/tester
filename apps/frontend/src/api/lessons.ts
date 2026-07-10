@@ -6,6 +6,9 @@ export interface ApiLesson {
   title: string;
   orderIndex: number;
   status: 'draft' | 'published';
+  passThresholdEnabled: boolean;
+  passThresholdPercent: number | null;
+  completionScore: number | null;
   createdAt: string;
 }
 
@@ -19,7 +22,16 @@ export async function apiCreateLesson(moduleId: string, title: string): Promise<
   return res.data;
 }
 
-export async function apiUpdateLesson(id: string, data: { title?: string; status?: string }): Promise<ApiLesson> {
+export async function apiUpdateLesson(
+  id: string,
+  data: {
+    title?: string;
+    status?: string;
+    passThresholdEnabled?: boolean;
+    passThresholdPercent?: number | null;
+    completionScore?: number | null;
+  },
+): Promise<ApiLesson> {
   const res = await client.patch(`/lessons/${id}`, data);
   return res.data;
 }

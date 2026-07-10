@@ -114,7 +114,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
         <PracticeBlockPicker
           disabled={practiceLimitReached}
           limitText={`Amaliyotda maksimal ${PRACTICE_BLOCK_LIMIT} ta blok`}
-          onPickType={(type) => addPracticeBlock(courseId, moduleId, lessonId, type)}
+          onPickType={(type) => { if (type === 'test') void addPracticeBlock(courseId, moduleId, lessonId); }}
         />
       </div>
 

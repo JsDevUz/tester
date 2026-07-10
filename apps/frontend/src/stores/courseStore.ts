@@ -3,6 +3,10 @@ import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse, type
 import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
 import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
 import {
+  apiListPracticeBlocks, apiCreatePracticeBlock, apiUpdatePracticeBlock,
+  apiDeletePracticeBlock, apiReorderPracticeBlocks, type ApiPracticeBlock,
+} from '../api/practiceBlocks';
+import {
   apiListBlocks,
   apiCreateBlock,
   apiUpdateBlock,
@@ -109,6 +113,7 @@ export interface Lesson {
   practiceBlocks: PracticeBlock[];
   passThresholdEnabled: boolean;
   passThresholdPercent: number | null;
+  completionScore: number | null;
 }
 
 export interface Module {
@@ -150,12 +155,13 @@ interface CourseState {
   retryVideoBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
-  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type: PracticeBlockType) => void;
-  removePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => void;
-  movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => void;
-  setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => void;
-  setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => void;
-  setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => void;
+  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  removePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
+  movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
+  setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => Promise<void>;
+  setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => Promise<void>;
+  setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => Promise<void>;
+  setLessonCompletionScore: (courseId: string, moduleId: string, lessonId: string, score: number | null) => Promise<void>;
 
   addLaunch: (courseId: string, name: string) => Promise<Launch | undefined>;
   toggleLaunchActive: (courseId: string, launchId: string) => Promise<void>;
@@ -180,10 +186,6 @@ interface CourseState {
   recordPayment: (paymentId: string, amount: number, discount?: number) => Promise<ApiMonthlyPayment>;
 }
 
-function newId(): string {
-  return crypto.randomUUID();
-}
-
 function toFrontendCourse(apiCourse: ApiCourse): Course {
   return { id: apiCourse.id, title: apiCourse.title, modules: [], launches: [], groups: [] };
 }
@@ -205,6 +207,15 @@ function toFrontendBlock(b: ApiContentBlock): ContentBlock {
     durationSec: b.durationSec ?? undefined,
     errorMessage: b.errorMessage ?? undefined,
     processedAt: b.processedAt ?? undefined,
+  };
+}
+
+function toFrontendPracticeBlock(b: ApiPracticeBlock): PracticeBlock {
+  return {
+    id: b.id,
+    type: 'test',
+    testId: b.testId,
+    description: b.description,
   };
 }
 
@@ -233,18 +244,23 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             const lessonRows = await apiListLessons(moduleRow.id);
             const lessonList: Lesson[] = await Promise.all(
               lessonRows.map(async (l) => {
-                const blockRows = await apiListBlocks(l.id);
+                const [blockRows, practiceBlockRows] = await Promise.all([
+                  apiListBlocks(l.id),
+                  apiListPracticeBlocks(l.id),
+                ]);
                 const blocks: ContentBlock[] = blockRows.map(toFrontendBlock);
+                const practiceBlocks: PracticeBlock[] = practiceBlockRows.map(toFrontendPracticeBlock);
                 return {
                   id: l.id,
                   title: l.title,
                   orderIndex: l.orderIndex,
                   status: l.status,
                   blocks,
-                  practiceEnabled: false,
-                  practiceBlocks: [],
-                  passThresholdEnabled: false,
-                  passThresholdPercent: null,
+                  practiceEnabled: practiceBlockRows.length > 0,
+                  practiceBlocks,
+                  passThresholdEnabled: l.passThresholdEnabled,
+                  passThresholdPercent: l.passThresholdPercent,
+                  completionScore: l.completionScore,
                 };
               }),
             );
@@ -376,6 +392,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       practiceBlocks: [],
       passThresholdEnabled: false,
       passThresholdPercent: null,
+      completionScore: null,
     };
     set({
       courses: get().courses.map((c) =>
@@ -795,8 +812,14 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  addPracticeBlock: (courseId, moduleId, lessonId, type) => {
-    const block: PracticeBlock = { id: newId(), type, testId: null, description: '' };
+  addPracticeBlock: async (courseId, moduleId, lessonId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT) return;
+
+    const row = await apiCreatePracticeBlock(lessonId);
+    const block = toFrontendPracticeBlock(row);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -809,9 +832,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   : {
                       ...m,
                       lessons: m.lessons.map((l) =>
-                        l.id !== lessonId || l.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT
-                          ? l
-                          : { ...l, practiceBlocks: [...l.practiceBlocks, block] },
+                        l.id !== lessonId ? l : { ...l, practiceBlocks: [...l.practiceBlocks, block] },
                       ),
                     },
               ),
@@ -819,7 +840,8 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  removePracticeBlock: (courseId, moduleId, lessonId, blockId) => {
+  removePracticeBlock: async (courseId, moduleId, lessonId, blockId) => {
+    await apiDeletePracticeBlock(blockId);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -842,7 +864,18 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  movePracticeBlock: (courseId, moduleId, lessonId, blockId, direction) => {
+  movePracticeBlock: async (courseId, moduleId, lessonId, blockId, direction) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    const index = lesson.practiceBlocks.findIndex((b) => b.id === blockId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= lesson.practiceBlocks.length) return;
+    const reordered = [...lesson.practiceBlocks];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+    await apiReorderPracticeBlocks(lessonId, reordered.map((b) => b.id));
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -854,22 +887,17 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   ? m
                   : {
                       ...m,
-                      lessons: m.lessons.map((l) => {
-                        if (l.id !== lessonId) return l;
-                        const index = l.practiceBlocks.findIndex((b) => b.id === blockId);
-                        const swapWith = direction === 'up' ? index - 1 : index + 1;
-                        if (index === -1 || swapWith < 0 || swapWith >= l.practiceBlocks.length) return l;
-                        const practiceBlocks = [...l.practiceBlocks];
-                        [practiceBlocks[index], practiceBlocks[swapWith]] = [practiceBlocks[swapWith], practiceBlocks[index]];
-                        return { ...l, practiceBlocks };
-                      }),
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId ? l : { ...l, practiceBlocks: reordered },
+                      ),
                     },
               ),
             },
       ),
     });
   },
-  setPracticeBlockTest: (courseId, moduleId, lessonId, blockId, testId) => {
+  setPracticeBlockTest: async (courseId, moduleId, lessonId, blockId, testId) => {
+    await apiUpdatePracticeBlock(blockId, { testId });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -881,26 +909,24 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   ? m
                   : {
                       ...m,
-                      lessons: m.lessons.map((l) => {
-                        if (l.id !== lessonId) return l;
-                        // Dedup: if setting testId, check no other block has it
-                        if (testId && l.practiceBlocks.some((b) => b.id !== blockId && b.testId === testId)) {
-                          return l; // Silently reject duplicate
-                        }
-                        return {
-                          ...l,
-                          practiceBlocks: l.practiceBlocks.map((b) =>
-                            b.id === blockId ? { ...b, testId } : b,
-                          ),
-                        };
-                      }),
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              practiceBlocks: l.practiceBlocks.map((b) =>
+                                b.id === blockId ? { ...b, testId } : b,
+                              ),
+                            },
+                      ),
                     },
               ),
             },
       ),
     });
   },
-  setPracticeBlockDescription: (courseId, moduleId, lessonId, blockId, description) => {
+  setPracticeBlockDescription: async (courseId, moduleId, lessonId, blockId, description) => {
+    await apiUpdatePracticeBlock(blockId, { description });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -928,7 +954,14 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  setPassThreshold: (courseId, moduleId, lessonId, data) => {
+  setPassThreshold: async (courseId, moduleId, lessonId, data) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson) return;
+    const nextPercent = data.enabled ? (data.percent ?? lesson.passThresholdPercent) : null;
+
+    await apiUpdateLesson(lessonId, { passThresholdEnabled: data.enabled, passThresholdPercent: nextPercent });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -946,8 +979,30 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                           : {
                               ...l,
                               passThresholdEnabled: data.enabled,
-                              passThresholdPercent: data.enabled ? (data.percent ?? l.passThresholdPercent) : null,
+                              passThresholdPercent: nextPercent,
                             },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setLessonCompletionScore: async (courseId, moduleId, lessonId, score) => {
+    await apiUpdateLesson(lessonId, { completionScore: score });
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId ? l : { ...l, completionScore: score },
                       ),
                     },
               ),
