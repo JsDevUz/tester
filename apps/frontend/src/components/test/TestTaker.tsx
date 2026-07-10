@@ -1133,35 +1133,21 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           height: "calc(52px + env(safe-area-inset-top))",
         }}
       >
-        <button
-          type="button"
-          onClick={onExit}
-          className="shrink-0 flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-700"
-        >
-          ← Orqaga
-        </button>
+        <div className="flex-1 flex items-center min-w-0">
+          <button
+            type="button"
+            onClick={onExit}
+            className="shrink-0 flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-700"
+          >
+            ← Orqaga
+          </button>
+        </div>
 
-        <div className="flex flex-1 items-center justify-center gap-3 min-w-0">
+        <div className="shrink-0 flex items-center justify-center">
           {/* Test nomi — faqat desktop */}
           <span className="hidden lg:block text-sm font-semibold text-gray-700 truncate max-w-xs">
             {test.name}
           </span>
-
-          {/* Font size controls */}
-          <div className="flex items-center gap-0.5 shrink-0">
-            <button
-              onClick={() => setFontSize((s) => Math.max(12, s - 2))}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-xs font-bold select-none transition-colors"
-            >
-              A-
-            </button>
-            <button
-              onClick={() => setFontSize((s) => Math.min(24, s + 2))}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-sm font-bold select-none transition-colors"
-            >
-              A+
-            </button>
-          </div>
 
           {/* Progress counter */}
           {isOneByOne ? (
@@ -1179,17 +1165,31 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           )}
         </div>
 
-        {/* Timer */}
-        <div className="shrink-0 w-16 lg:w-auto flex justify-end">
-          {timeLeft !== null ? (
+        <div className="flex-1 flex items-center justify-end gap-3">
+          {/* Font size controls */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => setFontSize((s) => Math.max(12, s - 2))}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-xs font-bold select-none transition-colors"
+            >
+              A-
+            </button>
+            <button
+              onClick={() => setFontSize((s) => Math.min(24, s + 2))}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-sm font-bold select-none transition-colors"
+            >
+              A+
+            </button>
+          </div>
+
+          {/* Timer */}
+          {timeLeft !== null && (
             <span
-              className={`font-mono text-sm font-medium ${timeLeft < 60 ? "text-red-500" : "text-gray-500"}`}
+              className={`shrink-0 font-mono text-sm font-medium ${timeLeft < 60 ? "text-red-500" : "text-gray-500"}`}
             >
               <Clock size={12} className="inline mr-0.5 -mt-0.5" />
               {formatTime(timeLeft)}
             </span>
-          ) : (
-            <div className="w-16" />
           )}
         </div>
       </div>
