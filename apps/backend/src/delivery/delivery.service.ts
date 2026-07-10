@@ -1,8 +1,9 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { tests, submissions, answers, questions, options } from '../db/schema';
-import { and, eq, isNull } from 'drizzle-orm';
+import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
+import { PRACTICE_ATTEMPT_LIMIT } from '../practice-blocks/practice-blocks.service';
 import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
 export { evaluateObjectiveAnswer };
@@ -109,6 +110,15 @@ export class DeliveryService {
     if (!test) throw new NotFoundException('Test not found');
     const requireAuth = practiceMode ? true : test.requireAuth;
     if (requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
+
+    if (practiceMode && userId) {
+      const priorAttempts = await db.query.submissions.findMany({
+        where: and(eq(submissions.testId, test.id), eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
+      });
+      if (priorAttempts.length >= PRACTICE_ATTEMPT_LIMIT) {
+        throw new BadRequestException('ATTEMPT_LIMIT_REACHED');
+      }
+    }
 
     const [submission] = await db.insert(submissions).values({
       testId: test.id,

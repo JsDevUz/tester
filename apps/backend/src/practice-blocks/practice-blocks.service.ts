@@ -22,6 +22,7 @@ export function computeCombinedPercent(
 }
 
 const PRACTICE_BLOCK_LIMIT = 4;
+export const PRACTICE_ATTEMPT_LIMIT = 3;
 
 @Injectable()
 export class PracticeBlocksService {
@@ -114,6 +115,7 @@ export class PracticeBlocksService {
             maxScore: block.maxScore,
             earnedScore: null,
             submissions: [],
+            attemptsRemaining: null,
           };
         }
 
@@ -142,6 +144,7 @@ export class PracticeBlocksService {
             score: s.score ?? 0,
             total: s.total ?? 0,
           })),
+          attemptsRemaining: Math.max(0, PRACTICE_ATTEMPT_LIMIT - completedSubmissions.length),
         };
       }),
     );

@@ -140,6 +140,7 @@ export interface ApiMyPracticeBlock {
   maxScore: number | null;
   earnedScore: number | null;
   submissions: ApiMyPracticeSubmission[];
+  attemptsRemaining: number | null;
 }
 
 export interface ApiMyLesson {

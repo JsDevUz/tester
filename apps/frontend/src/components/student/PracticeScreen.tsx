@@ -102,13 +102,26 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
               )}
 
               {block.testSlug ? (
-                <button
-                  type="button"
-                  onClick={() => onStartPractice(block)}
-                  className="w-full rounded-xl bg-[var(--color-indigo-500)] py-2.5 text-xs font-bold text-white"
-                >
-                  Qayta o'tish
-                </button>
+                block.attemptsRemaining === 0 ? (
+                  <p className="text-center text-xs font-semibold text-gray-400">
+                    Urinishlar soni tugadi
+                  </p>
+                ) : (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => onStartPractice(block)}
+                      className="w-full rounded-xl bg-[var(--color-indigo-500)] py-2.5 text-xs font-bold text-white"
+                    >
+                      Qayta o'tish
+                    </button>
+                    {block.attemptsRemaining !== null && (
+                      <p className="mt-1.5 text-center text-[11px] text-gray-400">
+                        {block.attemptsRemaining} ta urinish imkoniyati qoldi
+                      </p>
+                    )}
+                  </>
+                )
               ) : (
                 <p className="text-xs font-semibold text-gray-400">Bu topshiriq hali tayyor emas</p>
               )}
