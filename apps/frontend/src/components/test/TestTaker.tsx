@@ -12,6 +12,7 @@ import {
 import { apiGetMe } from "../../api/auth";
 import { useAuthStore } from "../../stores/authStore";
 import { getPublicBaseUrl } from "../../api/baseUrl";
+import { TestResultView } from "../../pages/TestResultPage";
 import {
   DndContext,
   closestCenter,
@@ -843,7 +844,18 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   }
 
   if (phase === "result") {
-    return <div>{/* Task 4 replaces this with TestResultView */}</div>;
+    return (
+      <div>
+        <button
+          type="button"
+          onClick={onExit}
+          className="mb-2 inline-flex items-center gap-1.5 px-4 pt-4 text-xs font-bold text-gray-500 hover:text-gray-700 lg:px-8"
+        >
+          ← Orqaga
+        </button>
+        <TestResultView submissionId={resolvedSubmissionId} practiceMode={practiceMode} />
+      </div>
+    );
   }
 
   // phase === "answering"
