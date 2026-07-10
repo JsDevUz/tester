@@ -399,7 +399,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
     }
     return (
       <div>
-        <HlsVideoPlayer blockId={block.id} />
+        <HlsVideoPlayer blockId={block.id} watermark />
         <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
           <div className="h-full w-0 rounded-full bg-[var(--color-indigo-500)]" />
         </div>
