@@ -11,6 +11,7 @@ interface PracticeBlockViewProps {
   testsLoading?: boolean;
   onSelectTest: (testId: string) => void;
   onChangeDescription: (description: string) => void;
+  onChangeMaxScore: (maxScore: number | null) => void;
   onRemove: () => void;
   onMoveUp: () => void;
   onMoveDown: () => void;
@@ -36,7 +37,7 @@ const TYPE_META: Record<PracticeBlockType, { label: string; icon: typeof Clipboa
 };
 
 export function PracticeBlockView({
-  index, isFirst, isLast, block, tests, testsLoading, onSelectTest, onChangeDescription, onRemove, onMoveUp, onMoveDown,
+  index, isFirst, isLast, block, tests, testsLoading, onSelectTest, onChangeDescription, onChangeMaxScore, onRemove, onMoveUp, onMoveDown,
 }: PracticeBlockViewProps) {
   const meta = TYPE_META[block.type];
   const Icon = meta.icon;
@@ -102,6 +103,21 @@ export function PracticeBlockView({
             {!block.testId && (
               <p className="mt-1 text-xs text-red-500">Test tanlanishi shart</p>
             )}
+            <p className="mb-1.5 mt-3 text-sm text-gray-500">Ushbu blok uchun maksimal ball</p>
+            <input
+              type="number"
+              min={0}
+              value={block.maxScore ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') { onChangeMaxScore(null); return; }
+                const num = Number(raw);
+                if (isNaN(num)) return;
+                onChangeMaxScore(Math.max(0, num));
+              }}
+              placeholder="Masalan: 10"
+              className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+            />
           </>
         ) : (
           <>

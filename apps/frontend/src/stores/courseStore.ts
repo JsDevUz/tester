@@ -61,6 +61,7 @@ export interface PracticeBlock {
   type: PracticeBlockType;
   testId: string | null;
   description: string;
+  maxScore: number | null;
 }
 
 export interface PricingPlan {
@@ -160,6 +161,7 @@ interface CourseState {
   movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
   setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => Promise<void>;
   setPracticeBlockDescription: (courseId: string, moduleId: string, lessonId: string, blockId: string, description: string) => Promise<void>;
+  setPracticeBlockMaxScore: (courseId: string, moduleId: string, lessonId: string, blockId: string, maxScore: number | null) => Promise<void>;
   setPassThreshold: (courseId: string, moduleId: string, lessonId: string, data: { enabled: boolean; percent?: number | null }) => Promise<void>;
   setLessonCompletionScore: (courseId: string, moduleId: string, lessonId: string, score: number | null) => Promise<void>;
 
@@ -216,6 +218,7 @@ function toFrontendPracticeBlock(b: ApiPracticeBlock): PracticeBlock {
     type: 'test',
     testId: b.testId,
     description: b.description,
+    maxScore: b.maxScore,
   };
 }
 
@@ -945,6 +948,35 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                               ...l,
                               practiceBlocks: l.practiceBlocks.map((b) =>
                                 b.id === blockId ? { ...b, description } : b,
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  setPracticeBlockMaxScore: async (courseId, moduleId, lessonId, blockId, maxScore) => {
+    await apiUpdatePracticeBlock(blockId, { maxScore });
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              practiceBlocks: l.practiceBlocks.map((b) =>
+                                b.id === blockId ? { ...b, maxScore } : b,
                               ),
                             },
                       ),
