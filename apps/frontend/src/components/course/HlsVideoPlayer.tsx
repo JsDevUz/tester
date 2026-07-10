@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
 import { Maximize2, Minimize2 } from 'lucide-react';
-import { apiStartVideoPlayback } from '../../api/contentBlocks';
+import { apiStartVideoPlayback, apiSaveWatchProgress, apiGetWatchProgress, type WatchSegment } from '../../api/contentBlocks';
 import { getApiBaseUrl } from '../../api/baseUrl';
 import { useAuthStore } from '../../stores/authStore';
 
@@ -37,6 +37,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
+  const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
+  const [watchedPercent, setWatchedPercent] = useState<number | null>(null);
+  const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const currentRangeRef = useRef<{ start: number; end: number } | null>(null);
+  const lastSavedEndRef = useRef<number>(0);
+  const lastTimeRef = useRef<number>(0);
 
   const watermarkText = extractWatermarkPhone(admin?.phone, admin?.email);
 
@@ -98,6 +104,72 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   }, [blockId]);
 
   useEffect(() => {
+    let cancelled = false;
+    apiGetWatchProgress(blockId).then((data) => {
+      if (cancelled) return;
+      setWatchedSegments(data.segments);
+      setWatchedPercent(data.watchedPercent);
+    }).catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [blockId]);
+
+  useEffect(() => {
+    const video = videoRef.current;
+    if (!video) return undefined;
+
+    function closeCurrentRange() {
+      const range = currentRangeRef.current;
+      if (range && range.end > range.start && range.end > lastSavedEndRef.current) {
+        void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end)).then((data) => {
+          setWatchedPercent(data.watchedPercent);
+        });
+        lastSavedEndRef.current = range.end;
+      }
+    }
+
+    function handleTimeUpdate() {
+      if (!video) return;
+      const current = video.currentTime;
+      const jumped = Math.abs(current - lastTimeRef.current) > 2;
+      lastTimeRef.current = current;
+
+      if (jumped || !currentRangeRef.current) {
+        closeCurrentRange();
+        currentRangeRef.current = { start: current, end: current };
+        lastSavedEndRef.current = 0;
+      } else {
+        currentRangeRef.current.end = current;
+      }
+    }
+
+    function handleLoadedMetadata() {
+      if (video && !isNaN(video.duration) && isFinite(video.duration)) {
+        setVideoDuration(video.duration);
+      }
+    }
+
+    const saveInterval = setInterval(() => {
+      if (!video.paused) closeCurrentRange();
+    }, 7000);
+
+    video.addEventListener('timeupdate', handleTimeUpdate);
+    video.addEventListener('loadedmetadata', handleLoadedMetadata);
+    video.addEventListener('pause', closeCurrentRange);
+    video.addEventListener('ended', closeCurrentRange);
+
+    return () => {
+      clearInterval(saveInterval);
+      closeCurrentRange();
+      video.removeEventListener('timeupdate', handleTimeUpdate);
+      video.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      video.removeEventListener('pause', closeCurrentRange);
+      video.removeEventListener('ended', closeCurrentRange);
+    };
+  }, [blockId]);
+
+  useEffect(() => {
     if (!watermark || !watermarkText) return undefined;
 
     let visibleTimer: ReturnType<typeof setTimeout> | undefined;
@@ -151,6 +223,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   };
 
   return (
+    <>
     <div
       ref={wrapperRef}
       className={`relative overflow-hidden bg-black ${
@@ -192,5 +265,25 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       </button>
       {error && <div className="bg-red-50 px-4 py-3 text-sm font-semibold text-red-500">{error}</div>}
     </div>
+    {videoDuration !== null && videoDuration > 0 && !isFullscreen && (
+      <div className="mt-2">
+        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
+          {watchedSegments.map((seg, i) => (
+            <div
+              key={i}
+              className="absolute h-full rounded-full bg-indigo-400"
+              style={{
+                left: `${(seg.startSec / videoDuration) * 100}%`,
+                width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
+              }}
+            />
+          ))}
+        </div>
+        {watchedPercent !== null && (
+          <p className="mt-1 text-xs text-gray-400">{watchedPercent}% ko'rilgan</p>
+        )}
+      </div>
+    )}
+    </>
   );
 }
