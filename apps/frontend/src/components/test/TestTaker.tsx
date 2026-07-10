@@ -1141,41 +1141,43 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           ← Orqaga
         </button>
 
-        {/* Test nomi — faqat desktop */}
-        <span className="hidden lg:block text-sm font-semibold text-gray-700 truncate max-w-xs">
-          {test.name}
-        </span>
-
-        {/* Font size controls */}
-        <div className="flex items-center gap-0.5 shrink-0">
-          <button
-            onClick={() => setFontSize((s) => Math.max(12, s - 2))}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-xs font-bold select-none transition-colors"
-          >
-            A-
-          </button>
-          <button
-            onClick={() => setFontSize((s) => Math.min(24, s + 2))}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-sm font-bold select-none transition-colors"
-          >
-            A+
-          </button>
-        </div>
-
-        {/* Progress counter */}
-        {isOneByOne ? (
-          <span className="text-sm font-semibold text-gray-700">
-            {currentIdx + 1}
-            <span className="text-gray-300 font-normal">
-              {" "}
-              / {orderedQuestions.length}
-            </span>
-          </span>
-        ) : (
-          <span className="text-sm font-medium text-gray-600 truncate max-w-[160px] lg:hidden">
+        <div className="flex flex-1 items-center justify-center gap-3 min-w-0">
+          {/* Test nomi — faqat desktop */}
+          <span className="hidden lg:block text-sm font-semibold text-gray-700 truncate max-w-xs">
             {test.name}
           </span>
-        )}
+
+          {/* Font size controls */}
+          <div className="flex items-center gap-0.5 shrink-0">
+            <button
+              onClick={() => setFontSize((s) => Math.max(12, s - 2))}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-xs font-bold select-none transition-colors"
+            >
+              A-
+            </button>
+            <button
+              onClick={() => setFontSize((s) => Math.min(24, s + 2))}
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-sm font-bold select-none transition-colors"
+            >
+              A+
+            </button>
+          </div>
+
+          {/* Progress counter */}
+          {isOneByOne ? (
+            <span className="text-sm font-semibold text-gray-700">
+              {currentIdx + 1}
+              <span className="text-gray-300 font-normal">
+                {" "}
+                / {orderedQuestions.length}
+              </span>
+            </span>
+          ) : (
+            <span className="text-sm font-medium text-gray-600 truncate max-w-[160px] lg:hidden">
+              {test.name}
+            </span>
+          )}
+        </div>
 
         {/* Timer */}
         <div className="shrink-0 w-16 lg:w-auto flex justify-end">

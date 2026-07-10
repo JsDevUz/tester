@@ -211,7 +211,6 @@ function StudentCourseReader({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
-  const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
   const [mobileLessonsOpen, setMobileLessonsOpen] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [activeTest, setActiveTest] = useState<{ slug: string; submissionId?: string } | null>(null);
@@ -226,12 +225,10 @@ function StudentCourseReader({
         setCourse(data);
         const firstLesson = data.modules.flatMap((m) => m.lessons)[0];
         setSelectedLessonId(firstLesson?.id ?? null);
-        setMaxUnlockedIndex(firstLesson ? 0 : -1);
       })
       .catch((err) => {
         setCourse(null);
         setSelectedLessonId(null);
-        setMaxUnlockedIndex(0);
         const message = err?.response?.data?.message;
         setError(
           Array.isArray(message)
@@ -254,10 +251,32 @@ function StudentCourseReader({
   const selectedIndex = selected
     ? lessons.findIndex((item) => item.lesson.id === selected.lesson.id)
     : -1;
+  const maxUnlockedIndex = useMemo(() => {
+    let idx = 0;
+    for (let i = 0; i < lessons.length; i++) {
+      if (lessons[i].lesson.completed) idx = Math.min(i + 1, lessons.length - 1);
+    }
+    return lessons.length > 0 ? idx : -1;
+  }, [lessons]);
   const progressCount =
     lessons.length > 0 ? Math.min(maxUnlockedIndex + 1, lessons.length) : 0;
   const progressPercent =
     lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
+  const courseStars = useMemo(() => {
+    let earned = 0;
+    let max = 0;
+    for (const { lesson } of lessons) {
+      for (const block of lesson.practiceBlocks) {
+        max += block.maxScore ?? 0;
+        earned += block.earnedScore ?? 0;
+      }
+      if (lesson.completionScore !== null) {
+        max += lesson.completionScore;
+        if (lesson.completed) earned += lesson.completionScore;
+      }
+    }
+    return { earned, max };
+  }, [lessons]);
 
   useEffect(() => {
     setShowPractice(false);
@@ -301,6 +320,9 @@ function StudentCourseReader({
     const hasVideo = lesson.blocks.some((block) => block.type === "video");
     const isDone = globalIndex >= 0 && globalIndex < maxUnlockedIndex;
     const locked = globalIndex > maxUnlockedIndex;
+    const totalStars =
+      lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
+      (lesson.completionScore ?? 0);
 
     return (
       <button
@@ -358,14 +380,21 @@ function StudentCourseReader({
             Modul {moduleIndex + 1}
           </p>
         </div>
-        <div className="flex shrink-0 items-center gap-2 text-gray-400">
-          {locked ? (
-            <Lock size={mobile ? 18 : 15} />
-          ) : isDone ? (
-            <CheckCircle2 size={mobile ? 18 : 16} className="text-green-500" />
-          ) : (
-            <ChevronRight size={mobile ? 18 : 16} />
+        <div className="flex shrink-0 items-center gap-2">
+          {totalStars > 0 && (
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-500">
+              <Star size={11} fill="currentColor" /> {totalStars}
+            </span>
           )}
+          <span className="text-gray-400">
+            {locked ? (
+              <Lock size={mobile ? 18 : 15} />
+            ) : isDone ? (
+              <CheckCircle2 size={mobile ? 18 : 16} className="text-green-500" />
+            ) : (
+              <ChevronRight size={mobile ? 18 : 16} />
+            )}
+          </span>
         </div>
       </button>
     );
@@ -520,13 +549,20 @@ function StudentCourseReader({
 
       <div className="grid min-h-0 lg:min-h-screen lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside className="hidden max-w-full overflow-hidden border-b border-gray-200 bg-gray-100/80 p-3 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
-          <button
-            type="button"
-            onClick={onBack}
-            className="mb-4 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600"
-          >
-            <ArrowLeft size={16} /> Kurslar
-          </button>
+          <div className="mb-4 flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600"
+            >
+              <ArrowLeft size={16} /> Kurslar
+            </button>
+            {courseStars.max > 0 && (
+              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-500">
+                <Star size={13} fill="currentColor" /> {courseStars.earned} / {courseStars.max}
+              </span>
+            )}
+          </div>
 
           <div className="mb-3 rounded-2xl bg-white p-3 sm:mb-4">
             <div className="mb-2.5 flex items-center justify-between gap-3">
@@ -582,14 +618,8 @@ function StudentCourseReader({
               }}
               hasNext={selectedIndex + 1 < lessons.length}
               onNext={() => {
-                const nextIndex = selectedIndex + 1;
-                const next = lessons[nextIndex];
-                if (next) {
-                  setMaxUnlockedIndex((current) =>
-                    Math.max(current, nextIndex),
-                  );
-                  setSelectedLessonId(next.lesson.id);
-                }
+                const next = lessons[selectedIndex + 1];
+                if (next) setSelectedLessonId(next.lesson.id);
               }}
             />
           ) : selected ? (
@@ -619,14 +649,8 @@ function StudentCourseReader({
                   !isLessonPassing(selected.lesson)
                 )
                   return;
-                const nextIndex = selectedIndex + 1;
-                const next = lessons[nextIndex];
-                if (next) {
-                  setMaxUnlockedIndex((current) =>
-                    Math.max(current, nextIndex),
-                  );
-                  setSelectedLessonId(next.lesson.id);
-                }
+                const next = lessons[selectedIndex + 1];
+                if (next) setSelectedLessonId(next.lesson.id);
               }}
             />
           ) : null}
