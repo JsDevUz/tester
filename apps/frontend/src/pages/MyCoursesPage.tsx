@@ -207,6 +207,35 @@ function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: (
   const progressCount = lessons.length > 0 ? Math.min(maxUnlockedIndex + 1, lessons.length) : 0;
   const progressPercent = lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
 
+  useEffect(() => {
+    setShowPractice(false);
+  }, [selectedLessonId]);
+
+  function markSelectedLessonComplete() {
+    if (!selected) return Promise.resolve();
+    const lessonId = selected.lesson.id;
+    return apiMarkLessonComplete(lessonId).then(() => {
+      setCourse((current) => {
+        if (!current) return current;
+        return {
+          ...current,
+          modules: current.modules.map((module) => ({
+            ...module,
+            lessons: module.lessons.map((lesson) =>
+              lesson.id === lessonId ? { ...lesson, completed: true } : lesson,
+            ),
+          })),
+        };
+      });
+    });
+  }
+
+  function isLessonPassing(lesson: ApiMyLesson): boolean {
+    if (!lesson.passThresholdEnabled) return true;
+    if (lesson.combinedPracticePercent === null) return false;
+    return lesson.combinedPracticePercent >= (lesson.passThresholdPercent ?? 0);
+  }
+
   const renderLessonButton = (moduleIndex: number, lesson: ApiMyLesson, mobile = false) => {
     const globalIndex = lessons.findIndex((item) => item.lesson.id === lesson.id);
     const active = lesson.id === selected?.lesson.id;
@@ -424,12 +453,18 @@ function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: (
               lessonNumber={selectedIndex + 1}
               totalLessons={lessons.length}
               hasPractice={selected.lesson.practiceBlocks.length > 0}
-              onOpenPractice={() => setShowPractice(true)}
+              blockedByThreshold={selected.lesson.passThresholdEnabled && !isLessonPassing(selected.lesson)}
+              onOpenPractice={async () => {
+                await markSelectedLessonComplete();
+                setShowPractice(true);
+              }}
               onPrev={() => {
                 const prev = lessons[selectedIndex - 1];
                 if (prev) setSelectedLessonId(prev.lesson.id);
               }}
-              onNext={() => {
+              onNext={async () => {
+                await markSelectedLessonComplete();
+                if (selected.lesson.passThresholdEnabled && !isLessonPassing(selected.lesson)) return;
                 const nextIndex = selectedIndex + 1;
                 const next = lessons[nextIndex];
                 if (next) {
@@ -452,6 +487,7 @@ function LessonReader({
   lessonNumber,
   totalLessons,
   hasPractice,
+  blockedByThreshold,
   onOpenPractice,
   onPrev,
   onNext,
@@ -462,9 +498,10 @@ function LessonReader({
   lessonNumber: number;
   totalLessons: number;
   hasPractice: boolean;
-  onOpenPractice: () => void;
+  blockedByThreshold: boolean;
+  onOpenPractice: () => void | Promise<void>;
   onPrev: () => void;
-  onNext: () => void;
+  onNext: () => void | Promise<void>;
 }) {
   const readyBlocks = lesson.blocks.filter((block) => block.type !== 'video' || block.embedUrl || block.processingStatus === 'ready');
 
@@ -519,17 +556,18 @@ function LessonReader({
         </button>
         <button
           type="button"
-          onClick={async () => {
-            await apiMarkLessonComplete(lesson.id);
-            if (hasPractice) onOpenPractice();
-            else onNext();
-          }}
-          disabled={!hasPractice && lessonNumber >= totalLessons}
+          onClick={() => { if (hasPractice) void onOpenPractice(); else void onNext(); }}
+          disabled={(!hasPractice && lessonNumber >= totalLessons) || (!hasPractice && blockedByThreshold)}
           className="rounded-xl bg-[var(--color-indigo-500)] px-3.5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200 sm:px-4"
         >
           {hasPractice ? 'Amaliyot' : 'Keyingi dars'}
         </button>
       </div>
+      {!hasPractice && blockedByThreshold && (
+        <p className="mt-2 text-right text-xs font-semibold text-red-500">
+          Keyingi darsni ochish uchun o'tish balidan yetarlicha ball to'plang
+        </p>
+      )}
     </article>
   );
 }
