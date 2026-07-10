@@ -379,13 +379,25 @@ function LessonReader({
 
 function LessonBlock({ block }: { block: ApiContentBlock }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
+  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
 
   if (block.type === 'editor') {
     return (
-      <div
-        className="lesson-reader-html text-base leading-7 text-gray-900"
-        dangerouslySetInnerHTML={{ __html: block.html ?? '' }}
-      />
+      <>
+        <div
+          className="lesson-reader-html text-base leading-7 text-gray-900 [&_img]:cursor-zoom-in [&_img]:rounded-xl"
+          dangerouslySetInnerHTML={{ __html: block.html ?? '' }}
+          onClick={(e) => {
+            const target = e.target as HTMLElement;
+            if (target.tagName === 'IMG') {
+              setLightboxSrc((target as HTMLImageElement).src);
+            }
+          }}
+        />
+        {lightboxSrc && (
+          <ImageLightbox src={lightboxSrc} onClose={() => setLightboxSrc(null)} />
+        )}
+      </>
     );
   }
 
