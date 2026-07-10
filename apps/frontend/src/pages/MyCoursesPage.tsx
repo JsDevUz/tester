@@ -257,8 +257,6 @@ function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: (
               curatorName={course.curatorName}
               lessonNumber={selectedIndex + 1}
               totalLessons={lessons.length}
-              progressCount={progressCount}
-              progressPercent={progressPercent}
               onPrev={() => {
                 const prev = lessons[selectedIndex - 1];
                 if (prev) setSelectedLessonId(prev.lesson.id);
@@ -285,8 +283,6 @@ function LessonReader({
   curatorName,
   lessonNumber,
   totalLessons,
-  progressCount,
-  progressPercent,
   onPrev,
   onNext,
 }: {
@@ -295,8 +291,6 @@ function LessonReader({
   curatorName: string | null;
   lessonNumber: number;
   totalLessons: number;
-  progressCount: number;
-  progressPercent: number;
   onPrev: () => void;
   onNext: () => void;
 }) {
@@ -309,18 +303,6 @@ function LessonReader({
         <div className="min-w-0">
           <p className="truncate text-xs font-semibold text-gray-400">{moduleTitle}</p>
           <h1 className="mt-3 text-2xl font-black leading-tight text-gray-950 sm:text-4xl">{lesson.title}</h1>
-        </div>
-        <div className="mt-5">
-          <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-400">
-            <span>Dars jarayoni</span>
-            <span>{progressCount} / {totalLessons}</span>
-          </div>
-          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-            <div
-              className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
-              style={{ width: `${progressPercent}%` }}
-            />
-          </div>
         </div>
       </div>
 

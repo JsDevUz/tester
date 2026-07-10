@@ -13,12 +13,19 @@ export function ImageLightbox({ src, alt, onClose }: ImageLightboxProps) {
       if (e.key === 'Escape') onClose();
     }
     document.addEventListener('keydown', handleKeyDown);
-    return () => document.removeEventListener('keydown', handleKeyDown);
+
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown);
+      document.body.style.overflow = previousOverflow;
+    };
   }, [onClose]);
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center overflow-hidden bg-black/80 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <button
