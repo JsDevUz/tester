@@ -31,6 +31,7 @@ const BACKEND = import.meta.env.VITE_API_URL?.replace("/api/v1", "") ?? "";
 export function TestResultPage() {
   const [searchParams] = useSearchParams();
   const [result, setResult] = useState<SubmissionResult | null>(null);
+  const isPractice = searchParams.get("practice") === "1";
 
   useEffect(() => {
     const sid = searchParams.get("sid");
@@ -44,7 +45,7 @@ export function TestResultPage() {
     }
     if (raw) sessionStorage.removeItem("submissionResult");
     if (sid) {
-      apiGetSubmissionResult(sid)
+      apiGetSubmissionResult(sid, isPractice)
         .then((res) => {
           setResult(res);
           localStorage.removeItem(`test-draft:${sid}`);

@@ -477,6 +477,8 @@ export function TakeTestPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const submissionId = searchParams.get("sid") ?? "";
+  const isPractice = searchParams.get("practice") === "1";
+  const practiceSuffix = isPractice ? "&practice=1" : "";
 
   const [test, setTest] = useState<PublicTest | null>(null);
   const [orderedQuestions, setOrderedQuestions] = useState<PublicQuestion[]>(
@@ -515,10 +517,10 @@ export function TakeTestPage() {
 
   useEffect(() => {
     if (!slug || !submissionId) return;
-    apiGetSubmission(submissionId)
+    apiGetSubmission(submissionId, isPractice)
       .then((sub) => {
         if (sub.status === "submitted") {
-          navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+          navigate(`/t/${slug}/result?sid=${submissionId}${practiceSuffix}`, { replace: true });
         }
       })
       .catch(() => {
@@ -528,7 +530,7 @@ export function TakeTestPage() {
 
   useEffect(() => {
     if (!slug) return;
-    apiGetPublicTest(slug).then((t) => {
+    apiGetPublicTest(slug, isPractice).then((t) => {
       setTest(t);
       const qs = t.shuffleQuestions
         ? seededShuffle(t.questions, submissionId)
@@ -632,7 +634,7 @@ export function TakeTestPage() {
         textAnswer: textMapRef.current[q.id] ?? null,
       }));
       const base = getPublicBaseUrl() || window.location.origin;
-      const url = `${base}/public/submissions/${submissionId}/submit`;
+      const url = `${base}/public/submissions/${submissionId}/submit${isPractice ? "?practice=1" : ""}`;
       const body = JSON.stringify({
         answers,
         mode: "violation",
@@ -666,10 +668,10 @@ export function TakeTestPage() {
         submitSent = true;
       } else if (document.visibilityState === "visible" && submitSent) {
         setTimeout(() => {
-          apiGetSubmission(submissionId)
+          apiGetSubmission(submissionId, isPractice)
             .then((sub) => {
               if (sub.status === "submitted")
-                navigate(`/t/${slug}/result?sid=${submissionId}`, {
+                navigate(`/t/${slug}/result?sid=${submissionId}${practiceSuffix}`, {
                   replace: true,
                 });
               else autoSubmitSentRef.current = false;
@@ -706,10 +708,10 @@ export function TakeTestPage() {
       textAnswer: textMap[q.id] ?? null,
     }));
     try {
-      const result = await apiSubmitAnswers(submissionId, answers);
+      const result = await apiSubmitAnswers(submissionId, answers, "normal", undefined, isPractice);
       sessionStorage.setItem("submissionResult", JSON.stringify(result));
       localStorage.removeItem(draftKey(submissionId));
-      navigate(`/t/${slug}/result?sid=${submissionId}`, { replace: true });
+      navigate(`/t/${slug}/result?sid=${submissionId}${practiceSuffix}`, { replace: true });
     } catch {
       submittingRef.current = false;
       setSubmitting(false);

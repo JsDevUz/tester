@@ -15,6 +15,7 @@ export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
+  const isPractice = searchParams.get("practice") === "1";
   const [test, setTest] = useState<PublicTest | null>(null);
   const [name, setName] = useState("");
   const [loading, setLoading] = useState(true);
@@ -43,24 +44,25 @@ export function TakeTestEntryPage() {
   useEffect(() => {
     if (!slug) return;
     const sid = searchParams.get("sid");
+    const practiceSuffix = isPractice ? "&practice=1" : "";
     if (sid) {
-      apiGetSubmission(sid)
+      apiGetSubmission(sid, isPractice)
         .then((sub) => {
           if (sub.status === "submitted") {
-            navigate(`/t/${slug}/result?sid=${sid}`, { replace: true });
+            navigate(`/t/${slug}/result?sid=${sid}${practiceSuffix}`, { replace: true });
           } else {
-            navigate(`/t/${slug}/take?sid=${sid}`, { replace: true });
+            navigate(`/t/${slug}/take?sid=${sid}${practiceSuffix}`, { replace: true });
           }
         })
         .catch(() => {
-          apiGetPublicTest(slug)
+          apiGetPublicTest(slug, isPractice)
             .then(setTest)
             .catch(() => setError("Test topilmadi."))
             .finally(() => setLoading(false));
         });
       return;
     }
-    apiGetPublicTest(slug)
+    apiGetPublicTest(slug, isPractice)
       .then(setTest)
       .catch(() => setError("Test topilmadi."))
       .finally(() => setLoading(false));
@@ -71,12 +73,12 @@ export function TakeTestEntryPage() {
     if (!name.trim() || !slug) return;
     setStarting(true);
     try {
-      const { submissionId } = await apiStartSubmission(slug, name.trim());
-      navigate(`/t/${slug}/take?sid=${submissionId}`);
+      const { submissionId } = await apiStartSubmission(slug, name.trim(), isPractice);
+      navigate(`/t/${slug}/take?sid=${submissionId}${isPractice ? "&practice=1" : ""}`);
     } catch (err: any) {
       const msg = err?.response?.data?.message;
       if (msg === "AUTH_REQUIRED") {
-        navigate(`/login?redirect=/t/${slug}`);
+        navigate(`/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`);
       } else {
         setError("Xato yuz berdi. Qayta urinib ko'ring.");
       }

@@ -71,12 +71,12 @@ export interface SubmissionResult {
   answers: AnswerResultItem[];
 }
 
-export async function apiGetPublicTest(slug: string): Promise<PublicTest> {
-  const res = await publicClient.get(`/public/tests/${slug}`);
+export async function apiGetPublicTest(slug: string, practiceMode = false): Promise<PublicTest> {
+  const res = await publicClient.get(`/public/tests/${slug}`, { params: practiceMode ? { practice: '1' } : undefined });
   return res.data;
 }
 
-export async function apiGetSubmission(submissionId: string): Promise<
+export async function apiGetSubmission(submissionId: string, practiceMode = false): Promise<
   | { status: 'in_progress'; testId: string; studentName: string }
   | {
       status: 'submitted';
@@ -88,17 +88,17 @@ export async function apiGetSubmission(submissionId: string): Promise<
       violationReason?: string | null;
     }
 > {
-  const res = await publicClient.get(`/public/submissions/${submissionId}`);
+  const res = await publicClient.get(`/public/submissions/${submissionId}`, { params: practiceMode ? { practice: '1' } : undefined });
   return res.data;
 }
 
-export async function apiGetSubmissionResult(submissionId: string): Promise<SubmissionResult> {
-  const res = await publicClient.get(`/public/submissions/${submissionId}/result`);
+export async function apiGetSubmissionResult(submissionId: string, practiceMode = false): Promise<SubmissionResult> {
+  const res = await publicClient.get(`/public/submissions/${submissionId}/result`, { params: practiceMode ? { practice: '1' } : undefined });
   return res.data;
 }
 
-export async function apiStartSubmission(slug: string, studentName: string): Promise<{ submissionId: string }> {
-  const res = await publicClient.post('/public/submissions', { slug, studentName });
+export async function apiStartSubmission(slug: string, studentName: string, practiceMode = false): Promise<{ submissionId: string }> {
+  const res = await publicClient.post('/public/submissions', { slug, studentName }, { params: practiceMode ? { practice: '1' } : undefined });
   return res.data;
 }
 
@@ -117,7 +117,12 @@ export async function apiSubmitAnswers(
   answers: Array<{ questionId: string; selectedOptionIds: string[]; textAnswer: string | null }>,
   mode: 'normal' | 'violation' = 'normal',
   violationReason?: string | null,
+  practiceMode = false,
 ): Promise<SubmissionResult> {
-  const res = await publicClient.post(`/public/submissions/${submissionId}/submit`, { answers, mode, violationReason });
+  const res = await publicClient.post(
+    `/public/submissions/${submissionId}/submit`,
+    { answers, mode, violationReason },
+    { params: practiceMode ? { practice: '1' } : undefined },
+  );
   return res.data;
 }
