@@ -107,17 +107,24 @@ export function MyCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
-  useEffect(() => {
-    apiGetMyCourses()
+  function loadCourses() {
+    return apiGetMyCourses()
       .then(setCourses)
       .finally(() => setLoading(false));
+  }
+
+  useEffect(() => {
+    void loadCourses();
   }, []);
 
   if (selectedCourseId) {
     return (
       <StudentCourseReader
         courseId={selectedCourseId}
-        onBack={() => setSelectedCourseId(null)}
+        onBack={() => {
+          setSelectedCourseId(null);
+          void loadCourses();
+        }}
       />
     );
   }
@@ -319,7 +326,7 @@ function StudentCourseReader({
     const active = lesson.id === selected?.lesson.id;
     const videoBlock = lesson.blocks.find((block) => block.type === "video");
     const hasVideo = Boolean(videoBlock);
-    const isDone = globalIndex >= 0 && globalIndex < maxUnlockedIndex;
+    const isDone = lesson.completed;
     const locked = globalIndex > maxUnlockedIndex;
     const totalStars =
       lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
