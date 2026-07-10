@@ -6,6 +6,8 @@ interface PracticeScreenProps {
   onBack: () => void;
   onStartPractice: (block: ApiMyPracticeBlock) => void;
   onViewSubmission: (block: ApiMyPracticeBlock, submissionId: string) => void;
+  hasNext: boolean;
+  onNext: () => void;
 }
 
 function practiceMaxScore(lesson: ApiMyLesson): number {
@@ -16,7 +18,7 @@ function practiceEarnedScore(lesson: ApiMyLesson): number {
   return lesson.practiceBlocks.reduce((sum, b) => sum + (b.earnedScore ?? 0), 0);
 }
 
-export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmission }: PracticeScreenProps) {
+export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmission, hasNext, onNext }: PracticeScreenProps) {
   const hasCompletionScore = lesson.completionScore !== null;
   const hasPracticeScore = lesson.practiceBlocks.some((b) => b.maxScore !== null);
   const totalMax = practiceMaxScore(lesson) + (lesson.completionScore ?? 0);
@@ -119,6 +121,16 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         <div className="mt-6 flex items-center gap-2 rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-600">
           <CheckCircle2 size={18} /> Dars tamomlangan
         </div>
+      )}
+
+      {lesson.completed && hasNext && (
+        <button
+          type="button"
+          onClick={onNext}
+          className="mt-4 w-full rounded-xl bg-[var(--color-indigo-500)] py-3 text-sm font-bold text-white"
+        >
+          Keyingi darsga o'tish
+        </button>
       )}
     </article>
   );

@@ -580,6 +580,17 @@ function StudentCourseReader({
                 if (block.testSlug)
                   setActiveTest({ slug: block.testSlug, submissionId });
               }}
+              hasNext={selectedIndex + 1 < lessons.length}
+              onNext={() => {
+                const nextIndex = selectedIndex + 1;
+                const next = lessons[nextIndex];
+                if (next) {
+                  setMaxUnlockedIndex((current) =>
+                    Math.max(current, nextIndex),
+                  );
+                  setSelectedLessonId(next.lesson.id);
+                }
+              }}
             />
           ) : selected ? (
             <LessonReader

@@ -853,7 +853,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         >
           ← Orqaga
         </button>
-        <TestResultView submissionId={resolvedSubmissionId} practiceMode={practiceMode} />
+        <TestResultView submissionId={resolvedSubmissionId} practiceMode={practiceMode} embedded />
       </div>
     );
   }
@@ -1447,8 +1447,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           <div
             className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 max-w-2xl mx-auto w-full"
             style={{
-              paddingBottom:
-                "max(100px, calc(env(safe-area-inset-bottom) + 80px))",
+              paddingBottom: "max(24px, env(safe-area-inset-bottom))",
             }}
           >
             {questions.map(
@@ -1494,18 +1493,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   </div>
                 ),
             )}
-          </div>
 
-          {/* Fixed submit */}
-          <div
-            className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-md border-t border-border px-4 pt-3"
-            style={{ paddingBottom: "max(16px, env(safe-area-inset-bottom))" }}
-          >
-            <div className="max-w-2xl mx-auto">
+            <div className="flex justify-end">
               <button
                 onClick={handleSubmit}
                 disabled={submitting}
-                className="w-full py-4 bg-green-500 text-white rounded-2xl text-base font-semibold hover:bg-green-600 disabled:opacity-40 transition-colors shadow-lg shadow-green-100"
+                className="px-6 py-2.5 bg-green-500 text-white rounded-xl text-sm font-semibold hover:bg-green-600 disabled:opacity-40 transition-colors"
               >
                 {submitting ? "Topshirilmoqda..." : "Topshirish"}
               </button>
