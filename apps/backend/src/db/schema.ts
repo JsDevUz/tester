@@ -83,6 +83,9 @@ export const lessons = pgTable('lessons', {
   title: text('title').notNull(),
   orderIndex: integer('order_index').notNull().default(0),
   status: text('status').notNull().default('draft'),
+  passThresholdEnabled: boolean('pass_threshold_enabled').notNull().default(false),
+  passThresholdPercent: integer('pass_threshold_percent'),
+  completionScore: integer('completion_score'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -114,6 +117,35 @@ export const contentBlocks = pgTable('content_blocks', {
 
 export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({
   lesson: one(lessons, { fields: [contentBlocks.lessonId], references: [lessons.id] }),
+}));
+
+export const practiceBlocks = pgTable('practice_blocks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+  testId: uuid('test_id').references(() => tests.id, { onDelete: 'set null' }),
+  orderIndex: integer('order_index').notNull().default(0),
+  description: text('description').notNull().default(''),
+  maxScore: integer('max_score'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const practiceBlocksRelations = relations(practiceBlocks, ({ one }) => ({
+  lesson: one(lessons, { fields: [practiceBlocks.lessonId], references: [lessons.id] }),
+  test: one(tests, { fields: [practiceBlocks.testId], references: [tests.id] }),
+}));
+
+export const lessonCompletions = pgTable('lesson_completions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  completedAt: timestamp('completed_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueLessonStudent: uniqueIndex('lesson_completions_lesson_id_student_id_key').on(table.lessonId, table.studentId),
+}));
+
+export const lessonCompletionsRelations = relations(lessonCompletions, ({ one }) => ({
+  lesson: one(lessons, { fields: [lessonCompletions.lessonId], references: [lessons.id] }),
+  student: one(users, { fields: [lessonCompletions.studentId], references: [users.id] }),
 }));
 
 export const lessonsRelations = relations(lessons, ({ one, many }) => ({
