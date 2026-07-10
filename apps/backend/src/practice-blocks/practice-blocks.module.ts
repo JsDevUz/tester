@@ -5,5 +5,6 @@ import { PracticeBlocksService } from './practice-blocks.service';
 @Module({
   controllers: [PracticeBlocksController],
   providers: [PracticeBlocksService],
+  exports: [PracticeBlocksService],
 })
 export class PracticeBlocksModule {}

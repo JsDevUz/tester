@@ -19,33 +19,48 @@ class CreatePracticeBlockDto {
   @IsIn(['test']) type: string;
 }
 
-@UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('teacher', 'super')
 @Controller()
 export class PracticeBlocksController {
   constructor(private practiceBlocksService: PracticeBlocksService) {}
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Post('lessons/:lessonId/complete')
+  markComplete(@Param('lessonId') lessonId: string, @Req() req: any) {
+    return this.practiceBlocksService.markLessonComplete(lessonId, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Get('lessons/:lessonId/practice-blocks')
   findAll(@Param('lessonId') lessonId: string, @Req() req: any) {
     return this.practiceBlocksService.findAll(lessonId, req.admin.id);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Post('lessons/:lessonId/practice-blocks')
   create(@Param('lessonId') lessonId: string, @Req() req: any, @Body() dto: CreatePracticeBlockDto) {
     return this.practiceBlocksService.create(lessonId, req.admin.id);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Patch('practice-blocks/:id')
   update(@Param('id') id: string, @Req() req: any, @Body() dto: UpdatePracticeBlockDto) {
     return this.practiceBlocksService.update(id, req.admin.id, dto);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Delete('practice-blocks/:id')
   @HttpCode(204)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.practiceBlocksService.remove(id, req.admin.id);
   }
 
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Post('lessons/:lessonId/practice-blocks/reorder')
   @HttpCode(204)
   reorder(@Param('lessonId') lessonId: string, @Req() req: any, @Body() dto: ReorderPracticeBlocksDto) {

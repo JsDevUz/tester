@@ -1,13 +1,17 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { contentBlocks, courses, groups, groupEnrollments, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools } from '../db/schema';
+import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools } from '../db/schema';
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
+import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
 
 @Injectable()
 export class GroupsService {
-  constructor(private studentAccessService: StudentAccessService) {}
+  constructor(
+    private studentAccessService: StudentAccessService,
+    private practiceBlocksService: PracticeBlocksService,
+  ) {}
 
   private async assertGroupOwnership(groupId: string, adminId: string) {
     const group = await db.query.groups.findFirst({ where: eq(groups.id, groupId) });
@@ -299,6 +303,11 @@ export class GroupsService {
               where: eq(contentBlocks.lessonId, lesson.id),
               orderBy: [asc(contentBlocks.orderIndex), asc(contentBlocks.createdAt)],
             });
+            const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, studentId);
+            const combinedPracticePercent = computeCombinedPercent(studentPracticeBlocks);
+            const completion = await db.query.lessonCompletions.findFirst({
+              where: and(eq(lessonCompletions.lessonId, lesson.id), eq(lessonCompletions.studentId, studentId)),
+            });
             return {
               ...lesson,
               blocks: blocks.map((block) => ({
@@ -321,6 +330,12 @@ export class GroupsService {
                 processedAt: block.processedAt,
                 createdAt: block.createdAt,
               })),
+              practiceBlocks: studentPracticeBlocks,
+              passThresholdEnabled: lesson.passThresholdEnabled,
+              passThresholdPercent: lesson.passThresholdPercent,
+              completionScore: lesson.completionScore,
+              completed: !!completion,
+              combinedPracticePercent,
             };
           }),
         );
