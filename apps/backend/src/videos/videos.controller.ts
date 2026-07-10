@@ -14,13 +14,20 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
+import { IsInt, Min } from 'class-validator';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { VideoPlaybackService } from './video-playback.service';
+import { VideoProgressService } from './video-progress.service';
 import { VideoUploadService } from './video-upload.service';
+
+class SaveWatchProgressDto {
+  @IsInt() @Min(0) startSec: number;
+  @IsInt() @Min(0) endSec: number;
+}
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
@@ -28,6 +35,7 @@ export class VideosController {
   constructor(
     private readonly videoUploadService: VideoUploadService,
     private readonly videoPlaybackService: VideoPlaybackService,
+    private readonly videoProgressService: VideoProgressService,
   ) {}
 
   @Post('lessons/:lessonId/videos')
@@ -91,5 +99,22 @@ export class VideosController {
     @Query('token') token: string,
   ) {
     return this.videoPlaybackService.getSegment(blockId, fileName, token);
+  }
+
+  @Post('videos/:blockId/watch-progress')
+  @Roles('student', 'teacher', 'super')
+  saveWatchProgress(@Param('blockId') blockId: string, @Body() dto: SaveWatchProgressDto, @Req() req: any) {
+    if (dto.endSec <= dto.startSec) throw new BadRequestException('endSec must be greater than startSec');
+    return this.videoProgressService.saveProgress(
+      blockId,
+      { id: req.user.id, role: req.user.role },
+      { startSec: dto.startSec, endSec: dto.endSec },
+    );
+  }
+
+  @Get('videos/:blockId/watch-progress')
+  @Roles('student', 'teacher', 'super')
+  getWatchProgress(@Param('blockId') blockId: string, @Req() req: any) {
+    return this.videoProgressService.getProgress(blockId, { id: req.user.id, role: req.user.role });
   }
 }
