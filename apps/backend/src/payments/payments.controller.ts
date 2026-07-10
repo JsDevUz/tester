@@ -41,4 +41,9 @@ export class PaymentsController {
       dto.receiptUrl,
     );
   }
+
+  @Post('payments/:id/cancel')
+  cancelPayment(@Param('id') id: string, @Req() req: any) {
+    return this.paymentsService.cancelPayment(id, req.admin.id);
+  }
 }

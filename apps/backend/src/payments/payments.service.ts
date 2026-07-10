@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { courses, groups, groupEnrollments, monthlyPayments } from '../db/schema';
 import { and, desc, eq } from 'drizzle-orm';
@@ -52,8 +52,17 @@ export class PaymentsService {
     receiptUrl?: string,
   ) {
     const payment = await this.assertPaymentOwnership(paymentId, adminId);
+    if (payment.status === 'cancelled') {
+      throw new BadRequestException('Bekor qilingan to\'lovga pul kiritib bo\'lmaydi');
+    }
     const nextPaidAmount = payment.paidAmount + amount;
     const nextDiscountAmount = discount ?? payment.discountAmount;
+    const due = payment.expectedAmount - nextDiscountAmount;
+    if (nextPaidAmount > due) {
+      throw new BadRequestException(
+        `Kiritilgan summa kutilayotgan to'lovdan (${due}) oshib ketmasligi kerak`,
+      );
+    }
     const nextStatus = computeStatus(payment.expectedAmount, nextDiscountAmount, nextPaidAmount);
 
     const [updated] = await db
@@ -69,6 +78,32 @@ export class PaymentsService {
       })
       .where(eq(monthlyPayments.id, paymentId))
       .returning();
+    return updated;
+  }
+
+  async cancelPayment(paymentId: string, adminId: string) {
+    const payment = await this.assertPaymentOwnership(paymentId, adminId);
+    if (payment.status === 'cancelled') return payment;
+
+    const [updated] = await db
+      .update(monthlyPayments)
+      .set({ status: 'cancelled', updatedAt: new Date() })
+      .where(eq(monthlyPayments.id, paymentId))
+      .returning();
+
+    const previousPeriod = new Date(
+      Date.UTC(payment.periodMonth.getUTCFullYear(), payment.periodMonth.getUTCMonth() - 1, 1),
+    );
+    const previousPayment = await db.query.monthlyPayments.findFirst({
+      where: and(eq(monthlyPayments.enrollmentId, payment.enrollmentId), eq(monthlyPayments.periodMonth, previousPeriod)),
+    });
+    if (previousPayment && (previousPayment.status === 'pending' || previousPayment.status === 'partial')) {
+      await db
+        .update(monthlyPayments)
+        .set({ status: 'debt', updatedAt: new Date() })
+        .where(eq(monthlyPayments.id, previousPayment.id));
+    }
+
     return updated;
   }
 

@@ -15,10 +15,10 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
-import { apiListAllPayments, apiRecordPayment, type ApiPaymentRow } from "../api/payments";
+import { apiListAllPayments, apiRecordPayment, apiCancelPayment, type ApiPaymentRow } from "../api/payments";
 import { apiUploadMedia } from "../api/questions";
 
-type PaymentStatus = "paid" | "partial" | "debt" | "pending";
+type PaymentStatus = "paid" | "partial" | "debt" | "pending" | "cancelled";
 type PaymentMethod = "cash" | "click" | "payme" | "card" | "other";
 type PaymentTab = "all" | PaymentStatus;
 
@@ -32,7 +32,9 @@ const METHOD_LABEL: Record<PaymentMethod, string> = {
 
 function formatMonthLabel(periodMonth: string): string {
   const date = new Date(periodMonth);
-  return new Intl.DateTimeFormat("uz-UZ", { month: "long", year: "numeric" }).format(date);
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, "0");
+  return `${year}-${month}`;
 }
 
 const STATUS_META: Record<
@@ -59,6 +61,11 @@ const STATUS_META: Record<
     className: "bg-indigo-50 text-indigo-600",
     dot: "bg-indigo-500",
   },
+  cancelled: {
+    label: "Bekor qilingan",
+    className: "bg-gray-100 text-gray-500",
+    dot: "bg-gray-400",
+  },
 };
 
 const TABS: { key: PaymentTab; label: string; info?: boolean }[] = [
@@ -67,6 +74,7 @@ const TABS: { key: PaymentTab; label: string; info?: boolean }[] = [
   { key: "partial", label: "Qisman", info: true },
   { key: "debt", label: "Qarzdorlar", info: true },
   { key: "pending", label: "Kutilmoqda", info: true },
+  { key: "cancelled", label: "Bekor qilingan" },
 ];
 
 const METHOD_OPTIONS: PaymentMethod[] = ["cash", "click", "payme", "card", "other"];
@@ -93,6 +101,10 @@ export function PaymentsPage() {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<PaymentTab>("all");
   const [modalOpen, setModalOpen] = useState(false);
+  const [monthFilter, setMonthFilter] = useState("");
+  const [yearFilter, setYearFilter] = useState("");
+  const [courseFilter, setCourseFilter] = useState("");
+  const [cancellingId, setCancellingId] = useState<string | null>(null);
 
   function refresh() {
     return apiListAllPayments().then(setRows);
@@ -101,6 +113,17 @@ export function PaymentsPage() {
   useEffect(() => {
     refresh().finally(() => setLoading(false));
   }, []);
+
+  const courseOptions = useMemo(
+    () => Array.from(new Set(rows.map((row) => row.courseTitle))).sort(),
+    [rows],
+  );
+  const yearOptions = useMemo(
+    () =>
+      Array.from(new Set(rows.map((row) => new Date(row.periodMonth).getUTCFullYear())))
+        .sort((a, b) => b - a),
+    [rows],
+  );
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -111,18 +134,32 @@ export function PaymentsPage() {
         `${row.studentName} ${row.studentPhone ?? ""} ${row.courseTitle} ${row.groupName}`
           .toLowerCase()
           .includes(q);
-      return tabMatch && searchMatch;
+      const date = new Date(row.periodMonth);
+      const monthMatch = !monthFilter || String(date.getUTCMonth() + 1).padStart(2, "0") === monthFilter;
+      const yearMatch = !yearFilter || String(date.getUTCFullYear()) === yearFilter;
+      const courseMatch = !courseFilter || row.courseTitle === courseFilter;
+      return tabMatch && searchMatch && monthMatch && yearMatch && courseMatch;
     });
-  }, [activeTab, query, rows]);
+  }, [activeTab, query, rows, monthFilter, yearFilter, courseFilter]);
 
   const dueAmount = (row: ApiPaymentRow) => row.expectedAmount - row.discountAmount;
   const paidTotal = rows.reduce((sum, row) => sum + row.paidAmount, 0);
   const debtTotal = rows.reduce(
-    (sum, row) => sum + Math.max(dueAmount(row) - row.paidAmount, 0),
+    (sum, row) => sum + (row.status === "cancelled" ? 0 : Math.max(dueAmount(row) - row.paidAmount, 0)),
     0,
   );
   const pendingCount = rows.filter((row) => row.status === "pending").length;
   const debtCount = rows.filter((row) => row.status === "debt").length;
+
+  async function handleCancelPayment(paymentId: string) {
+    setCancellingId(paymentId);
+    try {
+      await apiCancelPayment(paymentId);
+      await refresh();
+    } finally {
+      setCancellingId(null);
+    }
+  }
 
   async function handleRecordPayment(
     paymentId: string,
@@ -240,17 +277,55 @@ export function PaymentsPage() {
               })}
             </div>
             </div>
-            <div className="relative w-fit max-w-full">
-              <Search
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="O'quvchi, telefon yoki kurs bo'yicha qidirish..."
-                className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
-              />
+            <div className="flex flex-wrap items-center gap-2.5">
+              <div className="relative w-fit max-w-full">
+                <Search
+                  size={18}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                />
+                <input
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="O'quvchi, telefon yoki kurs bo'yicha qidirish..."
+                  className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+                />
+              </div>
+              <select
+                value={courseFilter}
+                onChange={(e) => setCourseFilter(e.target.value)}
+                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              >
+                <option value="">Barcha kurslar</option>
+                {courseOptions.map((title) => (
+                  <option key={title} value={title}>
+                    {title}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={monthFilter}
+                onChange={(e) => setMonthFilter(e.target.value)}
+                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              >
+                <option value="">Barcha oylar</option>
+                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
+                  <option key={m} value={m}>
+                    {m}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              >
+                <option value="">Barcha yillar</option>
+                {yearOptions.map((y) => (
+                  <option key={y} value={y}>
+                    {y}
+                  </option>
+                ))}
+              </select>
             </div>
 
           <div className="hidden overflow-x-auto rounded-2xl bg-white md:block">
@@ -264,6 +339,7 @@ export function PaymentsPage() {
                   <th className="px-4 py-4">To'langan</th>
                   <th className="px-4 py-4">Holat</th>
                   <th className="px-4 py-4">Sana</th>
+                  <th className="px-4 py-4"></th>
                 </tr>
               </thead>
               <tbody>
@@ -318,6 +394,18 @@ export function PaymentsPage() {
                         </a>
                       )}
                     </td>
+                    <td className="px-4 py-3.5">
+                      {(row.status === "paid" || row.status === "partial") && (
+                        <button
+                          type="button"
+                          onClick={() => void handleCancelPayment(row.id)}
+                          disabled={cancellingId === row.id}
+                          className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                        >
+                          {cancellingId === row.id ? "..." : "Bekor qilish"}
+                        </button>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -342,6 +430,16 @@ export function PaymentsPage() {
                   <PaymentInfo label="Oy" value={formatMonthLabel(row.periodMonth)} />
                   <PaymentInfo label="To'lov" value={formatMoney(row.paidAmount)} />
                 </div>
+                {(row.status === "paid" || row.status === "partial") && (
+                  <button
+                    type="button"
+                    onClick={() => void handleCancelPayment(row.id)}
+                    disabled={cancellingId === row.id}
+                    className="mt-3 w-full rounded-xl bg-red-50 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                  >
+                    {cancellingId === row.id ? "..." : "Bekor qilish"}
+                  </button>
+                )}
               </div>
             ))}
           </div>

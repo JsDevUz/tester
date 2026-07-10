@@ -7,7 +7,7 @@ export interface ApiMonthlyPayment {
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
-  status: 'pending' | 'partial' | 'paid' | 'debt';
+  status: 'pending' | 'partial' | 'paid' | 'debt' | 'cancelled';
   createdAt: string;
   updatedAt: string;
 }
@@ -19,7 +19,7 @@ export interface ApiPaymentRow {
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
-  status: 'pending' | 'partial' | 'paid' | 'debt';
+  status: 'pending' | 'partial' | 'paid' | 'debt' | 'cancelled';
   paymentMethod: string | null;
   note: string | null;
   receiptUrl: string | null;
@@ -50,5 +50,10 @@ export async function apiRecordPayment(
   receiptUrl?: string,
 ): Promise<ApiMonthlyPayment> {
   const res = await client.post(`/payments/${paymentId}/pay`, { amount, discount, method, note, receiptUrl });
+  return res.data;
+}
+
+export async function apiCancelPayment(paymentId: string): Promise<ApiMonthlyPayment> {
+  const res = await client.post(`/payments/${paymentId}/cancel`);
   return res.data;
 }
