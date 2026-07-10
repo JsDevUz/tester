@@ -7,6 +7,7 @@ import { CoursesModule } from './courses/courses.module';
 import { CourseModulesModule } from './course-modules/course-modules.module';
 import { LessonsModule } from './lessons/lessons.module';
 import { ContentBlocksModule } from './content-blocks/content-blocks.module';
+import { PracticeBlocksModule } from './practice-blocks/practice-blocks.module';
 import { GroupsModule } from './groups/groups.module';
 import { LaunchesModule } from './launches/launches.module';
 import { PaymentsModule } from './payments/payments.module';
@@ -31,6 +32,7 @@ import 'dotenv/config';
     CourseModulesModule,
     LessonsModule,
     ContentBlocksModule,
+    PracticeBlocksModule,
     GroupsModule,
     LaunchesModule,
     PaymentsModule,
