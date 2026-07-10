@@ -87,7 +87,7 @@ export class VideoProgressService {
       );
     }
 
-    return { watchedPercent: computeWatchedPercent(merged, block.durationSec) };
+    return { segments: merged, watchedPercent: computeWatchedPercent(merged, block.durationSec) };
   }
 
   async getProgress(blockId: string, viewer: { id: string; role: 'student' | 'teacher' | 'super' }) {

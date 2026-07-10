@@ -117,6 +117,12 @@ export interface ApiMyCourse {
   selectedPlanName: string | null;
   latestPaymentStatus: 'pending' | 'partial' | 'paid' | 'debt' | null;
   hasAccess: boolean;
+  starsEarned: number;
+  starsMax: number;
+  studentCount: number;
+  lessonsCompleted: number;
+  lessonsTotal: number;
+  progressPercent: number;
 }
 
 export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {

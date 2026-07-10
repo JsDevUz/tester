@@ -253,6 +253,44 @@ export class GroupsService {
           where: eq(monthlyPayments.enrollmentId, e.id),
           orderBy: [desc(monthlyPayments.periodMonth)],
         });
+
+        const courseModules = await db.query.modules.findMany({ where: eq(modules.courseId, e.group.courseId) });
+        const moduleIds = courseModules.map((m) => m.id);
+        const courseLessons = moduleIds.length
+          ? await db.query.lessons.findMany({
+              where: (l, { inArray }) => and(inArray(l.moduleId, moduleIds), eq(l.status, 'published')),
+            })
+          : [];
+
+        let starsEarned = 0;
+        let starsMax = 0;
+        let lessonsCompleted = 0;
+        for (const lesson of courseLessons) {
+          const completion = await db.query.lessonCompletions.findFirst({
+            where: and(eq(lessonCompletions.lessonId, lesson.id), eq(lessonCompletions.studentId, studentId)),
+          });
+          if (completion) lessonsCompleted += 1;
+          if (lesson.completionScore !== null) {
+            starsMax += lesson.completionScore;
+            if (completion) starsEarned += lesson.completionScore;
+          }
+          const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, studentId);
+          for (const block of studentPracticeBlocks) {
+            starsMax += block.maxScore ?? 0;
+            starsEarned += block.earnedScore ?? 0;
+          }
+        }
+
+        const groupIds = await db.query.groups.findMany({ where: eq(groups.courseId, e.group.courseId) });
+        const allGroupEnrollments = await db.query.groupEnrollments.findMany({
+          where: (ge, { inArray }) =>
+            and(inArray(ge.groupId, groupIds.map((g) => g.id)), isNull(ge.removedAt)),
+        });
+        const studentCount = new Set(allGroupEnrollments.map((ge) => ge.schoolMemberId)).size;
+
+        const lessonsTotal = courseLessons.length;
+        const progressPercent = lessonsTotal > 0 ? Math.round((lessonsCompleted / lessonsTotal) * 100) : 0;
+
         return {
           courseId: e.group.courseId,
           courseTitle: e.group.course.title,
@@ -260,6 +298,12 @@ export class GroupsService {
           selectedPlanName: e.selectedPlan?.name ?? null,
           latestPaymentStatus: latestPayment?.status ?? null,
           hasAccess,
+          starsEarned,
+          starsMax,
+          studentCount,
+          lessonsCompleted,
+          lessonsTotal,
+          progressPercent,
         };
       }),
     );

@@ -150,18 +150,20 @@ export function MyCoursesPage() {
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="mb-3 flex flex-wrap items-center gap-3">
-                      <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-indigo-500)] px-2 py-2 text-sm font-bold text-white">
-                        <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[var(--color-indigo-500)]">
-                          <Star size={13} fill="currentColor" />
+                      {c.starsMax > 0 && (
+                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-indigo-500)] px-2 py-2 text-sm font-bold text-white">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[var(--color-indigo-500)]">
+                            <Star size={13} fill="currentColor" />
+                          </span>
+                          {c.starsEarned} / {c.starsMax}
                         </span>
-                        10 / 106
-                      </span>
+                      )}
                       <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
                         <UserRound
                           size={16}
                           className="text-[var(--color-indigo-500)]"
                         />
-                        220
+                        {c.studentCount}
                       </span>
                     </div>
 
@@ -178,17 +180,16 @@ export function MyCoursesPage() {
                 <div>
                   <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-medium text-gray-950 sm:text-sm">
                     <Zap size={16} />
-                    <span className="shrink-0">1 / 7</span>
+                    <span className="shrink-0">{c.lessonsCompleted} / {c.lessonsTotal}</span>
                     <span className="shrink-0">•</span>
-                    <span className="shrink-0">14%</span>
-                    <span className="shrink-0">•</span>
-                    <span className="truncate">
-                      {c.selectedPlanName || c.groupName || "Dars jarayoni"}
-                    </span>
+                    <span className="shrink-0">{c.progressPercent}%</span>
                   </div>
 
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
-                    <div className="h-full w-[14%] rounded-full bg-[var(--color-indigo-500)]" />
+                    <div
+                      className="h-full rounded-full bg-[var(--color-indigo-500)]"
+                      style={{ width: `${c.progressPercent}%` }}
+                    />
                   </div>
                 </div>
               </div>
@@ -258,8 +259,7 @@ function StudentCourseReader({
     }
     return lessons.length > 0 ? idx : -1;
   }, [lessons]);
-  const progressCount =
-    lessons.length > 0 ? Math.min(maxUnlockedIndex + 1, lessons.length) : 0;
+  const progressCount = lessons.filter((item) => item.lesson.completed).length;
   const progressPercent =
     lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
   const courseStars = useMemo(() => {
@@ -317,12 +317,18 @@ function StudentCourseReader({
       (item) => item.lesson.id === lesson.id,
     );
     const active = lesson.id === selected?.lesson.id;
-    const hasVideo = lesson.blocks.some((block) => block.type === "video");
+    const videoBlock = lesson.blocks.find((block) => block.type === "video");
+    const hasVideo = Boolean(videoBlock);
     const isDone = globalIndex >= 0 && globalIndex < maxUnlockedIndex;
     const locked = globalIndex > maxUnlockedIndex;
     const totalStars =
       lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
       (lesson.completionScore ?? 0);
+    const hasPractice = lesson.practiceBlocks.length > 0;
+    const videoDurationLabel =
+      videoBlock?.durationSec != null
+        ? `${String(Math.floor(videoBlock.durationSec / 60)).padStart(2, "0")}:${String(videoBlock.durationSec % 60).padStart(2, "0")}`
+        : null;
 
     return (
       <button
@@ -374,11 +380,21 @@ function StudentCourseReader({
           >
             {lesson.title}
           </p>
-          <p
-            className={`${mobile ? "text-xs text-gray-400" : "text-[11px] text-gray-400"} mt-0.5 font-semibold`}
+          <div
+            className={`${mobile ? "text-xs" : "text-[11px]"} mt-0.5 flex flex-wrap items-center gap-1.5 font-semibold text-gray-400`}
           >
-            Modul {moduleIndex + 1}
-          </p>
+            <span>Modul {moduleIndex + 1}</span>
+            {videoDurationLabel && (
+              <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-gray-500">
+                {videoDurationLabel}
+              </span>
+            )}
+            {hasPractice && (
+              <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-orange-600">
+                Amaliyot
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {totalStars > 0 && (
@@ -760,13 +776,10 @@ function LessonReader({
             if (hasPractice) void onOpenPractice();
             else void onNext();
           }}
-          disabled={
-            (!hasPractice && lessonNumber >= totalLessons) ||
-            (!hasPractice && blockedByThreshold)
-          }
+          disabled={!hasPractice && blockedByThreshold}
           className="rounded-xl bg-[var(--color-indigo-500)] px-3.5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200 sm:px-4"
         >
-          {hasPractice ? "Amaliyot" : "Keyingi dars"}
+          {hasPractice ? "Amaliyot" : lessonNumber >= totalLessons ? "Yakunlash" : "Keyingi dars"}
         </button>
       </div>
       {!hasPractice && blockedByThreshold && (
@@ -819,14 +832,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
         </div>
       );
     }
-    return (
-      <div>
-        <HlsVideoPlayer blockId={block.id} watermark />
-        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
-          <div className="h-full w-0 rounded-full bg-[var(--color-indigo-500)]" />
-        </div>
-      </div>
-    );
+    return <HlsVideoPlayer blockId={block.id} watermark />;
   }
 
   if (block.type === "image" && block.previewUrl) {

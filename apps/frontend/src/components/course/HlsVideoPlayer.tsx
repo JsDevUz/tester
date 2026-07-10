@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import Hls from 'hls.js';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { apiStartVideoPlayback, apiSaveWatchProgress, apiGetWatchProgress, type WatchSegment } from '../../api/contentBlocks';
 import { getApiBaseUrl } from '../../api/baseUrl';
 import { useAuthStore } from '../../stores/authStore';
@@ -38,11 +38,14 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
   const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
+  const [liveRange, setLiveRange] = useState<WatchSegment | null>(null);
   const [watchedPercent, setWatchedPercent] = useState<number | null>(null);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
+  const [progressOpen, setProgressOpen] = useState(true);
   const currentRangeRef = useRef<{ start: number; end: number } | null>(null);
   const lastSavedEndRef = useRef<number>(0);
   const lastTimeRef = useRef<number>(0);
+  const watchedSegmentsRef = useRef<WatchSegment[]>([]);
 
   const watermarkText = extractWatermarkPhone(admin?.phone, admin?.email);
 
@@ -116,6 +119,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   }, [blockId]);
 
   useEffect(() => {
+    watchedSegmentsRef.current = watchedSegments;
+  }, [watchedSegments]);
+
+  useEffect(() => {
     const video = videoRef.current;
     if (!video) return undefined;
 
@@ -124,8 +131,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       if (range && range.end > range.start && range.end > lastSavedEndRef.current) {
         void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end)).then((data) => {
           setWatchedPercent(data.watchedPercent);
+          setWatchedSegments(data.segments);
+          setLiveRange(null);
         });
         lastSavedEndRef.current = range.end;
+      } else {
+        setLiveRange(null);
       }
     }
 
@@ -141,6 +152,23 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         lastSavedEndRef.current = 0;
       } else {
         currentRangeRef.current.end = current;
+      }
+
+      // Show live progress immediately (not just after the periodic save),
+      // by extending a single "in-progress" segment with a stable key
+      // instead of rebuilding the whole segments array on every tick — this
+      // is what keeps the strip animating smoothly instead of flickering.
+      const inProgress = currentRangeRef.current;
+      const liveSegment = { startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end) };
+      setLiveRange(liveSegment);
+      if (video.duration && isFinite(video.duration)) {
+        const nonOverlapping = watchedSegmentsRef.current.filter(
+          (s) => s.endSec < liveSegment.startSec - 2 || s.startSec > liveSegment.endSec + 2,
+        );
+        const totalCovered =
+          nonOverlapping.reduce((sum, s) => sum + (s.endSec - s.startSec), 0) +
+          (liveSegment.endSec - liveSegment.startSec);
+        setWatchedPercent(Math.min(100, Math.round((totalCovered / video.duration) * 100)));
       }
     }
 
@@ -267,20 +295,44 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     </div>
     {videoDuration !== null && videoDuration > 0 && !isFullscreen && (
       <div className="mt-2">
-        <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-gray-100">
-          {watchedSegments.map((seg, i) => (
-            <div
-              key={i}
-              className="absolute h-full rounded-full bg-indigo-400"
-              style={{
-                left: `${(seg.startSec / videoDuration) * 100}%`,
-                width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
-              }}
-            />
-          ))}
-        </div>
-        {watchedPercent !== null && (
-          <p className="mt-1 text-xs text-gray-400">{watchedPercent}% ko'rilgan</p>
+        <button
+          type="button"
+          onClick={() => setProgressOpen((v) => !v)}
+          className="flex w-full items-center justify-between text-xs font-medium text-gray-500"
+        >
+          <span className="inline-flex items-center gap-1">
+            Mening video ko'rishim
+            {progressOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </span>
+          {watchedPercent !== null && <span>{watchedPercent}% ko'rilgan</span>}
+        </button>
+        {progressOpen && (
+          <div className="relative mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+            {watchedSegments
+              .filter(
+                (s) => !liveRange || s.endSec < liveRange.startSec - 2 || s.startSec > liveRange.endSec + 2,
+              )
+              .map((seg) => (
+                <div
+                  key={`${seg.startSec}-${seg.endSec}`}
+                  className="absolute h-full rounded-full bg-indigo-400 transition-[left,width] duration-300 ease-out"
+                  style={{
+                    left: `${(seg.startSec / videoDuration) * 100}%`,
+                    width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
+                  }}
+                />
+              ))}
+            {liveRange && (
+              <div
+                key="live"
+                className="absolute h-full rounded-full bg-indigo-400 transition-[left,width] duration-300 ease-out"
+                style={{
+                  left: `${(liveRange.startSec / videoDuration) * 100}%`,
+                  width: `${((liveRange.endSec - liveRange.startSec) / videoDuration) * 100}%`,
+                }}
+              />
+            )}
+          </div>
         )}
       </div>
     )}
