@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, groups, groupEnrollments, schoolMembers, schools, pricingPlans, monthlyPayments } from '../db/schema';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { contentBlocks, courses, groups, groupEnrollments, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools } from '../db/schema';
+import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
 
@@ -259,5 +259,81 @@ export class GroupsService {
         };
       }),
     );
+  }
+
+  async getMyCourseDetail(courseId: string, studentId: string) {
+    const hasAccess = await this.studentAccessService.assertStudentLessonAccess(courseId, studentId);
+    if (!hasAccess) throw new BadRequestException("To'lov muddati kelgan, lekin to'lanmagan");
+
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Course not found');
+
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, courseId) });
+    const courseGroupIds = courseGroups.map((group) => group.id);
+    const curatorEnrollments = courseGroupIds.length
+      ? await db.query.groupEnrollments.findMany({
+          where: (enrollment, { inArray }) =>
+            and(inArray(enrollment.groupId, courseGroupIds), isNull(enrollment.removedAt)),
+          with: { schoolMember: { with: { student: true } } },
+        })
+      : [];
+    const curatorEnrollment = curatorEnrollments.find((enrollment) => enrollment.schoolMember.role === 'curator');
+    const curatorName =
+      curatorEnrollment?.schoolMember.student.name ?? null;
+
+    const courseModules = await db.query.modules.findMany({
+      where: eq(modules.courseId, courseId),
+      orderBy: [asc(modules.orderIndex), asc(modules.createdAt)],
+    });
+
+    const moduleRows = await Promise.all(
+      courseModules.map(async (module) => {
+        const moduleLessons = await db.query.lessons.findMany({
+          where: and(eq(lessons.moduleId, module.id), eq(lessons.status, 'published')),
+          orderBy: [asc(lessons.orderIndex), asc(lessons.createdAt)],
+        });
+
+        const lessonRows = await Promise.all(
+          moduleLessons.map(async (lesson) => {
+            const blocks = await db.query.contentBlocks.findMany({
+              where: eq(contentBlocks.lessonId, lesson.id),
+              orderBy: [asc(contentBlocks.orderIndex), asc(contentBlocks.createdAt)],
+            });
+            return {
+              ...lesson,
+              blocks: blocks.map((block) => ({
+                id: block.id,
+                lessonId: block.lessonId,
+                type: block.type,
+                orderIndex: block.orderIndex,
+                html: block.html,
+                fileName: block.fileName,
+                previewUrl: block.previewUrl,
+                embedUrl: block.embedUrl,
+                label: block.label,
+                processingStatus: block.processingStatus,
+                sourceKey: null,
+                hlsMasterKey: null,
+                hlsBaseKey: null,
+                aesKeyRef: null,
+                durationSec: block.durationSec,
+                errorMessage: null,
+                processedAt: block.processedAt,
+                createdAt: block.createdAt,
+              })),
+            };
+          }),
+        );
+
+        return { ...module, lessons: lessonRows };
+      }),
+    );
+
+    return {
+      id: course.id,
+      title: course.title,
+      curatorName,
+      modules: moduleRows,
+    };
   }
 }

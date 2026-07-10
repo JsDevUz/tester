@@ -1,4 +1,5 @@
 import client from './client';
+import type { ApiContentBlock } from './contentBlocks';
 
 export interface ApiGroup {
   id: string;
@@ -120,5 +121,36 @@ export interface ApiMyCourse {
 
 export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
   const res = await client.get('/my/courses');
+  return res.data;
+}
+
+export interface ApiMyLesson {
+  id: string;
+  moduleId: string;
+  title: string;
+  orderIndex: number;
+  status: 'draft' | 'published';
+  createdAt: string;
+  blocks: ApiContentBlock[];
+}
+
+export interface ApiMyModule {
+  id: string;
+  courseId: string;
+  title: string;
+  orderIndex: number;
+  createdAt: string;
+  lessons: ApiMyLesson[];
+}
+
+export interface ApiMyCourseDetail {
+  id: string;
+  title: string;
+  curatorName: string | null;
+  modules: ApiMyModule[];
+}
+
+export async function apiGetMyCourseDetail(courseId: string): Promise<ApiMyCourseDetail> {
+  const res = await client.get(`/my/courses/${courseId}`);
   return res.data;
 }

@@ -1,7 +1,19 @@
-import { useEffect, useState } from 'react';
-import { BookOpen, Lock } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import {
+  ArrowLeft, BookOpen, CheckCircle2, ChevronRight, Download, FileText, Film, Image as ImageIcon,
+  Layers3, Loader2, Lock, MessageCircle, Play,
+} from 'lucide-react';
 import { StudentShell } from '../components/student/StudentShell';
-import { apiGetMyCourses, type ApiMyCourse } from '../api/groups';
+import {
+  apiGetMyCourseDetail,
+  apiGetMyCourses,
+  type ApiMyCourse,
+  type ApiMyCourseDetail,
+  type ApiMyLesson,
+} from '../api/groups';
+import type { ApiContentBlock } from '../api/contentBlocks';
+import { HlsVideoPlayer } from '../components/course/HlsVideoPlayer';
+import { ImageLightbox } from '../components/student/ImageLightbox';
 
 const STATUS_LABEL: Record<string, string> = {
   pending: 'Kutilmoqda',
@@ -20,12 +32,17 @@ const STATUS_CLASS: Record<string, string> = {
 export function MyCoursesPage() {
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
 
   useEffect(() => {
     apiGetMyCourses()
       .then(setCourses)
       .finally(() => setLoading(false));
   }, []);
+
+  if (selectedCourseId) {
+    return <StudentCourseReader courseId={selectedCourseId} onBack={() => setSelectedCourseId(null)} />;
+  }
 
   return (
     <StudentShell>
@@ -43,7 +60,12 @@ export function MyCoursesPage() {
 
         <div className="flex flex-col gap-3">
           {courses.map((c) => (
-            <div key={`${c.courseId}-${c.groupName}`} className="rounded-2xl bg-gray-50 p-4">
+            <button
+              key={`${c.courseId}-${c.groupName}`}
+              type="button"
+              onClick={() => setSelectedCourseId(c.courseId)}
+              className="rounded-2xl bg-gray-50 p-4 text-left transition-colors hover:bg-indigo-50/40"
+            >
               <div className="mb-2 flex items-start justify-between gap-3">
                 <div className="min-w-0">
                   <p className="truncate text-base font-bold text-gray-800">{c.courseTitle}</p>
@@ -66,13 +88,383 @@ export function MyCoursesPage() {
                 </div>
               ) : (
                 <div className="flex items-center gap-1.5 text-sm font-medium text-gray-400">
-                  <Lock size={15} /> Darslarga kirish yopiq
+                  <Lock size={15} /> {c.selectedPlanName ? "To'lov muddati kelgan, lekin to'lanmagan" : "Tarif hali belgilanmagan"}
                 </div>
               )}
-            </div>
+            </button>
           ))}
         </div>
       </div>
     </StudentShell>
+  );
+}
+
+function StudentCourseReader({ courseId, onBack }: { courseId: string; onBack: () => void }) {
+  const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [maxUnlockedIndex, setMaxUnlockedIndex] = useState(0);
+
+  useEffect(() => {
+    setLoading(true);
+    setError(null);
+    apiGetMyCourseDetail(courseId)
+      .then((data) => {
+        setCourse(data);
+        const firstLesson = data.modules.flatMap((m) => m.lessons)[0];
+        setSelectedLessonId(firstLesson?.id ?? null);
+        setMaxUnlockedIndex(firstLesson ? 0 : -1);
+      })
+      .catch((err) => {
+        setCourse(null);
+        setSelectedLessonId(null);
+        setMaxUnlockedIndex(0);
+        const message = err?.response?.data?.message;
+        setError(Array.isArray(message) ? message[0] : message || "To'lov muddati kelgan, lekin to'lanmagan");
+      })
+      .finally(() => setLoading(false));
+  }, [courseId]);
+
+  const lessons = useMemo(() => course?.modules.flatMap((module) => module.lessons.map((lesson) => ({ module, lesson }))) ?? [], [course]);
+  const selected = lessons.find((item) => item.lesson.id === selectedLessonId) ?? lessons[0];
+  const selectedIndex = selected ? lessons.findIndex((item) => item.lesson.id === selected.lesson.id) : -1;
+  const progressCount = lessons.length > 0 ? Math.min(maxUnlockedIndex + 1, lessons.length) : 0;
+  const progressPercent = lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
+
+  if (loading) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white">
+        <Loader2 className="animate-spin text-[var(--color-indigo-500)]" size={28} />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen bg-white p-5">
+        <button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500">
+          <ArrowLeft size={18} /> Kurslarga qaytish
+        </button>
+        <div className="rounded-2xl bg-gray-50 py-20 text-center text-gray-400">
+          <Lock size={34} className="mx-auto mb-3 opacity-50" />
+          <p className="text-sm font-semibold">{error}</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (!course || lessons.length === 0) {
+    return (
+      <div className="min-h-screen bg-white p-5">
+        <button type="button" onClick={onBack} className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500">
+          <ArrowLeft size={18} /> Kurslarga qaytish
+        </button>
+        <div className="rounded-2xl bg-gray-50 py-20 text-center text-gray-400">
+          <BookOpen size={34} className="mx-auto mb-3 opacity-50" />
+          <p className="text-sm font-semibold">Bu kursda hozircha ochiq dars yo‘q</p>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-white text-gray-900">
+      <div className="grid min-h-screen lg:grid-cols-[340px_minmax(0,1fr)]">
+        <aside className="border-b border-gray-200 bg-gray-100/80 p-3 lg:sticky lg:top-0 lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
+          <button
+            type="button"
+            onClick={onBack}
+            className="mb-4 inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600"
+          >
+            <ArrowLeft size={16} /> Kurslar
+          </button>
+
+          <div className="mb-4 rounded-2xl bg-white p-3">
+            <div className="mb-2.5 flex items-center justify-between gap-3">
+              <span className="text-xs font-bold text-gray-900">Jarayon</span>
+              <span className="rounded-full bg-[var(--color-indigo-500)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+                {progressCount} / {lessons.length}
+              </span>
+            </div>
+            <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+              <div
+                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+                style={{ width: `${progressPercent}%` }}
+              />
+            </div>
+          </div>
+
+          <div className="flex gap-3 overflow-x-auto lg:flex-col lg:overflow-visible">
+            {course.modules.map((module, moduleIndex) => (
+              <div key={module.id} className="contents lg:block">
+                <div className="mb-2 hidden items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-gray-400 lg:flex">
+                  <Layers3 size={14} />
+                  <span>{module.title || `Modul ${moduleIndex + 1}`}</span>
+                </div>
+                <div className="contents lg:block lg:space-y-2.5">
+                {module.lessons.map((lesson) => {
+                  const globalIndex = lessons.findIndex((item) => item.lesson.id === lesson.id);
+                  const active = lesson.id === selected?.lesson.id;
+                  const hasVideo = lesson.blocks.some((block) => block.type === 'video');
+                  const isDone = globalIndex >= 0 && globalIndex < maxUnlockedIndex;
+                  const locked = globalIndex > maxUnlockedIndex;
+                  return (
+                    <button
+                      key={lesson.id}
+                      type="button"
+                      onClick={() => {
+                        if (!locked) setSelectedLessonId(lesson.id);
+                      }}
+                      disabled={locked}
+                      className={`flex min-w-[230px] items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors lg:w-full lg:min-w-0 ${
+                        locked
+                          ? 'cursor-not-allowed border-transparent text-gray-300 opacity-70'
+                          : active
+                            ? 'border-[var(--color-indigo-500)] text-[var(--color-indigo-500)]'
+                            : 'border-transparent text-gray-900 hover:border-indigo-200'
+                      }`}
+                    >
+                      <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-300">
+                        {locked ? <Lock size={18} /> : hasVideo ? <Film size={19} /> : <BookOpen size={19} />}
+                        {hasVideo && (
+                          <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500 text-white">
+                            <Play size={10} fill="currentColor" />
+                          </span>
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className={`line-clamp-2 text-xs font-bold ${active ? 'text-[var(--color-indigo-500)]' : locked ? 'text-gray-400' : 'text-gray-900'}`}>{lesson.title}</p>
+                        <p className="mt-0.5 text-[11px] font-semibold text-gray-400">Modul {moduleIndex + 1}</p>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-2 text-gray-400">
+                        {locked ? <Lock size={15} /> : isDone ? <CheckCircle2 size={16} className="text-green-500" /> : <ChevronRight size={16} />}
+                      </div>
+                    </button>
+                  );
+                })}
+                </div>
+              </div>
+            ))}
+          </div>
+        </aside>
+
+        <main className="min-w-0 px-4 py-5 sm:px-6 lg:px-10 lg:py-6">
+          {selected && (
+            <LessonReader
+              lesson={selected.lesson}
+              moduleTitle={selected.module.title}
+              curatorName={course.curatorName}
+              lessonNumber={selectedIndex + 1}
+              totalLessons={lessons.length}
+              progressCount={progressCount}
+              progressPercent={progressPercent}
+              onPrev={() => {
+                const prev = lessons[selectedIndex - 1];
+                if (prev) setSelectedLessonId(prev.lesson.id);
+              }}
+              onNext={() => {
+                const nextIndex = selectedIndex + 1;
+                const next = lessons[nextIndex];
+                if (next) {
+                  setMaxUnlockedIndex((current) => Math.max(current, nextIndex));
+                  setSelectedLessonId(next.lesson.id);
+                }
+              }}
+            />
+          )}
+        </main>
+      </div>
+    </div>
+  );
+}
+
+function LessonReader({
+  lesson,
+  moduleTitle,
+  curatorName,
+  lessonNumber,
+  totalLessons,
+  progressCount,
+  progressPercent,
+  onPrev,
+  onNext,
+}: {
+  lesson: ApiMyLesson;
+  moduleTitle: string;
+  curatorName: string | null;
+  lessonNumber: number;
+  totalLessons: number;
+  progressCount: number;
+  progressPercent: number;
+  onPrev: () => void;
+  onNext: () => void;
+}) {
+  const readyBlocks = lesson.blocks.filter((block) => block.type !== 'video' || block.embedUrl || block.processingStatus === 'ready');
+  const hasPractice = false;
+
+  return (
+    <article className="mx-auto w-full max-w-3xl pb-12">
+      <div className="sticky top-0 z-10 -mx-4 mb-6 bg-white/95 px-4 pb-4 pt-3 backdrop-blur sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10">
+        <div className="min-w-0">
+          <p className="truncate text-xs font-semibold text-gray-400">{moduleTitle}</p>
+          <h1 className="mt-3 text-2xl font-black leading-tight text-gray-950 sm:text-4xl">{lesson.title}</h1>
+        </div>
+        <div className="mt-5">
+          <div className="mb-2 flex items-center justify-between text-xs font-bold text-gray-400">
+            <span>Dars jarayoni</span>
+            <span>{progressCount} / {totalLessons}</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+            <div
+              className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+              style={{ width: `${progressPercent}%` }}
+            />
+          </div>
+        </div>
+      </div>
+
+      <button
+        type="button"
+        className="mb-6 flex w-full items-center justify-between rounded-xl bg-gray-100 px-4 py-3 text-left"
+      >
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white">
+            <MessageCircle size={18} />
+          </span>
+          <span className="min-w-0">
+            <span className="block text-xs font-bold text-gray-900">
+              {curatorName ? `${curatorName} bilan suhbatlashish` : 'Kurator biriktirilmagan'}
+            </span>
+            <span className="block truncate text-[11px] font-semibold text-gray-500">
+              {curatorName ? 'Istalgan savolni bering' : 'Bu kurs uchun hozircha kurator tanlanmagan'}
+            </span>
+          </span>
+        </span>
+        <MessageCircle size={20} className="shrink-0 text-[var(--color-indigo-500)]" />
+      </button>
+
+      <div className="space-y-6">
+        {readyBlocks.length === 0 ? (
+          <div className="rounded-2xl bg-gray-50 py-16 text-center text-gray-400">
+            <BookOpen size={30} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm font-semibold">Dars kontenti hozircha tayyor emas</p>
+          </div>
+        ) : (
+          readyBlocks.map((block) => <LessonBlock key={block.id} block={block} />)
+        )}
+      </div>
+
+      <div className="mt-10 flex items-center justify-between gap-4">
+        <button
+          type="button"
+          onClick={onPrev}
+          disabled={lessonNumber <= 1}
+          className="rounded-xl bg-gray-100 px-4 py-2.5 text-xs font-bold text-[var(--color-indigo-500)] disabled:cursor-not-allowed disabled:opacity-40"
+        >
+          Orqaga
+        </button>
+        <button
+          type="button"
+          onClick={onNext}
+          disabled={lessonNumber >= totalLessons}
+          className="rounded-xl bg-[var(--color-indigo-500)] px-4 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200"
+        >
+          {hasPractice ? 'Amaliyot' : 'Keyingi dars'}
+        </button>
+      </div>
+    </article>
+  );
+}
+
+function LessonBlock({ block }: { block: ApiContentBlock }) {
+  const [lightboxOpen, setLightboxOpen] = useState(false);
+
+  if (block.type === 'editor') {
+    return (
+      <div
+        className="lesson-reader-html text-base leading-7 text-gray-900"
+        dangerouslySetInnerHTML={{ __html: block.html ?? '' }}
+      />
+    );
+  }
+
+  if (block.type === 'video') {
+    if (block.embedUrl) {
+      return (
+        <div className="overflow-hidden rounded-2xl bg-black">
+          <iframe
+            src={block.embedUrl}
+            title={block.label ?? block.fileName ?? 'Video'}
+            className="aspect-video w-full"
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+            allowFullScreen
+          />
+        </div>
+      );
+    }
+    return (
+      <div>
+        <HlsVideoPlayer blockId={block.id} />
+        <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-gray-100">
+          <div className="h-full w-0 rounded-full bg-[var(--color-indigo-500)]" />
+        </div>
+      </div>
+    );
+  }
+
+  if (block.type === 'image' && block.previewUrl) {
+    return (
+      <figure>
+        <button
+          type="button"
+          onClick={() => setLightboxOpen(true)}
+          className="block w-full cursor-zoom-in"
+          aria-label="Rasmni kattalashtirish"
+        >
+          <img
+            src={block.previewUrl}
+            alt={block.label ?? block.fileName ?? ''}
+            className="max-h-[420px] w-full rounded-2xl object-cover"
+          />
+        </button>
+        {block.label && <figcaption className="mt-2 text-xs font-semibold text-gray-400">{block.label}</figcaption>}
+        {lightboxOpen && (
+          <ImageLightbox
+            src={block.previewUrl}
+            alt={block.label ?? block.fileName ?? ''}
+            onClose={() => setLightboxOpen(false)}
+          />
+        )}
+      </figure>
+    );
+  }
+
+  if (block.type === 'file' && block.previewUrl) {
+    const ext = (block.fileName ?? block.label ?? 'FILE').split('.').pop()?.toUpperCase() ?? 'FILE';
+    return (
+      <a
+        href={block.previewUrl}
+        target="_blank"
+        rel="noreferrer"
+        className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
+      >
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-indigo-500)] text-[11px] font-black text-white">
+          {ext.slice(0, 4)}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block truncate text-sm font-bold text-gray-900">{block.label || block.fileName || 'Fayl'}</span>
+          <span className="block text-xs font-semibold text-gray-400">Yuklab olish</span>
+        </span>
+        <Download size={18} className="text-gray-400" />
+      </a>
+    );
+  }
+
+  return (
+    <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
+      {block.type === 'image' ? <ImageIcon size={18} /> : <FileText size={18} />}
+      <span>Kontent ochilmadi</span>
+    </div>
   );
 }

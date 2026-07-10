@@ -445,7 +445,7 @@ function PaymentModal({
   onClose: () => void;
 }) {
   const duePayments = useMemo(
-    () => rows.filter((row) => row.status === "pending" || row.status === "partial"),
+    () => rows.filter((row) => row.status === "pending" || row.status === "partial" || row.status === "debt"),
     [rows],
   );
 

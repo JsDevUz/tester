@@ -137,4 +137,11 @@ export class GroupsController {
   getMyCourses(@Req() req: any) {
     return this.groupsService.getMyCourses(req.user.id);
   }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Get('my/courses/:courseId')
+  getMyCourseDetail(@Param('courseId') courseId: string, @Req() req: any) {
+    return this.groupsService.getMyCourseDetail(courseId, req.user.id);
+  }
 }
