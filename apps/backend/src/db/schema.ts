@@ -135,6 +135,7 @@ export const videoWatchSegmentsRelations = relations(videoWatchSegments, ({ one 
 export const practiceBlocks = pgTable('practice_blocks', {
   id: uuid('id').primaryKey().defaultRandom(),
   lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().default('test'),
   testId: uuid('test_id').references(() => tests.id, { onDelete: 'set null' }),
   orderIndex: integer('order_index').notNull().default(0),
   description: text('description').notNull().default(''),
@@ -145,6 +146,22 @@ export const practiceBlocks = pgTable('practice_blocks', {
 export const practiceBlocksRelations = relations(practiceBlocks, ({ one }) => ({
   lesson: one(lessons, { fields: [practiceBlocks.lessonId], references: [lessons.id] }),
   test: one(tests, { fields: [practiceBlocks.testId], references: [tests.id] }),
+}));
+
+export const imageSubmissions = pgTable('image_submissions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  practiceBlockId: uuid('practice_block_id').notNull().references(() => practiceBlocks.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  imageUrl: text('image_url').notNull(),
+  submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow(),
+  score: integer('score'),
+  gradedAt: timestamp('graded_at', { withTimezone: true }),
+  gradedByAdminId: uuid('graded_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+});
+
+export const imageSubmissionsRelations = relations(imageSubmissions, ({ one }) => ({
+  practiceBlock: one(practiceBlocks, { fields: [imageSubmissions.practiceBlockId], references: [practiceBlocks.id] }),
+  student: one(users, { fields: [imageSubmissions.studentId], references: [users.id] }),
 }));
 
 export const lessonCompletions = pgTable('lesson_completions', {

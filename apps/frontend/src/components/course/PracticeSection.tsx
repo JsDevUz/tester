@@ -2,8 +2,88 @@ import { useEffect, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { PRACTICE_BLOCK_LIMIT, useCourseStore } from '../../stores/courseStore';
 import { apiListAllTests, type AllTestsItem } from '../../api/tests';
+import {
+  apiListImageSubmissionsForGrading,
+  apiGradeImageSubmission,
+  type ApiImageSubmissionForGrading,
+} from '../../api/practiceBlocks';
 import { PracticeBlockView } from './PracticeBlockView';
 import { PracticeBlockPicker } from './PracticeBlockPicker';
+
+function ImageGradingSection({ lessonId }: { lessonId: string }) {
+  const [submissions, setSubmissions] = useState<ApiImageSubmissionForGrading[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [savingId, setSavingId] = useState<string | null>(null);
+  const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
+
+  function refresh() {
+    return apiListImageSubmissionsForGrading(lessonId).then(setSubmissions);
+  }
+
+  useEffect(() => {
+    setLoading(true);
+    void refresh().finally(() => setLoading(false));
+  }, [lessonId]);
+
+  async function handleGrade(id: string) {
+    const raw = scoreDrafts[id];
+    const score = Number(raw);
+    if (raw === undefined || raw === '' || isNaN(score) || score < 0) return;
+    setSavingId(id);
+    try {
+      await apiGradeImageSubmission(id, score);
+      await refresh();
+    } finally {
+      setSavingId(null);
+    }
+  }
+
+  if (loading) return null;
+  if (submissions.length === 0) return null;
+
+  return (
+    <div className="mb-6 rounded-2xl bg-white p-4">
+      <p className="mb-3 text-sm font-semibold text-gray-800">O'quvchilar yuklagan rasmlar</p>
+      <div className="flex flex-col gap-2">
+        {submissions.map((s) => (
+          <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
+            <a href={s.imageUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-indigo-500 hover:underline">
+              Rasmni ko'rish
+            </a>
+            <div className="min-w-0 flex-1">
+              <p className="truncate text-xs font-bold text-gray-800">{s.studentName}</p>
+              <p className="text-[11px] text-gray-400">{new Date(s.submittedAt).toLocaleDateString('uz-UZ')}</p>
+            </div>
+            {s.gradedAt ? (
+              <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-600">
+                Baholandi: {s.score}
+              </span>
+            ) : (
+              <div className="flex shrink-0 items-center gap-1.5">
+                <input
+                  type="number"
+                  min={0}
+                  value={scoreDrafts[s.id] ?? ''}
+                  onChange={(e) => setScoreDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
+                  placeholder="Ball"
+                  className="w-20 rounded-lg bg-white px-2.5 py-1.5 text-xs outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => void handleGrade(s.id)}
+                  disabled={savingId === s.id}
+                  className="rounded-lg bg-indigo-500 px-2.5 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Baholash
+                </button>
+              </div>
+            )}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
 
 interface PracticeSectionProps {
   courseId: string;
@@ -77,6 +157,10 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 
   return (
     <div>
+      {lesson.practiceBlocks.some((b) => b.type === 'image') && (
+        <ImageGradingSection lessonId={lessonId} />
+      )}
+
       {testsError && (
         <div className="mb-6 rounded-2xl bg-red-50/50 p-3">
           <p className="text-xs text-red-600">{testsError}</p>
@@ -115,7 +199,9 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
         <PracticeBlockPicker
           disabled={practiceLimitReached}
           limitText={`Amaliyotda maksimal ${PRACTICE_BLOCK_LIMIT} ta blok`}
-          onPickType={(type) => { if (type === 'test') void addPracticeBlock(courseId, moduleId, lessonId); }}
+          onPickType={(type) => {
+            if (type === 'test' || type === 'image') void addPracticeBlock(courseId, moduleId, lessonId, type);
+          }}
         />
       </div>
 

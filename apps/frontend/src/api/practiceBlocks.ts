@@ -3,6 +3,7 @@ import client from './client';
 export interface ApiPracticeBlock {
   id: string;
   lessonId: string;
+  type: 'test' | 'image';
   testId: string | null;
   orderIndex: number;
   description: string;
@@ -14,8 +15,42 @@ export async function apiListPracticeBlocks(lessonId: string): Promise<ApiPracti
   return res.data;
 }
 
-export async function apiCreatePracticeBlock(lessonId: string): Promise<ApiPracticeBlock> {
-  const res = await client.post(`/lessons/${lessonId}/practice-blocks`, { type: 'test' });
+export async function apiCreatePracticeBlock(lessonId: string, type: 'test' | 'image' = 'test'): Promise<ApiPracticeBlock> {
+  const res = await client.post(`/lessons/${lessonId}/practice-blocks`, { type });
+  return res.data;
+}
+
+export interface ApiImageSubmission {
+  id: string;
+  imageUrl: string;
+  submittedAt: string;
+  score: number | null;
+  graded: boolean;
+}
+
+export async function apiSubmitPracticeImage(practiceBlockId: string, imageUrl: string): Promise<ApiImageSubmission> {
+  const res = await client.post(`/practice-blocks/${practiceBlockId}/image-submissions`, { imageUrl });
+  return res.data;
+}
+
+export interface ApiImageSubmissionForGrading {
+  id: string;
+  practiceBlockId: string;
+  studentId: string;
+  studentName: string;
+  imageUrl: string;
+  submittedAt: string;
+  score: number | null;
+  gradedAt: string | null;
+}
+
+export async function apiListImageSubmissionsForGrading(lessonId: string): Promise<ApiImageSubmissionForGrading[]> {
+  const res = await client.get(`/lessons/${lessonId}/image-submissions`);
+  return res.data;
+}
+
+export async function apiGradeImageSubmission(id: string, score: number): Promise<ApiImageSubmissionForGrading> {
+  const res = await client.patch(`/image-submissions/${id}/grade`, { score });
   return res.data;
 }
 

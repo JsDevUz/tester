@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions } from '../db/schema';
+import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions } from '../db/schema';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 
 export function computeEarnedScore(
@@ -45,7 +45,7 @@ export class PracticeBlocksService {
     });
   }
 
-  async create(lessonId: string, adminId: string) {
+  async create(lessonId: string, adminId: string, type: 'test' | 'image' = 'test') {
     await this.assertLessonOwnership(lessonId, adminId);
     const existing = await db.query.practiceBlocks.findMany({ where: eq(practiceBlocks.lessonId, lessonId) });
     if (existing.length >= PRACTICE_BLOCK_LIMIT) {
@@ -53,7 +53,7 @@ export class PracticeBlocksService {
     }
     const [block] = await db
       .insert(practiceBlocks)
-      .values({ lessonId, testId: null, orderIndex: existing.length, description: '' })
+      .values({ lessonId, type, testId: null, orderIndex: existing.length, description: '' })
       .returning();
     return block;
   }
@@ -105,9 +105,37 @@ export class PracticeBlocksService {
 
     return Promise.all(
       blocks.map(async (block) => {
+        if (block.type === 'image') {
+          const imgSubmissions = await db.query.imageSubmissions.findMany({
+            where: and(eq(imageSubmissions.practiceBlockId, block.id), eq(imageSubmissions.studentId, studentId)),
+            orderBy: [desc(imageSubmissions.submittedAt)],
+          });
+          const latest = imgSubmissions[0] ?? null;
+          return {
+            id: block.id,
+            type: 'image' as const,
+            testId: null,
+            testSlug: null,
+            testName: null,
+            description: block.description,
+            maxScore: block.maxScore,
+            earnedScore: latest?.score ?? null,
+            submissions: [],
+            attemptsRemaining: null,
+            imageSubmissions: imgSubmissions.map((s) => ({
+              id: s.id,
+              imageUrl: s.imageUrl,
+              submittedAt: s.submittedAt!.toISOString(),
+              score: s.score,
+              graded: s.gradedAt !== null,
+            })),
+          };
+        }
+
         if (!block.testId) {
           return {
             id: block.id,
+            type: 'test' as const,
             testId: null,
             testSlug: null,
             testName: null,
@@ -116,6 +144,7 @@ export class PracticeBlocksService {
             earnedScore: null,
             submissions: [],
             attemptsRemaining: null,
+            imageSubmissions: [],
           };
         }
 
@@ -132,6 +161,7 @@ export class PracticeBlocksService {
 
         return {
           id: block.id,
+          type: 'test' as const,
           testId: block.testId,
           testSlug: block.test?.slug ?? null,
           testName: block.test?.name ?? null,
@@ -145,6 +175,7 @@ export class PracticeBlocksService {
             total: s.total ?? 0,
           })),
           attemptsRemaining: Math.max(0, PRACTICE_ATTEMPT_LIMIT - completedSubmissions.length),
+          imageSubmissions: [],
         };
       }),
     );
@@ -158,5 +189,60 @@ export class PracticeBlocksService {
 
     const [created] = await db.insert(lessonCompletions).values({ lessonId, studentId }).returning();
     return { completedAt: created.completedAt!.toISOString() };
+  }
+
+  async submitImage(practiceBlockId: string, studentId: string, imageUrl: string) {
+    const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, practiceBlockId) });
+    if (!block || block.type !== 'image') throw new NotFoundException('Practice block not found');
+
+    const [created] = await db
+      .insert(imageSubmissions)
+      .values({ practiceBlockId, studentId, imageUrl })
+      .returning();
+    return created;
+  }
+
+  async gradeImage(imageSubmissionId: string, adminId: string, score: number) {
+    const submission = await db.query.imageSubmissions.findFirst({ where: eq(imageSubmissions.id, imageSubmissionId) });
+    if (!submission) throw new NotFoundException('Submission not found');
+    const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, submission.practiceBlockId) });
+    if (!block) throw new NotFoundException('Submission not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    if (block.maxScore !== null && score > block.maxScore) {
+      throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
+    }
+
+    const [updated] = await db
+      .update(imageSubmissions)
+      .set({ score, gradedAt: new Date(), gradedByAdminId: adminId })
+      .where(eq(imageSubmissions.id, imageSubmissionId))
+      .returning();
+    return updated;
+  }
+
+  async listImageSubmissionsForGrading(lessonId: string, adminId: string) {
+    await this.assertLessonOwnership(lessonId, adminId);
+    const blocks = await db.query.practiceBlocks.findMany({
+      where: and(eq(practiceBlocks.lessonId, lessonId), eq(practiceBlocks.type, 'image')),
+    });
+    const blockIds = blocks.map((b) => b.id);
+    if (blockIds.length === 0) return [];
+
+    const allSubmissions = await db.query.imageSubmissions.findMany({
+      where: inArray(imageSubmissions.practiceBlockId, blockIds),
+      orderBy: [desc(imageSubmissions.submittedAt)],
+      with: { student: true },
+    });
+
+    return allSubmissions.map((s) => ({
+      id: s.id,
+      practiceBlockId: s.practiceBlockId,
+      studentId: s.studentId,
+      studentName: s.student.name,
+      imageUrl: s.imageUrl,
+      submittedAt: s.submittedAt!.toISOString(),
+      score: s.score,
+      gradedAt: s.gradedAt?.toISOString() ?? null,
+    }));
   }
 }

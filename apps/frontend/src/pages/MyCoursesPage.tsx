@@ -247,6 +247,10 @@ function StudentCourseReader({
       .finally(() => setLoading(false));
   }, [courseId]);
 
+  function refreshCourseSilently() {
+    return apiGetMyCourseDetail(courseId).then(setCourse).catch(() => {});
+  }
+
   const lessons = useMemo(
     () =>
       course?.modules.flatMap((module) =>
@@ -639,6 +643,7 @@ function StudentCourseReader({
                 if (block.testSlug)
                   setActiveTest({ slug: block.testSlug, submissionId });
               }}
+              onImageSubmitted={() => void refreshCourseSilently()}
               hasNext={selectedIndex + 1 < lessons.length}
               onNext={() => {
                 const next = lessons[selectedIndex + 1];

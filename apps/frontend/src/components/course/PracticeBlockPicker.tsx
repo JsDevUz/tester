@@ -1,4 +1,4 @@
-import { ClipboardList, Image as ImageIcon, Paperclip, Mic } from 'lucide-react';
+import { ClipboardList, Image as ImageIcon } from 'lucide-react';
 import type { PracticeBlockType } from '../../stores/courseStore';
 
 interface PracticeBlockPickerProps {
@@ -10,8 +10,6 @@ interface PracticeBlockPickerProps {
 const TYPES: Array<{ type: PracticeBlockType; label: string; icon: typeof ClipboardList }> = [
   { type: 'test', label: 'Test', icon: ClipboardList },
   { type: 'image', label: 'Rasm', icon: ImageIcon },
-  { type: 'file', label: 'Fayl', icon: Paperclip },
-  { type: 'audio', label: 'Audio', icon: Mic },
 ];
 
 export function PracticeBlockPicker({ onPickType, disabled = false, limitText }: PracticeBlockPickerProps) {
@@ -20,7 +18,7 @@ export function PracticeBlockPicker({ onPickType, disabled = false, limitText }:
       <p className="mb-3 text-center text-xs text-gray-400">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3">
         {TYPES.map((item) => {
           const Icon = item.icon;
           return (

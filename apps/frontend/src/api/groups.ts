@@ -137,8 +137,17 @@ export interface ApiMyPracticeSubmission {
   total: number;
 }
 
+export interface ApiMyImageSubmission {
+  id: string;
+  imageUrl: string;
+  submittedAt: string;
+  score: number | null;
+  graded: boolean;
+}
+
 export interface ApiMyPracticeBlock {
   id: string;
+  type: 'test' | 'image';
   testId: string | null;
   testSlug: string | null;
   testName: string | null;
@@ -147,6 +156,7 @@ export interface ApiMyPracticeBlock {
   earnedScore: number | null;
   submissions: ApiMyPracticeSubmission[];
   attemptsRemaining: number | null;
+  imageSubmissions: ApiMyImageSubmission[];
 }
 
 export interface ApiMyLesson {

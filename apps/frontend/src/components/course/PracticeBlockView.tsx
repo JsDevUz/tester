@@ -1,4 +1,4 @@
-import { ClipboardList, Image as ImageIcon, Paperclip, Mic, ArrowUp, ArrowDown, X } from 'lucide-react';
+import { ClipboardList, Image as ImageIcon, ArrowUp, ArrowDown, X } from 'lucide-react';
 import type { PracticeBlock, PracticeBlockType } from '../../stores/courseStore';
 import type { AllTestsItem } from '../../api/tests';
 
@@ -23,16 +23,6 @@ const TYPE_META: Record<PracticeBlockType, { label: string; icon: typeof Clipboa
     label: 'Rasm',
     icon: ImageIcon,
     placeholder: "Masalan: Yangi mavzu bo'yicha 50ta gap tuzib daftarga yozing va uni rasmga olib yuklang",
-  },
-  file: {
-    label: 'Fayl',
-    icon: Paperclip,
-    placeholder: "Masalan: Uy vazifasini PDF formatida tayyorlab yuklang",
-  },
-  audio: {
-    label: 'Audio',
-    icon: Mic,
-    placeholder: "Masalan: Matnni ovoz chiqarib o'qing va audio yozib yuklang",
   },
 };
 
@@ -136,6 +126,24 @@ export function PracticeBlockView({
             {!block.description.trim() && (
               <p className="mt-1 text-xs text-orange-500">Topshiriq matni bo'sh bo'lmasligi shart</p>
             )}
+            <p className="mb-1.5 mt-3 text-sm text-gray-500">Ushbu blok uchun maksimal ball</p>
+            <input
+              type="number"
+              min={0}
+              value={block.maxScore ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') { onChangeMaxScore(null); return; }
+                const num = Number(raw);
+                if (isNaN(num)) return;
+                onChangeMaxScore(Math.max(0, num));
+              }}
+              placeholder="Masalan: 10"
+              className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+            />
+            <p className="mt-2 text-xs text-gray-400">
+              Ustoz o'quvchi yuklagan rasmni ko'rib, ballni qo'lda qo'yadi.
+            </p>
           </>
         )}
       </div>

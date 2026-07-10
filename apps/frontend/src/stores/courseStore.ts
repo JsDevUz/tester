@@ -54,7 +54,7 @@ export interface ContentBlock {
   uploadProgress?: number;
 }
 
-export type PracticeBlockType = 'test' | 'image' | 'file' | 'audio';
+export type PracticeBlockType = 'test' | 'image';
 
 export interface PracticeBlock {
   id: string;
@@ -156,7 +156,7 @@ interface CourseState {
   retryVideoBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
-  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type?: PracticeBlockType) => Promise<void>;
   removePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   movePracticeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
   setPracticeBlockTest: (courseId: string, moduleId: string, lessonId: string, blockId: string, testId: string) => Promise<void>;
@@ -215,7 +215,7 @@ function toFrontendBlock(b: ApiContentBlock): ContentBlock {
 function toFrontendPracticeBlock(b: ApiPracticeBlock): PracticeBlock {
   return {
     id: b.id,
-    type: 'test',
+    type: b.type,
     testId: b.testId,
     description: b.description,
     maxScore: b.maxScore,
@@ -815,13 +815,13 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
-  addPracticeBlock: async (courseId, moduleId, lessonId) => {
+  addPracticeBlock: async (courseId, moduleId, lessonId, type = 'test') => {
     const course = get().courses.find((c) => c.id === courseId);
     const module = course?.modules.find((m) => m.id === moduleId);
     const lesson = module?.lessons.find((l) => l.id === lessonId);
     if (!lesson || lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT) return;
 
-    const row = await apiCreatePracticeBlock(lessonId);
+    const row = await apiCreatePracticeBlock(lessonId, type);
     const block = toFrontendPracticeBlock(row);
     set({
       courses: get().courses.map((c) =>

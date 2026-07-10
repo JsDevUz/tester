@@ -12,16 +12,16 @@ import { StorageService } from '../storage/storage.service';
 
 const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
-const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments'];
+const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments', 'practice-submissions'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('teacher', 'super')
 @Controller('upload')
 export class UploadController {
   constructor(private storageService: StorageService) {}
 
   @Post()
+  @Roles('teacher', 'super', 'student')
   @UseInterceptors(
     FileInterceptor('file', {
       storage: memoryStorage(),
