@@ -119,6 +119,19 @@ export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({
   lesson: one(lessons, { fields: [contentBlocks.lessonId], references: [lessons.id] }),
 }));
 
+export const videoWatchSegments = pgTable('video_watch_segments', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contentBlockId: uuid('content_block_id').notNull().references(() => contentBlocks.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  startSec: integer('start_sec').notNull(),
+  endSec: integer('end_sec').notNull(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+});
+
+export const videoWatchSegmentsRelations = relations(videoWatchSegments, ({ one }) => ({
+  contentBlock: one(contentBlocks, { fields: [videoWatchSegments.contentBlockId], references: [contentBlocks.id] }),
+}));
+
 export const practiceBlocks = pgTable('practice_blocks', {
   id: uuid('id').primaryKey().defaultRandom(),
   lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),
