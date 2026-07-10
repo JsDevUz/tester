@@ -3,7 +3,7 @@ import { LessonsService } from './lessons.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
 
 class CreateLessonDto {
   @IsString() @MinLength(1) title: string;
@@ -12,6 +12,9 @@ class CreateLessonDto {
 class UpdateLessonDto {
   @IsOptional() @IsString() @MinLength(1) title?: string;
   @IsOptional() @IsIn(['draft', 'published']) status?: string;
+  @IsOptional() @IsBoolean() passThresholdEnabled?: boolean;
+  @IsOptional() @IsInt() @Min(0) @Max(100) passThresholdPercent?: number | null;
+  @IsOptional() @IsInt() @Min(0) completionScore?: number | null;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

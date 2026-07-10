@@ -32,7 +32,17 @@ export class LessonsService {
     return lesson;
   }
 
-  async update(id: string, adminId: string, data: { title?: string; status?: string }) {
+  async update(
+    id: string,
+    adminId: string,
+    data: {
+      title?: string;
+      status?: string;
+      passThresholdEnabled?: boolean;
+      passThresholdPercent?: number | null;
+      completionScore?: number | null;
+    },
+  ) {
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, id) });
     if (!lesson) throw new NotFoundException('Lesson not found');
     await this.assertModuleOwnership(lesson.moduleId, adminId);
