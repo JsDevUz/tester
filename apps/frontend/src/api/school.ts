@@ -67,6 +67,27 @@ export async function apiListAllStudents(): Promise<ApiSchoolStudent[]> {
   return res.data;
 }
 
+export interface ApiSchoolEnrollment {
+  studentId: string;
+  studentName: string;
+  studentPhone: string | null;
+  active: boolean;
+  courseId: string;
+  courseTitle: string;
+  groupName: string;
+  joinedAt: string | null;
+  lessonsCompleted: number;
+  lessonsTotal: number;
+  progressPercent: number;
+  starsEarned: number;
+  starsMax: number;
+}
+
+export async function apiListEnrollments(): Promise<ApiSchoolEnrollment[]> {
+  const res = await client.get('/school/students/enrollments');
+  return res.data;
+}
+
 export interface ApiSchoolStudentWithoutGroup {
   id: string;
   name: string;

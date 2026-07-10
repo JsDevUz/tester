@@ -1,10 +1,17 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Inbox, ChevronLeft, ChevronRight, Clock3 } from "lucide-react";
+import { Search, Inbox, ChevronLeft, ChevronRight, Clock3, Star } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
-import { apiListAllStudents, apiGetStudentsWithoutGroup, type ApiSchoolStudent, type ApiSchoolStudentWithoutGroup } from "../api/school";
+import {
+  apiListAllStudents,
+  apiGetStudentsWithoutGroup,
+  apiListEnrollments,
+  type ApiSchoolStudent,
+  type ApiSchoolStudentWithoutGroup,
+  type ApiSchoolEnrollment,
+} from "../api/school";
 import {
   apiGetPendingPlanAssignment,
   type ApiPendingPlanAssignment,
@@ -103,12 +110,15 @@ export function StudentsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
+  const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
   const [pendingRows, setPendingRows] = useState<ApiPendingPlanAssignment[]>([]);
   const [withoutGroupRows, setWithoutGroupRows] = useState<ApiSchoolStudentWithoutGroup[]>([]);
 
   useEffect(() => {
-    if (status === "all" || status === "list") {
+    if (status === "all") {
       void apiListAllStudents().then(setAllUsers);
+    } else if (status === "list") {
+      void apiListEnrollments().then(setEnrollments);
     }
   }, [status]);
 
@@ -133,13 +143,16 @@ export function StudentsPage() {
     );
   }, [query, allUsers]);
 
-  const filteredStudents = useMemo(() => {
+  const filteredEnrollments = useMemo(() => {
     const q = query.trim().toLowerCase();
-    if (!q) return MOCK_STUDENTS;
-    return MOCK_STUDENTS.filter(
-      (s) => s.name.toLowerCase().includes(q) || s.phone.includes(q),
+    if (!q) return enrollments;
+    return enrollments.filter(
+      (e) =>
+        e.studentName.toLowerCase().includes(q) ||
+        (e.studentPhone ?? "").includes(q) ||
+        e.courseTitle.toLowerCase().includes(q),
     );
-  }, [query]);
+  }, [query, enrollments]);
 
   const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
@@ -291,7 +304,7 @@ export function StudentsPage() {
             </>
           ) : status === "list" ? (
             <div className="rounded-2xl bg-white">
-              {filteredStudents.length === 0 ? (
+              {filteredEnrollments.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <Inbox size={36} className="mx-auto mb-3 opacity-30" />
                   <p className="text-sm">
@@ -301,43 +314,46 @@ export function StudentsPage() {
               ) : (
                 <>
                   <div className="md:hidden flex flex-col gap-2">
-                    {filteredStudents.map((s) => (
-                      <div key={s.id} className="bg-white rounded-2xl px-3.5 py-3">
+                    {filteredEnrollments.map((e) => (
+                      <div key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3">
                         <div className="flex items-center gap-3">
                           <div
-                            className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(s.id)}`}
+                            className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(e.studentId)}`}
                           >
-                            {initials(s.name)}
+                            {initials(e.studentName)}
                           </div>
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <p className="text-sm font-semibold text-gray-800 truncate">
-                                {s.name}
+                                {e.studentName}
                               </p>
-                              {!s.active && (
+                              {!e.active && (
                                 <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
                                   Faol emas
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{s.phone}</p>
+                            <p className="text-xs text-gray-400 mt-0.5">{e.studentPhone ?? ""}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-xs text-gray-400">{formatDate(s.joinedAt)}</p>
+                            <p className="text-xs text-gray-400">{e.joinedAt ? formatDate(e.joinedAt) : ""}</p>
                           </div>
                         </div>
-                        {s.product && (
-                          <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between gap-2 text-xs">
-                            <div className="min-w-0 flex items-center gap-1.5 text-gray-500">
-                              <span className="truncate">{s.product}</span>
-                            </div>
-                            {s.progress !== null && (
-                              <span className={`shrink-0 font-semibold ${progressColor(s.progress)}`}>
-                                {s.progress}%
+                        <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between gap-2 text-xs">
+                          <div className="min-w-0 flex items-center gap-1.5 text-gray-500">
+                            <span className="truncate">{e.courseTitle} • {e.groupName}</span>
+                          </div>
+                          <div className="flex shrink-0 items-center gap-2">
+                            {e.starsMax > 0 && (
+                              <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
+                                <Star size={12} fill="currentColor" /> {e.starsEarned}/{e.starsMax}
                               </span>
                             )}
+                            <span className={`font-semibold ${progressColor(e.progressPercent)}`}>
+                              {e.progressPercent}%
+                            </span>
                           </div>
-                        )}
+                        </div>
                       </div>
                     ))}
                   </div>
@@ -347,28 +363,27 @@ export function StudentsPage() {
                       <thead className="text-sm font-medium text-gray-700">
                         <tr>
                           <th className="px-5 py-4">O'quvchi</th>
-                          <th className="px-5 py-4">Mahsulot</th>
+                          <th className="px-5 py-4">Kurs / guruh</th>
                           <th className="px-5 py-4">Progress</th>
-                          <th className="px-5 py-4">Joriy dars</th>
-                          <th className="px-5 py-4">Tarif</th>
-                          <th className="px-5 py-4">Yozilgan sana</th>
+                          <th className="px-5 py-4">Yulduzlar</th>
+                          <th className="px-5 py-4">Qo'shilgan sana</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredStudents.map((s) => (
-                          <tr key={s.id} className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5">
+                        {filteredEnrollments.map((e) => (
+                          <tr key={`${e.studentId}-${e.courseId}`} className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5">
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <div
-                                  className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(s.id)}`}
+                                  className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(e.studentId)}`}
                                 >
-                                  {initials(s.name)}
+                                  {initials(e.studentName)}
                                 </div>
                                 <div className="flex items-center gap-2 min-w-0">
                                   <p className="text-sm font-semibold text-gray-800 truncate">
-                                    {s.name}
+                                    {e.studentName}
                                   </p>
-                                  {!s.active && (
+                                  {!e.active && (
                                     <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
                                       Faol emas
                                     </span>
@@ -377,25 +392,24 @@ export function StudentsPage() {
                               </div>
                             </td>
                             <td className="px-5 py-4 text-sm text-gray-600">
-                              {s.product ?? <span className="text-gray-300">—</span>}
+                              {e.courseTitle} <span className="text-gray-400">• {e.groupName}</span>
                             </td>
                             <td className="px-5 py-4">
-                              {s.progress !== null ? (
-                                <span className={`text-sm font-semibold ${progressColor(s.progress)}`}>
-                                  {s.progress}%
+                              <span className={`text-sm font-semibold ${progressColor(e.progressPercent)}`}>
+                                {e.lessonsCompleted}/{e.lessonsTotal} • {e.progressPercent}%
+                              </span>
+                            </td>
+                            <td className="px-5 py-4">
+                              {e.starsMax > 0 ? (
+                                <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500">
+                                  <Star size={13} fill="currentColor" /> {e.starsEarned} / {e.starsMax}
                                 </span>
                               ) : (
                                 <span className="text-sm text-gray-300">—</span>
                               )}
                             </td>
                             <td className="px-5 py-4 text-sm text-gray-500">
-                              {s.currentLesson ?? <span className="text-gray-300">—</span>}
-                            </td>
-                            <td className="px-5 py-4 text-sm text-gray-500">
-                              {s.tariff ?? <span className="text-gray-300">—</span>}
-                            </td>
-                            <td className="px-5 py-4 text-sm text-gray-500">
-                              {formatDate(s.joinedAt)}
+                              {e.joinedAt ? formatDate(e.joinedAt) : <span className="text-gray-300">—</span>}
                             </td>
                           </tr>
                         ))}

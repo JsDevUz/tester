@@ -68,6 +68,13 @@ export class SchoolsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
+  @Get('school/students/enrollments')
+  listEnrollments(@Req() req: any) {
+    return this.schoolsService.listEnrollments(req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Get('school/students/without-group')
   findStudentsWithoutGroup(@Req() req: any) {
     return this.schoolsService.findStudentsWithoutGroup(req.admin.id);
