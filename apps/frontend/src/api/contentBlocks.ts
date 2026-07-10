@@ -91,6 +91,27 @@ export async function apiStartVideoPlayback(
   return res.data;
 }
 
+export interface WatchSegment {
+  startSec: number;
+  endSec: number;
+}
+
+export async function apiSaveWatchProgress(
+  blockId: string,
+  startSec: number,
+  endSec: number,
+): Promise<{ watchedPercent: number | null }> {
+  const res = await client.post(`/videos/${blockId}/watch-progress`, { startSec, endSec });
+  return res.data;
+}
+
+export async function apiGetWatchProgress(
+  blockId: string,
+): Promise<{ segments: WatchSegment[]; watchedPercent: number | null }> {
+  const res = await client.get(`/videos/${blockId}/watch-progress`);
+  return res.data;
+}
+
 export async function apiDeleteBlock(id: string): Promise<void> {
   await client.delete(`/blocks/${id}`);
 }
