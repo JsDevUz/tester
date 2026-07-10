@@ -28,13 +28,18 @@ export function getCachedSubmissionResult(
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace("/api/v1", "") ?? "";
 
-export function TestResultPage() {
-  const [searchParams] = useSearchParams();
+export function TestResultView({
+  submissionId,
+  practiceMode,
+}: {
+  submissionId: string | null;
+  practiceMode: boolean;
+}) {
   const [result, setResult] = useState<SubmissionResult | null>(null);
-  const isPractice = searchParams.get("practice") === "1";
+  const isPractice = practiceMode;
 
   useEffect(() => {
-    const sid = searchParams.get("sid");
+    const sid = submissionId;
     const raw = sessionStorage.getItem("submissionResult");
     const cachedResult = getCachedSubmissionResult(raw, sid);
     if (cachedResult) {
@@ -369,5 +374,15 @@ export function TestResultPage() {
         </div>
       </div>
     </div>
+  );
+}
+
+export function TestResultPage() {
+  const [searchParams] = useSearchParams();
+  return (
+    <TestResultView
+      submissionId={searchParams.get("sid")}
+      practiceMode={searchParams.get("practice") === "1"}
+    />
   );
 }
