@@ -14,7 +14,7 @@ interface PracticeSectionProps {
 export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectionProps) {
   const {
     courses, addPracticeBlock, removePracticeBlock, movePracticeBlock, setPracticeBlockTest,
-    setPracticeBlockDescription, setPracticeBlockMaxScore, setPassThreshold, setLessonCompletionScore,
+    setPracticeBlockDescription, setPracticeBlockMaxScore, setPassThreshold,
   } = useCourseStore();
   const lesson = courses
     .find((c) => c.id === courseId)
@@ -75,33 +75,8 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     });
   }
 
-  function handleCompletionScoreChange(value: string) {
-    if (value === '') {
-      setLessonCompletionScore(courseId, moduleId, lessonId, null);
-      return;
-    }
-    const num = Number(value);
-    if (isNaN(num)) return;
-    setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
-  }
-
   return (
     <div>
-      <div className="mb-6 rounded-2xl bg-white p-4">
-        <p className="text-sm font-semibold text-gray-800">Darsni tamomlash uchun yulduz</p>
-        <p className="mt-0.5 text-xs text-gray-400">O'quvchi darsni tugatganda (Keyingi dars tugmasi) beriladigan ball</p>
-        <div className="mt-3">
-          <input
-            type="number"
-            min={0}
-            value={lesson.completionScore ?? ''}
-            onChange={(e) => handleCompletionScoreChange(e.target.value)}
-            placeholder="Masalan: 5"
-            className="w-full rounded-xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-          />
-        </div>
-      </div>
-
       {testsError && (
         <div className="mb-6 rounded-2xl bg-red-50/50 p-3">
           <p className="text-xs text-red-600">{testsError}</p>

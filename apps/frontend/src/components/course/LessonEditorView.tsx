@@ -73,6 +73,7 @@ export function LessonEditorView({
     refreshLessonBlocks,
     retryVideoBlock,
     setLessonPracticeEnabled,
+    setLessonCompletionScore,
   } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const module = course?.modules.find((m) => m.id === moduleId);
@@ -188,6 +189,23 @@ export function LessonEditorView({
             <input
               value={lesson.title}
               onChange={(e) => void renameLesson(courseId, moduleId, lessonId, e.target.value)}
+              className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+            />
+
+            <p className="mb-1.5 text-sm text-gray-500">Darsni tamomlash uchun yulduz</p>
+            <p className="mb-2 text-xs text-gray-400">O'quvchi darsni tugatganda (Keyingi dars tugmasi) beriladigan ball. Amaliyot balidan mustaqil.</p>
+            <input
+              type="number"
+              min={0}
+              value={lesson.completionScore ?? ''}
+              onChange={(e) => {
+                const raw = e.target.value;
+                if (raw === '') { void setLessonCompletionScore(courseId, moduleId, lessonId, null); return; }
+                const num = Number(raw);
+                if (isNaN(num)) return;
+                void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
+              }}
+              placeholder="Masalan: 5"
               className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
             />
 
