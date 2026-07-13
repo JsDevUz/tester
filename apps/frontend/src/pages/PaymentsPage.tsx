@@ -549,6 +549,7 @@ function PaymentModal({
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   const selectedRow = duePayments.find((row) => row.id === selectedId) ?? null;
   const filteredPayments = duePayments.filter((row) =>
@@ -568,6 +569,7 @@ function PaymentModal({
   async function handleSave() {
     if (!selectedRow || !canSave) return;
     setSaving(true);
+    setSaveError(null);
     try {
       let receiptUrl: string | undefined;
       if (receiptFile) {
@@ -577,8 +579,11 @@ function PaymentModal({
         setUploadingReceipt(false);
       }
       await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined, receiptUrl);
+    } catch (err: any) {
+      setSaveError(err?.response?.data?.message ?? "Xato yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSaving(false);
+      setUploadingReceipt(false);
     }
   }
 
@@ -725,6 +730,9 @@ function PaymentModal({
               )}
             </label>
           </Field>
+          {saveError && (
+            <p className="sm:col-span-2 text-sm font-semibold text-red-500">{saveError}</p>
+          )}
           <button
             type="button"
             onClick={handleSave}
