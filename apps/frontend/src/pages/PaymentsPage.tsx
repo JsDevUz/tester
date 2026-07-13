@@ -78,7 +78,7 @@ function formatMoney(amount: number) {
 }
 
 function StatusBadge({ status }: { status: PaymentStatus }) {
-  const meta = STATUS_META[status];
+  const meta = STATUS_META[status] ?? STATUS_META.pending;
   return (
     <span
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${meta.className}`}
