@@ -46,4 +46,9 @@ export class PaymentsController {
   cancelPayment(@Param('id') id: string, @Req() req: any) {
     return this.paymentsService.cancelPayment(id, req.admin.id);
   }
+
+  @Get('payments/:id/cancellations')
+  listCancellations(@Param('id') id: string, @Req() req: any) {
+    return this.paymentsService.listCancellations(id, req.admin.id);
+  }
 }

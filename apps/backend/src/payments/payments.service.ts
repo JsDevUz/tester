@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, groups, groupEnrollments, monthlyPayments } from '../db/schema';
+import { courses, groups, groupEnrollments, monthlyPayments, paymentCancellations } from '../db/schema';
 import { and, desc, eq } from 'drizzle-orm';
 
 function computeStatus(expectedAmount: number, discountAmount: number, paidAmount: number): string {
@@ -83,11 +83,25 @@ export class PaymentsService {
 
   async cancelPayment(paymentId: string, adminId: string) {
     const payment = await this.assertPaymentOwnership(paymentId, adminId);
-    if (payment.status === 'cancelled') return payment;
+    if (payment.status === 'pending' && payment.paidAmount === 0) return payment;
+
+    await db.insert(paymentCancellations).values({
+      paymentId,
+      cancelledByAdminId: adminId,
+      cancelledPaidAmount: payment.paidAmount,
+    });
 
     const [updated] = await db
       .update(monthlyPayments)
-      .set({ status: 'cancelled', updatedAt: new Date() })
+      .set({
+        paidAmount: 0,
+        discountAmount: 0,
+        status: 'pending',
+        paymentMethod: null,
+        note: null,
+        receiptUrl: null,
+        updatedAt: new Date(),
+      })
       .where(eq(monthlyPayments.id, paymentId))
       .returning();
 
@@ -105,6 +119,14 @@ export class PaymentsService {
     }
 
     return updated;
+  }
+
+  async listCancellations(paymentId: string, adminId: string) {
+    await this.assertPaymentOwnership(paymentId, adminId);
+    return db.query.paymentCancellations.findMany({
+      where: eq(paymentCancellations.paymentId, paymentId),
+      orderBy: [desc(paymentCancellations.cancelledAt)],
+    });
   }
 
   async findAllForAdmin(adminId: string) {

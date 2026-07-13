@@ -7,7 +7,7 @@ export interface ApiMonthlyPayment {
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
-  status: 'pending' | 'partial' | 'paid' | 'debt' | 'cancelled';
+  status: 'pending' | 'partial' | 'paid' | 'debt';
   createdAt: string;
   updatedAt: string;
 }
@@ -19,7 +19,7 @@ export interface ApiPaymentRow {
   expectedAmount: number;
   discountAmount: number;
   paidAmount: number;
-  status: 'pending' | 'partial' | 'paid' | 'debt' | 'cancelled';
+  status: 'pending' | 'partial' | 'paid' | 'debt';
   paymentMethod: string | null;
   note: string | null;
   receiptUrl: string | null;

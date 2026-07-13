@@ -18,7 +18,7 @@ import { AppShell } from "../components/AppShell";
 import { apiListAllPayments, apiRecordPayment, apiCancelPayment, type ApiPaymentRow } from "../api/payments";
 import { apiUploadMedia } from "../api/questions";
 
-type PaymentStatus = "paid" | "partial" | "debt" | "pending" | "cancelled";
+type PaymentStatus = "paid" | "partial" | "debt" | "pending";
 type PaymentMethod = "cash" | "click" | "payme" | "card" | "other";
 type PaymentTab = "all" | PaymentStatus;
 
@@ -61,11 +61,6 @@ const STATUS_META: Record<
     className: "bg-indigo-50 text-indigo-600",
     dot: "bg-indigo-500",
   },
-  cancelled: {
-    label: "Bekor qilingan",
-    className: "bg-gray-100 text-gray-500",
-    dot: "bg-gray-400",
-  },
 };
 
 const TABS: { key: PaymentTab; label: string; info?: boolean }[] = [
@@ -74,7 +69,6 @@ const TABS: { key: PaymentTab; label: string; info?: boolean }[] = [
   { key: "partial", label: "Qisman", info: true },
   { key: "debt", label: "Qarzdorlar", info: true },
   { key: "pending", label: "Kutilmoqda", info: true },
-  { key: "cancelled", label: "Bekor qilingan" },
 ];
 
 const METHOD_OPTIONS: PaymentMethod[] = ["cash", "click", "payme", "card", "other"];
@@ -145,7 +139,7 @@ export function PaymentsPage() {
   const dueAmount = (row: ApiPaymentRow) => row.expectedAmount - row.discountAmount;
   const paidTotal = rows.reduce((sum, row) => sum + row.paidAmount, 0);
   const debtTotal = rows.reduce(
-    (sum, row) => sum + (row.status === "cancelled" ? 0 : Math.max(dueAmount(row) - row.paidAmount, 0)),
+    (sum, row) => sum + Math.max(dueAmount(row) - row.paidAmount, 0),
     0,
   );
   const pendingCount = rows.filter((row) => row.status === "pending").length;

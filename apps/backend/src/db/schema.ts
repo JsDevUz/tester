@@ -232,6 +232,19 @@ export const monthlyPayments = pgTable('monthly_payments', {
   uniqueMemberPeriod: uniqueIndex('monthly_payments_enrollment_id_period_month_key').on(table.enrollmentId, table.periodMonth),
 }));
 
+export const paymentCancellations = pgTable('payment_cancellations', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  paymentId: uuid('payment_id').notNull().references(() => monthlyPayments.id, { onDelete: 'cascade' }),
+  cancelledByAdminId: uuid('cancelled_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+  cancelledPaidAmount: integer('cancelled_paid_amount').notNull(),
+  cancelledAt: timestamp('cancelled_at', { withTimezone: true }).defaultNow(),
+});
+
+export const paymentCancellationsRelations = relations(paymentCancellations, ({ one }) => ({
+  payment: one(monthlyPayments, { fields: [paymentCancellations.paymentId], references: [monthlyPayments.id] }),
+  cancelledByAdmin: one(admins, { fields: [paymentCancellations.cancelledByAdminId], references: [admins.id] }),
+}));
+
 export const groupsRelations = relations(groups, ({ one, many }) => ({
   course: one(courses, { fields: [groups.courseId], references: [courses.id] }),
   enrollments: many(groupEnrollments),
