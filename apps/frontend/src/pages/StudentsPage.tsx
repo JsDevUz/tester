@@ -1,21 +1,16 @@
 import { useEffect, useMemo, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Inbox, ChevronLeft, ChevronRight, Clock3, Star } from "lucide-react";
+import { Search, Inbox, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
 import {
   apiListAllStudents,
-  apiGetStudentsWithoutGroup,
   apiListEnrollments,
   type ApiSchoolStudent,
-  type ApiSchoolStudentWithoutGroup,
   type ApiSchoolEnrollment,
 } from "../api/school";
-import {
-  apiGetPendingPlanAssignment,
-  type ApiPendingPlanAssignment,
-} from "../api/groups";
+import { EnrollStudentModal } from "../components/students/EnrollStudentModal";
 
 export interface StudentRow {
   id: string;
@@ -95,11 +90,10 @@ function progressColor(pct: number) {
 
 const PAGE_SIZE = 7;
 
-type SectionStatus = "all" | "list" | "pending";
+type SectionStatus = "all" | "list";
 
 function statusForPath(pathname: string): SectionStatus {
-  if (pathname.startsWith("/students/pending")) return "pending";
-  if (pathname.startsWith("/students/list")) return "list";
+  if (pathname.startsWith("/students/list") || pathname.startsWith("/students/pending")) return "list";
   return "all";
 }
 
@@ -111,24 +105,19 @@ export function StudentsPage() {
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
-  const [pendingRows, setPendingRows] = useState<ApiPendingPlanAssignment[]>([]);
-  const [withoutGroupRows, setWithoutGroupRows] = useState<ApiSchoolStudentWithoutGroup[]>([]);
+  const [enrollTarget, setEnrollTarget] = useState<{ id: string; name: string } | null>(null);
+
+  function refreshAllUsers() {
+    return apiListAllStudents().then(setAllUsers);
+  }
 
   useEffect(() => {
     if (status === "all") {
-      void apiListAllStudents().then(setAllUsers);
+      void refreshAllUsers();
     } else if (status === "list") {
       void apiListEnrollments().then(setEnrollments);
     }
   }, [status]);
-
-  useEffect(() => {
-    void apiGetPendingPlanAssignment().then(setPendingRows);
-  }, []);
-
-  useEffect(() => {
-    void apiGetStudentsWithoutGroup().then(setWithoutGroupRows);
-  }, []);
 
   useEffect(() => {
     setQuery("");
@@ -169,22 +158,14 @@ export function StudentsPage() {
   const tabCounts = {
     "/students": allUsers.length,
     "/students/list": allUsers.length,
-    "/students/pending": pendingRows.length + withoutGroupRows.length,
   };
 
-  const title =
-    status === "pending"
-      ? "Ruxsat kutayotganlar"
-      : status === "list"
-        ? "O'quvchilar"
-        : "Barcha maktab foydalanuvchilari";
+  const title = status === "list" ? "O'quvchilar" : "Barcha maktab foydalanuvchilari";
 
   const subtitle =
-    status === "pending"
-      ? "Guruhga qo'shilgan, lekin hali tarif tanlanmagan o'quvchilar"
-      : status === "list"
-        ? "Mahsulotingizda tahsil olayotgan o'quvchilar haqida to'liq ma'lumot"
-        : "Maktabingiz foydalanuvchilari haqida to'liq ma'lumot";
+    status === "list"
+      ? "Mahsulotingizda tahsil olayotgan o'quvchilar haqida to'liq ma'lumot"
+      : "Maktabingiz foydalanuvchilari haqida to'liq ma'lumot";
 
   return (
     <AppShell>
@@ -201,108 +182,21 @@ export function StudentsPage() {
 
           <StudentsSectionTabs counts={tabCounts} />
 
-          {status !== "pending" && (
-            <div className="relative w-fit max-w-full">
-              <Search
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-              />
-              <input
-                type="text"
-                value={query}
-                onChange={(e) => handleSearch(e.target.value)}
-                placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
-                className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
-              />
-            </div>
-          )}
+          <div className="relative w-fit max-w-full">
+            <Search
+              size={18}
+              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+            />
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
+              className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+            />
+          </div>
 
-          {status === "pending" ? (
-            <>
-            {withoutGroupRows.length > 0 && (
-              <div className="rounded-2xl bg-white p-4">
-                <p className="mb-3 text-sm font-semibold uppercase tracking-wide text-gray-400">
-                  Guruhga kutilmoqda ({withoutGroupRows.length})
-                </p>
-                <div className="flex flex-col gap-2">
-                  {withoutGroupRows.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
-                      <div className="min-w-0">
-                        <p className="truncate text-sm font-semibold text-gray-800">{r.name}</p>
-                        <p className="text-xs text-gray-400">{r.phone ?? ""}</p>
-                      </div>
-                      <p className="shrink-0 text-xs text-gray-400">{formatDate(r.joinedAt)}</p>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-            {pendingRows.length === 0 ? (
-              <div className="flex min-h-80 flex-col items-center justify-center rounded-2xl bg-white px-4 py-16 text-center text-gray-400">
-                <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl bg-white text-gray-300">
-                  <Clock3 size={28} />
-                </div>
-                <p className="text-sm font-semibold text-gray-600">
-                  Ruxsat kutayotgan o'quvchilar yo'q
-                </p>
-                <p className="mt-1 text-xs">
-                  Guruhga qo'shilib, tarif tanlamagan o'quvchilar shu yerda ko'rinadi.
-                </p>
-                <Inbox size={28} className="mt-5 opacity-20" />
-              </div>
-            ) : (
-              <div className="rounded-2xl bg-white">
-                <div className="md:hidden flex flex-col gap-2 p-3">
-                  {pendingRows.map((r) => (
-                    <div key={r.id} className="rounded-2xl bg-gray-50 px-3.5 py-3">
-                      <p className="text-sm font-semibold text-gray-800">
-                        {r.studentName}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {r.groupName} — {r.courseTitle}
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">
-                        {formatDate(r.joinedAt)}
-                      </p>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="hidden md:block overflow-x-auto">
-                  <table className="w-full min-w-210 text-left">
-                    <thead className="text-sm font-medium text-gray-700">
-                      <tr>
-                        <th className="px-5 py-4">O'quvchi</th>
-                        <th className="px-5 py-4">Kurs / guruh</th>
-                        <th className="px-5 py-4">Qo'shilgan sana</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {pendingRows.map((r) => (
-                        <tr key={r.id} className="transition-colors hover:bg-indigo-50/40">
-                          <td className="px-5 py-4">
-                            <p className="text-sm font-semibold text-gray-800">
-                              {r.studentName}
-                            </p>
-                            <p className="text-xs text-gray-400 mt-0.5">
-                              {r.studentPhone ?? ""}
-                            </p>
-                          </td>
-                          <td className="px-5 py-4 text-sm text-gray-600">
-                            {r.groupName} — {r.courseTitle}
-                          </td>
-                          <td className="px-5 py-4 text-sm text-gray-500">
-                            {formatDate(r.joinedAt)}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-            </>
-          ) : status === "list" ? (
+          {status === "list" ? (
             <div className="rounded-2xl bg-white">
               {filteredEnrollments.length === 0 ? (
                 <div className="text-center py-16 text-gray-400">
@@ -432,7 +326,12 @@ export function StudentsPage() {
                 <>
                   <div className="md:hidden flex flex-col gap-2">
                     {pageItems.map((u) => (
-                      <div key={u.id} className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3">
+                      <button
+                        key={u.id}
+                        type="button"
+                        onClick={() => setEnrollTarget({ id: u.id, name: u.name })}
+                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-indigo-50/40"
+                      >
                         <div
                           className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(u.id)}`}
                         >
@@ -447,7 +346,7 @@ export function StudentsPage() {
                             {u.productsCount}
                           </span>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
 
@@ -464,7 +363,11 @@ export function StudentsPage() {
                       </thead>
                       <tbody>
                         {pageItems.map((u) => (
-                          <tr key={u.id} className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5">
+                          <tr
+                            key={u.id}
+                            onClick={() => setEnrollTarget({ id: u.id, name: u.name })}
+                            className="cursor-pointer transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
+                          >
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <div
@@ -542,6 +445,15 @@ export function StudentsPage() {
           )}
         </div>
       </div>
+
+      {enrollTarget && (
+        <EnrollStudentModal
+          studentId={enrollTarget.id}
+          studentName={enrollTarget.name}
+          onClose={() => setEnrollTarget(null)}
+          onEnrolled={() => void refreshAllUsers()}
+        />
+      )}
     </AppShell>
   );
 }

@@ -3,7 +3,6 @@ import { useLocation, useNavigate } from "react-router-dom";
 const TABS = [
   { label: "Barchasi", path: "/students" },
   { label: "O'quvchilar", path: "/students/list" },
-  { label: "Ruxsat kutayotganlar", path: "/students/pending" },
 ];
 
 function isActive(pathname: string, path: string) {
