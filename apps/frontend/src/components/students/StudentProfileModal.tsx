@@ -98,14 +98,33 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
     () => enrollments.reduce((sum, e) => sum + e.starsMax, 0),
     [enrollments],
   );
+  const enrolledCourseIds = useMemo(
+    () => new Set(enrollments.map((e) => e.courseId)),
+    [enrollments],
+  );
+  const availableCourses = useMemo(
+    () => courses.filter((course) => !enrolledCourseIds.has(course.id)),
+    [courses, enrolledCourseIds],
+  );
 
   const canSave = Boolean(groupId);
+
+  useEffect(() => {
+    if (courseId && enrolledCourseIds.has(courseId)) {
+      setCourseId('');
+      setGroupId('');
+      setPlanId('');
+    }
+  }, [courseId, enrolledCourseIds]);
 
   async function handleEnroll() {
     if (!canSave) return;
     setSaving(true);
     setSaveError(null);
     try {
+      if (enrolledCourseIds.has(courseId)) {
+        throw new Error("Bu o'quvchi bu kursga allaqachon qo'shilgan.");
+      }
       const member = await apiEnrollStudent(groupId, studentId);
       if (planId) {
         await apiUpdateGroupMember(groupId, member.id, { selectedPlanId: planId });
@@ -117,7 +136,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
       await refreshEnrollments();
       onEnrolled();
     } catch (err: any) {
-      setSaveError(err?.response?.data?.message ?? "Xato yuz berdi. Qayta urinib ko'ring.");
+      setSaveError(err?.response?.data?.message ?? err?.message ?? "Xato yuz berdi. Qayta urinib ko'ring.");
     } finally {
       setSaving(false);
     }
@@ -210,8 +229,9 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
                   label="Kurs"
                   value={courseId}
                   onChange={setCourseId}
-                  placeholder="Kursni tanlang..."
-                  options={courses.map((c) => ({ value: c.id, label: c.title }))}
+                  placeholder={availableCourses.length > 0 ? 'Kursni tanlang...' : "Qo'shilmagan kurs qolmagan"}
+                  options={availableCourses.map((c) => ({ value: c.id, label: c.title }))}
+                  disabled={availableCourses.length === 0}
                 />
                 <SelectRow
                   label="Guruh"

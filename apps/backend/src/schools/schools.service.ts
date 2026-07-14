@@ -87,6 +87,7 @@ export class SchoolsService {
       ? await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) })
       : [];
     const groupIds = adminGroups.map((g) => g.id);
+    const groupById = new Map(adminGroups.map((g) => [g.id, g]));
 
     return Promise.all(
       members.map(async (m) => {
@@ -103,6 +104,11 @@ export class SchoolsService {
           where: (e, { inArray }) =>
             and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
         });
+        const uniqueCourseIds = new Set(
+          memberships
+            .map((e) => groupById.get(e.groupId)?.courseId)
+            .filter((courseId): courseId is string => Boolean(courseId)),
+        );
         const enrollmentIds = memberships.map((e) => e.id);
         let totalPaid = 0;
         if (enrollmentIds.length > 0) {
@@ -115,7 +121,7 @@ export class SchoolsService {
           id: m.studentId,
           name: m.student.name,
           phone: m.student.phone,
-          productsCount: memberships.length,
+          productsCount: uniqueCourseIds.size,
           totalPaid,
         };
       }),
@@ -147,6 +153,7 @@ export class SchoolsService {
       courseId: string;
       courseTitle: string;
       groupName: string;
+      planName: string | null;
       joinedAt: string | null;
       lessonsCompleted: number;
       lessonsTotal: number;
@@ -155,9 +162,11 @@ export class SchoolsService {
       starsMax: number;
     }> = [];
 
+    const seenStudentCourses = new Set<string>();
     for (const m of members) {
       const memberships = await db.query.groupEnrollments.findMany({
         where: (e, { inArray }) => and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
+        with: { selectedPlan: true },
       });
 
       for (const enrollment of memberships) {
@@ -165,6 +174,9 @@ export class SchoolsService {
         if (!group) continue;
         const course = courseById.get(group.courseId);
         if (!course) continue;
+        const studentCourseKey = `${m.studentId}:${course.id}`;
+        if (seenStudentCourses.has(studentCourseKey)) continue;
+        seenStudentCourses.add(studentCourseKey);
 
         const courseModules = await db.query.modules.findMany({ where: eq(modules.courseId, course.id) });
         const moduleIds = courseModules.map((mod) => mod.id);
@@ -201,6 +213,7 @@ export class SchoolsService {
           courseId: course.id,
           courseTitle: course.title,
           groupName: group.name,
+          planName: enrollment.selectedPlan?.name ?? null,
           joinedAt: enrollment.joinedAt?.toISOString() ?? null,
           lessonsCompleted,
           lessonsTotal: courseLessons.length,

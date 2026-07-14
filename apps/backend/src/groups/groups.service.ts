@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools } from '../db/schema';
-import { and, asc, desc, eq, isNull } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
 import { PaymentsService } from '../payments/payments.service';
@@ -179,7 +179,26 @@ export class GroupsService {
 
   async enrollStudent(groupId: string, adminId: string, studentId: string) {
     await this.assertGroupOwnership(groupId, adminId);
+    const targetGroup = await db.query.groups.findFirst({ where: eq(groups.id, groupId) });
+    if (!targetGroup) throw new NotFoundException('Group not found');
     const schoolMember = await this.findOrCreateSchoolMember(adminId, studentId);
+
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, targetGroup.courseId) });
+    const courseGroupIds = courseGroups.map((g) => g.id);
+    const existingInCourse = await db.query.groupEnrollments.findFirst({
+      where: and(
+        eq(groupEnrollments.schoolMemberId, schoolMember.id),
+        isNull(groupEnrollments.removedAt),
+        inArray(groupEnrollments.groupId, courseGroupIds),
+      ),
+    });
+    if (existingInCourse) {
+      const existingGroup = courseGroups.find((g) => g.id === existingInCourse.groupId);
+      throw new BadRequestException(
+        `Bu o'quvchi shu kursning "${existingGroup?.name ?? 'boshqa'}" guruhida allaqachon a'zo`,
+      );
+    }
+
     return this.findOrCreateEnrollment(groupId, schoolMember.id);
   }
 

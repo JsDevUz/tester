@@ -192,23 +192,6 @@ export function LessonEditorView({
               className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
             />
 
-            <p className="mb-1.5 text-sm text-gray-500">Darsni tamomlash uchun yulduz</p>
-            <p className="mb-2 text-xs text-gray-400">O'quvchi darsni tugatganda (Keyingi dars tugmasi) beriladigan ball. Amaliyot balidan mustaqil.</p>
-            <input
-              type="number"
-              min={0}
-              value={lesson.completionScore ?? ''}
-              onChange={(e) => {
-                const raw = e.target.value;
-                if (raw === '') { void setLessonCompletionScore(courseId, moduleId, lessonId, null); return; }
-                const num = Number(raw);
-                if (isNaN(num)) return;
-                void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
-              }}
-              placeholder="Masalan: 5"
-              className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-            />
-
             <button
               type="button"
               onClick={() => setConfirmDelete(true)}
@@ -219,6 +202,30 @@ export function LessonEditorView({
           </div>
         ) : activeTab === "content" ? (
           <>
+            <div className="mb-4 rounded-2xl bg-white p-4">
+              <p className="mb-1.5 text-sm font-semibold text-gray-700">Darsni tamomlash uchun yulduz</p>
+              <p className="mb-3 text-xs text-gray-400">
+                O'quvchi darsni tugatganda beriladigan ball. Amaliyot balidan mustaqil.
+              </p>
+              <input
+                type="number"
+                min={0}
+                value={lesson.completionScore ?? ''}
+                onChange={(e) => {
+                  const raw = e.target.value;
+                  if (raw === '') {
+                    void setLessonCompletionScore(courseId, moduleId, lessonId, null);
+                    return;
+                  }
+                  const num = Number(raw);
+                  if (isNaN(num)) return;
+                  void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
+                }}
+                placeholder="Masalan: 5"
+                className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+              />
+            </div>
+
             {lesson.blocks.length === 0 && (
               <div className="mb-6 rounded-2xl bg-white py-14 text-center">
                 <NotebookPen
