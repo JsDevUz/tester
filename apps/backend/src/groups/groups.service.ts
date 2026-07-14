@@ -1,11 +1,17 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools } from '../db/schema';
+import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools, users } from '../db/schema';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
 import { PaymentsService } from '../payments/payments.service';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
+
+export function shouldBeCuratorRole(
+  activeCuratorMemberships: Array<{ role: string; removedAt: Date | null }>,
+): boolean {
+  return activeCuratorMemberships.some((m) => m.role === 'curator' && m.removedAt === null);
+}
 
 @Injectable()
 export class GroupsService {
@@ -157,6 +163,26 @@ export class GroupsService {
     return member;
   }
 
+  private async syncUserRoleAfterCuratorChange(studentId: string) {
+    const memberships = await db.query.schoolMembers.findMany({
+      where: eq(schoolMembers.studentId, studentId),
+      with: { enrollments: true },
+    });
+    const activeCuratorMemberships = memberships.flatMap((member) =>
+      member.enrollments.map((enrollment) => ({ role: member.role, removedAt: enrollment.removedAt })),
+    );
+    const shouldBeCurator = shouldBeCuratorRole(activeCuratorMemberships);
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, studentId) });
+    if (!user) return;
+
+    if (shouldBeCurator && user.role !== 'curator') {
+      await db.update(users).set({ role: 'curator' }).where(eq(users.id, studentId));
+    } else if (!shouldBeCurator && user.role === 'curator') {
+      await db.update(users).set({ role: 'student' }).where(eq(users.id, studentId));
+    }
+  }
+
   private async findOrCreateEnrollment(groupId: string, schoolMemberId: string) {
     const existing = await db.query.groupEnrollments.findFirst({
       where: and(eq(groupEnrollments.groupId, groupId), eq(groupEnrollments.schoolMemberId, schoolMemberId)),
@@ -208,7 +234,9 @@ export class GroupsService {
     if (schoolMember.role !== 'curator') {
       await db.update(schoolMembers).set({ role: 'curator' }).where(eq(schoolMembers.id, schoolMember.id));
     }
-    return this.findOrCreateEnrollment(groupId, schoolMember.id);
+    const enrollment = await this.findOrCreateEnrollment(groupId, schoolMember.id);
+    await this.syncUserRoleAfterCuratorChange(studentId);
+    return enrollment;
   }
 
   async demoteCuratorFromStaff(groupId: string, adminId: string, memberId: string) {
@@ -220,6 +248,7 @@ export class GroupsService {
     if (!enrollment) throw new NotFoundException('Member not found');
     if (enrollment.schoolMember.role === 'curator') {
       await db.update(schoolMembers).set({ role: 'student' }).where(eq(schoolMembers.id, enrollment.schoolMemberId));
+      await this.syncUserRoleAfterCuratorChange(enrollment.schoolMember.studentId);
     }
     return enrollment;
   }
