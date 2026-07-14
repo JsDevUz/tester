@@ -1,12 +1,11 @@
 import { useEffect, useState } from "react";
-import { NotebookPen, Brain, Trash2 } from "lucide-react";
+import { NotebookPen, Brain } from "lucide-react";
 import { CONTENT_BLOCK_LIMIT, useCourseStore, type ContentBlock } from "../../stores/courseStore";
 import { BlockPicker } from "./BlockPicker";
 import { ContentBlockView } from "./ContentBlockView";
 import { Breadcrumb } from "./Breadcrumb";
 import { CourseSidePanel } from "./CourseSidePanel";
 import { PracticeSection } from "./PracticeSection";
-import { ConfirmDeleteModal } from "./ConfirmDeleteModal";
 
 interface LessonEditorViewProps {
   courseId: string;
@@ -65,7 +64,6 @@ export function LessonEditorView({
   const {
     courses,
     renameLesson,
-    deleteLesson,
     addBlock,
     updateBlock,
     removeBlock,
@@ -82,10 +80,9 @@ export function LessonEditorView({
   const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(
     new Set(),
   );
-  const [activeTab, setActiveTab] = useState<"content" | "settings" | "practice">(
+  const [activeTab, setActiveTab] = useState<"content" | "practice">(
     "content",
   );
-  const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!course || !module || !lesson) return null;
 
@@ -173,34 +170,21 @@ export function LessonEditorView({
           ]}
         />
         <div className="mb-6 flex items-center justify-between gap-3">
-          <input
-            value={lesson.title}
-            onChange={(e) =>
-              void renameLesson(courseId, moduleId, lessonId, e.target.value)
-            }
-            className="min-w-0 flex-1 rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
-          />
-        </div>
-
-        {activeTab === "settings" ? (
-          <div className="rounded-2xl bg-white p-5">
-            <h2 className="mb-1 text-lg font-bold text-gray-800">Dizayn va parametrlar</h2>
-            <p className="mb-4 text-sm text-gray-500">Dars nomi</p>
+          <div className="min-w-0 flex-1">
             <input
               value={lesson.title}
-              onChange={(e) => void renameLesson(courseId, moduleId, lessonId, e.target.value)}
-              className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+              onChange={(e) =>
+                void renameLesson(courseId, moduleId, lessonId, e.target.value)
+              }
+              className="min-w-0 w-full rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
             />
-
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
-            >
-              <Trash2 size={16} /> Darsni o'chirish
-            </button>
+            <p className="mt-1 px-1 text-xs font-medium text-gray-400">
+              Dars nomini o'zgartirish uchun sarlavha ustiga bosing.
+            </p>
           </div>
-        ) : activeTab === "content" ? (
+        </div>
+
+        {activeTab === "content" ? (
           <>
             <div className="mb-4 rounded-2xl bg-white p-4">
               <p className="mb-1.5 text-sm font-semibold text-gray-700">Darsni tamomlash uchun yulduz</p>
@@ -306,23 +290,9 @@ export function LessonEditorView({
           practiceEnabled={lesson.practiceEnabled}
           activeTab={activeTab}
           onSelectContent={() => setActiveTab("content")}
-          onSelectSettings={() => setActiveTab("settings")}
           onSelectPractice={() => setActiveTab("practice")}
         />
       </div>
-
-      {confirmDelete && (
-        <ConfirmDeleteModal
-          title="Darsni o'chirish"
-          description={`"${lesson.title}" darsi va uning kontenti o'chiriladi.`}
-          onConfirm={async () => {
-            await deleteLesson(courseId, moduleId, lessonId);
-            setConfirmDelete(false);
-            onBackToContent();
-          }}
-          onClose={() => setConfirmDelete(false)}
-        />
-      )}
     </div>
   );
 }

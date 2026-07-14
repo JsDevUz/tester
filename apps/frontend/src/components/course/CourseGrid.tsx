@@ -36,7 +36,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
           <p className="text-sm">Hali kurs yaratilmagan</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,420px))]">
           {courses.map((course) => {
             const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
             const groupCount = (course as { groups?: unknown[] }).groups?.length ?? 0;

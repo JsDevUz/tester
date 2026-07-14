@@ -1,4 +1,5 @@
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
+import { Toaster } from 'sonner';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { AdminsPage } from './pages/AdminsPage';
@@ -69,6 +70,7 @@ export default function App() {
     <>
       <TopProgressBar />
       <RouterProvider router={router} />
+      <Toaster richColors position="top-right" />
     </>
   );
 }

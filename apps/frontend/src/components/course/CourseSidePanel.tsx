@@ -83,12 +83,6 @@ const LESSON_TABS: SideTab[] = [
     icon: LayoutGrid,
   },
   {
-    key: "settings",
-    label: "Sozlamalar",
-    description: "Dizayn va parametrlar",
-    icon: SlidersHorizontal,
-  },
-  {
     key: "practice",
     label: "Amaliyot",
     description: "Uy vazifasi",
@@ -120,7 +114,6 @@ export function CourseSidePanel({
       return key === "content" || key === "settings" || key === "launch" || key === "groups";
     }
     if (key === "content") return true;
-    if (key === "settings") return true;
     if (key === "practice") return practiceEnabled;
     return false;
   }
