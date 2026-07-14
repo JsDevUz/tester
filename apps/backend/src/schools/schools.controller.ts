@@ -60,17 +60,19 @@ export class SchoolsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('teacher', 'super')
+  @Roles('teacher', 'super', 'curator')
   @Get('school/students')
-  listAllStudents(@Req() req: any) {
-    return this.schoolsService.listAllStudents(req.admin.id);
+  async listAllStudents(@Req() req: any) {
+    const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
+    return this.schoolsService.listAllStudents(schoolAdminId, req.admin.id, req.admin.role);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('teacher', 'super')
+  @Roles('teacher', 'super', 'curator')
   @Get('school/students/enrollments')
-  listEnrollments(@Req() req: any) {
-    return this.schoolsService.listEnrollments(req.admin.id);
+  async listEnrollments(@Req() req: any) {
+    const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
+    return this.schoolsService.listEnrollments(schoolAdminId, req.admin.id, req.admin.role);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

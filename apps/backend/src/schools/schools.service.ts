@@ -6,6 +6,18 @@ import { randomUUID } from 'crypto';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
 import { StorageService } from '../storage/storage.service';
 
+export function resolveVisibleGroupIds(
+  callerRole: string,
+  adminOwnedGroups: Array<{ id: string; courseId: string }>,
+  curatorGroupIds: string[],
+): string[] {
+  if (callerRole === 'curator') {
+    const ownedIds = new Set(adminOwnedGroups.map((g) => g.id));
+    return curatorGroupIds.filter((id) => ownedIds.has(id));
+  }
+  return adminOwnedGroups.map((g) => g.id);
+}
+
 @Injectable()
 export class SchoolsService {
   constructor(
@@ -96,7 +108,25 @@ export class SchoolsService {
     }));
   }
 
-  async listAllStudents(adminId: string) {
+  private async findCuratorGroupIds(callerId: string) {
+    const memberships = await db.query.schoolMembers.findMany({
+      where: and(eq(schoolMembers.studentId, callerId), eq(schoolMembers.role, 'curator')),
+      with: { enrollments: true },
+    });
+    return memberships.flatMap((m) => m.enrollments.filter((e) => !e.removedAt).map((e) => e.groupId));
+  }
+
+  async resolveSchoolAdminIdForCaller(callerId: string, callerRole: string): Promise<string> {
+    if (callerRole !== 'curator') return callerId;
+    const membership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, callerId), eq(schoolMembers.role, 'curator')),
+      with: { school: true },
+    });
+    if (!membership) throw new NotFoundException('Curator has no school membership');
+    return membership.school.adminId;
+  }
+
+  async listAllStudents(adminId: string, callerId: string, callerRole: string) {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
@@ -108,24 +138,28 @@ export class SchoolsService {
     const adminGroups = courseIds.length
       ? await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) })
       : [];
-    const groupIds = adminGroups.map((g) => g.id);
+    const curatorGroupIds = callerRole === 'curator' ? await this.findCuratorGroupIds(callerId) : [];
+    const groupIds = resolveVisibleGroupIds(callerRole, adminGroups, curatorGroupIds);
     const groupById = new Map(adminGroups.map((g) => [g.id, g]));
 
     return Promise.all(
       members.map(async (m) => {
         if (groupIds.length === 0) {
-          return {
-            id: m.studentId,
-            name: m.student.name,
-            phone: m.student.phone,
-            productsCount: 0,
-            totalPaid: 0,
-          };
+          return callerRole === 'curator'
+            ? null
+            : {
+                id: m.studentId,
+                name: m.student.name,
+                phone: m.student.phone,
+                productsCount: 0,
+                totalPaid: 0,
+              };
         }
         const memberships = await db.query.groupEnrollments.findMany({
           where: (e, { inArray }) =>
             and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
         });
+        if (memberships.length === 0 && callerRole === 'curator') return null;
         const uniqueCourseIds = new Set(
           memberships
             .map((e) => groupById.get(e.groupId)?.courseId)
@@ -147,10 +181,10 @@ export class SchoolsService {
           totalPaid,
         };
       }),
-    );
+    ).then((rows) => rows.filter((row): row is NonNullable<typeof row> => row !== null));
   }
 
-  async listEnrollments(adminId: string) {
+  async listEnrollments(adminId: string, callerId: string, callerRole: string) {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
@@ -163,7 +197,8 @@ export class SchoolsService {
     const courseById = new Map(adminCourses.map((c) => [c.id, c]));
 
     const adminGroups = await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) });
-    const groupIds = adminGroups.map((g) => g.id);
+    const curatorGroupIds = callerRole === 'curator' ? await this.findCuratorGroupIds(callerId) : [];
+    const groupIds = resolveVisibleGroupIds(callerRole, adminGroups, curatorGroupIds);
     const groupById = new Map(adminGroups.map((g) => [g.id, g]));
     if (groupIds.length === 0) return [];
 
