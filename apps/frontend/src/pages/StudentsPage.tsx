@@ -164,7 +164,7 @@ export function StudentsPage() {
 
   const subtitle =
     status === "list"
-      ? "Mahsulotingizda tahsil olayotgan o'quvchilar haqida to'liq ma'lumot"
+      ? "Kurslaringizda tahsil olayotgan o'quvchilar haqida to'liq ma'lumot"
       : "Maktabingiz foydalanuvchilari haqida to'liq ma'lumot";
 
   return (
@@ -356,7 +356,7 @@ export function StudentsPage() {
                         <tr>
                           <th className="px-5 py-4">Foydalanuvchi</th>
                           <th className="px-5 py-4">Tizimga kirish</th>
-                          <th className="px-5 py-4 text-center">Mahsulotlar</th>
+                          <th className="px-5 py-4 text-center">Kurslar</th>
                           <th className="px-5 py-4 text-center">Kuratorlar</th>
                           <th className="px-5 py-4 text-center">Daromad</th>
                         </tr>

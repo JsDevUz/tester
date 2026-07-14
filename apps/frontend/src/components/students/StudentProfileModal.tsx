@@ -166,7 +166,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     >
                       <GraduationCap size={16} className="text-indigo-500" />
-                      Mahsulotga yozish
+                      Kursga qo'shish
                     </button>
                   </div>
                 </>
@@ -195,7 +195,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
           {enrollFlowOpen && (
             <div className="mb-4 rounded-2xl bg-indigo-50/60 p-4">
               <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-800">Mahsulotga yozish</p>
+                <p className="text-sm font-bold text-gray-800">Kursga qo'shish</p>
                 <button
                   type="button"
                   onClick={() => setEnrollFlowOpen(false)}
