@@ -1,7 +1,8 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades } from '../db/schema';
-import { and, desc, eq, inArray } from 'drizzle-orm';
+import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades, groups, groupEnrollments, schoolMembers } from '../db/schema';
+import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
 export function computeEarnedScore(
   latestSubmission: { score: number; total: number } | null,
@@ -26,6 +27,7 @@ export const PRACTICE_ATTEMPT_LIMIT = 3;
 
 @Injectable()
 export class PracticeBlocksService {
+  constructor(private readonly practiceMessengerService: PracticeMessengerService) {}
   private async assertLessonOwnership(lessonId: string, adminId: string) {
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) throw new NotFoundException('Lesson not found');
@@ -35,6 +37,84 @@ export class PracticeBlocksService {
       where: and(eq(courses.id, module.courseId), eq(courses.adminId, adminId)),
     });
     if (!course) throw new NotFoundException('Lesson not found');
+  }
+
+  private async assertCanGradeImage(block: { lessonId: string }, studentId: string, graderId: string) {
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
+    if (!lesson) throw new NotFoundException('Submission not found');
+    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
+    if (!module) throw new NotFoundException('Submission not found');
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
+    if (!course) throw new NotFoundException('Submission not found');
+    if (course.adminId === graderId) return;
+
+    const studentMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    const curatorMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, graderId), eq(schoolMembers.role, 'curator')),
+    });
+    if (!studentMembership || !curatorMembership || studentMembership.schoolId !== curatorMembership.schoolId) {
+      throw new NotFoundException('Submission not found');
+    }
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, course.id) });
+    const courseGroupIds = courseGroups.map((group) => group.id);
+    if (courseGroupIds.length === 0) throw new NotFoundException('Submission not found');
+    const studentEnrollment = await db.query.groupEnrollments.findFirst({
+      where: and(
+        eq(groupEnrollments.schoolMemberId, studentMembership.id),
+        inArray(groupEnrollments.groupId, courseGroupIds),
+        isNull(groupEnrollments.removedAt),
+      ),
+    });
+    if (!studentEnrollment) throw new NotFoundException('Submission not found');
+    const curatorEnrollment = await db.query.groupEnrollments.findFirst({
+      where: and(
+        eq(groupEnrollments.schoolMemberId, curatorMembership.id),
+        eq(groupEnrollments.groupId, studentEnrollment.groupId),
+        isNull(groupEnrollments.removedAt),
+      ),
+    });
+    if (!curatorEnrollment) throw new NotFoundException('Submission not found');
+  }
+
+  private async assertCanGradeOral(block: { lessonId: string }, studentId: string, graderId: string) {
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
+    if (!lesson) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
+    if (!module) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
+    if (!course) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    if (course.adminId === graderId) return;
+
+    const studentMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    const curatorMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, graderId), eq(schoolMembers.role, 'curator')),
+    });
+    if (!studentMembership || !curatorMembership || studentMembership.schoolId !== curatorMembership.schoolId) {
+      throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    }
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, course.id) });
+    const courseGroupIds = courseGroups.map((group) => group.id);
+    if (courseGroupIds.length === 0) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    const studentEnrollment = await db.query.groupEnrollments.findFirst({
+      where: and(
+        eq(groupEnrollments.schoolMemberId, studentMembership.id),
+        inArray(groupEnrollments.groupId, courseGroupIds),
+        isNull(groupEnrollments.removedAt),
+      ),
+    });
+    if (!studentEnrollment) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    const curatorEnrollment = await db.query.groupEnrollments.findFirst({
+      where: and(
+        eq(groupEnrollments.schoolMemberId, curatorMembership.id),
+        eq(groupEnrollments.groupId, studentEnrollment.groupId),
+        isNull(groupEnrollments.removedAt),
+      ),
+    });
+    if (!curatorEnrollment) throw new NotFoundException('Jonli savol-javob bloki topilmadi');
   }
 
   async findAll(lessonId: string, adminId: string) {
@@ -249,6 +329,7 @@ export class PracticeBlocksService {
       .insert(imageSubmissions)
       .values({ practiceBlockId, studentId, imageUrl })
       .returning();
+    await this.practiceMessengerService.createImageSubmissionMessage(created.id);
     return created;
   }
 
@@ -266,7 +347,7 @@ export class PracticeBlocksService {
     if (!submission) throw new NotFoundException('Submission not found');
     const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, submission.practiceBlockId) });
     if (!block) throw new NotFoundException('Submission not found');
-    await this.assertLessonOwnership(block.lessonId, adminId);
+    await this.assertCanGradeImage(block, submission.studentId, adminId);
     if (block.maxScore !== null && score > block.maxScore) {
       throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
     }
@@ -279,13 +360,15 @@ export class PracticeBlocksService {
         eq(imageSubmissions.studentId, submission.studentId),
       ))
       .returning();
-    return updated.find((item) => item.id === imageSubmissionId) ?? updated[0];
+    const gradedSubmission = updated.find((item) => item.id === imageSubmissionId) ?? updated[0];
+    await this.practiceMessengerService.createImageGradeMessage(imageSubmissionId, adminId, score);
+    return gradedSubmission;
   }
 
   async gradeOralPractice(practiceBlockId: string, studentId: string, adminId: string, score: number) {
     const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, practiceBlockId) });
     if (!block || block.type !== 'oral') throw new NotFoundException('Jonli savol-javob bloki topilmadi');
-    await this.assertLessonOwnership(block.lessonId, adminId);
+    await this.assertCanGradeOral(block, studentId, adminId);
     if (block.maxScore !== null && score > block.maxScore) {
       throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
     }
