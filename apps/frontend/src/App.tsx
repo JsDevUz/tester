@@ -24,6 +24,7 @@ import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
 import { SchoolInviteJoinPage } from './pages/SchoolInviteJoinPage';
 import { MyCoursesPage } from './pages/MyCoursesPage';
+import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
@@ -32,7 +33,9 @@ import { useAuthStore } from './stores/authStore';
 
 function HomeRoute() {
   const admin = useAuthStore((s) => s.admin);
-  return admin?.role === 'student' ? <StudentHistoryPage /> : <DashboardPage />;
+  if (admin?.role === 'student') return <StudentHistoryPage />;
+  if (admin?.role === 'curator') return <Navigate to="/students/list" replace />;
+  return <DashboardPage />;
 }
 
 const router = createBrowserRouter([
@@ -53,6 +56,7 @@ const router = createBrowserRouter([
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/lessons', element: <PrivateRoute><CoursesPage /></PrivateRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
+  { path: '/messenger', element: <PrivateRoute><PracticeMessengerPage /></PrivateRoute> },
   { path: '/payments', element: <PrivateRoute><PaymentsPage /></PrivateRoute> },
   { path: '/students', element: <TeacherRoute><StudentsPage /></TeacherRoute> },
   { path: '/students/list', element: <TeacherRoute><StudentsPage /></TeacherRoute> },

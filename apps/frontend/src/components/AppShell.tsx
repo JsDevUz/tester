@@ -11,6 +11,7 @@ import {
   LogOut,
   Sun,
   Moon,
+  MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
@@ -27,6 +28,7 @@ const SECTIONS: NavSection[] = [
   { key: "lessons", label: "Darslar", icon: BookOpen, path: "/lessons" },
   { key: "payments", label: "To'lovlar", icon: CreditCard, path: "/payments" },
   { key: "practice", label: "Amaliyotlar", icon: ClipboardList, path: "/" },
+  { key: "messenger", label: "Messenger", icon: MessageCircle, path: "/messenger" },
   { key: "students", label: "O'quvchilar", icon: Users, path: "/students" },
   { key: "school", label: "Mening Maktabim", icon: School, path: "/school" },
 ];
@@ -57,7 +59,12 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { theme, toggleTheme } = useThemeStore();
   const [profileOpen, setProfileOpen] = useState(false);
 
-  const activeSection = SECTIONS.find((section) =>
+  const visibleSections =
+    admin?.role === "curator"
+      ? SECTIONS.filter((section) => section.key === "students")
+      : SECTIONS;
+
+  const activeSection = visibleSections.find((section) =>
     isRouteMatch(location.pathname, section.path),
   );
   const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? "?";
@@ -89,7 +96,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
 
         <nav className="flex flex-row lg:flex-col gap-1 flex-1 lg:w-full lg:px-2 justify-around lg:justify-start">
-          {SECTIONS.map((section) => {
+          {visibleSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection?.key === section.key;
             return (
