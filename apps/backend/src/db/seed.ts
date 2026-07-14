@@ -1,5 +1,5 @@
 import { db } from './index';
-import { admins, users } from './schema';
+import { users } from './schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import 'dotenv/config';
@@ -21,8 +21,7 @@ async function seed() {
   }
 
   const passwordHash = await bcrypt.hash(password, 10);
-  const [user] = await db.insert(users).values({ email, passwordHash, name, role: 'super' }).returning();
-  await db.insert(admins).values({ id: user.id, email, passwordHash, name, role: 'super' }).onConflictDoNothing();
+  await db.insert(users).values({ email, passwordHash, name, role: 'super' }).returning();
   console.log(`Super admin created: ${email}`);
   process.exit(0);
 }

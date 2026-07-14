@@ -1,15 +1,6 @@
 import { pgTable, text, uuid, timestamp, integer, boolean, varchar, uniqueIndex } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
-export const admins = pgTable('admins', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').unique().notNull(),
-  passwordHash: text('password_hash').notNull(),
-  name: text('name').notNull(),
-  role: text('role').notNull().default('admin'),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
-
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').unique().notNull(),
@@ -156,7 +147,7 @@ export const imageSubmissions = pgTable('image_submissions', {
   submittedAt: timestamp('submitted_at', { withTimezone: true }).defaultNow(),
   score: integer('score'),
   gradedAt: timestamp('graded_at', { withTimezone: true }),
-  gradedByAdminId: uuid('graded_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+  gradedByAdminId: uuid('graded_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
 });
 
 export const imageSubmissionsRelations = relations(imageSubmissions, ({ one }) => ({
@@ -170,7 +161,7 @@ export const oralPracticeGrades = pgTable('oral_practice_grades', {
   studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
   score: integer('score').notNull(),
   gradedAt: timestamp('graded_at', { withTimezone: true }).defaultNow(),
-  gradedByAdminId: uuid('graded_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+  gradedByAdminId: uuid('graded_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
 }, (table) => ({
   uniqueBlockStudent: uniqueIndex('oral_practice_grades_block_student_key').on(table.practiceBlockId, table.studentId),
 }));
@@ -251,14 +242,14 @@ export const monthlyPayments = pgTable('monthly_payments', {
 export const paymentCancellations = pgTable('payment_cancellations', {
   id: uuid('id').primaryKey().defaultRandom(),
   paymentId: uuid('payment_id').notNull().references(() => monthlyPayments.id, { onDelete: 'cascade' }),
-  cancelledByAdminId: uuid('cancelled_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+  cancelledByAdminId: uuid('cancelled_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
   cancelledPaidAmount: integer('cancelled_paid_amount').notNull(),
   cancelledAt: timestamp('cancelled_at', { withTimezone: true }).defaultNow(),
 });
 
 export const paymentCancellationsRelations = relations(paymentCancellations, ({ one }) => ({
   payment: one(monthlyPayments, { fields: [paymentCancellations.paymentId], references: [monthlyPayments.id] }),
-  cancelledByAdmin: one(admins, { fields: [paymentCancellations.cancelledByAdminId], references: [admins.id] }),
+  cancelledByAdmin: one(users, { fields: [paymentCancellations.cancelledByAdminId], references: [users.id] }),
 }));
 
 export const groupsRelations = relations(groups, ({ one, many }) => ({
@@ -279,7 +270,7 @@ export const pricingPlansRelations = relations(pricingPlans, ({ one }) => ({
 
 export const schools = pgTable('schools', {
   id: uuid('id').primaryKey().defaultRandom(),
-  adminId: uuid('admin_id').notNull().unique().references(() => admins.id, { onDelete: 'cascade' }),
+  adminId: uuid('admin_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull().default('Mening maktabim'),
   description: text('description').notNull().default(''),
   inviteToken: text('invite_token').notNull().unique(),
@@ -297,7 +288,7 @@ export const schoolMembers = pgTable('school_members', {
 }));
 
 export const schoolsRelations = relations(schools, ({ one, many }) => ({
-  admin: one(admins, { fields: [schools.adminId], references: [admins.id] }),
+  admin: one(users, { fields: [schools.adminId], references: [users.id] }),
   members: many(schoolMembers),
 }));
 
