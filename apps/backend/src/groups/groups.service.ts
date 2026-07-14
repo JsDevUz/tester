@@ -4,6 +4,7 @@ import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, le
 import { and, asc, desc, eq, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
+import { PaymentsService } from '../payments/payments.service';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
 
 @Injectable()
@@ -11,6 +12,7 @@ export class GroupsService {
   constructor(
     private studentAccessService: StudentAccessService,
     private practiceBlocksService: PracticeBlocksService,
+    private paymentsService: PaymentsService,
   ) {}
 
   private async assertGroupOwnership(groupId: string, adminId: string) {
@@ -116,6 +118,11 @@ export class GroupsService {
       .set({ selectedPlanId: data.selectedPlanId })
       .where(eq(groupEnrollments.id, memberId))
       .returning();
+
+    if (data.selectedPlanId) {
+      await this.paymentsService.ensureCurrentMonthPayment(memberId);
+    }
+
     return updated;
   }
 

@@ -10,6 +10,14 @@ function computeStatus(expectedAmount: number, discountAmount: number, paidAmoun
   return 'pending';
 }
 
+function startOfMonthUtc(date: Date): Date {
+  return new Date(Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), 1));
+}
+
+function previousMonthStart(periodMonth: Date): Date {
+  return new Date(Date.UTC(periodMonth.getUTCFullYear(), periodMonth.getUTCMonth() - 1, 1));
+}
+
 @Injectable()
 export class PaymentsService {
   private async assertGroupOwnership(groupId: string, adminId: string) {
@@ -126,6 +134,46 @@ export class PaymentsService {
     return db.query.paymentCancellations.findMany({
       where: eq(paymentCancellations.paymentId, paymentId),
       orderBy: [desc(paymentCancellations.cancelledAt)],
+    });
+  }
+
+  /**
+   * Creates the current month's 'pending' payment for an enrollment if one
+   * doesn't already exist -- called right after a plan is assigned, so the
+   * student doesn't have to wait for the next cron run (which only fires on
+   * the group's configured paymentDay).
+   */
+  async ensureCurrentMonthPayment(enrollmentId: string) {
+    const enrollment = await db.query.groupEnrollments.findFirst({
+      where: eq(groupEnrollments.id, enrollmentId),
+      with: { selectedPlan: true },
+    });
+    if (!enrollment || !enrollment.selectedPlan) return;
+
+    const currentPeriod = startOfMonthUtc(new Date());
+    const existing = await db.query.monthlyPayments.findFirst({
+      where: and(eq(monthlyPayments.enrollmentId, enrollmentId), eq(monthlyPayments.periodMonth, currentPeriod)),
+    });
+    if (existing) return;
+
+    const previousPeriod = previousMonthStart(currentPeriod);
+    const previousPayment = await db.query.monthlyPayments.findFirst({
+      where: and(eq(monthlyPayments.enrollmentId, enrollmentId), eq(monthlyPayments.periodMonth, previousPeriod)),
+    });
+    if (previousPayment && (previousPayment.status === 'pending' || previousPayment.status === 'partial')) {
+      await db
+        .update(monthlyPayments)
+        .set({ status: 'debt', updatedAt: new Date() })
+        .where(eq(monthlyPayments.id, previousPayment.id));
+    }
+
+    await db.insert(monthlyPayments).values({
+      enrollmentId,
+      periodMonth: currentPeriod,
+      expectedAmount: enrollment.selectedPlan.price,
+      discountAmount: 0,
+      paidAmount: 0,
+      status: 'pending',
     });
   }
 

@@ -9,6 +9,6 @@ import { StudentAccessService } from './student-access.service';
   imports: [ScheduleModule.forRoot()],
   controllers: [PaymentsController],
   providers: [PaymentsService, PaymentsCronService, StudentAccessService],
-  exports: [StudentAccessService],
+  exports: [StudentAccessService, PaymentsService],
 })
 export class PaymentsModule {}
