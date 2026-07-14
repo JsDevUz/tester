@@ -61,7 +61,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   const visibleSections =
     admin?.role === "curator"
-      ? SECTIONS.filter((section) => section.key === "students")
+      ? SECTIONS.filter((section) => section.key === "students" || section.key === "messenger")
       : SECTIONS;
 
   const activeSection = visibleSections.find((section) =>

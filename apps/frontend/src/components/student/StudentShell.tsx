@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, ClipboardList, LogOut, Moon, Radio, Sun, UserRound, X } from "lucide-react";
+import { BookOpen, ClipboardList, LogOut, MessageCircle, Moon, Radio, Sun, UserRound, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
@@ -7,6 +7,7 @@ import { useThemeStore } from "../../stores/themeStore";
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
   { label: "Amaliyotlar tarixi", shortLabel: "Tarix", path: "/", icon: ClipboardList },
+  { label: "Messenger", shortLabel: "Xabarlar", path: "/messenger", icon: MessageCircle },
   { label: "Jonli musobaqalar", shortLabel: "Jonli", path: "/live/join", icon: Radio },
 ];
 
@@ -39,6 +40,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const isInnerPage =
     location.pathname.startsWith("/history/") ||
     location.pathname.startsWith("/live/play/");
+  const isMessenger = location.pathname === "/messenger";
 
   function handleLogout() {
     setProfileOpen(false);
@@ -47,9 +49,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`min-h-[100dvh] bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage ? "" : "pb-16"}`}>
-      <div className="mx-auto flex w-full max-w-none flex-col lg:min-h-[calc(100vh-2rem)] lg:max-w-6xl lg:flex-row lg:gap-3">
-        <aside className="hidden w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:flex lg:w-72 lg:self-start">
+    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage ? "" : "pb-16"}`}>
+      <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0" : "lg:min-h-[calc(100vh-2rem)]"}`}>
+        <aside className="hidden w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:flex lg:self-start">
           <div className="rounded-2xl bg-white p-4">
             <div className="flex items-center gap-3">
               <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-base font-bold text-white">
@@ -116,11 +118,11 @@ export function StudentShell({ children }: { children: ReactNode }) {
           </div>
         </aside>
 
-        <main className="min-w-0 flex-1 lg:rounded-none">{children}</main>
+        <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>{children}</main>
       </div>
 
       {!isInnerPage && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-4 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);

@@ -3,7 +3,13 @@ import { useEffect, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
 
-export function TeacherRoute({ children }: { children: React.ReactNode }) {
+export function TeacherRoute({
+  children,
+  curatorAllowed = false,
+}: {
+  children: React.ReactNode;
+  curatorAllowed?: boolean;
+}) {
   const token = useAuthStore((s) => s.token);
   const admin = useAuthStore((s) => s.admin);
   const [loading, setLoading] = useState(Boolean(token && !admin));
@@ -26,5 +32,6 @@ export function TeacherRoute({ children }: { children: React.ReactNode }) {
     );
   if (!admin) return <Navigate to="/login" replace />;
   if (admin.role === "student") return <Navigate to="/" replace />;
+  if (admin.role === "curator" && !curatorAllowed) return <Navigate to="/students/list" replace />;
   return <>{children}</>;
 }

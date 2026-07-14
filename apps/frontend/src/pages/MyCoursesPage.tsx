@@ -197,7 +197,7 @@ export function MyCoursesPage() {
 
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
                     <div
-                      className="h-full rounded-full bg-gray-900"
+                      className="h-full rounded-full bg-[var(--color-indigo-500)]"
                       style={{ width: `${c.progressPercent}%` }}
                     />
                   </div>
@@ -627,7 +627,7 @@ function StudentCourseReader({
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-gray-900 transition-all"
+                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -685,7 +685,7 @@ function StudentCourseReader({
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-gray-900 transition-all"
+                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -833,7 +833,7 @@ function LessonReader({
             </span>
             <span className="block truncate text-[11px] font-semibold text-gray-500">
               {curatorName
-                ? "Istalgan savolni bering"
+                ? "Kuratorga savolingizni berishingiz mumkin"
                 : "Bu kurs uchun hozircha kurator tanlanmagan"}
             </span>
           </span>

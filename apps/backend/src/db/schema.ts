@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, varchar, uniqueIndex } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, timestamp, integer, boolean, varchar, jsonb, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -169,6 +169,57 @@ export const oralPracticeGrades = pgTable('oral_practice_grades', {
 export const oralPracticeGradesRelations = relations(oralPracticeGrades, ({ one }) => ({
   practiceBlock: one(practiceBlocks, { fields: [oralPracticeGrades.practiceBlockId], references: [practiceBlocks.id] }),
   student: one(users, { fields: [oralPracticeGrades.studentId], references: [users.id] }),
+}));
+
+export const practiceChats = pgTable('practice_chats', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  groupId: uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  curatorId: uuid('curator_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueGroupStudent: uniqueIndex('practice_chats_group_student_key').on(table.groupId, table.studentId),
+}));
+
+export const practiceChatMessages = pgTable('practice_chat_messages', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  chatId: uuid('chat_id').notNull().references(() => practiceChats.id, { onDelete: 'cascade' }),
+  senderId: uuid('sender_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  type: text('type').notNull().default('text'),
+  content: text('content').notNull().default(''),
+  practiceBlockId: uuid('practice_block_id').references(() => practiceBlocks.id, { onDelete: 'set null' }),
+  testSubmissionId: uuid('test_submission_id').references(() => submissions.id, { onDelete: 'set null' }),
+  imageSubmissionId: uuid('image_submission_id').references(() => imageSubmissions.id, { onDelete: 'set null' }),
+  metadata: jsonb('metadata').$type<Record<string, unknown>>().notNull().default({}),
+  replyToMessageId: uuid('reply_to_message_id').references((): AnyPgColumn => practiceChatMessages.id, { onDelete: 'set null' }),
+  editedAt: timestamp('edited_at', { withTimezone: true }),
+  deletedAt: timestamp('deleted_at', { withTimezone: true }),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueTestSubmission: uniqueIndex('practice_chat_messages_test_submission_key')
+    .on(table.testSubmissionId)
+    .where(sql`${table.testSubmissionId} IS NOT NULL`),
+  uniqueImageSubmissionType: uniqueIndex('practice_chat_messages_image_submission_type_key')
+    .on(table.imageSubmissionId, table.type)
+    .where(sql`${table.imageSubmissionId} IS NOT NULL`),
+}));
+
+export const practiceChatsRelations = relations(practiceChats, ({ one, many }) => ({
+  group: one(groups, { fields: [practiceChats.groupId], references: [groups.id] }),
+  course: one(courses, { fields: [practiceChats.courseId], references: [courses.id] }),
+  student: one(users, { fields: [practiceChats.studentId], references: [users.id] }),
+  curator: one(users, { fields: [practiceChats.curatorId], references: [users.id] }),
+  messages: many(practiceChatMessages),
+}));
+
+export const practiceChatMessagesRelations = relations(practiceChatMessages, ({ one }) => ({
+  chat: one(practiceChats, { fields: [practiceChatMessages.chatId], references: [practiceChats.id] }),
+  sender: one(users, { fields: [practiceChatMessages.senderId], references: [users.id] }),
+  practiceBlock: one(practiceBlocks, { fields: [practiceChatMessages.practiceBlockId], references: [practiceBlocks.id] }),
+  testSubmission: one(submissions, { fields: [practiceChatMessages.testSubmissionId], references: [submissions.id] }),
+  imageSubmission: one(imageSubmissions, { fields: [practiceChatMessages.imageSubmissionId], references: [imageSubmissions.id] }),
 }));
 
 export const lessonCompletions = pgTable('lesson_completions', {

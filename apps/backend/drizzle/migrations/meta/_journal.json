@@ -204,6 +204,27 @@
       "when": 1784046168963,
       "tag": "0028_drop_admins_table",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1784048060649,
+      "tag": "0029_practice_messenger",
+      "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "7",
+      "when": 1784052729649,
+      "tag": "0030_practice_message_replies",
+      "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1784052999649,
+      "tag": "0031_practice_chat_grade_message_index",
+      "breakpoints": true
     }
   ]
 }

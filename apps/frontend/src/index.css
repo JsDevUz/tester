@@ -439,6 +439,31 @@ select::-ms-expand {
   background: #16181d;
 }
 
+:root[data-theme="dark"] .practice-messenger-root {
+  background-color: #181b22 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-list {
+  background-color: #1e222b;
+}
+
+:root[data-theme="dark"] .practice-messenger-thread {
+  background-color: #15181e !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-header,
+:root[data-theme="dark"] .practice-messenger-composer {
+  background-color: #1c2028 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-pins {
+  background-color: #202531 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-pins:hover {
+  background-color: #282e3b !important;
+}
+
 /* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish.
    Drag-handle va "+" ikonkalari (SideMenu) editor matnining chap tashqarisida,
    position: absolute bilan joylashadi — shu sabab ularga joy qoldirish uchun

@@ -4,6 +4,7 @@ import { tests, submissions, answers, questions, options } from '../db/schema';
 import { and, eq, isNull, isNotNull } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
 import { PRACTICE_ATTEMPT_LIMIT } from '../practice-blocks/practice-blocks.service';
+import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
 import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
 export { evaluateObjectiveAnswer };
@@ -58,7 +59,10 @@ export function orderSubmissionAnswersForDisplay<T extends { questionId: string 
 
 @Injectable()
 export class DeliveryService {
-  constructor(private readonly groqService: GroqService) {}
+  constructor(
+    private readonly groqService: GroqService,
+    private readonly practiceMessengerService: PracticeMessengerService,
+  ) {}
 
   async getTestBySlug(slug: string, practiceMode = false) {
     const test = await db.query.tests.findFirst({
@@ -432,6 +436,10 @@ export class DeliveryService {
 
     if (answerRows.length > 0) {
       await db.insert(answers).values(answerRows);
+    }
+
+    if (practiceMode) {
+      await this.practiceMessengerService.createTestSubmissionMessage(updatedSubmission.id);
     }
 
     // Only return answer breakdown if showResults === 'immediately' or 'per_question'

@@ -20,6 +20,7 @@ import { TelegramModule } from './telegram/telegram.module';
 import { LiveModule } from './live/live.module';
 import { SchoolsModule } from './schools/schools.module';
 import { VideosModule } from './videos/videos.module';
+import { PracticeMessengerModule } from './practice-messenger/practice-messenger.module';
 import 'dotenv/config';
 
 @Module({
@@ -45,6 +46,7 @@ import 'dotenv/config';
     LiveModule,
     SchoolsModule,
     VideosModule,
+    PracticeMessengerModule,
   ],
 })
 export class AppModule {}
