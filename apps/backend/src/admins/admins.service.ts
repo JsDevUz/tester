@@ -4,7 +4,7 @@ import { users } from '../db/schema';
 import { eq } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 
-const USER_ROLES = ['student', 'teacher', 'super'] as const;
+const USER_ROLES = ['student', 'teacher', 'super', 'curator'] as const;
 type UserRole = typeof USER_ROLES[number];
 
 @Injectable()

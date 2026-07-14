@@ -12,7 +12,7 @@ class CreateAdminDto {
 }
 
 class UpdateRoleDto {
-  @IsIn(['student', 'teacher', 'super']) role: 'student' | 'teacher' | 'super';
+  @IsIn(['student', 'teacher', 'super', 'curator']) role: 'student' | 'teacher' | 'super' | 'curator';
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

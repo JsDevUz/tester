@@ -4,7 +4,7 @@ export interface Admin {
   id: string;
   email: string;
   name: string;
-  role: 'student' | 'teacher' | 'super';
+  role: 'student' | 'teacher' | 'super' | 'curator';
   phone?: string | null;
 }
 
