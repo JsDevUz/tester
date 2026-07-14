@@ -6,7 +6,6 @@ import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import type { ApiMonthlyPayment } from '../../api/payments';
-import { apiListAllStudents, type ApiSchoolStudent } from '../../api/school';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -38,7 +37,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const {
     courses, addGroup, renameGroup,
     removeStudentFromGroup, deleteGroup,
-    setMemberPlan, setMemberForcedClosed, loadGroupPayments, assignCurator, demoteCurator, enrollStudent,
+    setMemberForcedClosed, loadGroupPayments, assignCurator, demoteCurator,
   } = useCourseStore();
   const { staff, loaded: staffLoaded, loadStaff } = useSchoolStore();
   const course = courses.find((c) => c.id === courseId);
@@ -47,7 +46,6 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [payments, setPayments] = useState<ApiMonthlyPayment[]>([]);
-  const [schoolStudents, setSchoolStudents] = useState<ApiSchoolStudent[]>([]);
 
   const group = course && selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
 
@@ -55,9 +53,6 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     if (group && innerTab === 'settings') {
       void loadGroupPayments(group.id).then(setPayments);
       if (!staffLoaded) void loadStaff();
-    }
-    if (group && innerTab === 'students') {
-      void apiListAllStudents().then(setSchoolStudents);
     }
   }, [group?.id, innerTab, loadGroupPayments, staffLoaded, loadStaff]);
 
@@ -125,25 +120,11 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
           {innerTab === 'students' ? (
             <div className="rounded-2xl bg-white p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
-                <div className="flex items-center gap-2">
-                  <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
-                  <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
-                    {students.length}
-                  </span>
-                </div>
-                <select
-                  value=""
-                  onChange={(e) => e.target.value && void enrollStudent(courseId, group.id, e.target.value)}
-                  className="shrink-0 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-                >
-                  <option value="">O'quvchi qo'shish...</option>
-                  {schoolStudents
-                    .filter((s) => !students.some((m) => m.studentId === s.id))
-                    .map((s) => (
-                      <option key={s.id} value={s.id}>{s.name}</option>
-                    ))}
-                </select>
+              <div className="mb-4 flex items-center gap-2">
+                <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
+                <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
+                  {students.length}
+                </span>
               </div>
 
               {students.length === 0 ? (
@@ -186,16 +167,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                                 : 'Kutilmoqda'}
                         </span>
                       )}
-                      <select
-                        value={m.selectedPlanId ?? ''}
-                        onChange={(e) => void setMemberPlan(courseId, group.id, m.id, e.target.value || null)}
-                        className="shrink-0 rounded-lg bg-gray-100 px-2 py-1.5 text-xs outline-none"
-                      >
-                        <option value="">Tarifsiz</option>
-                        {group.plans.map((p) => (
-                          <option key={p.id} value={p.id}>{p.name}</option>
-                        ))}
-                      </select>
+                      <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1.5 text-xs font-medium text-gray-500">
+                        {group.plans.find((p) => p.id === m.selectedPlanId)?.name ?? 'Tarifsiz'}
+                      </span>
                       <button
                         type="button"
                         onClick={() => void setMemberForcedClosed(courseId, group.id, m.id, !m.forcedClosed)}

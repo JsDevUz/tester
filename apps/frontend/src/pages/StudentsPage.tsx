@@ -10,7 +10,7 @@ import {
   type ApiSchoolStudent,
   type ApiSchoolEnrollment,
 } from "../api/school";
-import { EnrollStudentModal } from "../components/students/EnrollStudentModal";
+import { StudentProfileModal } from "../components/students/StudentProfileModal";
 
 export interface StudentRow {
   id: string;
@@ -105,7 +105,7 @@ export function StudentsPage() {
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
-  const [enrollTarget, setEnrollTarget] = useState<{ id: string; name: string } | null>(null);
+  const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null } | null>(null);
 
   function refreshAllUsers() {
     return apiListAllStudents().then(setAllUsers);
@@ -329,7 +329,7 @@ export function StudentsPage() {
                       <button
                         key={u.id}
                         type="button"
-                        onClick={() => setEnrollTarget({ id: u.id, name: u.name })}
+                        onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
                         className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-indigo-50/40"
                       >
                         <div
@@ -365,7 +365,7 @@ export function StudentsPage() {
                         {pageItems.map((u) => (
                           <tr
                             key={u.id}
-                            onClick={() => setEnrollTarget({ id: u.id, name: u.name })}
+                            onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
                             className="cursor-pointer transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
                           >
                             <td className="px-5 py-4">
@@ -446,11 +446,12 @@ export function StudentsPage() {
         </div>
       </div>
 
-      {enrollTarget && (
-        <EnrollStudentModal
-          studentId={enrollTarget.id}
-          studentName={enrollTarget.name}
-          onClose={() => setEnrollTarget(null)}
+      {profileTarget && (
+        <StudentProfileModal
+          studentId={profileTarget.id}
+          studentName={profileTarget.name}
+          studentPhone={profileTarget.phone}
+          onClose={() => setProfileTarget(null)}
           onEnrolled={() => void refreshAllUsers()}
         />
       )}
