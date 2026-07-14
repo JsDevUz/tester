@@ -254,14 +254,14 @@ function TestResultBody({
     </>
   ) : result.showResults === "after_deadline" ? (
     <div className="flex flex-col items-center justify-center text-center py-16">
-      <div className="w-20 h-20 rounded-3xl bg-indigo-50 flex items-center justify-center mb-5">
-        <Clock size={36} className="text-indigo-400" />
+      <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mb-5">
+        <Clock size={36} className="text-gray-500" />
       </div>
       <p className="text-xl font-bold text-gray-900 mb-2">Test topshirildi!</p>
       <p className="text-sm text-gray-400 leading-relaxed">
         Natijalar{" "}
         {result.deadline ? (
-          <span className="text-indigo-500 font-medium">
+          <span className="text-gray-700 font-medium">
             {formatDateTime(result.deadline)}
           </span>
         ) : (
@@ -354,11 +354,11 @@ export function TestResultView({
       }}
     >
       {/* Top accent bar — mobile only, desktop card has its own */}
-      <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400 lg:hidden" />
+      <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400 lg:hidden" />
 
       <div className="flex-1 lg:flex lg:justify-center lg:py-10">
         <div className="lg:w-full lg:max-w-2xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden lg:self-start">
-          <div className="hidden lg:block h-1.5 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
+          <div className="hidden lg:block h-1.5 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
           <div className="px-5 lg:px-8 pt-8 pb-4 lg:pb-10">
             {/* Score hero */}
             {isViolation && (

@@ -146,7 +146,7 @@ export function TestCard({
         {test.slug ? (
           <button
             onClick={copyLink}
-            className="flex h-4 items-center gap-2 text-xs text-indigo-500 hover:text-indigo-700 transition-colors text-left"
+            className="flex h-4 items-center gap-2 text-xs text-gray-600 hover:text-gray-900 transition-colors text-left"
           >
             {copied ? (
               <Check size={13} className="shrink-0" />

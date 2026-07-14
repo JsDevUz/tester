@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions } from '../db/schema';
+import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades } from '../db/schema';
 import { and, desc, eq, inArray } from 'drizzle-orm';
 
 export function computeEarnedScore(
@@ -45,7 +45,7 @@ export class PracticeBlocksService {
     });
   }
 
-  async create(lessonId: string, adminId: string, type: 'test' | 'image' = 'test') {
+  async create(lessonId: string, adminId: string, type: 'test' | 'image' | 'oral' = 'test') {
     await this.assertLessonOwnership(lessonId, adminId);
     const existing = await db.query.practiceBlocks.findMany({ where: eq(practiceBlocks.lessonId, lessonId) });
     if (existing.length >= PRACTICE_BLOCK_LIMIT) {
@@ -105,6 +105,25 @@ export class PracticeBlocksService {
 
     return Promise.all(
       blocks.map(async (block) => {
+        if (block.type === 'oral') {
+          const grade = await db.query.oralPracticeGrades.findFirst({
+            where: and(eq(oralPracticeGrades.practiceBlockId, block.id), eq(oralPracticeGrades.studentId, studentId)),
+          });
+          return {
+            id: block.id,
+            type: 'oral' as const,
+            testId: null,
+            testSlug: null,
+            testName: null,
+            description: block.description,
+            maxScore: block.maxScore,
+            earnedScore: grade?.score ?? null,
+            submissions: [],
+            attemptsRemaining: null,
+            imageSubmissions: [],
+            oralGrade: grade ? { score: grade.score, gradedAt: grade.gradedAt!.toISOString() } : null,
+          };
+        }
         if (block.type === 'image') {
           const imgSubmissions = await db.query.imageSubmissions.findMany({
             where: and(eq(imageSubmissions.practiceBlockId, block.id), eq(imageSubmissions.studentId, studentId)),
@@ -129,6 +148,7 @@ export class PracticeBlocksService {
               score: s.score,
               graded: s.gradedAt !== null,
             })),
+            oralGrade: null,
           };
         }
 
@@ -145,6 +165,7 @@ export class PracticeBlocksService {
             submissions: [],
             attemptsRemaining: null,
             imageSubmissions: [],
+            oralGrade: null,
           };
         }
 
@@ -176,6 +197,7 @@ export class PracticeBlocksService {
           })),
           attemptsRemaining: Math.max(0, PRACTICE_ATTEMPT_LIMIT - completedSubmissions.length),
           imageSubmissions: [],
+          oralGrade: null,
         };
       }),
     );
@@ -187,6 +209,24 @@ export class PracticeBlocksService {
     });
     if (existing) return { completedAt: existing.completedAt!.toISOString() };
 
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+    if (!lesson) throw new NotFoundException('Dars topilmadi');
+
+    const studentPracticeBlocks = await this.findForStudent(lessonId, studentId);
+    const allBlocksAttempted = studentPracticeBlocks.every(
+      (block) => block.submissions.length > 0 || block.imageSubmissions.length > 0 || block.oralGrade !== null,
+    );
+    if (!allBlocksAttempted) {
+      throw new BadRequestException('Barcha amaliyot topshiriqlarini bajaring');
+    }
+
+    if (lesson.passThresholdEnabled) {
+      const combinedPercent = computeCombinedPercent(studentPracticeBlocks);
+      if ((combinedPercent ?? 0) < (lesson.passThresholdPercent ?? 0)) {
+        throw new BadRequestException('O\'tish balidan yetarlicha ball to\'planmagan');
+      }
+    }
+
     const [created] = await db.insert(lessonCompletions).values({ lessonId, studentId }).returning();
     return { completedAt: created.completedAt!.toISOString() };
   }
@@ -195,11 +235,30 @@ export class PracticeBlocksService {
     const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, practiceBlockId) });
     if (!block || block.type !== 'image') throw new NotFoundException('Practice block not found');
 
+    const existingSubmissions = await db.query.imageSubmissions.findMany({
+      where: and(eq(imageSubmissions.practiceBlockId, practiceBlockId), eq(imageSubmissions.studentId, studentId)),
+    });
+    if (existingSubmissions.some((submission) => submission.gradedAt !== null)) {
+      throw new BadRequestException('Baholangan topshiriqqa yangi rasm yuklab bo‘lmaydi');
+    }
+    if (existingSubmissions.length >= 5) {
+      throw new BadRequestException('Bitta topshiriqqa maksimal 5 ta rasm yuklash mumkin');
+    }
+
     const [created] = await db
       .insert(imageSubmissions)
       .values({ practiceBlockId, studentId, imageUrl })
       .returning();
     return created;
+  }
+
+  async removeImageSubmission(imageSubmissionId: string, studentId: string) {
+    const submission = await db.query.imageSubmissions.findFirst({ where: eq(imageSubmissions.id, imageSubmissionId) });
+    if (!submission || submission.studentId !== studentId) throw new NotFoundException('Rasm topilmadi');
+    if (submission.gradedAt !== null) {
+      throw new BadRequestException('Baholangan rasmni o‘chirib bo‘lmaydi');
+    }
+    await db.delete(imageSubmissions).where(eq(imageSubmissions.id, imageSubmissionId));
   }
 
   async gradeImage(imageSubmissionId: string, adminId: string, score: number) {
@@ -212,12 +271,33 @@ export class PracticeBlocksService {
       throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
     }
 
-    const [updated] = await db
+    const updated = await db
       .update(imageSubmissions)
       .set({ score, gradedAt: new Date(), gradedByAdminId: adminId })
-      .where(eq(imageSubmissions.id, imageSubmissionId))
+      .where(and(
+        eq(imageSubmissions.practiceBlockId, submission.practiceBlockId),
+        eq(imageSubmissions.studentId, submission.studentId),
+      ))
       .returning();
-    return updated;
+    return updated.find((item) => item.id === imageSubmissionId) ?? updated[0];
+  }
+
+  async gradeOralPractice(practiceBlockId: string, studentId: string, adminId: string, score: number) {
+    const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, practiceBlockId) });
+    if (!block || block.type !== 'oral') throw new NotFoundException('Jonli savol-javob bloki topilmadi');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    if (block.maxScore !== null && score > block.maxScore) {
+      throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
+    }
+    const [grade] = await db
+      .insert(oralPracticeGrades)
+      .values({ practiceBlockId, studentId, score, gradedAt: new Date(), gradedByAdminId: adminId })
+      .onConflictDoUpdate({
+        target: [oralPracticeGrades.practiceBlockId, oralPracticeGrades.studentId],
+        set: { score, gradedAt: new Date(), gradedByAdminId: adminId },
+      })
+      .returning();
+    return grade;
   }
 
   async listImageSubmissionsForGrading(lessonId: string, adminId: string) {

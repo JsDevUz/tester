@@ -63,8 +63,16 @@ export class PaymentsService {
     if (payment.status === 'cancelled') {
       throw new BadRequestException('Bekor qilingan to\'lovga pul kiritib bo\'lmaydi');
     }
-    const nextPaidAmount = payment.paidAmount + amount;
+    if (amount <= 0) {
+      throw new BadRequestException('Summa musbat son bo\'lishi kerak');
+    }
     const nextDiscountAmount = discount ?? payment.discountAmount;
+    if (nextDiscountAmount < 0 || nextDiscountAmount > payment.expectedAmount) {
+      throw new BadRequestException(
+        `Chegirma 0 dan kurs narxigacha (${payment.expectedAmount}) bo'lishi kerak`,
+      );
+    }
+    const nextPaidAmount = payment.paidAmount + amount;
     const due = payment.expectedAmount - nextDiscountAmount;
     if (nextPaidAmount > due) {
       throw new BadRequestException(
@@ -225,6 +233,7 @@ export class PaymentsService {
         courseTitle: course.title,
         groupName: group.name,
         planName: enrollment.selectedPlan?.name ?? null,
+        removedAt: enrollment.removedAt,
       };
     });
   }

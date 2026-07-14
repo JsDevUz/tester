@@ -90,7 +90,7 @@ export function TakeTestEntryPage() {
   if (loading)
     return (
       <div className="flex items-center justify-center min-h-screen bg-white">
-        <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
       </div>
     );
 
@@ -112,8 +112,8 @@ export function TakeTestEntryPage() {
         }}
       >
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-5">
-            <Lock size={28} className="text-indigo-400" />
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-5">
+            <Lock size={28} className="text-gray-500" />
           </div>
           <p className="text-xl font-bold text-gray-900 mb-2">
             Kirish talab etiladi
@@ -142,17 +142,17 @@ export function TakeTestEntryPage() {
       }}
     >
       {/* Top accent bar — mobile only, desktop card has its own */}
-      <div className="shrink-0 h-1 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400 lg:hidden" />
+      <div className="shrink-0 h-1 bg-gradient-to-r from-gray-800 via-gray-500 to-gray-300 lg:hidden" />
 
       <div className="flex-1 overflow-y-auto lg:flex lg:items-center lg:justify-center">
         <div className="lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden">
-          <div className="hidden lg:block h-1.5 bg-gradient-to-r from-indigo-400 via-purple-400 to-pink-400" />
+          <div className="hidden lg:block h-1.5 bg-gradient-to-r from-gray-800 via-gray-500 to-gray-300" />
 
           {/* Scrollable content */}
           <div className="px-6 lg:px-10 pt-10 pb-4 lg:py-10">
             {/* Icon */}
-            <div className="w-16 h-16 rounded-2xl bg-indigo-50 flex items-center justify-center mb-6">
-              <FileText size={28} className="text-indigo-400" />
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+              <FileText size={28} className="text-gray-500" />
             </div>
 
             {/* Title & description */}
@@ -199,7 +199,7 @@ export function TakeTestEntryPage() {
                   if (e.key === "Enter" && name.trim()) handleStart(e as any);
                 }}
                 placeholder="Ismingizni kiriting"
-                className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base outline-none focus:border-indigo-400 focus:bg-white transition-colors mb-2"
+                className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base outline-none focus:border-gray-400 focus:bg-white transition-colors mb-2"
               />
             )}
 

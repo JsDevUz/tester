@@ -20,7 +20,7 @@ export function SchoolSidePanel() {
 
   return (
     <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
-      <div className="rounded-2xl bg-white p-2">
+      <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = location.pathname === tab.path;
@@ -31,12 +31,12 @@ export function SchoolSidePanel() {
               tabIndex={0}
               onClick={() => navigate(tab.path)}
               className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${
-                active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
+                active ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
-              <Icon size={18} className={`shrink-0 ${active ? 'text-indigo-500' : 'text-gray-400'}`} />
+              <Icon size={18} className={`shrink-0 ${active ? 'text-gray-900' : 'text-gray-400'}`} />
               <div className="min-w-0">
-                <p className={`truncate font-semibold ${active ? 'text-indigo-600' : 'text-gray-700'}`}>
+                <p className={`truncate font-semibold ${active ? 'text-gray-900' : 'text-gray-700'}`}>
                   {tab.label}
                 </p>
                 <p className="truncate text-xs text-gray-300">{tab.description}</p>

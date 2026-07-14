@@ -2,88 +2,8 @@ import { useEffect, useState } from 'react';
 import { Inbox } from 'lucide-react';
 import { PRACTICE_BLOCK_LIMIT, useCourseStore } from '../../stores/courseStore';
 import { apiListAllTests, type AllTestsItem } from '../../api/tests';
-import {
-  apiListImageSubmissionsForGrading,
-  apiGradeImageSubmission,
-  type ApiImageSubmissionForGrading,
-} from '../../api/practiceBlocks';
 import { PracticeBlockView } from './PracticeBlockView';
 import { PracticeBlockPicker } from './PracticeBlockPicker';
-
-function ImageGradingSection({ lessonId }: { lessonId: string }) {
-  const [submissions, setSubmissions] = useState<ApiImageSubmissionForGrading[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [savingId, setSavingId] = useState<string | null>(null);
-  const [scoreDrafts, setScoreDrafts] = useState<Record<string, string>>({});
-
-  function refresh() {
-    return apiListImageSubmissionsForGrading(lessonId).then(setSubmissions);
-  }
-
-  useEffect(() => {
-    setLoading(true);
-    void refresh().finally(() => setLoading(false));
-  }, [lessonId]);
-
-  async function handleGrade(id: string) {
-    const raw = scoreDrafts[id];
-    const score = Number(raw);
-    if (raw === undefined || raw === '' || isNaN(score) || score < 0) return;
-    setSavingId(id);
-    try {
-      await apiGradeImageSubmission(id, score);
-      await refresh();
-    } finally {
-      setSavingId(null);
-    }
-  }
-
-  if (loading) return null;
-  if (submissions.length === 0) return null;
-
-  return (
-    <div className="mb-6 rounded-2xl bg-white p-4">
-      <p className="mb-3 text-sm font-semibold text-gray-800">O'quvchilar yuklagan rasmlar</p>
-      <div className="flex flex-col gap-2">
-        {submissions.map((s) => (
-          <div key={s.id} className="flex flex-wrap items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
-            <a href={s.imageUrl} target="_blank" rel="noreferrer" className="text-xs font-semibold text-indigo-500 hover:underline">
-              Rasmni ko'rish
-            </a>
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-xs font-bold text-gray-800">{s.studentName}</p>
-              <p className="text-[11px] text-gray-400">{new Date(s.submittedAt).toLocaleDateString('uz-UZ')}</p>
-            </div>
-            {s.gradedAt ? (
-              <span className="shrink-0 rounded-full bg-green-50 px-2.5 py-1 text-xs font-bold text-green-600">
-                Baholandi: {s.score}
-              </span>
-            ) : (
-              <div className="flex shrink-0 items-center gap-1.5">
-                <input
-                  type="number"
-                  min={0}
-                  value={scoreDrafts[s.id] ?? ''}
-                  onChange={(e) => setScoreDrafts((prev) => ({ ...prev, [s.id]: e.target.value }))}
-                  placeholder="Ball"
-                  className="w-20 rounded-lg bg-white px-2.5 py-1.5 text-xs outline-none"
-                />
-                <button
-                  type="button"
-                  onClick={() => void handleGrade(s.id)}
-                  disabled={savingId === s.id}
-                  className="rounded-lg bg-indigo-500 px-2.5 py-1.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50"
-                >
-                  Baholash
-                </button>
-              </div>
-            )}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
 
 interface PracticeSectionProps {
   courseId: string;
@@ -104,6 +24,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
   const [tests, setTests] = useState<AllTestsItem[]>([]);
   const [testsLoading, setTestsLoading] = useState(false);
   const [testsError, setTestsError] = useState<string | null>(null);
+  const [collapsedBlockIds, setCollapsedBlockIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     const hasTestBlocks = lesson?.practiceBlocks.some((b) => b.type === 'test') ?? false;
@@ -133,8 +54,26 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
     return () => { cancelled = true; };
   }, [lesson?.practiceBlocks]);
 
+  useEffect(() => {
+    setCollapsedBlockIds(new Set(lesson?.practiceBlocks.map((block) => block.id) ?? []));
+  }, [lessonId]);
+
   if (!lesson) return null;
   const practiceLimitReached = lesson.practiceBlocks.length >= PRACTICE_BLOCK_LIMIT;
+
+  function toggleCollapse(blockId: string) {
+    setCollapsedBlockIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(blockId)) next.delete(blockId);
+      else next.add(blockId);
+      return next;
+    });
+  }
+
+  function handlePickType(type: 'test' | 'image' | 'oral') {
+    setCollapsedBlockIds(new Set(lesson!.practiceBlocks.map((block) => block.id)));
+    void addPracticeBlock(courseId, moduleId, lessonId, type);
+  }
 
   function handlePercentChange(value: string) {
     // Never toggle enabled state — only update percent
@@ -157,10 +96,6 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 
   return (
     <div>
-      {lesson.practiceBlocks.some((b) => b.type === 'image') && (
-        <ImageGradingSection lessonId={lessonId} />
-      )}
-
       {testsError && (
         <div className="mb-6 rounded-2xl bg-red-50/50 p-3">
           <p className="text-xs text-red-600">{testsError}</p>
@@ -169,7 +104,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 
       {lesson.practiceBlocks.length === 0 ? (
         <div className="mb-6 rounded-2xl bg-white py-14 text-center">
-          <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
+          <Inbox size={30} className="mx-auto mb-3 text-gray-300" />
           <p className="text-sm font-semibold text-gray-700">Hali blok qo'shilmagan</p>
           <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
         </div>
@@ -184,6 +119,8 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
               block={block}
               tests={tests}
               testsLoading={testsLoading}
+              collapsed={collapsedBlockIds.has(block.id)}
+              onToggleCollapse={() => toggleCollapse(block.id)}
               onSelectTest={(testId) => setPracticeBlockTest(courseId, moduleId, lessonId, block.id, testId)}
               onChangeDescription={(description) => setPracticeBlockDescription(courseId, moduleId, lessonId, block.id, description)}
               onChangeMaxScore={(maxScore) => setPracticeBlockMaxScore(courseId, moduleId, lessonId, block.id, maxScore)}
@@ -200,7 +137,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
           disabled={practiceLimitReached}
           limitText={`Amaliyotda maksimal ${PRACTICE_BLOCK_LIMIT} ta blok`}
           onPickType={(type) => {
-            if (type === 'test' || type === 'image') void addPracticeBlock(courseId, moduleId, lessonId, type);
+            handlePickType(type);
           }}
         />
       </div>
@@ -216,7 +153,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
               type="button"
               onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
               className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
-                lesson.passThresholdEnabled ? 'bg-indigo-500' : 'bg-gray-200'
+                lesson.passThresholdEnabled ? 'bg-gray-900' : 'bg-gray-200'
               }`}
             >
               <span

@@ -50,7 +50,7 @@ function InlineQuestionCard({
 
   if (editing) {
     return (
-      <div className="bg-white rounded-xl border border-indigo-200 p-4">
+      <div className="bg-white rounded-xl border border-gray-300 p-4">
         <div className="flex items-center justify-between mb-3">
           <span className="text-xs text-gray-400">
             {index + 1}. savol — tahrirlash
@@ -143,7 +143,7 @@ function InlineQuestionCard({
                               : "Ochiq"}
           </span>
           {q.imageUrl && (
-            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-indigo-400">
+            <span className="ml-1 inline-flex items-center gap-0.5 text-[10px] text-gray-500">
               <Image size={10} /> rasm
             </span>
           )}
@@ -156,7 +156,7 @@ function InlineQuestionCard({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 text-gray-300 hover:text-indigo-500 hover:bg-indigo-50 rounded-lg transition-colors"
+            className="p-1.5 text-gray-300 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
           >
             <Pencil size={14} />
           </button>
@@ -375,7 +375,7 @@ export function QuestionEditorPage() {
               <button
                 key={t}
                 onClick={() => setTab(t)}
-                className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? "bg-indigo-500 text-white" : "text-gray-500 hover:text-gray-700"}`}
+                className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-700"}`}
               >
                 {t === "manual" ? "Qo'lda kiritish" : "Ommaviy import"}
               </button>

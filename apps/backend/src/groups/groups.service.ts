@@ -335,6 +335,63 @@ export class GroupsService {
     );
   }
 
+  async getMyCourseLeaderboard(courseId: string, studentId: string) {
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, courseId) });
+    const groupIds = courseGroups.map((group) => group.id);
+    if (groupIds.length === 0) return { courseTitle: course.title, entries: [] };
+
+    const enrollments = await db.query.groupEnrollments.findMany({
+      where: (enrollment, { inArray }) => and(inArray(enrollment.groupId, groupIds), isNull(enrollment.removedAt)),
+      with: { schoolMember: { with: { student: true } } },
+    });
+    const studentIds = [...new Set(enrollments.map((enrollment) => enrollment.schoolMember.studentId))];
+    if (!studentIds.includes(studentId)) throw new NotFoundException('Kurs topilmadi');
+
+    const courseModules = await db.query.modules.findMany({ where: eq(modules.courseId, courseId) });
+    const moduleIds = courseModules.map((module) => module.id);
+    const courseLessons = moduleIds.length
+      ? await db.query.lessons.findMany({
+          where: (lesson, { inArray }) => and(inArray(lesson.moduleId, moduleIds), eq(lesson.status, 'published')),
+        })
+      : [];
+
+    const members = new Map(
+      enrollments.map((enrollment) => [enrollment.schoolMember.studentId, enrollment.schoolMember.student]),
+    );
+    const scored = await Promise.all(studentIds.map(async (memberStudentId) => {
+      let starsEarned = 0;
+      let lessonsCompleted = 0;
+      for (const lesson of courseLessons) {
+        const completion = await db.query.lessonCompletions.findFirst({
+          where: and(eq(lessonCompletions.lessonId, lesson.id), eq(lessonCompletions.studentId, memberStudentId)),
+        });
+        if (completion) lessonsCompleted += 1;
+        if (lesson.completionScore !== null && completion) starsEarned += lesson.completionScore;
+        const practice = await this.practiceBlocksService.findForStudent(lesson.id, memberStudentId);
+        starsEarned += practice.reduce((total, block) => total + (block.earnedScore ?? 0), 0);
+      }
+      const member = members.get(memberStudentId)!;
+      return {
+        studentId: memberStudentId,
+        studentName: member.name,
+        starsEarned,
+        lessonsCompleted,
+        lessonsTotal: courseLessons.length,
+        isCurrentStudent: memberStudentId === studentId,
+      };
+    }));
+
+    return {
+      courseTitle: course.title,
+      entries: scored
+        .sort((first, second) => second.starsEarned - first.starsEarned || second.lessonsCompleted - first.lessonsCompleted || first.studentName.localeCompare(second.studentName, 'uz'))
+        .map((entry, index) => ({ ...entry, rank: index + 1 })),
+    };
+  }
+
   async getMyCourseDetail(courseId: string, studentId: string) {
     const hasAccess = await this.studentAccessService.assertStudentLessonAccess(courseId, studentId);
     if (!hasAccess) throw new BadRequestException("To'lov muddati kelgan, lekin to'lanmagan");

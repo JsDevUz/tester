@@ -14,7 +14,7 @@ interface StudentProfileModalProps {
 }
 
 const AVATAR_PALETTES = [
-  'bg-indigo-100 text-indigo-600',
+  'bg-gray-200 text-gray-700',
   'bg-amber-100 text-amber-600',
   'bg-teal-100 text-teal-600',
   'bg-rose-100 text-rose-600',
@@ -142,6 +142,14 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
     }
   }
 
+  function closeEnrollFlow() {
+    setEnrollFlowOpen(false);
+    setCourseId('');
+    setGroupId('');
+    setPlanId('');
+    setSaveError(null);
+  }
+
   return (
     <div
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/30 sm:items-center"
@@ -184,7 +192,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
                       }}
                       className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
                     >
-                      <GraduationCap size={16} className="text-indigo-500" />
+                      <GraduationCap size={16} className="text-gray-600" />
                       Kursga qo'shish
                     </button>
                   </div>
@@ -211,59 +219,6 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
         )}
 
         <div className="flex-1 overflow-y-auto px-6 pb-6">
-          {enrollFlowOpen && (
-            <div className="mb-4 rounded-2xl bg-indigo-50/60 p-4">
-              <div className="mb-3 flex items-center justify-between">
-                <p className="text-sm font-bold text-gray-800">Kursga qo'shish</p>
-                <button
-                  type="button"
-                  onClick={() => setEnrollFlowOpen(false)}
-                  className="rounded-lg p-1 text-gray-400 hover:bg-white hover:text-gray-600"
-                >
-                  <X size={14} />
-                </button>
-              </div>
-
-              <div className="flex flex-col gap-2.5">
-                <SelectRow
-                  label="Kurs"
-                  value={courseId}
-                  onChange={setCourseId}
-                  placeholder={availableCourses.length > 0 ? 'Kursni tanlang...' : "Qo'shilmagan kurs qolmagan"}
-                  options={availableCourses.map((c) => ({ value: c.id, label: c.title }))}
-                  disabled={availableCourses.length === 0}
-                />
-                <SelectRow
-                  label="Guruh"
-                  value={groupId}
-                  onChange={setGroupId}
-                  placeholder={loadingGroups ? 'Yuklanmoqda...' : 'Guruhni tanlang...'}
-                  options={groups.map((g) => ({ value: g.id, label: g.name }))}
-                  disabled={!courseId || loadingGroups}
-                />
-                <SelectRow
-                  label="Tarif (ixtiyoriy)"
-                  value={planId}
-                  onChange={setPlanId}
-                  placeholder={loadingPlans ? 'Yuklanmoqda...' : 'Tarifsiz'}
-                  options={plans.map((p) => ({ value: p.id, label: `${p.name} — ${p.price.toLocaleString('uz-UZ')} so'm` }))}
-                  disabled={!groupId || loadingPlans}
-                />
-
-                {saveError && <p className="text-xs font-semibold text-red-500">{saveError}</p>}
-
-                <button
-                  type="button"
-                  onClick={() => void handleEnroll()}
-                  disabled={!canSave || saving}
-                  className="mt-1 w-full rounded-xl bg-indigo-500 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {saving ? 'Biriktirilmoqda...' : 'Biriktirish'}
-                </button>
-              </div>
-            </div>
-          )}
-
           <p className="mb-2 text-xs font-bold uppercase tracking-wide text-gray-400">Ta'lim</p>
           {loadingEnrollments ? (
             <p className="py-6 text-center text-sm text-gray-400">Yuklanmoqda...</p>
@@ -294,6 +249,122 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
               ))}
             </div>
           )}
+        </div>
+      </div>
+
+      {enrollFlowOpen && (
+        <EnrollStudentModal
+          courseId={courseId}
+          groupId={groupId}
+          planId={planId}
+          availableCourses={availableCourses}
+          groups={groups}
+          plans={plans}
+          loadingGroups={loadingGroups}
+          loadingPlans={loadingPlans}
+          saving={saving}
+          saveError={saveError}
+          canSave={canSave}
+          onCourseChange={setCourseId}
+          onGroupChange={setGroupId}
+          onPlanChange={setPlanId}
+          onConfirm={handleEnroll}
+          onClose={closeEnrollFlow}
+        />
+      )}
+    </div>
+  );
+}
+
+function EnrollStudentModal({
+  courseId,
+  groupId,
+  planId,
+  availableCourses,
+  groups,
+  plans,
+  loadingGroups,
+  loadingPlans,
+  saving,
+  saveError,
+  canSave,
+  onCourseChange,
+  onGroupChange,
+  onPlanChange,
+  onConfirm,
+  onClose,
+}: {
+  courseId: string;
+  groupId: string;
+  planId: string;
+  availableCourses: ApiCourse[];
+  groups: ApiGroup[];
+  plans: ApiPricingPlan[];
+  loadingGroups: boolean;
+  loadingPlans: boolean;
+  saving: boolean;
+  saveError: string | null;
+  canSave: boolean;
+  onCourseChange: (value: string) => void;
+  onGroupChange: (value: string) => void;
+  onPlanChange: (value: string) => void;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/20 sm:items-center"
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <div className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-sm sm:rounded-3xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h2 className="text-lg font-bold text-gray-900">Kursga qo'shish</h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl p-1.5 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+            aria-label="Yopish"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <SelectRow
+            label="Kurs"
+            value={courseId}
+            onChange={onCourseChange}
+            placeholder={availableCourses.length > 0 ? 'Kursni tanlang...' : "Qo'shilmagan kurs qolmagan"}
+            options={availableCourses.map((c) => ({ value: c.id, label: c.title }))}
+            disabled={availableCourses.length === 0}
+          />
+          <SelectRow
+            label="Guruh"
+            value={groupId}
+            onChange={onGroupChange}
+            placeholder={loadingGroups ? 'Yuklanmoqda...' : 'Guruhni tanlang...'}
+            options={groups.map((g) => ({ value: g.id, label: g.name }))}
+            disabled={!courseId || loadingGroups}
+          />
+          <SelectRow
+            label="Tarif (ixtiyoriy)"
+            value={planId}
+            onChange={onPlanChange}
+            placeholder={loadingPlans ? 'Yuklanmoqda...' : 'Tarifsiz'}
+            options={plans.map((p) => ({ value: p.id, label: `${p.name} — ${p.price.toLocaleString('uz-UZ')} so'm` }))}
+            disabled={!groupId || loadingPlans}
+          />
+
+          {saveError && <p className="text-xs font-semibold text-red-500">{saveError}</p>}
+
+          <button
+            type="button"
+            onClick={() => void onConfirm()}
+            disabled={!canSave || saving}
+            className="mt-1 w-full rounded-xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {saving ? 'Biriktirilmoqda...' : 'Biriktirish'}
+          </button>
         </div>
       </div>
     </div>

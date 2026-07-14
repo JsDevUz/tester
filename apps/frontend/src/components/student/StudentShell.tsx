@@ -1,7 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { BookOpen, ClipboardList, LogOut, Radio, UserRound, X } from "lucide-react";
+import { BookOpen, ClipboardList, LogOut, Moon, Radio, Sun, UserRound, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
+import { useThemeStore } from "../../stores/themeStore";
 
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
@@ -14,6 +15,13 @@ function initials(name?: string | null) {
   return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "O";
 }
 
+function formatProfileContact(phone?: string | null, email?: string | null) {
+  if (phone) return phone;
+  const telegramPhone = email?.match(/^u(\d{7,})@telegram\.local$/i)?.[1];
+  if (telegramPhone) return `+${telegramPhone}`;
+  return email ?? "Profil";
+}
+
 function isNavActive(pathname: string, path: string) {
   if (path === "/") return pathname === "/" || pathname.startsWith("/history/");
   if (path === "/live/join") return pathname.startsWith("/live/");
@@ -23,9 +31,11 @@ function isNavActive(pathname: string, path: string) {
 export function StudentShell({ children }: { children: ReactNode }) {
   const admin = useAuthStore((s) => s.admin);
   const logout = useAuthStore((s) => s.logout);
+  const { theme, toggleTheme } = useThemeStore();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const profileContact = formatProfileContact(admin?.phone, admin?.email);
   const isInnerPage =
     location.pathname.startsWith("/history/") ||
     location.pathname.startsWith("/live/play/");
@@ -51,7 +61,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   {admin?.name ?? "O'quvchi"}
                 </p>
                 <p className="truncate text-xs font-medium text-gray-400">
-                  {admin?.phone ?? admin?.email ?? "Profil"}
+                  {profileContact}
                 </p>
               </div>
             </div>
@@ -68,13 +78,13 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   onClick={() => navigate(item.path)}
                   className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${
                     active
-                      ? "bg-indigo-50 text-[var(--color-indigo-500)]"
+                      ? "bg-gray-100 text-gray-900"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <Icon
                     size={20}
-                    className={active ? "text-[var(--color-indigo-500)]" : "text-gray-400"}
+                    className={active ? "text-gray-900" : "text-gray-400"}
                   />
                   <span>{item.label}</span>
                 </button>
@@ -85,8 +95,20 @@ export function StudentShell({ children }: { children: ReactNode }) {
           <div className="rounded-2xl bg-white p-3">
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={toggleTheme}
               className="inline-flex w-full shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+            >
+              {theme === "dark" ? (
+                <Sun size={20} className="text-gray-400" />
+              ) : (
+                <Moon size={20} className="text-gray-400" />
+              )}
+              <span>{theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-1 inline-flex w-full shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               <LogOut size={20} className="text-gray-400" />
               <span>Chiqish</span>
@@ -112,13 +134,13 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 }}
                 className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
                   active
-                    ? "bg-indigo-50 text-[var(--color-indigo-500)]"
+                    ? "bg-gray-100 text-gray-900"
                     : "text-gray-500"
                 }`}
               >
                 <Icon
                   size={19}
-                  className={active ? "text-[var(--color-indigo-500)]" : "text-gray-400"}
+                  className={active ? "text-gray-900" : "text-gray-400"}
                 />
                 <span className="max-w-full truncate">{item.shortLabel}</span>
               </button>
@@ -128,12 +150,12 @@ export function StudentShell({ children }: { children: ReactNode }) {
             type="button"
             onClick={() => setProfileOpen((open) => !open)}
             className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
-              profileOpen ? "bg-indigo-50 text-[var(--color-indigo-500)]" : "text-gray-500"
+              profileOpen ? "bg-gray-100 text-gray-900" : "text-gray-500"
             }`}
           >
             <UserRound
               size={19}
-              className={profileOpen ? "text-[var(--color-indigo-500)]" : "text-gray-400"}
+              className={profileOpen ? "text-gray-900" : "text-gray-400"}
             />
             <span>Profil</span>
           </button>
@@ -170,14 +192,26 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   {admin?.name ?? "O'quvchi"}
                 </p>
                 <p className="truncate text-xs font-medium text-gray-400">
-                  {admin?.phone ?? admin?.email ?? "Profil"}
+                  {profileContact}
                 </p>
               </div>
             </div>
             <button
               type="button"
-              onClick={handleLogout}
+              onClick={toggleTheme}
               className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700"
+            >
+              {theme === "dark" ? (
+                <Sun size={18} className="text-gray-400" />
+              ) : (
+                <Moon size={18} className="text-gray-400" />
+              )}
+              <span>{theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleLogout}
+              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700"
             >
               <LogOut size={18} className="text-gray-400" />
               <span>Chiqish</span>

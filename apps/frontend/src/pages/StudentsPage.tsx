@@ -11,6 +11,7 @@ import {
   type ApiSchoolEnrollment,
 } from "../api/school";
 import { StudentProfileModal } from "../components/students/StudentProfileModal";
+import { StudentLearningProgressModal } from "../components/students/StudentLearningProgressModal";
 
 export interface StudentRow {
   id: string;
@@ -25,7 +26,7 @@ export interface StudentRow {
 }
 
 const AVATAR_PALETTES = [
-  "bg-indigo-100 text-indigo-600",
+  "bg-gray-200 text-gray-700",
   "bg-amber-100 text-amber-600",
   "bg-teal-100 text-teal-600",
   "bg-rose-100 text-rose-600",
@@ -106,6 +107,7 @@ export function StudentsPage() {
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
   const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null } | null>(null);
+  const [progressTarget, setProgressTarget] = useState<ApiSchoolEnrollment | null>(null);
 
   function refreshAllUsers() {
     return apiListAllStudents().then(setAllUsers);
@@ -209,7 +211,7 @@ export function StudentsPage() {
                 <>
                   <div className="md:hidden flex flex-col gap-2">
                     {filteredEnrollments.map((e) => (
-                      <div key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3">
+                      <button type="button" onClick={() => setProgressTarget(e)} key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-gray-50">
                         <div className="flex items-center gap-3">
                           <div
                             className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(e.studentId)}`}
@@ -248,7 +250,7 @@ export function StudentsPage() {
                             </span>
                           </div>
                         </div>
-                      </div>
+                      </button>
                     ))}
                   </div>
 
@@ -258,6 +260,7 @@ export function StudentsPage() {
                         <tr>
                           <th className="px-5 py-4">O'quvchi</th>
                           <th className="px-5 py-4">Kurs / guruh</th>
+                          <th className="px-5 py-4">Tarif</th>
                           <th className="px-5 py-4">Progress</th>
                           <th className="px-5 py-4">Yulduzlar</th>
                           <th className="px-5 py-4">Qo'shilgan sana</th>
@@ -265,7 +268,7 @@ export function StudentsPage() {
                       </thead>
                       <tbody>
                         {filteredEnrollments.map((e) => (
-                          <tr key={`${e.studentId}-${e.courseId}`} className="transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5">
+                          <tr key={`${e.studentId}-${e.courseId}`} onClick={() => setProgressTarget(e)} className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5">
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <div
@@ -287,6 +290,9 @@ export function StudentsPage() {
                             </td>
                             <td className="px-5 py-4 text-sm text-gray-600">
                               {e.courseTitle} <span className="text-gray-400">• {e.groupName}</span>
+                            </td>
+                            <td className="px-5 py-4 text-sm text-gray-600">
+                              {e.planName ?? <span className="text-gray-300">Tarifsiz</span>}
                             </td>
                             <td className="px-5 py-4">
                               <span className={`text-sm font-semibold ${progressColor(e.progressPercent)}`}>
@@ -330,7 +336,7 @@ export function StudentsPage() {
                         key={u.id}
                         type="button"
                         onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
-                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-indigo-50/40"
+                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-gray-50"
                       >
                         <div
                           className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(u.id)}`}
@@ -342,7 +348,7 @@ export function StudentsPage() {
                           <p className="text-xs text-gray-400 mt-0.5">—</p>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="inline-flex items-center justify-center rounded-full bg-indigo-50 px-2 py-0.5 text-xs font-bold text-indigo-500">
+                          <span className="student-course-count-badge inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold">
                             {u.productsCount}
                           </span>
                         </div>
@@ -366,7 +372,7 @@ export function StudentsPage() {
                           <tr
                             key={u.id}
                             onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
-                            className="cursor-pointer transition-colors hover:bg-indigo-50/40 rounded-2xl min-h-17.5"
+                            className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5"
                           >
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
@@ -384,11 +390,11 @@ export function StudentsPage() {
                             <td className="px-5 py-4 text-sm text-gray-500">{u.phone}</td>
                             <td className="px-5 py-4 text-center">
                               {u.productsCount > 0 ? (
-                                <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 w-6 h-6 text-xs font-bold text-indigo-600">
+                                <span className="student-course-count-badge student-course-count-badge--active inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
                                   {u.productsCount}
                                 </span>
                               ) : (
-                                <span className="inline-flex items-center justify-center rounded-full bg-gray-100 w-6 h-6 text-xs font-bold text-gray-400">
+                                <span className="student-course-count-badge inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
                                   0
                                 </span>
                               )}
@@ -421,7 +427,7 @@ export function StudentsPage() {
                           onClick={() => setPage(p)}
                           className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${
                             p === currentPage
-                              ? "bg-indigo-500 text-white"
+                              ? "bg-gray-900 text-white"
                               : "text-gray-500 hover:bg-gray-50"
                           }`}
                         >
@@ -453,6 +459,13 @@ export function StudentsPage() {
           studentPhone={profileTarget.phone}
           onClose={() => setProfileTarget(null)}
           onEnrolled={() => void refreshAllUsers()}
+        />
+      )}
+      {progressTarget && (
+        <StudentLearningProgressModal
+          studentId={progressTarget.studentId}
+          courseId={progressTarget.courseId}
+          onClose={() => setProgressTarget(null)}
         />
       )}
     </AppShell>

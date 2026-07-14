@@ -19,7 +19,7 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
 
   if (!token) return <Navigate to="/login" replace />;
   if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex items-center justify-center">
+    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center">
       <p className="text-gray-400">Yuklanmoqda...</p>
     </div>
   );

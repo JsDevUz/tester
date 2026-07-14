@@ -44,7 +44,7 @@ export function StudentSubmissionDetailPage() {
 
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+            <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
           </div>
         )}
 
@@ -67,7 +67,7 @@ export function StudentSubmissionDetailPage() {
 
             {!canShowAnswers && (
               <section className="bg-white rounded-2xlflex flex-col items-center text-center py-12 px-5">
-                <Clock size={32} className="text-indigo-300 mb-3" />
+                <Clock size={32} className="text-gray-300 mb-3" />
                 <p className="text-sm text-gray-500">
                   {detail.showResults === "after_deadline"
                     ? "Natijalar muddat tugagandan keyin ochiladi."

@@ -71,7 +71,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
 
           {launch.plans.length === 0 ? (
             <div className="rounded-2xl bg-gray-50 py-14 text-center">
-              <Inbox size={30} className="mx-auto mb-3 text-indigo-200" />
+              <Inbox size={30} className="mx-auto mb-3 text-gray-300" />
               <p className="text-sm font-semibold text-gray-700">Hali tarif yo'q</p>
               <p className="mt-1 text-xs text-gray-400">Yuqoridagi tugma orqali birinchi tarifni yarating</p>
             </div>

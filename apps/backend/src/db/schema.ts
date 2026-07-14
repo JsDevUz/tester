@@ -164,6 +164,22 @@ export const imageSubmissionsRelations = relations(imageSubmissions, ({ one }) =
   student: one(users, { fields: [imageSubmissions.studentId], references: [users.id] }),
 }));
 
+export const oralPracticeGrades = pgTable('oral_practice_grades', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  practiceBlockId: uuid('practice_block_id').notNull().references(() => practiceBlocks.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  score: integer('score').notNull(),
+  gradedAt: timestamp('graded_at', { withTimezone: true }).defaultNow(),
+  gradedByAdminId: uuid('graded_by_admin_id').references(() => admins.id, { onDelete: 'set null' }),
+}, (table) => ({
+  uniqueBlockStudent: uniqueIndex('oral_practice_grades_block_student_key').on(table.practiceBlockId, table.studentId),
+}));
+
+export const oralPracticeGradesRelations = relations(oralPracticeGrades, ({ one }) => ({
+  practiceBlock: one(practiceBlocks, { fields: [oralPracticeGrades.practiceBlockId], references: [practiceBlocks.id] }),
+  student: one(users, { fields: [oralPracticeGrades.studentId], references: [users.id] }),
+}));
+
 export const lessonCompletions = pgTable('lesson_completions', {
   id: uuid('id').primaryKey().defaultRandom(),
   lessonId: uuid('lesson_id').notNull().references(() => lessons.id, { onDelete: 'cascade' }),

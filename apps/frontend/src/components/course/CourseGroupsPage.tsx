@@ -16,7 +16,7 @@ interface CourseGroupsPageProps {
 }
 
 const AVATAR_PALETTES = [
-  'bg-indigo-100 text-indigo-600',
+  'bg-gray-200 text-gray-700',
   'bg-amber-100 text-amber-600',
   'bg-teal-100 text-teal-600',
   'bg-rose-100 text-rose-600',
@@ -102,7 +102,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               type="button"
               onClick={() => setInnerTab('students')}
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-                innerTab === 'students' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
+                innerTab === 'students' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               O'quvchilar
@@ -111,7 +111,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               type="button"
               onClick={() => setInnerTab('settings')}
               className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-                innerTab === 'settings' ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
+                innerTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
               Sozlamalar
@@ -122,14 +122,14 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
             <div className="rounded-2xl bg-white p-5">
               <div className="mb-4 flex items-center gap-2">
                 <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
-                <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
+                <span className="inline-flex items-center justify-center rounded-full bg-gray-900 px-2 py-0.5 text-xs font-bold text-white">
                   {students.length}
                 </span>
               </div>
 
               {students.length === 0 ? (
                 <div className="rounded-2xl bg-gray-50 py-14 text-center">
-                  <Users size={30} className="mx-auto mb-3 text-indigo-200" />
+                  <Users size={30} className="mx-auto mb-3 text-gray-300" />
                   <p className="text-sm font-semibold text-gray-700">O'quvchilar topilmadi</p>
                   <p className="mt-1 text-xs text-gray-400">
                     Ular yuqoridagi havola orqali guruhga qo'shilgach paydo bo'ladi
@@ -242,7 +242,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 </p>
 
                 {curators.length === 0 ? (
-                  <p className="text-xs text-gray-400">Hozircha kurator tayinlanmagan</p>
+                  <p className="mb-2 text-xs text-gray-400">Hozircha kurator tayinlanmagan</p>
                 ) : (
                   <div className="mb-3 flex flex-col gap-2">
                     {curators.map((m) => (
@@ -387,7 +387,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   key={g.id}
                   type="button"
                   onClick={() => { setSelectedGroupId(g.id); setInnerTab('students'); }}
-                  className="w-full rounded-2xl bg-white p-4 text-left transition-colors hover:bg-indigo-50/30"
+                  className="w-full rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
                 >
                   <div className="mb-1.5 flex items-center gap-1.5 text-xs text-gray-400">
                     <Users size={13} />
@@ -405,10 +405,10 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                           : `${curatorNames[0]} +${curatorNames.length - 1}`}
                     </span>
                     {g.groupChatEnabled && (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-500">Chat</span>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">Chat</span>
                     )}
                     {g.groupChannelEnabled && (
-                      <span className="rounded-full bg-indigo-50 px-2 py-0.5 font-medium text-indigo-500">Kanal</span>
+                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">Kanal</span>
                     )}
                   </div>
                 </button>

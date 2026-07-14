@@ -56,7 +56,7 @@ function SliderInput({
     value !== "" ? parseFloat(value) : Math.round((min + max) / 2);
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-center text-3xl font-bold text-indigo-600">
+      <div className="text-center text-3xl font-bold text-gray-900">
         {current}
       </div>
       <input
@@ -67,7 +67,7 @@ function SliderInput({
         value={current}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full accent-indigo-500 h-2 cursor-pointer disabled:opacity-60"
+        className="w-full accent-gray-900 h-2 cursor-pointer disabled:opacity-60"
       />
       <div className="flex justify-between text-xs text-gray-400">
         <span>{min}</span>
@@ -198,10 +198,10 @@ function MatchingInput({
                 onClick={() => tapLeft(opt.id)}
                 className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${
                   isPending
-                    ? "bg-indigo-500 text-white border-indigo-500"
+                    ? "bg-gray-900 text-white border-gray-900"
                     : isPaired
-                      ? "bg-indigo-50 border-indigo-300 text-indigo-700"
-                      : "bg-white border-border text-gray-700 hover:border-indigo-300"
+                      ? "bg-gray-100 border-gray-300 text-gray-700"
+                      : "bg-white border-border text-gray-700 hover:border-gray-300"
                 } ${locked ? "pointer-events-none" : ""}`}
               >
                 {opt.text}
@@ -220,7 +220,7 @@ function MatchingInput({
                 disabled={(!pendingLeft && !isPaired) || locked}
                 className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${
                   isPaired
-                    ? "bg-indigo-50 border-indigo-300 text-indigo-700"
+                    ? "bg-gray-100 border-gray-300 text-gray-700"
                     : pendingLeft
                       ? "bg-white border-border text-gray-700 hover:border-green-400 hover:bg-green-50"
                       : "bg-gray-50 border-border text-gray-400"
@@ -249,7 +249,7 @@ function ArrangeInput({
 }) {
   return (
     <div className="flex flex-col gap-3">
-      <div className="min-h-14 p-3 border border-dashed border-indigo-200 rounded-2xl flex flex-wrap gap-2 items-center bg-indigo-50/40">
+      <div className="min-h-14 p-3 border border-dashed border-gray-300 rounded-2xl flex flex-wrap gap-2 items-center bg-gray-50">
         {selected.length === 0 && (
           <span className="text-xs text-gray-300 px-1">
             Bo'laklarni bosib joylashtiring...
@@ -263,7 +263,7 @@ function ArrangeInput({
               type="button"
               disabled={locked}
               onClick={() => onSelect(selected.filter((x) => x !== id))}
-              className="px-3.5 py-2 bg-indigo-500 text-white rounded-xl shadow-sm hover:bg-indigo-600 active:scale-95 transition-all text-sm"
+              className="px-3.5 py-2 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-gray-800 active:scale-95 transition-all text-sm"
             >
               {opt.text}
             </button>
@@ -279,7 +279,7 @@ function ArrangeInput({
               type="button"
               disabled={locked}
               onClick={() => onSelect([...selected, opt.id])}
-              className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all text-sm"
+              className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-gray-400 hover:text-gray-900 active:scale-95 transition-all text-sm"
             >
               {opt.text}
             </button>
@@ -547,7 +547,7 @@ export function LivePlayPage() {
             id="captain-text-input"
             rows={3}
             placeholder="Javobni kiriting..."
-            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-indigo-400"
+            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-gray-400"
           />
           <button
             onClick={() => {
@@ -572,7 +572,7 @@ export function LivePlayPage() {
             min={0}
             max={100}
             defaultValue={50}
-            className="w-full accent-indigo-500"
+            className="w-full accent-gray-900"
           />
           <button
             onClick={() => {
@@ -599,7 +599,7 @@ export function LivePlayPage() {
         <textarea
           id="captain-fallback-input"
           rows={2}
-          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-indigo-400"
+          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3 text-base outline-none focus:border-gray-400"
         />
         <button
           onClick={() => {
@@ -636,11 +636,11 @@ export function LivePlayPage() {
         paddingBottom: "max(16px, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
+      <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-500 to-gray-300" />
 
       {phase === "connecting" && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
+          <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
         </div>
       )}
 
@@ -653,7 +653,7 @@ export function LivePlayPage() {
           </p>
           <button
             onClick={() => navigate("/live/join")}
-            className="text-indigo-500 text-sm font-medium"
+            className="text-gray-700 text-sm font-medium"
           >
             ← PIN kiritish
           </button>
@@ -662,7 +662,7 @@ export function LivePlayPage() {
 
       {phase === "lobby" && (
         <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <Hourglass size={32} className="text-indigo-300 mb-4 animate-pulse" />
+          <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
           <p className="text-lg font-bold text-gray-900 mb-2">
             Siz ichkaridasiz!
           </p>
@@ -678,7 +678,7 @@ export function LivePlayPage() {
 
       {phase === "team_waiting" && (
         <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Hourglass size={32} className="text-indigo-300 mb-4 animate-pulse" />
+          <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
           <p className="text-lg font-bold text-gray-900 mb-2">
             {myTeam?.name ?? "Guruh kutilmoqda"}
           </p>
@@ -716,7 +716,7 @@ export function LivePlayPage() {
             <div className="shrink-0 px-5 pt-3">
               <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
                 <div
-                  className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-indigo-500"}`}
+                  className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-gray-900"}`}
                   style={{
                     width: phase === "reveal" ? "0%" : `${remainingPct}%`,
                   }}
@@ -726,7 +726,7 @@ export function LivePlayPage() {
                 <span className="text-sm font-semibold text-gray-700">
                   {question.idx + 1} / {question.total}
                 </span>
-                <span className="text-sm font-bold text-indigo-500">
+                <span className="text-sm font-bold text-gray-900">
                   {score} ball
                 </span>
               </div>
@@ -791,8 +791,8 @@ export function LivePlayPage() {
                               ? "bg-green-50 border-green-300"
                               : "bg-gray-50 border-border opacity-60"
                             : (isTeamMode && !isCaptain ? isSuggested : isSel)
-                              ? "bg-indigo-500 border-indigo-500 text-white"
-                              : "bg-white border-border text-gray-800 hover:border-indigo-200"
+                              ? "bg-gray-900 border-gray-900 text-white"
+                              : "bg-white border-border text-gray-800 hover:border-gray-300"
                         }`}
                       >
                         <span
@@ -827,7 +827,7 @@ export function LivePlayPage() {
                     disabled={phase === "reveal"}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors"
                   />
                 </div>
               ) : question.type === "open" ? (
@@ -838,7 +838,7 @@ export function LivePlayPage() {
                     disabled={phase === "reveal"}
                     onChange={(e) => setTextAnswer(e.target.value)}
                     placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
+                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors resize-none"
                   />
                 </div>
               ) : question.type === "slider" ? (
@@ -994,14 +994,14 @@ export function LivePlayPage() {
                   e.rank === 1
                     ? "bg-amber-50 border-amber-200"
                     : e.rank <= 3
-                      ? "bg-indigo-50/50 border-indigo-100"
+                      ? "bg-gray-50 border-gray-200"
                       : "bg-white border-border"
                 }`}
               >
                 <span className="font-semibold text-gray-800">
                   {e.rank}. {e.name}
                 </span>
-                <span className="font-bold text-indigo-600">{e.score}</span>
+                <span className="font-bold text-gray-900">{e.score}</span>
               </div>
             ))}
           </div>

@@ -1,13 +1,35 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { schools, schoolMembers, users, courses, groups, groupEnrollments, monthlyPayments, modules, lessons, lessonCompletions } from '../db/schema';
-import { and, eq, ilike, isNull, ne, or } from 'drizzle-orm';
+import { schools, schoolMembers, users, courses, groups, groupEnrollments, monthlyPayments, modules, lessons, lessonCompletions, contentBlocks, videoWatchSegments } from '../db/schema';
+import { and, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class SchoolsService {
-  constructor(private practiceBlocksService: PracticeBlocksService) {}
+  constructor(
+    private practiceBlocksService: PracticeBlocksService,
+    private storageService: StorageService,
+  ) {}
+
+  private async resolveVideoDuration(block: { id: string; hlsMasterKey: string | null; durationSec: number | null }) {
+    if (block.durationSec) return block.durationSec;
+    if (!block.hlsMasterKey) return null;
+    try {
+      const manifest = await this.storageService.getObjectText(block.hlsMasterKey);
+      const durationSec = Math.ceil(
+        [...manifest.matchAll(/#EXTINF:([0-9.]+)/g)].reduce((total, match) => total + Number(match[1]), 0),
+      );
+      if (durationSec > 0) {
+        await db.update(contentBlocks).set({ durationSec }).where(eq(contentBlocks.id, block.id));
+        return durationSec;
+      }
+    } catch {
+      return null;
+    }
+    return null;
+  }
 
   private async getOrCreateSchool(adminId: string) {
     let school = await db.query.schools.findFirst({ where: eq(schools.adminId, adminId) });
@@ -225,6 +247,184 @@ export class SchoolsService {
     }
 
     return rows;
+  }
+
+  async getStudentCourseProgress(adminId: string, studentId: string, courseId: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const member = await db.query.schoolMembers.findFirst({
+      where: and(
+        eq(schoolMembers.schoolId, school.id),
+        eq(schoolMembers.studentId, studentId),
+        eq(schoolMembers.role, 'student'),
+      ),
+      with: { student: true },
+    });
+    if (!member) throw new NotFoundException("O'quvchi topilmadi");
+
+    const course = await db.query.courses.findFirst({
+      where: and(eq(courses.id, courseId), eq(courses.adminId, adminId)),
+    });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, course.id) });
+    const groupIds = courseGroups.map((group) => group.id);
+    const enrollment = groupIds.length
+      ? await db.query.groupEnrollments.findFirst({
+          where: and(
+            eq(groupEnrollments.schoolMemberId, member.id),
+            inArray(groupEnrollments.groupId, groupIds),
+            isNull(groupEnrollments.removedAt),
+          ),
+        })
+      : null;
+    if (!enrollment) throw new NotFoundException("O'quvchi bu kursga biriktirilmagan");
+
+    const group = courseGroups.find((item) => item.id === enrollment.groupId);
+    const courseModules = (await db.query.modules.findMany({ where: eq(modules.courseId, course.id) }))
+      .sort((a, b) => a.orderIndex - b.orderIndex);
+    const moduleIds = courseModules.map((module) => module.id);
+    const publishedLessons = moduleIds.length
+      ? await db.query.lessons.findMany({
+          where: and(inArray(lessons.moduleId, moduleIds), eq(lessons.status, 'published')),
+        })
+      : [];
+    const moduleOrder = new Map(courseModules.map((module) => [module.id, module.orderIndex]));
+    const orderedLessons = publishedLessons.sort(
+      (a, b) => (moduleOrder.get(a.moduleId) ?? 0) - (moduleOrder.get(b.moduleId) ?? 0) || a.orderIndex - b.orderIndex,
+    );
+    const lessonIds = orderedLessons.map((lesson) => lesson.id);
+
+    const completions = lessonIds.length
+      ? await db.query.lessonCompletions.findMany({
+          where: and(eq(lessonCompletions.studentId, studentId), inArray(lessonCompletions.lessonId, lessonIds)),
+        })
+      : [];
+    const completionByLessonId = new Map(completions.map((completion) => [completion.lessonId, completion]));
+
+    const blocks = lessonIds.length
+      ? await db.query.contentBlocks.findMany({
+          where: and(inArray(contentBlocks.lessonId, lessonIds), eq(contentBlocks.type, 'video')),
+        })
+      : [];
+    const blockIds = blocks.map((block) => block.id);
+    const segments = blockIds.length
+      ? await db.query.videoWatchSegments.findMany({
+          where: and(eq(videoWatchSegments.studentId, studentId), inArray(videoWatchSegments.contentBlockId, blockIds)),
+        })
+      : [];
+    const durationByBlockId = new Map(
+      await Promise.all(blocks.map(async (block) => [block.id, await this.resolveVideoDuration(block)] as const)),
+    );
+    const segmentsByBlockId = new Map<string, typeof segments>();
+    for (const segment of segments) {
+      const current = segmentsByBlockId.get(segment.contentBlockId) ?? [];
+      current.push(segment);
+      segmentsByBlockId.set(segment.contentBlockId, current);
+    }
+    const blocksByLessonId = new Map<string, typeof blocks>();
+    for (const block of blocks) {
+      const current = blocksByLessonId.get(block.lessonId) ?? [];
+      current.push(block);
+      blocksByLessonId.set(block.lessonId, current);
+    }
+
+    const moduleById = new Map(courseModules.map((module) => [module.id, module]));
+    const lessonActivity = new Map<string, Date>();
+    for (const completion of completions) {
+      if (completion.completedAt) lessonActivity.set(completion.lessonId, completion.completedAt);
+    }
+    for (const block of blocks) {
+      const lastSegment = (segmentsByBlockId.get(block.id) ?? []).reduce<Date | null>(
+        (latest, segment) => !latest || (segment.updatedAt && segment.updatedAt > latest) ? segment.updatedAt : latest,
+        null,
+      );
+      if (lastSegment && (!lessonActivity.get(block.lessonId) || lastSegment > lessonActivity.get(block.lessonId)!)) {
+        lessonActivity.set(block.lessonId, lastSegment);
+      }
+    }
+
+    const practiceBlocksByLessonId = new Map(
+      await Promise.all(orderedLessons.map(async (lesson) => [
+        lesson.id,
+        await this.practiceBlocksService.findForStudent(lesson.id, studentId),
+      ] as const)),
+    );
+    for (const [lessonId, practiceBlocks] of practiceBlocksByLessonId) {
+      for (const practiceBlock of practiceBlocks) {
+        const activityTimes = [
+          ...practiceBlock.submissions.map((submission) => new Date(submission.submittedAt)),
+          ...practiceBlock.imageSubmissions.map((submission) => new Date(submission.submittedAt)),
+        ];
+        for (const activityTime of activityTimes) {
+          if (!lessonActivity.get(lessonId) || activityTime > lessonActivity.get(lessonId)!) {
+            lessonActivity.set(lessonId, activityTime);
+          }
+        }
+      }
+    }
+
+    const incompleteLessons = orderedLessons.filter((lesson) => !completionByLessonId.has(lesson.id));
+    const currentLesson = [...incompleteLessons]
+      .filter((lesson) => lessonActivity.has(lesson.id))
+      .sort((a, b) => (lessonActivity.get(b.id)?.getTime() ?? 0) - (lessonActivity.get(a.id)?.getTime() ?? 0))[0]
+      ?? incompleteLessons[0]
+      ?? null;
+    const lastActivityAt = [...lessonActivity.values()]
+      .sort((a, b) => b.getTime() - a.getTime())[0]
+      ?? null;
+
+    return {
+      student: { id: member.studentId, name: member.student.name, phone: member.student.phone },
+      course: { id: course.id, title: course.title, groupName: group?.name ?? '—', joinedAt: enrollment.joinedAt?.toISOString() ?? null },
+      lastActivityAt: lastActivityAt?.toISOString() ?? null,
+      lessonsCompleted: completions.length,
+      lessonsTotal: orderedLessons.length,
+      progressPercent: orderedLessons.length ? Math.round((completions.length / orderedLessons.length) * 100) : 0,
+      currentLessonId: currentLesson?.id ?? null,
+      lessons: orderedLessons.map((lesson) => {
+        const completion = completionByLessonId.get(lesson.id);
+        const videoBlocks = (blocksByLessonId.get(lesson.id) ?? [])
+          .sort((a, b) => a.orderIndex - b.orderIndex)
+          .map((block) => {
+            const durationSec = durationByBlockId.get(block.id) ?? null;
+            const watchedSegments = (segmentsByBlockId.get(block.id) ?? [])
+              .sort((a, b) => a.startSec - b.startSec)
+              .map((segment) => ({ startSec: segment.startSec, endSec: segment.endSec }));
+            const watchedSec = watchedSegments.reduce((total, segment) => total + Math.max(0, segment.endSec - segment.startSec), 0);
+            return {
+              id: block.id,
+              label: block.label || block.fileName || 'Video',
+              durationSec,
+              watchedPercent: durationSec ? Math.min(100, Math.round((watchedSec / durationSec) * 100)) : null,
+              lastWatchedAt: (segmentsByBlockId.get(block.id) ?? [])
+                .reduce<Date | null>((latest, segment) => !latest || (segment.updatedAt && segment.updatedAt > latest) ? segment.updatedAt : latest, null)
+                ?.toISOString() ?? null,
+              segments: watchedSegments,
+            };
+          });
+        return {
+          id: lesson.id,
+          moduleTitle: moduleById.get(lesson.moduleId)?.title ?? 'Modul',
+          title: lesson.title,
+          completedAt: completion?.completedAt?.toISOString() ?? null,
+          completionScore: lesson.completionScore,
+          earnedCompletionScore: completion ? lesson.completionScore : 0,
+          status: completion ? 'completed' : lesson.id === currentLesson?.id ? 'current' : 'not_started',
+          videoBlocks,
+          practiceBlocks: (practiceBlocksByLessonId.get(lesson.id) ?? []).map((block) => ({
+            id: block.id,
+            type: block.type,
+            title: block.testName || (block.type === 'image' ? 'Rasmli topshiriq' : block.type === 'oral' ? 'Jonli savol-javob' : 'Test topshirig‘i'),
+            description: block.description,
+            maxScore: block.maxScore,
+            earnedScore: block.earnedScore,
+            submissions: block.submissions,
+            imageSubmissions: block.imageSubmissions,
+            oralGrade: block.oralGrade,
+          })),
+        };
+      }),
+    };
   }
 
   async findStudentsWithoutGroup(adminId: string) {

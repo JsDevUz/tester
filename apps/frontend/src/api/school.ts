@@ -75,6 +75,7 @@ export interface ApiSchoolEnrollment {
   courseId: string;
   courseTitle: string;
   groupName: string;
+  planName: string | null;
   joinedAt: string | null;
   lessonsCompleted: number;
   lessonsTotal: number;
@@ -85,6 +86,59 @@ export interface ApiSchoolEnrollment {
 
 export async function apiListEnrollments(): Promise<ApiSchoolEnrollment[]> {
   const res = await client.get('/school/students/enrollments');
+  return res.data;
+}
+
+export interface ApiStudentLessonVideoProgress {
+  id: string;
+  label: string;
+  durationSec: number | null;
+  watchedPercent: number | null;
+  lastWatchedAt: string | null;
+  segments: Array<{ startSec: number; endSec: number }>;
+}
+
+export interface ApiStudentLessonProgress {
+  id: string;
+  moduleTitle: string;
+  title: string;
+  completedAt: string | null;
+  completionScore: number | null;
+  earnedCompletionScore: number | null;
+  status: 'completed' | 'current' | 'not_started';
+  videoBlocks: ApiStudentLessonVideoProgress[];
+  practiceBlocks: Array<{
+    id: string;
+    type: 'test' | 'image' | 'oral';
+    title: string;
+    description: string;
+    maxScore: number | null;
+    earnedScore: number | null;
+    submissions: Array<{ id: string; submittedAt: string; score: number; total: number }>;
+    imageSubmissions: Array<{
+      id: string;
+      imageUrl: string;
+      submittedAt: string;
+      score: number | null;
+      graded: boolean;
+    }>;
+    oralGrade: { score: number; gradedAt: string } | null;
+  }>;
+}
+
+export interface ApiStudentCourseProgress {
+  student: { id: string; name: string; phone: string | null };
+  course: { id: string; title: string; groupName: string; joinedAt: string | null };
+  lastActivityAt: string | null;
+  lessonsCompleted: number;
+  lessonsTotal: number;
+  progressPercent: number;
+  currentLessonId: string | null;
+  lessons: ApiStudentLessonProgress[];
+}
+
+export async function apiGetStudentCourseProgress(studentId: string, courseId: string): Promise<ApiStudentCourseProgress> {
+  const res = await client.get(`/school/students/${studentId}/courses/${courseId}/progress`);
   return res.data;
 }
 

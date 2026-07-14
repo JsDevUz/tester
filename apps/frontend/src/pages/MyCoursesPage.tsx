@@ -16,16 +16,20 @@ import {
   MessageCircle,
   Play,
   Star,
+  Trophy,
   UserRound,
+  X,
   Zap,
 } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import {
   apiGetMyCourseDetail,
+  apiGetMyCourseLeaderboard,
   apiGetMyCourses,
   apiMarkLessonComplete,
   type ApiMyCourse,
   type ApiMyCourseDetail,
+  type ApiMyCourseLeaderboard,
   type ApiMyLesson,
 } from "../api/groups";
 import type { ApiContentBlock } from "../api/contentBlocks";
@@ -106,6 +110,7 @@ export function MyCoursesPage() {
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
+  const [leaderboardCourse, setLeaderboardCourse] = useState<ApiMyCourse | null>(null);
 
   function loadCourses() {
     return apiGetMyCourses()
@@ -147,19 +152,17 @@ export function MyCoursesPage() {
 
         <div className="flex flex-col gap-3">
           {courses.map((c) => (
-            <button
+            <div
               key={`${c.courseId}-${c.groupName}`}
-              type="button"
-              onClick={() => setSelectedCourseId(c.courseId)}
-              className="min-h-[150px] cursor-pointer rounded-3xl bg-[#e7f4ff] p-4 text-left transition-colors hover:bg-[#deefff] sm:min-h-[185px] sm:p-5"
+              className="student-course-card min-h-[150px] rounded-3xl p-4 sm:min-h-[185px] sm:p-5"
             >
-              <div className="flex h-full flex-col justify-between gap-6">
+              <button type="button" onClick={() => setSelectedCourseId(c.courseId)} className="flex h-full w-full flex-col justify-between gap-6 text-left">
                 <div className="flex items-start justify-between gap-4">
                   <div className="min-w-0 flex-1">
                     <div className="mb-3 flex flex-wrap items-center gap-3">
                       {c.starsMax > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-[var(--color-indigo-500)] px-2 py-2 text-sm font-bold text-white">
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-[var(--color-indigo-500)]">
+                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-2 text-sm font-bold text-white">
+                          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-gray-900">
                             <Star size={13} fill="currentColor" />
                           </span>
                           {c.starsEarned} / {c.starsMax}
@@ -168,7 +171,7 @@ export function MyCoursesPage() {
                       <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
                         <UserRound
                           size={16}
-                          className="text-[var(--color-indigo-500)]"
+                          className="text-gray-700"
                         />
                         {c.studentCount}
                       </span>
@@ -179,7 +182,7 @@ export function MyCoursesPage() {
                     </p>
                   </div>
 
-                  <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl bg-white/55 sm:h-16 sm:w-16">
+                  <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
                     <BookOpen size={23} className="text-gray-400" />
                   </div>
                 </div>
@@ -194,17 +197,95 @@ export function MyCoursesPage() {
 
                   <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
                     <div
-                      className="h-full rounded-full bg-[var(--color-indigo-500)]"
+                      className="h-full rounded-full bg-gray-900"
                       style={{ width: `${c.progressPercent}%` }}
                     />
                   </div>
                 </div>
-              </div>
-            </button>
+              </button>
+              <button type="button" onClick={() => setLeaderboardCourse(c)} className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white">
+                <Trophy size={14} className="text-amber-500" /> Peshqadamlar
+              </button>
+            </div>
           ))}
         </div>
       </div>
+      {leaderboardCourse && <CourseLeaderboardModal course={leaderboardCourse} onClose={() => setLeaderboardCourse(null)} />}
     </StudentShell>
+  );
+}
+
+function studentInitials(name: string) {
+  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
+}
+
+function CourseLeaderboardModal({ course, onClose }: { course: ApiMyCourse; onClose: () => void }) {
+  const [leaderboard, setLeaderboard] = useState<ApiMyCourseLeaderboard | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    apiGetMyCourseLeaderboard(course.courseId)
+      .then((data) => { if (active) setLeaderboard(data); })
+      .catch((requestError) => {
+        if (active) setError(requestError?.response?.data?.message ?? 'Reytingni yuklab bo‘lmadi.');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [course.courseId]);
+
+  const topThree = leaderboard?.entries.slice(0, 3) ?? [];
+  const remaining = leaderboard?.entries.slice(3) ?? [];
+  const rankStyle: Record<number, { podium: string; avatar: string }> = {
+    1: { podium: 'order-2 h-32 bg-amber-400', avatar: 'bg-amber-400' },
+    2: { podium: 'order-1 h-24 bg-slate-300', avatar: 'bg-slate-400' },
+    3: { podium: 'order-3 h-20 bg-orange-300', avatar: 'bg-orange-400' },
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-5" onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}>
+      <section className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-gradient-to-br from-cyan-600 via-sky-600 to-indigo-600 p-4 text-white shadow-2xl sm:rounded-3xl sm:p-6" role="dialog" aria-modal="true" aria-label="Kurs peshqadamlari">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-xs font-medium text-white/70">{course.courseTitle}</p>
+            <h2 className="mt-0.5 flex items-center gap-2 text-xl font-bold"><Trophy size={20} className="text-amber-300" /> Peshqadamlar</h2>
+          </div>
+          <button type="button" onClick={onClose} className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/80 hover:bg-white/20" aria-label="Yopish"><X size={18} /></button>
+        </div>
+
+        {loading ? <p className="py-16 text-center text-sm text-white/75">Reyting yuklanmoqda...</p> : error ? <p className="py-16 text-center text-sm text-red-100">{error}</p> : leaderboard?.entries.length === 0 ? (
+          <p className="py-16 text-center text-sm text-white/75">Hali reyting uchun o‘quvchilar yo‘q.</p>
+        ) : (
+          <>
+            <div className="mt-6 flex items-end justify-center gap-2 sm:gap-4">
+              {[topThree[1], topThree[0], topThree[2]].filter(Boolean).map((entry) => {
+                const style = rankStyle[entry.rank];
+                return (
+                  <div key={entry.studentId} className={`flex w-[30%] max-w-40 flex-col items-center ${style.podium.includes('order-2') ? 'mb-0' : 'mb-0'}`}>
+                    <div className={`relative mb-2 grid h-12 w-12 place-items-center rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`}>{studentInitials(entry.studentName)}<span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-gray-800">{entry.rank}</span></div>
+                    <p className="w-full truncate text-center text-xs font-semibold">{entry.studentName}</p>
+                    <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold text-amber-100"><Star size={11} fill="currentColor" /> {entry.starsEarned}</p>
+                    <div className={`mt-2 flex w-full items-center justify-center rounded-t-xl text-3xl font-black text-white/90 ${style.podium}`}>{entry.rank}</div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {remaining.map((entry) => (
+                <div key={entry.studentId} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-white/25 ring-1 ring-white/50' : 'bg-white/15'}`}>
+                  <span className="w-6 text-center text-sm font-bold text-white/80">{entry.rank}</span>
+                  <span className="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-xs font-bold">{studentInitials(entry.studentName)}</span>
+                  <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{entry.studentName}{entry.isCurrentStudent ? ' (Siz)' : ''}</p><p className="text-[11px] text-white/70">{entry.lessonsCompleted}/{entry.lessonsTotal} dars</p></div>
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-1 text-xs font-bold text-amber-950"><Star size={12} fill="currentColor" /> {entry.starsEarned}</span>
+                </div>
+              ))}
+            </div>
+          </>
+        )}
+      </section>
+    </div>
   );
 }
 
@@ -314,6 +395,10 @@ function StudentCourseReader({
   }
 
   function isLessonPassing(lesson: ApiMyLesson): boolean {
+    const allBlocksAttempted = lesson.practiceBlocks.every(
+      (block) => block.submissions.length > 0 || block.imageSubmissions.length > 0,
+    );
+    if (!allBlocksAttempted) return false;
     if (!lesson.passThresholdEnabled) return true;
     if (lesson.combinedPracticePercent === null) return false;
     return lesson.combinedPracticePercent >= (lesson.passThresholdPercent ?? 0);
@@ -357,15 +442,15 @@ function StudentCourseReader({
                 locked
                   ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
                   : active
-                    ? "border-[var(--color-indigo-500)] bg-white text-[var(--color-indigo-500)]"
-                    : "border-transparent bg-white text-gray-900 hover:border-indigo-200"
+                    ? "border-gray-900 bg-white text-gray-900"
+                    : "border-transparent bg-white text-gray-900 hover:border-gray-300"
               }`
             : `flex w-full items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors ${
                 locked
                   ? "cursor-not-allowed border-transparent text-gray-300 opacity-70"
                   : active
-                    ? "border-[var(--color-indigo-500)] text-[var(--color-indigo-500)]"
-                    : "border-transparent text-gray-900 hover:border-indigo-200"
+                    ? "border-gray-900 text-gray-900"
+                    : "border-transparent text-gray-900 hover:border-gray-300"
               }`
         }
       >
@@ -387,7 +472,7 @@ function StudentCourseReader({
         </div>
         <div className="min-w-0 flex-1">
           <p
-            className={`${mobile ? "text-sm" : "text-xs"} line-clamp-2 font-bold ${active ? "text-[var(--color-indigo-500)]" : locked ? "text-gray-400" : "text-gray-900"}`}
+            className={`${mobile ? "text-sm" : "text-xs"} line-clamp-2 font-bold ${active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"}`}
           >
             {lesson.title}
           </p>
@@ -431,7 +516,7 @@ function StudentCourseReader({
     return (
       <div className="flex min-h-[100dvh] items-center justify-center bg-white">
         <Loader2
-          className="animate-spin text-[var(--color-indigo-500)]"
+          className="animate-spin text-gray-900"
           size={28}
         />
       </div>
@@ -497,15 +582,15 @@ function StudentCourseReader({
           >
             <span className="truncate">Darslar Tartibi</span>
             {mobileLessonsOpen ? (
-              <ChevronUp size={20} className="text-[var(--color-indigo-500)]" />
+              <ChevronUp size={20} className="text-gray-700" />
             ) : (
               <ChevronDown
                 size={20}
-                className="text-[var(--color-indigo-500)]"
+                className="text-gray-700"
               />
             )}
           </button>
-          <span className="shrink-0 rounded-full bg-[var(--color-indigo-500)] px-2.5 py-1 text-xs font-bold text-white">
+          <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
             {progressCount} / {lessons.length}
           </span>
         </div>
@@ -524,11 +609,11 @@ function StudentCourseReader({
             <button
               type="button"
               onClick={() => setMobileLessonsOpen(false)}
-              className="flex items-center gap-1.5 text-base font-semibold text-[var(--color-indigo-500)]"
+              className="flex items-center gap-1.5 text-base font-semibold text-gray-900"
             >
               Darslar Tartibi <ChevronUp size={20} />
             </button>
-            <span className="rounded-full bg-[var(--color-indigo-500)] px-2.5 py-1 text-xs font-bold text-white">
+            <span className="rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
               {progressCount} / {lessons.length}
             </span>
           </div>
@@ -542,7 +627,7 @@ function StudentCourseReader({
             </div>
             <div className="h-2 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+                className="h-full rounded-full bg-gray-900 transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -594,13 +679,13 @@ function StudentCourseReader({
           <div className="mb-3 rounded-2xl bg-white p-3 sm:mb-4">
             <div className="mb-2.5 flex items-center justify-between gap-3">
               <span className="text-xs font-bold text-gray-900">Jarayon</span>
-              <span className="rounded-full bg-[var(--color-indigo-500)] px-2.5 py-0.5 text-[11px] font-bold text-white">
+              <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-[11px] font-bold text-white">
                 {progressCount} / {lessons.length}
               </span>
             </div>
             <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
               <div
-                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+                className="h-full rounded-full bg-gray-900 transition-all"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -645,7 +730,9 @@ function StudentCourseReader({
               }}
               onImageSubmitted={() => void refreshCourseSilently()}
               hasNext={selectedIndex + 1 < lessons.length}
-              onNext={() => {
+              canComplete={isLessonPassing(selected.lesson)}
+              onNext={async () => {
+                await markSelectedLessonComplete();
                 const next = lessons[selectedIndex + 1];
                 if (next) setSelectedLessonId(next.lesson.id);
               }}
@@ -662,8 +749,7 @@ function StudentCourseReader({
                 selected.lesson.passThresholdEnabled &&
                 !isLessonPassing(selected.lesson)
               }
-              onOpenPractice={async () => {
-                await markSelectedLessonComplete();
+              onOpenPractice={() => {
                 setShowPractice(true);
               }}
               onPrev={() => {
@@ -754,7 +840,7 @@ function LessonReader({
         </span>
         <MessageCircle
           size={18}
-          className="shrink-0 text-[var(--color-indigo-500)]"
+          className="shrink-0 text-gray-700"
         />
       </button>
 
@@ -778,7 +864,7 @@ function LessonReader({
           type="button"
           onClick={onPrev}
           disabled={lessonNumber <= 1}
-          className="rounded-xl bg-gray-100 px-3.5 py-2.5 text-xs font-bold text-[var(--color-indigo-500)] disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+          className="rounded-xl bg-gray-100 px-3.5 py-2.5 text-xs font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
         >
           Orqaga
         </button>
@@ -892,7 +978,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
         rel="noreferrer"
         className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
       >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-[var(--color-indigo-500)] text-[11px] font-black text-white">
+        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
           {ext.slice(0, 4)}
         </span>
         <span className="min-w-0 flex-1">

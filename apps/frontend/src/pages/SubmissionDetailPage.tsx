@@ -29,7 +29,7 @@ export function SubmissionDetailPage() {
   if (!detail)
     return (
       <div className="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
-        <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+        <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
       </div>
     );
 

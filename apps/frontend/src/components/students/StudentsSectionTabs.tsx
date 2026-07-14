@@ -31,7 +31,7 @@ export function StudentsSectionTabs({ counts }: StudentsSectionTabsProps) {
               onClick={() => navigate(tab.path)}
               className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
                 active
-                  ? "bg-white text-indigo-600"
+                  ? "bg-white text-gray-900"
                   : "text-gray-900 hover:bg-white/60"
               }`}
             >

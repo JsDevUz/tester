@@ -6,7 +6,7 @@ import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
 
 const AVATAR_PALETTES = [
-  'bg-indigo-100 text-indigo-600',
+  'bg-gray-200 text-gray-700',
   'bg-amber-100 text-amber-600',
   'bg-teal-100 text-teal-600',
   'bg-rose-100 text-rose-600',

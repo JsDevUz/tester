@@ -9,7 +9,6 @@ import {
   CreditCard,
   Download,
   Image as ImageIcon,
-  Info,
   Paperclip,
   Search,
   WalletCards,
@@ -59,17 +58,17 @@ const STATUS_META: Record<
   },
   pending: {
     label: "Kutilmoqda",
-    className: "bg-indigo-50 text-indigo-600",
-    dot: "bg-indigo-500",
+    className: "bg-gray-100 text-gray-600",
+    dot: "bg-gray-500",
   },
 };
 
-const TABS: { key: PaymentTab; label: string; info?: boolean }[] = [
+const TABS: { key: PaymentTab; label: string }[] = [
   { key: "all", label: "Hammasi" },
   { key: "paid", label: "To'langan" },
-  { key: "partial", label: "Qisman", info: true },
-  { key: "debt", label: "Qarzdorlar", info: true },
-  { key: "pending", label: "Kutilmoqda", info: true },
+  { key: "partial", label: "Qisman" },
+  { key: "debt", label: "Qarzdorlar" },
+  { key: "pending", label: "Kutilmoqda" },
 ];
 
 const METHOD_OPTIONS: PaymentMethod[] = ["cash", "click", "payme", "card", "other"];
@@ -120,10 +119,9 @@ export function PaymentsPage() {
     [rows],
   );
 
-  const filtered = useMemo(() => {
+  const dateFiltered = useMemo(() => {
     const q = query.trim().toLowerCase();
     return rows.filter((row) => {
-      const tabMatch = activeTab === "all" || row.status === activeTab;
       const searchMatch =
         !q ||
         `${row.studentName} ${row.studentPhone ?? ""} ${row.courseTitle} ${row.groupName}`
@@ -133,18 +131,24 @@ export function PaymentsPage() {
       const monthMatch = !monthFilter || String(date.getUTCMonth() + 1).padStart(2, "0") === monthFilter;
       const yearMatch = !yearFilter || String(date.getUTCFullYear()) === yearFilter;
       const courseMatch = !courseFilter || row.courseTitle === courseFilter;
-      return tabMatch && searchMatch && monthMatch && yearMatch && courseMatch;
+      return searchMatch && monthMatch && yearMatch && courseMatch;
     });
-  }, [activeTab, query, rows, monthFilter, yearFilter, courseFilter]);
+  }, [query, rows, monthFilter, yearFilter, courseFilter]);
+
+  const filtered = useMemo(
+    () => dateFiltered.filter((row) => activeTab === "all" || row.status === activeTab),
+    [dateFiltered, activeTab],
+  );
 
   const dueAmount = (row: ApiPaymentRow) => row.expectedAmount - row.discountAmount;
-  const paidTotal = rows.reduce((sum, row) => sum + row.paidAmount, 0);
-  const debtTotal = rows.reduce(
+  const activeRows = dateFiltered.filter((row) => !row.removedAt);
+  const paidTotal = dateFiltered.reduce((sum, row) => sum + row.paidAmount, 0);
+  const debtTotal = activeRows.reduce(
     (sum, row) => sum + Math.max(dueAmount(row) - row.paidAmount, 0),
     0,
   );
-  const pendingCount = rows.filter((row) => row.status === "pending").length;
-  const debtCount = rows.filter((row) => row.status === "debt").length;
+  const pendingCount = activeRows.filter((row) => row.status === "pending").length;
+  const debtCount = activeRows.filter((row) => row.status === "debt").length;
 
   async function handleCancelPayment(paymentId: string) {
     setCancellingId(paymentId);
@@ -162,8 +166,9 @@ export function PaymentsPage() {
     method?: PaymentMethod,
     note?: string,
     receiptUrl?: string,
+    discount?: number,
   ) {
-    await apiRecordPayment(paymentId, amount, undefined, method, note, receiptUrl);
+    await apiRecordPayment(paymentId, amount, discount, method, note, receiptUrl);
     await refresh();
     setModalOpen(false);
   }
@@ -224,7 +229,7 @@ export function PaymentsPage() {
               title="Qarzdorlik"
               value={formatMoney(debtTotal)}
               trend={`${debtCount} ta`}
-              tone="red"
+              tone={debtTotal > 0 ? "red" : "neutral"}
             />
             <SummaryCard
               icon={CalendarDays}
@@ -236,9 +241,9 @@ export function PaymentsPage() {
             <SummaryCard
               icon={WalletCards}
               title="Qisman to'lov"
-              value={`${rows.filter((row) => row.status === "partial").length} ta`}
-              trend="- 5%"
-              tone="amber"
+              value={`${activeRows.filter((row) => row.status === "partial").length} ta`}
+              trend={`${activeRows.filter((row) => row.status === "partial").length} ta`}
+              tone="neutral"
             />
           </div>
 
@@ -248,8 +253,8 @@ export function PaymentsPage() {
                 const active = activeTab === tab.key;
                 const count =
                   tab.key === "all"
-                    ? rows.length
-                    : rows.filter((row) => row.status === tab.key).length;
+                    ? dateFiltered.length
+                    : dateFiltered.filter((row) => row.status === tab.key).length;
                 return (
                   <button
                     key={tab.key}
@@ -257,16 +262,13 @@ export function PaymentsPage() {
                     onClick={() => setActiveTab(tab.key)}
                     className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
                       active
-                        ? "bg-white text-[var(--color-indigo-500)]"
+                        ? "bg-white text-gray-900"
                         : "text-gray-900 hover:bg-white/60"
                     }`}
                   >
                     <span>
                       {tab.label} ({count.toLocaleString("uz-UZ")})
                     </span>
-                    {tab.info && (
-                      <Info size={14} className="text-gray-400" />
-                    )}
                   </button>
                 );
               })}
@@ -341,11 +343,16 @@ export function PaymentsPage() {
                 {filtered.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-t border-gray-50 transition-colors hover:bg-indigo-50/40"
+                    className="border-t border-gray-50 transition-colors hover:bg-gray-50"
                   >
                     <td className="px-4 py-3.5">
-                      <p className="text-sm font-semibold text-gray-800">
+                      <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
                         {row.studentName}
+                        {row.removedAt && (
+                          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                            Chetlashtirilgan
+                          </span>
+                        )}
                       </p>
                       <p className="mt-0.5 text-xs text-gray-500">
                         {row.studentPhone ?? ""}
@@ -383,7 +390,7 @@ export function PaymentsPage() {
                           href={row.receiptUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-indigo-500 hover:underline"
+                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:underline"
                         >
                           <ImageIcon size={12} /> Chek
                         </a>
@@ -395,7 +402,7 @@ export function PaymentsPage() {
                           type="button"
                           onClick={() => void handleCancelPayment(row.id)}
                           disabled={cancellingId === row.id}
-                          className="rounded-lg bg-red-50 px-2.5 py-1.5 text-xs font-semibold text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           {cancellingId === row.id ? "..." : "Bekor qilish"}
                         </button>
@@ -430,7 +437,7 @@ export function PaymentsPage() {
                     type="button"
                     onClick={() => void handleCancelPayment(row.id)}
                     disabled={cancellingId === row.id}
-                    className="mt-3 w-full rounded-xl bg-red-50 py-2 text-xs font-semibold text-red-500 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-3 w-full rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     {cancellingId === row.id ? "..." : "Bekor qilish"}
                   </button>
@@ -464,29 +471,36 @@ function SummaryCard({
   title: string;
   value: string;
   trend: string;
-  tone: "orange" | "red" | "indigo" | "amber";
+  tone: "orange" | "red" | "indigo" | "amber" | "neutral";
   highlighted?: boolean;
 }) {
   const iconClass = {
     orange: highlighted ? "bg-white/20 text-white" : "bg-orange-50 text-orange-500",
     red: "bg-red-50 text-red-500",
-    indigo: "bg-indigo-50 text-indigo-600",
+    indigo: "bg-gray-100 text-gray-600",
     amber: "bg-amber-50 text-amber-600",
+    neutral: "bg-gray-100 text-gray-500",
   }[tone];
   const trendClass =
-    tone === "red" || tone === "amber"
+    tone === "red"
       ? highlighted
         ? "bg-white/20 text-white"
         : "bg-red-50 text-red-500"
+      : tone === "amber"
+        ? highlighted
+          ? "bg-white/20 text-white"
+          : "bg-amber-50 text-amber-600"
       : highlighted
         ? "bg-white/20 text-white"
-        : "bg-green-50 text-green-600";
+        : tone === "neutral"
+          ? "bg-gray-100 text-gray-500"
+          : "bg-green-50 text-green-600";
 
   return (
     <div
       className={`min-w-40 flex-1 rounded-2xl p-2.5 ${
         highlighted
-          ? "bg-[var(--color-indigo-500)] text-white"
+          ? "bg-gray-900 text-white"
           : "bg-white text-gray-900"
       }`}
     >
@@ -534,17 +548,30 @@ function PaymentModal({
   onClose,
 }: {
   rows: ApiPaymentRow[];
-  onSave: (paymentId: string, amount: number, method?: PaymentMethod, note?: string, receiptUrl?: string) => Promise<void>;
+  onSave: (
+    paymentId: string,
+    amount: number,
+    method?: PaymentMethod,
+    note?: string,
+    receiptUrl?: string,
+    discount?: number,
+  ) => Promise<void>;
   onClose: () => void;
 }) {
   const duePayments = useMemo(
-    () => rows.filter((row) => row.status === "pending" || row.status === "partial" || row.status === "debt"),
+    () =>
+      rows.filter(
+        (row) =>
+          !row.removedAt &&
+          (row.status === "pending" || row.status === "partial" || row.status === "debt"),
+      ),
     [rows],
   );
 
   const [studentQuery, setStudentQuery] = useState("");
   const [selectedId, setSelectedId] = useState(duePayments[0]?.id ?? "");
   const [amount, setAmount] = useState("");
+  const [discount, setDiscount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
   const [receiptFile, setReceiptFile] = useState<File | null>(null);
@@ -558,7 +585,14 @@ function PaymentModal({
       .includes(studentQuery.trim().toLowerCase()),
   );
   const numericAmount = Number(amount.replace(/\D/g, ""));
-  const canSave = !!selectedRow && numericAmount > 0;
+  const numericDiscount = discount ? Number(discount.replace(/\D/g, "")) : undefined;
+  const discountTooHigh = !!selectedRow && numericDiscount !== undefined && numericDiscount > selectedRow.expectedAmount;
+  const dueAfterDiscount = selectedRow
+    ? Math.max(selectedRow.expectedAmount - (numericDiscount ?? selectedRow.discountAmount) - selectedRow.paidAmount, 0)
+    : 0;
+  const amountTooHigh = !!selectedRow && numericAmount > dueAfterDiscount;
+  const canSave =
+    !!selectedRow && numericAmount > 0 && !amountTooHigh && !discountTooHigh;
 
   function handlePickReceipt(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -577,7 +611,7 @@ function PaymentModal({
         receiptUrl = uploaded.url;
         setUploadingReceipt(false);
       }
-      await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined, receiptUrl);
+      await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined, receiptUrl, numericDiscount);
     } catch (err: any) {
       toast.error(err?.response?.data?.message ?? "Xato yuz berdi. Qayta urinib ko'ring.");
     } finally {
@@ -650,9 +684,12 @@ function PaymentModal({
                     <button
                       key={row.id}
                       type="button"
-                      onClick={() => setSelectedId(row.id)}
+                      onClick={() => {
+                        setSelectedId(row.id);
+                        setDiscount("");
+                      }}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
-                        selected ? "bg-indigo-50 text-indigo-600" : "hover:bg-white"
+                        selected ? "bg-gray-100 text-gray-900" : "hover:bg-white"
                       }`}
                     >
                       <div className="min-w-0 flex-1">
@@ -663,7 +700,7 @@ function PaymentModal({
                           {row.courseTitle} • {formatMonthLabel(row.periodMonth)}
                         </p>
                       </div>
-                      {selected && <Check size={16} className="text-indigo-500 shrink-0" />}
+                      {selected && <Check size={16} className="text-gray-900 shrink-0" />}
                     </button>
                   );
                 })}
@@ -678,7 +715,11 @@ function PaymentModal({
                 {selectedRow.courseTitle} • {selectedRow.groupName} • {selectedRow.planName ?? "Tarifsiz"}
               </p>
               <p className="mt-2 text-xs text-gray-500">
-                Kutilayotgan summa: {formatMoney(selectedRow.expectedAmount - selectedRow.discountAmount - selectedRow.paidAmount)}
+                Kurs narxi: {formatMoney(selectedRow.expectedAmount)}
+                {selectedRow.paidAmount > 0 && ` • Avval to'langan: ${formatMoney(selectedRow.paidAmount)}`}
+              </p>
+              <p className="mt-1 text-xs font-semibold text-gray-700">
+                Kutilayotgan summa: {formatMoney(dueAfterDiscount)}
               </p>
             </div>
           )}
@@ -688,8 +729,30 @@ function PaymentModal({
               value={amount}
               onChange={(event) => setAmount(event.target.value.replace(/[^\d\s]/g, ""))}
               placeholder="300000"
-              className="w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none"
+              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none ${
+                amountTooHigh ? "ring-1 ring-red-400" : ""
+              }`}
             />
+            {amountTooHigh && (
+              <p className="mt-1 text-xs text-red-500">
+                Summa kutilayotgan to'lovdan ({formatMoney(dueAfterDiscount)}) oshib ketmasligi kerak
+              </p>
+            )}
+          </Field>
+          <Field label="Chegirma (ixtiyoriy)">
+            <input
+              value={discount}
+              onChange={(event) => setDiscount(event.target.value.replace(/[^\d\s]/g, ""))}
+              placeholder="0"
+              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none ${
+                discountTooHigh ? "ring-1 ring-red-400" : ""
+              }`}
+            />
+            {discountTooHigh && (
+              <p className="mt-1 text-xs text-red-500">
+                Chegirma kurs narxidan ({formatMoney(selectedRow?.expectedAmount ?? 0)}) oshib ketmasligi kerak
+              </p>
+            )}
           </Field>
           <Field label="To'lov turi">
             <SelectField<PaymentMethod>

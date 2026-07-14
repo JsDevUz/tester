@@ -29,6 +29,7 @@ export interface ApiPaymentRow {
   courseTitle: string;
   groupName: string;
   planName: string | null;
+  removedAt: string | null;
 }
 
 export async function apiListAllPayments(): Promise<ApiPaymentRow[]> {

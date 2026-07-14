@@ -53,7 +53,7 @@ export function LiveCreatePage() {
         <div className="flex-1 w-full px-6 py-6">
           <div className="flex items-center justify-between gap-3 mb-6">
             <div className="flex items-center gap-2 min-w-0">
-              <Radio size={20} className="text-indigo-500 shrink-0" />
+              <Radio size={20} className="text-gray-700 shrink-0" />
               <h2 className="text-lg font-bold text-gray-800 truncate">
                 Jonli musobaqalar
               </h2>
@@ -70,7 +70,7 @@ export function LiveCreatePage() {
 
           {loading ? (
             <div className="flex justify-center py-16">
-              <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+              <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
             </div>
           ) : sessions.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -83,7 +83,7 @@ export function LiveCreatePage() {
                 <button
                   key={s.id}
                   onClick={() => handleRowClick(s)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 flex items-center gap-3 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
                 >
                   <div
                     className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -121,7 +121,7 @@ export function LiveCreatePage() {
                 <button
                   onClick={() => loadMore(false)}
                   disabled={loadingMore}
-                  className="mt-2 py-3 text-sm font-medium text-indigo-500 hover:text-indigo-600 disabled:opacity-50 transition-colors"
+                  className="mt-2 py-3 text-sm font-medium text-gray-700 hover:text-gray-900 disabled:opacity-50 transition-colors"
                 >
                   {loadingMore ? "Yuklanmoqda..." : "Ko'proq yuklash"}
                 </button>

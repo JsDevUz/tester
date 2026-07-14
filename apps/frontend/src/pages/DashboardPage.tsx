@@ -46,7 +46,7 @@ export function DashboardPage() {
               <button
                 type="button"
                 onClick={() => navigate("/live")}
-                className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-indigo-600 shadow-sm hover:bg-indigo-50"
+                className="inline-flex items-center gap-2 rounded-lg bg-white px-3 py-1.5 text-sm font-semibold text-gray-700 shadow-sm hover:bg-gray-50"
               >
                 <Radio size={16} />
                 <span className="hidden sm:inline">Jonli musobaqalar</span>

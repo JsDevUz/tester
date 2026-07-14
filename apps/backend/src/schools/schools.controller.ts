@@ -75,6 +75,17 @@ export class SchoolsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
+  @Get('school/students/:studentId/courses/:courseId/progress')
+  getStudentCourseProgress(
+    @Req() req: any,
+    @Param('studentId') studentId: string,
+    @Param('courseId') courseId: string,
+  ) {
+    return this.schoolsService.getStudentCourseProgress(req.admin.id, studentId, courseId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Get('school/students/without-group')
   findStudentsWithoutGroup(@Req() req: any) {
     return this.schoolsService.findStudentsWithoutGroup(req.admin.id);

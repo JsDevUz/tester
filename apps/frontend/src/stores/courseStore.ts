@@ -54,7 +54,7 @@ export interface ContentBlock {
   uploadProgress?: number;
 }
 
-export type PracticeBlockType = 'test' | 'image';
+export type PracticeBlockType = 'test' | 'image' | 'oral';
 
 export interface PracticeBlock {
   id: string;

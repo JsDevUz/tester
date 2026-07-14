@@ -70,7 +70,7 @@ export default function App() {
     <>
       <TopProgressBar />
       <RouterProvider router={router} />
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-right" theme="system" />
     </>
   );
 }

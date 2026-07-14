@@ -95,7 +95,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-indigo-100 bg-white/80 p-4">
+      <div className="rounded-xl border border-gray-200 bg-white/80 p-4">
         <div className="flex items-center justify-between gap-3 mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-700">
@@ -109,7 +109,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           <button
             type="button"
             onClick={insertSample}
-            className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-indigo-100 rounded-lg text-indigo-600 hover:border-indigo-300 hover:bg-indigo-50 transition-colors bg-white"
+            className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-colors bg-white"
           >
             <Clipboard size={12} />
             Namunani qo'yish
@@ -124,7 +124,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           <button
             type="button"
             onClick={copyBulk}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5rounded-lg text-gray-500 hover:border-indigo-400 hover:text-indigo-600 transition-colors bg-white"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors bg-white"
           >
             {copied ? (
               <Check size={12} className="text-green-500" />
@@ -144,7 +144,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
         }}
         rows={10}
         placeholder="Savollarni shu yerga joylashtiring..."
-        className="w-full rounded-xl border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 font-mono resize-y"
+        className="w-full rounded-xl border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 font-mono resize-y"
       />
       {preview && <p className="text-sm text-gray-600">{preview}</p>}
       {result && (

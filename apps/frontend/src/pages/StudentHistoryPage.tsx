@@ -68,7 +68,7 @@ export function StudentHistoryPage() {
 
         {loading ? (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+            <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
           </div>
         ) : submissions.length === 0 ? (
           <div className="text-center py-16 text-gray-400">
@@ -87,7 +87,7 @@ export function StudentHistoryPage() {
                 <button
                   key={s.id}
                   onClick={() => navigate(`/history/${s.id}`)}
-                  className="flex w-full items-center gap-3 border-b border-gray-100 bg-white py-3 text-left transition-all active:bg-gray-50 lg:rounded-2xl lg:border-b-0 lg:px-4 lg:py-4 lg:hover:bg-indigo-50/30 lg:active:scale-[0.99]"
+                  className="flex w-full items-center gap-3 border-b border-gray-100 bg-white py-3 text-left transition-all active:bg-gray-50 lg:rounded-2xl lg:border-b-0 lg:px-4 lg:py-4 lg:hover:bg-gray-50 lg:active:scale-[0.99]"
                 >
                   <div
                     className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl lg:h-10 lg:w-10 ${
@@ -135,7 +135,7 @@ export function StudentHistoryPage() {
 
             <div ref={sentinelRef} className="py-2 flex justify-center">
               {loadingMore && (
-                <div className="w-6 h-6 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+                <div className="w-6 h-6 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
               )}
               {!hasMore && submissions.length > 0 && (
                 <p className="text-xs text-gray-300">Hammasi yuklandi</p>

@@ -132,7 +132,7 @@ export function LoginPage() {
                 href={botLink || `tg://resolve?domain=BirKodBot`}
                 target="_blank"
                 rel="noreferrer"
-                className="mr-2 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4 hover:text-indigo-600"
+                className="mr-2 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4 hover:text-gray-600"
               >
                 {displayBot}
               </a>
@@ -176,14 +176,14 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email yoki telefon"
-              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Parol"
-              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <button
               type="submit"
@@ -202,7 +202,7 @@ export function LoginPage() {
             setError("");
             setMessage("");
           }}
-          className="mt-10 w-full text-center text-xs font-medium text-gray-300 hover:text-indigo-600"
+          className="mt-10 w-full text-center text-xs font-medium text-gray-300 hover:text-gray-600"
         >
           {showPasswordLogin
             ? "Telegram kod bilan kirish"

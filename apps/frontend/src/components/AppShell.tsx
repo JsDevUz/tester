@@ -9,9 +9,12 @@ import {
   Settings,
   ShieldCheck,
   LogOut,
+  Sun,
+  Moon,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
+import { useThemeStore } from "../stores/themeStore";
 
 interface NavSection {
   key: string;
@@ -51,6 +54,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { admin, logout } = useAuthStore();
+  const { theme, toggleTheme } = useThemeStore();
   const [profileOpen, setProfileOpen] = useState(false);
 
   const activeSection = SECTIONS.find((section) =>
@@ -95,15 +99,15 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 onClick={() => navigate(section.path)}
                 className={`group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
                   isActive
-                    ? "bg-white text-indigo-600"
+                    ? "bg-white text-gray-900"
                     : "text-gray-400 hover:bg-white/10 hover:text-white"
                 }`}
               >
                 {isActive && (
-                  <span className="hidden lg:block absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-indigo-400" />
+                  <span className="hidden lg:block absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-gray-900" />
                 )}
                 {isActive && (
-                  <span className="lg:hidden absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-indigo-400" />
+                  <span className="lg:hidden absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gray-900" />
                 )}
                 <Icon size={20} />
                 <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
@@ -113,6 +117,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             );
           })}
         </nav>
+
+        <button
+          onClick={toggleTheme}
+          aria-label={theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
+          className="group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+        >
+          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+            {theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
+          </span>
+        </button>
 
         <div className="hidden lg:flex flex-col w-full px-2 gap-1 mb-2">
           {admin?.role === "super" && (
@@ -154,7 +169,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         <button
           onClick={() => setProfileOpen(true)}
           aria-label={admin?.name ?? "Profil"}
-          className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
+          className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
           {initial}
           <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
@@ -175,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="fixed z-50 bottom-3 left-3 right-3 rounded-2xl bg-white p-4 shadow-2xl shadow-gray-900/15 lg:bottom-16 lg:left-3 lg:right-auto lg:w-64">
             <div className="flex items-center gap-2.5 px-1 mb-3 pb-3 border-b border-border">
-              <div className="w-9 h-9 rounded-full bg-indigo-500 text-white text-sm font-semibold flex items-center justify-center shrink-0">
+              <div className="w-9 h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0">
                 {initial}
               </div>
               <div className="min-w-0">

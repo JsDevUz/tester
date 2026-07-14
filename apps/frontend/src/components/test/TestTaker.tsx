@@ -53,7 +53,7 @@ function SortableItem({
       style={{ transform: CSS.Transform.toString(transform), transition }}
       className={`flex items-center gap-3 px-4 py-3 rounded-2xl border select-none ${
         isDragging
-          ? "bg-indigo-50 border-indigo-400 shadow-lg z-50 opacity-90"
+          ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
           : "bg-white border-border"
       }`}
     >
@@ -216,9 +216,9 @@ function MatchingQuestion({
     { left: string; right: string; dot: string }
   > = {
     indigo: {
-      left: "bg-indigo-50 border-indigo-400 text-indigo-700",
-      right: "bg-indigo-50 border-indigo-400 text-indigo-700",
-      dot: "bg-indigo-400",
+      left: "bg-gray-100 border-gray-400 text-gray-700",
+      right: "bg-gray-100 border-gray-400 text-gray-700",
+      dot: "bg-gray-500",
     },
     rose: {
       left: "bg-rose-50 border-rose-400 text-rose-700",
@@ -277,10 +277,10 @@ function MatchingQuestion({
                 style={{ fontSize: "var(--q-fs, 14px)" }}
                 className={`px-3 py-2.5 rounded-2xl border text-left transition-colors flex items-center gap-2 ${
                   isPending
-                    ? "bg-indigo-500 text-white border-indigo-500"
+                    ? "bg-gray-900 text-white border-gray-900"
                     : color
                       ? colorClasses[color].left
-                      : "bg-white border-border text-gray-700 hover:border-indigo-300"
+                      : "bg-white border-border text-gray-700 hover:border-gray-300"
                 } ${locked ? "pointer-events-none" : ""}`}
               >
                 {isPaired && color && (
@@ -359,7 +359,7 @@ function SliderQuestion({
     value !== "" ? parseFloat(value) : Math.round((min + max) / 2);
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-center text-3xl font-bold text-indigo-600">
+      <div className="text-center text-3xl font-bold text-gray-900">
         {current}
       </div>
       <input
@@ -370,7 +370,7 @@ function SliderQuestion({
         value={current}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full accent-indigo-500 h-2 cursor-pointer disabled:opacity-60"
+        className="w-full accent-gray-900 h-2 cursor-pointer disabled:opacity-60"
       />
       <div className="flex justify-between text-xs text-gray-400">
         <span>{min}</span>
@@ -838,7 +838,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   if (phase === "starting" || phase === "checking" || !resolvedSubmissionId) {
     return (
       <div className="flex items-center justify-center py-24">
-        <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
+        <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
       </div>
     );
   }
@@ -939,7 +939,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             }}
             placeholder="Javobingizni yozing..."
             readOnly={locked}
-            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors"
+            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors"
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
         </div>
@@ -955,7 +955,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           }}
           placeholder="Javobingizni yozing..."
           readOnly={locked}
-          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-indigo-400 focus:bg-white transition-colors resize-none"
+          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors resize-none"
           style={{ fontSize: "var(--q-fs, 16px)" }}
         />
       );
@@ -988,7 +988,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                     ? isTrue
                       ? "bg-green-500 text-white border-green-500 shadow-md shadow-green-100"
                       : "bg-red-400 text-white border-red-400 shadow-md shadow-red-100"
-                    : "border-border bg-white text-gray-700 hover:border-indigo-300 hover:bg-indigo-50"
+                    : "border-border bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
                 } ${locked ? "pointer-events-none" : ""}`}
               >
                 <span
@@ -1025,7 +1025,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         <div className="flex flex-col gap-3">
           <div
             dir={rtl ? "rtl" : "ltr"}
-            className="min-h-14 p-3 border border-dashed border-indigo-200 rounded-2xl flex flex-wrap gap-2 items-center bg-indigo-50/40"
+            className="min-h-14 p-3 border border-dashed border-gray-300 rounded-2xl flex flex-wrap gap-2 items-center bg-gray-50"
           >
             {selected.length === 0 && (
               <span className="text-xs text-gray-300 px-1">
@@ -1040,7 +1040,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   type="button"
                   onClick={() => arrangeRemove(q.id, id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
-                  className="px-3.5 py-2 bg-indigo-500 text-white rounded-xl shadow-sm hover:bg-indigo-600 active:scale-95 transition-all"
+                  className="px-3.5 py-2 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-gray-800 active:scale-95 transition-all"
                 >
                   {opt.text}
                 </button>
@@ -1056,7 +1056,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   type="button"
                   onClick={() => arrangeAdd(q.id, opt.id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
-                  className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-indigo-400 hover:text-indigo-600 active:scale-95 transition-all"
+                  className="px-3.5 py-2 bg-white rounded-xl text-gray-700 hover:border-gray-400 hover:text-gray-900 active:scale-95 transition-all"
                 >
                   {opt.text}
                 </button>
@@ -1090,8 +1090,8 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               }
               className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${
                 checked
-                  ? "bg-indigo-500 border-indigo-500 text-white shadow-md shadow-indigo-100"
-                  : "bg-white border-border text-gray-800 hover:border-indigo-200 hover:bg-indigo-50/50"
+                  ? "bg-gray-900 border-gray-900 text-white shadow-md"
+                  : "bg-white border-border text-gray-800 hover:border-gray-300 hover:bg-gray-50"
               } ${locked ? "pointer-events-none" : ""}`}
             >
               <span
@@ -1198,7 +1198,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       {isOneByOne && (
         <div className="shrink-0 h-1.5 bg-gray-100 mx-4 rounded-full overflow-hidden">
           <div
-            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+            className="h-full bg-gray-900 rounded-full transition-all duration-500"
             style={{
               width: `${((currentIdx + 1) / orderedQuestions.length) * 100}%`,
             }}
@@ -1235,15 +1235,15 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                     }
                     className={`aspect-square rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${
                       isCurrent
-                        ? "bg-indigo-500 text-white shadow-md shadow-indigo-200"
+                        ? "bg-gray-900 text-white shadow-md"
                         : checkedQ
                           ? feedbackMap[q.id].isCorrect
                             ? "bg-green-100 text-green-700 hover:bg-green-200"
                             : "bg-red-100 text-red-600 hover:bg-red-200"
                           : answered
-                            ? "bg-indigo-100 text-indigo-700 hover:bg-indigo-200"
+                            ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
                             : jumpable
-                              ? "bg-whitetext-gray-500 hover:border-indigo-300"
+                              ? "bg-white text-gray-500 hover:border-gray-300"
                               : "bg-gray-100 text-gray-300 cursor-not-allowed"
                     }`}
                   >
@@ -1254,11 +1254,11 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             </div>
             <div className="mt-6 flex flex-col gap-2 text-xs text-gray-500">
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-md bg-indigo-100 shrink-0" />{" "}
+                <span className="w-3.5 h-3.5 rounded-md bg-gray-200 shrink-0" />{" "}
                 Javob berilgan
               </div>
               <div className="flex items-center gap-2">
-                <span className="w-3.5 h-3.5 rounded-md bg-whiteshrink-0" />{" "}
+                <span className="w-3.5 h-3.5 rounded-md bg-white shrink-0" />{" "}
                 Javobsiz
               </div>
               {isPerQuestion && (
@@ -1458,7 +1458,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm">
                     {/* Header */}
                     <div className="flex items-center gap-2 mb-3">
-                      <span className="w-7 h-7 rounded-xl bg-indigo-50 text-indigo-600 text-xs font-bold flex items-center justify-center shrink-0">
+                      <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">
                         {i + 1}
                       </span>
                       {TYPE_BADGES[q.type] && (

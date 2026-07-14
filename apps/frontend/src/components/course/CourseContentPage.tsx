@@ -88,7 +88,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
             <button
               type="button"
               onClick={() => setModal({ type: 'newModule' })}
-              className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition-colors hover:bg-indigo-600"
+              className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-600"
             >
               <Plus size={16} /> Modul qo'shish
             </button>
@@ -113,7 +113,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                     <button type="button" onClick={() => toggleModule(module.id)} className="text-gray-400">
                       {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
                     </button>
-                    <Layers size={16} className="shrink-0 text-indigo-400" />
+                    <Layers size={16} className="shrink-0 text-gray-400" />
                     <input
                       value={module.title}
                       onChange={(e) => void renameModule(courseId, module.id, e.target.value)}
@@ -168,7 +168,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                       <button
                         type="button"
                         onClick={() => setModal({ type: 'newLesson', moduleId: module.id })}
-                        className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-indigo-400 hover:bg-indigo-50/50"
+                        className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-gray-500 hover:bg-gray-50"
                       >
                         + Dars qo'shish
                       </button>

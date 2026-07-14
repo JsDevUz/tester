@@ -140,6 +140,13 @@ export class GroupsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('student')
+  @Get('my/courses/:courseId/leaderboard')
+  getMyCourseLeaderboard(@Param('courseId') courseId: string, @Req() req: any) {
+    return this.groupsService.getMyCourseLeaderboard(courseId, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
   @Get('my/courses/:courseId')
   getMyCourseDetail(@Param('courseId') courseId: string, @Req() req: any) {
     return this.groupsService.getMyCourseDetail(courseId, req.user.id);

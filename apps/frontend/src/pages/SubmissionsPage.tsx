@@ -102,7 +102,7 @@ export function SubmissionsPage() {
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="w-7 h-7 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+              <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
             </div>
           ) : submissions.length === 0 ? (
             <div className="text-center py-16 text-gray-400">
@@ -191,7 +191,7 @@ export function SubmissionsPage() {
                         <tr
                           key={sub.id}
                           onClick={() => navigate(`/submissions/${sub.id}`)}
-                          className="group cursor-pointer transition-colors hover:bg-indigo-50/40 rounded-2xl"
+                          className="group cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl"
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-2">
@@ -243,7 +243,7 @@ export function SubmissionsPage() {
               {/* Sentinel for infinite scroll */}
               <div ref={sentinelRef} className="py-2 flex justify-center">
                 {loadingMore && (
-                  <div className="w-6 h-6 rounded-full border border-indigo-200 border-t-indigo-500 animate-spin" />
+                  <div className="w-6 h-6 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
                 )}
                 {!hasMore && submissions.length > 0 && (
                   <p className="text-xs text-gray-300">Hammasi yuklandi</p>

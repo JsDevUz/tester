@@ -130,6 +130,26 @@ export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
   return res.data;
 }
 
+export interface ApiMyCourseLeaderboardEntry {
+  studentId: string;
+  studentName: string;
+  starsEarned: number;
+  lessonsCompleted: number;
+  lessonsTotal: number;
+  isCurrentStudent: boolean;
+  rank: number;
+}
+
+export interface ApiMyCourseLeaderboard {
+  courseTitle: string;
+  entries: ApiMyCourseLeaderboardEntry[];
+}
+
+export async function apiGetMyCourseLeaderboard(courseId: string): Promise<ApiMyCourseLeaderboard> {
+  const res = await client.get(`/my/courses/${courseId}/leaderboard`);
+  return res.data;
+}
+
 export interface ApiMyPracticeSubmission {
   id: string;
   submittedAt: string;
@@ -147,7 +167,7 @@ export interface ApiMyImageSubmission {
 
 export interface ApiMyPracticeBlock {
   id: string;
-  type: 'test' | 'image';
+  type: 'test' | 'image' | 'oral';
   testId: string | null;
   testSlug: string | null;
   testName: string | null;
@@ -157,6 +177,7 @@ export interface ApiMyPracticeBlock {
   submissions: ApiMyPracticeSubmission[];
   attemptsRemaining: number | null;
   imageSubmissions: ApiMyImageSubmission[];
+  oralGrade: { score: number; gradedAt: string } | null;
 }
 
 export interface ApiMyLesson {

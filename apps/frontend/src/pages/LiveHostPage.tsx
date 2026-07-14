@@ -97,7 +97,7 @@ function DroppableTeamColumn({
       ref={setNodeRef}
       className={`rounded-2xl border p-4 transition-colors h-full flex flex-col ${
         isOver
-          ? "border-indigo-400 bg-indigo-50/50"
+          ? "border-gray-400 bg-gray-100"
           : highlight
             ? "border-red-200 bg-red-50/50"
             : "border-border"
@@ -300,11 +300,11 @@ export function LiveHostPage() {
         paddingBottom: "max(16px, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="shrink-0 h-1 bg-linear-to-r from-indigo-400 via-purple-400 to-pink-400" />
+      <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-600 to-gray-400" />
 
       {phase === "connecting" && (
         <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-3 border-indigo-200 border-t-indigo-500 animate-spin" />
+          <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
         </div>
       )}
 
@@ -313,7 +313,7 @@ export function LiveHostPage() {
           <p className="text-red-400">Sessiya topilmadi yoki tugagan.</p>
           <button
             onClick={() => navigate("/live")}
-            className="text-indigo-500 text-sm font-medium"
+            className="text-gray-700 text-sm font-medium"
           >
             ← Orqaga
           </button>
@@ -329,7 +329,7 @@ export function LiveHostPage() {
           <p className="text-sm font-semibold text-gray-700 mb-3">
             O'yin PIN kodi
           </p>
-          <p className="text-6xl font-black text-indigo-500 tracking-[0.2em] mb-8">
+          <p className="text-6xl font-black text-gray-900 tracking-[0.2em] mb-8">
             {pin}
           </p>
           <div className="flex items-center gap-2 text-gray-500 mb-4">
@@ -342,7 +342,7 @@ export function LiveHostPage() {
             {players.map((p, i) => (
               <span
                 key={i}
-                className="px-3 py-1.5 bg-indigo-50 text-indigo-600 rounded-xl text-sm font-medium"
+                className="px-3 py-1.5 bg-gray-100 text-gray-700 rounded-xl text-sm font-medium"
               >
                 {p.name}
               </span>
@@ -373,7 +373,7 @@ export function LiveHostPage() {
             </div>
             <div className="flex items-center gap-3 mb-6">
               <p className="text-sm font-semibold text-gray-700">PIN:</p>
-              <p className="text-3xl font-black text-indigo-500 tracking-[0.15em]">
+              <p className="text-3xl font-black text-gray-900 tracking-[0.15em]">
                 {pin}
               </p>
             </div>
@@ -390,11 +390,11 @@ export function LiveHostPage() {
                     if (e.key === "Enter") handleCreateTeam();
                   }}
                   placeholder="Guruh nomi (masalan Guruh 1)"
-                  className="w-64 bg-gray-50 rounded-2xl border border-border px-4 py-2.5 text-sm outline-none focus:border-indigo-400"
+                  className="w-64 bg-gray-50 rounded-2xl border border-border px-4 py-2.5 text-sm outline-none focus:border-gray-400"
                 />
                 <button
                   onClick={handleCreateTeam}
-                  className="px-4 py-2.5 bg-indigo-500 text-white rounded-2xl text-sm font-semibold hover:bg-indigo-600 transition-colors whitespace-nowrap"
+                  className="px-4 py-2.5 bg-gray-900 text-white rounded-2xl text-sm font-semibold hover:bg-gray-800 transition-colors whitespace-nowrap"
                 >
                   Guruh qo'shish
                 </button>
@@ -496,7 +496,7 @@ export function LiveHostPage() {
 
           <DragOverlay>
             {draggingName && (
-              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white shadow-lg border border-indigo-300 text-gray-700">
+              <div className="flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium bg-white shadow-lg border border-gray-400 text-gray-700">
                 <GripVertical size={14} className="text-gray-300" />
                 {draggingName}
               </div>
@@ -510,7 +510,7 @@ export function LiveHostPage() {
           {/* Timer bar */}
           <div className="h-2 bg-gray-100 rounded-full overflow-hidden mb-4">
             <div
-              className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-indigo-500"}`}
+              className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-gray-900"}`}
               style={{ width: phase === "reveal" ? "0%" : `${remainingPct}%` }}
             />
           </div>
@@ -563,7 +563,7 @@ export function LiveHostPage() {
             </div>
           )}
           {phase === "reveal" && reveal && (
-            <div className="mt-5 bg-indigo-50/50 rounded-2xl p-4">
+            <div className="mt-5 bg-gray-100 rounded-2xl p-4">
               <p className="text-xs font-semibold text-gray-500 mb-2">
                 Leaderboard
               </p>
@@ -575,7 +575,7 @@ export function LiveHostPage() {
                   <span className="text-gray-700 font-medium">
                     {e.rank}. {e.name}
                   </span>
-                  <span className="text-indigo-600 font-bold">{e.score}</span>
+                  <span className="text-gray-900 font-bold">{e.score}</span>
                 </div>
               ))}
             </div>
@@ -605,14 +605,14 @@ export function LiveHostPage() {
                   e.rank === 1
                     ? "bg-amber-50 border-amber-200"
                     : e.rank <= 3
-                      ? "bg-indigo-50/50 border-indigo-100"
+                      ? "bg-gray-100 border-gray-200"
                       : "bg-white border-border"
                 }`}
               >
                 <span className="font-semibold text-gray-800">
                   {e.rank}. {e.name}
                 </span>
-                <span className="font-bold text-indigo-600">{e.score}</span>
+                <span className="font-bold text-gray-900">{e.score}</span>
               </div>
             ))}
           </div>

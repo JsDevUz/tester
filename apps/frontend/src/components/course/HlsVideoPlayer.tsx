@@ -307,7 +307,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           {watchedPercent !== null && <span>{watchedPercent}% ko'rilgan</span>}
         </button>
         {progressOpen && (
-          <div className="relative mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-100">
+          <div className="video-watch-progress-track relative mt-2 h-2.5 w-full overflow-hidden rounded-full">
             {watchedSegments
               .filter(
                 (s) => !liveRange || s.endSec < liveRange.startSec - 2 || s.startSec > liveRange.endSec + 2,
@@ -315,7 +315,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               .map((seg) => (
                 <div
                   key={`${seg.startSec}-${seg.endSec}`}
-                  className="absolute h-full rounded-full bg-indigo-400 transition-[left,width] duration-300 ease-out"
+                  className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out"
                   style={{
                     left: `${(seg.startSec / videoDuration) * 100}%`,
                     width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
@@ -325,7 +325,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             {liveRange && (
               <div
                 key="live"
-                className="absolute h-full rounded-full bg-indigo-400 transition-[left,width] duration-300 ease-out"
+                className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out"
                 style={{
                   left: `${(liveRange.startSec / videoDuration) * 100}%`,
                   width: `${((liveRange.endSec - liveRange.startSec) / videoDuration) * 100}%`,

@@ -56,7 +56,7 @@ export function ContentBlockView({
   return (
     <div className="rounded-2xl bg-white">
       <div className="flex items-center gap-2.5 px-4 py-3">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-500">
+        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 text-gray-700">
           <Icon size={15} />
         </div>
         <div className="min-w-0 flex-1">
@@ -142,13 +142,13 @@ export function ContentBlockView({
                 (block.processingStatus === 'uploading' ||
                   block.processingStatus === 'pending' ||
                   block.processingStatus === 'processing') && (
-                  <div className="rounded-2xl bg-indigo-50/70 px-4 py-5">
+                  <div className="rounded-2xl bg-gray-100 px-4 py-5">
                     <div className="flex items-center gap-3">
-                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-indigo-500">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-gray-700">
                         <Loader2 size={18} className="animate-spin" />
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-semibold text-indigo-600">
+                        <p className="text-sm font-semibold text-gray-800">
                           {block.processingStatus === 'uploading'
                             ? block.type === 'video'
                               ? 'Video yuklanmoqda'
@@ -157,21 +157,21 @@ export function ContentBlockView({
                               ? 'Video yuklandi, navbatda turibdi'
                               : 'Video HLS formatga tayyorlanmoqda'}
                         </p>
-                        <p className="mt-1 text-xs text-indigo-400">
+                        <p className="mt-1 text-xs text-gray-500">
                           {block.processingStatus === 'uploading'
                             ? 'Sahifani yopmang. Yuklash tugagach tayyorlash boshlanadi.'
                             : 'Tayyor bo‘lgach shu yerda player ko‘rinadi'}
                         </p>
                       </div>
                       {typeof block.uploadProgress === 'number' && (
-                        <span className="shrink-0 text-sm font-bold text-indigo-600">
+                        <span className="shrink-0 text-sm font-bold text-gray-800">
                           {block.uploadProgress}%
                         </span>
                       )}
                     </div>
                     <div className="mt-4 h-2 overflow-hidden rounded-full bg-white">
                       <div
-                        className="h-full rounded-full bg-indigo-500 transition-all"
+                        className="h-full rounded-full bg-gray-900 transition-all"
                         style={{
                           width: `${block.processingStatus === 'uploading' ? block.uploadProgress ?? 0 : 100}%`,
                         }}
@@ -202,7 +202,7 @@ export function ContentBlockView({
 
               {!block.embedUrl && block.type !== 'video' && block.processingStatus !== 'uploading' && (
                 <label
-                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-indigo-50/30 ${
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-gray-100 ${
                     block.previewUrl ? 'p-2' : 'py-10'
                   }`}
                 >
@@ -219,14 +219,14 @@ export function ContentBlockView({
                         onClick={(e) => e.stopPropagation()}
                       >
                         <span className="flex min-w-0 items-center gap-2">
-                          <Paperclip size={16} className="shrink-0 text-indigo-500" />
+                          <Paperclip size={16} className="shrink-0 text-gray-600" />
                           <span className="truncate">{block.fileName}</span>
                         </span>
                         <ExternalLink size={16} className="shrink-0 text-gray-400" />
                       </a>
                     )
                   ) : (
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500 text-white">
+                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
                       <Plus size={22} />
                     </span>
                   )}
@@ -234,9 +234,9 @@ export function ContentBlockView({
               )}
 
               {!block.embedUrl && block.type === 'video' && !block.processingStatus && (
-                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 py-10 transition-colors hover:bg-indigo-50/30">
+                <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 py-10 transition-colors hover:bg-gray-100">
                   <input type="file" accept={accept} className="hidden" onChange={handleFileInputChange} />
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-500 text-white">
+                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
                     <Plus size={22} />
                   </span>
                 </label>

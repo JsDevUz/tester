@@ -377,7 +377,7 @@ export function QuestionForm({
         rows={2}
         placeholder="Savol matni..."
         required
-        className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
+        className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 resize-none"
       />
 
       {/* Media */}
@@ -402,14 +402,14 @@ export function QuestionForm({
             type="button"
             onClick={() => imageRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40"
           >
             <Image size={13} /> Rasm
           </button>
         )}
         {audioUrl ? (
-          <div className="flex items-center gap-2 bg-indigo-50 rounded-lg px-3 py-1.5 border border-indigo-100">
-            <Music size={13} className="text-indigo-500 shrink-0" />
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200">
+            <Music size={13} className="text-gray-700 shrink-0" />
             <audio src={mediaUrl(audioUrl)} controls className="h-7" />
             <button
               type="button"
@@ -424,13 +424,13 @@ export function QuestionForm({
             type="button"
             onClick={() => audioRef.current?.click()}
             disabled={uploading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-indigo-400 hover:text-indigo-500 transition-colors disabled:opacity-40"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40"
           >
             <Music size={13} /> Audio
           </button>
         )}
         {uploading && (
-          <span className="flex items-center gap-1 text-xs text-indigo-500">
+          <span className="flex items-center gap-1 text-xs text-gray-700">
             <Upload size={12} className="animate-bounce" /> Yuklanmoqda...
           </span>
         )}
@@ -473,7 +473,7 @@ export function QuestionForm({
             key={t}
             type="button"
             onClick={() => setType(t)}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? "bg-indigo-500 text-white border-indigo-500" : "border-border text-gray-500 hover:border-indigo-300"}`}
+            className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? "bg-gray-900 text-white border-gray-900" : "border-border text-gray-500 hover:border-gray-300"}`}
           >
             {TYPE_LABELS[t]}
           </button>
@@ -521,7 +521,7 @@ export function QuestionForm({
             value={correctAnswer}
             onChange={(e) => setCorrectAnswer(e.target.value)}
             placeholder="To'g'ri javob..."
-            className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
           />
         </div>
       )}
@@ -657,7 +657,7 @@ export function QuestionForm({
                   )
                 }
                 placeholder={`Savol ${i + 1}`}
-                className="border border-indigo-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50/30"
+                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
               />
               <div className="flex gap-1 items-center">
                 <input
@@ -691,7 +691,7 @@ export function QuestionForm({
             onClick={() =>
               setMatchPairs([...matchPairs, { left: "", right: "" }])
             }
-            className="text-xs text-indigo-500 hover:text-indigo-700 self-start flex items-center gap-1"
+            className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1"
           >
             <Plus size={12} /> Juft qo'shish
           </button>
@@ -707,7 +707,7 @@ export function QuestionForm({
           <div className="flex flex-col gap-1.5">
             {correctTokens.map((tok, i) => (
               <div key={i} className="flex items-center gap-2">
-                <span className="text-[10px] text-indigo-400 font-mono w-5 text-right shrink-0">
+                <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
                   {i + 1}.
                 </span>
                 <input
@@ -720,7 +720,7 @@ export function QuestionForm({
                     )
                   }
                   placeholder={`Element ${i + 1}`}
-                  className="flex-1 border border-indigo-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50/40"
+                  className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
                 />
                 {correctTokens.length > 2 && (
                   <button
@@ -740,7 +740,7 @@ export function QuestionForm({
             <button
               type="button"
               onClick={() => setCorrectTokens([...correctTokens, ""])}
-              className="text-xs text-indigo-500 hover:text-indigo-700 self-start flex items-center gap-1 mt-0.5"
+              className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5"
             >
               <Plus size={12} /> Element qo'shish
             </button>
@@ -778,7 +778,7 @@ export function QuestionForm({
             <div className="flex flex-col gap-1.5">
               {correctTokens.map((tok, i) => (
                 <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-indigo-400 font-mono w-5 text-right shrink-0">
+                  <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
                     {i + 1}.
                   </span>
                   <input
@@ -791,7 +791,7 @@ export function QuestionForm({
                       )
                     }
                     placeholder={`Bo'lak ${i + 1}`}
-                    className="flex-1 border border-indigo-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-indigo-50/40"
+                    className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
                   />
                   {correctTokens.length > 2 && (
                     <button
@@ -811,7 +811,7 @@ export function QuestionForm({
               <button
                 type="button"
                 onClick={() => setCorrectTokens([...correctTokens, ""])}
-                className="text-xs text-indigo-500 hover:text-indigo-700 self-start flex items-center gap-1 mt-0.5"
+                className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5"
               >
                 <Plus size={12} /> Bo'lak qo'shish
               </button>
@@ -941,7 +941,7 @@ export function QuestionForm({
                   setCorrectAnswer(e.target.value);
               }}
               placeholder="Masalan: O'zbekiston poytaxti..."
-              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <p className="text-[10px] text-gray-400 mt-1">
               Agar o'quvchi javobi yuqoridagi variantlarga mos kelmasa, AI shu
@@ -960,7 +960,7 @@ export function QuestionForm({
                 checked={opt.isCorrect}
                 onChange={() => toggleCorrect(i)}
                 name="correct"
-                className="w-4 h-4 accent-indigo-500"
+                className="w-4 h-4 accent-gray-900"
               />
               <input
                 value={opt.text}
@@ -972,7 +972,7 @@ export function QuestionForm({
                   )
                 }
                 placeholder={`Variant ${i + 1}`}
-                className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400"
               />
               <button
                 type="button"
@@ -986,7 +986,7 @@ export function QuestionForm({
           <button
             type="button"
             onClick={addOption}
-            className="text-xs text-indigo-500 hover:text-indigo-700 self-start"
+            className="text-xs text-gray-700 hover:text-gray-900 self-start"
           >
             + Variant qo'shish
           </button>

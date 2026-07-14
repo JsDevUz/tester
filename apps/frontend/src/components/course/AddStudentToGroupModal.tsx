@@ -67,7 +67,7 @@ export function AddStudentToGroupModal({ alreadyInGroup, onConfirm, onClose }: A
                     type="checkbox"
                     checked={selected.has(s.id)}
                     onChange={() => toggle(s.id)}
-                    className="h-4 w-4 shrink-0 accent-indigo-500"
+                    className="h-4 w-4 shrink-0 accent-gray-900"
                   />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-800">{s.name}</p>

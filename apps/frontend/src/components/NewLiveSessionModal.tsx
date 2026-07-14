@@ -65,7 +65,7 @@ export function NewLiveSessionModal({
       <div className="bg-white w-full sm:max-w-lg sm:rounded-3xl rounded-t-3xl max-h-[92dvh] overflow-y-auto">
         <div className="flex items-center justify-between px-6 pt-6 pb-2">
           <div className="flex items-center gap-2">
-            <Radio size={20} className="text-indigo-500" />
+            <Radio size={20} className="text-gray-700" />
             <h2 className="text-lg font-bold text-gray-800">
               Jonli musobaqa yaratish
             </h2>
@@ -92,7 +92,7 @@ export function NewLiveSessionModal({
               value={query}
               onChange={(e) => setQuery(e.target.value)}
               placeholder="Test nomini qidiring..."
-              className="w-full bg-gray-50 rounded-2xl border border-border pl-10 pr-4 py-3 text-sm outline-none focus:border-indigo-400 transition-colors"
+              className="w-full bg-gray-50 rounded-2xl border border-border pl-10 pr-4 py-3 text-sm outline-none focus:border-gray-400 transition-colors"
             />
           </div>
           <div className="flex flex-col gap-1.5 mb-6 max-h-56 overflow-y-auto">
@@ -102,8 +102,8 @@ export function NewLiveSessionModal({
                 onClick={() => setSelectedId(t.id)}
                 className={`w-full text-left px-4 py-3 rounded-2xl border transition-all flex items-center justify-between gap-2 ${
                   selectedId === t.id
-                    ? "bg-indigo-500 border-indigo-500 text-white"
-                    : "bg-white border-border text-gray-700 hover:border-indigo-200"
+                    ? "bg-gray-900 border-gray-900 text-white"
+                    : "bg-white border-border text-gray-700 hover:border-gray-300"
                 }`}
               >
                 <span className="text-sm font-medium truncate">{t.name}</span>
@@ -132,8 +132,8 @@ export function NewLiveSessionModal({
                 onClick={() => setTimeSec(t)}
                 className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                   timeSec === t
-                    ? "bg-indigo-500 border-indigo-500 text-white"
-                    : "bg-white border-border text-gray-600 hover:border-indigo-200"
+                    ? "bg-gray-900 border-gray-900 text-white"
+                    : "bg-white border-border text-gray-600 hover:border-gray-300"
                 }`}
               >
                 {t}s
@@ -150,8 +150,8 @@ export function NewLiveSessionModal({
               onClick={() => setMode("individual")}
               className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                 mode === "individual"
-                  ? "bg-indigo-500 border-indigo-500 text-white"
-                  : "bg-white border-border text-gray-600 hover:border-indigo-200"
+                  ? "bg-gray-900 border-gray-900 text-white"
+                  : "bg-white border-border text-gray-600 hover:border-gray-300"
               }`}
             >
               Yakka
@@ -160,8 +160,8 @@ export function NewLiveSessionModal({
               onClick={() => setMode("team")}
               className={`flex-1 py-3 rounded-2xl border font-semibold text-sm transition-all ${
                 mode === "team"
-                  ? "bg-indigo-500 border-indigo-500 text-white"
-                  : "bg-white border-border text-gray-600 hover:border-indigo-200"
+                  ? "bg-gray-900 border-gray-900 text-white"
+                  : "bg-white border-border text-gray-600 hover:border-gray-300"
               }`}
             >
               Jamoaviy

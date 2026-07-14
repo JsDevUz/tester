@@ -45,7 +45,7 @@ export function NewFolderModal({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Papka nomi"
-            className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+            className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
           />
           <div className="flex gap-2 flex-wrap">
             {COLORS.map((c) => (

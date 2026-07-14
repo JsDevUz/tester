@@ -45,7 +45,7 @@ export function AdminsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen bg-gradient-to-br from-slate-100 to-indigo-50 flex flex-col">
+      <div className="admin-page-surface flex min-h-screen flex-col">
         <div className="p-6 max-w-2xl mx-auto w-full">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">

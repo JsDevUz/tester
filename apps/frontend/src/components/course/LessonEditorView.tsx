@@ -24,7 +24,7 @@ function PracticeToggleCard({
 }) {
   return (
     <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
+      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
         <Brain size={18} />
       </div>
       <div className="min-w-0 flex-1">
@@ -38,7 +38,7 @@ function PracticeToggleCard({
       <button
         type="button"
         onClick={onToggle}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${enabled ? "bg-indigo-500" : "bg-gray-200"}`}
+        className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${enabled ? "bg-gray-900" : "bg-gray-200"}`}
       >
         <span
           className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
@@ -84,11 +84,13 @@ export function LessonEditorView({
     "content",
   );
 
-  if (!course || !module || !lesson) return null;
-
-  const contentLimitReached = lesson.blocks.length >= CONTENT_BLOCK_LIMIT;
+  useEffect(() => {
+    if (!lesson) return;
+    setCollapsedBlockIds(new Set(lesson.blocks.map((block) => block.id)));
+  }, [lessonId, lesson?.id]);
 
   useEffect(() => {
+    if (!lesson) return;
     const hasProcessingVideo = lesson.blocks.some(
       (block) => block.type === "video" && (block.processingStatus === "pending" || block.processingStatus === "processing"),
     );
@@ -97,7 +99,11 @@ export function LessonEditorView({
       void refreshLessonBlocks(courseId, moduleId, lessonId);
     }, 5000);
     return () => window.clearInterval(timer);
-  }, [courseId, moduleId, lessonId, lesson.blocks, refreshLessonBlocks]);
+  }, [courseId, moduleId, lessonId, lesson, refreshLessonBlocks]);
+
+  if (!course || !module || !lesson) return null;
+
+  const contentLimitReached = lesson.blocks.length >= CONTENT_BLOCK_LIMIT;
 
   function handleTogglePractice() {
     const next = !lesson!.practiceEnabled;
@@ -159,125 +165,129 @@ export function LessonEditorView({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-3 p-6 lg:flex-row">
       <div className="min-w-0 flex-1">
-        <Breadcrumb
-          items={[
-            { label: "Kurslar", onClick: onBackToList },
-            { label: course.title, onClick: onBackToContent },
-            { label: module.title, onClick: onBackToContent },
-            { label: lesson.title },
-          ]}
-        />
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <div className="min-w-0 flex-1">
-            <input
-              value={lesson.title}
-              onChange={(e) =>
-                void renameLesson(courseId, moduleId, lessonId, e.target.value)
-              }
-              className="min-w-0 w-full rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
-            />
-            <p className="mt-1 px-1 text-xs font-medium text-gray-400">
-              Dars nomini o'zgartirish uchun sarlavha ustiga bosing.
-            </p>
-          </div>
-        </div>
-
-        {activeTab === "content" ? (
-          <>
-            <div className="mb-4 rounded-2xl bg-white p-4">
-              <p className="mb-1.5 text-sm font-semibold text-gray-700">Darsni tamomlash uchun yulduz</p>
-              <p className="mb-3 text-xs text-gray-400">
-                O'quvchi darsni tugatganda beriladigan ball. Amaliyot balidan mustaqil.
-              </p>
-              <input
-                type="number"
-                min={0}
-                value={lesson.completionScore ?? ''}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  if (raw === '') {
-                    void setLessonCompletionScore(courseId, moduleId, lessonId, null);
-                    return;
-                  }
-                  const num = Number(raw);
-                  if (isNaN(num)) return;
-                  void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
-                }}
-                placeholder="Masalan: 5"
-                className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-              />
-            </div>
-
-            {lesson.blocks.length === 0 && (
-              <div className="mb-6 rounded-2xl bg-white py-14 text-center">
-                <NotebookPen
-                  size={30}
-                  className="mx-auto mb-3 text-indigo-200"
-                />
-                <p className="text-sm font-semibold text-gray-700">
-                  Ichki kontentini to'ldiring
-                </p>
-                <p className="mt-1 text-xs text-gray-400">
-                  Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
-                </p>
-              </div>
-            )}
-
-            {lesson.blocks.length > 0 && (
-              <div className="mb-6 flex flex-col gap-3">
-                {lesson.blocks.map((block, index) => (
-                  <ContentBlockView
-                    key={block.id}
-                    index={index}
-                    isFirst={index === 0}
-                    isLast={index === lesson.blocks.length - 1}
-                    block={block}
-                    collapsed={collapsedBlockIds.has(block.id)}
-                    onToggleCollapse={() => toggleCollapse(block.id)}
-                    onChangeHtml={(html) =>
-                      handleChangeBlockHtml(block.id, html)
-                    }
-                    onChangeEmbedUrl={(embedUrl) =>
-                      handleChangeBlockEmbedUrl(block.id, embedUrl)
-                    }
-                    onChangeLabel={(label) =>
-                      handleChangeBlockLabel(block.id, label)
-                    }
-                    onPickFile={(file) => handleBlockPickFile(block.id, file)}
-                    onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
-                    onRemove={() =>
-                      void removeBlock(courseId, moduleId, lessonId, block.id)
-                    }
-                    onMoveUp={() =>
-                      void moveBlock(courseId, moduleId, lessonId, block.id, "up")
-                    }
-                    onMoveDown={() =>
-                      void moveBlock(courseId, moduleId, lessonId, block.id, "down")
-                    }
-                  />
-                ))}
-              </div>
-            )}
-
-            <BlockPicker
-              onPickEditor={handlePickEditor}
-              onPickFile={handlePickFile}
-              disabled={contentLimitReached}
-              limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
-            />
-          </>
-        ) : (
-          <PracticeSection
-            courseId={courseId}
-            moduleId={moduleId}
-            lessonId={lessonId}
+        <div className="mx-auto min-w-0 max-w-5xl">
+          <Breadcrumb
+            items={[
+              { label: "Kurslar", onClick: onBackToList },
+              { label: course.title, onClick: onBackToContent },
+              { label: module.title, onClick: onBackToContent },
+              { label: lesson.title },
+            ]}
           />
-        )}
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div className="min-w-0 flex-1">
+              <input
+                value={lesson.title}
+                onChange={(e) =>
+                  void renameLesson(courseId, moduleId, lessonId, e.target.value)
+                }
+                className="min-w-0 w-full rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
+              />
+              <p className="mt-1 px-1 text-xs font-medium text-gray-400">
+                Dars nomini o'zgartirish uchun sarlavha ustiga bosing.
+              </p>
+            </div>
+          </div>
+
+          {activeTab === "content" ? (
+            <>
+              <div className="mb-4 rounded-2xl bg-white p-4">
+                <p className="mb-1.5 text-sm font-semibold text-gray-700">
+                  Darsni tamomlash uchun yulduz
+                </p>
+                <p className="mb-3 text-xs text-gray-400">
+                  O'quvchi darsni tugatganda beriladigan ball. Amaliyot balidan mustaqil.
+                </p>
+                <input
+                  type="number"
+                  min={0}
+                  value={lesson.completionScore ?? ""}
+                  onChange={(e) => {
+                    const raw = e.target.value;
+                    if (raw === "") {
+                      void setLessonCompletionScore(courseId, moduleId, lessonId, null);
+                      return;
+                    }
+                    const num = Number(raw);
+                    if (isNaN(num)) return;
+                    void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
+                  }}
+                  placeholder="Masalan: 5"
+                  className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+                />
+              </div>
+
+              {lesson.blocks.length === 0 && (
+                <div className="mb-6 rounded-2xl bg-white py-14 text-center">
+                  <NotebookPen
+                    size={30}
+                    className="mx-auto mb-3 text-gray-300"
+                  />
+                  <p className="text-sm font-semibold text-gray-700">
+                    Ichki kontentini to'ldiring
+                  </p>
+                  <p className="mt-1 text-xs text-gray-400">
+                    Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
+                  </p>
+                </div>
+              )}
+
+              {lesson.blocks.length > 0 && (
+                <div className="mb-6 flex flex-col gap-3">
+                  {lesson.blocks.map((block, index) => (
+                    <ContentBlockView
+                      key={block.id}
+                      index={index}
+                      isFirst={index === 0}
+                      isLast={index === lesson.blocks.length - 1}
+                      block={block}
+                      collapsed={collapsedBlockIds.has(block.id)}
+                      onToggleCollapse={() => toggleCollapse(block.id)}
+                      onChangeHtml={(html) =>
+                        handleChangeBlockHtml(block.id, html)
+                      }
+                      onChangeEmbedUrl={(embedUrl) =>
+                        handleChangeBlockEmbedUrl(block.id, embedUrl)
+                      }
+                      onChangeLabel={(label) =>
+                        handleChangeBlockLabel(block.id, label)
+                      }
+                      onPickFile={(file) => handleBlockPickFile(block.id, file)}
+                      onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
+                      onRemove={() =>
+                        void removeBlock(courseId, moduleId, lessonId, block.id)
+                      }
+                      onMoveUp={() =>
+                        void moveBlock(courseId, moduleId, lessonId, block.id, "up")
+                      }
+                      onMoveDown={() =>
+                        void moveBlock(courseId, moduleId, lessonId, block.id, "down")
+                      }
+                    />
+                  ))}
+                </div>
+              )}
+
+              <BlockPicker
+                onPickEditor={handlePickEditor}
+                onPickFile={handlePickFile}
+                disabled={contentLimitReached}
+                limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
+              />
+            </>
+          ) : (
+            <PracticeSection
+              courseId={courseId}
+              moduleId={moduleId}
+              lessonId={lessonId}
+            />
+          )}
+        </div>
       </div>
 
-      <div className="w-full shrink-0 sm:mt-25 sm:w-72">
+      <div className="w-full shrink-0 lg:mt-25 lg:w-72">
         <div className="mb-3">
           <PracticeToggleCard
             enabled={lesson.practiceEnabled}

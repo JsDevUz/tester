@@ -16,7 +16,7 @@ class ReorderPracticeBlocksDto {
 }
 
 class CreatePracticeBlockDto {
-  @IsIn(['test', 'image']) type: 'test' | 'image';
+  @IsIn(['test', 'image', 'oral']) type: 'test' | 'image' | 'oral';
 }
 
 class SubmitImageDto {
@@ -24,6 +24,10 @@ class SubmitImageDto {
 }
 
 class GradeImageDto {
+  @IsInt() @Min(0) score: number;
+}
+
+class GradeOralPracticeDto {
   @IsInt() @Min(0) score: number;
 }
 
@@ -83,10 +87,30 @@ export class PracticeBlocksController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Delete('image-submissions/:id')
+  @HttpCode(204)
+  removeImageSubmission(@Param('id') id: string, @Req() req: any) {
+    return this.practiceBlocksService.removeImageSubmission(id, req.user.id);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
   @Patch('image-submissions/:id/grade')
   gradeImage(@Param('id') id: string, @Req() req: any, @Body() dto: GradeImageDto) {
     return this.practiceBlocksService.gradeImage(id, req.admin.id, dto.score);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('practice-blocks/:id/oral-grades/:studentId')
+  gradeOralPractice(
+    @Param('id') id: string,
+    @Param('studentId') studentId: string,
+    @Req() req: any,
+    @Body() dto: GradeOralPracticeDto,
+  ) {
+    return this.practiceBlocksService.gradeOralPractice(id, studentId, req.admin.id, dto.score);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -47,26 +47,26 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
                 key={course.id}
                 type="button"
                 onClick={() => onOpenCourse(course.id)}
-                className="relative flex min-h-[148px] cursor-pointer flex-col overflow-hidden rounded-[22px] bg-white p-4 text-left transition-colors hover:bg-indigo-50/40"
+                className="relative flex min-h-[148px] cursor-pointer flex-col overflow-hidden rounded-[22px] bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2 pr-20 text-xs font-semibold">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-indigo-500 px-2.5 py-1 text-white">
+                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-white">
                     <Star size={13} fill="currentColor" />
                     0 / {totalStars}
                   </span>
                   <span className="inline-flex items-center gap-1 text-gray-500">
-                    <Users size={14} className="text-indigo-500" />
+                    <Users size={14} className="text-gray-700" />
                     {groupCount}
                   </span>
                   <span className="inline-flex items-center gap-1 text-gray-500">
-                    <ThumbsUp size={14} className="text-indigo-500" />
+                    <ThumbsUp size={14} className="text-gray-700" />
                     5.0
                   </span>
                 </div>
 
-                <div className="absolute right-4 top-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-500">
+                <div className="absolute right-4 top-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-700">
                   <GraduationCap size={28} />
-                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-xl bg-indigo-500 text-white">
+                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-xl bg-gray-900 text-white">
                     <Play size={14} fill="currentColor" />
                   </span>
                 </div>
@@ -79,19 +79,19 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
 
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-xs font-semibold text-gray-500">
                   <span className="inline-flex items-center gap-1">
-                    <Play size={14} className="text-indigo-500" fill="currentColor" />
+                    <Play size={14} className="text-gray-700" fill="currentColor" />
                     1
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <Users size={14} className="text-indigo-500" />
+                    <Users size={14} className="text-gray-700" />
                     {groupCount} guruh
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <Layers size={14} className="text-indigo-500" />
+                    <Layers size={14} className="text-gray-700" />
                     {course.modules.length} modul
                   </span>
                   <span className="inline-flex items-center gap-1">
-                    <BookOpen size={14} className="text-indigo-500" />
+                    <BookOpen size={14} className="text-gray-700" />
                     {lessonCount} dars
                   </span>
                 </div>

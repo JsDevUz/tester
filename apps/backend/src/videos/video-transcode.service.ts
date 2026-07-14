@@ -89,11 +89,15 @@ export class VideoTranscodeService {
       const baseKey = `videos/${block.lessonId}/${block.id}/hls`;
       const keyRef = `videos/${block.lessonId}/${block.id}/keys/aes.key`;
       const masterKey = `${baseKey}/master.m3u8`;
+      const manifest = await fs.readFile(manifestPath, 'utf8');
+      const durationSec = Math.ceil(
+        [...manifest.matchAll(/#EXTINF:([0-9.]+)/g)].reduce((total, match) => total + Number(match[1]), 0),
+      );
 
       await this.storageService.uploadBuffer(keyRef, key, 'application/octet-stream', 'private, max-age=0, no-store');
       await this.storageService.uploadBuffer(
         masterKey,
-        await fs.readFile(manifestPath),
+        Buffer.from(manifest),
         'application/vnd.apple.mpegurl',
         'private, max-age=0, no-store',
       );
@@ -115,6 +119,7 @@ export class VideoTranscodeService {
           hlsMasterKey: masterKey,
           hlsBaseKey: baseKey,
           aesKeyRef: keyRef,
+          durationSec: durationSec || null,
           errorMessage: null,
           processedAt: new Date(),
         })
