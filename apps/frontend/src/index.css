@@ -8,6 +8,13 @@
    the generic dark-mode `.bg-white` selector. Keep its surface in sync explicitly. */
 .test-entry-card {
   color-scheme: light;
+  min-height: 100%;
+}
+
+@media (min-width: 64rem) {
+  .test-entry-card {
+    min-height: 0;
+  }
 }
 
 :root[data-theme="dark"] .test-entry-card {
