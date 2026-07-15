@@ -2,6 +2,7 @@ import { Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
+import { RouteLoadingScreen } from "./RouteLoadingScreen";
 
 export function TeacherRoute({
   children,
@@ -24,12 +25,7 @@ export function TeacherRoute({
   }, [token, admin]);
 
   if (!token) return <Navigate to="/login" replace />;
-  if (loading)
-    return (
-      <div className="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
-        <p className="text-gray-400">Yuklanmoqda...</p>
-      </div>
-    );
+  if (loading) return <RouteLoadingScreen />;
   if (!admin) return <Navigate to="/login" replace />;
   if (admin.role === "student") return <Navigate to="/" replace />;
   if (admin.role === "curator" && !curatorAllowed) return <Navigate to="/students/list" replace />;

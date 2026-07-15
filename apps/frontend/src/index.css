@@ -786,6 +786,30 @@ select::-ms-expand {
   background: linear-gradient(135deg, #f1f5f9, #f3f4f6);
 }
 
+.route-loading-screen {
+  background-color: #f8fafc;
+}
+
+.route-loading-spinner {
+  color: #6366f1;
+}
+
+.route-loading-label {
+  color: #64748b;
+}
+
+:root[data-theme="dark"] .route-loading-screen {
+  background-color: #181b22;
+}
+
+:root[data-theme="dark"] .route-loading-spinner {
+  color: #8b8cff;
+}
+
+:root[data-theme="dark"] .route-loading-label {
+  color: #9ca3af;
+}
+
 :root[data-theme="dark"] .admin-page-surface {
   background: #16181d;
 }

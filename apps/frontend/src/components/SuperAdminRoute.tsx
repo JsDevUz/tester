@@ -2,6 +2,7 @@ import { Navigate } from 'react-router-dom';
 import { useEffect, useState } from 'react';
 import { useAuthStore } from '../stores/authStore';
 import { apiGetMe } from '../api/auth';
+import { RouteLoadingScreen } from './RouteLoadingScreen';
 
 export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const token = useAuthStore((s) => s.token);
@@ -18,11 +19,7 @@ export function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   }, [token, admin]);
 
   if (!token) return <Navigate to="/login" replace />;
-  if (loading) return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-100 to-gray-100 flex items-center justify-center">
-      <p className="text-gray-400">Yuklanmoqda...</p>
-    </div>
-  );
+  if (loading) return <RouteLoadingScreen />;
   if (!admin) return <Navigate to="/login" replace />;
   if (admin.role !== 'super') return <Navigate to="/" replace />;
   return <>{children}</>;
