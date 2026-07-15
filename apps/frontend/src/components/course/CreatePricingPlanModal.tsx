@@ -6,18 +6,21 @@ interface CreatePricingPlanModalProps {
   groups: Group[];
   onConfirm: (plan: Omit<PricingPlan, 'id'>) => void;
   onClose: () => void;
+  initialPlan?: PricingPlan;
 }
 
 const NAME_MAX = 65;
 
-export function CreatePricingPlanModal({ groups, onConfirm, onClose }: CreatePricingPlanModalProps) {
-  const [groupId, setGroupId] = useState<string>('');
-  const [name, setName] = useState('');
-  const [description, setDescription] = useState('');
-  const [price, setPrice] = useState('');
-  const [originalPrice, setOriginalPrice] = useState('');
-  const [startDate, setStartDate] = useState('');
-  const [endDate, setEndDate] = useState('');
+export function CreatePricingPlanModal({ groups, onConfirm, onClose, initialPlan }: CreatePricingPlanModalProps) {
+  const [groupId, setGroupId] = useState<string>(initialPlan?.groupId ?? '');
+  const [name, setName] = useState(initialPlan?.name ?? '');
+  const [description, setDescription] = useState(initialPlan?.description ?? '');
+  const [price, setPrice] = useState(initialPlan ? String(initialPlan.price) : '');
+  const [originalPrice, setOriginalPrice] = useState(
+    initialPlan?.originalPrice == null ? '' : String(initialPlan.originalPrice),
+  );
+  const [startDate, setStartDate] = useState(initialPlan?.startDate?.slice(0, 10) ?? '');
+  const [endDate, setEndDate] = useState(initialPlan?.endDate?.slice(0, 10) ?? '');
 
   const trimmedName = name.trim();
   const priceNum = Number(price);
@@ -43,7 +46,9 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose }: CreatePri
     >
       <div className="w-full max-h-[92dvh] overflow-y-auto rounded-t-3xl bg-white sm:max-w-md sm:rounded-3xl">
         <div className="flex items-center justify-between px-6 pb-2 pt-6">
-          <h2 className="text-lg font-bold text-gray-800">Tarif yaratish</h2>
+          <h2 className="text-lg font-bold text-gray-800">
+            {initialPlan ? 'Tarifni tahrirlash' : 'Tarif yaratish'}
+          </h2>
           <button onClick={onClose} className="rounded-xl p-1.5 text-gray-400 transition-colors hover:bg-gray-100">
             <X size={18} />
           </button>
@@ -137,7 +142,7 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose }: CreatePri
             disabled={!canSubmit}
             className="mt-1 w-full rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:opacity-40"
           >
-            Tarif yaratish
+            {initialPlan ? 'O‘zgarishlarni saqlash' : 'Tarif yaratish'}
           </button>
         </div>
       </div>

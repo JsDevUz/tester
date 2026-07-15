@@ -25,7 +25,7 @@ import {
 } from '../api/groups';
 import {
   apiListLaunches, apiCreateLaunch, apiUpdateLaunch,
-  apiCreatePricingPlan, apiDeletePricingPlan,
+  apiCreatePricingPlan, apiUpdatePricingPlan, apiDeletePricingPlan,
 } from '../api/launches';
 import { apiListGroupPayments, apiRecordPayment, type ApiMonthlyPayment } from '../api/payments';
 
@@ -171,6 +171,7 @@ interface CourseState {
   toggleLaunchActive: (courseId: string, launchId: string) => Promise<void>;
   renameLaunch: (courseId: string, launchId: string, name: string) => Promise<void>;
   addPricingPlan: (courseId: string, launchId: string, plan: Omit<PricingPlan, 'id'>) => Promise<void>;
+  updatePricingPlan: (courseId: string, launchId: string, planId: string, plan: Omit<PricingPlan, 'id'>) => Promise<void>;
   removePricingPlan: (courseId: string, launchId: string, planId: string) => Promise<void>;
 
   addGroup: (courseId: string, name: string, paymentDay?: number) => Promise<Group | undefined>;
@@ -1136,6 +1137,37 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
+  updatePricingPlan: async (courseId, launchId, planId, plan) => {
+    const row = await apiUpdatePricingPlan(planId, plan);
+    const updatedPlan: PricingPlan = {
+      id: row.id,
+      name: row.name,
+      description: row.description,
+      price: row.price,
+      originalPrice: row.originalPrice,
+      groupId: row.groupId,
+      startDate: row.startDate,
+      endDate: row.endDate,
+    };
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              launches: c.launches.map((l) =>
+                l.id !== launchId
+                  ? l
+                  : { ...l, plans: l.plans.map((p) => (p.id === planId ? updatedPlan : p)) },
+              ),
+              groups: c.groups.map((g) => ({
+                ...g,
+                plans: g.plans.map((p) => (p.id === planId ? updatedPlan : p)),
+              })),
+            },
+      ),
+    });
+  },
   removePricingPlan: async (courseId, launchId, planId) => {
     await apiDeletePricingPlan(planId);
     set({
@@ -1147,6 +1179,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               launches: c.launches.map((l) =>
                 l.id !== launchId ? l : { ...l, plans: l.plans.filter((p) => p.id !== planId) },
               ),
+              groups: c.groups.map((g) => ({
+                ...g,
+                plans: g.plans.filter((p) => p.id !== planId),
+              })),
             },
       ),
     });

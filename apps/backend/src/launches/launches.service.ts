@@ -1,6 +1,6 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, launches, pricingPlans } from '../db/schema';
+import { courses, groupEnrollments, launches, pricingPlans } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
 
 @Injectable()
@@ -110,6 +110,17 @@ export class LaunchesService {
 
   async removePlan(id: string, adminId: string) {
     await this.assertPlanOwnership(id, adminId);
+
+    const assignedEnrollment = await db.query.groupEnrollments.findFirst({
+      where: eq(groupEnrollments.selectedPlanId, id),
+      columns: { id: true },
+    });
+    if (assignedEnrollment) {
+      throw new BadRequestException(
+        "Bu tarif o'quvchiga biriktirilgan. Avval o'quvchini boshqa tarifga o'tkazing yoki tarifsiz qoldiring.",
+      );
+    }
+
     await db.delete(pricingPlans).where(eq(pricingPlans.id, id));
   }
 }

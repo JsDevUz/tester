@@ -43,6 +43,12 @@ Quyidagilarni albatta almashtiring:
 - `TELEGRAM_BOT_TOKEN`
 - `TELEGRAM_BOT_USERNAME`
 - `TELEGRAM_WEBHOOK_SECRET`
+- `OBJECT_STORAGE_ENDPOINT`
+- `OBJECT_STORAGE_REGION`
+- `OBJECT_STORAGE_ACCESS_KEY_ID`
+- `OBJECT_STORAGE_SECRET_ACCESS_KEY`
+- `OBJECT_STORAGE_BUCKET_NAME`
+- `OBJECT_STORAGE_PUBLIC_BASE_URL`
 
 Domain bilan ishlatayotgan bo'lsangiz:
 
@@ -53,6 +59,25 @@ FRONTEND_URL=https://test.jamm.uz
 APP_URL=https://test.jamm.uz
 VITE_API_URL=
 VITE_TELEGRAM_BOT_USERNAME=YourBotUsername
+```
+
+Fayl, rasm va videolarni yuklash uchun S3-compatible object storage ham
+sozlanishi shart. Masalan, Backblaze B2 uchun:
+
+```env
+OBJECT_STORAGE_ENDPOINT=https://s3.us-east-005.backblazeb2.com
+OBJECT_STORAGE_REGION=us-east-005
+OBJECT_STORAGE_ACCESS_KEY_ID=your-key-id
+OBJECT_STORAGE_SECRET_ACCESS_KEY=your-application-key
+OBJECT_STORAGE_BUCKET_NAME=your-bucket-name
+OBJECT_STORAGE_PUBLIC_BASE_URL=https://files.example.com
+```
+
+`OBJECT_STORAGE_BUCKET_NAME` — B2 boshqaruv panelidagi bucket nomining aynan
+o‘zi bo‘lishi kerak. Qiymatlar o‘zgargach backend konteynerini qayta yarating:
+
+```bash
+docker compose up -d --force-recreate backend
 ```
 
 `VITE_API_URL` bo'sh tursa frontend API'ga shu domen/IP ichidagi `/api/v1` orqali boradi.

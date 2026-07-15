@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
@@ -43,6 +43,13 @@ function pauseLessonVideos() {
   document.querySelectorAll("video").forEach((video) => {
     video.pause();
   });
+}
+
+function resetPageScroll() {
+  window.scrollTo(0, 0);
+  if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
 }
 
 function useLessonAntiCapture(enabled: boolean) {
@@ -122,6 +129,12 @@ export function MyCoursesPage() {
   useEffect(() => {
     void loadCourses();
   }, []);
+
+  useLayoutEffect(() => {
+    resetPageScroll();
+    const frame = window.requestAnimationFrame(resetPageScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedCourseId]);
 
   if (selectedCourseId) {
     return (
@@ -376,6 +389,12 @@ function StudentCourseReader({
     setShowPractice(false);
     setActiveTest(null);
   }, [selectedLessonId]);
+
+  useLayoutEffect(() => {
+    resetPageScroll();
+    const frame = window.requestAnimationFrame(resetPageScroll);
+    return () => window.cancelAnimationFrame(frame);
+  }, [selectedLessonId, showPractice]);
 
   function markSelectedLessonComplete() {
     if (!selected) return Promise.resolve();

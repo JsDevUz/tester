@@ -817,6 +817,89 @@ select::-ms-expand {
   background: transparent;
 }
 
+/* Dars ichidagi jadvallar mobil ekranda ustunlarni siqib yubormasligi uchun
+   jadvalning o'zi gorizontal suriladi, sahifa esa o'z kengligida qoladi. */
+.lesson-reader-html [data-content-type="table"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+.lesson-reader-html [data-content-type="table"] .tableWrapper,
+.course-editor [data-content-type="table"] .tableWrapper {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+}
+
+.lesson-reader-html [data-content-type="table"] table {
+  width: 100% !important;
+  border-collapse: collapse;
+}
+
+.lesson-reader-html [data-content-type="table"] th,
+.lesson-reader-html [data-content-type="table"] td {
+  border: 1px solid #e5e7eb;
+  padding: 8px 10px;
+  vertical-align: top;
+}
+
+.lesson-reader-html [data-content-type="table"] th {
+  background-color: #f9fafb;
+  font-weight: 700;
+  text-align: left;
+}
+
+@media (max-width: 640px) {
+  .lesson-reader-html [data-content-type="table"] table {
+    min-width: 640px !important;
+  }
+}
+
+:root[data-theme="dark"] .lesson-reader-html [data-content-type="table"] th,
+:root[data-theme="dark"] .lesson-reader-html [data-content-type="table"] td {
+  border-color: #3a414d;
+}
+
+:root[data-theme="dark"] .lesson-reader-html [data-content-type="table"] th {
+  background-color: #252932;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .lesson-reader-html [data-content-type="table"] th,
+  :root:not([data-theme="light"]) .lesson-reader-html [data-content-type="table"] td {
+    border-color: #3a414d;
+  }
+
+  :root:not([data-theme="light"]) .lesson-reader-html [data-content-type="table"] th {
+    background-color: #252932;
+  }
+}
+
+/* BlockNote quote rangi kutubxonada doimiy xira kulrang berilgan. Light va
+   dark rejimlarda matn hamda chap chiziq kontrastini alohida sozlaymiz. */
+.course-editor blockquote,
+.lesson-reader-html blockquote {
+  color: #4b5563 !important;
+  border-left-color: #9ca3af !important;
+}
+
+:root[data-theme="dark"] .course-editor blockquote,
+:root[data-theme="dark"] .lesson-reader-html blockquote {
+  color: #d1d5db !important;
+  border-left-color: #8b93a1 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .course-editor blockquote,
+  :root:not([data-theme="light"]) .lesson-reader-html blockquote {
+    color: #d1d5db !important;
+    border-left-color: #8b93a1 !important;
+  }
+}
+
 .login-page {
   background: #ffffff;
   color: #070d1d;

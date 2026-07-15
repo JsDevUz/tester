@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from 'react';
-import { Inbox, Plus } from 'lucide-react';
+import { Inbox, Pencil, Plus, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCourseStore, type PricingPlan } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { CreatePricingPlanModal } from './CreatePricingPlanModal';
+import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 
 interface CourseLaunchPageProps {
   courseId: string;
@@ -15,15 +17,19 @@ interface CourseLaunchPageProps {
 
 function formatPlanDateRange(plan: PricingPlan): string {
   if (!plan.startDate && !plan.endDate) return 'Cheksiz';
-  const start = plan.startDate ?? '…';
-  const end = plan.endDate ?? '…';
+  const formatDate = (date: string | null) => date ? new Intl.DateTimeFormat('uz-UZ').format(new Date(date)) : '…';
+  const start = formatDate(plan.startDate);
+  const end = formatDate(plan.endDate);
   return `${start} — ${end}`;
 }
 
 export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups }: CourseLaunchPageProps) {
-  const { courses, addLaunch, addPricingPlan } = useCourseStore();
+  const { courses, addLaunch, addPricingPlan, updatePricingPlan, removePricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [modalOpen, setModalOpen] = useState(false);
+  const [editTarget, setEditTarget] = useState<PricingPlan | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<PricingPlan | null>(null);
+  const [deleting, setDeleting] = useState(false);
   const didEnsureLaunch = useRef(false);
 
   useEffect(() => {
@@ -41,6 +47,31 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
   function handleCreatePlan(plan: Omit<PricingPlan, 'id'>) {
     addPricingPlan(courseId, launch.id, plan);
     setModalOpen(false);
+  }
+
+  async function handleUpdatePlan(plan: Omit<PricingPlan, 'id'>) {
+    if (!editTarget) return;
+    try {
+      await updatePricingPlan(courseId, launch.id, editTarget.id, plan);
+      setEditTarget(null);
+      toast.success("Tarif yangilandi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Tarifni yangilab bo'lmadi");
+    }
+  }
+
+  async function handleDeletePlan() {
+    if (!deleteTarget || deleting) return;
+    setDeleting(true);
+    try {
+      await removePricingPlan(courseId, launch.id, deleteTarget.id);
+      setDeleteTarget(null);
+      toast.success("Tarif o'chirildi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Tarifni o'chirib bo'lmadi");
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
@@ -85,6 +116,24 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
                     <p className="text-xs text-gray-400">{formatPlanDateRange(plan)}</p>
                   </div>
                   <p className="shrink-0 text-sm font-bold text-gray-700">{plan.price.toLocaleString()} UZS</p>
+                  <button
+                    type="button"
+                    onClick={() => setEditTarget(plan)}
+                    aria-label={`${plan.name} tarifini tahrirlash`}
+                    title="Tarifni tahrirlash"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+                  >
+                    <Pencil size={15} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleteTarget(plan)}
+                    aria-label={`${plan.name} tarifini o'chirish`}
+                    title="Tarifni o'chirish"
+                    className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                  >
+                    <Trash2 size={15} />
+                  </button>
                 </div>
               ))}
             </div>
@@ -106,6 +155,23 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
           groups={course.groups}
           onConfirm={handleCreatePlan}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+      {editTarget && (
+        <CreatePricingPlanModal
+          groups={course.groups}
+          initialPlan={editTarget}
+          onConfirm={(plan) => void handleUpdatePlan(plan)}
+          onClose={() => setEditTarget(null)}
+        />
+      )}
+      {deleteTarget && (
+        <ConfirmDeleteModal
+          title="Tarifni o'chirish"
+          description={`"${deleteTarget.name}" tarifi o'chiriladi. Eski to'lov summalari va hisobotlar saqlanadi. Agar tarif o'quvchiga biriktirilgan bo'lsa, avval uning tarifini almashtirish kerak.`}
+          confirmLabel={deleting ? "O'chirilmoqda..." : "O'chirish"}
+          onConfirm={() => void handleDeletePlan()}
+          onClose={() => { if (!deleting) setDeleteTarget(null); }}
         />
       )}
     </div>

@@ -38,7 +38,26 @@ export class StorageService {
     return `https://${raw.replace(/\/+$/, '')}`;
   }
 
+  private assertConfigured(): void {
+    const required = {
+      OBJECT_STORAGE_BUCKET_NAME: this.bucketName,
+      OBJECT_STORAGE_ACCESS_KEY_ID: this.configService.get<string>('OBJECT_STORAGE_ACCESS_KEY_ID'),
+      OBJECT_STORAGE_SECRET_ACCESS_KEY: this.configService.get<string>('OBJECT_STORAGE_SECRET_ACCESS_KEY'),
+    };
+    const missing = Object.entries(required)
+      .filter(([, value]) => !value?.trim())
+      .map(([name]) => name);
+
+    if (missing.length > 0) {
+      console.error(`Object storage configuration missing: ${missing.join(', ')}`);
+      throw new InternalServerErrorException(
+        "Fayl ombori sozlanmagan. Server administratori bilan bog'laning.",
+      );
+    }
+  }
+
   async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
+    this.assertConfigured();
     const ext = file.originalname.split('.').pop();
     const key = `${folder}/${crypto.randomUUID()}.${ext}`;
     try {
@@ -78,6 +97,7 @@ export class StorageService {
     contentType: string,
     cacheControl = 'private, max-age=0, no-store',
   ): Promise<string> {
+    this.assertConfigured();
     try {
       await this.s3Client.send(
         new PutObjectCommand({
@@ -101,6 +121,7 @@ export class StorageService {
     contentType: string,
     cacheControl = 'private, max-age=0, no-store',
   ): Promise<string> {
+    this.assertConfigured();
     try {
       await this.s3Client.send(
         new PutObjectCommand({
@@ -119,6 +140,7 @@ export class StorageService {
   }
 
   async getObjectStream(key: string): Promise<Readable> {
+    this.assertConfigured();
     const result = await this.s3Client.send(
       new GetObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
     );
@@ -139,6 +161,7 @@ export class StorageService {
   }
 
   async deletePrefix(prefix: string): Promise<void> {
+    this.assertConfigured();
     const cleanPrefix = this.getKeyFromUrlOrKey(prefix);
     if (!cleanPrefix) return;
     let continuationToken: string | undefined;
@@ -160,6 +183,7 @@ export class StorageService {
   }
 
   async deleteFile(key: string): Promise<boolean> {
+    this.assertConfigured();
     const cleanKey = this.getKeyFromUrlOrKey(key);
     if (!cleanKey) return false;
     try {
