@@ -56,6 +56,22 @@ describe('StudentAccessService', () => {
     await expect(service.assertStudentLessonAccess('course-1', 'student-1')).resolves.toBe(false);
   });
 
+  it('reports forced closure separately from a payment problem', async () => {
+    (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1' }]);
+    (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+    (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([{
+      id: 'enrollment-1',
+      selectedPlanId: 'plan-1',
+      forcedClosed: true,
+    }]);
+
+    await expect(service.getStudentLessonAccess('course-1', 'student-1')).resolves.toEqual({
+      allowed: false,
+      reason: 'forced_closed',
+    });
+    expect(db.query.monthlyPayments.findMany).not.toHaveBeenCalled();
+  });
+
   it('grants access when any active enrollment in the course has a valid payment', async () => {
     (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1' }, { id: 'group-2' }]);
     (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);

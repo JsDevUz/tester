@@ -434,8 +434,13 @@ export class GroupsService {
   }
 
   async getMyCourseDetail(courseId: string, studentId: string) {
-    const hasAccess = await this.studentAccessService.assertStudentLessonAccess(courseId, studentId);
-    if (!hasAccess) throw new BadRequestException("To'lov muddati kelgan, lekin to'lanmagan");
+    const access = await this.studentAccessService.getStudentLessonAccess(courseId, studentId);
+    if (!access.allowed) {
+      if (access.reason === 'forced_closed') {
+        throw new BadRequestException('Siz ushbu kursdan chetlatilgansiz');
+      }
+      throw new BadRequestException("To'lov muddati kelgan, lekin to'lanmagan");
+    }
 
     const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
     if (!course) throw new NotFoundException('Course not found');
