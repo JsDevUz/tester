@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Clock, CheckCircle2, XCircle } from "lucide-react";
 import {
   apiGetPublicTest,
@@ -13,6 +13,7 @@ import { apiGetMe } from "../../api/auth";
 import { useAuthStore } from "../../stores/authStore";
 import { getPublicBaseUrl } from "../../api/baseUrl";
 import { TestResultView } from "../../pages/TestResultPage";
+import { schedulePageScrollReset } from "../../utils/scroll";
 import {
   DndContext,
   closestCenter,
@@ -514,6 +515,10 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   useEffect(() => { orderedQuestionsRef.current = orderedQuestions; }, [orderedQuestions]);
   useEffect(() => { submittingRef.current = submitting; }, [submitting]);
 
+  useLayoutEffect(() => {
+    return schedulePageScrollReset();
+  }, [phase]);
+
   function goToResult(sid: string) {
     setResolvedSubmissionId(sid);
     setPhase("result");
@@ -853,7 +858,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         >
           ← Orqaga
         </button>
-        <TestResultView submissionId={resolvedSubmissionId} practiceMode={practiceMode} embedded />
+        <TestResultView
+          submissionId={resolvedSubmissionId}
+          practiceMode={practiceMode}
+          embedded
+          onBack={onExit}
+        />
       </div>
     );
   }
@@ -1447,7 +1457,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         // ─── ALL AT ONCE ───────────────────────────────────────────
         <>
           <div
-            className="flex-1 overflow-y-auto px-4 py-4 flex flex-col gap-4 max-w-2xl mx-auto w-full"
+            className="flex-1 overflow-y-auto px-2 py-3 sm:px-4 sm:py-4 flex flex-col gap-4 max-w-2xl mx-auto w-full"
             style={{
               paddingBottom: "max(24px, env(safe-area-inset-bottom))",
             }}
@@ -1455,7 +1465,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             {questions.map(
               (q, i) =>
                 q && (
-                  <div key={q.id} className="bg-white rounded-2xl p-5 shadow-sm">
+                  <div key={q.id} className="bg-white rounded-2xl p-3 shadow-sm sm:p-5">
                     {/* Header */}
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">

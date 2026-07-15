@@ -1,5 +1,5 @@
-import { useEffect, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useEffect, useLayoutEffect, useState } from "react";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   CheckCircle2,
   XCircle,
@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { apiGetSubmissionResult, type SubmissionResult } from "../api/delivery";
 import { formatDateTime } from "../utils/date";
+import { schedulePageScrollReset } from "../utils/scroll";
 
 export function getCachedSubmissionResult(
   raw: string | null,
@@ -287,13 +288,19 @@ export function TestResultView({
   submissionId,
   practiceMode,
   embedded = false,
+  onBack,
 }: {
   submissionId: string | null;
   practiceMode: boolean;
   embedded?: boolean;
+  onBack?: () => void;
 }) {
   const [result, setResult] = useState<SubmissionResult | null>(null);
   const isPractice = practiceMode;
+
+  useLayoutEffect(() => {
+    return schedulePageScrollReset();
+  }, [submissionId]);
 
   useEffect(() => {
     const sid = submissionId;
@@ -314,7 +321,7 @@ export function TestResultView({
         })
         .catch(() => {});
     }
-  }, []);
+  }, [submissionId, isPractice]);
 
   if (!result)
     return (
@@ -339,6 +346,15 @@ export function TestResultView({
           </div>
         )}
         <TestResultBody result={result} pct={pct} isGood={isGood} isMid={isMid} />
+        {onBack && (
+          <button
+            type="button"
+            onClick={onBack}
+            className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white"
+          >
+            Darsga qaytish
+          </button>
+        )}
       </div>
     );
   }
@@ -369,6 +385,15 @@ export function TestResultView({
             )}
 
             <TestResultBody result={result} pct={pct} isGood={isGood} isMid={isMid} />
+            {onBack && (
+              <button
+                type="button"
+                onClick={onBack}
+                className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white"
+              >
+                Orqaga qaytish
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -378,10 +403,12 @@ export function TestResultView({
 
 export function TestResultPage() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
   return (
     <TestResultView
       submissionId={searchParams.get("sid")}
       practiceMode={searchParams.get("practice") === "1"}
+      onBack={() => navigate(-1)}
     />
   );
 }

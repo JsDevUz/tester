@@ -38,18 +38,12 @@ import { HlsVideoPlayer } from "../components/course/HlsVideoPlayer";
 import { ImageLightbox } from "../components/student/ImageLightbox";
 import { PracticeScreen } from "../components/student/PracticeScreen";
 import { TestTaker } from "../components/test/TestTaker";
+import { schedulePageScrollReset } from "../utils/scroll";
 
 function pauseLessonVideos() {
   document.querySelectorAll("video").forEach((video) => {
     video.pause();
   });
-}
-
-function resetPageScroll() {
-  window.scrollTo(0, 0);
-  if (document.scrollingElement) document.scrollingElement.scrollTop = 0;
-  document.documentElement.scrollTop = 0;
-  document.body.scrollTop = 0;
 }
 
 function useLessonAntiCapture(enabled: boolean) {
@@ -131,9 +125,7 @@ export function MyCoursesPage() {
   }, []);
 
   useLayoutEffect(() => {
-    resetPageScroll();
-    const frame = window.requestAnimationFrame(resetPageScroll);
-    return () => window.cancelAnimationFrame(frame);
+    return schedulePageScrollReset();
   }, [selectedCourseId]);
 
   if (selectedCourseId) {
@@ -391,10 +383,8 @@ function StudentCourseReader({
   }, [selectedLessonId]);
 
   useLayoutEffect(() => {
-    resetPageScroll();
-    const frame = window.requestAnimationFrame(resetPageScroll);
-    return () => window.cancelAnimationFrame(frame);
-  }, [selectedLessonId, showPractice]);
+    return schedulePageScrollReset();
+  }, [selectedLessonId, showPractice, activeTest]);
 
   function markSelectedLessonComplete() {
     if (!selected) return Promise.resolve();
@@ -729,7 +719,11 @@ function StudentCourseReader({
           </div>
         </aside>
 
-        <main className="min-w-0 overflow-hidden px-4 py-4 sm:px-6 lg:px-10 lg:py-6">
+        <main
+          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${
+            activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
+          }`}
+        >
           {selected && activeTest ? (
             <TestTaker
               slug={activeTest.slug}

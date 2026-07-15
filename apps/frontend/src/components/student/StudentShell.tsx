@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { BookOpen, ClipboardList, LogOut, MessageCircle, Moon, Radio, Sun, UserRound, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
@@ -45,6 +45,34 @@ export function StudentShell({ children }: { children: ReactNode }) {
     location.pathname.startsWith("/history/") ||
     location.pathname.startsWith("/live/play/");
   const isMessenger = location.pathname === "/messenger";
+  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!isMessenger) {
+      setVisualViewportHeight(null);
+      return;
+    }
+    const viewport = window.visualViewport;
+    const updateHeight = () => {
+      setVisualViewportHeight(Math.round(viewport?.height ?? window.innerHeight));
+    };
+    updateHeight();
+    viewport?.addEventListener("resize", updateHeight);
+    viewport?.addEventListener("scroll", updateHeight);
+    window.addEventListener("resize", updateHeight);
+    window.addEventListener("orientationchange", updateHeight);
+    return () => {
+      viewport?.removeEventListener("resize", updateHeight);
+      viewport?.removeEventListener("scroll", updateHeight);
+      window.removeEventListener("resize", updateHeight);
+      window.removeEventListener("orientationchange", updateHeight);
+    };
+  }, [isMessenger]);
+
+  const messengerViewportStyle: CSSProperties | undefined =
+    isMessenger && visualViewportHeight
+      ? { height: `${visualViewportHeight}px` }
+      : undefined;
 
   function handleLogout() {
     setProfileOpen(false);
@@ -53,7 +81,10 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-4" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}>
+    <div
+      style={messengerViewportStyle}
+      className={`${isMessenger ? "h-[100dvh] overflow-hidden pb-[calc(60px+env(safe-area-inset-bottom))] lg:!h-[100dvh] lg:pb-4" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+    >
       <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
           <div className="rounded-2xl bg-white p-4">

@@ -1,5 +1,5 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useNavigate, useSearchParams } from "react-router-dom";
 import {
   ArrowLeft,
   Check,
@@ -98,6 +98,7 @@ function messageTime(value: string) {
 }
 
 function PracticeMessengerContent() {
+  const navigate = useNavigate();
   const admin = useAuthStore((state) => state.admin);
   const token = useAuthStore((state) => state.token);
   const setActiveChatId = usePracticeMessengerStore(
@@ -142,6 +143,7 @@ function PracticeMessengerContent() {
     string | null
   >(null);
   const messageScrollRef = useRef<HTMLDivElement>(null);
+  const draftRef = useRef<HTMLTextAreaElement>(null);
   const messageRefs = useRef<Record<string, HTMLDivElement | null>>({});
   const selectedIdRef = useRef<string | null>(null);
   const nextCursorRef = useRef<string | null>(null);
@@ -366,8 +368,19 @@ function PracticeMessengerContent() {
       setDraft("");
       setReplyingTo(null);
       setEditingMessage(null);
+      draftRef.current?.blur();
       if (sendingNewMessage) scrollToBottomAfterRenderRef.current = true;
       await Promise.all([loadChat(selectedChat.id), loadChats()]);
+      const refreshLayout = () => {
+        window.scrollTo(0, 0);
+        document.documentElement.scrollTop = 0;
+        document.body.scrollTop = 0;
+        window.dispatchEvent(new Event("resize"));
+        const container = messageScrollRef.current;
+        if (container) container.scrollTop = container.scrollHeight;
+      };
+      window.requestAnimationFrame(refreshLayout);
+      window.setTimeout(refreshLayout, 350);
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Xabar yuborilmadi");
     } finally {
@@ -472,6 +485,10 @@ function PracticeMessengerContent() {
 
   async function openTestResult(message: ApiPracticeMessage) {
     if (!message.testSubmission) return;
+    if (!isCurator) {
+      navigate(`/history/${message.testSubmission.id}`);
+      return;
+    }
     setLoadingTestDetail(true);
     setTestDetail(null);
     try {
@@ -998,6 +1015,7 @@ function PracticeMessengerContent() {
                 )}
                 <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 transition-colors focus-within:border-gray-900 sm:rounded-2xl sm:px-3 sm:py-2">
                   <textarea
+                    ref={draftRef}
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
                     onKeyDown={(event) => {

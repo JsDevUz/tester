@@ -146,6 +146,20 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         </div>
       )}
 
+      {lesson.passThresholdEnabled && lesson.passThresholdPercent !== null && (
+        <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
+          <div className="flex items-center justify-between gap-3">
+            <span className="text-sm font-bold text-gray-800">Minimal o‘tish natijasi</span>
+            <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-indigo-600">
+              {lesson.passThresholdPercent}%
+            </span>
+          </div>
+          <p className="mt-1.5 text-xs font-medium text-gray-500">
+            Hozirgi natijangiz: {lesson.combinedPracticePercent === null ? "hali hisoblanmagan" : `${lesson.combinedPracticePercent}%`}
+          </p>
+        </div>
+      )}
+
       {lesson.practiceBlocks.length === 0 ? (
         <div className="rounded-2xl bg-gray-50 py-16 text-center text-gray-400">
           <p className="text-sm font-semibold">Bu darsda amaliyot topshiriqlari yo'q</p>
