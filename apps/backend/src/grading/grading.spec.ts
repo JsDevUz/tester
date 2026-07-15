@@ -1,4 +1,10 @@
-import { gradeAnswer, evaluateObjectiveAnswer, normalizeAnswerText, type GradableQuestion } from './grading';
+import {
+  gradeAnswer,
+  evaluateObjectiveAnswer,
+  normalizeAnswerText,
+  openAnswerTextMatches,
+  type GradableQuestion,
+} from './grading';
 
 const noopChecker = async () => false;
 
@@ -124,6 +130,30 @@ describe('gradeAnswer', () => {
 
     expect(result).toBe(true);
     expect(checkerCalled).toBe(false);
+  });
+
+  it('open: accepts an inflected correct answer stated in a short sentence', async () => {
+    expect(openAnswerTextMatches('hamza', 'Hamzaga aylanadi')).toBe(true);
+
+    const question = q({ type: 'open', correctAnswer: 'hamza', options: [] });
+    let checkerCalled = false;
+    const checker = async () => {
+      checkerCalled = true;
+      return false;
+    };
+    const result = await gradeAnswer(
+      question,
+      { selectedOptionIds: [], textAnswer: 'Hamzaga aylanadi' },
+      checker,
+    );
+
+    expect(result).toBe(true);
+    expect(checkerCalled).toBe(false);
+  });
+
+  it('open: does not accept a negated or merely related phrase locally', () => {
+    expect(openAnswerTextMatches('hamza', 'Hamza emas')).toBe(false);
+    expect(openAnswerTextMatches("O'zbekiston", "O'zbekiston poytaxti")).toBe(false);
   });
 
   it('open: falls back to AI checker when no manual option matches but a correctAnswer hint exists', async () => {

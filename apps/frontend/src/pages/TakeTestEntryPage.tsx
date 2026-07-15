@@ -1,6 +1,16 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Clock, Calendar, ChevronRight, Lock, FileText } from "lucide-react";
+import {
+  Clock,
+  Calendar,
+  ChevronRight,
+  Lock,
+  FileText,
+  LogIn,
+  Moon,
+  Sun,
+  UserRoundCheck,
+} from "lucide-react";
 import {
   apiGetPublicTest,
   apiStartSubmission,
@@ -9,6 +19,7 @@ import {
 } from "../api/delivery";
 import { apiGetMe } from "../api/auth";
 import { useAuthStore } from "../stores/authStore";
+import { useThemeStore } from "../stores/themeStore";
 import { formatDateTime } from "../utils/date";
 
 export function TakeTestEntryPage() {
@@ -23,6 +34,7 @@ export function TakeTestEntryPage() {
   const [error, setError] = useState<string | null>(null);
   const adminName = useAuthStore((s) => s.admin?.name ?? null);
   const token = useAuthStore((s) => s.token);
+  const { theme, toggleTheme } = useThemeStore();
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
 
   useEffect(() => {
@@ -49,9 +61,13 @@ export function TakeTestEntryPage() {
       apiGetSubmission(sid, isPractice)
         .then((sub) => {
           if (sub.status === "submitted") {
-            navigate(`/t/${slug}/result?sid=${sid}${practiceSuffix}`, { replace: true });
+            navigate(`/t/${slug}/result?sid=${sid}${practiceSuffix}`, {
+              replace: true,
+            });
           } else {
-            navigate(`/t/${slug}/take?sid=${sid}${practiceSuffix}`, { replace: true });
+            navigate(`/t/${slug}/take?sid=${sid}${practiceSuffix}`, {
+              replace: true,
+            });
           }
         })
         .catch(() => {
@@ -73,12 +89,20 @@ export function TakeTestEntryPage() {
     if (!name.trim() || !slug) return;
     setStarting(true);
     try {
-      const { submissionId } = await apiStartSubmission(slug, name.trim(), isPractice);
-      navigate(`/t/${slug}/take?sid=${submissionId}${isPractice ? "&practice=1" : ""}`);
+      const { submissionId } = await apiStartSubmission(
+        slug,
+        name.trim(),
+        isPractice,
+      );
+      navigate(
+        `/t/${slug}/take?sid=${submissionId}${isPractice ? "&practice=1" : ""}`,
+      );
     } catch (err: any) {
       const msg = err?.response?.data?.message;
       if (msg === "AUTH_REQUIRED") {
-        navigate(`/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`);
+        navigate(
+          `/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`,
+        );
       } else {
         setError("Xato yuz berdi. Qayta urinib ko'ring.");
       }
@@ -145,14 +169,30 @@ export function TakeTestEntryPage() {
       <div className="shrink-0 h-1 bg-gradient-to-r from-gray-800 via-gray-500 to-gray-300 lg:hidden" />
 
       <div className="flex-1 overflow-y-auto lg:flex lg:items-center lg:justify-center">
-        <div className="lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden">
+        <div className="test-entry-card lg:w-full lg:max-w-xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden">
           <div className="hidden lg:block h-1.5 bg-gradient-to-r from-gray-800 via-gray-500 to-gray-300" />
 
           {/* Scrollable content */}
           <div className="px-6 lg:px-10 pt-10 pb-4 lg:py-10">
-            {/* Icon */}
-            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
-              <FileText size={28} className="text-gray-500" />
+            <div className="flex items-start justify-between gap-4 mb-6">
+              {/* Icon */}
+              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
+                <FileText size={28} className="text-gray-500" />
+              </div>
+
+              {/* Test boshlanishidan oldingi rang rejimi */}
+              <button
+                type="button"
+                onClick={toggleTheme}
+                aria-label={theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
+                title={theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
+                className="h-11 px-3.5 rounded-2xl bg-gray-100 text-gray-600 flex items-center gap-2 text-sm font-semibold hover:bg-gray-200 transition-colors"
+              >
+                {theme === "dark" ? <Sun size={18} /> : <Moon size={18} />}
+                <span className="hidden sm:inline">
+                  {theme === "dark" ? "Yorug'" : "Tungi"}
+                </span>
+              </button>
             </div>
 
             {/* Title & description */}
@@ -222,6 +262,37 @@ export function TakeTestEntryPage() {
                 </>
               )}
             </button>
+
+            {!token && (
+              <div className="mt-5 rounded-2xl border border-border bg-gray-50 p-4">
+                <div className="flex items-start gap-3">
+                  <div className="w-9 h-9 shrink-0 rounded-xl bg-white border border-border flex items-center justify-center text-gray-500">
+                    <UserRoundCheck size={18} />
+                  </div>
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-800">
+                      Natijalaringizni saqlab boring
+                    </p>
+                    <p className="mt-1 text-xs leading-relaxed text-gray-500">
+                      Tizimga kirib so'ng test ishlasangiz, natijalaringizni
+                      keyinchalik ham ko‘rishingiz va tahlil qilishingiz mumkin.
+                    </p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() =>
+                    navigate(
+                      `/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`,
+                    )
+                  }
+                  className="mt-3 w-full py-3 rounded-xl bg-white border border-border text-gray-700 text-sm font-semibold flex items-center justify-center gap-2 hover:bg-gray-100 transition-colors"
+                >
+                  <LogIn size={16} />
+                  Tizimga kirish
+                </button>
+              </div>
+            )}
           </div>
         </div>
       </div>

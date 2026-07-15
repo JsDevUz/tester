@@ -4,6 +4,26 @@
   --color-border: #d7d8d9;
 }
 
+/* Public test entry card uses responsive `lg:bg-white`, which is not covered by
+   the generic dark-mode `.bg-white` selector. Keep its surface in sync explicitly. */
+.test-entry-card {
+  color-scheme: light;
+}
+
+:root[data-theme="dark"] .test-entry-card {
+  background-color: #24252c !important;
+  border-color: #3f414c !important;
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .test-entry-card {
+    background-color: #24252c !important;
+    border-color: #3f414c !important;
+    color-scheme: dark;
+  }
+}
+
 .app-shell-tooltip {
   background-color: #18181b !important;
   color: #fff !important;

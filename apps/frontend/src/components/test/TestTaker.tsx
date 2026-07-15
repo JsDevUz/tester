@@ -1132,7 +1132,13 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       className="flex flex-col bg-white notranslate"
       translate="no"
       style={
-        { "--q-fs": fontSize + "px", minHeight: "60vh" } as React.CSSProperties
+        {
+          "--q-fs": fontSize + "px",
+          height: "100dvh",
+          minHeight: "100svh",
+          maxHeight: "100dvh",
+          overflow: "hidden",
+        } as React.CSSProperties
       }
     >
       {/* ── HEADER ── */}

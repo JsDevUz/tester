@@ -79,6 +79,64 @@ function answerTextMatches(expected: string, actual: string): boolean {
   );
 }
 
+const OPEN_ANSWER_FRAMING_WORDS = new Set([
+  'aylanadi',
+  'ataladi',
+  'deyiladi',
+  'hisoblanadi',
+  "bo'ladi",
+  'boladi',
+  'deb',
+  'dir',
+]);
+const OPEN_ANSWER_NEGATIONS = new Set([
+  'emas',
+  "yo'q",
+  'yoq',
+  "noto'g'ri",
+  'notogri',
+]);
+const UZBEK_CASE_SUFFIXES = ['ning', 'dan', 'ga', 'ka', 'qa', 'ni', 'da'];
+
+function answerTokens(value: string): string[] {
+  return normalizeAnswerText(value).match(/[\p{L}\p{N}']+/gu) ?? [];
+}
+
+function tokenMatchesWithUzbekCase(expected: string, actual: string): boolean {
+  if (expected === actual) return true;
+  if (expected.length < 4 || !actual.startsWith(expected)) return false;
+  return UZBEK_CASE_SUFFIXES.includes(actual.slice(expected.length));
+}
+
+/**
+ * Ochiq javobda kalit javobning kelishik qo'shimchasi va qisqa gap qolipida
+ * yozilishini qabul qiladi: masalan, "hamza" va "hamzaga aylanadi".
+ * Bu yumshatish fillblank savollariga tatbiq qilinmaydi.
+ */
+export function openAnswerTextMatches(expected: string, actual: string): boolean {
+  if (answerTextMatches(expected, actual)) return true;
+
+  const expectedTokens = answerTokens(expected);
+  const actualTokens = answerTokens(actual);
+  if (expectedTokens.length === 0 || actualTokens.length <= expectedTokens.length)
+    return false;
+  if (actualTokens.some((token) => OPEN_ANSWER_NEGATIONS.has(token))) return false;
+
+  const remaining = [...actualTokens];
+  for (const expectedToken of expectedTokens) {
+    const index = remaining.findIndex((actualToken) =>
+      tokenMatchesWithUzbekCase(expectedToken, actualToken),
+    );
+    if (index === -1) return false;
+    remaining.splice(index, 1);
+  }
+
+  return (
+    remaining.length > 0 &&
+    remaining.every((token) => OPEN_ANSWER_FRAMING_WORDS.has(token))
+  );
+}
+
 export function evaluateObjectiveAnswer(
   questionType: string,
   correctOptionIds: string[],
@@ -167,16 +225,16 @@ export async function gradeAnswer(
     const manualOptions = options.filter((o) => o.isCorrect);
     if (manualOptions.length > 0) {
       const exact = manualOptions.some((o) =>
-        answerTextMatches(o.text, textAnswer),
+        openAnswerTextMatches(o.text, textAnswer),
       );
       if (exact) return true;
-      if (correctAnswer && answerTextMatches(correctAnswer, textAnswer))
+      if (correctAnswer && openAnswerTextMatches(correctAnswer, textAnswer))
         return true;
       if (correctAnswer)
         return checkOpenAnswer(text, correctAnswer, textAnswer);
       return false;
     }
-    if (correctAnswer && answerTextMatches(correctAnswer, textAnswer))
+    if (correctAnswer && openAnswerTextMatches(correctAnswer, textAnswer))
       return true;
     if (correctAnswer) return checkOpenAnswer(text, correctAnswer, textAnswer);
     return null;

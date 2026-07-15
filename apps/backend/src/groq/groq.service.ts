@@ -26,7 +26,8 @@ Rules:
 - The student answer must mean the SAME THING as the correct answer
 - Spelling mistakes and language differences are OK if the meaning matches
 - Synonyms that mean exactly the same thing are OK
-- REJECT if the student answer describes or explains the correct answer instead of stating it (e.g. correct="O'zbekiston", student="O'zbekiston poytaxti" → false)
+- ACCEPT grammatical suffixes and a short sentence that directly states the answer (e.g. correct="hamza", student="hamzaga aylanadi" → true)
+- ACCEPT a concise explanation when it unambiguously gives the same answer
 - REJECT if the student answer is a related concept but not the same (e.g. correct="O'zbekiston", student="Toshkent" → false)
 - REJECT if the student answer includes words from the question without adding the correct answer
 - REJECT if the answer is vague, partial, or just restates the question topic

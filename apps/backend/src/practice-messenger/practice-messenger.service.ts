@@ -433,29 +433,9 @@ export class PracticeMessengerService {
         eq(practiceChatMessages.type, 'practice_grade'),
       ),
     });
-    if (existingMessage) {
-      const content = `${block.description || 'Rasmli topshiriq'} qayta baholandi: ${score} / ${block.maxScore ?? 0}.`;
-      const [updated] = await db
-        .update(practiceChatMessages)
-        .set({ senderId: graderId, content, metadata })
-        .where(eq(practiceChatMessages.id, existingMessage.id))
-        .returning();
-      await this.touchChat(context.chat.id);
-      await this.broadcastNewMessage(
-        { ...context.chat, courseAdminId: context.course.adminId },
-        {
-          id: updated.id,
-          chatId: context.chat.id,
-          senderId: graderId,
-          type: 'practice_grade',
-          content,
-          createdAt: updated.createdAt!.toISOString(),
-        },
-      );
-      return;
-    }
-
-    const content = `${block.description || 'Rasmli topshiriq'} baholandi: ${score} / ${block.maxScore ?? 0}.`;
+    const content = existingMessage
+      ? `${block.description || 'Rasmli topshiriq'} qayta baholandi: ${score} / ${block.maxScore ?? 0}.`
+      : `${block.description || 'Rasmli topshiriq'} baholandi: ${score} / ${block.maxScore ?? 0}.`;
     const [message] = await db.insert(practiceChatMessages).values({
       chatId: context.chat.id,
       senderId: graderId,
@@ -494,29 +474,9 @@ export class PracticeMessengerService {
         eq(practiceChatMessages.type, 'practice_grade'),
       ),
     });
-    if (existingMessage) {
-      const content = `${block.description || 'Jonli savol-javob'} qayta baholandi: ${score} / ${block.maxScore ?? 0}.`;
-      const [updated] = await db
-        .update(practiceChatMessages)
-        .set({ senderId: graderId, content, metadata })
-        .where(eq(practiceChatMessages.id, existingMessage.id))
-        .returning();
-      await this.touchChat(context.chat.id);
-      await this.broadcastNewMessage(
-        { ...context.chat, courseAdminId: context.course.adminId },
-        {
-          id: updated.id,
-          chatId: context.chat.id,
-          senderId: graderId,
-          type: 'practice_grade',
-          content,
-          createdAt: updated.createdAt!.toISOString(),
-        },
-      );
-      return;
-    }
-
-    const content = `${block.description || 'Jonli savol-javob'} baholandi: ${score} / ${block.maxScore ?? 0}.`;
+    const content = existingMessage
+      ? `${block.description || 'Jonli savol-javob'} qayta baholandi: ${score} / ${block.maxScore ?? 0}.`
+      : `${block.description || 'Jonli savol-javob'} baholandi: ${score} / ${block.maxScore ?? 0}.`;
     const [message] = await db.insert(practiceChatMessages).values({
       chatId: context.chat.id,
       senderId: graderId,
