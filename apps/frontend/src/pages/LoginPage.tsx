@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
+import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 
 const CODE_LENGTH = 6;
@@ -19,8 +20,6 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [showPasswordLogin, setShowPasswordLogin] = useState(false);
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
   const { login, loginWithTelegramCode } = useAuthStore();
   const token = useAuthStore((s) => s.token);
@@ -50,13 +49,12 @@ export function LoginPage() {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError("");
     setLoading(true);
     try {
       await login(email, password);
       navigate(redirectTo);
     } catch {
-      setError("Email yoki parol noto'g'ri");
+      toast.error("Email yoki parol noto'g'ri");
     } finally {
       setLoading(false);
     }
@@ -69,14 +67,12 @@ export function LoginPage() {
 
   async function submitTelegramCode() {
     if (code.length !== CODE_LENGTH || loading) return;
-    setError("");
-    setMessage("");
     setLoading(true);
     try {
       await loginWithTelegramCode(code);
       navigate(redirectTo);
     } catch (err: any) {
-      setError(
+      toast.error(
         err.response?.data?.message ?? "Kod noto'g'ri yoki muddati tugagan",
       );
     } finally {
@@ -89,7 +85,6 @@ export function LoginPage() {
     const next = [...codeDigits];
     next[index] = digit;
     setCode(next.join(""));
-    setError("");
 
     if (digit && index < CODE_LENGTH - 1) {
       codeRefs.current[index + 1]?.focus();
@@ -117,22 +112,22 @@ export function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-white flex items-center justify-center px-5 py-10">
+    <div className="login-page min-h-screen flex items-center justify-center px-5 py-10">
       <div className="w-full max-w-[560px] text-center">
         {!showPasswordLogin && (
           <form
             onSubmit={handleTelegramLogin}
             className="flex flex-col items-center"
           >
-            <h1 className="text-2xl font-black leading-none text-[#070d1d]">
+            <h1 className="login-title text-2xl font-black leading-none">
               Kodni Kiriting
             </h1>
-            <p className="mt-5 max-w-100 text-center text-sm font-medium leading-relaxed text-[#333746]">
+            <p className="login-description mt-5 max-w-100 text-center text-sm font-medium leading-relaxed">
               <a
                 href={botLink || `tg://resolve?domain=BirKodBot`}
                 target="_blank"
                 rel="noreferrer"
-                className="mr-2 whitespace-nowrap text-[#070d1d] underline decoration-2 underline-offset-4 hover:text-gray-600"
+                className="login-bot-link mr-2 whitespace-nowrap underline decoration-2 underline-offset-4"
               >
                 {displayBot}
               </a>
@@ -152,7 +147,7 @@ export function LoginPage() {
                   inputMode="numeric"
                   autoComplete={index === 0 ? "one-time-code" : "off"}
                   aria-label={`Kod raqami ${index + 1}`}
-                  className="h-12 w-9 rounded-xl border border-[#cfd1d4] bg-white text-center text-xl font-semibold text-[#070d1d] outline-none transition focus:border-[#070d1d]"
+                  className="login-code-input h-12 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
                 />
               ))}
             </div>
@@ -168,7 +163,7 @@ export function LoginPage() {
 
         {showPasswordLogin && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-            <h1 className="mb-2 text-2xl font-bold text-gray-900">
+            <h1 className="login-title mb-2 text-2xl font-bold">
               Admin kirish
             </h1>
             <input
@@ -176,14 +171,14 @@ export function LoginPage() {
               value={email}
               onChange={(e) => setEmail(e.target.value)}
               placeholder="Email yoki telefon"
-              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+              className="login-admin-input border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               placeholder="Parol"
-              className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+              className="login-admin-input border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <button
               type="submit"
@@ -197,24 +192,14 @@ export function LoginPage() {
 
         <button
           type="button"
-          onClick={() => {
-            setShowPasswordLogin((value) => !value);
-            setError("");
-            setMessage("");
-          }}
-          className="mt-10 w-full text-center text-xs font-medium text-gray-300 hover:text-gray-600"
+          onClick={() => setShowPasswordLogin((value) => !value)}
+          className="login-toggle mt-10 w-full text-center text-xs font-medium"
         >
           {showPasswordLogin
             ? "Telegram kod bilan kirish"
             : "Admin parol bilan kirish"}
         </button>
 
-        {(message || error) && (
-          <div className="mt-5 space-y-2 text-center text-sm">
-            {message && <p className="text-emerald-600">{message}</p>}
-            {error && <p className="text-red-500">{error}</p>}
-          </div>
-        )}
       </div>
     </div>
   );

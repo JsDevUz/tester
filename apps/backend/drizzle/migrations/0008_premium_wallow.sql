@@ -1,1 +1,0 @@
-ALTER TABLE "tests" ADD COLUMN "require_auth" boolean DEFAULT false NOT NULL;

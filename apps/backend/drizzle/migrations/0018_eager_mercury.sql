@@ -1,1 +1,0 @@
-ALTER TABLE "monthly_payments" ADD COLUMN "receipt_url" text;

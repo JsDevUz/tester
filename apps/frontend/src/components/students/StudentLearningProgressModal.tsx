@@ -142,7 +142,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                   <span className="font-semibold text-[var(--color-gray-900)]">{progress.lessonsCompleted}/{progress.lessonsTotal} dars · {progress.progressPercent}%</span>
                 </div>
                 <div className="mt-1.5 h-2 overflow-hidden rounded-full bg-gray-200">
-                  <div className="h-full rounded-full transition-[width]" style={{ width: `${progress.progressPercent}%`, backgroundColor: 'var(--color-gray-900)' }} />
+                  <div className="student-progress-fill h-full rounded-full transition-[width]" style={{ width: `${progress.progressPercent}%` }} />
                 </div>
               </div>
 
@@ -196,7 +196,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                                     <>
                                   <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200">
                                         {video.segments.map((segment, index) => (
-                                          <span key={`${segment.startSec}-${segment.endSec}-${index}`} className="absolute inset-y-0 rounded-full" style={{ left: `${(segment.startSec / video.durationSec!) * 100}%`, width: `${((segment.endSec - segment.startSec) / video.durationSec!) * 100}%`, backgroundColor: 'var(--color-gray-900)' }} />
+                                          <span key={`${segment.startSec}-${segment.endSec}-${index}`} className="student-progress-fill absolute inset-y-0 rounded-full" style={{ left: `${(segment.startSec / video.durationSec!) * 100}%`, width: `${((segment.endSec - segment.startSec) / video.durationSec!) * 100}%` }} />
                                         ))}
                                       </div>
                                       <p className="mt-1 text-[10px] text-gray-400">
@@ -273,9 +273,9 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                       </>
                     )}
                     {selectedPractice.practiceBlock.imageSubmissions[0]?.graded && !editingGrade ? (
-                      <button type="button" onClick={() => { setScoreDraft(String(selectedPractice.practiceBlock.imageSubmissions[0].score ?? 0)); setEditingGrade(true); }} className="ml-auto rounded-xl bg-[var(--color-gray-900)] px-3.5 py-2 text-xs font-bold text-white">O‘zgartirish</button>
+                      <button type="button" onClick={() => { setScoreDraft(String(selectedPractice.practiceBlock.imageSubmissions[0].score ?? 0)); setEditingGrade(true); }} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold">O‘zgartirish</button>
                     ) : (
-                      <button type="button" disabled={savingGrade} onClick={() => void handleGradeImage(selectedPractice.practiceBlock.imageSubmissions[0].id, selectedPractice.practiceBlock.maxScore)} className="ml-auto rounded-xl bg-[var(--color-gray-900)] px-3.5 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{savingGrade ? 'Saqlanmoqda...' : editingGrade ? 'Saqlash' : 'Baholash'}</button>
+                      <button type="button" disabled={savingGrade} onClick={() => void handleGradeImage(selectedPractice.practiceBlock.imageSubmissions[0].id, selectedPractice.practiceBlock.maxScore)} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">{savingGrade ? 'Saqlanmoqda...' : editingGrade ? 'Saqlash' : 'Baholash'}</button>
                     )}
                   </div>
                 </div>
@@ -297,9 +297,9 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                       </>
                     )}
                     {selectedPractice.practiceBlock.oralGrade && !editingGrade ? (
-                      <button type="button" onClick={() => { setScoreDraft(String(selectedPractice.practiceBlock.oralGrade?.score ?? 0)); setEditingGrade(true); }} className="ml-auto rounded-xl bg-[var(--color-gray-900)] px-3.5 py-2 text-xs font-bold text-white">O‘zgartirish</button>
+                      <button type="button" onClick={() => { setScoreDraft(String(selectedPractice.practiceBlock.oralGrade?.score ?? 0)); setEditingGrade(true); }} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold">O‘zgartirish</button>
                     ) : (
-                      <button type="button" disabled={savingGrade} onClick={() => void handleGradeOralPractice()} className="ml-auto rounded-xl bg-[var(--color-gray-900)] px-3.5 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:opacity-50">{savingGrade ? 'Saqlanmoqda...' : editingGrade ? 'Saqlash' : 'Baholash'}</button>
+                      <button type="button" disabled={savingGrade} onClick={() => void handleGradeOralPractice()} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold disabled:cursor-not-allowed disabled:opacity-50">{savingGrade ? 'Saqlanmoqda...' : editingGrade ? 'Saqlash' : 'Baholash'}</button>
                     )}
                   </div>
                   {selectedPractice.practiceBlock.oralGrade && !editingGrade && <p className="mt-3 text-[11px] font-medium text-gray-400">Baholangan: {formatDateTime(selectedPractice.practiceBlock.oralGrade.gradedAt)}</p>}

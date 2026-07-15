@@ -1,1 +1,0 @@
-ALTER TABLE "submissions" ADD COLUMN "mode" text DEFAULT 'normal' NOT NULL;

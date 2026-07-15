@@ -15,6 +15,7 @@ import {
   X,
 } from "lucide-react";
 import { AppShell } from "../components/AppShell";
+import { ImageLightbox } from "../components/student/ImageLightbox";
 import { apiListAllPayments, apiRecordPayment, apiCancelPayment, type ApiPaymentRow } from "../api/payments";
 import { apiUploadMedia } from "../api/questions";
 
@@ -99,6 +100,7 @@ export function PaymentsPage() {
   const [yearFilter, setYearFilter] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
+  const [receiptPreview, setReceiptPreview] = useState<{ src: string; alt: string } | null>(null);
 
   function refresh() {
     return apiListAllPayments().then(setRows);
@@ -386,14 +388,16 @@ export function PaymentsPage() {
                     <td className="px-4 py-3.5 text-sm text-gray-500">
                       <p>{new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(row.updatedAt))}</p>
                       {row.receiptUrl && (
-                        <a
-                          href={row.receiptUrl}
-                          target="_blank"
-                          rel="noreferrer"
+                        <button
+                          type="button"
+                          onClick={() => setReceiptPreview({
+                            src: row.receiptUrl!,
+                            alt: `${row.studentName} — to'lov cheki`,
+                          })}
                           className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:underline"
                         >
                           <ImageIcon size={12} /> Chek
-                        </a>
+                        </button>
                       )}
                     </td>
                     <td className="px-4 py-3.5">
@@ -432,6 +436,18 @@ export function PaymentsPage() {
                   <PaymentInfo label="Oy" value={formatMonthLabel(row.periodMonth)} />
                   <PaymentInfo label="To'lov" value={formatMoney(row.paidAmount)} />
                 </div>
+                {row.receiptUrl && (
+                  <button
+                    type="button"
+                    onClick={() => setReceiptPreview({
+                      src: row.receiptUrl!,
+                      alt: `${row.studentName} — to'lov cheki`,
+                    })}
+                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100"
+                  >
+                    <ImageIcon size={14} /> Chekni ko'rish
+                  </button>
+                )}
                 {(row.status === "paid" || row.status === "partial") && (
                   <button
                     type="button"
@@ -453,6 +469,13 @@ export function PaymentsPage() {
           rows={rows}
           onSave={handleRecordPayment}
           onClose={() => setModalOpen(false)}
+        />
+      )}
+      {receiptPreview && (
+        <ImageLightbox
+          src={receiptPreview.src}
+          alt={receiptPreview.alt}
+          onClose={() => setReceiptPreview(null)}
         />
       )}
     </AppShell>

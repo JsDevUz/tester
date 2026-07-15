@@ -4,6 +4,316 @@
   --color-border: #d7d8d9;
 }
 
+.app-shell-tooltip {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+.theme-primary-button {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+.theme-primary-button:hover {
+  background-color: #27272a !important;
+}
+
+.students-tab-active {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+:root[data-theme="dark"] .theme-primary-button {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+:root[data-theme="dark"] .theme-primary-button:hover {
+  background-color: #fff !important;
+}
+
+:root[data-theme="dark"] .students-tab-active {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .theme-primary-button {
+    background-color: #f4f4f5 !important;
+    color: #18181b !important;
+  }
+
+  :root:not([data-theme="light"]) .theme-primary-button:hover {
+    background-color: #fff !important;
+  }
+
+  :root:not([data-theme="light"]) .students-tab-active {
+    background-color: #f4f4f5 !important;
+    color: #18181b !important;
+  }
+}
+
+/* Practice messenger bubbles — compact Telegram-style message flow. */
+.practice-message-bubble {
+  isolation: isolate;
+}
+
+.practice-message-bubble::after {
+  position: absolute;
+  bottom: 0;
+  z-index: -1;
+  width: 14px;
+  height: 14px;
+  background: inherit;
+  content: "";
+}
+
+.practice-message-incoming::after {
+  left: -6px;
+  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+}
+
+.practice-message-incoming {
+  background-color: #f1f1f2 !important;
+  color: #18181b !important;
+}
+
+.practice-message-own {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+.practice-messenger-chat-active {
+  background-color: #e5e7eb !important;
+}
+
+.practice-messenger-avatar,
+.practice-messenger-accent-icon,
+.practice-messenger-primary {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+.practice-messenger-primary:hover {
+  background-color: #27272a !important;
+}
+
+.practice-message-incoming .practice-messenger-result {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+.practice-message-own .practice-messenger-result {
+  background-color: #fff !important;
+  color: #18181b !important;
+}
+
+.practice-message-reply-incoming {
+  border-color: #18181b !important;
+  background-color: #fff !important;
+  color: #52525b !important;
+}
+
+.practice-message-reply-incoming > p:first-child {
+  color: #18181b !important;
+}
+
+.practice-messenger-highlighted {
+  background-color: rgb(24 24 27 / 0.1) !important;
+  box-shadow: 0 0 0 2px rgb(24 24 27 / 0.35);
+}
+
+.practice-messenger-replying {
+  border-color: #18181b !important;
+  background-color: #f1f1f2 !important;
+}
+
+.practice-messenger-replying-title {
+  color: #18181b !important;
+}
+
+.practice-message-own::after {
+  right: -6px;
+  clip-path: polygon(0 0, 100% 100%, 0 100%);
+}
+
+.practice-message-date span {
+  background: rgb(248 250 252 / 0.86);
+  box-shadow: 0 1px 5px rgb(15 23 42 / 0.06);
+}
+
+:root[data-theme="dark"] .practice-message-incoming {
+  background-color: #30313a !important;
+  color: #f4f7fb !important;
+}
+
+:root[data-theme="dark"] .practice-message-own {
+  background-color: #3a3c47 !important;
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-chat-active {
+  background-color: #3a3c47 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-avatar,
+:root[data-theme="dark"] .practice-messenger-accent-icon,
+:root[data-theme="dark"] .practice-messenger-primary {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-primary:hover {
+  background-color: #fff !important;
+}
+
+:root[data-theme="dark"] .practice-message-incoming .practice-messenger-result {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+}
+
+:root[data-theme="dark"] .practice-message-own .practice-messenger-result {
+  background-color: #18181b !important;
+  color: #fff !important;
+}
+
+:root[data-theme="dark"] .practice-message-reply-incoming {
+  border-color: #f4f4f5 !important;
+  background-color: #24252c !important;
+  color: #c7c9d1 !important;
+}
+
+:root[data-theme="dark"] .practice-message-reply-incoming > p:first-child {
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .practice-message-reply-incoming > p:last-child {
+  color: #c7c9d1 !important;
+}
+
+:root[data-theme="dark"] .practice-message-own .practice-message-reply-own {
+  background-color: rgb(0 0 0 / 0.2) !important;
+  border-color: rgb(255 255 255 / 0.75) !important;
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .practice-message-own .practice-message-reply-own p {
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-highlighted {
+  background-color: rgb(255 255 255 / 0.1) !important;
+  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.38);
+}
+
+:root[data-theme="dark"] .practice-messenger-replying {
+  border-color: #f4f4f5 !important;
+  background-color: #30313a !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-replying-title {
+  color: #f4f4f5 !important;
+}
+
+:root[data-theme="dark"] .practice-message-date span {
+  background: rgb(21 22 27 / 0.82);
+  color: #eef2f7 !important;
+  box-shadow: none;
+}
+
+:root[data-theme="dark"] .practice-message-reply-own {
+  background-color: rgb(255 255 255 / 0.14) !important;
+  border-color: rgb(255 255 255 / 0.92) !important;
+  color: #f4f7fb !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .practice-message-incoming {
+    background-color: #30313a !important;
+    color: #f4f7fb !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-own {
+    background-color: #3a3c47 !important;
+    color: #f4f4f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-chat-active {
+    background-color: #3a3c47 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-avatar,
+  :root:not([data-theme="light"]) .practice-messenger-accent-icon,
+  :root:not([data-theme="light"]) .practice-messenger-primary {
+    background-color: #f4f4f5 !important;
+    color: #18181b !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-primary:hover {
+    background-color: #fff !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-incoming .practice-messenger-result {
+    background-color: #f4f4f5 !important;
+    color: #18181b !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-own .practice-messenger-result {
+    background-color: #18181b !important;
+    color: #fff !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-reply-incoming {
+    border-color: #f4f4f5 !important;
+    background-color: #24252c !important;
+    color: #c7c9d1 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-reply-incoming > p:first-child {
+    color: #f4f4f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-reply-incoming > p:last-child {
+    color: #c7c9d1 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own {
+    background-color: rgb(0 0 0 / 0.2) !important;
+    border-color: rgb(255 255 255 / 0.75) !important;
+    color: #f4f4f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own p {
+    color: #f4f4f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-highlighted {
+    background-color: rgb(255 255 255 / 0.1) !important;
+    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.38);
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-replying {
+    border-color: #f4f4f5 !important;
+    background-color: #30313a !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-replying-title {
+    color: #f4f4f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-date span {
+    background: rgb(21 22 27 / 0.82);
+    color: #eef2f7 !important;
+    box-shadow: none;
+  }
+
+  :root:not([data-theme="light"]) .practice-message-reply-own {
+    background-color: rgb(255 255 255 / 0.14) !important;
+    border-color: rgb(255 255 255 / 0.92) !important;
+    color: #f4f7fb !important;
+  }
+}
+
 html {
   touch-action: pan-x pan-y;
   -ms-touch-action: pan-x pan-y;
@@ -423,12 +733,26 @@ select::-ms-expand {
   background-color: #6366f1;
 }
 
+.student-progress-fill {
+  background-color: #6366f1;
+}
+
 :root[data-theme="dark"] .video-watch-progress-track {
   background-color: #2a2f3a;
 }
 
 :root[data-theme="dark"] .video-watch-progress-fill {
   background-color: #8b8cff;
+}
+
+:root[data-theme="dark"] .student-progress-fill {
+  background-color: #818cf8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .student-progress-fill {
+    background-color: #818cf8;
+  }
 }
 
 .admin-page-surface {
@@ -464,6 +788,23 @@ select::-ms-expand {
   background-color: #282e3b !important;
 }
 
+.practice-messenger-send-button:disabled {
+  background-color: #e5e7eb !important;
+  color: #9ca3af !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-send-button:disabled {
+  background-color: #454752 !important;
+  color: #858995 !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .practice-messenger-send-button:disabled {
+    background-color: #454752 !important;
+    color: #858995 !important;
+  }
+}
+
 /* BlockNote (Notion-uslubidagi tahrirchi) — konteynerga moslashtirish.
    Drag-handle va "+" ikonkalari (SideMenu) editor matnining chap tashqarisida,
    position: absolute bilan joylashadi — shu sabab ularga joy qoldirish uchun
@@ -474,4 +815,443 @@ select::-ms-expand {
 }
 .course-editor .bn-container {
   background: transparent;
+}
+
+.login-page {
+  background: #ffffff;
+  color: #070d1d;
+}
+
+.login-title,
+.login-bot-link {
+  color: #070d1d;
+}
+
+.login-description {
+  color: #333746;
+}
+
+.login-code-input,
+.login-admin-input {
+  border-color: #cfd1d4;
+  background: #ffffff;
+  color: #070d1d;
+}
+
+.login-code-input:focus,
+.login-admin-input:focus {
+  border-color: #070d1d;
+}
+
+.login-toggle {
+  color: #6b7280;
+}
+
+.login-toggle:hover {
+  color: #374151;
+}
+
+:root[data-theme="dark"] .login-page {
+  background: #16181d;
+  color: #e8eaed;
+}
+
+:root[data-theme="dark"] .login-title,
+:root[data-theme="dark"] .login-bot-link {
+  color: #f4f4f5;
+}
+
+:root[data-theme="dark"] .login-description,
+:root[data-theme="dark"] .login-toggle {
+  color: #aeb5c2;
+}
+
+:root[data-theme="dark"] .login-toggle:hover {
+  color: #e8eaed;
+}
+
+:root[data-theme="dark"] .login-code-input,
+:root[data-theme="dark"] .login-admin-input {
+  border-color: #3a414d;
+  background: #20242c;
+  color: #f4f4f5;
+}
+
+:root[data-theme="dark"] .login-code-input:focus,
+:root[data-theme="dark"] .login-admin-input:focus {
+  border-color: #818cf8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .login-page {
+    background: #16181d;
+    color: #e8eaed;
+  }
+
+  :root:not([data-theme="light"]) .login-title,
+  :root:not([data-theme="light"]) .login-bot-link {
+    color: #f4f4f5;
+  }
+
+  :root:not([data-theme="light"]) .login-description,
+  :root:not([data-theme="light"]) .login-toggle {
+    color: #aeb5c2;
+  }
+
+  :root:not([data-theme="light"]) .login-toggle:hover {
+    color: #e8eaed;
+  }
+
+  :root:not([data-theme="light"]) .login-code-input,
+  :root:not([data-theme="light"]) .login-admin-input {
+    border-color: #3a414d;
+    background: #20242c;
+    color: #f4f4f5;
+  }
+
+  :root:not([data-theme="light"]) .login-code-input:focus,
+  :root:not([data-theme="light"]) .login-admin-input:focus {
+    border-color: #818cf8;
+  }
+}
+
+/* Sof qora o'rniga qatlamli charcoal sirtlar, accent sifatida indigo. */
+:root[data-theme="dark"] {
+  --color-gray-25: #30313a;
+  --color-gray-50: #30313a;
+  --color-gray-100: #24252c;
+  --color-gray-200: #454752;
+  --color-gray-300: #5d5e69;
+  --color-gray-400: #858995;
+  --color-gray-500: #a4a7b2;
+  --color-gray-600: #c7c9d1;
+  --color-gray-700: #dedfe4;
+  --color-gray-800: #eceef2;
+  --color-gray-900: #f1f2f5;
+  --color-border: #454752;
+}
+
+:root[data-theme="dark"] body,
+:root[data-theme="dark"] .bg-\[\#f6f6f6\],
+:root[data-theme="dark"] .bg-\[\#fafafa\],
+:root[data-theme="dark"] .bg-\[\#f8f8f8\],
+:root[data-theme="dark"] .bg-\[\#f7f7f8\],
+:root[data-theme="dark"] .bg-\[\#f9f9fa\],
+:root[data-theme="dark"] .admin-page-surface {
+  background-color: #1b1c22 !important;
+}
+
+:root[data-theme="dark"] .bg-white,
+:root[data-theme="dark"] .bg-white\/70,
+:root[data-theme="dark"] .bg-white\/80,
+:root[data-theme="dark"] .bg-white\/90,
+:root[data-theme="dark"] .bg-white\/95,
+:root[data-theme="dark"] .bg-gray-25,
+:root[data-theme="dark"] .bg-gray-50,
+:root[data-theme="dark"] .bg-gray-50\/30,
+:root[data-theme="dark"] .bg-gray-50\/40,
+:root[data-theme="dark"] .bg-gray-50\/50 {
+  background-color: #30313a !important;
+}
+
+:root[data-theme="dark"] .bg-gray-100,
+:root[data-theme="dark"] .bg-gray-100\/30,
+:root[data-theme="dark"] .bg-gray-100\/40,
+:root[data-theme="dark"] .bg-gray-100\/50,
+:root[data-theme="dark"] .bg-gray-100\/60,
+:root[data-theme="dark"] .bg-gray-100\/70,
+:root[data-theme="dark"] .bg-gray-100\/80,
+:root[data-theme="dark"] .student-course-card,
+:root[data-theme="dark"] .practice-messenger-list,
+:root[data-theme="dark"] .practice-messenger-header,
+:root[data-theme="dark"] .practice-messenger-composer {
+  background-color: #24252c !important;
+}
+
+:root[data-theme="dark"] .bg-gray-900,
+:root[data-theme="dark"] .bg-gray-900\/50,
+:root[data-theme="dark"] .bg-gray-900\/70,
+:root[data-theme="dark"] .bg-gray-900\/80,
+:root[data-theme="dark"] .bg-gray-950,
+:root[data-theme="dark"] .bg-black,
+:root[data-theme="dark"] .practice-messenger-root,
+:root[data-theme="dark"] .practice-messenger-thread {
+  background-color: #15161b !important;
+}
+
+:root[data-theme="dark"] .hover\:bg-gray-50:hover,
+:root[data-theme="dark"] .hover\:bg-gray-100:hover,
+:root[data-theme="dark"] .hover\:bg-gray-100\/50:hover,
+:root[data-theme="dark"] .hover\:bg-gray-100\/70:hover,
+:root[data-theme="dark"] .hover\:bg-gray-200:hover,
+:root[data-theme="dark"] .student-course-card:hover,
+:root[data-theme="dark"] .practice-messenger-pins,
+:root[data-theme="dark"] .practice-messenger-pins:hover {
+  background-color: #3a3c47 !important;
+}
+
+:root[data-theme="dark"] .bg-indigo-50,
+:root[data-theme="dark"] .bg-indigo-50\/30,
+:root[data-theme="dark"] .bg-indigo-50\/40,
+:root[data-theme="dark"] .bg-indigo-50\/50,
+:root[data-theme="dark"] .bg-indigo-100,
+:root[data-theme="dark"] .bg-indigo-100\/40,
+:root[data-theme="dark"] .bg-amber-50,
+:root[data-theme="dark"] .bg-amber-50\/30,
+:root[data-theme="dark"] .bg-amber-50\/40,
+:root[data-theme="dark"] .bg-amber-50\/50,
+:root[data-theme="dark"] .bg-orange-50,
+:root[data-theme="dark"] .bg-orange-50\/30 {
+  background-color: #35345a !important;
+}
+
+:root[data-theme="dark"] .hover\:bg-indigo-50:hover,
+:root[data-theme="dark"] .hover\:bg-indigo-100:hover,
+:root[data-theme="dark"] .hover\:bg-amber-100:hover,
+:root[data-theme="dark"] .hover\:bg-orange-100:hover {
+  background-color: #424168 !important;
+}
+
+:root[data-theme="dark"] .bg-green-50,
+:root[data-theme="dark"] .bg-green-50\/50,
+:root[data-theme="dark"] .bg-emerald-50,
+:root[data-theme="dark"] .bg-emerald-50\/50 {
+  background-color: #1d382a !important;
+}
+
+:root[data-theme="dark"] .bg-red-50,
+:root[data-theme="dark"] .bg-red-50\/50,
+:root[data-theme="dark"] .bg-rose-50,
+:root[data-theme="dark"] .bg-rose-50\/50 {
+  background-color: #43232b !important;
+}
+
+:root[data-theme="dark"] .border,
+:root[data-theme="dark"] .border-gray-100,
+:root[data-theme="dark"] .border-gray-200,
+:root[data-theme="dark"] .border-gray-200\/60,
+:root[data-theme="dark"] .border-gray-300,
+:root[data-theme="dark"] .border-indigo-100,
+:root[data-theme="dark"] .border-indigo-200 {
+  border-color: #454752 !important;
+}
+
+:root[data-theme="dark"] .text-gray-900,
+:root[data-theme="dark"] .text-gray-800,
+:root[data-theme="dark"] .text-gray-700 {
+  color: #f1f2f5 !important;
+}
+
+:root[data-theme="dark"] .text-gray-600,
+:root[data-theme="dark"] .text-gray-500 {
+  color: #c7c9d1 !important;
+}
+
+:root[data-theme="dark"] .text-gray-400,
+:root[data-theme="dark"] .text-gray-300 {
+  color: #a4a7b2 !important;
+}
+
+:root[data-theme="dark"] .text-indigo-500,
+:root[data-theme="dark"] .text-indigo-600,
+:root[data-theme="dark"] .text-indigo-700 {
+  color: #a5b4fc !important;
+}
+
+:root[data-theme="dark"] input,
+:root[data-theme="dark"] textarea,
+:root[data-theme="dark"] select {
+  border-color: #454752;
+  background-color: #282930;
+  color: #f1f2f5;
+}
+
+:root[data-theme="dark"] select option {
+  background-color: #30313a;
+  color: #f1f2f5;
+}
+
+:root[data-theme="dark"] .shadow-lg,
+:root[data-theme="dark"] .shadow-xl,
+:root[data-theme="dark"] .shadow-2xl {
+  box-shadow: 0 16px 40px rgb(0 0 0 / 0.18) !important;
+}
+
+:root[data-theme="dark"] .video-watch-progress-track {
+  background: #454752;
+}
+
+:root[data-theme="dark"] .video-watch-progress-fill {
+  background: #818cf8;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --color-gray-25: #30313a;
+    --color-gray-50: #30313a;
+    --color-gray-100: #24252c;
+    --color-gray-200: #454752;
+    --color-gray-300: #5d5e69;
+    --color-gray-400: #858995;
+    --color-gray-500: #a4a7b2;
+    --color-gray-600: #c7c9d1;
+    --color-gray-700: #dedfe4;
+    --color-gray-800: #eceef2;
+    --color-gray-900: #f1f2f5;
+    --color-border: #454752;
+  }
+
+  :root:not([data-theme="light"]) body,
+  :root:not([data-theme="light"]) .bg-\[\#f6f6f6\],
+  :root:not([data-theme="light"]) .bg-\[\#fafafa\],
+  :root:not([data-theme="light"]) .bg-\[\#f8f8f8\],
+  :root:not([data-theme="light"]) .bg-\[\#f7f7f8\],
+  :root:not([data-theme="light"]) .bg-\[\#f9f9fa\],
+  :root:not([data-theme="light"]) .admin-page-surface {
+    background-color: #1b1c22 !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-white,
+  :root:not([data-theme="light"]) .bg-white\/70,
+  :root:not([data-theme="light"]) .bg-white\/80,
+  :root:not([data-theme="light"]) .bg-white\/90,
+  :root:not([data-theme="light"]) .bg-white\/95,
+  :root:not([data-theme="light"]) .bg-gray-25,
+  :root:not([data-theme="light"]) .bg-gray-50,
+  :root:not([data-theme="light"]) .bg-gray-50\/30,
+  :root:not([data-theme="light"]) .bg-gray-50\/40,
+  :root:not([data-theme="light"]) .bg-gray-50\/50 {
+    background-color: #30313a !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-gray-100,
+  :root:not([data-theme="light"]) .bg-gray-100\/30,
+  :root:not([data-theme="light"]) .bg-gray-100\/40,
+  :root:not([data-theme="light"]) .bg-gray-100\/50,
+  :root:not([data-theme="light"]) .bg-gray-100\/60,
+  :root:not([data-theme="light"]) .bg-gray-100\/70,
+  :root:not([data-theme="light"]) .bg-gray-100\/80,
+  :root:not([data-theme="light"]) .student-course-card,
+  :root:not([data-theme="light"]) .practice-messenger-list,
+  :root:not([data-theme="light"]) .practice-messenger-header,
+  :root:not([data-theme="light"]) .practice-messenger-composer {
+    background-color: #24252c !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-gray-900,
+  :root:not([data-theme="light"]) .bg-gray-900\/50,
+  :root:not([data-theme="light"]) .bg-gray-900\/70,
+  :root:not([data-theme="light"]) .bg-gray-900\/80,
+  :root:not([data-theme="light"]) .bg-gray-950,
+  :root:not([data-theme="light"]) .bg-black,
+  :root:not([data-theme="light"]) .practice-messenger-root,
+  :root:not([data-theme="light"]) .practice-messenger-thread {
+    background-color: #15161b !important;
+  }
+
+  :root:not([data-theme="light"]) .hover\:bg-gray-50:hover,
+  :root:not([data-theme="light"]) .hover\:bg-gray-100:hover,
+  :root:not([data-theme="light"]) .hover\:bg-gray-100\/50:hover,
+  :root:not([data-theme="light"]) .hover\:bg-gray-100\/70:hover,
+  :root:not([data-theme="light"]) .hover\:bg-gray-200:hover,
+  :root:not([data-theme="light"]) .student-course-card:hover,
+  :root:not([data-theme="light"]) .practice-messenger-pins,
+  :root:not([data-theme="light"]) .practice-messenger-pins:hover {
+    background-color: #3a3c47 !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-indigo-50,
+  :root:not([data-theme="light"]) .bg-indigo-50\/30,
+  :root:not([data-theme="light"]) .bg-indigo-50\/40,
+  :root:not([data-theme="light"]) .bg-indigo-50\/50,
+  :root:not([data-theme="light"]) .bg-indigo-100,
+  :root:not([data-theme="light"]) .bg-indigo-100\/40,
+  :root:not([data-theme="light"]) .bg-amber-50,
+  :root:not([data-theme="light"]) .bg-amber-50\/30,
+  :root:not([data-theme="light"]) .bg-amber-50\/40,
+  :root:not([data-theme="light"]) .bg-amber-50\/50,
+  :root:not([data-theme="light"]) .bg-orange-50,
+  :root:not([data-theme="light"]) .bg-orange-50\/30 {
+    background-color: #35345a !important;
+  }
+
+  :root:not([data-theme="light"]) .hover\:bg-indigo-50:hover,
+  :root:not([data-theme="light"]) .hover\:bg-indigo-100:hover,
+  :root:not([data-theme="light"]) .hover\:bg-amber-100:hover,
+  :root:not([data-theme="light"]) .hover\:bg-orange-100:hover {
+    background-color: #424168 !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-green-50,
+  :root:not([data-theme="light"]) .bg-green-50\/50,
+  :root:not([data-theme="light"]) .bg-emerald-50,
+  :root:not([data-theme="light"]) .bg-emerald-50\/50 {
+    background-color: #1d382a !important;
+  }
+
+  :root:not([data-theme="light"]) .bg-red-50,
+  :root:not([data-theme="light"]) .bg-red-50\/50,
+  :root:not([data-theme="light"]) .bg-rose-50,
+  :root:not([data-theme="light"]) .bg-rose-50\/50 {
+    background-color: #43232b !important;
+  }
+
+  :root:not([data-theme="light"]) .border,
+  :root:not([data-theme="light"]) .border-gray-100,
+  :root:not([data-theme="light"]) .border-gray-200,
+  :root:not([data-theme="light"]) .border-gray-200\/60,
+  :root:not([data-theme="light"]) .border-gray-300,
+  :root:not([data-theme="light"]) .border-indigo-100,
+  :root:not([data-theme="light"]) .border-indigo-200 {
+    border-color: #454752 !important;
+  }
+
+  :root:not([data-theme="light"]) .text-gray-900,
+  :root:not([data-theme="light"]) .text-gray-800,
+  :root:not([data-theme="light"]) .text-gray-700 {
+    color: #f1f2f5 !important;
+  }
+
+  :root:not([data-theme="light"]) .text-gray-600,
+  :root:not([data-theme="light"]) .text-gray-500 {
+    color: #c7c9d1 !important;
+  }
+
+  :root:not([data-theme="light"]) .text-gray-400,
+  :root:not([data-theme="light"]) .text-gray-300 {
+    color: #a4a7b2 !important;
+  }
+
+  :root:not([data-theme="light"]) .text-indigo-500,
+  :root:not([data-theme="light"]) .text-indigo-600,
+  :root:not([data-theme="light"]) .text-indigo-700 {
+    color: #a5b4fc !important;
+  }
+
+  :root:not([data-theme="light"]) input,
+  :root:not([data-theme="light"]) textarea,
+  :root:not([data-theme="light"]) select {
+    border-color: #454752;
+    background-color: #282930;
+    color: #f1f2f5;
+  }
+
+  :root:not([data-theme="light"]) select option {
+    background-color: #30313a;
+    color: #f1f2f5;
+  }
+
+  :root:not([data-theme="light"]) .shadow-lg,
+  :root:not([data-theme="light"]) .shadow-xl,
+  :root:not([data-theme="light"]) .shadow-2xl {
+    box-shadow: 0 16px 40px rgb(0 0 0 / 0.18) !important;
+  }
+
+  :root:not([data-theme="light"]) .video-watch-progress-track {
+    background: #454752;
+  }
+
+  :root:not([data-theme="light"]) .video-watch-progress-fill {
+    background: #818cf8;
+  }
 }
