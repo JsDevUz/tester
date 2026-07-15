@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  LayoutGrid, Film, MousePointer2, Paperclip, FolderOpen, type LucideIcon,
+  LayoutGrid, Film, MousePointer2, Paperclip, type LucideIcon,
 } from 'lucide-react';
 import { MediaLibraryModal } from '../MediaLibraryModal';
 
@@ -30,7 +30,6 @@ const BLOCK_ITEMS: BlockItem[] = [
   { key: 'video', label: 'Video', icon: Film },
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
-  { key: 'library', label: 'Kutubxonadan', icon: FolderOpen },
 ];
 
 export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, disabled = false, limitText }: BlockPickerProps) {
@@ -60,8 +59,8 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, d
   function handleClick(item: BlockItem) {
     if (disabled || item.disabled) return;
     if (item.key === 'editor') onPickEditor();
-    else if (item.key === 'video' || item.key === 'file') openFilePicker(item.key);
-    else if (item.key === 'library') setLibraryOpen(true);
+    else if (item.key === 'video') openFilePicker(item.key);
+    else if (item.key === 'file') setLibraryOpen(true);
   }
 
   return (

@@ -112,16 +112,21 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
         <SuggestionMenuController
           triggerCharacter="/"
           getItems={async (query) => {
-            const defaultItems = getDefaultReactSlashMenuItems(editor);
-            const libraryItem = {
-              title: 'Kutubxonadan rasm',
-              subtext: "Avval yuklangan rasmlardan birini tanlash",
-              aliases: ['kutubxona', 'library', 'rasm'],
+            // Standart "Image" bandini olib tashlaymiz — o'rniga kutubxona
+            // orqali ishlaydigan bitta "Rasm" bandi qoladi, shu bilan
+            // ikkita alohida rasm-qo'shish yo'li ko'rinmaydi.
+            const defaultItems = getDefaultReactSlashMenuItems(editor).filter(
+              (item) => item.title !== 'Image',
+            );
+            const imageItem = {
+              title: 'Rasm',
+              subtext: 'Kutubxonadan tanlang yoki yangi rasm yuklang',
+              aliases: ['rasm', 'image', 'picture', 'photo'],
               group: 'Media',
               icon: <FolderOpen size={18} />,
               onItemClick: () => setLibraryOpen(true),
             };
-            const items = [...defaultItems, libraryItem];
+            const items = [...defaultItems, imageItem];
             const q = query.toLowerCase().trim();
             if (!q) return items;
             return items.filter(
