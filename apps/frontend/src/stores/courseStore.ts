@@ -28,6 +28,7 @@ import {
   apiCreatePricingPlan, apiUpdatePricingPlan, apiDeletePricingPlan,
 } from '../api/launches';
 import { apiListGroupPayments, apiRecordPayment, type ApiMonthlyPayment } from '../api/payments';
+import { hasPendingPersistence, persistLatest } from '../utils/latestPersistence';
 
 export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
 export const CONTENT_BLOCK_LIMIT = 7;
@@ -347,10 +348,10 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return course;
   },
   renameCourse: async (courseId, title) => {
-    await apiRenameCourse(courseId, title);
     set({
       courses: get().courses.map((c) => (c.id === courseId ? { ...c, title } : c)),
     });
+    persistLatest(`course:${courseId}:title`, () => apiRenameCourse(courseId, title));
   },
   deleteCourse: async (courseId) => {
     await apiDeleteCourse(courseId);
@@ -368,7 +369,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return module;
   },
   renameModule: async (courseId, moduleId, title) => {
-    await apiRenameModule(moduleId, title);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -376,6 +376,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
           : { ...c, modules: c.modules.map((m) => (m.id === moduleId ? { ...m, title } : m)) },
       ),
     });
+    persistLatest(`module:${moduleId}:title`, () => apiRenameModule(moduleId, title));
   },
   deleteModule: async (courseId, moduleId) => {
     await apiDeleteModule(moduleId);
@@ -415,7 +416,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return lesson;
   },
   renameLesson: async (courseId, moduleId, lessonId, title) => {
-    await apiUpdateLesson(lessonId, { title });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -433,6 +433,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`lesson:${lessonId}:title`, () => apiUpdateLesson(lessonId, { title }));
   },
   deleteLesson: async (courseId, moduleId, lessonId) => {
     await apiDeleteLesson(lessonId);
@@ -678,11 +679,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const lesson = module?.lessons.find((l) => l.id === lessonId);
     const block = lesson?.blocks.find((b) => b.id === blockId);
 
-    if (block?.type === 'editor' || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
-      const row = await apiUpdateBlock(blockId, { html: data.html, label: data.label, embedUrl: data.embedUrl });
-      data = { ...data, ...toFrontendBlock(row) };
-    }
-
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -707,6 +703,24 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+
+    if (block?.type === 'editor' || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
+      const editableData = {
+        html: data.html,
+        label: data.label,
+        embedUrl: data.embedUrl,
+      };
+      const fields = Object.entries(editableData)
+        .filter(([, value]) => value !== undefined)
+        .map(([field]) => field)
+        .sort()
+        .join(',');
+      if (fields) {
+        persistLatest(`block:${blockId}:${fields}`, () =>
+          apiUpdateBlock(blockId, editableData),
+        );
+      }
+    }
   },
   removeBlock: async (courseId, moduleId, lessonId, blockId) => {
     const course = get().courses.find((c) => c.id === courseId);
@@ -782,7 +796,22 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
   refreshLessonBlocks: async (courseId, moduleId, lessonId) => {
     const blockRows = await apiListBlocks(lessonId);
-    const blocks = blockRows.map(toFrontendBlock);
+    const localLesson = get().courses
+      .find((course) => course.id === courseId)
+      ?.modules.find((module) => module.id === moduleId)
+      ?.lessons.find((lesson) => lesson.id === lessonId);
+    const blocks = blockRows.map(toFrontendBlock).map((remoteBlock) => {
+      if (!hasPendingPersistence(`block:${remoteBlock.id}:`)) return remoteBlock;
+      const localBlock = localLesson?.blocks.find((block) => block.id === remoteBlock.id);
+      return localBlock
+        ? {
+            ...remoteBlock,
+            html: localBlock.html,
+            label: localBlock.label,
+            embedUrl: localBlock.embedUrl,
+          }
+        : remoteBlock;
+    });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -933,7 +962,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     });
   },
   setPracticeBlockTest: async (courseId, moduleId, lessonId, blockId, testId) => {
-    await apiUpdatePracticeBlock(blockId, { testId });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -960,9 +988,11 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`practice-block:${blockId}:testId`, () =>
+      apiUpdatePracticeBlock(blockId, { testId }),
+    );
   },
   setPracticeBlockDescription: async (courseId, moduleId, lessonId, blockId, description) => {
-    await apiUpdatePracticeBlock(blockId, { description });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -989,9 +1019,11 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`practice-block:${blockId}:description`, () =>
+      apiUpdatePracticeBlock(blockId, { description }),
+    );
   },
   setPracticeBlockMaxScore: async (courseId, moduleId, lessonId, blockId, maxScore) => {
-    await apiUpdatePracticeBlock(blockId, { maxScore });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -1018,6 +1050,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`practice-block:${blockId}:maxScore`, () =>
+      apiUpdatePracticeBlock(blockId, { maxScore }),
+    );
   },
   setPassThreshold: async (courseId, moduleId, lessonId, data) => {
     const course = get().courses.find((c) => c.id === courseId);
@@ -1026,7 +1061,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     if (!lesson) return;
     const nextPercent = data.enabled ? (data.percent ?? lesson.passThresholdPercent) : null;
 
-    await apiUpdateLesson(lessonId, { passThresholdEnabled: data.enabled, passThresholdPercent: nextPercent });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -1052,9 +1086,14 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`lesson:${lessonId}:passThreshold`, () =>
+      apiUpdateLesson(lessonId, {
+        passThresholdEnabled: data.enabled,
+        passThresholdPercent: nextPercent,
+      }),
+    );
   },
   setLessonCompletionScore: async (courseId, moduleId, lessonId, score) => {
-    await apiUpdateLesson(lessonId, { completionScore: score });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -1074,6 +1113,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`lesson:${lessonId}:completionScore`, () =>
+      apiUpdateLesson(lessonId, { completionScore: score }),
+    );
   },
 
   addLaunch: async (courseId, name) => {
@@ -1208,7 +1250,6 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     return group;
   },
   renameGroup: async (courseId, groupId, name) => {
-    await apiUpdateGroup(groupId, { name });
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId
@@ -1216,6 +1257,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
           : { ...c, groups: c.groups.map((g) => (g.id === groupId ? { ...g, name } : g)) },
       ),
     });
+    persistLatest(`group:${groupId}:name`, () => apiUpdateGroup(groupId, { name }));
   },
   toggleGroupChat: async (courseId, groupId) => {
     const course = get().courses.find((c) => c.id === courseId);

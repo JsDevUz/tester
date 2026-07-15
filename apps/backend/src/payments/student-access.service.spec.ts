@@ -44,6 +44,15 @@ describe('StudentAccessService', () => {
     await expect(service.assertStudentLessonAccess('course-1', 'student-1')).resolves.toBe(false);
   });
 
+  it.each(['pending', 'partial'])('blocks access when the latest payment is %s', async (status) => {
+    mockAccessibleEnrollment({ status });
+
+    await expect(service.getStudentLessonAccess('course-1', 'student-1')).resolves.toEqual({
+      allowed: false,
+      reason: 'payment_required',
+    });
+  });
+
   it('blocks access when the enrollment has no selected plan', async () => {
     (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1' }]);
     (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);

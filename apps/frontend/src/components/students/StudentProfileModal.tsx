@@ -79,18 +79,38 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
     setGroupId('');
     setGroups([]);
     if (!courseId) return;
+    let cancelled = false;
     setLoadingGroups(true);
-    void apiListGroups(courseId).then(setGroups).finally(() => setLoadingGroups(false));
+    void apiListGroups(courseId)
+      .then((rows) => {
+        if (!cancelled) setGroups(rows);
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingGroups(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [courseId]);
 
   useEffect(() => {
     setPlanId('');
     setPlans([]);
     if (!courseId || !groupId) return;
+    let cancelled = false;
     setLoadingPlans(true);
     void apiListLaunches(courseId)
-      .then((launches) => setPlans(launches.flatMap((l) => l.plans).filter((p) => p.groupId === groupId)))
-      .finally(() => setLoadingPlans(false));
+      .then((launches) => {
+        if (!cancelled) {
+          setPlans(launches.flatMap((l) => l.plans).filter((p) => p.groupId === groupId));
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setLoadingPlans(false);
+      });
+    return () => {
+      cancelled = true;
+    };
   }, [courseId, groupId]);
 
   const totalStars = useMemo(

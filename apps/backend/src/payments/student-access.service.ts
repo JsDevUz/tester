@@ -41,7 +41,7 @@ export class StudentAccessService {
 
     const hasValidPayment = eligibleEnrollments.some((enrollment) => {
       const latestPayment = payments.find((payment) => payment.enrollmentId === enrollment.id);
-      return latestPayment ? latestPayment.status !== 'debt' : false;
+      return latestPayment?.status === 'paid';
     });
 
     return hasValidPayment

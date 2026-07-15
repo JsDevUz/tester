@@ -4,6 +4,7 @@ import {
   apiGetSchoolStaff, apiSearchStudents, apiAddSchoolStaff, apiRemoveSchoolStaff,
   type ApiStudentSearchResult,
 } from '../api/school';
+import { persistLatest } from '../utils/latestPersistence';
 
 export type SchoolStaffRole = 'teacher_staff' | 'curator';
 
@@ -45,13 +46,13 @@ export const useSchoolStore = create<SchoolState>((set, get) => ({
   },
 
   renameSchool: async (name) => {
-    await apiUpdateSchool({ name });
     set({ name });
+    persistLatest('school:name', () => apiUpdateSchool({ name }));
   },
 
   setSchoolDescription: async (description) => {
-    await apiUpdateSchool({ description });
     set({ description });
+    persistLatest('school:description', () => apiUpdateSchool({ description }));
   },
 
   regenerateInviteToken: async () => {

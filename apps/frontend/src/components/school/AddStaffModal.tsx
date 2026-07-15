@@ -21,10 +21,16 @@ export function AddStaffModal({ onSearch, onConfirm, onClose }: AddStaffModalPro
   const [role, setRole] = useState<SchoolStaffRole>('teacher_staff');
 
   useEffect(() => {
+    let cancelled = false;
     const handle = setTimeout(() => {
-      void onSearch(query).then(setResults);
+      void onSearch(query).then((items) => {
+        if (!cancelled) setResults(items);
+      });
     }, 300);
-    return () => clearTimeout(handle);
+    return () => {
+      cancelled = true;
+      clearTimeout(handle);
+    };
   }, [query, onSearch]);
 
   function handleSubmit() {
