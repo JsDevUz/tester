@@ -107,6 +107,7 @@ export function FolderViewPage() {
               shuffleOptions: editTest.shuffleOptions,
               oneByOne: editTest.oneByOne,
               requireAuth: editTest.requireAuth,
+              autoCompleteOnLeave: editTest.autoCompleteOnLeave,
               deadline: editTest.deadline ?? undefined,
             }}
             onSubmit={handleUpdate}

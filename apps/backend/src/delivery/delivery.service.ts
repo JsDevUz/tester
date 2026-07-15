@@ -96,6 +96,7 @@ export class DeliveryService {
       shuffleOptions: test.shuffleOptions,
       oneByOne: overridden.oneByOne,
       requireAuth: overridden.requireAuth,
+      autoCompleteOnLeave: test.autoCompleteOnLeave,
       deadline: overridden.deadline,
       questions: test.questions.map((q) => ({
         id: q.id,

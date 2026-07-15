@@ -44,7 +44,7 @@ export class TestsService {
   async create(adminId: string, data: {
     folderId: string; name: string; description?: string; timeLimit?: number;
     showResults?: string; shuffleQuestions?: boolean; shuffleOptions?: boolean;
-    oneByOne?: boolean; requireAuth?: boolean; deadline?: string;
+    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; deadline?: string;
   }) {
     const slug = await uniqueSlug();
     const [test] = await db.insert(tests).values({
@@ -55,6 +55,7 @@ export class TestsService {
       shuffleOptions: data.shuffleOptions ?? false,
       oneByOne: data.oneByOne ?? false,
       requireAuth: data.requireAuth ?? false,
+      autoCompleteOnLeave: data.autoCompleteOnLeave ?? true,
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       slug,
     }).returning();
@@ -64,7 +65,7 @@ export class TestsService {
   async update(id: string, adminId: string, data: {
     name?: string; description?: string; timeLimit?: number | null;
     showResults?: string; shuffleQuestions?: boolean; shuffleOptions?: boolean;
-    oneByOne?: boolean; requireAuth?: boolean; deadline?: string | null;
+    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; deadline?: string | null;
   }) {
     const updateData: any = { ...data };
     if ('deadline' in data) {

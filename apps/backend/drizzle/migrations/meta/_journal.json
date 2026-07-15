@@ -22,6 +22,13 @@
       "when": 1784125200000,
       "tag": "0002_add_test_practice_score_override",
       "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1784151000000,
+      "tag": "0003_add_test_auto_complete_on_leave",
+      "breakpoints": true
     }
   ]
 }

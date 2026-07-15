@@ -12,6 +12,7 @@ export interface Test {
   shuffleOptions: boolean;
   oneByOne: boolean;
   requireAuth: boolean;
+  autoCompleteOnLeave: boolean;
   deadline: string | null;
   createdAt: string;
   slug: string | null;
@@ -31,6 +32,7 @@ export type CreateTestData = {
   shuffleOptions?: boolean;
   oneByOne?: boolean;
   requireAuth?: boolean;
+  autoCompleteOnLeave?: boolean;
   deadline?: string;
 };
 

@@ -44,6 +44,7 @@ export interface PublicTest {
   shuffleOptions: boolean;
   oneByOne: boolean;
   requireAuth: boolean;
+  autoCompleteOnLeave: boolean;
   deadline: string | null;
   questions: PublicQuestion[];
 }

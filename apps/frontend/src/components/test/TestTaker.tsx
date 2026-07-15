@@ -666,7 +666,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   }, [timeLeft]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
-    if (!resolvedSubmissionId) return;
+    if (!resolvedSubmissionId || test?.autoCompleteOnLeave === false) return;
     const sendSubmit = () => {
       if (
         submittingRef.current ||
@@ -740,7 +740,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       window.removeEventListener("beforeunload", handleBeforeUnload);
       document.removeEventListener("visibilitychange", handleVisibility);
     };
-  }, [resolvedSubmissionId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [resolvedSubmissionId, test?.autoCompleteOnLeave]); // eslint-disable-line react-hooks/exhaustive-deps
 
   async function handleSubmit() {
     if (submitting || !test || !resolvedSubmissionId) return;
@@ -1197,7 +1197,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       {isOneByOne && (
         <div className="shrink-0 h-1.5 bg-gray-100 mx-4 rounded-full overflow-hidden">
           <div
-            className="h-full bg-gray-900 rounded-full transition-all duration-500"
+            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
             style={{
               width: `${((currentIdx + 1) / orderedQuestions.length) * 100}%`,
             }}
@@ -1331,30 +1331,33 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                 const incorrect = fb.isCorrect === false;
                 return (
                   <div
-                    className={`shrink-0 px-5 lg:px-8 py-4 border-t-2 ${
+                    className={`shrink-0 border-t px-5 py-4 lg:px-8 ${
                       correct
-                        ? "bg-green-50 border-green-200"
+                        ? "border-emerald-200 bg-emerald-50"
                         : incorrect
-                          ? "bg-red-50 border-red-200"
-                          : "bg-gray-50 border-border"
+                          ? "border-rose-200 bg-rose-50"
+                          : "border-border bg-gray-50"
                     }`}
                   >
-                    <div className="lg:max-w-3xl lg:mx-auto flex items-center gap-3">
+                    <div className="lg:max-w-3xl lg:mx-auto flex items-start gap-3">
                       {correct ? (
                         <CheckCircle2
                           size={22}
-                          className="text-green-500 shrink-0"
+                          className="mt-0.5 shrink-0 text-emerald-500"
                         />
                       ) : incorrect ? (
-                        <XCircle size={22} className="text-red-400 shrink-0" />
+                        <XCircle
+                          size={22}
+                          className="mt-0.5 shrink-0 text-rose-500"
+                        />
                       ) : null}
-                      <div>
+                      <div className="min-w-0">
                         <p
                           className={`font-semibold ${
                             correct
-                              ? "text-green-700"
+                              ? "text-emerald-700"
                               : incorrect
-                                ? "text-red-600"
+                                ? "text-rose-700"
                                 : "text-gray-600"
                           }`}
                         >
@@ -1362,11 +1365,14 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                             ? "To'g'ri!"
                             : incorrect
                               ? "Noto'g'ri"
-                              : "Tekshiruv yakunlanmadi"}
+                              : "Javob qabul qilindi"}
                         </p>
                         {fb.correctAnswer && incorrect && (
-                          <p className="text-xs text-green-600 mt-0.5">
-                            To'g'ri javob: {fb.correctAnswer}
+                          <p className="mt-1 break-words text-xs leading-5 text-gray-600">
+                            <span className="font-medium text-gray-700">
+                              To'g'ri javob:
+                            </span>{" "}
+                            {fb.correctAnswer}
                           </p>
                         )}
                       </div>

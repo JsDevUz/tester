@@ -32,6 +32,9 @@ export function TestSettingsModal({
   );
   const [oneByOne, setOneByOne] = useState(initial?.oneByOne ?? false);
   const [requireAuth, setRequireAuth] = useState(initial?.requireAuth ?? false);
+  const [autoCompleteOnLeave, setAutoCompleteOnLeave] = useState(
+    initial?.autoCompleteOnLeave ?? true,
+  );
   const [hasDeadline, setHasDeadline] = useState(!!initial?.deadline);
   const [deadline, setDeadline] = useState(
     initial?.deadline?.slice(0, 16) ?? "",
@@ -50,6 +53,7 @@ export function TestSettingsModal({
       shuffleOptions,
       oneByOne,
       requireAuth,
+      autoCompleteOnLeave,
       deadline:
         hasDeadline && deadline ? new Date(deadline).toISOString() : undefined,
     });
@@ -167,6 +171,21 @@ export function TestSettingsModal({
                 className="w-4 h-4"
               />
               Faqat ro'yxatdan o'tganlar uchun
+            </label>
+            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoCompleteOnLeave}
+                onChange={(e) => setAutoCompleteOnLeave(e.target.checked)}
+                className="w-4 h-4 mt-0.5 shrink-0"
+              />
+              <span>
+                Testdan chiqilganda avtomatik yakunlash
+                <span className="block mt-0.5 text-xs leading-5 text-gray-400">
+                  Boshqa ilova yoki brauzer oynasiga o'tilsa, test avtomatik
+                  topshiriladi.
+                </span>
+              </span>
             </label>
           </div>
           <div>
