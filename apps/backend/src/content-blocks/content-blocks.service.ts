@@ -87,6 +87,27 @@ export class ContentBlocksService {
     return updated;
   }
 
+  async createFileBlockFromLibrary(lessonId: string, adminId: string, url: string, fileName: string) {
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({
+        lessonId,
+        type: 'file',
+        orderIndex: existing.length,
+        fileName,
+        label: fileName,
+        previewUrl: url,
+      })
+      .returning();
+    return block;
+  }
+
   async update(id: string, adminId: string, data: { html?: string; label?: string; embedUrl?: string }) {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, id) });
     if (!block) throw new NotFoundException('Block not found');

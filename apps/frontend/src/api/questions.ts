@@ -24,11 +24,25 @@ export interface Question {
 export async function apiUploadMedia(
   file: File,
   folder: 'lessons' | 'questions' | 'payments' | 'practice-submissions' = 'questions',
-): Promise<{ url: string; type: 'image' | 'audio' }> {
+): Promise<{ url: string; type: 'image' | 'audio' | 'file' }> {
   const form = new FormData();
   form.append('file', file);
   form.append('folder', folder);
   const res = await client.post('/upload', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+  return res.data;
+}
+
+export interface MediaLibraryAsset {
+  id: string;
+  url: string;
+  type: 'image' | 'audio' | 'file';
+  originalName: string;
+  uploaderName: string;
+  createdAt: string;
+}
+
+export async function apiGetMediaLibrary(type: 'image' | 'audio' | 'file'): Promise<MediaLibraryAsset[]> {
+  const res = await client.get('/upload/library', { params: { type } });
   return res.data;
 }
 

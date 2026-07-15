@@ -73,7 +73,7 @@ import {
   Plus,
   Trash2,
 } from "lucide-react";
-import { apiUploadMedia } from "../api/questions";
+import { MediaLibraryModal } from "./MediaLibraryModal";
 
 interface OptionInput {
   text: string;
@@ -222,31 +222,8 @@ export function QuestionForm({
   const [audioUrl, setAudioUrl] = useState<string | null>(
     initial?.audioUrl ?? null,
   );
-  const [uploading, setUploading] = useState(false);
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const imageRef = useRef<HTMLInputElement>(null);
-  const audioRef = useRef<HTMLInputElement>(null);
-
-  async function handleFileChange(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
-      setUploadError("Fayl hajmi 10 MB dan oshmasligi kerak");
-      return;
-    }
-    setUploadError(null);
-    setUploading(true);
-    try {
-      const res = await apiUploadMedia(file);
-      if (res.type === "image") setImageUrl(res.url);
-      else setAudioUrl(res.url);
-    } catch {
-      setUploadError("Yuklashda xato yuz berdi");
-    } finally {
-      setUploading(false);
-      e.target.value = "";
-    }
-  }
+  const [mediaModal, setMediaModal] = useState<"image" | "audio" | null>(null);
 
   function addOption() {
     setOpts([...opts, { text: "", isCorrect: false }]);
@@ -400,9 +377,8 @@ export function QuestionForm({
         ) : (
           <button
             type="button"
-            onClick={() => imageRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40"
+            onClick={() => setMediaModal("image")}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors"
           >
             <Image size={13} /> Rasm
           </button>
@@ -422,36 +398,28 @@ export function QuestionForm({
         ) : (
           <button
             type="button"
-            onClick={() => audioRef.current?.click()}
-            disabled={uploading}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors disabled:opacity-40"
+            onClick={() => setMediaModal("audio")}
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors"
           >
             <Music size={13} /> Audio
           </button>
-        )}
-        {uploading && (
-          <span className="flex items-center gap-1 text-xs text-gray-700">
-            <Upload size={12} className="animate-bounce" /> Yuklanmoqda...
-          </span>
         )}
         {uploadError && (
           <span className="text-xs text-red-500">{uploadError}</span>
         )}
       </div>
-      <input
-        ref={imageRef}
-        type="file"
-        accept="image/jpeg,image/png,image/gif,image/webp"
-        className="hidden"
-        onChange={handleFileChange}
-      />
-      <input
-        ref={audioRef}
-        type="file"
-        accept="audio/mpeg,audio/wav,audio/ogg,audio/mp4"
-        className="hidden"
-        onChange={handleFileChange}
-      />
+      {mediaModal && (
+        <MediaLibraryModal
+          type={mediaModal}
+          folder="questions"
+          onSelect={(url) => {
+            if (mediaModal === "image") setImageUrl(url);
+            else setAudioUrl(url);
+            setMediaModal(null);
+          }}
+          onClose={() => setMediaModal(null)}
+        />
+      )}
 
       {/* Type selector */}
       <div className="flex gap-2 flex-wrap">

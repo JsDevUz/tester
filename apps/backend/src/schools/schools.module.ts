@@ -8,5 +8,6 @@ import { StorageModule } from '../storage/storage.module';
   imports: [PracticeBlocksModule, StorageModule],
   controllers: [SchoolsController],
   providers: [SchoolsService],
+  exports: [SchoolsService],
 })
 export class SchoolsModule {}

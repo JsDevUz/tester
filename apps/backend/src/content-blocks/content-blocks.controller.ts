@@ -38,6 +38,11 @@ class ReorderBlocksDto {
   @IsArray() @ArrayNotEmpty() @IsString({ each: true }) blockIds: string[];
 }
 
+class CreateFileBlockFromLibraryDto {
+  @IsString() @MinLength(1) url: string;
+  @IsString() @MinLength(1) fileName: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('teacher', 'super')
 @Controller()
@@ -73,6 +78,15 @@ export class ContentBlocksController {
     @Req() req: any,
   ) {
     return this.contentBlocksService.uploadFileBlock(lessonId, req.admin.id, file, label);
+  }
+
+  @Post('lessons/:lessonId/files/from-library')
+  createFileBlockFromLibrary(
+    @Param('lessonId') lessonId: string,
+    @Req() req: any,
+    @Body() dto: CreateFileBlockFromLibraryDto,
+  ) {
+    return this.contentBlocksService.createFileBlockFromLibrary(lessonId, req.admin.id, dto.url, dto.fileName);
   }
 
   @Patch('blocks/:id')

@@ -497,3 +497,20 @@ export const answersRelations = relations(answers, ({ one }) => ({
 export const liveSessionsRelations = relations(liveSessions, ({ one }) => ({
   test: one(tests, { fields: [liveSessions.testId], references: [tests.id] }),
 }));
+
+export const mediaAssets = pgTable('media_assets', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  schoolAdminId: uuid('school_admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  uploaderId: uuid('uploader_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  url: text('url').notNull(),
+  key: text('key').notNull(),
+  type: text('type').notNull(),
+  originalName: text('original_name').notNull(),
+  folder: text('folder').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
+  schoolAdmin: one(users, { fields: [mediaAssets.schoolAdminId], references: [users.id] }),
+  uploader: one(users, { fields: [mediaAssets.uploaderId], references: [users.id] }),
+}));

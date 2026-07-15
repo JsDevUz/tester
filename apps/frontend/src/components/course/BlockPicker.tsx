@@ -1,11 +1,13 @@
-import { useRef } from 'react';
+import { useRef, useState } from 'react';
 import {
-  LayoutGrid, Film, MousePointer2, Paperclip, type LucideIcon,
+  LayoutGrid, Film, MousePointer2, Paperclip, FolderOpen, type LucideIcon,
 } from 'lucide-react';
+import { MediaLibraryModal } from '../MediaLibraryModal';
 
 interface BlockPickerProps {
   onPickEditor: () => void;
   onPickFile: (type: 'video' | 'image' | 'file', file: File) => void;
+  onPickFileFromLibrary: (url: string, fileName: string) => void;
   disabled?: boolean;
   limitText?: string;
 }
@@ -28,11 +30,13 @@ const BLOCK_ITEMS: BlockItem[] = [
   { key: 'video', label: 'Video', icon: Film },
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
+  { key: 'library', label: 'Kutubxonadan', icon: FolderOpen },
 ];
 
-export function BlockPicker({ onPickEditor, onPickFile, disabled = false, limitText }: BlockPickerProps) {
+export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, disabled = false, limitText }: BlockPickerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingTypeRef = useRef<'video' | 'image' | 'file'>('file');
+  const [libraryOpen, setLibraryOpen] = useState(false);
 
   function openFilePicker(type: 'video' | 'image' | 'file') {
     if (disabled) return;
@@ -57,11 +61,24 @@ export function BlockPicker({ onPickEditor, onPickFile, disabled = false, limitT
     if (disabled || item.disabled) return;
     if (item.key === 'editor') onPickEditor();
     else if (item.key === 'video' || item.key === 'file') openFilePicker(item.key);
+    else if (item.key === 'library') setLibraryOpen(true);
   }
 
   return (
     <div>
       <input ref={fileInputRef} type="file" className="hidden" onChange={handleFileChange} />
+      {libraryOpen && (
+        <MediaLibraryModal
+          type="file"
+          folder="lessons"
+          onSelect={(url) => {
+            const fileName = url.split('/').pop() || 'fayl';
+            onPickFileFromLibrary(url, fileName);
+            setLibraryOpen(false);
+          }}
+          onClose={() => setLibraryOpen(false)}
+        />
+      )}
       <p className="text-center text-xs text-gray-400 mb-3">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>

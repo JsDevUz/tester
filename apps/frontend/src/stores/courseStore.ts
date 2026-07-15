@@ -14,6 +14,7 @@ import {
   apiReorderBlocks,
   apiUploadVideoBlock,
   apiUploadFileBlock,
+  apiCreateFileBlockFromLibrary,
   apiRetryVideoBlock,
   type ApiContentBlock,
 } from '../api/contentBlocks';
@@ -149,6 +150,7 @@ interface CourseState {
   toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
 
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock, file?: File) => Promise<void>;
+  addFileBlockFromLibrary: (courseId: string, moduleId: string, lessonId: string, url: string, fileName: string) => Promise<void>;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => Promise<void>;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
@@ -617,6 +619,36 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       return;
     }
 
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
+                          ? l
+                          : { ...l, blocks: [...l.blocks, newBlock] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addFileBlockFromLibrary: async (courseId, moduleId, lessonId, url, fileName) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
+
+    const row = await apiCreateFileBlockFromLibrary(lessonId, url, fileName);
+    const newBlock = toFrontendBlock(row);
     set({
       courses: get().courses.map((c) =>
         c.id !== courseId

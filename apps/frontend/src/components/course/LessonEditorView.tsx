@@ -65,6 +65,7 @@ export function LessonEditorView({
     courses,
     renameLesson,
     addBlock,
+    addFileBlockFromLibrary,
     updateBlock,
     removeBlock,
     moveBlock,
@@ -134,6 +135,12 @@ export function LessonEditorView({
       processingStatus: type === "video" ? "pending" : undefined,
     };
     void addBlock(courseId, moduleId, lessonId, block, type === "video" || type === "file" ? file : undefined);
+  }
+
+  function handlePickFileFromLibrary(url: string, fileName: string) {
+    if (contentLimitReached) return;
+    collapseAllExisting();
+    void addFileBlockFromLibrary(courseId, moduleId, lessonId, url, fileName);
   }
 
   function toggleCollapse(blockId: string) {
@@ -273,6 +280,7 @@ export function LessonEditorView({
               <BlockPicker
                 onPickEditor={handlePickEditor}
                 onPickFile={handlePickFile}
+                onPickFileFromLibrary={handlePickFileFromLibrary}
                 disabled={contentLimitReached}
                 limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
               />

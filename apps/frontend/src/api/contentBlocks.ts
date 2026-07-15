@@ -79,6 +79,15 @@ export async function apiUploadFileBlock(
   return res.data;
 }
 
+export async function apiCreateFileBlockFromLibrary(
+  lessonId: string,
+  url: string,
+  fileName: string,
+): Promise<ApiContentBlock> {
+  const res = await client.post(`/lessons/${lessonId}/files/from-library`, { url, fileName });
+  return res.data;
+}
+
 export async function apiRetryVideoBlock(blockId: string): Promise<ApiContentBlock> {
   const res = await client.post(`/blocks/${blockId}/videos/retry`);
   return res.data;

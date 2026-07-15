@@ -239,6 +239,13 @@
       "when": 1784200000000,
       "tag": "0033_practice_chat_reads",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1784300000000,
+      "tag": "0034_media_assets",
+      "breakpoints": true
     }
   ]
 }
