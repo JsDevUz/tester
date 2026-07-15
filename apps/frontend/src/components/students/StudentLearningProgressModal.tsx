@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { CheckCircle2, CircleDashed, ClipboardCheck, Clock3, ExternalLink, PlayCircle, Star, UserRound, Video, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiGetStudentCourseProgress, type ApiStudentCourseProgress } from '../../api/school';
-import { apiGradeImageSubmission, apiGradeOralPracticeBlock } from '../../api/practiceBlocks';
+import { apiGradeImageSubmission, apiGradeOralPracticeBlock, apiGradeTestPracticeSubmission } from '../../api/practiceBlocks';
 
 interface StudentLearningProgressModalProps {
   studentId: string;
@@ -39,6 +39,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
   const [fullscreenImage, setFullscreenImage] = useState<{ imageUrl: string; submittedAt: string } | null>(null);
   const [scoreDraft, setScoreDraft] = useState('');
   const [editingGrade, setEditingGrade] = useState(false);
+  const [editingTestSubmissionId, setEditingTestSubmissionId] = useState<string | null>(null);
   const [savingGrade, setSavingGrade] = useState(false);
 
   useEffect(() => {
@@ -89,6 +90,29 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
       setRefreshVersion((version) => version + 1);
     } catch (requestError: any) {
       toast.error(requestError?.response?.data?.message ?? "Bahoni saqlab bo‘lmadi.");
+    } finally {
+      setSavingGrade(false);
+    }
+  }
+
+  async function handleGradeTestPractice(submissionId: string) {
+    if (!selectedPractice || selectedPractice.practiceBlock.type !== 'test') return;
+    const score = Number(scoreDraft);
+    const maxScore = selectedPractice.practiceBlock.maxScore;
+    if (!Number.isInteger(score) || score < 0 || maxScore === null || score > maxScore) {
+      toast.error(maxScore === null ? "Maksimal yulduz belgilanmagan." : `Yulduz 0 dan ${maxScore} gacha bo‘lishi kerak.`);
+      return;
+    }
+    setSavingGrade(true);
+    try {
+      await apiGradeTestPracticeSubmission(submissionId, score);
+      setEditingTestSubmissionId(null);
+      setScoreDraft('');
+      setSelectedPractice(null);
+      setRefreshVersion((version) => version + 1);
+      toast.success('Test amaliyoti yulduzi yangilandi');
+    } catch (requestError: any) {
+      toast.error(requestError?.response?.data?.message ?? "Yulduzni saqlab bo‘lmadi.");
     } finally {
       setSavingGrade(false);
     }
@@ -215,7 +239,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                             <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
                               <p className="text-[11px] font-semibold text-gray-500">Amaliyotlar</p>
                               {lesson.practiceBlocks.map((practiceBlock) => (
-                                <button type="button" key={practiceBlock.id} onClick={() => { setSelectedPractice({ lessonTitle: lesson.title, practiceBlock }); setScoreDraft(''); setEditingGrade(false); }} className="flex w-full items-center justify-between gap-3 rounded-lg bg-gray-50 px-2.5 py-2 text-left transition-colors hover:bg-gray-100">
+                                <button type="button" key={practiceBlock.id} onClick={() => { setSelectedPractice({ lessonTitle: lesson.title, practiceBlock }); setScoreDraft(''); setEditingGrade(false); setEditingTestSubmissionId(null); }} className="flex w-full items-center justify-between gap-3 rounded-lg bg-gray-50 px-2.5 py-2 text-left transition-colors hover:bg-gray-100">
                                   <p className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-gray-700"><ClipboardCheck size={13} className="shrink-0" style={{ color: 'var(--color-gray-900)' }} /><span className="truncate">{practiceBlock.title}</span></p>
                                   {practiceBlock.maxScore !== null ? (
                                     <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-amber-500"><Star size={12} fill="currentColor" />{practiceBlock.earnedScore ?? 0}/{practiceBlock.maxScore}</span>
@@ -310,12 +334,30 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                 {selectedPractice.practiceBlock.submissions.length === 0 ? (
                   <p className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">O‘quvchi bu testni hali ishlamagan.</p>
                 ) : selectedPractice.practiceBlock.submissions.map((submission, index) => (
-                  <div key={submission.id} className="flex items-center justify-between gap-3 rounded-2xl bg-gray-50 px-4 py-3">
-                    <div>
-                      <p className="text-sm font-bold text-gray-800">Urinish {selectedPractice.practiceBlock.submissions.length - index}</p>
-                      <p className="mt-0.5 text-xs text-gray-400">{formatDateTime(submission.submittedAt)} · {submission.score}/{submission.total} to‘g‘ri</p>
+                  <div key={submission.id} className="rounded-2xl bg-gray-50 px-4 py-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <div>
+                        <p className="text-sm font-bold text-gray-800">Urinish {selectedPractice.practiceBlock.submissions.length - index}</p>
+                        <p className="mt-0.5 text-xs text-gray-400">{formatDateTime(submission.submittedAt)} · {submission.score}/{submission.total} to‘g‘ri</p>
+                      </div>
+                      <a href={`/submissions/${submission.id}`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-bold text-[var(--color-gray-900)] ring-1 ring-gray-200">Javoblar <ExternalLink size={13} /></a>
                     </div>
-                    <a href={`/submissions/${submission.id}`} target="_blank" rel="noreferrer" className="inline-flex shrink-0 items-center gap-1 rounded-xl bg-white px-3 py-2 text-xs font-bold text-[var(--color-gray-900)] ring-1 ring-gray-200">Javoblar <ExternalLink size={13} /></a>
+                    {selectedPractice.practiceBlock.maxScore !== null && (
+                      editingTestSubmissionId === submission.id ? (
+                        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+                          <input type="number" min={0} max={selectedPractice.practiceBlock.maxScore} value={scoreDraft} onChange={(event) => setScoreDraft(event.target.value)} className="w-24 rounded-xl bg-white px-3 py-2 text-sm font-semibold text-gray-800 outline-none ring-1 ring-gray-200" />
+                          <span className="text-xs text-gray-400">/ {selectedPractice.practiceBlock.maxScore}</span>
+                          <button type="button" disabled={savingGrade} onClick={() => void handleGradeTestPractice(submission.id)} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold disabled:opacity-50">{savingGrade ? 'Saqlanmoqda...' : 'Saqlash'}</button>
+                          <button type="button" onClick={() => { setEditingTestSubmissionId(null); setScoreDraft(''); }} className="rounded-xl px-3 py-2 text-xs font-bold text-gray-500 hover:bg-gray-100">Bekor qilish</button>
+                        </div>
+                      ) : (
+                        <div className="mt-3 flex items-center gap-2 border-t border-gray-200 pt-3">
+                          <span className="inline-flex items-center gap-1 text-sm font-bold text-amber-500"><Star size={14} fill="currentColor" />{submission.earnedScore ?? 0}/{selectedPractice.practiceBlock.maxScore}</span>
+                          {submission.scoreOverridden && <span className="rounded-full bg-amber-100 px-2 py-0.5 text-[10px] font-bold text-amber-600">Qo‘lda tahrirlangan</span>}
+                          <button type="button" onClick={() => { setEditingTestSubmissionId(submission.id); setScoreDraft(String(submission.earnedScore ?? 0)); }} className="theme-primary-button ml-auto rounded-xl px-3.5 py-2 text-xs font-bold">O‘zgartirish</button>
+                        </div>
+                      )
+                    )}
                   </div>
                 ))}
               </div>

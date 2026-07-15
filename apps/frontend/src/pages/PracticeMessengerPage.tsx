@@ -20,7 +20,10 @@ import {
   X,
 } from "lucide-react";
 import { toast } from "sonner";
-import { apiGradeImageSubmission } from "../api/practiceBlocks";
+import {
+  apiGradeImageSubmission,
+  apiGradeTestPracticeSubmission,
+} from "../api/practiceBlocks";
 import { apiGetSubmission, type SubmissionDetail } from "../api/submissions";
 import { AnswerResultCard } from "../components/AnswerResultCard";
 import {
@@ -320,7 +323,10 @@ function PracticeMessengerContent() {
     );
   }, [chats, query]);
 
-  const isCurator = !!selectedChat && selectedChat.student.id !== admin?.id;
+  const isCurator =
+    admin?.role === "curator" ||
+    admin?.role === "teacher" ||
+    admin?.role === "super";
   const pinnedMessages = useMemo(
     () =>
       messages.filter(
@@ -462,6 +468,37 @@ function PracticeMessengerContent() {
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ?? "Baholashda xatolik yuz berdi",
+      );
+    }
+  }
+
+  async function gradeTestPractice(message: ApiPracticeMessage) {
+    const maximum = Number(message.practice?.maxScore ?? 0);
+    const score = Number(scoreByMessage[message.id]);
+    if (
+      !message.testSubmission ||
+      maximum <= 0 ||
+      !Number.isInteger(score) ||
+      score < 0 ||
+      score > maximum
+    ) {
+      toast.error(`Yulduz 0 dan ${maximum} gacha bo‘lishi kerak`);
+      return;
+    }
+    try {
+      await apiGradeTestPracticeSubmission(message.testSubmission.id, score);
+      setEditingGradeMessageId(null);
+      setScoreByMessage((state) => {
+        const next = { ...state };
+        delete next[message.id];
+        return next;
+      });
+      toast.success("Test amaliyoti yulduzi yangilandi");
+      if (selectedChat)
+        await Promise.all([loadChat(selectedChat.id), loadChats()]);
+    } catch (error: any) {
+      toast.error(
+        error?.response?.data?.message ?? "Yulduzni saqlab bo‘lmadi",
       );
     }
   }
@@ -825,23 +862,96 @@ function PracticeMessengerContent() {
                                       </div>
                                     </div>
                                     {message.type === "practice_test" && (
-                                      <button
-                                        type="button"
-                                        onClick={() =>
-                                          void openTestResult(message)
-                                        }
-                                        className="practice-messenger-result mt-3 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-opacity hover:opacity-90"
-                                        title="Tanlangan javoblarni ko‘rish"
-                                      >
-                                        <span className="text-xs font-semibold">
-                                          Natijalarni ko‘rish
-                                        </span>
-                                        <span className="inline-flex items-center gap-1 text-sm font-bold">
-                                          <Star size={14} fill="currentColor" />{" "}
-                                          {message.testSubmission?.score ?? 0} /{" "}
-                                          {message.testSubmission?.total ?? 0}
-                                        </span>
-                                      </button>
+                                      <>
+                                        <button
+                                          type="button"
+                                          onClick={() =>
+                                            void openTestResult(message)
+                                          }
+                                          className="practice-messenger-result mt-3 flex w-full items-center justify-between rounded-xl px-3 py-2 text-left transition-opacity hover:opacity-90"
+                                          title="Tanlangan javoblarni ko‘rish"
+                                        >
+                                          <span className="text-xs font-semibold">
+                                            Natijalarni ko‘rish
+                                          </span>
+                                          <span className="text-sm font-bold">
+                                            {message.testSubmission?.score ?? 0} /{" "}
+                                            {message.testSubmission?.total ?? 0}
+                                          </span>
+                                        </button>
+                                        {isCurator &&
+                                          (maxScore <= 0 ? (
+                                            <p className="mt-2 text-xs font-semibold text-amber-500">
+                                              Maksimal yulduz belgilanmagan
+                                            </p>
+                                          ) : editingGradeMessageId ===
+                                            message.id ? (
+                                            <div className="mt-2 flex items-end gap-2">
+                                              <label className="min-w-0 flex-1 text-xs font-semibold text-gray-400">
+                                                Amaliyot yulduzi / {maxScore}
+                                                <input
+                                                  type="number"
+                                                  min={0}
+                                                  max={maxScore}
+                                                  value={
+                                                    scoreByMessage[message.id] ?? ""
+                                                  }
+                                                  onChange={(event) =>
+                                                    setScoreByMessage((state) => ({
+                                                      ...state,
+                                                      [message.id]: event.target.value,
+                                                    }))
+                                                  }
+                                                  className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2 text-sm font-bold text-gray-900 outline-none focus:border-gray-900"
+                                                />
+                                              </label>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  void gradeTestPractice(message)
+                                                }
+                                                className="practice-messenger-primary rounded-lg px-3 py-2 text-xs font-bold"
+                                              >
+                                                Saqlash
+                                              </button>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  cancelEditingImageGrade(message.id)
+                                                }
+                                                className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500"
+                                                aria-label="Bekor qilish"
+                                              >
+                                                <X size={15} />
+                                              </button>
+                                            </div>
+                                          ) : (
+                                            <div className="mt-2 flex items-center justify-between gap-3">
+                                              <p className="inline-flex items-center gap-1 text-sm font-bold text-amber-500">
+                                                <Star size={14} fill="currentColor" />
+                                                {message.testSubmission?.practiceScore ?? 0} / {maxScore}
+                                                {message.testSubmission?.scoreOverridden && (
+                                                  <span className="text-[10px] font-medium text-gray-400">
+                                                    qo‘lda
+                                                  </span>
+                                                )}
+                                              </p>
+                                              <button
+                                                type="button"
+                                                onClick={() =>
+                                                  startEditingImageGrade(
+                                                    message,
+                                                    message.testSubmission
+                                                      ?.practiceScore ?? 0,
+                                                  )
+                                                }
+                                                className="inline-flex items-center gap-1.5 rounded-lg border border-gray-200 px-2.5 py-1.5 text-xs font-bold text-gray-700"
+                                              >
+                                                <Pencil size={13} /> Tahrirlash
+                                              </button>
+                                            </div>
+                                          ))}
+                                      </>
                                     )}
                                     {message.type === "practice_image" &&
                                       message.imageSubmissions.length > 0 && (

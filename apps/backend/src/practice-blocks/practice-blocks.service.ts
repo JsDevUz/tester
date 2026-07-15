@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades, groups, groupEnrollments, schoolMembers } from '../db/schema';
+import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades, groups, groupEnrollments, schoolMembers, practiceChatMessages } from '../db/schema';
 import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 
@@ -265,10 +265,11 @@ export class PracticeBlocksService {
         });
         const completedSubmissions = studentSubmissions.filter((s) => s.submittedAt !== null);
         const latest = completedSubmissions[0] ?? null;
-        const earnedScore = computeEarnedScore(
+        const automaticallyEarnedScore = computeEarnedScore(
           latest && latest.score !== null && latest.total !== null ? { score: latest.score, total: latest.total } : null,
           block.maxScore,
         );
+        const earnedScore = latest?.practiceScoreOverride ?? automaticallyEarnedScore;
 
         return {
           id: block.id,
@@ -284,6 +285,17 @@ export class PracticeBlocksService {
             submittedAt: s.submittedAt!.toISOString(),
             score: s.score ?? 0,
             total: s.total ?? 0,
+            earnedScore:
+              s.practiceScoreOverride ??
+              computeEarnedScore(
+                s.score !== null && s.total !== null
+                  ? { score: s.score, total: s.total }
+                  : null,
+                block.maxScore,
+              ),
+            scoreOverridden: s.practiceScoreOverride !== null,
+            scoreOverriddenAt:
+              s.practiceScoreOverriddenAt?.toISOString() ?? null,
           })),
           attemptsRemaining: Math.max(0, PRACTICE_ATTEMPT_LIMIT - completedSubmissions.length),
           imageSubmissions: [],
@@ -396,6 +408,64 @@ export class PracticeBlocksService {
       .returning();
     await this.practiceMessengerService.createOralGradeMessage(practiceBlockId, studentId, adminId, score);
     return grade;
+  }
+
+  async gradeTestPractice(submissionId: string, adminId: string, score: number) {
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+    });
+    if (!submission?.userId || !submission.submittedAt) {
+      throw new NotFoundException('Test amaliyoti topilmadi');
+    }
+
+    const sourceMessage = await db.query.practiceChatMessages.findFirst({
+      where: and(
+        eq(practiceChatMessages.testSubmissionId, submission.id),
+        eq(practiceChatMessages.type, 'practice_test'),
+      ),
+    });
+    if (!sourceMessage?.practiceBlockId) {
+      throw new NotFoundException('Test amaliyoti topilmadi');
+    }
+    const block = await db.query.practiceBlocks.findFirst({
+      where: and(
+        eq(practiceBlocks.id, sourceMessage.practiceBlockId),
+        eq(practiceBlocks.type, 'test'),
+      ),
+    });
+    if (!block) throw new NotFoundException('Test amaliyoti topilmadi');
+    await this.assertCanGradeImage(block, submission.userId, adminId);
+    if (block.maxScore === null || block.maxScore <= 0) {
+      throw new BadRequestException('Baholashdan oldin maksimal yulduzni belgilang');
+    }
+    if (score > block.maxScore) {
+      throw new BadRequestException(
+        `Yulduz blokning maksimal qiymatidan (${block.maxScore}) oshmasligi kerak`,
+      );
+    }
+
+    const wasOverridden = submission.practiceScoreOverride !== null;
+    const [updated] = await db
+      .update(submissions)
+      .set({
+        practiceScoreOverride: score,
+        practiceScoreOverriddenByAdminId: adminId,
+        practiceScoreOverriddenAt: new Date(),
+      })
+      .where(eq(submissions.id, submission.id))
+      .returning();
+    await this.practiceMessengerService.createTestGradeMessage(
+      submission.id,
+      adminId,
+      score,
+      wasOverridden,
+    );
+    return {
+      id: updated.id,
+      earnedScore: updated.practiceScoreOverride,
+      scoreOverridden: true,
+      scoreOverriddenAt: updated.practiceScoreOverriddenAt!.toISOString(),
+    };
   }
 
   async listImageSubmissionsForGrading(lessonId: string, adminId: string) {

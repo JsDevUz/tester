@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { groupEnrollments, schoolMembers, submissions, tests } from '../db/schema';
+import { groupEnrollments, practiceChatMessages, schoolMembers, submissions, tests } from '../db/schema';
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { normalizeViolationReason, orderSubmissionAnswersForDisplay, seededShuffle } from '../delivery/delivery.service';
 
@@ -65,7 +65,18 @@ export class SubmissionsService {
     });
     if (!submission) throw new NotFoundException('Submission not found');
 
-    const showAnswers = submission.test.showResults === 'immediately' || submission.test.showResults === 'per_question';
+    const practiceMessage = await db.query.practiceChatMessages.findFirst({
+      where: and(
+        eq(practiceChatMessages.testSubmissionId, submission.id),
+        eq(practiceChatMessages.type, 'practice_test'),
+      ),
+    });
+    // Kurs amaliyotida o'quvchi o'z natijasini doim ko'ra oladi. Oddiy testlarda
+    // esa testning showResults sozlamasi saqlanadi.
+    const effectiveShowResults = practiceMessage
+      ? 'immediately'
+      : submission.test.showResults;
+    const showAnswers = effectiveShowResults === 'immediately' || effectiveShowResults === 'per_question';
     const orderedAnswers = orderSubmissionAnswersForDisplay(
       submission.answers,
       submission.answers.map((a) => ({ id: a.questionId, orderIndex: a.question.orderIndex })),
@@ -83,7 +94,7 @@ export class SubmissionsService {
       total: submission.total,
       mode: submission.mode,
       violationReason: normalizeViolationReason(submission.violationReason),
-      showResults: submission.test.showResults,
+      showResults: effectiveShowResults,
       answers: showAnswers ? orderedAnswers.map((a) => {
         const sortedOptions = [...a.question.options].sort((x, y) => x.orderIndex - y.orderIndex);
         const displayOptions = submission.test.shuffleOptions && a.question.type !== 'matching'

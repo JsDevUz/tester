@@ -114,7 +114,15 @@ export interface ApiStudentLessonProgress {
     description: string;
     maxScore: number | null;
     earnedScore: number | null;
-    submissions: Array<{ id: string; submittedAt: string; score: number; total: number }>;
+    submissions: Array<{
+      id: string;
+      submittedAt: string;
+      score: number;
+      total: number;
+      earnedScore: number | null;
+      scoreOverridden: boolean;
+      scoreOverriddenAt: string | null;
+    }>;
     imageSubmissions: Array<{
       id: string;
       imageUrl: string;

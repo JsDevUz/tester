@@ -63,6 +63,19 @@ export async function apiGradeOralPracticeBlock(practiceBlockId: string, student
   return res.data;
 }
 
+export async function apiGradeTestPracticeSubmission(
+  submissionId: string,
+  score: number,
+): Promise<{
+  id: string;
+  earnedScore: number;
+  scoreOverridden: boolean;
+  scoreOverriddenAt: string;
+}> {
+  const res = await client.patch(`/test-practice-submissions/${submissionId}/grade`, { score });
+  return res.data;
+}
+
 export async function apiUpdatePracticeBlock(
   id: string,
   data: { testId?: string | null; description?: string; maxScore?: number | null },

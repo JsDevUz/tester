@@ -31,6 +31,10 @@ class GradeOralPracticeDto {
   @IsInt() @Min(0) score: number;
 }
 
+class GradeTestPracticeDto {
+  @IsInt() @Min(0) score: number;
+}
+
 @Controller()
 export class PracticeBlocksController {
   constructor(private practiceBlocksService: PracticeBlocksService) {}
@@ -111,6 +115,17 @@ export class PracticeBlocksController {
     @Body() dto: GradeOralPracticeDto,
   ) {
     return this.practiceBlocksService.gradeOralPractice(id, studentId, req.admin.id, dto.score);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('curator', 'teacher', 'super')
+  @Patch('test-practice-submissions/:id/grade')
+  gradeTestPractice(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Body() dto: GradeTestPracticeDto,
+  ) {
+    return this.practiceBlocksService.gradeTestPractice(id, req.admin.id, dto.score);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

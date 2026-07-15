@@ -199,12 +199,14 @@ export const practiceChatMessages = pgTable('practice_chat_messages', {
   deletedAt: timestamp('deleted_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 }, (table) => ({
-  uniqueTestSubmission: uniqueIndex('practice_chat_messages_test_submission_key')
+  uniqueTestSubmissionMessage: uniqueIndex('practice_chat_messages_test_submission_message_key')
     .on(table.testSubmissionId)
-    .where(sql`${table.testSubmissionId} IS NOT NULL`),
-  uniqueImageSubmissionType: uniqueIndex('practice_chat_messages_image_submission_type_key')
-    .on(table.imageSubmissionId, table.type)
-    .where(sql`${table.imageSubmissionId} IS NOT NULL`),
+    .where(sql`${table.testSubmissionId} IS NOT NULL AND ${table.type} = 'practice_test'`),
+  // Rasm yuborilganining asosiy xabari bitta bo'ladi. `practice_grade` esa har
+  // qayta baholashda yangi tarixiy xabar bo'lgani uchun unique qilinmaydi.
+  uniqueImageSubmissionMessage: uniqueIndex('practice_chat_messages_image_submission_message_key')
+    .on(table.imageSubmissionId)
+    .where(sql`${table.imageSubmissionId} IS NOT NULL AND ${table.type} = 'practice_image'`),
 }));
 
 export const practiceChatReads = pgTable('practice_chat_reads', {
@@ -444,6 +446,11 @@ export const submissions = pgTable('submissions', {
   submittedAt: timestamp('submitted_at', { withTimezone: true }),
   score: integer('score'),
   total: integer('total'),
+  // Testning asl score/total natijasiga tegmasdan, faqat kurs amaliyoti
+  // yulduzini ustoz tomonidan almashtirish uchun alohida qiymat.
+  practiceScoreOverride: integer('practice_score_override'),
+  practiceScoreOverriddenByAdminId: uuid('practice_score_overridden_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
+  practiceScoreOverriddenAt: timestamp('practice_score_overridden_at', { withTimezone: true }),
   mode: text('submission_mode').notNull().default('normal'),
   violationReason: text('violation_reason'),
 });

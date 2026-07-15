@@ -26,7 +26,14 @@ export interface ApiPracticeMessage {
   } | null;
   metadata: Record<string, unknown>;
   practice: { id: string; title: string; maxScore: number | null } | null;
-  testSubmission: { id: string; score: number | null; total: number | null } | null;
+  testSubmission: {
+    id: string;
+    score: number | null;
+    total: number | null;
+    practiceScore: number | null;
+    scoreOverridden: boolean;
+    scoreOverriddenAt: string | null;
+  } | null;
   imageSubmission: {
     id: string;
     imageUrl: string;

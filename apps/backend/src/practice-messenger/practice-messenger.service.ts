@@ -26,6 +26,16 @@ type PracticeContext = {
 
 type ChatUser = { id: string; name: string };
 type ChatGroup = { name: string };
+
+function testPracticeScore(
+  submission: { score: number | null; total: number | null; practiceScoreOverride: number | null },
+  maxScore: number | null,
+): number | null {
+  if (submission.practiceScoreOverride !== null) return submission.practiceScoreOverride;
+  if (maxScore === null) return null;
+  if (!submission.total) return 0;
+  return Math.round(((submission.score ?? 0) / submission.total) * maxScore);
+}
 type ChatCourse = { title: string; adminId: string };
 type CuratorMembership = { schoolMember: { role: string; studentId: string } | null };
 
@@ -239,7 +249,19 @@ export class PracticeMessengerService {
             }
           : null,
         testSubmission: message.testSubmission
-          ? { id: message.testSubmission.id, score: message.testSubmission.score, total: message.testSubmission.total }
+          ? {
+              id: message.testSubmission.id,
+              score: message.testSubmission.score,
+              total: message.testSubmission.total,
+              practiceScore: testPracticeScore(
+                message.testSubmission,
+                message.practiceBlock?.maxScore ?? null,
+              ),
+              scoreOverridden:
+                message.testSubmission.practiceScoreOverride !== null,
+              scoreOverriddenAt:
+                message.testSubmission.practiceScoreOverriddenAt?.toISOString() ?? null,
+            }
           : null,
         imageSubmission: message.imageSubmission
           ? {
@@ -444,6 +466,63 @@ export class PracticeMessengerService {
       practiceBlockId: block.id,
       imageSubmissionId: submission.id,
       metadata,
+    }).returning();
+    await this.touchChat(context.chat.id);
+    await this.broadcastNewMessage(
+      { ...context.chat, courseAdminId: context.course.adminId },
+      {
+        id: message.id,
+        chatId: context.chat.id,
+        senderId: graderId,
+        type: 'practice_grade',
+        content,
+        createdAt: message.createdAt!.toISOString(),
+      },
+    );
+  }
+
+  async createTestGradeMessage(
+    submissionId: string,
+    graderId: string,
+    score: number,
+    wasOverridden: boolean,
+  ) {
+    const submission = await db.query.submissions.findFirst({
+      where: eq(submissions.id, submissionId),
+    });
+    if (!submission?.userId) return;
+    const sourceMessage = await db.query.practiceChatMessages.findFirst({
+      where: and(
+        eq(practiceChatMessages.testSubmissionId, submission.id),
+        eq(practiceChatMessages.type, 'practice_test'),
+      ),
+    });
+    if (!sourceMessage?.practiceBlockId) return;
+    const block = await db.query.practiceBlocks.findFirst({
+      where: eq(practiceBlocks.id, sourceMessage.practiceBlockId),
+    });
+    if (!block) return;
+    const context = await this.resolvePracticeContext(block, submission.userId);
+    if (!context) return;
+
+    const title = block.description || 'Test amaliyoti';
+    const content = wasOverridden
+      ? `${title} qayta baholandi: ${score} / ${block.maxScore ?? 0}.`
+      : `${title} bahosi tahrirlandi: ${score} / ${block.maxScore ?? 0}.`;
+    const [message] = await db.insert(practiceChatMessages).values({
+      chatId: context.chat.id,
+      senderId: graderId,
+      type: 'practice_grade',
+      content,
+      practiceBlockId: block.id,
+      testSubmissionId: submission.id,
+      metadata: {
+        score,
+        maxScore: block.maxScore ?? 0,
+        originalScore: submission.score ?? 0,
+        originalTotal: submission.total ?? 0,
+        gradeKind: 'test_override',
+      },
     }).returning();
     await this.touchChat(context.chat.id);
     await this.broadcastNewMessage(

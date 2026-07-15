@@ -8,6 +8,20 @@
       "when": 1784098831646,
       "tag": "0000_premium_doctor_octopus",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1784121000000,
+      "tag": "0001_allow_practice_regrade_messages",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1784125200000,
+      "tag": "0002_add_test_practice_score_override",
+      "breakpoints": true
     }
   ]
 }
