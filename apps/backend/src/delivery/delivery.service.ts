@@ -269,9 +269,16 @@ export class DeliveryService {
   }
 
   // Feedback uchun to'g'ri javob matni: correctAnswer bo'lmasa to'g'ri variant matnlari
-  private correctAnswerText(question: { correctAnswer: string | null; type: string; options: Array<{ text: string; isCorrect: boolean }> }): string | null {
+  private correctAnswerText(question: { correctAnswer: string | null; type: string; options: Array<{ text: string; isCorrect: boolean; orderIndex: number }> }): string | null {
     if (question.correctAnswer) return question.correctAnswer;
     if (question.type === 'droppin') return null;
+    if (question.type === 'matching') {
+      const lefts = question.options.filter((option) => option.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+      const rights = question.options.filter((option) => !option.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+      return lefts.length > 0
+        ? lefts.map((left, index) => `${left.text} → ${rights[index]?.text ?? '—'}`).join('; ')
+        : null;
+    }
     const correctTexts = question.options.filter((o) => o.isCorrect).map((o) => o.text);
     return correctTexts.length > 0 ? correctTexts.join(', ') : null;
   }

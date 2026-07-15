@@ -36,6 +36,18 @@
   color: #fff !important;
 }
 
+.test-card-action-tooltip {
+  background-color: #27272a !important;
+  color: #fff !important;
+  border: 1px solid #3f3f46;
+}
+
+:root[data-theme="dark"] .test-card-action-tooltip {
+  background-color: #f4f4f5 !important;
+  color: #18181b !important;
+  border-color: #e4e4e7;
+}
+
 .theme-primary-button {
   background-color: #18181b !important;
   color: #fff !important;

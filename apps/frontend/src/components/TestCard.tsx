@@ -48,7 +48,7 @@ function ActionButton({
       className={`${actionButtonClass} ${danger ? "hover:text-red-400" : ""}`}
     >
       <Icon size={actionIconSize} />
-      <span className="pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-[11px] font-semibold text-white opacity-0 shadow-lg shadow-gray-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
+      <span className="test-card-action-tooltip pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold opacity-0 shadow-lg shadow-gray-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
         {label}
       </span>
     </button>

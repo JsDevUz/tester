@@ -48,11 +48,12 @@ function SortableItem({
     transition,
     isDragging,
   } = useSortable({ id });
+  const verticalTransform = transform ? { ...transform, x: 0 } : null;
   return (
     <div
       ref={setNodeRef}
-      style={{ transform: CSS.Transform.toString(transform), transition }}
-      className={`flex items-center gap-3 px-4 py-3 rounded-2xl border select-none ${
+      style={{ transform: CSS.Transform.toString(verticalTransform), transition }}
+      className={`flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border select-none ${
         isDragging
           ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
           : "bg-white border-border"
@@ -62,7 +63,7 @@ function SortableItem({
         {pos + 1}.
       </span>
       <span
-        className="flex-1 text-gray-800"
+        className="min-w-0 flex-1 break-words text-gray-800"
         style={{ fontSize: "var(--q-fs, 16px)" }}
       >
         {text}
@@ -110,7 +111,7 @@ function ReorderQuestion({
       onDragEnd={handleDragEnd}
     >
       <SortableContext items={optionIds} strategy={verticalListSortingStrategy}>
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-2 overflow-x-clip">
           {optionIds.map((id, pos) => {
             const opt = options.find((o) => o.id === id);
             return opt ? (
@@ -167,6 +168,10 @@ function MatchingQuestion({
     [questionId, options],
   );
   const [pendingLeft, setPendingLeft] = useState<string | null>(null);
+  const boardRef = useRef<HTMLDivElement>(null);
+  const leftRefs = useRef(new Map<string, HTMLButtonElement>());
+  const rightRefs = useRef(new Map<string, HTMLButtonElement>());
+  const [connections, setConnections] = useState<Array<{ leftId: string; rightId: string; x1: number; y1: number; x2: number; y2: number }>>([]);
 
   useEffect(() => {
     setPendingLeft(null);
@@ -174,6 +179,38 @@ function MatchingQuestion({
 
   const pairedLeftIds = selected.filter((_, i) => i % 2 === 0);
   const pairedRightIds = selected.filter((_, i) => i % 2 !== 0);
+
+  useLayoutEffect(() => {
+    const updateConnections = () => {
+      const board = boardRef.current;
+      if (!board) return;
+      const boardRect = board.getBoundingClientRect();
+      setConnections(pairedLeftIds.flatMap((leftId, index) => {
+        const rightId = pairedRightIds[index];
+        const left = leftRefs.current.get(leftId);
+        const right = rightRefs.current.get(rightId);
+        if (!left || !right) return [];
+        const leftRect = left.getBoundingClientRect();
+        const rightRect = right.getBoundingClientRect();
+        return [{
+          leftId,
+          rightId,
+          x1: leftRect.right - boardRect.left,
+          y1: leftRect.top + leftRect.height / 2 - boardRect.top,
+          x2: rightRect.left - boardRect.left,
+          y2: rightRect.top + rightRect.height / 2 - boardRect.top,
+        }];
+      }));
+    };
+    updateConnections();
+    const observer = new ResizeObserver(updateConnections);
+    if (boardRef.current) observer.observe(boardRef.current);
+    window.addEventListener('resize', updateConnections);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', updateConnections);
+    };
+  }, [selected, options]);
 
   function tapLeft(id: string) {
     if (locked) return;
@@ -197,98 +234,50 @@ function MatchingQuestion({
     setPendingLeft(null);
   }
 
-  const COLORS = [
-    "indigo",
-    "rose",
-    "amber",
-    "teal",
-    "violet",
-    "orange",
-    "cyan",
-    "pink",
-  ];
-  const colorMap: Record<string, string> = {};
-  pairedLeftIds.forEach((lid, i) => {
-    colorMap[lid] = COLORS[i % COLORS.length];
-  });
-
-  const colorClasses: Record<
-    string,
-    { left: string; right: string; dot: string }
-  > = {
-    indigo: {
-      left: "bg-gray-100 border-gray-400 text-gray-700",
-      right: "bg-gray-100 border-gray-400 text-gray-700",
-      dot: "bg-gray-500",
-    },
-    rose: {
-      left: "bg-rose-50 border-rose-400 text-rose-700",
-      right: "bg-rose-50 border-rose-400 text-rose-700",
-      dot: "bg-rose-400",
-    },
-    amber: {
-      left: "bg-amber-50 border-amber-400 text-amber-700",
-      right: "bg-amber-50 border-amber-400 text-amber-700",
-      dot: "bg-amber-400",
-    },
-    teal: {
-      left: "bg-teal-50 border-teal-400 text-teal-700",
-      right: "bg-teal-50 border-teal-400 text-teal-700",
-      dot: "bg-teal-400",
-    },
-    violet: {
-      left: "bg-violet-50 border-violet-400 text-violet-700",
-      right: "bg-violet-50 border-violet-400 text-violet-700",
-      dot: "bg-violet-400",
-    },
-    orange: {
-      left: "bg-orange-50 border-orange-400 text-orange-700",
-      right: "bg-orange-50 border-orange-400 text-orange-700",
-      dot: "bg-orange-400",
-    },
-    cyan: {
-      left: "bg-cyan-50 border-cyan-400 text-cyan-700",
-      right: "bg-cyan-50 border-cyan-400 text-cyan-700",
-      dot: "bg-cyan-400",
-    },
-    pink: {
-      left: "bg-pink-50 border-pink-400 text-pink-700",
-      right: "bg-pink-50 border-pink-400 text-pink-700",
-      dot: "bg-pink-400",
-    },
-  };
-
   return (
     <div className="flex flex-col gap-3">
       <p className="text-xs text-gray-400">
         Chap tomondagini bosing, keyin mos o'ng tomondagini bosing
       </p>
-      <div className="grid grid-cols-2 gap-2">
+      <div ref={boardRef} className="relative grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)] gap-8 sm:gap-12">
+        <svg className="pointer-events-none absolute inset-0 z-0 h-full w-full overflow-visible" aria-hidden="true">
+          {connections.map((connection) => {
+            const bend = Math.max(12, (connection.x2 - connection.x1) * 0.45);
+            return (
+              <g key={`${connection.leftId}-${connection.rightId}`}>
+                <path
+                  d={`M ${connection.x1} ${connection.y1} C ${connection.x1 + bend} ${connection.y1}, ${connection.x2 - bend} ${connection.y2}, ${connection.x2} ${connection.y2}`}
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  className="text-gray-400"
+                />
+                <circle cx={connection.x1} cy={connection.y1} r="3" fill="currentColor" className="text-gray-500" />
+                <circle cx={connection.x2} cy={connection.y2} r="3" fill="currentColor" className="text-gray-500" />
+              </g>
+            );
+          })}
+        </svg>
         <div className="flex flex-col gap-2">
           {lefts.map((opt) => {
             const pairIdx = pairedLeftIds.indexOf(opt.id);
             const isPaired = pairIdx !== -1;
             const isPending = pendingLeft === opt.id;
-            const color = isPaired ? colorMap[opt.id] : null;
             return (
               <button
                 key={opt.id}
+                ref={(node) => { if (node) leftRefs.current.set(opt.id, node); else leftRefs.current.delete(opt.id); }}
                 type="button"
                 onClick={() => tapLeft(opt.id)}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
-                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors flex items-center gap-2 ${
+                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${
                   isPending
                     ? "bg-gray-900 text-white border-gray-900"
-                    : color
-                      ? colorClasses[color].left
+                    : isPaired
+                      ? "bg-gray-100 border-gray-400 text-gray-800"
                       : "bg-white border-border text-gray-700 hover:border-gray-300"
                 } ${locked ? "pointer-events-none" : ""}`}
               >
-                {isPaired && color && (
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${colorClasses[color].dot}`}
-                  />
-                )}
                 {opt.text}
               </button>
             );
@@ -298,28 +287,22 @@ function MatchingQuestion({
           {rights.map((opt) => {
             const pairIdx = pairedRightIds.indexOf(opt.id);
             const isPaired = pairIdx !== -1;
-            const leftId = isPaired ? pairedLeftIds[pairIdx] : null;
-            const color = leftId ? colorMap[leftId] : null;
             return (
               <button
                 key={opt.id}
+                ref={(node) => { if (node) rightRefs.current.set(opt.id, node); else rightRefs.current.delete(opt.id); }}
                 type="button"
                 onClick={() => tapRight(opt.id)}
                 disabled={(!pendingLeft && !isPaired) || locked}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
-                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors flex items-center gap-2 ${
-                  color
-                    ? colorClasses[color].right
+                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${
+                  isPaired
+                    ? "bg-gray-100 border-gray-400 text-gray-800"
                     : pendingLeft
-                      ? "bg-white border-border text-gray-700 hover:border-green-400 hover:bg-green-50"
+                      ? "bg-white border-gray-400 text-gray-700 hover:bg-gray-50"
                       : "bg-gray-50 border-border text-gray-400"
                 }`}
               >
-                {isPaired && color && (
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${colorClasses[color].dot}`}
-                  />
-                )}
                 {opt.text}
               </button>
             );
@@ -1015,7 +998,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
 
     if (q.type === "reorder")
       return (
-        <div className="flex flex-col gap-2">
+        <div className="flex w-full min-w-0 max-w-full flex-col gap-2 overflow-x-clip">
           <p className="text-xs text-gray-400 mb-1">
             Ushlab suring va to'g'ri tartibga soling
           </p>
@@ -1289,7 +1272,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           {/* ── O'NG USTUN: savol + variantlar + feedback + tugmalar ── */}
           <div className="flex-1 min-h-0 flex flex-col">
             {/* Scrollable question area */}
-            <div className="flex-1 min-h-0 overflow-y-auto">
+            <div className="flex-1 min-h-0 overflow-x-hidden overflow-y-auto">
               {currentQ &&
                 (() => {
                   return (
