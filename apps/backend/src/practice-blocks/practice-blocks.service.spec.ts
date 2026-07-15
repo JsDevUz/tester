@@ -1,4 +1,4 @@
-import { computeCombinedPercent, computeEarnedScore } from './practice-blocks.service';
+import { computeCombinedPercent, computeEarnedScore, computeTestPracticePercent } from './practice-blocks.service';
 
 describe('computeEarnedScore', () => {
   it('returns null when maxScore is null (unscored block)', () => {
@@ -46,5 +46,26 @@ describe('computeCombinedPercent', () => {
       { maxScore: null, earnedScore: null },
     ]);
     expect(result).toBe(50);
+  });
+});
+
+describe('computeTestPracticePercent', () => {
+  it('uses only test blocks and ignores image/oral grades', () => {
+    const result = computeTestPracticePercent([
+      { type: 'test', maxScore: 10, earnedScore: 4 },
+      { type: 'image', maxScore: 10, earnedScore: 10 },
+      { type: 'oral', maxScore: 20, earnedScore: 20 },
+    ]);
+
+    expect(result).toBe(40);
+  });
+
+  it('returns null when there are no scored test blocks', () => {
+    expect(
+      computeTestPracticePercent([
+        { type: 'image', maxScore: 10, earnedScore: 10 },
+        { type: 'oral', maxScore: 20, earnedScore: null },
+      ]),
+    ).toBeNull();
   });
 });

@@ -22,6 +22,16 @@ export function computeCombinedPercent(
   return (totalEarned / totalMax) * 100;
 }
 
+export function computeTestPracticePercent(
+  blocks: Array<{
+    type: 'test' | 'image' | 'oral';
+    maxScore: number | null;
+    earnedScore: number | null;
+  }>,
+): number | null {
+  return computeCombinedPercent(blocks.filter((block) => block.type === 'test'));
+}
+
 const PRACTICE_BLOCK_LIMIT = 4;
 export const PRACTICE_ATTEMPT_LIMIT = 3;
 
@@ -287,25 +297,26 @@ export class PracticeBlocksService {
     const existing = await db.query.lessonCompletions.findFirst({
       where: and(eq(lessonCompletions.lessonId, lessonId), eq(lessonCompletions.studentId, studentId)),
     });
-    if (existing) return { completedAt: existing.completedAt!.toISOString() };
 
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) throw new NotFoundException('Dars topilmadi');
 
     const studentPracticeBlocks = await this.findForStudent(lessonId, studentId);
-    const allBlocksAttempted = studentPracticeBlocks.every(
-      (block) => block.submissions.length > 0 || block.imageSubmissions.length > 0 || block.oralGrade !== null,
-    );
-    if (!allBlocksAttempted) {
-      throw new BadRequestException('Barcha amaliyot topshiriqlarini bajaring');
+    const allTestsAttempted = studentPracticeBlocks
+      .filter((block) => block.type === 'test')
+      .every((block) => block.submissions.length > 0);
+    if (!allTestsAttempted) {
+      throw new BadRequestException('Barcha test topshiriqlarini bajaring');
     }
 
     if (lesson.passThresholdEnabled) {
-      const combinedPercent = computeCombinedPercent(studentPracticeBlocks);
-      if ((combinedPercent ?? 0) < (lesson.passThresholdPercent ?? 0)) {
+      const testPercent = computeTestPracticePercent(studentPracticeBlocks);
+      if ((testPercent ?? 0) < (lesson.passThresholdPercent ?? 0)) {
         throw new BadRequestException('O\'tish balidan yetarlicha ball to\'planmagan');
       }
     }
+
+    if (existing) return { completedAt: existing.completedAt!.toISOString() };
 
     const [created] = await db.insert(lessonCompletions).values({ lessonId, studentId }).returning();
     return { completedAt: created.completedAt!.toISOString() };

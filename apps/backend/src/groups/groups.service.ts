@@ -5,7 +5,7 @@ import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
 import { PaymentsService } from '../payments/payments.service';
-import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
+import { PracticeBlocksService, computeTestPracticePercent } from '../practice-blocks/practice-blocks.service';
 
 export function shouldBeCuratorRole(
   activeCuratorMemberships: Array<{ role: string; removedAt: Date | null }>,
@@ -477,10 +477,16 @@ export class GroupsService {
               orderBy: [asc(contentBlocks.orderIndex), asc(contentBlocks.createdAt)],
             });
             const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, studentId);
-            const combinedPracticePercent = computeCombinedPercent(studentPracticeBlocks);
+            const combinedPracticePercent = computeTestPracticePercent(studentPracticeBlocks);
             const completion = await db.query.lessonCompletions.findFirst({
               where: and(eq(lessonCompletions.lessonId, lesson.id), eq(lessonCompletions.studentId, studentId)),
             });
+            const allTestsAttempted = studentPracticeBlocks
+              .filter((block) => block.type === 'test')
+              .every((block) => block.submissions.length > 0);
+            const thresholdMet =
+              !lesson.passThresholdEnabled ||
+              (combinedPracticePercent ?? 0) >= (lesson.passThresholdPercent ?? 0);
             return {
               ...lesson,
               blocks: blocks.map((block) => ({
@@ -507,7 +513,7 @@ export class GroupsService {
               passThresholdEnabled: lesson.passThresholdEnabled,
               passThresholdPercent: lesson.passThresholdPercent,
               completionScore: lesson.completionScore,
-              completed: !!completion,
+              completed: !!completion && allTestsAttempted && thresholdMet,
               combinedPracticePercent,
             };
           }),

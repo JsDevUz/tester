@@ -353,8 +353,9 @@ function StudentCourseReader({
     : -1;
   const maxUnlockedIndex = useMemo(() => {
     let idx = 0;
-    for (let i = 0; i < lessons.length; i++) {
-      if (lessons[i].lesson.completed) idx = Math.min(i + 1, lessons.length - 1);
+    for (let i = 0; i < lessons.length - 1; i++) {
+      if (!lessons[i].lesson.completed) break;
+      idx = i + 1;
     }
     return lessons.length > 0 ? idx : -1;
   }, [lessons]);
@@ -406,10 +407,10 @@ function StudentCourseReader({
   }
 
   function isLessonPassing(lesson: ApiMyLesson): boolean {
-    const allBlocksAttempted = lesson.practiceBlocks.every(
-      (block) => block.submissions.length > 0 || block.imageSubmissions.length > 0,
-    );
-    if (!allBlocksAttempted) return false;
+    const allTestsAttempted = lesson.practiceBlocks
+      .filter((block) => block.type === "test")
+      .every((block) => block.submissions.length > 0);
+    if (!allTestsAttempted) return false;
     if (!lesson.passThresholdEnabled) return true;
     if (lesson.combinedPracticePercent === null) return false;
     return lesson.combinedPracticePercent >= (lesson.passThresholdPercent ?? 0);

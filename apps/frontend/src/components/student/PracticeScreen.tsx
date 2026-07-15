@@ -115,7 +115,8 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
   const hasCompletionScore = lesson.completionScore !== null;
   const hasPracticeScore = lesson.practiceBlocks.some((b) => b.maxScore !== null);
   const totalMax = practiceMaxScore(lesson) + (lesson.completionScore ?? 0);
-  const totalEarned = practiceEarnedScore(lesson) + (lesson.completed ? (lesson.completionScore ?? 0) : 0);
+  const effectivelyCompleted = lesson.completed && canComplete;
+  const totalEarned = practiceEarnedScore(lesson) + (effectivelyCompleted ? (lesson.completionScore ?? 0) : 0);
 
   return (
     <article className="mx-auto w-full max-w-3xl pb-12">
@@ -155,7 +156,10 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
             </span>
           </div>
           <p className="mt-1.5 text-xs font-medium text-gray-500">
-            Hozirgi natijangiz: {lesson.combinedPracticePercent === null ? "hali hisoblanmagan" : `${lesson.combinedPracticePercent}%`}
+            Hozirgi natijangiz: {lesson.combinedPracticePercent === null ? "hali hisoblanmagan" : `${Math.round(lesson.combinedPracticePercent)}%`}
+          </p>
+          <p className="mt-1 text-[11px] font-medium text-gray-400">
+            Minimal natijada faqat test topshiriqlari hisoblanadi.
           </p>
         </div>
       )}
@@ -243,7 +247,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         </div>
       )}
 
-      {lesson.completed && (
+      {effectivelyCompleted && (
         <div className="mt-6 flex items-center gap-2 rounded-2xl bg-green-50 px-4 py-3 text-sm font-bold text-green-600">
           <CheckCircle2 size={18} /> Dars tamomlangan
         </div>
@@ -263,7 +267,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
           <button
             type="button"
             onClick={onNext}
-            disabled={!lesson.completed && !canComplete}
+              disabled={!canComplete}
             className="rounded-lg bg-[var(--color-indigo-500)] px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200"
           >
             Keyingi darsga o'tish
