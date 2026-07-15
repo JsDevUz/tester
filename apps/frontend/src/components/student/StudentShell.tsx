@@ -1,4 +1,4 @@
-import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
+import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { BookOpen, ClipboardList, LogOut, MessageCircle, Moon, Radio, Sun, UserRound, X } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
@@ -45,16 +45,32 @@ export function StudentShell({ children }: { children: ReactNode }) {
     location.pathname.startsWith("/history/") ||
     location.pathname.startsWith("/live/play/");
   const isMessenger = location.pathname === "/messenger";
-  const [visualViewportHeight, setVisualViewportHeight] = useState<number | null>(null);
+  const viewportBaselineRef = useRef(0);
+  const [messengerViewport, setMessengerViewport] = useState<{
+    height: number;
+    offsetTop: number;
+    keyboardOpen: boolean;
+  } | null>(null);
 
   useEffect(() => {
     if (!isMessenger) {
-      setVisualViewportHeight(null);
+      setMessengerViewport(null);
+      viewportBaselineRef.current = 0;
       return;
     }
     const viewport = window.visualViewport;
     const updateHeight = () => {
-      setVisualViewportHeight(Math.round(viewport?.height ?? window.innerHeight));
+      const height = Math.round(viewport?.height ?? window.innerHeight);
+      viewportBaselineRef.current = Math.max(
+        viewportBaselineRef.current,
+        Math.round(window.innerHeight),
+        height,
+      );
+      setMessengerViewport({
+        height,
+        offsetTop: Math.round(viewport?.offsetTop ?? 0),
+        keyboardOpen: viewportBaselineRef.current - height > 150,
+      });
     };
     updateHeight();
     viewport?.addEventListener("resize", updateHeight);
@@ -70,9 +86,13 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }, [isMessenger]);
 
   const messengerViewportStyle: CSSProperties | undefined =
-    isMessenger && visualViewportHeight
-      ? { height: `${visualViewportHeight}px` }
+    isMessenger && messengerViewport
+      ? {
+          height: `${messengerViewport.height}px`,
+          top: `${messengerViewport.offsetTop}px`,
+        }
       : undefined;
+  const messengerKeyboardOpen = !!messengerViewport?.keyboardOpen;
 
   function handleLogout() {
     setProfileOpen(false);
@@ -83,7 +103,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={messengerViewportStyle}
-      className={`${isMessenger ? "h-[100dvh] overflow-hidden pb-[calc(60px+env(safe-area-inset-bottom))] lg:!h-[100dvh] lg:pb-4" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+      className={`${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
     >
       <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
@@ -165,7 +185,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
         <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>{children}</main>
       </div>
 
-      {!isInnerPage && (
+      {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
         <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;

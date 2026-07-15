@@ -729,8 +729,13 @@ function StudentCourseReader({
               slug={activeTest.slug}
               submissionId={activeTest.submissionId}
               practiceMode={true}
-              onNavigateResult={() => {}}
-              onExit={() => setActiveTest(null)}
+              onNavigateResult={() => {
+                void refreshCourseSilently();
+              }}
+              onExit={() => {
+                setActiveTest(null);
+                void refreshCourseSilently();
+              }}
             />
           ) : selected && showPractice ? (
             <PracticeScreen
