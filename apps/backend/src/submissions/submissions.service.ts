@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { submissions, tests } from '../db/schema';
-import { and, eq, isNotNull } from 'drizzle-orm';
+import { groupEnrollments, schoolMembers, submissions, tests } from '../db/schema';
+import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { normalizeViolationReason, orderSubmissionAnswersForDisplay, seededShuffle } from '../delivery/delivery.service';
 
 @Injectable()
@@ -104,7 +104,28 @@ export class SubmissionsService {
     };
   }
 
-  async findOne(submissionId: string, adminId: string) {
+  private async isCuratorOfSubmissionStudent(studentId: string, curatorId: string) {
+    if (!studentId) return false;
+    const studentMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    const curatorMembership = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.studentId, curatorId), eq(schoolMembers.role, 'curator')),
+    });
+    if (!studentMembership || !curatorMembership || studentMembership.schoolId !== curatorMembership.schoolId) {
+      return false;
+    }
+    const studentEnrollments = await db.query.groupEnrollments.findMany({
+      where: and(eq(groupEnrollments.schoolMemberId, studentMembership.id), isNull(groupEnrollments.removedAt)),
+    });
+    const curatorEnrollments = await db.query.groupEnrollments.findMany({
+      where: and(eq(groupEnrollments.schoolMemberId, curatorMembership.id), isNull(groupEnrollments.removedAt)),
+    });
+    const curatorGroupIds = new Set(curatorEnrollments.map((enrollment) => enrollment.groupId));
+    return studentEnrollments.some((enrollment) => curatorGroupIds.has(enrollment.groupId));
+  }
+
+  async findOne(submissionId: string, callerId: string, callerRole: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
       with: {
@@ -115,7 +136,14 @@ export class SubmissionsService {
       },
     });
     if (!submission) throw new NotFoundException('Submission not found');
-    if (submission.test.adminId !== adminId) throw new NotFoundException('Submission not found');
+
+    const isOwner = submission.test.adminId === callerId;
+    const isCurator =
+      !isOwner &&
+      callerRole === 'curator' &&
+      submission.userId !== null &&
+      (await this.isCuratorOfSubmissionStudent(submission.userId, callerId));
+    if (!isOwner && !isCurator) throw new NotFoundException('Submission not found');
     const orderedAnswers = orderSubmissionAnswersForDisplay(
       submission.answers,
       submission.answers.map((a) => ({ id: a.questionId, orderIndex: a.question.orderIndex })),

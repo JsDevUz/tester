@@ -30,9 +30,9 @@ export class SubmissionsController {
   }
 
   @Get('submissions/:id')
-  @Roles('teacher', 'super')
+  @Roles('teacher', 'super', 'curator')
   findOne(@Param('id') id: string, @Req() req: any) {
-    return this.submissionsService.findOne(id, req.admin.id);
+    return this.submissionsService.findOne(id, req.admin.id, req.admin.role);
   }
 
   @Delete('submissions/:id')
