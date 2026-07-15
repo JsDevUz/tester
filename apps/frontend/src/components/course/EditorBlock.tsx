@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef, useState, type ClipboardEvent } from 'react';
 import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import {
@@ -36,6 +36,10 @@ async function uploadFile(file: File) {
 }
 
 const DEBOUNCE_MS = 1500;
+
+function looksLikeMarkdown(text: string) {
+  return /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|\s*$|---\s*$)/m.test(text);
+}
 
 // Notion-uslubidagi block editor: "/" bilan komanda menyusi, drag-drop,
 // formatlash toolbar, jadval/ro'yxat/kod va h.k. — BlockNote orqali.
@@ -91,6 +95,33 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     }, DEBOUNCE_MS);
   }
 
+  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+    const markdown = event.clipboardData.getData('text/plain');
+    if (!markdown || !looksLikeMarkdown(markdown)) return;
+
+    const blocks = editor.tryParseMarkdownToBlocks(markdown);
+    if (blocks.length === 0) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    const currentBlock = editor.getTextCursorPosition().block;
+    const isEmptyParagraph =
+      currentBlock.type === 'paragraph' &&
+      Array.isArray(currentBlock.content) &&
+      currentBlock.content.length === 0;
+
+    if (editor.document.length === 1 && isEmptyParagraph) {
+      editor.replaceBlocks(editor.document, blocks);
+    } else if (isEmptyParagraph) {
+      editor.replaceBlocks([currentBlock.id], blocks);
+    } else {
+      editor.insertBlocks(blocks, currentBlock.id, 'after');
+    }
+
+    void handleChange();
+  }
+
   function handleLibrarySelect(url: string) {
     const currentBlock = editor.getTextCursorPosition().block;
     const isEmptyParagraph =
@@ -107,7 +138,10 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   }
 
   return (
-    <div className="course-editor rounded-2xl bg-white py-2">
+    <div
+      className="course-editor rounded-2xl bg-white py-2"
+      onPasteCapture={handlePaste}
+    >
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" slashMenu={false}>
         <SuggestionMenuController
           triggerCharacter="/"
