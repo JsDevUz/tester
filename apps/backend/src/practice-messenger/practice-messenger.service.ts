@@ -1,5 +1,5 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
-import { and, asc, desc, eq, inArray, isNull, or } from 'drizzle-orm';
+import { and, asc, desc, eq, gte, inArray, isNull, lt, or } from 'drizzle-orm';
 import { db } from '../db';
 import {
   courses,
@@ -10,10 +10,12 @@ import {
   modules,
   practiceBlocks,
   practiceChatMessages,
+  practiceChatReads,
   practiceChats,
   schoolMembers,
   submissions,
 } from '../db/schema';
+import { PracticeMessengerGateway } from './practice-messenger.gateway';
 
 type PracticeContext = {
   chat: typeof practiceChats.$inferSelect;
@@ -29,6 +31,8 @@ type CuratorMembership = { schoolMember: { role: string; studentId: string } | n
 
 @Injectable()
 export class PracticeMessengerService {
+  constructor(private readonly gateway: PracticeMessengerGateway) {}
+
   async listForUser(userId: string, role: string) {
     const curatorGroupIds = await this.findCuratorGroupIds(userId);
 
@@ -75,13 +79,58 @@ export class PracticeMessengerService {
     };
   }
 
-  async getChat(chatId: string, userId: string, role: string) {
+  async getChat(
+    chatId: string,
+    userId: string,
+    role: string,
+    before?: string,
+    timezoneOffsetMinutes = 0,
+  ) {
     const chat = await this.requireChatAccess(chatId, userId, role);
-    const messages = await db.query.practiceChatMessages.findMany({
-      where: eq(practiceChatMessages.chatId, chat.id),
-      with: { sender: true, practiceBlock: true, testSubmission: true, imageSubmission: true },
-      orderBy: [asc(practiceChatMessages.createdAt)],
+    if (!before) {
+      await this.markChatRead(chatId, userId);
+    }
+    const beforeDate = before ? new Date(before) : null;
+    if (beforeDate && Number.isNaN(beforeDate.getTime())) {
+      throw new BadRequestException('Xabar cursori noto‘g‘ri');
+    }
+    const safeTimezoneOffset = Number.isFinite(timezoneOffsetMinutes)
+      ? Math.max(-840, Math.min(840, timezoneOffsetMinutes))
+      : 0;
+    const anchor = await db.query.practiceChatMessages.findFirst({
+      where: and(
+        eq(practiceChatMessages.chatId, chat.id),
+        beforeDate ? lt(practiceChatMessages.createdAt, beforeDate) : undefined,
+      ),
+      orderBy: [desc(practiceChatMessages.createdAt)],
     });
+
+    const shiftedAnchor = anchor?.createdAt
+      ? new Date(anchor.createdAt.getTime() - safeTimezoneOffset * 60_000)
+      : null;
+    const dayStart = shiftedAnchor
+      ? new Date(
+          Date.UTC(
+            shiftedAnchor.getUTCFullYear(),
+            shiftedAnchor.getUTCMonth(),
+            shiftedAnchor.getUTCDate(),
+          ) + safeTimezoneOffset * 60_000,
+        )
+      : null;
+    const dayEnd = dayStart
+      ? new Date(dayStart.getTime() + 24 * 60 * 60 * 1000)
+      : null;
+    const messages = dayStart && dayEnd
+      ? await db.query.practiceChatMessages.findMany({
+          where: and(
+            eq(practiceChatMessages.chatId, chat.id),
+            gte(practiceChatMessages.createdAt, dayStart),
+            lt(practiceChatMessages.createdAt, dayEnd),
+          ),
+          with: { sender: true, practiceBlock: true, testSubmission: true, imageSubmission: true },
+          orderBy: [asc(practiceChatMessages.createdAt)],
+        })
+      : [];
 
     const imageBlockIds = [...new Set(
       messages
@@ -103,11 +152,35 @@ export class PracticeMessengerService {
       ]);
     }
     const renderedImagePractices = new Set<string>();
-    const messageById = new Map(messages.map((message) => [message.id, message]));
+    const loadedMessageIds = new Set(messages.map((message) => message.id));
+    const externalReplyIds = [...new Set(
+      messages
+        .map((message) => message.replyToMessageId)
+        .filter((id): id is string => !!id && !loadedMessageIds.has(id)),
+    )];
+    const externalReplyMessages = externalReplyIds.length === 0
+      ? []
+      : await db.query.practiceChatMessages.findMany({
+          where: inArray(practiceChatMessages.id, externalReplyIds),
+          with: { sender: true },
+        });
+    const messageById = new Map(
+      [...messages, ...externalReplyMessages].map((message) => [message.id, message]),
+    );
     const student = chat.student as unknown as ChatUser;
     const curator = chat.curator as unknown as ChatUser;
     const group = chat.group as unknown as ChatGroup;
     const course = chat.course as unknown as ChatCourse;
+
+    const olderMessage = dayStart
+      ? await db.query.practiceChatMessages.findFirst({
+          where: and(
+            eq(practiceChatMessages.chatId, chat.id),
+            lt(practiceChatMessages.createdAt, dayStart),
+          ),
+          orderBy: [desc(practiceChatMessages.createdAt)],
+        })
+      : null;
 
     return {
       chat: {
@@ -184,6 +257,8 @@ export class PracticeMessengerService {
         })),
       }];
       }),
+      hasMore: olderMessage !== undefined && olderMessage !== null,
+      nextCursor: dayStart?.toISOString() ?? null,
     };
   }
 
@@ -214,6 +289,17 @@ export class PracticeMessengerService {
       replyToMessageId: replyToMessageId ?? null,
     }).returning();
     await this.touchChat(chat.id);
+    await this.broadcastNewMessage(
+      { ...chat, courseAdminId: (chat.course as unknown as ChatCourse).adminId },
+      {
+        id: message.id,
+        chatId: chat.id,
+        senderId,
+        type: 'text',
+        content: message.content,
+        createdAt: message.createdAt!.toISOString(),
+      },
+    );
     return { id: message.id, createdAt: message.createdAt!.toISOString() };
   }
 
@@ -252,11 +338,12 @@ export class PracticeMessengerService {
     });
     if (exists) return;
 
-    await db.insert(practiceChatMessages).values({
+    const content = `${context.lesson.title} darsidagi test amaliyotini yubordi.`;
+    const [message] = await db.insert(practiceChatMessages).values({
       chatId: context.chat.id,
       senderId: submission.userId,
       type: 'practice_test',
-      content: `${context.lesson.title} darsidagi test amaliyotini yubordi.`,
+      content,
       practiceBlockId: block.id,
       testSubmissionId: submission.id,
       metadata: {
@@ -265,8 +352,19 @@ export class PracticeMessengerService {
         score: submission.score ?? 0,
         total: submission.total ?? 0,
       },
-    });
+    }).returning();
     await this.touchChat(context.chat.id);
+    await this.broadcastNewMessage(
+      { ...context.chat, courseAdminId: context.course.adminId },
+      {
+        id: message.id,
+        chatId: context.chat.id,
+        senderId: submission.userId,
+        type: 'practice_test',
+        content,
+        createdAt: message.createdAt!.toISOString(),
+      },
+    );
   }
 
   async createImageSubmissionMessage(imageSubmissionId: string) {
@@ -290,11 +388,12 @@ export class PracticeMessengerService {
       return;
     }
 
-    await db.insert(practiceChatMessages).values({
+    const content = `${context.lesson.title} darsidagi rasmli topshiriqqa rasm yubordi.`;
+    const [message] = await db.insert(practiceChatMessages).values({
       chatId: context.chat.id,
       senderId: submission.studentId,
       type: 'practice_image',
-      content: `${context.lesson.title} darsidagi rasmli topshiriqqa rasm yubordi.`,
+      content,
       practiceBlockId: block.id,
       imageSubmissionId: submission.id,
       metadata: {
@@ -302,8 +401,19 @@ export class PracticeMessengerService {
         practiceTitle: block.description || 'Rasmli topshiriq',
         maxScore: block.maxScore ?? 0,
       },
-    });
+    }).returning();
     await this.touchChat(context.chat.id);
+    await this.broadcastNewMessage(
+      { ...context.chat, courseAdminId: context.course.adminId },
+      {
+        id: message.id,
+        chatId: context.chat.id,
+        senderId: submission.studentId,
+        type: 'practice_image',
+        content,
+        createdAt: message.createdAt!.toISOString(),
+      },
+    );
   }
 
   async createImageGradeMessage(imageSubmissionId: string, graderId: string, score: number) {
@@ -324,15 +434,27 @@ export class PracticeMessengerService {
       ),
     });
     if (existingMessage) {
-      await db
+      const [updated] = await db
         .update(practiceChatMessages)
         .set({ senderId: graderId, content, metadata })
-        .where(eq(practiceChatMessages.id, existingMessage.id));
+        .where(eq(practiceChatMessages.id, existingMessage.id))
+        .returning();
       await this.touchChat(context.chat.id);
+      await this.broadcastNewMessage(
+        { ...context.chat, courseAdminId: context.course.adminId },
+        {
+          id: updated.id,
+          chatId: context.chat.id,
+          senderId: graderId,
+          type: 'practice_grade',
+          content,
+          createdAt: updated.createdAt!.toISOString(),
+        },
+      );
       return;
     }
 
-    await db.insert(practiceChatMessages).values({
+    const [message] = await db.insert(practiceChatMessages).values({
       chatId: context.chat.id,
       senderId: graderId,
       type: 'practice_grade',
@@ -340,8 +462,19 @@ export class PracticeMessengerService {
       practiceBlockId: block.id,
       imageSubmissionId: submission.id,
       metadata,
-    });
+    }).returning();
     await this.touchChat(context.chat.id);
+    await this.broadcastNewMessage(
+      { ...context.chat, courseAdminId: context.course.adminId },
+      {
+        id: message.id,
+        chatId: context.chat.id,
+        senderId: graderId,
+        type: 'practice_grade',
+        content,
+        createdAt: message.createdAt!.toISOString(),
+      },
+    );
   }
 
   private async resolvePracticeContext(block: typeof practiceBlocks.$inferSelect, studentId: string): Promise<PracticeContext | null> {
@@ -439,6 +572,31 @@ export class PracticeMessengerService {
     return !!curatorEnrollment;
   }
 
+  // Everyone who should receive a real-time notification for this chat:
+  // the student, the course-owning admin, and every currently-active
+  // curator of the chat's group (not just the single curatorId frozen on
+  // the chat row — see isCuratorOfChatGroup for why that's insufficient).
+  private async resolveChatRecipientIds(chat: {
+    studentId: string;
+    curatorId: string;
+    groupId: string;
+    courseAdminId: string;
+  }): Promise<string[]> {
+    const recipientIds = new Set<string>([chat.studentId, chat.curatorId, chat.courseAdminId]);
+
+    const curatorEnrollments = await db.query.groupEnrollments.findMany({
+      where: and(eq(groupEnrollments.groupId, chat.groupId), isNull(groupEnrollments.removedAt)),
+      with: { schoolMember: true },
+    });
+    for (const enrollment of curatorEnrollments as unknown as CuratorMembership[]) {
+      if (enrollment.schoolMember?.role === 'curator') {
+        recipientIds.add(enrollment.schoolMember.studentId);
+      }
+    }
+
+    return [...recipientIds];
+  }
+
   private async requireOwnTextMessage(chatId: string, messageId: string, userId: string) {
     const message = await db.query.practiceChatMessages.findFirst({
       where: and(
@@ -455,5 +613,63 @@ export class PracticeMessengerService {
 
   private async touchChat(chatId: string) {
     await db.update(practiceChats).set({ updatedAt: new Date() }).where(eq(practiceChats.id, chatId));
+  }
+
+  private async markChatRead(chatId: string, userId: string) {
+    await db.insert(practiceChatReads).values({ chatId, userId, lastReadAt: new Date() }).onConflictDoUpdate({
+      target: [practiceChatReads.chatId, practiceChatReads.userId],
+      set: { lastReadAt: new Date() },
+    });
+  }
+
+  // Chat ids with at least one message newer than this user's last-read
+  // timestamp (or never read at all, if the chat exists but no read row
+  // does — treated as unread), across every chat the user participates in
+  // (student, curator of the group, or course admin — same scoping as
+  // listForUser).
+  async getUnreadChatIds(userId: string, role: string): Promise<string[]> {
+    const curatorGroupIds = await this.findCuratorGroupIds(userId);
+    const chats = await db.query.practiceChats.findMany({
+      where: role === 'super'
+        ? undefined
+        : or(
+            eq(practiceChats.studentId, userId),
+            eq(practiceChats.curatorId, userId),
+            curatorGroupIds.length > 0 ? inArray(practiceChats.groupId, curatorGroupIds) : undefined,
+          ),
+    });
+    if (chats.length === 0) return [];
+
+    const chatIds = chats.map((chat) => chat.id);
+    const reads = await db.query.practiceChatReads.findMany({
+      where: and(inArray(practiceChatReads.chatId, chatIds), eq(practiceChatReads.userId, userId)),
+    });
+    const lastReadByChatId = new Map(reads.map((read) => [read.chatId, read.lastReadAt]));
+
+    const lastMessages = await Promise.all(
+      chats.map((chat) => db.query.practiceChatMessages.findFirst({
+        where: eq(practiceChatMessages.chatId, chat.id),
+        orderBy: [desc(practiceChatMessages.createdAt)],
+      })),
+    );
+
+    return chats
+      .filter((chat, index) => {
+        const lastMessage = lastMessages[index];
+        if (!lastMessage || lastMessage.senderId === userId) return false;
+        const lastReadAt = lastReadByChatId.get(chat.id);
+        return !lastReadAt || lastMessage.createdAt!.getTime() > lastReadAt.getTime();
+      })
+      .map((chat) => chat.id);
+  }
+
+  private async broadcastNewMessage(
+    chat: { id: string; studentId: string; curatorId: string; groupId: string; courseAdminId: string },
+    message: { id: string; chatId: string; senderId: string; type: string; content: string; createdAt: string },
+  ) {
+    const recipientIds = await this.resolveChatRecipientIds(chat);
+    const notifyIds = recipientIds.filter((id) => id !== message.senderId);
+    if (notifyIds.length === 0) return;
+    this.gateway.notifyNewMessage(notifyIds, message);
   }
 }

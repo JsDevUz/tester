@@ -207,12 +207,27 @@ export const practiceChatMessages = pgTable('practice_chat_messages', {
     .where(sql`${table.imageSubmissionId} IS NOT NULL`),
 }));
 
+export const practiceChatReads = pgTable('practice_chat_reads', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  chatId: uuid('chat_id').notNull().references(() => practiceChats.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  lastReadAt: timestamp('last_read_at', { withTimezone: true }).notNull().defaultNow(),
+}, (table) => ({
+  uniqueChatUser: uniqueIndex('practice_chat_reads_chat_user_key').on(table.chatId, table.userId),
+}));
+
+export const practiceChatReadsRelations = relations(practiceChatReads, ({ one }) => ({
+  chat: one(practiceChats, { fields: [practiceChatReads.chatId], references: [practiceChats.id] }),
+  user: one(users, { fields: [practiceChatReads.userId], references: [users.id] }),
+}));
+
 export const practiceChatsRelations = relations(practiceChats, ({ one, many }) => ({
   group: one(groups, { fields: [practiceChats.groupId], references: [groups.id] }),
   course: one(courses, { fields: [practiceChats.courseId], references: [courses.id] }),
   student: one(users, { fields: [practiceChats.studentId], references: [users.id] }),
   curator: one(users, { fields: [practiceChats.curatorId], references: [users.id] }),
   messages: many(practiceChatMessages),
+  reads: many(practiceChatReads),
 }));
 
 export const practiceChatMessagesRelations = relations(practiceChatMessages, ({ one }) => ({

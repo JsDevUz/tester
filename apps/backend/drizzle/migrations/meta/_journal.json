@@ -232,6 +232,13 @@
       "when": 1784100000000,
       "tag": "0032_users_avatar_url",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1784200000000,
+      "tag": "0033_practice_chat_reads",
+      "breakpoints": true
     }
   ]
 }

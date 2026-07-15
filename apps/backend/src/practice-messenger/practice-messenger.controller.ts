@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { IsOptional, IsString, IsUUID, MaxLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { PracticeMessengerService } from './practice-messenger.service';
@@ -29,9 +29,25 @@ export class PracticeMessengerController {
     return this.practiceMessengerService.listForUser(req.user.id, req.user.role);
   }
 
+  @Get('unread')
+  unread(@Req() req: any) {
+    return this.practiceMessengerService.getUnreadChatIds(req.user.id, req.user.role);
+  }
+
   @Get(':id')
-  getOne(@Param('id') id: string, @Req() req: any) {
-    return this.practiceMessengerService.getChat(id, req.user.id, req.user.role);
+  getOne(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Query('before') before?: string,
+    @Query('timezoneOffsetMinutes') timezoneOffset?: string,
+  ) {
+    return this.practiceMessengerService.getChat(
+      id,
+      req.user.id,
+      req.user.role,
+      before,
+      Number(timezoneOffset ?? 0),
+    );
   }
 
   @Post(':id/messages')

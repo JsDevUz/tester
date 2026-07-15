@@ -54,8 +54,28 @@ export async function apiGetPracticeChats(): Promise<{ chats: ApiPracticeChatPre
   return response.data;
 }
 
-export async function apiGetPracticeChat(id: string): Promise<{ chat: ApiPracticeChat; messages: ApiPracticeMessage[] }> {
-  const response = await client.get(`/practice-messenger/${id}`);
+export async function apiGetUnreadPracticeChatIds(): Promise<string[]> {
+  const response = await client.get('/practice-messenger/unread');
+  return response.data;
+}
+
+export interface ApiPracticeChatPage {
+  chat: ApiPracticeChat;
+  messages: ApiPracticeMessage[];
+  hasMore: boolean;
+  nextCursor: string | null;
+}
+
+export async function apiGetPracticeChat(
+  id: string,
+  before?: string,
+): Promise<ApiPracticeChatPage> {
+  const response = await client.get(`/practice-messenger/${id}`, {
+    params: {
+      before,
+      timezoneOffsetMinutes: new Date().getTimezoneOffset(),
+    },
+  });
   return response.data;
 }
 

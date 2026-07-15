@@ -16,6 +16,8 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
+import { usePracticeMessengerStore } from "../stores/practiceMessengerStore";
+import { usePracticeMessengerNotifications } from "../hooks/usePracticeMessengerNotifications";
 
 interface NavSection {
   key: string;
@@ -58,6 +60,8 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const { admin, logout } = useAuthStore();
   const { theme, toggleTheme } = useThemeStore();
   const [profileOpen, setProfileOpen] = useState(false);
+  const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
+  usePracticeMessengerNotifications();
 
   const visibleSections =
     admin?.role === "curator"
@@ -117,7 +121,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                   <span className="lg:hidden absolute -top-1 left-1/2 -translate-x-1/2 w-1 h-1 rounded-full bg-gray-900" />
                 )}
                 <Icon size={20} />
-                <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+                {section.key === "messenger" && hasUnreadMessages && (
+                  <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full bg-red-500 lg:right-2.5 lg:top-2.5" />
+                )}
+                <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
                   {section.label}
                 </span>
               </button>
@@ -131,7 +138,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
           {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+          <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
             {theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
           </span>
         </button>
@@ -144,7 +151,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
               className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
             >
               <ShieldCheck size={20} />
-              <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+              <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
                 Adminlar
               </span>
             </button>
@@ -155,7 +162,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
             className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
           >
             <LogOut size={20} />
-            <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+            <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
               Chiqish
             </span>
           </button>
@@ -168,7 +175,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           className="group relative hidden lg:flex w-full aspect-square rounded-xl items-center justify-center text-gray-600 cursor-not-allowed mb-2 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
           <Settings size={20} />
-          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+          <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
             Sozlamalar
           </span>
         </button>
@@ -183,7 +190,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           ) : (
             initial
           )}
-          <span className="pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg bg-gray-800 px-2.5 py-1.5 text-xs font-medium text-white opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
+          <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
             {admin?.name ?? "Profil"}
           </span>
         </button>

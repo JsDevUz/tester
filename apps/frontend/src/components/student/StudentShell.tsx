@@ -3,6 +3,8 @@ import { BookOpen, ClipboardList, LogOut, MessageCircle, Moon, Radio, Sun, UserR
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
+import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
+import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessengerNotifications";
 
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
@@ -33,6 +35,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const admin = useAuthStore((s) => s.admin);
   const logout = useAuthStore((s) => s.logout);
   const { theme, toggleTheme } = useThemeStore();
+  const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
+  usePracticeMessengerNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
@@ -88,10 +92,15 @@ export function StudentShell({ children }: { children: ReactNode }) {
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
-                  <Icon
-                    size={20}
-                    className={active ? "text-gray-900" : "text-gray-400"}
-                  />
+                  <span className="relative">
+                    <Icon
+                      size={20}
+                      className={active ? "text-gray-900" : "text-gray-400"}
+                    />
+                    {item.path === "/messenger" && hasUnreadMessages && (
+                      <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </span>
                   <span>{item.label}</span>
                 </button>
               );
@@ -144,10 +153,15 @@ export function StudentShell({ children }: { children: ReactNode }) {
                     : "text-gray-500"
                 }`}
               >
-                <Icon
-                  size={19}
-                  className={active ? "text-gray-900" : "text-gray-400"}
-                />
+                <span className="relative">
+                  <Icon
+                    size={19}
+                    className={active ? "text-gray-900" : "text-gray-400"}
+                  />
+                  {item.path === "/messenger" && hasUnreadMessages && (
+                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                  )}
+                </span>
                 <span className="max-w-full truncate">{item.shortLabel}</span>
               </button>
             );
