@@ -76,14 +76,21 @@ export class SchoolsController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('teacher', 'super')
+  @Roles('teacher', 'super', 'curator')
   @Get('school/students/:studentId/courses/:courseId/progress')
-  getStudentCourseProgress(
+  async getStudentCourseProgress(
     @Req() req: any,
     @Param('studentId') studentId: string,
     @Param('courseId') courseId: string,
   ) {
-    return this.schoolsService.getStudentCourseProgress(req.admin.id, studentId, courseId);
+    const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
+    return this.schoolsService.getStudentCourseProgress(
+      schoolAdminId,
+      studentId,
+      courseId,
+      req.admin.id,
+      req.admin.role,
+    );
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

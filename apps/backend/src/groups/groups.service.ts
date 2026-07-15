@@ -13,6 +13,19 @@ export function shouldBeCuratorRole(
   return activeCuratorMemberships.some((m) => m.role === 'curator' && m.removedAt === null);
 }
 
+// teacher/super users keep their higher role even when also assigned as a
+// curator (schoolMembers.role='curator' still grants curator-scoped access
+// elsewhere) — only student<->curator transitions are ever applied here.
+export function resolveUserRoleAfterCuratorChange(
+  currentRole: string,
+  shouldBeCurator: boolean,
+): string | null {
+  if (currentRole === 'teacher' || currentRole === 'super') return null;
+  if (shouldBeCurator && currentRole !== 'curator') return 'curator';
+  if (!shouldBeCurator && currentRole === 'curator') return 'student';
+  return null;
+}
+
 @Injectable()
 export class GroupsService {
   constructor(
@@ -176,10 +189,9 @@ export class GroupsService {
     const user = await db.query.users.findFirst({ where: eq(users.id, studentId) });
     if (!user) return;
 
-    if (shouldBeCurator && user.role !== 'curator') {
-      await db.update(users).set({ role: 'curator' }).where(eq(users.id, studentId));
-    } else if (!shouldBeCurator && user.role === 'curator') {
-      await db.update(users).set({ role: 'student' }).where(eq(users.id, studentId));
+    const nextRole = resolveUserRoleAfterCuratorChange(user.role, shouldBeCurator);
+    if (nextRole) {
+      await db.update(users).set({ role: nextRole }).where(eq(users.id, studentId));
     }
   }
 

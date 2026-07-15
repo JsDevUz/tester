@@ -284,7 +284,13 @@ export class SchoolsService {
     return rows;
   }
 
-  async getStudentCourseProgress(adminId: string, studentId: string, courseId: string) {
+  async getStudentCourseProgress(
+    adminId: string,
+    studentId: string,
+    courseId: string,
+    callerId: string,
+    callerRole: string,
+  ) {
     const school = await this.getOrCreateSchool(adminId);
     const member = await db.query.schoolMembers.findFirst({
       where: and(
@@ -313,6 +319,13 @@ export class SchoolsService {
         })
       : null;
     if (!enrollment) throw new NotFoundException("O'quvchi bu kursga biriktirilmagan");
+
+    if (callerRole === 'curator') {
+      const curatorGroupIds = await this.findCuratorGroupIds(callerId);
+      if (!curatorGroupIds.includes(enrollment.groupId)) {
+        throw new NotFoundException("O'quvchi topilmadi");
+      }
+    }
 
     const group = courseGroups.find((item) => item.id === enrollment.groupId);
     const courseModules = (await db.query.modules.findMany({ where: eq(modules.courseId, course.id) }))
