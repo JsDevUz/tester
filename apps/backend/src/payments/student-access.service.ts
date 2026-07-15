@@ -14,21 +14,27 @@ export class StudentAccessService {
     const schoolMemberIds = schoolMemberRows.map((m) => m.id);
     if (schoolMemberIds.length === 0) return false;
 
-    const enrollment = await db.query.groupEnrollments.findFirst({
+    const enrollments = await db.query.groupEnrollments.findMany({
       where: and(
         inArray(groupEnrollments.schoolMemberId, schoolMemberIds),
         inArray(groupEnrollments.groupId, groupIds),
         isNull(groupEnrollments.removedAt),
       ),
     });
-    if (!enrollment || !enrollment.selectedPlanId) return false;
-    if (enrollment.forcedClosed) return false;
+    const eligibleEnrollments = enrollments.filter(
+      (enrollment) => enrollment.selectedPlanId && !enrollment.forcedClosed,
+    );
+    if (eligibleEnrollments.length === 0) return false;
+    const enrollmentIds = eligibleEnrollments.map((enrollment) => enrollment.id);
 
-    const latestPayment = await db.query.monthlyPayments.findFirst({
-      where: eq(monthlyPayments.enrollmentId, enrollment.id),
+    const payments = await db.query.monthlyPayments.findMany({
+      where: inArray(monthlyPayments.enrollmentId, enrollmentIds),
       orderBy: [desc(monthlyPayments.periodMonth)],
     });
-    if (!latestPayment) return false;
-    return latestPayment.status !== 'debt';
+
+    return eligibleEnrollments.some((enrollment) => {
+      const latestPayment = payments.find((payment) => payment.enrollmentId === enrollment.id);
+      return latestPayment ? latestPayment.status !== 'debt' : false;
+    });
   }
 }
