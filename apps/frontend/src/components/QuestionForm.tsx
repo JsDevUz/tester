@@ -68,7 +68,6 @@ import {
   Image,
   Music,
   X,
-  Upload,
   GripHorizontal,
   Plus,
   Trash2,
