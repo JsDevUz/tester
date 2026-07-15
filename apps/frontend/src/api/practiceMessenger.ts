@@ -3,8 +3,8 @@ import client from './client';
 export interface ApiPracticeChatPreview {
   id: string;
   courseId: string;
-  student: { id: string; name: string };
-  curator: { id: string; name: string };
+  student: { id: string; name: string; avatarUrl: string | null };
+  curator: { id: string; name: string; avatarUrl: string | null };
   groupName: string;
   courseTitle: string;
   lastMessage: { content: string; type: string; createdAt: string } | null;
@@ -12,7 +12,7 @@ export interface ApiPracticeChatPreview {
 
 export interface ApiPracticeMessage {
   id: string;
-  sender: { id: string; name: string };
+  sender: { id: string; name: string; avatarUrl: string | null };
   type: 'text' | 'practice_test' | 'practice_image' | 'practice_grade';
   content: string;
   createdAt: string;
@@ -51,8 +51,8 @@ export interface ApiPracticeMessage {
 
 export interface ApiPracticeChat {
   id: string;
-  student: { id: string; name: string };
-  curator: { id: string; name: string };
+  student: { id: string; name: string; avatarUrl: string | null };
+  curator: { id: string; name: string; avatarUrl: string | null };
   groupName: string;
   courseTitle: string;
 }

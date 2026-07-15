@@ -39,6 +39,7 @@ import { ImageLightbox } from "../components/student/ImageLightbox";
 import { PracticeScreen } from "../components/student/PracticeScreen";
 import { TestTaker } from "../components/test/TestTaker";
 import { schedulePageScrollReset } from "../utils/scroll";
+import { UserAvatar } from "../components/UserAvatar";
 
 function pauseLessonVideos() {
   document.querySelectorAll("video").forEach((video) => {
@@ -221,10 +222,6 @@ export function MyCoursesPage() {
   );
 }
 
-function studentInitials(name: string) {
-  return name.trim().split(/\s+/).slice(0, 2).map((part) => part[0]).join('').toUpperCase() || '?';
-}
-
 function CourseLeaderboardModal({ course, onClose }: { course: ApiMyCourse; onClose: () => void }) {
   const [leaderboard, setLeaderboard] = useState<ApiMyCourseLeaderboard | null>(null);
   const [loading, setLoading] = useState(true);
@@ -269,7 +266,7 @@ function CourseLeaderboardModal({ course, onClose }: { course: ApiMyCourse; onCl
                 const style = rankStyle[entry.rank];
                 return (
                   <div key={entry.studentId} className={`flex w-[30%] max-w-40 flex-col items-center ${style.podium.includes('order-2') ? 'mb-0' : 'mb-0'}`}>
-                    <div className={`relative mb-2 grid h-12 w-12 place-items-center rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`}>{studentInitials(entry.studentName)}<span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-gray-800">{entry.rank}</span></div>
+                    <div className="relative mb-2"><UserAvatar name={entry.studentName} avatarUrl={entry.studentAvatarUrl} className={`h-12 w-12 rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`} /><span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-gray-800">{entry.rank}</span></div>
                     <p className="w-full truncate text-center text-xs font-semibold">{entry.studentName}</p>
                     <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold text-amber-100"><Star size={11} fill="currentColor" /> {entry.starsEarned}</p>
                     <div className={`mt-2 flex w-full items-center justify-center rounded-t-xl text-3xl font-black text-white/90 ${style.podium}`}>{entry.rank}</div>
@@ -282,7 +279,7 @@ function CourseLeaderboardModal({ course, onClose }: { course: ApiMyCourse; onCl
               {remaining.map((entry) => (
                 <div key={entry.studentId} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-white/25 ring-1 ring-white/50' : 'bg-white/15'}`}>
                   <span className="w-6 text-center text-sm font-bold text-white/80">{entry.rank}</span>
-                  <span className="grid h-8 w-8 place-items-center rounded-full bg-white/20 text-xs font-bold">{studentInitials(entry.studentName)}</span>
+                  <UserAvatar name={entry.studentName} avatarUrl={entry.studentAvatarUrl} className="h-8 w-8 rounded-full bg-white/20 text-xs font-bold" />
                   <div className="min-w-0 flex-1"><p className="truncate text-sm font-semibold">{entry.studentName}{entry.isCurrentStudent ? ' (Siz)' : ''}</p><p className="text-[11px] text-white/70">{entry.lessonsCompleted}/{entry.lessonsTotal} dars</p></div>
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-1 text-xs font-bold text-amber-950"><Star size={12} fill="currentColor" /> {entry.starsEarned}</span>
                 </div>

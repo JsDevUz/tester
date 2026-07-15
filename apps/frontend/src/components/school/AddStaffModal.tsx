@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, X } from 'lucide-react';
 import type { ApiStudentSearchResult } from '../../api/school';
+import { UserAvatar } from '../UserAvatar';
 import type { SchoolStaffRole } from '../../stores/schoolStore';
 
 interface AddStaffModalProps {
@@ -83,6 +84,7 @@ export function AddStaffModal({ onSearch, onConfirm, onClose }: AddStaffModalPro
                     onChange={() => setSelectedId(s.id)}
                     className="h-4 w-4 shrink-0 accent-gray-900"
                   />
+                  <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className="h-9 w-9 rounded-full bg-gray-100 text-xs font-bold text-gray-600" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-800">{s.name}</p>
                     <p className="text-xs text-gray-400">{s.phone ?? s.email}</p>

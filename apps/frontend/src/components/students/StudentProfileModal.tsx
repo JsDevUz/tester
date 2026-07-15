@@ -5,11 +5,13 @@ import { apiListGroups, apiEnrollStudent, apiUpdateGroupMember, type ApiGroup } 
 import { apiListEnrollments, type ApiSchoolEnrollment } from '../../api/school';
 import { apiListLaunches, type ApiPricingPlan } from '../../api/launches';
 import { useAuthStore } from '../../stores/authStore';
+import { UserAvatar } from '../UserAvatar';
 
 interface StudentProfileModalProps {
   studentId: string;
   studentName: string;
   studentPhone: string | null;
+  studentAvatarUrl: string | null;
   onClose: () => void;
   onEnrolled: () => void;
 }
@@ -29,18 +31,13 @@ function paletteFor(id: string) {
   return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
 }
 
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
-}
-
 function progressColor(pct: number) {
   if (pct >= 70) return 'text-green-500';
   if (pct >= 30) return 'text-amber-500';
   return 'text-gray-400';
 }
 
-export function StudentProfileModal({ studentId, studentName, studentPhone, onClose, onEnrolled }: StudentProfileModalProps) {
+export function StudentProfileModal({ studentId, studentName, studentPhone, studentAvatarUrl, onClose, onEnrolled }: StudentProfileModalProps) {
   const admin = useAuthStore((s) => s.admin);
   const canManageCourses = admin?.role === 'teacher' || admin?.role === 'super';
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
@@ -182,11 +179,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
         {/* Profile header */}
         <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
           <div className="flex min-w-0 items-center gap-3">
-            <div
-              className={`flex h-14 w-14 shrink-0 items-center justify-center rounded-full text-lg font-bold ${paletteFor(studentId)}`}
-            >
-              {initials(studentName)}
-            </div>
+            <UserAvatar name={studentName} avatarUrl={studentAvatarUrl} className={`h-14 w-14 rounded-full text-lg font-bold ${paletteFor(studentId)}`} />
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold text-gray-900">{studentName}</h2>
               <p className="truncate text-xs text-gray-400">{studentPhone ?? '—'}</p>

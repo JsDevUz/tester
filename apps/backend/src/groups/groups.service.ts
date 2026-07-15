@@ -292,6 +292,7 @@ export class GroupsService {
         return {
           id: e.id,
           studentName: e.schoolMember.student.name,
+          studentAvatarUrl: e.schoolMember.student.avatarUrl,
           studentPhone: e.schoolMember.student.phone,
           groupName: group?.name ?? '',
           courseTitle: course?.title ?? '',
@@ -418,6 +419,7 @@ export class GroupsService {
       return {
         studentId: memberStudentId,
         studentName: member.name,
+        studentAvatarUrl: member.avatarUrl,
         starsEarned,
         lessonsCompleted,
         lessonsTotal: courseLessons.length,

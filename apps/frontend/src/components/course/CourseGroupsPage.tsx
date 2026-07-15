@@ -6,6 +6,7 @@ import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import type { ApiMonthlyPayment } from '../../api/payments';
+import { UserAvatar } from '../UserAvatar';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -26,11 +27,6 @@ function paletteFor(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch }: CourseGroupsPageProps) {
@@ -139,9 +135,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 <div className="flex flex-col gap-2">
                   {students.map((m) => (
                     <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
-                      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${paletteFor(m.id)}`}>
-                        {initials(m.studentName)}
-                      </div>
+                      <UserAvatar name={m.studentName} avatarUrl={m.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(m.id)}`} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-gray-800">{m.studentName}</p>
                         <p className="text-xs text-gray-400">{m.studentPhone ?? ''}</p>

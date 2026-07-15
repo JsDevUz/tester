@@ -18,6 +18,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { usePracticeMessengerStore } from "../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../hooks/usePracticeMessengerNotifications";
+import { UserAvatar } from "./UserAvatar";
 
 interface NavSection {
   key: string;
@@ -71,7 +72,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const activeSection = visibleSections.find((section) =>
     isRouteMatch(location.pathname, section.path),
   );
-  const initial = admin?.name?.trim()?.[0]?.toUpperCase() ?? "?";
 
   function handleLogout() {
     logout();
@@ -185,11 +185,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label={admin?.name ?? "Profil"}
           className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0 overflow-hidden focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
-          {admin?.avatarUrl ? (
-            <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
-          ) : (
-            initial
-          )}
+          <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-full w-full rounded-full" />
           <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
             {admin?.name ?? "Profil"}
           </span>
@@ -208,13 +204,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
           <div className="fixed z-50 bottom-3 left-3 right-3 rounded-2xl bg-white p-4 shadow-2xl shadow-gray-900/15 lg:bottom-16 lg:left-3 lg:right-auto lg:w-64">
             <div className="flex items-center gap-2.5 px-1 mb-3 pb-3 border-b border-border">
-              <div className="w-9 h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0 overflow-hidden">
-                {admin?.avatarUrl ? (
-                  <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initial
-                )}
-              </div>
+              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-9 w-9 rounded-full bg-gray-900 text-sm font-semibold text-white" />
               <div className="min-w-0">
                 <p className="text-sm font-medium text-gray-800 truncate">
                   {admin?.name}

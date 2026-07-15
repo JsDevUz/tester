@@ -15,6 +15,7 @@ export interface ApiSchoolStaffMember {
   name: string;
   email: string;
   role: 'curator' | 'teacher_staff';
+  avatarUrl: string | null;
 }
 
 export interface ApiStudentSearchResult {
@@ -22,6 +23,7 @@ export interface ApiStudentSearchResult {
   name: string;
   phone: string | null;
   email: string;
+  avatarUrl: string | null;
 }
 
 export async function apiGetSchool(): Promise<ApiSchool> {
@@ -60,6 +62,7 @@ export interface ApiSchoolStudent {
   phone: string | null;
   productsCount: number;
   totalPaid: number;
+  avatarUrl: string | null;
 }
 
 export async function apiListAllStudents(): Promise<ApiSchoolStudent[]> {
@@ -71,6 +74,7 @@ export interface ApiSchoolEnrollment {
   studentId: string;
   studentName: string;
   studentPhone: string | null;
+  studentAvatarUrl: string | null;
   active: boolean;
   courseId: string;
   courseTitle: string;
@@ -135,7 +139,7 @@ export interface ApiStudentLessonProgress {
 }
 
 export interface ApiStudentCourseProgress {
-  student: { id: string; name: string; phone: string | null };
+  student: { id: string; name: string; phone: string | null; avatarUrl: string | null };
   course: { id: string; title: string; groupName: string; joinedAt: string | null };
   lastActivityAt: string | null;
   lessonsCompleted: number;
@@ -155,6 +159,7 @@ export interface ApiSchoolStudentWithoutGroup {
   name: string;
   phone: string | null;
   joinedAt: string;
+  avatarUrl: string | null;
 }
 
 export async function apiGetStudentsWithoutGroup(): Promise<ApiSchoolStudentWithoutGroup[]> {

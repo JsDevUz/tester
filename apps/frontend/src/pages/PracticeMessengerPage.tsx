@@ -38,6 +38,7 @@ import {
 } from "../api/practiceMessenger";
 import { AppShell } from "../components/AppShell";
 import { StudentShell } from "../components/student/StudentShell";
+import { UserAvatar } from "../components/UserAvatar";
 import { useAuthStore } from "../stores/authStore";
 import { usePracticeMessengerStore } from "../stores/practiceMessengerStore";
 import {
@@ -45,17 +46,6 @@ import {
   type PracticeMessengerSocketPayload,
 } from "../api/practiceMessengerSocket";
 import { formatDateTime } from "../utils/date";
-
-function initials(name: string) {
-  return (
-    name
-      .split(/\s+/)
-      .map((part) => part[0])
-      .join("")
-      .slice(0, 2)
-      .toUpperCase() || "O"
-  );
-}
 
 function previewText(chat: ApiPracticeChatPreview) {
   if (!chat.lastMessage) return "Yangi amaliyot xabarlari shu yerda chiqadi";
@@ -579,13 +569,11 @@ function PracticeMessengerContent() {
                     }}
                     className={`flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors ${active ? "practice-messenger-chat-active" : "hover:bg-gray-50"}`}
                   >
-                    <span className="practice-messenger-avatar flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">
-                      {initials(
-                        admin?.id === chat.student.id
-                          ? chat.curator.name
-                          : chat.student.name,
-                      )}
-                    </span>
+                    <UserAvatar
+                      name={admin?.id === chat.student.id ? chat.curator.name : chat.student.name}
+                      avatarUrl={admin?.id === chat.student.id ? chat.curator.avatarUrl : chat.student.avatarUrl}
+                      className="practice-messenger-avatar h-11 w-11 rounded-full text-sm font-bold"
+                    />
                     <span className="min-w-0 flex-1">
                       <span className="flex items-center justify-between gap-2">
                         <span className="truncate text-sm font-bold text-gray-900">
@@ -650,13 +638,11 @@ function PracticeMessengerContent() {
                     </p>
                   </div>
                 </div>
-                <span className="practice-messenger-avatar flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold">
-                  {initials(
-                    isCurator
-                      ? selectedChat.student.name
-                      : selectedChat.curator.name,
-                  )}
-                </span>
+                <UserAvatar
+                  name={isCurator ? selectedChat.student.name : selectedChat.curator.name}
+                  avatarUrl={isCurator ? selectedChat.student.avatarUrl : selectedChat.curator.avatarUrl}
+                  className="practice-messenger-avatar h-9 w-9 rounded-full text-xs font-bold"
+                />
               </header>
 
               {pinnedMessages.length > 0 && (

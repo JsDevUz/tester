@@ -12,6 +12,7 @@ import {
 } from "../api/school";
 import { StudentProfileModal } from "../components/students/StudentProfileModal";
 import { StudentLearningProgressModal } from "../components/students/StudentLearningProgressModal";
+import { UserAvatar } from "../components/UserAvatar";
 
 export interface StudentRow {
   id: string;
@@ -39,11 +40,6 @@ function paletteFor(id: string) {
   for (let i = 0; i < id.length; i++)
     hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "?";
 }
 
 // TODO: mock data — AddStudentToGroupModal hali shundan foydalanadi, /school/students/search ga o'tganda olib tashlanadi
@@ -106,7 +102,7 @@ export function StudentsPage() {
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
-  const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null } | null>(null);
+  const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null; avatarUrl: string | null } | null>(null);
   const [progressTarget, setProgressTarget] = useState<ApiSchoolEnrollment | null>(null);
 
   function refreshAllUsers() {
@@ -213,11 +209,7 @@ export function StudentsPage() {
                     {filteredEnrollments.map((e) => (
                       <button type="button" onClick={() => setProgressTarget(e)} key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-gray-50">
                         <div className="flex items-center gap-3">
-                          <div
-                            className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(e.studentId)}`}
-                          >
-                            {initials(e.studentName)}
-                          </div>
+                          <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(e.studentId)}`} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
                               <p className="text-sm font-semibold text-gray-800 truncate">
@@ -271,11 +263,7 @@ export function StudentsPage() {
                           <tr key={`${e.studentId}-${e.courseId}`} onClick={() => setProgressTarget(e)} className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5">
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(e.studentId)}`}
-                                >
-                                  {initials(e.studentName)}
-                                </div>
+                                <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(e.studentId)}`} />
                                 <div className="flex items-center gap-2 min-w-0">
                                   <p className="text-sm font-semibold text-gray-800 truncate">
                                     {e.studentName}
@@ -335,14 +323,10 @@ export function StudentsPage() {
                       <button
                         key={u.id}
                         type="button"
-                        onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
+                        onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone, avatarUrl: u.avatarUrl })}
                         className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-gray-50"
                       >
-                        <div
-                          className={`w-10 h-10 shrink-0 rounded-full flex items-center justify-center text-sm font-bold ${paletteFor(u.id)}`}
-                        >
-                          {initials(u.name)}
-                        </div>
+                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(u.id)}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
                           <p className="text-xs text-gray-400 mt-0.5">—</p>
@@ -371,16 +355,12 @@ export function StudentsPage() {
                         {pageItems.map((u) => (
                           <tr
                             key={u.id}
-                            onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone })}
+                            onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone, avatarUrl: u.avatarUrl })}
                             className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5"
                           >
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
-                                <div
-                                  className={`w-9 h-9 shrink-0 rounded-full flex items-center justify-center text-xs font-bold ${paletteFor(u.id)}`}
-                                >
-                                  {initials(u.name)}
-                                </div>
+                                <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(u.id)}`} />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
                                   <p className="text-xs text-gray-400 mt-0.5">—</p>
@@ -457,6 +437,7 @@ export function StudentsPage() {
           studentId={profileTarget.id}
           studentName={profileTarget.name}
           studentPhone={profileTarget.phone}
+          studentAvatarUrl={profileTarget.avatarUrl}
           onClose={() => setProfileTarget(null)}
           onEnrolled={() => void refreshAllUsers()}
         />

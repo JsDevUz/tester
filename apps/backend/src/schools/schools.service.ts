@@ -104,6 +104,7 @@ export class SchoolsService {
       studentId: m.studentId,
       name: m.student.name,
       email: m.student.email,
+      avatarUrl: m.student.avatarUrl,
       role: m.role,
     }));
   }
@@ -151,6 +152,7 @@ export class SchoolsService {
                 id: m.studentId,
                 name: m.student.name,
                 phone: m.student.phone,
+                avatarUrl: m.student.avatarUrl,
                 productsCount: 0,
                 totalPaid: 0,
               };
@@ -177,6 +179,7 @@ export class SchoolsService {
           id: m.studentId,
           name: m.student.name,
           phone: m.student.phone,
+          avatarUrl: m.student.avatarUrl,
           productsCount: uniqueCourseIds.size,
           totalPaid,
         };
@@ -206,6 +209,7 @@ export class SchoolsService {
       studentId: string;
       studentName: string;
       studentPhone: string | null;
+      studentAvatarUrl: string | null;
       active: boolean;
       courseId: string;
       courseTitle: string;
@@ -266,6 +270,7 @@ export class SchoolsService {
           studentId: m.studentId,
           studentName: m.student.name,
           studentPhone: m.student.phone,
+          studentAvatarUrl: m.student.avatarUrl,
           active: !enrollment.forcedClosed,
           courseId: course.id,
           courseTitle: course.title,
@@ -422,7 +427,7 @@ export class SchoolsService {
       ?? null;
 
     return {
-      student: { id: member.studentId, name: member.student.name, phone: member.student.phone },
+      student: { id: member.studentId, name: member.student.name, phone: member.student.phone, avatarUrl: member.student.avatarUrl },
       course: { id: course.id, title: course.title, groupName: group?.name ?? '—', joinedAt: enrollment.joinedAt?.toISOString() ?? null },
       lastActivityAt: lastActivityAt?.toISOString() ?? null,
       lessonsCompleted: completions.length,
@@ -489,17 +494,17 @@ export class SchoolsService {
       : [];
     const groupIds = adminGroups.map((g) => g.id);
 
-    const result: { id: string; name: string; phone: string | null; joinedAt: Date | null }[] = [];
+    const result: { id: string; name: string; phone: string | null; avatarUrl: string | null; joinedAt: Date | null }[] = [];
     for (const m of members) {
       if (groupIds.length === 0) {
-        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, joinedAt: m.joinedAt });
+        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, avatarUrl: m.student.avatarUrl, joinedAt: m.joinedAt });
         continue;
       }
       const activeEnrollment = await db.query.groupEnrollments.findFirst({
         where: (e, { inArray }) => and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
       });
       if (!activeEnrollment) {
-        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, joinedAt: m.joinedAt });
+        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, avatarUrl: m.student.avatarUrl, joinedAt: m.joinedAt });
       }
     }
     return result;
@@ -513,7 +518,7 @@ export class SchoolsService {
       where: and(eq(users.role, 'student'), or(ilike(users.name, q), ilike(users.phone, q))),
       limit: 20,
     });
-    return rows.map((u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email }));
+    return rows.map((u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, avatarUrl: u.avatarUrl }));
   }
 
   async addStaff(adminId: string, studentId: string, role: string) {
@@ -530,14 +535,14 @@ export class SchoolsService {
         .set({ role })
         .where(eq(schoolMembers.id, existing.id))
         .returning();
-      return { ...updated, name: student.name, email: student.email };
+      return { ...updated, name: student.name, email: student.email, avatarUrl: student.avatarUrl };
     }
 
     const [created] = await db
       .insert(schoolMembers)
       .values({ schoolId: school.id, studentId, role })
       .returning();
-    return { ...created, name: student.name, email: student.email };
+    return { ...created, name: student.name, email: student.email, avatarUrl: student.avatarUrl };
   }
 
   private async assertStaffOwnership(memberId: string, adminId: string) {

@@ -20,7 +20,7 @@ export interface ApiGroupMember {
   selectedPlanId: string | null;
   forcedClosed: boolean;
   joinedAt: string;
-  student: { id: string; name: string; phone: string | null; email: string };
+  student: { id: string; name: string; phone: string | null; email: string; avatarUrl: string | null };
   selectedPlan: { id: string; name: string; price: number } | null;
   latestPayment: {
     id: string;
@@ -94,6 +94,7 @@ export async function apiDemoteCurator(groupId: string, memberId: string): Promi
 export interface ApiPendingPlanAssignment {
   id: string;
   studentName: string;
+  studentAvatarUrl: string | null;
   studentPhone: string | null;
   groupName: string;
   courseTitle: string;
@@ -133,6 +134,7 @@ export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
 export interface ApiMyCourseLeaderboardEntry {
   studentId: string;
   studentName: string;
+  studentAvatarUrl: string | null;
   starsEarned: number;
   lessonsCompleted: number;
   lessonsTotal: number;

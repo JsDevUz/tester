@@ -4,6 +4,7 @@ import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
+import { UserAvatar } from '../components/UserAvatar';
 
 const AVATAR_PALETTES = [
   'bg-gray-200 text-gray-700',
@@ -16,11 +17,6 @@ function paletteFor(id: string) {
   let hash = 0;
   for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
   return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 const ROLE_BADGE: Record<SchoolStaffRole, { label: string; className: string }> = {
@@ -66,9 +62,7 @@ export function SchoolStaffPage() {
                 const badge = ROLE_BADGE[s.role];
                 return (
                   <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
-                    <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${paletteFor(s.id)}`}>
-                      {initials(s.name)}
-                    </div>
+                    <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(s.id)}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-800">{s.name}</p>
                       <p className="truncate text-xs text-gray-400">{s.email}</p>

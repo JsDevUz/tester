@@ -13,6 +13,20 @@ export function computeEarnedScore(
   return Math.round((latestSubmission.score / latestSubmission.total) * maxScore);
 }
 
+export function computeEffectiveTestPracticeScore(
+  latestSubmission: {
+    score: number;
+    total: number;
+    practiceScoreOverride: number | null;
+  } | null,
+  maxScore: number | null,
+): number | null {
+  if (latestSubmission?.practiceScoreOverride !== null && latestSubmission) {
+    return latestSubmission.practiceScoreOverride;
+  }
+  return computeEarnedScore(latestSubmission, maxScore);
+}
+
 export function computeCombinedPercent(
   blocks: Array<{ maxScore: number | null; earnedScore: number | null }>,
 ): number | null {
@@ -265,11 +279,16 @@ export class PracticeBlocksService {
         });
         const completedSubmissions = studentSubmissions.filter((s) => s.submittedAt !== null);
         const latest = completedSubmissions[0] ?? null;
-        const automaticallyEarnedScore = computeEarnedScore(
-          latest && latest.score !== null && latest.total !== null ? { score: latest.score, total: latest.total } : null,
+        const earnedScore = computeEffectiveTestPracticeScore(
+          latest && latest.score !== null && latest.total !== null
+            ? {
+                score: latest.score,
+                total: latest.total,
+                practiceScoreOverride: latest.practiceScoreOverride,
+              }
+            : null,
           block.maxScore,
         );
-        const earnedScore = latest?.practiceScoreOverride ?? automaticallyEarnedScore;
 
         return {
           id: block.id,
@@ -285,14 +304,16 @@ export class PracticeBlocksService {
             submittedAt: s.submittedAt!.toISOString(),
             score: s.score ?? 0,
             total: s.total ?? 0,
-            earnedScore:
-              s.practiceScoreOverride ??
-              computeEarnedScore(
-                s.score !== null && s.total !== null
-                  ? { score: s.score, total: s.total }
-                  : null,
-                block.maxScore,
-              ),
+            earnedScore: computeEffectiveTestPracticeScore(
+              s.score !== null && s.total !== null
+                ? {
+                    score: s.score,
+                    total: s.total,
+                    practiceScoreOverride: s.practiceScoreOverride,
+                  }
+                : null,
+              block.maxScore,
+            ),
             scoreOverridden: s.practiceScoreOverride !== null,
             scoreOverriddenAt:
               s.practiceScoreOverriddenAt?.toISOString() ?? null,

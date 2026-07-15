@@ -1,4 +1,4 @@
-import { computeCombinedPercent, computeEarnedScore, computeTestPracticePercent } from './practice-blocks.service';
+import { computeCombinedPercent, computeEarnedScore, computeEffectiveTestPracticeScore, computeTestPracticePercent } from './practice-blocks.service';
 
 describe('computeEarnedScore', () => {
   it('returns null when maxScore is null (unscored block)', () => {
@@ -19,6 +19,24 @@ describe('computeEarnedScore', () => {
 
   it('returns full maxScore for a perfect submission', () => {
     expect(computeEarnedScore({ score: 10, total: 10 }, 38)).toBe(38);
+  });
+});
+
+describe('computeEffectiveTestPracticeScore', () => {
+  it('uses the manual star override without changing the raw test result', () => {
+    const submission = { score: 6, total: 17, practiceScoreOverride: 9 };
+    expect(computeEffectiveTestPracticeScore(submission, 10)).toBe(9);
+    expect(submission.score).toBe(6);
+    expect(submission.total).toBe(17);
+  });
+
+  it('falls back to the automatically calculated star when there is no override', () => {
+    expect(
+      computeEffectiveTestPracticeScore(
+        { score: 6, total: 10, practiceScoreOverride: null },
+        10,
+      ),
+    ).toBe(6);
   });
 });
 

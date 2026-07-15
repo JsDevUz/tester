@@ -89,6 +89,7 @@ export interface GroupMember {
   studentId: string;
   studentName: string;
   studentPhone: string | null;
+  studentAvatarUrl: string | null;
   role: 'student' | 'curator';
   selectedPlanId: string | null;
   forcedClosed: boolean;
@@ -283,6 +284,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               studentId: m.studentId,
               studentName: m.student.name,
               studentPhone: m.student.phone,
+              studentAvatarUrl: m.student.avatarUrl,
               role: m.role,
               selectedPlanId: m.selectedPlanId,
               forcedClosed: m.forcedClosed,
@@ -1320,6 +1322,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       studentId: m.studentId,
       studentName: m.student.name,
       studentPhone: m.student.phone,
+      studentAvatarUrl: m.student.avatarUrl,
       role: m.role,
       selectedPlanId: m.selectedPlanId,
       forcedClosed: m.forcedClosed,
@@ -1341,6 +1344,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       studentId: m.studentId,
       studentName: m.student.name,
       studentPhone: m.student.phone,
+      studentAvatarUrl: m.student.avatarUrl,
       role: m.role,
       selectedPlanId: m.selectedPlanId,
       forcedClosed: m.forcedClosed,
@@ -1362,6 +1366,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       studentId: m.studentId,
       studentName: m.student.name,
       studentPhone: m.student.phone,
+      studentAvatarUrl: m.student.avatarUrl,
       role: m.role,
       selectedPlanId: m.selectedPlanId,
       forcedClosed: m.forcedClosed,

@@ -3,6 +3,7 @@ import { CheckCircle2, CircleDashed, ClipboardCheck, Clock3, ExternalLink, PlayC
 import { toast } from 'sonner';
 import { apiGetStudentCourseProgress, type ApiStudentCourseProgress } from '../../api/school';
 import { apiGradeImageSubmission, apiGradeOralPracticeBlock, apiGradeTestPracticeSubmission } from '../../api/practiceBlocks';
+import { UserAvatar } from '../UserAvatar';
 
 interface StudentLearningProgressModalProps {
   studentId: string;
@@ -23,11 +24,6 @@ function formatDuration(seconds: number) {
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = seconds % 60;
   return `${String(minutes).padStart(2, '0')}:${String(remainingSeconds).padStart(2, '0')}`;
-}
-
-function initials(name: string) {
-  const parts = name.trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? '') + (parts[1]?.[0] ?? '')).toUpperCase() || '?';
 }
 
 export function StudentLearningProgressModal({ studentId, courseId, onClose }: StudentLearningProgressModalProps) {
@@ -128,9 +124,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
         <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5">
           {progress ? (
             <div className="flex min-w-0 items-center gap-2.5">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-violet-100 text-sm font-semibold text-violet-600">
-                {initials(progress.student.name)}
-              </div>
+              <UserAvatar name={progress.student.name} avatarUrl={progress.student.avatarUrl} className="h-10 w-10 rounded-full bg-violet-100 text-sm font-semibold text-violet-600" />
               <div className="min-w-0">
                 <h2 className="truncate text-base font-semibold text-gray-900">{progress.student.name}</h2>
                 <p className="truncate text-[11px] text-gray-400">{progress.student.phone ?? '—'}</p>

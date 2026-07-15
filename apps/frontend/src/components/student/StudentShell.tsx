@@ -5,6 +5,7 @@ import { useAuthStore } from "../../stores/authStore";
 import { useThemeStore } from "../../stores/themeStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessengerNotifications";
+import { UserAvatar } from "../UserAvatar";
 
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
@@ -12,11 +13,6 @@ const NAV_ITEMS = [
   { label: "Messenger", shortLabel: "Xabarlar", path: "/messenger", icon: MessageCircle },
   { label: "Jonli musobaqalar", shortLabel: "Jonli", path: "/live/join", icon: Radio },
 ];
-
-function initials(name?: string | null) {
-  const parts = (name ?? "O'quvchi").trim().split(/\s+/);
-  return ((parts[0]?.[0] ?? "") + (parts[1]?.[0] ?? "")).toUpperCase() || "O";
-}
 
 function formatProfileContact(phone?: string | null, email?: string | null) {
   if (phone) return phone;
@@ -109,14 +105,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
           <div className="rounded-2xl bg-white p-4">
             <div className="flex items-center gap-3">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-yellow-300 text-base font-bold text-white">
-                {admin?.avatarUrl ? (
-                  <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials(admin?.name)
-                )}
-                <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
-              </div>
+              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-12 w-12 rounded-full bg-yellow-300 text-base font-bold text-white" />
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-gray-900">
                   {admin?.name ?? "O'quvchi"}
@@ -254,14 +243,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-yellow-300 text-sm font-bold text-white">
-                {admin?.avatarUrl ? (
-                  <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
-                ) : (
-                  initials(admin?.name)
-                )}
-                <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
-              </div>
+              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-11 w-11 rounded-full bg-yellow-300 text-sm font-bold text-white" />
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-bold text-gray-900">
                   {admin?.name ?? "O'quvchi"}
