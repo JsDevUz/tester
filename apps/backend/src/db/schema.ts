@@ -11,6 +11,7 @@ export const users = pgTable('users', {
   phone: text('phone').unique(),
   telegramChatId: text('telegram_chat_id'),
   telegramUserId: text('telegram_user_id'),
+  avatarUrl: text('avatar_url'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

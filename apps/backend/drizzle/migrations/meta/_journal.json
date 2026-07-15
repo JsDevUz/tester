@@ -225,6 +225,13 @@
       "when": 1784052999649,
       "tag": "0031_practice_chat_grade_message_index",
       "breakpoints": true
+    },
+    {
+      "idx": 32,
+      "version": "7",
+      "when": 1784100000000,
+      "tag": "0032_users_avatar_url",
+      "breakpoints": true
     }
   ]
 }

@@ -49,13 +49,17 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage ? "" : "pb-16"}`}>
-      <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0" : "lg:min-h-[calc(100vh-2rem)]"}`}>
-        <aside className="hidden w-full shrink-0 flex-col gap-3 lg:sticky lg:top-4 lg:flex lg:self-start">
+    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}>
+      <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
+        <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
           <div className="rounded-2xl bg-white p-4">
             <div className="flex items-center gap-3">
-              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-base font-bold text-white">
-                {initials(admin?.name)}
+              <div className="relative flex h-12 w-12 shrink-0 items-center justify-center overflow-hidden rounded-full bg-yellow-300 text-base font-bold text-white">
+                {admin?.avatarUrl ? (
+                  <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials(admin?.name)
+                )}
                 <span className="absolute bottom-0 right-0 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
               </div>
               <div className="min-w-0">
@@ -185,8 +189,12 @@ export function StudentShell({ children }: { children: ReactNode }) {
               </button>
             </div>
             <div className="flex items-center gap-3">
-              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-yellow-300 text-sm font-bold text-white">
-                {initials(admin?.name)}
+              <div className="relative flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-yellow-300 text-sm font-bold text-white">
+                {admin?.avatarUrl ? (
+                  <img src={admin.avatarUrl} alt="" className="h-full w-full object-cover" />
+                ) : (
+                  initials(admin?.name)
+                )}
                 <span className="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border-2 border-white bg-green-500" />
               </div>
               <div className="min-w-0 flex-1">

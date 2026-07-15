@@ -6,6 +6,7 @@ export interface Admin {
   name: string;
   role: 'student' | 'teacher' | 'super' | 'curator';
   phone?: string | null;
+  avatarUrl?: string | null;
 }
 
 export async function apiLogin(email: string, password: string): Promise<{ access_token: string; admin: Admin; user: Admin }> {

@@ -3,6 +3,8 @@ import { db } from '../db';
 import { authCodes, userTelegramLinks, users } from '../db/schema';
 import { and, eq, gt } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
+import { randomUUID } from 'crypto';
+import { StorageService } from '../storage/storage.service';
 
 interface TelegramMessage {
   chat?: { id?: number | string };
@@ -18,6 +20,8 @@ interface TelegramUpdate {
 @Injectable()
 export class TelegramService {
   private readonly logger = new Logger(TelegramService.name);
+
+  constructor(private storageService: StorageService) {}
 
   normalizePhone(phone: string) {
     const cleaned = phone.trim().replace(/[^\d+]/g, '');
@@ -52,6 +56,9 @@ export class TelegramService {
 
         const code = await this.createLoginCode({ phone: link.phone, telegramChatId: chatId });
         await this.sendMessage(chatId, `Kirish kodi: \`${code}\`\n\nYangi kod olish uchun /login bosing.`, { parse_mode: 'Markdown' });
+        if (link.telegramUserId) {
+          void this.syncProfilePhoto(link.phone, link.telegramUserId);
+        }
         return;
       }
 
@@ -88,6 +95,10 @@ export class TelegramService {
         phone,
         name: this.buildDisplayName(firstName, lastName),
       });
+
+      if (telegramUserId) {
+        void this.syncProfilePhoto(phone, telegramUserId);
+      }
 
       const code = await this.createLoginCode({
         phone,
@@ -127,6 +138,41 @@ export class TelegramService {
     }
 
     await this.sendMessage(link.telegramChatId, `Login: ${email}\nParol: ${password}`);
+  }
+
+  private async syncProfilePhoto(phone: string, telegramUserId: string) {
+    const token = process.env.TELEGRAM_BOT_TOKEN;
+    if (!token) return;
+
+    try {
+      const photosResponse = await fetch(
+        `https://api.telegram.org/bot${token}/getUserProfilePhotos?user_id=${telegramUserId}&limit=1`,
+      );
+      if (!photosResponse.ok) return;
+      const photosData = await photosResponse.json();
+      const fileId = photosData?.result?.photos?.[0]?.[0]?.file_id;
+      if (!fileId) return;
+
+      const fileResponse = await fetch(`https://api.telegram.org/bot${token}/getFile?file_id=${fileId}`);
+      if (!fileResponse.ok) return;
+      const fileData = await fileResponse.json();
+      const filePath = fileData?.result?.file_path;
+      if (!filePath) return;
+
+      const downloadResponse = await fetch(`https://api.telegram.org/file/bot${token}/${filePath}`);
+      if (!downloadResponse.ok) return;
+      const buffer = Buffer.from(await downloadResponse.arrayBuffer());
+
+      const ext = filePath.split('.').pop() || 'jpg';
+      const key = `avatars/${randomUUID()}.${ext}`;
+      const contentType = ext === 'png' ? 'image/png' : 'image/jpeg';
+      const uploadedKey = await this.storageService.uploadBuffer(key, buffer, contentType, 'public, max-age=86400');
+      const publicUrl = this.storageService.getPublicUrl(uploadedKey);
+
+      await db.update(users).set({ avatarUrl: publicUrl }).where(eq(users.phone, phone));
+    } catch (error) {
+      this.logger.warn(`Failed to sync Telegram profile photo: ${error}`);
+    }
   }
 
   private async sendMessage(chatId: string, text: string, extra: Record<string, unknown> = {}) {
