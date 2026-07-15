@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -136,7 +137,7 @@ export function MyCoursesPage() {
 
   return (
     <StudentShell>
-      <div className="rounded-2xl bg-white p-4 sm:p-5">
+      <div className="w-full max-w-4xl rounded-2xl bg-white p-4 sm:p-5">
         <h1 className="mb-4 text-lg font-bold text-gray-800">
           Mening kurslarim
         </h1>
@@ -296,6 +297,7 @@ function StudentCourseReader({
   courseId: string;
   onBack: () => void;
 }) {
+  const navigate = useNavigate();
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -749,6 +751,11 @@ function StudentCourseReader({
                 selected.lesson.passThresholdEnabled &&
                 !isLessonPassing(selected.lesson)
               }
+              onOpenMessenger={
+                course.curatorName
+                  ? () => navigate(`/messenger?courseId=${courseId}`)
+                  : undefined
+              }
               onOpenPractice={() => {
                 setShowPractice(true);
               }}
@@ -782,6 +789,7 @@ function LessonReader({
   totalLessons,
   hasPractice,
   blockedByThreshold,
+  onOpenMessenger,
   onOpenPractice,
   onPrev,
   onNext,
@@ -793,6 +801,7 @@ function LessonReader({
   totalLessons: number;
   hasPractice: boolean;
   blockedByThreshold: boolean;
+  onOpenMessenger?: () => void;
   onOpenPractice: () => void | Promise<void>;
   onPrev: () => void;
   onNext: () => void | Promise<void>;
@@ -819,7 +828,9 @@ function LessonReader({
 
       <button
         type="button"
-        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left sm:mb-6 sm:px-4 lg:rounded-xl"
+        onClick={onOpenMessenger}
+        disabled={!onOpenMessenger}
+        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl enabled:hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-70"
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white sm:h-9 sm:w-9">

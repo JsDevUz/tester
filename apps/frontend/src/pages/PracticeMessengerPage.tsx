@@ -1,5 +1,7 @@
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
+import { useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   Check,
   CheckCircle2,
   ChevronUp,
@@ -101,6 +103,8 @@ function PracticeMessengerContent() {
   const setActiveChatId = usePracticeMessengerStore(
     (state) => state.setActiveChatId,
   );
+  const [searchParams] = useSearchParams();
+  const requestedCourseId = searchParams.get("courseId");
   const [chats, setChats] = useState<ApiPracticeChatPreview[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [selectedChat, setSelectedChat] = useState<ApiPracticeChat | null>(
@@ -108,6 +112,7 @@ function PracticeMessengerContent() {
   );
   const [messages, setMessages] = useState<ApiPracticeMessage[]>([]);
   const [query, setQuery] = useState("");
+  const [mobileThreadOpen, setMobileThreadOpen] = useState(false);
   const [draft, setDraft] = useState("");
   const [replyingTo, setReplyingTo] = useState<ApiPracticeMessage | null>(null);
   const [editingMessage, setEditingMessage] =
@@ -118,11 +123,17 @@ function PracticeMessengerContent() {
   const [editingGradeMessageId, setEditingGradeMessageId] = useState<
     string | null
   >(null);
+  const [activeMessageActionsId, setActiveMessageActionsId] = useState<
+    string | null
+  >(null);
+  const [messagePendingDelete, setMessagePendingDelete] =
+    useState<ApiPracticeMessage | null>(null);
   const [loading, setLoading] = useState(true);
   const [loadingChat, setLoadingChat] = useState(false);
   const [loadingOlderMessages, setLoadingOlderMessages] = useState(false);
   const [hasOlderMessages, setHasOlderMessages] = useState(false);
   const [sending, setSending] = useState(false);
+  const [deletingMessage, setDeletingMessage] = useState(false);
   const [fullscreenImage, setFullscreenImage] = useState<string | null>(null);
   const [testDetail, setTestDetail] = useState<SubmissionDetail | null>(null);
   const [loadingTestDetail, setLoadingTestDetail] = useState(false);
@@ -136,17 +147,20 @@ function PracticeMessengerContent() {
   const nextCursorRef = useRef<string | null>(null);
   const loadingOlderMessagesRef = useRef(false);
   const hasOlderMessagesRef = useRef(false);
+  const scrollToBottomAfterRenderRef = useRef(false);
 
   async function loadChats() {
     setLoading(true);
     try {
       const result = await apiGetPracticeChats();
       setChats(result.chats);
-      setSelectedId((current) =>
-        current && result.chats.some((chat) => chat.id === current)
-          ? current
-          : (result.chats[0]?.id ?? null),
-      );
+      setSelectedId((current) => {
+        if (requestedCourseId) {
+          const matching = result.chats.find((chat) => chat.courseId === requestedCourseId);
+          if (matching) return matching.id;
+        }
+        return current && result.chats.some((chat) => chat.id === current) ? current : null;
+      });
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ?? "Chatlarni yuklab bo‘lmadi",
@@ -277,9 +291,20 @@ function PracticeMessengerContent() {
   ]);
 
   useEffect(() => {
+    if (loadingChat || !scrollToBottomAfterRenderRef.current) return;
+    scrollToBottomAfterRenderRef.current = false;
+    window.requestAnimationFrame(() => {
+      const container = messageScrollRef.current;
+      if (container) container.scrollTop = container.scrollHeight;
+    });
+  }, [messages, loadingChat]);
+
+  useEffect(() => {
     setReplyingTo(null);
     setEditingMessage(null);
     setEditingGradeMessageId(null);
+    setActiveMessageActionsId(null);
+    setMessagePendingDelete(null);
     setDraft("");
   }, [selectedId]);
 
@@ -325,6 +350,7 @@ function PracticeMessengerContent() {
 
   async function sendMessage() {
     if (!selectedChat || !draft.trim()) return;
+    const sendingNewMessage = !editingMessage;
     setSending(true);
     try {
       if (editingMessage) {
@@ -340,6 +366,7 @@ function PracticeMessengerContent() {
       setDraft("");
       setReplyingTo(null);
       setEditingMessage(null);
+      if (sendingNewMessage) scrollToBottomAfterRenderRef.current = true;
       await Promise.all([loadChat(selectedChat.id), loadChats()]);
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Xabar yuborilmadi");
@@ -350,12 +377,14 @@ function PracticeMessengerContent() {
 
   function startReply(message: ApiPracticeMessage) {
     if (message.deletedAt) return;
+    setActiveMessageActionsId(null);
     setEditingMessage(null);
     setReplyingTo(message);
     setDraft("");
   }
 
   function startEditing(message: ApiPracticeMessage) {
+    setActiveMessageActionsId(null);
     setReplyingTo(null);
     setEditingMessage(message);
     setDraft(message.content);
@@ -369,15 +398,20 @@ function PracticeMessengerContent() {
 
   async function deleteMessage(message: ApiPracticeMessage) {
     if (!selectedChat) return;
+    setActiveMessageActionsId(null);
+    setDeletingMessage(true);
     try {
       await apiDeletePracticeMessage(selectedChat.id, message.id);
       toast.success("Xabar o‘chirildi");
+      setMessagePendingDelete(null);
       if (editingMessage?.id === message.id) cancelMessageAction();
       await Promise.all([loadChat(selectedChat.id), loadChats()]);
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ?? "Xabarni o‘chirib bo‘lmadi",
       );
+    } finally {
+      setDeletingMessage(false);
     }
   }
 
@@ -455,7 +489,9 @@ function PracticeMessengerContent() {
   return (
     <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden bg-white lg:rounded-2xl">
       <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="practice-messenger-list flex min-h-0 flex-col border-b border-gray-100 lg:border-b-0 lg:border-r">
+        <aside
+          className={`practice-messenger-list min-h-0 flex-col border-b border-gray-100 lg:flex lg:border-b-0 lg:border-r ${mobileThreadOpen ? "hidden" : "flex"}`}
+        >
           <div className="border-b border-gray-100 p-3">
             <label className="flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2.5 text-gray-400">
               <Search size={17} />
@@ -483,7 +519,10 @@ function PracticeMessengerContent() {
                   <button
                     key={chat.id}
                     type="button"
-                    onClick={() => setSelectedId(chat.id)}
+                    onClick={() => {
+                      setSelectedId(chat.id);
+                      setMobileThreadOpen(true);
+                    }}
                     className={`flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors ${active ? "practice-messenger-chat-active" : "hover:bg-gray-50"}`}
                   >
                     <span className="practice-messenger-avatar flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold">
@@ -520,7 +559,9 @@ function PracticeMessengerContent() {
           </div>
         </aside>
 
-        <section className="practice-messenger-thread flex min-h-0 min-w-0 flex-col overflow-hidden bg-gray-50/50">
+        <section
+          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-gray-50/50 lg:flex ${mobileThreadOpen ? "flex" : "hidden"}`}
+        >
           {!selectedChat ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-gray-400">
               <MessageCircle size={48} className="mb-3 text-gray-200" />
@@ -533,16 +574,27 @@ function PracticeMessengerContent() {
             </div>
           ) : (
             <>
-              <header className="practice-messenger-header flex items-center justify-between border-b border-gray-100 bg-white px-5 py-3.5">
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-bold text-gray-900">
-                    {isCurator
-                      ? selectedChat.student.name
-                      : selectedChat.curator.name}
-                  </p>
-                  <p className="mt-0.5 truncate text-xs text-gray-400">
-                    {selectedChat.courseTitle} · {selectedChat.groupName}
-                  </p>
+              <header className="practice-messenger-header flex items-center justify-between border-b border-gray-100 bg-white px-3 py-3.5 sm:px-5">
+                <div className="flex min-w-0 items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setMobileThreadOpen(false)}
+                    className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 lg:hidden"
+                    aria-label="Chatlar ro‘yxatiga qaytish"
+                    title="Orqaga"
+                  >
+                    <ArrowLeft size={20} />
+                  </button>
+                  <div className="min-w-0">
+                    <p className="truncate text-sm font-bold text-gray-900">
+                      {isCurator
+                        ? selectedChat.student.name
+                        : selectedChat.curator.name}
+                    </p>
+                    <p className="mt-0.5 truncate text-xs text-gray-400">
+                      {selectedChat.courseTitle} · {selectedChat.groupName}
+                    </p>
+                  </div>
                 </div>
                 <span className="practice-messenger-avatar flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold">
                   {initials(
@@ -644,7 +696,22 @@ function PracticeMessengerContent() {
                               className={`flex px-1 transition-[background-color,box-shadow] duration-300 ${own ? "justify-end" : "justify-start"} ${highlightedMessageId === message.id ? "practice-messenger-highlighted rounded-2xl p-2" : ""}`}
                             >
                               <div
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 py-2.5 shadow-sm sm:max-w-[78%] ${
+                                onClick={(event) => {
+                                  if (
+                                    message.deletedAt ||
+                                    !window.matchMedia("(max-width: 639px)")
+                                      .matches ||
+                                    (event.target as HTMLElement).closest(
+                                      "button, a, input, textarea",
+                                    )
+                                  ) {
+                                    return;
+                                  }
+                                  setActiveMessageActionsId((current) =>
+                                    current === message.id ? null : message.id,
+                                  );
+                                }}
+                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5 shadow-sm sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${
                                   own
                                     ? practiceMessage
                                       ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
@@ -653,7 +720,10 @@ function PracticeMessengerContent() {
                                 }`}
                               >
                                 {!message.deletedAt && (
-                                  <div className="absolute -top-3 right-2 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5 opacity-0 shadow-sm transition-opacity group-hover:opacity-100 focus-within:opacity-100">
+                                  <div
+                                    onClick={(event) => event.stopPropagation()}
+                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5 shadow-sm transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                                  >
                                     <button
                                       type="button"
                                       onClick={() => startReply(message)}
@@ -676,9 +746,10 @@ function PracticeMessengerContent() {
                                         </button>
                                         <button
                                           type="button"
-                                          onClick={() =>
-                                            void deleteMessage(message)
-                                          }
+                                          onClick={() => {
+                                            setActiveMessageActionsId(null);
+                                            setMessagePendingDelete(message);
+                                          }}
                                           className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
                                           aria-label="Xabarni o‘chirish"
                                           title="O‘chirish"
@@ -901,7 +972,7 @@ function PracticeMessengerContent() {
                   event.preventDefault();
                   void sendMessage();
                 }}
-                className="practice-messenger-composer border-t border-gray-100 bg-white p-3"
+                className="practice-messenger-composer border-t border-gray-100 bg-white p-2 sm:p-3"
               >
                 {(replyingTo || editingMessage) && (
                   <div className="practice-messenger-replying mx-auto mb-2 flex w-full max-w-4xl items-center gap-3 rounded-xl border-l-4 px-3 py-2 text-xs text-gray-600">
@@ -925,7 +996,7 @@ function PracticeMessengerContent() {
                     </button>
                   </div>
                 )}
-                <div className="mx-auto w-full max-w-4xl gap-2 rounded-2xl border border-gray-200 bg-gray-50 px-3 py-2 transition-colors focus-within:border-gray-900 flex items-center">
+                <div className="mx-auto flex w-full max-w-4xl items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-2.5 py-1.5 transition-colors focus-within:border-gray-900 sm:rounded-2xl sm:px-3 sm:py-2">
                   <textarea
                     value={draft}
                     onChange={(event) => setDraft(event.target.value)}
@@ -941,12 +1012,12 @@ function PracticeMessengerContent() {
                         ? "Xabarni tahrirlang..."
                         : "Xabar yozing..."
                     }
-                    className="max-h-28 min-h-6 flex-1 resize-none !bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                    className="max-h-24 min-h-5 flex-1 resize-none !bg-transparent text-sm leading-5 text-gray-800 outline-none placeholder:text-gray-400 sm:max-h-28 sm:min-h-6"
                   />
                   <button
                     type="submit"
                     disabled={sending || !draft.trim()}
-                    className="practice-messenger-primary practice-messenger-send-button flex h-9 w-9 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-100"
+                    className="practice-messenger-primary practice-messenger-send-button flex h-8 w-8 shrink-0 items-center justify-center rounded-full transition-colors disabled:opacity-100 sm:h-9 sm:w-9"
                   >
                     {editingMessage ? <Pencil size={16} /> : <Send size={17} />}
                   </button>
@@ -956,6 +1027,50 @@ function PracticeMessengerContent() {
           )}
         </section>
       </div>
+      {messagePendingDelete && (
+        <div
+          className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center"
+          onClick={(event) => {
+            if (
+              event.target === event.currentTarget &&
+              !deletingMessage
+            ) {
+              setMessagePendingDelete(null);
+            }
+          }}
+        >
+          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
+            <h2 className="text-base font-bold text-gray-900">
+              Xabarni o‘chirish
+            </h2>
+            <p className="mt-2 text-sm leading-5 text-gray-500">
+              Bu xabarni o‘chirmoqchimisiz? Bu amalni ortga qaytarib bo‘lmaydi.
+            </p>
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setMessagePendingDelete(null)}
+                disabled={deletingMessage}
+                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => void deleteMessage(messagePendingDelete)}
+                disabled={deletingMessage}
+                className="inline-flex min-w-24 items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+              >
+                {deletingMessage ? (
+                  <Loader2 size={16} className="animate-spin" />
+                ) : (
+                  "O‘chirish"
+                )}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       {fullscreenImage && (
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-4"

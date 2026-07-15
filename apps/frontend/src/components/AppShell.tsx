@@ -87,7 +87,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         paddingBottom: "max(12px, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-between lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto lg:z-10">
+      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-around lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto lg:z-10">
         <button
           onClick={() => navigate("/")}
           className="hidden lg:block mb-6 shrink-0"
@@ -99,7 +99,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           />
         </button>
 
-        <nav className="flex flex-row lg:flex-col gap-1 flex-1 lg:w-full lg:px-2 justify-around lg:justify-start">
+        <nav className="contents lg:flex lg:flex-1 lg:w-full lg:flex-col lg:justify-start lg:gap-1 lg:px-2">
           {visibleSections.map((section) => {
             const Icon = section.icon;
             const isActive = activeSection?.key === section.key;

@@ -53,7 +53,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}>
+    <div className={`${isMessenger ? "h-[100dvh] overflow-hidden pb-[calc(60px+env(safe-area-inset-bottom))] lg:pb-4" : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}>
       <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
           <div className="rounded-2xl bg-white p-4">

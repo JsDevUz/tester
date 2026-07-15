@@ -348,6 +348,9 @@ export class PracticeBlocksService {
     const block = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.id, submission.practiceBlockId) });
     if (!block) throw new NotFoundException('Submission not found');
     await this.assertCanGradeImage(block, submission.studentId, adminId);
+    if (block.maxScore === null || block.maxScore <= 0) {
+      throw new BadRequestException('Baholashdan oldin maksimal yulduzni belgilang');
+    }
     if (block.maxScore !== null && score > block.maxScore) {
       throw new BadRequestException(`Ball blokning maksimal ballidan (${block.maxScore}) oshmasligi kerak`);
     }
@@ -380,6 +383,7 @@ export class PracticeBlocksService {
         set: { score, gradedAt: new Date(), gradedByAdminId: adminId },
       })
       .returning();
+    await this.practiceMessengerService.createOralGradeMessage(practiceBlockId, studentId, adminId, score);
     return grade;
   }
 

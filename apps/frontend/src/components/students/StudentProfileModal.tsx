@@ -1,9 +1,10 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronDown, GraduationCap, MoreVertical, Star, UserRound, X } from 'lucide-react';
+import { GraduationCap, MoreVertical, Star, UserRound, X } from 'lucide-react';
 import { apiListCourses, type ApiCourse } from '../../api/courses';
 import { apiListGroups, apiEnrollStudent, apiUpdateGroupMember, type ApiGroup } from '../../api/groups';
 import { apiListEnrollments, type ApiSchoolEnrollment } from '../../api/school';
 import { apiListLaunches, type ApiPricingPlan } from '../../api/launches';
+import { useAuthStore } from '../../stores/authStore';
 
 interface StudentProfileModalProps {
   studentId: string;
@@ -40,6 +41,8 @@ function progressColor(pct: number) {
 }
 
 export function StudentProfileModal({ studentId, studentName, studentPhone, onClose, onEnrolled }: StudentProfileModalProps) {
+  const admin = useAuthStore((s) => s.admin);
+  const canManageCourses = admin?.role === 'teacher' || admin?.role === 'super';
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
   const [loadingEnrollments, setLoadingEnrollments] = useState(true);
   const [actionsOpen, setActionsOpen] = useState(false);
@@ -171,6 +174,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
           </div>
 
           <div className="flex shrink-0 items-center gap-1.5">
+            {canManageCourses && (
             <div className="relative">
               <button
                 type="button"
@@ -199,6 +203,7 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, onCl
                 </>
               )}
             </div>
+            )}
             <button
               type="button"
               onClick={onClose}
@@ -401,7 +406,6 @@ function SelectRow({
             <option key={o.value} value={o.value}>{o.label}</option>
           ))}
         </select>
-        <ChevronDown size={14} className="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" />
       </div>
     </label>
   );

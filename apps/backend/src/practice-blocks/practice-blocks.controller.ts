@@ -95,14 +95,14 @@ export class PracticeBlocksController {
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('student', 'teacher', 'super')
+  @Roles('student', 'curator', 'teacher', 'super')
   @Patch('image-submissions/:id/grade')
   gradeImage(@Param('id') id: string, @Req() req: any, @Body() dto: GradeImageDto) {
     return this.practiceBlocksService.gradeImage(id, req.admin.id, dto.score);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('student', 'teacher', 'super')
+  @Roles('student', 'curator', 'teacher', 'super')
   @Patch('practice-blocks/:id/oral-grades/:studentId')
   gradeOralPractice(
     @Param('id') id: string,

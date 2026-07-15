@@ -2,6 +2,7 @@ import client from './client';
 
 export interface ApiPracticeChatPreview {
   id: string;
+  courseId: string;
   student: { id: string; name: string };
   curator: { id: string; name: string };
   groupName: string;
