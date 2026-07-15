@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { BlockNoteSchema, defaultBlockSpecs, insertOrUpdateBlock } from '@blocknote/core';
+import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import {
   SuggestionMenuController,
@@ -25,7 +25,6 @@ interface EditorBlockProps {
 // bloklari orqali qo'shiladi, tahrirchi ichida ularni ikki marta ko'rsatmaslik uchun.
 const { video: _video, audio: _audio, file: _file, ...restBlockSpecs } = defaultBlockSpecs;
 const schema = BlockNoteSchema.create({ blockSpecs: restBlockSpecs });
-type EditorInstance = ReturnType<typeof useCreateBlockNote<typeof schema>>;
 
 function toAbsoluteUrl(url: string) {
   return url.startsWith('http') ? url : `${BACKEND}${url}`;
@@ -93,10 +92,17 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   }
 
   function handleLibrarySelect(url: string) {
-    insertOrUpdateBlock(editor as EditorInstance, {
-      type: 'image',
-      props: { url: toAbsoluteUrl(url) },
-    } as never);
+    const currentBlock = editor.getTextCursorPosition().block;
+    const isEmptyParagraph =
+      currentBlock.type === 'paragraph' &&
+      Array.isArray(currentBlock.content) &&
+      currentBlock.content.length === 0;
+    const imageBlock = { type: 'image', props: { url: toAbsoluteUrl(url) } } as never;
+    if (isEmptyParagraph) {
+      editor.replaceBlocks([currentBlock.id], [imageBlock]);
+    } else {
+      editor.insertBlocks([imageBlock], currentBlock.id, 'after');
+    }
     setLibraryOpen(false);
   }
 
