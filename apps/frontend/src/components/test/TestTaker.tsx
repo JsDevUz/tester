@@ -1178,9 +1178,9 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             const isCorrectOption = correctIds.has(opt.id);
             const resultClass = feedback
               ? isCorrectOption
-                ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-100"
+                ? "border-emerald-500 bg-emerald-500 text-white"
                 : checked
-                  ? "border-rose-500 bg-rose-500 text-white shadow-md shadow-rose-100"
+                  ? "border-rose-500 bg-rose-500 text-white"
                   : "border-border bg-white text-gray-400"
               : checked
                 ? "border-gray-900 bg-gray-900 text-white shadow-md"
@@ -1322,9 +1322,9 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           const missedCorrect = unselectedButCorrect && q.type === "multi";
           const cardClass = feedback
             ? checked && isCorrectOption
-              ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-100"
+              ? "bg-emerald-500 border-emerald-500 text-white"
               : checked && !isCorrectOption
-                ? "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-100"
+                ? "bg-rose-500 border-rose-500 text-white"
                 : unselectedButCorrect
                   ? "bg-white border-emerald-500 border-2 text-emerald-700"
                   : "bg-white border-border text-gray-400"
