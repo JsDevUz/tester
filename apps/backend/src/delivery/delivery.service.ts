@@ -256,7 +256,11 @@ export class DeliveryService {
     // Javob umuman berilmagan bo'lsa — noto'g'ri deb baholanadi
     const hasAnswer = (item.selectedOptionIds?.length ?? 0) > 0 || !!item.textAnswer?.trim();
     if (!hasAnswer) {
-      return { isCorrect: false, correctAnswer: this.correctAnswerText(question) };
+      return {
+        isCorrect: false,
+        correctAnswer: this.correctAnswerText(question),
+        correctOptionIds: this.correctOptionIds(question),
+      };
     }
 
     const isCorrect = await gradeAnswer(
@@ -266,7 +270,33 @@ export class DeliveryService {
       (correctAnswer, studentAnswer) => this.groqService.checkFillBlankAnswer(correctAnswer, studentAnswer),
     );
 
-    return { isCorrect, correctAnswer: this.correctAnswerText(question) };
+    return {
+      isCorrect,
+      correctAnswer: this.correctAnswerText(question),
+      correctOptionIds: this.correctOptionIds(question),
+    };
+  }
+
+  private correctOptionIds(question: {
+    type: string;
+    options: Array<{ id: string; isCorrect: boolean; orderIndex: number }>;
+  }): string[] {
+    if (question.type === 'matching') {
+      const lefts = question.options
+        .filter((option) => option.isCorrect)
+        .sort((a, b) => a.orderIndex - b.orderIndex);
+      const rights = question.options
+        .filter((option) => !option.isCorrect)
+        .sort((a, b) => a.orderIndex - b.orderIndex);
+      return lefts.flatMap((left, index) =>
+        rights[index] ? [left.id, rights[index].id] : [],
+      );
+    }
+
+    return question.options
+      .filter((option) => option.isCorrect)
+      .sort((a, b) => a.orderIndex - b.orderIndex)
+      .map((option) => option.id);
   }
 
   // Feedback uchun to'g'ri javob matni: correctAnswer bo'lmasa to'g'ri variant matnlari
@@ -341,11 +371,11 @@ export class DeliveryService {
         isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'open') {
-        if (item.textAnswer?.trim()) {
-          total++;
-          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
-          if (isCorrect) score++;
-        }
+        total++;
+        isCorrect = item.textAnswer?.trim()
+          ? await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer)
+          : false;
+        if (isCorrect) score++;
       } else if (question.type === 'arrange' || question.type === 'reorder') {
         total++;
         isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
@@ -361,23 +391,23 @@ export class DeliveryService {
         isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
         if (isCorrect) score++;
       } else if (question.type === 'fillblank') {
-        if (question.correctAnswer && item.textAnswer?.trim()) {
-          total++;
-          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
-          if (isCorrect) score++;
-        }
+        total++;
+        isCorrect = question.correctAnswer && item.textAnswer?.trim()
+          ? await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer)
+          : false;
+        if (isCorrect) score++;
       } else if (question.type === 'slider') {
-        if (question.correctAnswer && item.textAnswer?.trim()) {
-          total++;
-          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
-          if (isCorrect) score++;
-        }
+        total++;
+        isCorrect = question.correctAnswer && item.textAnswer?.trim()
+          ? await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer)
+          : false;
+        if (isCorrect) score++;
       } else if (question.type === 'droppin') {
-        if (question.correctAnswer && item.textAnswer?.trim()) {
-          total++;
-          isCorrect = await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer);
-          if (isCorrect) score++;
-        }
+        total++;
+        isCorrect = question.correctAnswer && item.textAnswer?.trim()
+          ? await gradeAnswer(gradableQuestion, gradeInput, checkOpenAnswer, checkFillBlankAnswer)
+          : false;
+        if (isCorrect) score++;
       }
 
       const displayOptions = test.shuffleOptions && question.type !== 'matching'

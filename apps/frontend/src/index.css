@@ -23,6 +23,14 @@
   color-scheme: dark;
 }
 
+/* Test result page uses the same responsive `lg:bg-white` pattern. */
+@media (min-width: 64rem) {
+  :root[data-theme="dark"] .test-result-card {
+    background-color: #24252c !important;
+    border-color: #3f414c !important;
+  }
+}
+
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .test-entry-card {
     background-color: #24252c !important;

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
-import { Clock, CheckCircle2, XCircle } from "lucide-react";
+import { Clock, Check, X, Volume2, VolumeX } from "lucide-react";
+import Confetti from "react-confetti";
 import {
   apiGetPublicTest,
   apiStartSubmission,
@@ -35,10 +36,12 @@ function SortableItem({
   id,
   pos,
   text,
+  result,
 }: {
   id: string;
   pos: number;
   text: string;
+  result?: "correct" | "incorrect";
 }) {
   const {
     attributes,
@@ -56,14 +59,20 @@ function SortableItem({
       className={`flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border select-none ${
         isDragging
           ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
+          : result === "correct"
+            ? "border-emerald-500 bg-emerald-500 text-white"
+            : result === "incorrect"
+              ? "border-rose-500 bg-rose-500 text-white"
           : "bg-white border-border"
       }`}
     >
-      <span className="text-gray-300 text-sm font-mono w-5 shrink-0">
+      <span
+        className={`text-sm font-mono w-5 shrink-0 ${result ? "text-white/70" : "text-gray-300"}`}
+      >
         {pos + 1}.
       </span>
       <span
-        className="min-w-0 flex-1 break-words text-gray-800"
+        className={`min-w-0 flex-1 break-words ${result ? "text-white" : "text-gray-800"}`}
         style={{ fontSize: "var(--q-fs, 16px)" }}
       >
         {text}
@@ -71,10 +80,12 @@ function SortableItem({
       <span
         {...attributes}
         {...listeners}
-        className="touch-none cursor-grab active:cursor-grabbing text-gray-300 text-2xl px-1 select-none"
+        className={`touch-none cursor-grab active:cursor-grabbing text-2xl px-1 select-none ${result ? "text-white/50" : "text-gray-300"}`}
       >
         ⠿
       </span>
+      {result === "correct" && <Check size={18} className="shrink-0 text-white" />}
+      {result === "incorrect" && <X size={18} className="shrink-0 text-white" />}
     </div>
   );
 }
@@ -84,11 +95,13 @@ function ReorderQuestion({
   options,
   onChange,
   locked,
+  feedback,
 }: {
   optionIds: string[];
   options: { id: string; text: string }[];
   onChange: (ids: string[]) => void;
   locked?: boolean;
+  feedback?: QuestionFeedback;
 }) {
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -114,12 +127,35 @@ function ReorderQuestion({
         <div className="flex w-full min-w-0 max-w-full flex-col gap-2 overflow-x-clip">
           {optionIds.map((id, pos) => {
             const opt = options.find((o) => o.id === id);
+            const result = feedback
+              ? feedback.correctOptionIds?.[pos] === id
+                ? "correct"
+                : "incorrect"
+              : undefined;
             return opt ? (
-              <SortableItem key={id} id={id} pos={pos} text={opt.text} />
+              <SortableItem key={id} id={id} pos={pos} text={opt.text} result={result} />
             ) : null;
           })}
         </div>
       </SortableContext>
+      {feedback?.isCorrect === false && feedback.correctOptionIds && (
+        <div className="mt-3 flex flex-col gap-2">
+          <p className="text-xs font-medium text-emerald-700">To'g'ri tartib</p>
+          {feedback.correctOptionIds.map((id, pos) => {
+            const opt = options.find((option) => option.id === id);
+            return opt ? (
+              <div
+                key={`correct-${id}`}
+                className="flex items-center gap-3 rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3 text-white"
+              >
+                <span className="w-5 shrink-0 font-mono text-sm text-white/70">{pos + 1}.</span>
+                <span className="min-w-0 flex-1 break-words">{opt.text}</span>
+                <Check size={18} className="shrink-0" />
+              </div>
+            ) : null;
+          })}
+        </div>
+      )}
     </DndContext>
   );
 }
@@ -144,12 +180,14 @@ function MatchingQuestion({
   selected,
   onSelect,
   locked,
+  feedback,
 }: {
   questionId: string;
   options: { id: string; text: string }[];
   selected: string[];
   onSelect: (ids: string[]) => void;
   locked?: boolean;
+  feedback?: QuestionFeedback;
 }) {
   const lefts = useMemo(
     () =>
@@ -171,7 +209,16 @@ function MatchingQuestion({
   const boardRef = useRef<HTMLDivElement>(null);
   const leftRefs = useRef(new Map<string, HTMLButtonElement>());
   const rightRefs = useRef(new Map<string, HTMLButtonElement>());
-  const [connections, setConnections] = useState<Array<{ leftId: string; rightId: string; x1: number; y1: number; x2: number; y2: number }>>([]);
+  const [connections, setConnections] = useState<Array<{
+    key: string;
+    leftId: string;
+    rightId: string;
+    x1: number;
+    y1: number;
+    x2: number;
+    y2: number;
+    result: "neutral" | "correct" | "incorrect";
+  }>>([]);
 
   useEffect(() => {
     setPendingLeft(null);
@@ -179,26 +226,57 @@ function MatchingQuestion({
 
   const pairedLeftIds = selected.filter((_, i) => i % 2 === 0);
   const pairedRightIds = selected.filter((_, i) => i % 2 !== 0);
+  const correctIds = feedback?.correctOptionIds ?? [];
+  const correctPairs = new Map<string, string>();
+  for (let index = 0; index < correctIds.length; index += 2) {
+    if (correctIds[index] && correctIds[index + 1])
+      correctPairs.set(correctIds[index], correctIds[index + 1]);
+  }
 
   useLayoutEffect(() => {
     const updateConnections = () => {
       const board = boardRef.current;
       if (!board) return;
       const boardRect = board.getBoundingClientRect();
-      setConnections(pairedLeftIds.flatMap((leftId, index) => {
-        const rightId = pairedRightIds[index];
+      const selectedPairs = pairedLeftIds.map((leftId, index) => ({
+        key: `selected-${leftId}-${pairedRightIds[index]}`,
+        leftId,
+        rightId: pairedRightIds[index],
+        result: !feedback
+          ? "neutral" as const
+          : correctPairs.get(leftId) === pairedRightIds[index]
+            ? "correct" as const
+            : "incorrect" as const,
+      }));
+      const selectedPairKeys = new Set(
+        selectedPairs.map((pair) => `${pair.leftId}:${pair.rightId}`),
+      );
+      const missingCorrectPairs = feedback
+        ? [...correctPairs.entries()]
+            .filter(([leftId, rightId]) => !selectedPairKeys.has(`${leftId}:${rightId}`))
+            .map(([leftId, rightId]) => ({
+              key: `correct-${leftId}-${rightId}`,
+              leftId,
+              rightId,
+              result: "correct" as const,
+            }))
+        : [];
+      setConnections([...selectedPairs, ...missingCorrectPairs].flatMap((pair) => {
+        const { leftId, rightId } = pair;
         const left = leftRefs.current.get(leftId);
         const right = rightRefs.current.get(rightId);
         if (!left || !right) return [];
         const leftRect = left.getBoundingClientRect();
         const rightRect = right.getBoundingClientRect();
         return [{
+          key: pair.key,
           leftId,
           rightId,
           x1: leftRect.right - boardRect.left,
           y1: leftRect.top + leftRect.height / 2 - boardRect.top,
           x2: rightRect.left - boardRect.left,
           y2: rightRect.top + rightRect.height / 2 - boardRect.top,
+          result: pair.result,
         }];
       }));
     };
@@ -210,7 +288,7 @@ function MatchingQuestion({
       observer.disconnect();
       window.removeEventListener('resize', updateConnections);
     };
-  }, [selected, options]);
+  }, [selected, options, feedback]);
 
   function tapLeft(id: string) {
     if (locked) return;
@@ -244,16 +322,25 @@ function MatchingQuestion({
           {connections.map((connection) => {
             const bend = Math.max(12, (connection.x2 - connection.x1) * 0.45);
             return (
-              <g key={`${connection.leftId}-${connection.rightId}`}>
+              <g
+                key={connection.key}
+                className={
+                  connection.result === "correct"
+                    ? "text-emerald-500"
+                    : connection.result === "incorrect"
+                      ? "text-rose-500"
+                      : "text-gray-400"
+                }
+              >
                 <path
                   d={`M ${connection.x1} ${connection.y1} C ${connection.x1 + bend} ${connection.y1}, ${connection.x2 - bend} ${connection.y2}, ${connection.x2} ${connection.y2}`}
                   fill="none"
                   stroke="currentColor"
                   strokeWidth="2"
-                  className="text-gray-400"
+                  className="text-inherit"
                 />
-                <circle cx={connection.x1} cy={connection.y1} r="3" fill="currentColor" className="text-gray-500" />
-                <circle cx={connection.x2} cy={connection.y2} r="3" fill="currentColor" className="text-gray-500" />
+                <circle cx={connection.x1} cy={connection.y1} r="3" fill="currentColor" />
+                <circle cx={connection.x2} cy={connection.y2} r="3" fill="currentColor" />
               </g>
             );
           })}
@@ -330,11 +417,13 @@ function SliderQuestion({
   value,
   onChange,
   locked,
+  feedback,
 }: {
   options: { text: string }[];
   value: string;
   onChange: (v: string) => void;
   locked?: boolean;
+  feedback?: QuestionFeedback;
 }) {
   const min = options[0] ? parseFloat(options[0].text) : 0;
   const max = options[1] ? parseFloat(options[1].text) : 100;
@@ -343,7 +432,15 @@ function SliderQuestion({
     value !== "" ? parseFloat(value) : Math.round((min + max) / 2);
   return (
     <div className="flex flex-col gap-3">
-      <div className="text-center text-3xl font-bold text-gray-900">
+      <div
+        className={`text-center text-3xl font-bold ${
+          feedback?.isCorrect === true
+            ? "text-emerald-600"
+            : feedback?.isCorrect === false
+              ? "text-rose-600"
+              : "text-gray-900"
+        }`}
+      >
         {current}
       </div>
       <input
@@ -354,12 +451,23 @@ function SliderQuestion({
         value={current}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
-        className="w-full accent-gray-900 h-2 cursor-pointer disabled:opacity-60"
+        className={`w-full h-2 cursor-pointer disabled:opacity-100 ${
+          feedback?.isCorrect === true
+            ? "accent-emerald-500"
+            : feedback?.isCorrect === false
+              ? "accent-rose-500"
+              : "accent-gray-900"
+        }`}
       />
       <div className="flex justify-between text-xs text-gray-400">
         <span>{min}</span>
         <span>{max}</span>
       </div>
+      {feedback?.isCorrect === false && feedback.correctAnswer && (
+        <div className="rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3 text-center font-semibold text-white">
+          To'g'ri qiymat: {feedback.correctAnswer}
+        </div>
+      )}
     </div>
   );
 }
@@ -369,13 +477,19 @@ function DropPinQuestion({
   value,
   onChange,
   locked,
+  feedback,
 }: {
   imageUrl: string;
   value: string;
   onChange: (v: string) => void;
   locked?: boolean;
+  feedback?: QuestionFeedback;
 }) {
   const pin = value ? value.split(",").map(Number) : null;
+  const correctPin =
+    feedback?.isCorrect === false && feedback.correctAnswer
+      ? feedback.correctAnswer.split(",").map(Number)
+      : null;
   function handleClick(e: React.MouseEvent<HTMLDivElement>) {
     if (locked) return;
     const rect = e.currentTarget.getBoundingClientRect();
@@ -407,12 +521,35 @@ function DropPinQuestion({
             className="absolute w-6 h-6 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
             style={{ left: `${pin[0] * 100}%`, top: `${pin[1] * 100}%` }}
           >
-            <div className="w-6 h-6 rounded-full bg-red-500 border border-white shadow-lg flex items-center justify-center">
+            <div
+              className={`w-6 h-6 rounded-full border border-white shadow-lg flex items-center justify-center ${
+                feedback?.isCorrect === true
+                  ? "bg-emerald-500"
+                  : feedback?.isCorrect === false
+                    ? "bg-rose-500"
+                    : "bg-indigo-500"
+              }`}
+            >
               <div className="w-2 h-2 rounded-full bg-white" />
             </div>
           </div>
         )}
+        {correctPin && Number.isFinite(correctPin[0]) && Number.isFinite(correctPin[1]) && (
+          <div
+            className="pointer-events-none absolute h-7 w-7 -translate-x-1/2 -translate-y-1/2"
+            style={{ left: `${correctPin[0] * 100}%`, top: `${correctPin[1] * 100}%` }}
+          >
+            <div className="flex h-7 w-7 items-center justify-center rounded-full border-2 border-white bg-emerald-500 shadow-lg">
+              <Check size={16} className="text-white" />
+            </div>
+          </div>
+        )}
       </div>
+      {feedback && !pin && (
+        <div className="rounded-2xl border border-rose-500 bg-rose-500 px-4 py-3.5 text-white">
+          Siz joy belgilamadingiz
+        </div>
+      )}
       {pin && !locked && (
         <button
           type="button"
@@ -479,6 +616,30 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   const [test, setTest] = useState<PublicTest | null>(null);
   const [orderedQuestions, setOrderedQuestions] = useState<PublicQuestion[]>([]);
   const [currentIdx, setCurrentIdx] = useState(0);
+  const currentQuestionChipRef = useRef<HTMLButtonElement>(null);
+  const [showConfetti, setShowConfetti] = useState(false);
+  const [soundEnabled, setSoundEnabled] = useState(() => {
+    const saved = localStorage.getItem("test-sound-enabled");
+    return saved === null ? true : saved === "1";
+  });
+  const soundEnabledRef = useRef(soundEnabled);
+  useEffect(() => {
+    soundEnabledRef.current = soundEnabled;
+    localStorage.setItem("test-sound-enabled", soundEnabled ? "1" : "0");
+  }, [soundEnabled]);
+  const correctAudioRef = useRef<HTMLAudioElement | null>(null);
+  const wrongAudioRef = useRef<HTMLAudioElement | null>(null);
+  useEffect(() => {
+    correctAudioRef.current = new Audio("/sounds/correct.mp3");
+    wrongAudioRef.current = new Audio("/sounds/wrong.mp3");
+  }, []);
+  function playFeedbackSound(isCorrect: boolean) {
+    if (!soundEnabledRef.current) return;
+    const audio = isCorrect ? correctAudioRef.current : wrongAudioRef.current;
+    if (!audio) return;
+    audio.currentTime = 0;
+    audio.play().catch(() => {});
+  }
   const [selectedMap, setSelectedMap] = useState<Record<string, string[]>>({});
   const [textMap, setTextMap] = useState<Record<string, string>>({});
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
@@ -493,6 +654,13 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   const submittingRef = useRef(false);
   const autoSubmitSentRef = useRef(false);
 
+  useEffect(() => {
+    currentQuestionChipRef.current?.scrollIntoView({
+      behavior: "smooth",
+      inline: "center",
+      block: "nearest",
+    });
+  }, [currentIdx]);
   useEffect(() => { selectedMapRef.current = selectedMap; }, [selectedMap]);
   useEffect(() => { textMapRef.current = textMap; }, [textMap]);
   useEffect(() => { orderedQuestionsRef.current = orderedQuestions; }, [orderedQuestions]);
@@ -768,7 +936,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
     if (!q) return;
     setChecking(true);
     try {
-      const { isCorrect, correctAnswer } = await apiCheckAnswer(
+      const { isCorrect, correctAnswer, correctOptionIds } = await apiCheckAnswer(
         resolvedSubmissionId,
         q.id,
         selectedMap[q.id] ?? [],
@@ -776,8 +944,14 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       );
       setFeedbackMap((prev) => ({
         ...prev,
-        [q.id]: { isCorrect, correctAnswer },
+        [q.id]: { isCorrect, correctAnswer, correctOptionIds },
       }));
+      if (isCorrect !== null) {
+        playFeedbackSound(isCorrect);
+      }
+      if (isCorrect) {
+        setShowConfetti(true);
+      }
     } finally {
       setChecking(false);
     }
@@ -893,7 +1067,9 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
 
   function renderQuestionBody(q: PublicQuestion, inCard = false) {
     const selected = selectedMap[q.id] ?? [];
-    const locked = isPerQuestion && !!feedbackMap[q.id];
+    const feedback = feedbackMap[q.id];
+    const locked = isPerQuestion && !!feedback;
+    const correctIds = new Set(feedback?.correctOptionIds ?? []);
     const gap = inCard ? "gap-2.5" : "gap-3";
 
     if (q.type === "slider")
@@ -905,6 +1081,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             if (!locked) setTextMap((p) => ({ ...p, [q.id]: v }));
           }}
           locked={locked}
+          feedback={feedback}
         />
       );
 
@@ -917,12 +1094,13 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             if (!locked) setTextMap((p) => ({ ...p, [q.id]: v }));
           }}
           locked={locked}
+          feedback={feedback}
         />
       );
 
     if (q.type === "fillblank")
       return (
-        <div className="flex flex-col gap-1.5">
+        <div className="flex flex-col gap-2">
           <p className="text-xs text-gray-400">Bo'sh joyni to'ldiring:</p>
           <input
             value={textMap[q.id] ?? ""}
@@ -932,25 +1110,51 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             }}
             placeholder="Javobingizni yozing..."
             readOnly={locked}
-            className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors"
+            className={`w-full rounded-2xl border px-4 py-3.5 outline-none transition-colors ${
+              feedback?.isCorrect === true
+                ? "border-emerald-500 bg-emerald-500 text-white"
+                : feedback?.isCorrect === false
+                  ? "border-rose-500 bg-rose-500 text-white"
+                  : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
+            }`}
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
+          {feedback?.isCorrect === false && feedback.correctAnswer && (
+            <div className="flex items-center gap-2 rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3.5 text-white">
+              <span>{feedback.correctAnswer}</span>
+              <Check size={17} className="shrink-0" />
+            </div>
+          )}
         </div>
       );
 
     if (q.type === "open")
       return (
-        <textarea
-          value={textMap[q.id] ?? ""}
-          rows={4}
-          onChange={(e) => {
-            if (!locked) setTextMap((p) => ({ ...p, [q.id]: e.target.value }));
-          }}
-          placeholder="Javobingizni yozing..."
-          readOnly={locked}
-          className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors resize-none"
-          style={{ fontSize: "var(--q-fs, 16px)" }}
-        />
+        <div className="flex flex-col gap-2">
+          <textarea
+            value={textMap[q.id] ?? ""}
+            rows={4}
+            onChange={(e) => {
+              if (!locked) setTextMap((p) => ({ ...p, [q.id]: e.target.value }));
+            }}
+            placeholder="Javobingizni yozing..."
+            readOnly={locked}
+            className={`w-full resize-none rounded-2xl border px-4 py-3.5 outline-none transition-colors ${
+              feedback?.isCorrect === true
+                ? "border-emerald-500 bg-emerald-500 text-white"
+                : feedback?.isCorrect === false
+                  ? "border-rose-500 bg-rose-500 text-white"
+                  : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
+            }`}
+            style={{ fontSize: "var(--q-fs, 16px)" }}
+          />
+          {feedback?.isCorrect === false && feedback.correctAnswer && (
+            <div className="flex items-center gap-2 rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3.5 text-white">
+              <span>{feedback.correctAnswer}</span>
+              <Check size={17} className="shrink-0" />
+            </div>
+          )}
+        </div>
       );
 
     if (q.type === "matching")
@@ -961,6 +1165,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           selected={selected}
           onSelect={(ids) => setSelectedMap((p) => ({ ...p, [q.id]: ids }))}
           locked={locked}
+          feedback={feedback}
         />
       );
 
@@ -970,22 +1175,26 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           {q.options.map((opt) => {
             const checked = selected.includes(opt.id);
             const isTrue = opt.text === "To'g'ri";
+            const isCorrectOption = correctIds.has(opt.id);
+            const resultClass = feedback
+              ? isCorrectOption
+                ? "border-emerald-500 bg-emerald-500 text-white shadow-md shadow-emerald-100"
+                : checked
+                  ? "border-rose-500 bg-rose-500 text-white shadow-md shadow-rose-100"
+                  : "border-border bg-white text-gray-400"
+              : checked
+                ? "border-gray-900 bg-gray-900 text-white shadow-md"
+                : "border-border bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50";
             return (
               <button
                 key={opt.id}
                 type="button"
                 onClick={() => toggleOption(q.id, opt.id, "single")}
                 style={{ fontSize: "var(--q-fs, 16px)" }}
-                className={`flex-1 py-4 rounded-2xl border font-semibold transition-all duration-150 flex items-center justify-center gap-2 ${
-                  checked
-                    ? isTrue
-                      ? "bg-green-500 text-white border-green-500 shadow-md shadow-green-100"
-                      : "bg-red-400 text-white border-red-400 shadow-md shadow-red-100"
-                    : "border-border bg-white text-gray-700 hover:border-gray-300 hover:bg-gray-50"
-                } ${locked ? "pointer-events-none" : ""}`}
+                className={`flex-1 py-4 rounded-2xl border font-semibold transition-all duration-150 flex items-center justify-center gap-2 ${resultClass} ${locked ? "pointer-events-none" : ""}`}
               >
                 <span
-                  className={`text-lg ${checked ? "text-white" : isTrue ? "text-green-400" : "text-red-300"}`}
+                  className={`text-lg ${feedback && !isCorrectOption && !checked ? "text-gray-300" : checked || isCorrectOption ? "text-white" : "text-gray-400"}`}
                 >
                   {isTrue ? "✓" : "✗"}
                 </span>
@@ -1007,6 +1216,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             options={q.options}
             onChange={(ids) => setSelectedMap((p) => ({ ...p, [q.id]: ids }))}
             locked={locked}
+            feedback={feedback}
           />
         </div>
       );
@@ -1014,6 +1224,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
     if (q.type === "arrange") {
       const rtl =
         q.options.some((o) => isArabicText(o.text)) || isArabicText(q.text);
+      const correctSeq = feedback?.correctOptionIds ?? [];
       return (
         <div className="flex flex-col gap-3">
           <div
@@ -1025,15 +1236,26 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                 Bo'laklarni bosib joylashtiring...
               </span>
             )}
-            {selected.map((id) => {
+            {selected.map((id, pos) => {
               const opt = q.options.find((o) => o.id === id);
+              const result = feedback
+                ? correctSeq[pos] === id
+                  ? "correct"
+                  : "incorrect"
+                : undefined;
               return opt ? (
                 <button
                   key={id}
                   type="button"
                   onClick={() => arrangeRemove(q.id, id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
-                  className="px-3.5 py-2 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-gray-800 active:scale-95 transition-all"
+                  className={`px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95 ${
+                    result === "correct"
+                      ? "bg-emerald-500 text-white"
+                      : result === "incorrect"
+                        ? "bg-rose-500 text-white"
+                        : "bg-gray-900 text-white hover:bg-gray-800"
+                  }`}
                 >
                   {opt.text}
                 </button>
@@ -1064,6 +1286,27 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               Tozalash
             </button>
           )}
+          {feedback?.isCorrect === false && correctSeq.length > 0 && (
+            <div className="flex flex-col gap-1.5">
+              <p className="text-xs font-medium text-emerald-700">
+                To'g'ri javob
+              </p>
+              <div dir={rtl ? "rtl" : "ltr"} className="flex flex-wrap gap-2">
+                {correctSeq.map((id) => {
+                  const opt = q.options.find((o) => o.id === id);
+                  return opt ? (
+                    <span
+                      key={`correct-${id}`}
+                      style={{ fontSize: "var(--q-fs, 14px)" }}
+                      className="px-3.5 py-2 rounded-xl bg-emerald-500 text-white"
+                    >
+                      {opt.text}
+                    </span>
+                  ) : null;
+                })}
+              </div>
+            </div>
+          )}
         </div>
       );
     }
@@ -1074,6 +1317,20 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         {q.options.map((opt, i) => {
           const checked = selected.includes(opt.id);
           const label = OPTION_LABELS[i] ?? String(i + 1);
+          const isCorrectOption = correctIds.has(opt.id);
+          const unselectedButCorrect = isCorrectOption && !checked;
+          const missedCorrect = unselectedButCorrect && q.type === "multi";
+          const cardClass = feedback
+            ? checked && isCorrectOption
+              ? "bg-emerald-500 border-emerald-500 text-white shadow-md shadow-emerald-100"
+              : checked && !isCorrectOption
+                ? "bg-rose-500 border-rose-500 text-white shadow-md shadow-rose-100"
+                : unselectedButCorrect
+                  ? "bg-white border-emerald-500 border-2 text-emerald-700"
+                  : "bg-white border-border text-gray-400"
+            : checked
+              ? "bg-gray-900 border-gray-900 text-white shadow-md"
+              : "bg-white border-border text-gray-800 hover:border-gray-300 hover:bg-gray-50";
           return (
             <button
               key={opt.id}
@@ -1081,17 +1338,15 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               onClick={() =>
                 toggleOption(q.id, opt.id, q.type as "single" | "multi")
               }
-              className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${
-                checked
-                  ? "bg-gray-900 border-gray-900 text-white shadow-md"
-                  : "bg-white border-border text-gray-800 hover:border-gray-300 hover:bg-gray-50"
-              } ${locked ? "pointer-events-none" : ""}`}
+              className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${cardClass} ${locked ? "pointer-events-none" : ""}`}
             >
               <span
                 className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
                   checked
                     ? "bg-white/20 text-white"
-                    : "bg-gray-100 text-gray-500"
+                    : unselectedButCorrect
+                      ? "bg-emerald-100 text-emerald-700"
+                      : "bg-gray-100 text-gray-500"
                 }`}
               >
                 {label}
@@ -1102,6 +1357,20 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               >
                 {opt.text}
               </span>
+              {feedback && checked && isCorrectOption && (
+                <Check size={18} className="ml-auto shrink-0 text-white" />
+              )}
+              {feedback && checked && !isCorrectOption && (
+                <X size={18} className="ml-auto shrink-0 text-white" />
+              )}
+              {feedback && unselectedButCorrect && !missedCorrect && (
+                <Check size={18} className="ml-auto shrink-0 text-emerald-600" />
+              )}
+              {feedback && missedCorrect && (
+                <span className="ml-auto shrink-0 text-xs font-medium text-emerald-600">
+                  O'tkazib yubordingiz
+                </span>
+              )}
             </button>
           );
         })}
@@ -1124,6 +1393,15 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         } as React.CSSProperties
       }
     >
+      {showConfetti && (
+        <Confetti
+          numberOfPieces={250}
+          recycle={false}
+          gravity={0.3}
+          onConfettiComplete={() => setShowConfetti(false)}
+          style={{ position: "fixed", inset: 0, zIndex: 100, pointerEvents: "none" }}
+        />
+      )}
       {/* ── HEADER ── */}
       <div
         className="shrink-0 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4 bg-white lg:border-b lg:border-border"
@@ -1165,6 +1443,15 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         </div>
 
         <div className="flex-1 flex items-center justify-end gap-3">
+          {/* Sound toggle */}
+          <button
+            onClick={() => setSoundEnabled((s) => !s)}
+            title={soundEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 shrink-0 transition-colors"
+          >
+            {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
+          </button>
+
           {/* Font size controls */}
           <div className="flex items-center gap-0.5 shrink-0">
             <button
@@ -1202,6 +1489,41 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               width: `${((currentIdx + 1) / orderedQuestions.length) * 100}%`,
             }}
           />
+        </div>
+      )}
+
+      {/* ── MOBILE: savol raqamlari (gorizontal scroll) ── */}
+      {isOneByOne && (
+        <div className="shrink-0 flex gap-2 overflow-x-auto px-4 py-3 lg:hidden">
+          {orderedQuestions.map((q, i) => {
+            const answered = isQuestionAnswered(q);
+            const isCurrent = i === currentIdx;
+            const jumpable = canJumpTo(i);
+            const checkedQ = isPerQuestion && !!feedbackMap[q.id];
+            return (
+              <button
+                key={q.id}
+                ref={isCurrent ? currentQuestionChipRef : undefined}
+                disabled={!jumpable}
+                onClick={() => jumpable && setCurrentIdx(i)}
+                className={`w-9 h-9 shrink-0 rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${
+                  isCurrent
+                    ? "bg-gray-900 text-white shadow-md"
+                    : checkedQ
+                      ? feedbackMap[q.id].isCorrect
+                        ? "bg-green-100 text-green-700"
+                        : "bg-red-100 text-red-600"
+                      : answered
+                        ? "bg-gray-200 text-gray-700"
+                        : jumpable
+                          ? "bg-white border border-border text-gray-500"
+                          : "bg-gray-100 text-gray-300"
+                }`}
+              >
+                {i + 1}
+              </button>
+            );
+          })}
         </div>
       )}
 
@@ -1278,7 +1600,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   return (
                     <div className="flex flex-col min-h-full lg:max-w-3xl lg:mx-auto lg:w-full">
                       {/* ── Question zone ── */}
-                      <div className="px-5 lg:px-8 pt-6 lg:pt-10 pb-5">
+                      <div className="px-3 lg:px-8 pt-3 lg:pt-10 pb-5">
                         {TYPE_BADGES[currentQ.type] && (
                           <span
                             className={`inline-block text-[10px] px-2 py-0.5 rounded-full font-medium mb-2 ${TYPE_BADGES[currentQ.type].cls}`}
@@ -1310,76 +1632,16 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                       </div>
 
                       {/* ── Divider ── */}
-                      <div className="h-px bg-gray-100 mx-5 lg:mx-8" />
+                      <div className="h-px bg-gray-100 mx-3 lg:mx-8" />
 
                       {/* ── Options zone ── */}
-                      <div className="px-5 lg:px-8 pt-5 pb-6 flex flex-col gap-3">
+                      <div className="px-3 lg:px-8 pt-5 pb-6 flex flex-col gap-3">
                         {renderQuestionBody(currentQ, true)}
                       </div>
                     </div>
                   );
                 })()}
             </div>
-
-            {/* ── FEEDBACK PANEL (per_question) ── */}
-            {isPerQuestion &&
-              currentQ &&
-              feedbackMap[currentQ.id] &&
-              (() => {
-                const fb = feedbackMap[currentQ.id];
-                const correct = fb.isCorrect === true;
-                const incorrect = fb.isCorrect === false;
-                return (
-                  <div
-                    className={`shrink-0 border-t px-5 py-4 lg:px-8 ${
-                      correct
-                        ? "border-emerald-200 bg-emerald-50"
-                        : incorrect
-                          ? "border-rose-200 bg-rose-50"
-                          : "border-border bg-gray-50"
-                    }`}
-                  >
-                    <div className="lg:max-w-3xl lg:mx-auto flex items-start gap-3">
-                      {correct ? (
-                        <CheckCircle2
-                          size={22}
-                          className="mt-0.5 shrink-0 text-emerald-500"
-                        />
-                      ) : incorrect ? (
-                        <XCircle
-                          size={22}
-                          className="mt-0.5 shrink-0 text-rose-500"
-                        />
-                      ) : null}
-                      <div className="min-w-0">
-                        <p
-                          className={`font-semibold ${
-                            correct
-                              ? "text-emerald-700"
-                              : incorrect
-                                ? "text-rose-700"
-                                : "text-gray-600"
-                          }`}
-                        >
-                          {correct
-                            ? "To'g'ri!"
-                            : incorrect
-                              ? "Noto'g'ri"
-                              : "Javob qabul qilindi"}
-                        </p>
-                        {fb.correctAnswer && incorrect && (
-                          <p className="mt-1 break-words text-xs leading-5 text-gray-600">
-                            <span className="font-medium text-gray-700">
-                              To'g'ri javob:
-                            </span>{" "}
-                            {fb.correctAnswer}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                );
-              })()}
 
             {/* ── BOTTOM BUTTONS ── */}
             <div

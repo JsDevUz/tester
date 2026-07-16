@@ -84,7 +84,7 @@ function TestResultBody({
           >
             {/* Question header */}
             <div className="flex items-start gap-3 mb-3">
-              <span className="w-6 h-6 rounded-lg bg-whitetext-xs font-bold text-gray-500 flex items-center justify-center shrink-0 mt-0.5">
+              <span className="w-6 h-6 rounded-lg bg-white text-xs font-bold text-gray-500 flex items-center justify-center shrink-0 mt-0.5">
                 {i + 1}
               </span>
               <p className="flex-1 text-sm font-semibold text-gray-800 leading-snug">
@@ -170,6 +170,11 @@ function TestResultBody({
                 ) : (
                   <p className="text-xs text-gray-400">Rasm yo'q</p>
                 )}
+                {!a.textAnswer && (
+                  <p className="mt-1 text-xs text-rose-500">
+                    Siz joy belgilamadingiz
+                  </p>
+                )}
               </div>
             ) : a.questionType === "matching" ? (
               <div className="pl-9 flex flex-col gap-1">
@@ -199,22 +204,20 @@ function TestResultBody({
                     return (
                       <div
                         key={left.id}
-                        className={`text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 ${pairCorrect ? "bg-green-100/70 text-green-800" : "bg-red-100/70"}`}
+                        className={`text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 text-white ${pairCorrect ? "bg-emerald-500" : "bg-rose-500"}`}
                       >
-                        <span className="font-medium text-gray-700">
-                          {left.text}
-                        </span>
-                        <span className="text-gray-300">→</span>
+                        <span className="font-medium">{left.text}</span>
+                        <span className="text-white/60">→</span>
                         {pairCorrect ? (
-                          <span className="text-green-700 font-medium">
+                          <span className="font-medium">
                             {correctRight?.text}
                           </span>
                         ) : (
                           <>
-                            <span className="text-red-500 line-through">
+                            <span className="line-through">
                               {studentRight?.text ?? "—"}
                             </span>
-                            <span className="text-green-600 ml-1">
+                            <span className="ml-1">
                               ({correctRight?.text})
                             </span>
                           </>
@@ -223,6 +226,58 @@ function TestResultBody({
                     );
                   });
                 })()}
+              </div>
+            ) : (a.questionType === "arrange" || a.questionType === "reorder") &&
+              a.options &&
+              a.options.length > 0 ? (
+              <div className="pl-9 flex flex-col gap-2">
+                {a.isCorrect === false && (
+                  <div className="flex flex-col gap-1">
+                    <p className="text-[11px] font-medium text-gray-400">
+                      Sizning tartibingiz
+                    </p>
+                    {a.selectedOptionIds.map((id, pos) => {
+                      const opt = a.options!.find((o) => o.id === id);
+                      const correctId = a.options![pos]?.id;
+                      const posCorrect = id === correctId;
+                      return (
+                        <div
+                          key={`student-${id}-${pos}`}
+                          className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl text-white ${posCorrect ? "bg-emerald-500" : "bg-rose-500"}`}
+                        >
+                          <span className="font-mono text-white/70">
+                            {pos + 1}.
+                          </span>
+                          <span>{opt?.text ?? "—"}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+                <div className="flex flex-col gap-1">
+                  {a.isCorrect === false && (
+                    <p className="text-[11px] font-medium text-gray-400">
+                      To'g'ri tartib
+                    </p>
+                  )}
+                  {a.options.map((opt, pos) => (
+                    <div
+                      key={opt.id}
+                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${
+                        a.isCorrect === false
+                          ? "bg-emerald-500 text-white"
+                          : "bg-green-100/70 text-green-700 font-medium"
+                      }`}
+                    >
+                      <span
+                        className={`font-mono ${a.isCorrect === false ? "text-white/70" : "text-green-500"}`}
+                      >
+                        {pos + 1}.
+                      </span>
+                      <span>{opt.text}</span>
+                    </div>
+                  ))}
+                </div>
               </div>
             ) : a.options && a.options.length > 0 ? (
               <div className="pl-9 flex flex-col gap-1">
@@ -233,15 +288,15 @@ function TestResultBody({
                       key={opt.id}
                       className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${
                         opt.isCorrectOption
-                          ? "bg-green-100/70 text-green-700 font-medium"
+                          ? "bg-emerald-500 text-white font-medium"
                           : selected
-                            ? "bg-red-100/70 text-red-600"
+                            ? "bg-rose-500 text-white"
                             : "text-gray-400"
                       }`}
                     >
                       <Circle
                         size={8}
-                        className={`shrink-0 ${selected ? "fill-current" : "opacity-30"}`}
+                        className={`shrink-0 ${selected || opt.isCorrectOption ? "fill-current" : "opacity-30"}`}
                       />
                       <span>{opt.text}</span>
                     </div>
@@ -373,7 +428,7 @@ export function TestResultView({
       <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400 lg:hidden" />
 
       <div className="flex-1 lg:flex lg:justify-center lg:py-10">
-        <div className="lg:w-full lg:max-w-2xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden lg:self-start">
+        <div className="test-result-card lg:w-full lg:max-w-2xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden lg:self-start">
           <div className="hidden lg:block h-1.5 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
           <div className="px-5 lg:px-8 pt-8 pb-4 lg:pb-10">
             {/* Score hero */}

@@ -108,7 +108,11 @@ export async function apiCheckAnswer(
   questionId: string,
   selectedOptionIds: string[],
   textAnswer: string | null,
-): Promise<{ isCorrect: boolean | null; correctAnswer: string | null }> {
+): Promise<{
+  isCorrect: boolean | null;
+  correctAnswer: string | null;
+  correctOptionIds: string[];
+}> {
   const res = await publicClient.post(`/public/submissions/${submissionId}/check`, { questionId, selectedOptionIds, textAnswer });
   return res.data;
 }
