@@ -6,19 +6,14 @@ import {
   ClipboardList,
   Users,
   School,
-  Settings,
-  ShieldCheck,
-  LogOut,
-  Sun,
-  Moon,
   MessageCircle,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
-import { useThemeStore } from "../stores/themeStore";
 import { usePracticeMessengerStore } from "../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../hooks/usePracticeMessengerNotifications";
 import { UserAvatar } from "./UserAvatar";
+import { SettingsModal } from "./SettingsModal";
 
 interface NavSection {
   key: string;
@@ -59,7 +54,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const navigate = useNavigate();
   const location = useLocation();
   const { admin, logout } = useAuthStore();
-  const { theme, toggleTheme } = useThemeStore();
   const [profileOpen, setProfileOpen] = useState(false);
   const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
   usePracticeMessengerNotifications();
@@ -133,54 +127,6 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </nav>
 
         <button
-          onClick={toggleTheme}
-          aria-label={theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
-          className="group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-        >
-          {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
-          <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
-            {theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}
-          </span>
-        </button>
-
-        <div className="hidden lg:flex flex-col w-full px-2 gap-1 mb-2">
-          {admin?.role === "super" && (
-            <button
-              onClick={() => navigate("/admins")}
-              aria-label="Adminlar"
-              className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-white/10 hover:text-white transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-            >
-              <ShieldCheck size={20} />
-              <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
-                Adminlar
-              </span>
-            </button>
-          )}
-          <button
-            onClick={handleLogout}
-            aria-label="Chiqish"
-            className="group relative w-full aspect-square rounded-xl flex items-center justify-center text-gray-400 hover:bg-red-500/10 hover:text-red-400 transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-          >
-            <LogOut size={20} />
-            <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
-              Chiqish
-            </span>
-          </button>
-        </div>
-
-        <button
-          type="button"
-          aria-disabled="true"
-          aria-label="Sozlamalar"
-          className="group relative hidden lg:flex w-full aspect-square rounded-xl items-center justify-center text-gray-600 cursor-not-allowed mb-2 focus:outline-none focus-visible:outline-none focus-visible:ring-0"
-        >
-          <Settings size={20} />
-          <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
-            Sozlamalar
-          </span>
-        </button>
-
-        <button
           onClick={() => setProfileOpen(true)}
           aria-label={admin?.name ?? "Profil"}
           className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0 overflow-hidden focus:outline-none focus-visible:outline-none focus-visible:ring-0"
@@ -197,48 +143,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
       </div>
 
       {profileOpen && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/30"
-            onClick={() => setProfileOpen(false)}
-          />
-          <div className="fixed z-50 bottom-3 left-3 right-3 rounded-2xl bg-white p-4 shadow-2xl shadow-gray-900/15 lg:bottom-16 lg:left-3 lg:right-auto lg:w-64">
-            <div className="flex items-center gap-2.5 px-1 mb-3 pb-3 border-b border-border">
-              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-9 w-9 rounded-full bg-gray-900 text-sm font-semibold text-white" />
-              <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-800 truncate">
-                  {admin?.name}
-                </p>
-                {admin?.phone && (
-                  <p className="text-xs text-gray-400 truncate">
-                    {admin.phone}
-                  </p>
-                )}
-              </div>
-            </div>
-            <div className="lg:hidden flex flex-col gap-1">
-              {admin?.role === "super" && (
-                <button
-                  onClick={() => {
-                    navigate("/admins");
-                    setProfileOpen(false);
-                  }}
-                  className="flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-gray-600 hover:bg-gray-50 hover:text-gray-900 transition-colors"
-                >
-                  <ShieldCheck size={17} className="text-gray-400 shrink-0" />
-                  Adminlar
-                </button>
-              )}
-              <button
-                onClick={handleLogout}
-                className="flex items-center gap-2.5 text-left text-sm px-3 py-2.5 rounded-xl text-red-500 hover:bg-red-50 transition-colors"
-              >
-                <LogOut size={17} className="shrink-0" />
-                Chiqish
-              </button>
-            </div>
-          </div>
-        </>
+        <SettingsModal
+          admin={admin}
+          onClose={() => setProfileOpen(false)}
+          onLogout={handleLogout}
+        />
       )}
     </div>
   );

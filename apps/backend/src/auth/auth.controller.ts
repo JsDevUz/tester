@@ -1,7 +1,12 @@
 import { Controller, Post, Body, Get, UseGuards, Req, HttpCode } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { IsEmail, IsString, MinLength } from 'class-validator';
+
+// Auth kod/login endpointlari brute-force'ga qarshi qat'iyroq limitga ega:
+// har bir client IP uchun bir daqiqada 5 tagacha urinish.
+const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
 
 class LoginDto {
   @IsString() @MinLength(3) email: string;
@@ -35,36 +40,42 @@ class PasswordResetVerifyDto {
 export class AuthController {
   constructor(private authService: AuthService) {}
 
+  @Throttle(AUTH_THROTTLE)
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
   }
 
+  @Throttle(AUTH_THROTTLE)
   @Post('register/request')
   @HttpCode(200)
   requestRegistration(@Body() dto: RegisterRequestDto) {
     return this.authService.requestRegistration(dto);
   }
 
+  @Throttle(AUTH_THROTTLE)
   @Post('register/verify')
   @HttpCode(200)
   verifyRegistration(@Body() dto: RegisterVerifyDto) {
     return this.authService.verifyRegistration(dto.code);
   }
 
+  @Throttle(AUTH_THROTTLE)
   @Post('telegram/verify')
   @HttpCode(200)
   verifyTelegramCode(@Body() dto: TelegramCodeDto) {
     return this.authService.verifyTelegramCode(dto.code);
   }
 
+  @Throttle(AUTH_THROTTLE)
   @Post('password/reset/request')
   @HttpCode(200)
   requestPasswordReset(@Body() dto: PasswordResetRequestDto) {
     return this.authService.requestPasswordReset(dto.phoneOrEmail);
   }
 
+  @Throttle(AUTH_THROTTLE)
   @Post('password/reset/verify')
   @HttpCode(200)
   verifyPasswordReset(@Body() dto: PasswordResetVerifyDto) {

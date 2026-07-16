@@ -1,4 +1,4 @@
-import { pgTable, text, uuid, timestamp, integer, boolean, varchar, jsonb, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
+import { pgTable, text, uuid, timestamp, integer, boolean, varchar, jsonb, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
 import { relations, sql } from 'drizzle-orm';
 
 export const users = pgTable('users', {
@@ -207,6 +207,7 @@ export const practiceChatMessages = pgTable('practice_chat_messages', {
   uniqueImageSubmissionMessage: uniqueIndex('practice_chat_messages_image_submission_message_key')
     .on(table.imageSubmissionId)
     .where(sql`${table.imageSubmissionId} IS NOT NULL AND ${table.type} = 'practice_image'`),
+  chatIdIdx: index('practice_chat_messages_chat_id_idx').on(table.chatId),
 }));
 
 export const practiceChatReads = pgTable('practice_chat_reads', {
@@ -375,7 +376,10 @@ export const groupEnrollments = pgTable('group_enrollments', {
   forcedClosed: boolean('forced_closed').notNull().default(false),
   joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
   removedAt: timestamp('removed_at', { withTimezone: true }),
-});
+}, (table) => ({
+  schoolMemberIdIdx: index('group_enrollments_school_member_id_idx').on(table.schoolMemberId),
+  groupIdIdx: index('group_enrollments_group_id_idx').on(table.groupId),
+}));
 
 export const groupEnrollmentsRelations = relations(groupEnrollments, ({ one, many }) => ({
   group: one(groups, { fields: [groupEnrollments.groupId], references: [groups.id] }),
@@ -404,7 +408,10 @@ export const tests = pgTable('tests', {
   deadline: timestamp('deadline', { withTimezone: true }),
   slug: varchar('slug', { length: 8 }).unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+}, (table) => ({
+  folderIdIdx: index('tests_folder_id_idx').on(table.folderId),
+  adminIdIdx: index('tests_admin_id_idx').on(table.adminId),
+}));
 
 export const questions = pgTable('questions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -416,7 +423,9 @@ export const questions = pgTable('questions', {
   audioUrl: text('audio_url'),
   correctAnswer: text('correct_answer'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+}, (table) => ({
+  testIdIdx: index('questions_test_id_idx').on(table.testId),
+}));
 
 export const liveSessions = pgTable('live_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -428,7 +437,9 @@ export const liveSessions = pgTable('live_sessions', {
   status: text('status').notNull().default('active'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
   finishedAt: timestamp('finished_at', { withTimezone: true }),
-});
+}, (table) => ({
+  testIdIdx: index('live_sessions_test_id_idx').on(table.testId),
+}));
 
 export const options = pgTable('options', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -436,7 +447,9 @@ export const options = pgTable('options', {
   text: text('text').notNull(),
   isCorrect: boolean('is_correct').notNull().default(false),
   orderIndex: integer('order_index').notNull().default(0),
-});
+}, (table) => ({
+  questionIdIdx: index('options_question_id_idx').on(table.questionId),
+}));
 
 export const submissions = pgTable('submissions', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -454,7 +467,10 @@ export const submissions = pgTable('submissions', {
   practiceScoreOverriddenAt: timestamp('practice_score_overridden_at', { withTimezone: true }),
   mode: text('submission_mode').notNull().default('normal'),
   violationReason: text('violation_reason'),
-});
+}, (table) => ({
+  testIdIdx: index('submissions_test_id_idx').on(table.testId),
+  userIdIdx: index('submissions_user_id_idx').on(table.userId),
+}));
 
 export const answers = pgTable('answers', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -463,7 +479,9 @@ export const answers = pgTable('answers', {
   selectedOptionIds: uuid('selected_option_ids').array().notNull().default(sql`'{}'::uuid[]`),
   textAnswer: text('text_answer'),
   isCorrect: boolean('is_correct'),
-});
+}, (table) => ({
+  uniqueSubmissionQuestion: uniqueIndex('answers_submission_id_question_id_key').on(table.submissionId, table.questionId),
+}));
 
 export const testsRelations = relations(tests, ({ many }) => ({
   questions: many(questions),

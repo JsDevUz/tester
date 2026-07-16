@@ -3,7 +3,7 @@ import { db } from '../db';
 import { authCodes, userTelegramLinks, users } from '../db/schema';
 import { and, eq, gt } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
-import { randomUUID } from 'crypto';
+import { randomInt, randomUUID } from 'crypto';
 import { StorageService } from '../storage/storage.service';
 
 interface TelegramMessage {
@@ -195,7 +195,7 @@ export class TelegramService {
   }
 
   private async createLoginCode(input: { phone: string; telegramChatId: string }) {
-    const code = String(Math.floor(100000 + Math.random() * 900000));
+    const code = String(randomInt(100000, 1000000));
     const codeHash = await bcrypt.hash(code, 10);
 
     await db.insert(authCodes).values({
@@ -214,7 +214,7 @@ export class TelegramService {
     const existingUser = await db.query.users.findFirst({ where: eq(users.phone, input.phone) });
     if (existingUser) return existingUser;
 
-    const passwordHash = await bcrypt.hash(Math.random().toString(36), 10);
+    const passwordHash = await bcrypt.hash(randomUUID(), 10);
     const [user] = await db
       .insert(users)
       .values({

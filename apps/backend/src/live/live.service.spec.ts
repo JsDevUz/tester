@@ -514,7 +514,7 @@ describe('LiveService team mode — gameplay', () => {
     expect(s.teams.get(t1).suggestions.get('q1').get('member1')).toBe('o2');
     const captainMsg = events.find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
     expect(captainMsg).toBeDefined();
-    expect(captainMsg.payload).toEqual({ questionId: 'q1', counts: { o2: 1 } });
+    expect(captainMsg!.payload).toEqual({ questionId: 'q1', counts: { o2: 1 } });
     // toggling again removes the suggestion
     service.suggest(pin, t1, 'member1', 'o2');
     expect(s.teams.get(t1).suggestions.get('q1').has('member1')).toBe(false);
@@ -531,10 +531,11 @@ describe('LiveService team mode — gameplay', () => {
     expect(perUser.get('member1')).toBe('o2');
     expect(perUser.get('captain2')).toBe('o2');
     const lastMsg = [...events].reverse().find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
-    expect(lastMsg.payload).toEqual({ questionId: 'q1', counts: { o2: 2 } });
+    expect(lastMsg).toBeDefined();
+    expect(lastMsg!.payload).toEqual({ questionId: 'q1', counts: { o2: 2 } });
     // captain never sees per-user data, only aggregated counts
-    expect(lastMsg.payload).not.toHaveProperty('userId');
-    expect(Object.keys(lastMsg.payload)).toEqual(['questionId', 'counts']);
+    expect(lastMsg!.payload).not.toHaveProperty('userId');
+    expect(Object.keys(lastMsg!.payload)).toEqual(['questionId', 'counts']);
   });
 
   it('a user changing their suggestion moves their contribution between options', () => {
@@ -545,7 +546,8 @@ describe('LiveService team mode — gameplay', () => {
     const s = (service as any).sessions.get(pin);
     expect(s.teams.get(t1).suggestions.get('q1').get('member1')).toBe('o1');
     const lastMsg = [...events].reverse().find((e) => e.target === 'sock:s1' && e.event === 'team:suggestionUpdate');
-    expect(lastMsg.payload).toEqual({ questionId: 'q1', counts: { o1: 1 } });
+    expect(lastMsg).toBeDefined();
+    expect(lastMsg!.payload).toEqual({ questionId: 'q1', counts: { o1: 1 } });
   });
 
   it('suggest rejects a user who is not in that team', () => {

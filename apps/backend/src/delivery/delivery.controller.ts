@@ -1,4 +1,5 @@
 import { Controller, Get, Post, Param, Body, Headers, HttpCode, Query } from '@nestjs/common';
+import { Throttle } from '@nestjs/throttler';
 import { JwtService } from '@nestjs/jwt';
 import { DeliveryService } from './delivery.service';
 import { StartSubmissionDto } from './dto/start-submission.dto';
@@ -7,6 +8,10 @@ import { SubmitAnswersDto } from './dto/submit-answers.dto';
 function isPracticeMode(value?: string) {
   return value === '1' || value === 'true';
 }
+
+// /check calls Groq (billed AI calls) per question — cap per-client throughput
+// so a scripted client can't rack up API cost or brute-force answers via probing.
+const CHECK_THROTTLE = { default: { limit: 30, ttl: 60_000 } };
 
 @Controller('public')
 export class DeliveryController {
@@ -50,10 +55,15 @@ export class DeliveryController {
     return this.deliveryService.submitAnswers(id, dto.answers, dto.mode, dto.violationReason, isPracticeMode(practice));
   }
 
+  @Throttle(CHECK_THROTTLE)
   @Post('submissions/:id/check')
   @HttpCode(200)
-  checkAnswer(@Param('id') id: string, @Body() body: { questionId: string; selectedOptionIds: string[]; textAnswer: string | null }) {
-    return this.deliveryService.checkAnswer(id, body);
+  checkAnswer(
+    @Param('id') id: string,
+    @Body() body: { questionId: string; selectedOptionIds: string[]; textAnswer: string | null },
+    @Query('practice') practice?: string,
+  ) {
+    return this.deliveryService.checkAnswer(id, body, isPracticeMode(practice));
   }
 
   private getOptionalUserId(authorization?: string) {

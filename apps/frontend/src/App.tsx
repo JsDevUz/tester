@@ -2,7 +2,6 @@ import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom'
 import { Toaster } from 'sonner';
 import { LoginPage } from './pages/LoginPage';
 import { DashboardPage } from './pages/DashboardPage';
-import { AdminsPage } from './pages/AdminsPage';
 import { FolderViewPage } from './pages/FolderViewPage';
 import { QuestionEditorPage } from './pages/QuestionEditorPage';
 import { TakeTestEntryPage } from './pages/TakeTestEntryPage';
@@ -26,7 +25,6 @@ import { SchoolInviteJoinPage } from './pages/SchoolInviteJoinPage';
 import { MyCoursesPage } from './pages/MyCoursesPage';
 import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
 import { PrivateRoute } from './components/PrivateRoute';
-import { SuperAdminRoute } from './components/SuperAdminRoute';
 import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
 import { useAuthStore } from './stores/authStore';
@@ -65,7 +63,7 @@ const router = createBrowserRouter([
   { path: '/school/settings', element: <TeacherRoute><SchoolSettingsPage /></TeacherRoute> },
   { path: '/school/staff', element: <TeacherRoute><SchoolStaffPage /></TeacherRoute> },
   { path: '/school/invite', element: <TeacherRoute><SchoolInvitePage /></TeacherRoute> },
-  { path: '/admins', element: <SuperAdminRoute><AdminsPage /></SuperAdminRoute> },
+  { path: '/admins', element: <Navigate to="/" replace /> },
   { path: '*', element: <Navigate to="/" replace /> },
 ]);
 

@@ -3,16 +3,20 @@ import * as bcrypt from 'bcrypt';
 import { AuthService } from './auth.service';
 import { db } from '../db';
 
-jest.mock('../db', () => ({
-  db: {
+jest.mock('../db', () => {
+  const mockDb: any = {
     query: {
       users: { findFirst: jest.fn() },
       authCodes: { findFirst: jest.fn(), findMany: jest.fn() },
     },
     insert: jest.fn(),
     update: jest.fn(),
-  },
-}));
+    // Test doubles don't run real transactions — just invoke the callback
+    // with the same mock db as the `tx` handle, like a no-op passthrough.
+    transaction: jest.fn((callback: (tx: unknown) => unknown) => callback(mockDb)),
+  };
+  return { db: mockDb };
+});
 
 jest.mock('bcrypt', () => ({
   compare: jest.fn(),

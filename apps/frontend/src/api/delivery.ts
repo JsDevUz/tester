@@ -108,12 +108,17 @@ export async function apiCheckAnswer(
   questionId: string,
   selectedOptionIds: string[],
   textAnswer: string | null,
+  practiceMode = false,
 ): Promise<{
   isCorrect: boolean | null;
   correctAnswer: string | null;
   correctOptionIds: string[];
 }> {
-  const res = await publicClient.post(`/public/submissions/${submissionId}/check`, { questionId, selectedOptionIds, textAnswer });
+  const res = await publicClient.post(
+    `/public/submissions/${submissionId}/check`,
+    { questionId, selectedOptionIds, textAnswer },
+    { params: practiceMode ? { practice: '1' } : undefined },
+  );
   return res.data;
 }
 

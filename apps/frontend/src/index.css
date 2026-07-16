@@ -1409,3 +1409,38 @@ select::-ms-expand {
     background: #818cf8;
   }
 }
+
+/* Settings modal: sidebar and content panel share the generic .bg-white/.bg-gray-50
+   dark-mode color, flattening the visual split. Give them distinct surfaces.
+   Placed last in the file so it wins the cascade over the generic overrides above. */
+:root[data-theme="dark"] .settings-modal-surface {
+  background-color: #1c1d23 !important;
+}
+
+:root[data-theme="dark"] .settings-modal-sidebar {
+  background-color: #26272f !important;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .settings-modal-surface {
+    background-color: #1c1d23 !important;
+  }
+
+  :root:not([data-theme="light"]) .settings-modal-sidebar {
+    background-color: #26272f !important;
+  }
+}
+
+/* Student shell uses responsive `lg:bg-gray-50`, not covered by the generic
+   dark-mode `.bg-gray-50` selector — keep it distinct from the `.bg-white` cards. */
+@media (min-width: 64rem) {
+  :root[data-theme="dark"] .student-shell-bg {
+    background-color: #1c1d23 !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) and (min-width: 64rem) {
+  :root:not([data-theme="light"]) .student-shell-bg {
+    background-color: #1c1d23 !important;
+  }
+}

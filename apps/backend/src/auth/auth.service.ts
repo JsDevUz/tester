@@ -4,6 +4,7 @@ import { db } from '../db';
 import { authCodes, users } from '../db/schema';
 import { and, desc, eq, isNull, or } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
+import { randomInt } from 'crypto';
 import { TelegramService } from '../telegram/telegram.service';
 
 @Injectable()
@@ -74,29 +75,37 @@ export class AuthService {
       throw new BadRequestException("Ro'yxatdan o'tish so'rovi topilmadi.");
     }
 
-    const existingUser = await db.query.users.findFirst({
-      where: or(eq(users.email, authCode.email), eq(users.phone, phone)),
-    });
-    if (existingUser) throw new ConflictException("Bu foydalanuvchi allaqachon mavjud.");
-
     const password = this.generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
-    const [user] = await db
-      .insert(users)
-      .values({
-        email: authCode.email,
-        passwordHash,
-        name: authCode.name,
-        phone,
-        role: 'student',
-      })
-      .returning({
-        id: users.id,
-        email: users.email,
-        name: users.name,
-        role: users.role,
-        phone: users.phone,
+
+    // existingUser check + insert wrapped in one transaction: the `users.email`/
+    // `users.phone` unique constraints are the real guard against a race between
+    // two concurrent verify calls, but doing the check-then-insert inside a
+    // transaction keeps the read consistent with the write.
+    const user = await db.transaction(async (tx) => {
+      const existingUser = await tx.query.users.findFirst({
+        where: or(eq(users.email, authCode.email!), eq(users.phone, phone)),
       });
+      if (existingUser) throw new ConflictException("Bu foydalanuvchi allaqachon mavjud.");
+
+      const [created] = await tx
+        .insert(users)
+        .values({
+          email: authCode.email!,
+          passwordHash,
+          name: authCode.name!,
+          phone,
+          role: 'student',
+        })
+        .returning({
+          id: users.id,
+          email: users.email,
+          name: users.name,
+          role: users.role,
+          phone: users.phone,
+        });
+      return created;
+    });
 
     await this.telegramService.sendCredentialsToPhone(phone, authCode.email, password);
     return { ok: true, user };
@@ -256,10 +265,10 @@ export class AuthService {
   }
 
   private generateCode() {
-    return String(Math.floor(100000 + Math.random() * 900000));
+    return String(randomInt(100000, 1000000));
   }
 
   private generatePassword() {
-    return Math.random().toString(36).slice(2, 8) + Math.random().toString(36).slice(2, 8);
+    return randomInt(36 ** 6, 36 ** 7 - 1).toString(36) + randomInt(36 ** 6, 36 ** 7 - 1).toString(36);
   }
 }

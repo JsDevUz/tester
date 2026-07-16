@@ -3,8 +3,8 @@ import {
   evaluateObjectiveAnswer,
   normalizeAnswerText,
   openAnswerTextMatches,
-  type GradableQuestion,
 } from './grading';
+import type { GradableQuestion } from './grading.types';
 
 const noopChecker = async () => false;
 

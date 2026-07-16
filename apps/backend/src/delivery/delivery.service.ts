@@ -235,9 +235,10 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }) {
+  }, practiceMode = false) {
     const submission = await db.query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
     if (!submission) throw new NotFoundException('Submission not found');
+    if (submission.submittedAt) throw new BadRequestException('Submission already submitted');
 
     const test = await db.query.tests.findFirst({
       where: eq(tests.id, submission.testId),
@@ -250,25 +251,44 @@ export class DeliveryService {
     });
     if (!test) throw new NotFoundException('Test not found');
 
+    // Instant per-question feedback only makes sense (and is only safe to expose)
+    // when the test is actually configured to reveal per-question results.
+    // Otherwise a client could probe every question's answer before submitting.
+    const effectiveShowResults = practiceMode ? 'immediately' : test.showResults;
+    if (effectiveShowResults !== 'per_question') {
+      throw new BadRequestException('This test does not support per-question checking');
+    }
+
     const question = test.questions.find((q) => q.id === item.questionId);
     if (!question) throw new NotFoundException('Question not found');
 
     // Javob umuman berilmagan bo'lsa — noto'g'ri deb baholanadi
     const hasAnswer = (item.selectedOptionIds?.length ?? 0) > 0 || !!item.textAnswer?.trim();
-    if (!hasAnswer) {
-      return {
-        isCorrect: false,
-        correctAnswer: this.correctAnswerText(question),
-        correctOptionIds: this.correctOptionIds(question),
-      };
-    }
+    const isCorrect = hasAnswer
+      ? await gradeAnswer(
+          { type: question.type, correctAnswer: question.correctAnswer, options: question.options, text: question.text },
+          { selectedOptionIds: item.selectedOptionIds, textAnswer: item.textAnswer },
+          (qText, hint, studentAnswer) => this.groqService.checkOpenAnswer(qText, hint, studentAnswer),
+          (correctAnswer, studentAnswer) => this.groqService.checkFillBlankAnswer(correctAnswer, studentAnswer),
+        )
+      : false;
 
-    const isCorrect = await gradeAnswer(
-      { type: question.type, correctAnswer: question.correctAnswer, options: question.options, text: question.text },
-      { selectedOptionIds: item.selectedOptionIds, textAnswer: item.textAnswer },
-      (qText, hint, studentAnswer) => this.groqService.checkOpenAnswer(qText, hint, studentAnswer),
-      (correctAnswer, studentAnswer) => this.groqService.checkFillBlankAnswer(correctAnswer, studentAnswer),
-    );
+    // Persist the checked answer immediately so a later submit can't overwrite
+    // it with a different (unchecked) answer for the same question.
+    await db.insert(answers).values({
+      submissionId,
+      questionId: item.questionId,
+      selectedOptionIds: item.selectedOptionIds,
+      textAnswer: item.textAnswer,
+      isCorrect,
+    }).onConflictDoUpdate({
+      target: [answers.submissionId, answers.questionId],
+      set: {
+        selectedOptionIds: item.selectedOptionIds,
+        textAnswer: item.textAnswer,
+        isCorrect,
+      },
+    });
 
     return {
       isCorrect,
@@ -336,6 +356,14 @@ export class DeliveryService {
 
     const questionMap = new Map(test.questions.map((q) => [q.id, q]));
 
+    // Questions already graded via checkAnswer() (per_question mode) are locked in:
+    // re-grade from the already-persisted answer, not whatever the client resubmits,
+    // so a client can't peek the correct answer via /check then submit a different one.
+    const alreadyChecked = await db.query.answers.findMany({
+      where: eq(answers.submissionId, submissionId),
+    });
+    const alreadyCheckedMap = new Map(alreadyChecked.map((a) => [a.questionId, a]));
+
     let score = 0;
     let total = 0;
 
@@ -356,6 +384,32 @@ export class DeliveryService {
     const gradedRows = await Promise.all(answerItems.map(async (item) => {
       const question = questionMap.get(item.questionId);
       if (!question) return null;
+
+      // Already graded via checkAnswer() — trust the persisted result and the answer
+      // that was actually graded, not whatever the client resubmits for this question.
+      const locked = alreadyCheckedMap.get(item.questionId);
+      if (locked) {
+        total++;
+        if (locked.isCorrect) score++;
+        const lockedDisplayOptions = test.shuffleOptions && question.type !== 'matching'
+          ? seededShuffle(question.options, submissionId + item.questionId)
+          : question.options;
+        const lockedSafeAnswer: SafeAnswer = {
+          questionId: item.questionId,
+          questionText: question.text,
+          questionType: question.type,
+          isCorrect: locked.isCorrect,
+          selectedOptionIds: locked.selectedOptionIds,
+          textAnswer: locked.textAnswer,
+          correctAnswer: question.correctAnswer ?? null,
+          imageUrl: question.imageUrl ?? null,
+          options: lockedDisplayOptions.map((o) => ({ id: o.id, text: o.text, isCorrectOption: !!o.isCorrect })),
+        };
+        return {
+          answerRow: null,
+          safeAnswer: lockedSafeAnswer,
+        };
+      }
 
       let isCorrect: boolean | null = null;
 
@@ -441,7 +495,7 @@ export class DeliveryService {
       };
     })).then(rows => rows.filter(Boolean)) as Array<{ answerRow: any; safeAnswer: SafeAnswer }>;
 
-    const answerRows = gradedRows.map((row) => row.answerRow);
+    const answerRows = gradedRows.map((row) => row.answerRow).filter(Boolean);
     const safeAnswers = orderSubmissionAnswersForDisplay(
       gradedRows.map((row) => row.safeAnswer),
       test.questions,
@@ -452,28 +506,36 @@ export class DeliveryService {
     // Atomik compare-and-swap: faqat submittedAt hali null bo'lsa yozamiz. Bu ikkita
     // parallel submit so'rovi (masalan tab yopilganda beacon va foydalanuvchi tugmasi
     // bir vaqtda) bir xil savol uchun ikkita answers qatori yaratib qo'yishining oldini oladi.
-    const [updatedSubmission] = await db.update(submissions)
-      .set({
-        submittedAt: new Date(),
-        score,
-        total,
-        mode: normalizeSubmissionMode(mode),
-        violationReason: normalizeSubmissionMode(mode) === 'violation'
-          ? normalizeViolationReason(violationReason) ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'
-          : null,
-      })
-      .where(and(eq(submissions.id, submissionId), isNull(submissions.submittedAt)))
-      .returning();
+    // Submission update + answers insert bitta transactionda: xato bo'lsa ikkalasi ham
+    // bekor bo'ladi, submission "submitted" deb belgilanib, javoblarsiz qolib ketmaydi.
+    const updatedSubmission = await db.transaction(async (tx) => {
+      const [updated] = await tx.update(submissions)
+        .set({
+          submittedAt: new Date(),
+          score,
+          total,
+          mode: normalizeSubmissionMode(mode),
+          violationReason: normalizeSubmissionMode(mode) === 'violation'
+            ? normalizeViolationReason(violationReason) ?? 'Taqiqlangan harakat aniqlanganligi sababli yakunlandi.'
+            : null,
+        })
+        .where(and(eq(submissions.id, submissionId), isNull(submissions.submittedAt)))
+        .returning();
+
+      if (!updated) return undefined;
+
+      if (answerRows.length > 0) {
+        await tx.insert(answers).values(answerRows);
+      }
+
+      return updated;
+    });
 
     if (!updatedSubmission) {
       // Boshqa so'rov ulgurib submit qilgan. Answers insert tugashini kutib,
       // to'liq persisted natijani qaytaramiz.
       await sleep(120);
       return this.getSubmissionResult(submissionId, practiceMode);
-    }
-
-    if (answerRows.length > 0) {
-      await db.insert(answers).values(answerRows);
     }
 
     if (practiceMode) {

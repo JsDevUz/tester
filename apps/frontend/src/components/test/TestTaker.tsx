@@ -941,6 +941,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         q.id,
         selectedMap[q.id] ?? [],
         textMap[q.id] ?? null,
+        practiceMode,
       );
       setFeedbackMap((prev) => ({
         ...prev,
