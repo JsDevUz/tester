@@ -223,18 +223,6 @@ export function StudentsPage() {
             )}
           </div>
 
-          {status === "list" && (
-            <select
-              value={courseFilter}
-              onChange={(event) => { setCourseFilter(event.target.value); setPage(1); }}
-              className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 outline-none"
-              aria-label="Kurs bo'yicha filter"
-            >
-              <option value="">Barcha kurslar</option>
-              {courseOptions.map((course) => <option key={course} value={course}>{course}</option>)}
-            </select>
-          )}
-
           {loading ? (
             <DataLoadingState label="O'quvchilar yuklanmoqda..." className="min-h-80" />
           ) : loadError ? (
