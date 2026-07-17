@@ -7,7 +7,7 @@ import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { ClassroomPdfViewer, type DrawTool } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
-import { ClassroomParticipants } from "../components/classroom/ClassroomParticipants";
+import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { apiMuteParticipant, apiUploadClassPdf, type CsStroke } from "../api/classroom";
 
 const ERROR_TEXT: Record<string, string> = {
@@ -93,6 +93,13 @@ export function ClassroomHostPage() {
             {voice.micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
           </button>
         )}
+        <ParticipantsPanelToggle
+          participants={state.participants}
+          speakingUserIds={voice.speakingUserIds}
+          isHost
+          myUserId={admin?.id ?? null}
+          onMute={(uid) => void handleMute(uid)}
+        />
         <button
           type="button"
           onClick={() => setConfirmEnd(true)}
@@ -103,42 +110,31 @@ export function ClassroomHostPage() {
         </button>
       </header>
 
-      <main className="flex-1 flex flex-col lg:flex-row gap-4 p-4 min-h-0">
-        <div className="flex-1 flex flex-col gap-3 min-w-0">
-          <ClassroomToolbar
-            tool={tool}
-            color={color}
-            page={state.currentPage}
-            pageCount={state.pages.length}
-            uploading={uploading}
-            onToolChange={setTool}
-            onColorChange={setColor}
-            onPageChange={(p) => hostActions.setPage(p)}
-            onUndo={() => hostActions.undo(state.currentPage)}
-            onClear={() => hostActions.clearPage(state.currentPage)}
-            onUploadPdf={(f) => void handleUpload(f)}
-          />
-          <ClassroomPdfViewer
-            pageUrl={pageUrl}
-            strokes={strokes}
-            pointer={state.pointer?.page === state.currentPage ? state.pointer : null}
-            editable={state.pages.length > 0}
-            tool={tool}
-            color={tool === "highlighter" ? "#facc15" : color}
-            strokeWidth={tool === "highlighter" ? 8 : 3}
-            onStrokeComplete={(s: CsStroke) => hostActions.sendStroke(state.currentPage, s)}
-            onPointerMove={(x, y, active) => hostActions.pointer(state.currentPage, x, y, active)}
-          />
-        </div>
-        <aside className="lg:w-72 shrink-0">
-          <ClassroomParticipants
-            participants={state.participants}
-            speakingUserIds={voice.speakingUserIds}
-            isHost
-            myUserId={admin?.id ?? null}
-            onMute={(uid) => void handleMute(uid)}
-          />
-        </aside>
+      <main className="flex-1 flex flex-col gap-3 p-4 min-h-0">
+        <ClassroomToolbar
+          tool={tool}
+          color={color}
+          page={state.currentPage}
+          pageCount={state.pages.length}
+          uploading={uploading}
+          onToolChange={setTool}
+          onColorChange={setColor}
+          onPageChange={(p) => hostActions.setPage(p)}
+          onUndo={() => hostActions.undo(state.currentPage)}
+          onClear={() => hostActions.clearPage(state.currentPage)}
+          onUploadPdf={(f) => void handleUpload(f)}
+        />
+        <ClassroomPdfViewer
+          pageUrl={pageUrl}
+          strokes={strokes}
+          pointer={state.pointer?.page === state.currentPage ? state.pointer : null}
+          editable={state.pages.length > 0}
+          tool={tool}
+          color={tool === "highlighter" ? "#facc15" : color}
+          strokeWidth={tool === "highlighter" ? 8 : 3}
+          onStrokeComplete={(s: CsStroke) => hostActions.sendStroke(state.currentPage, s)}
+          onPointerMove={(x, y, active) => hostActions.pointer(state.currentPage, x, y, active)}
+        />
       </main>
 
       {confirmEnd && (

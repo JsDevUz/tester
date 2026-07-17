@@ -4,7 +4,7 @@ import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
-import { ClassroomParticipants } from "../components/classroom/ClassroomParticipants";
+import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -70,6 +70,12 @@ export function ClassroomStudentPage() {
         ) : (
           <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg">Ovozsiz rejim</span>
         )}
+        <ParticipantsPanelToggle
+          participants={state.participants}
+          speakingUserIds={voice.speakingUserIds}
+          isHost={false}
+          myUserId={admin?.id ?? null}
+        />
       </header>
 
       {!state.hostOnline && state.joined && (
@@ -79,31 +85,21 @@ export function ClassroomStudentPage() {
         </div>
       )}
 
-      <main className="flex-1 flex flex-col lg:flex-row gap-4 p-4 min-h-0">
-        <div className="flex-1 min-w-0">
-          <ClassroomPdfViewer
-            pageUrl={pageUrl}
-            strokes={strokes}
-            pointer={state.pointer?.page === state.currentPage ? state.pointer : null}
-            editable={false}
-            tool="pen"
-            color="#ef4444"
-            strokeWidth={3}
-          />
-          {state.pages.length > 0 && (
-            <p className="text-center text-xs text-gray-400 mt-2">
-              Sahifa {state.currentPage} / {state.pages.length}
-            </p>
-          )}
-        </div>
-        <aside className="lg:w-64 shrink-0">
-          <ClassroomParticipants
-            participants={state.participants}
-            speakingUserIds={voice.speakingUserIds}
-            isHost={false}
-            myUserId={admin?.id ?? null}
-          />
-        </aside>
+      <main className="flex-1 flex flex-col p-4 min-h-0">
+        <ClassroomPdfViewer
+          pageUrl={pageUrl}
+          strokes={strokes}
+          pointer={state.pointer?.page === state.currentPage ? state.pointer : null}
+          editable={false}
+          tool="pen"
+          color="#ef4444"
+          strokeWidth={3}
+        />
+        {state.pages.length > 0 && (
+          <p className="text-center text-xs text-gray-400 mt-2">
+            Sahifa {state.currentPage} / {state.pages.length}
+          </p>
+        )}
       </main>
     </div>
   );

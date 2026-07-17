@@ -13,19 +13,24 @@ interface Props {
   isHost: boolean;
   myUserId: string | null;
   onMute?: (userId: string) => void;
+  // true bo'lsa o'zining karta-shadow/sarlavhasini chizmaydi — masalan
+  // ParticipantsPanelToggle o'ziga xos konteyner ichida ishlatganda.
+  bare?: boolean;
 }
 
-export function ClassroomParticipants({ participants, speakingUserIds, isHost, myUserId, onMute }: Props) {
+export function ClassroomParticipants({ participants, speakingUserIds, isHost, myUserId, onMute, bare = false }: Props) {
   const sorted = [...participants].sort((a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name));
   const onlineCount = participants.filter((p) => p.online).length;
 
   return (
-    <div className="bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-2 min-h-0">
-      <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800 text-sm">O'quvchilar</h3>
-        <span className="text-xs text-gray-400">{onlineCount}/{participants.length} onlayn</span>
-      </div>
-      <div className="flex-1 overflow-y-auto flex flex-col gap-1">
+    <div className={bare ? "flex flex-col gap-2 min-h-0" : "bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-2 min-h-0"}>
+      {!bare && (
+        <div className="flex items-center justify-between">
+          <h3 className="font-semibold text-gray-800 text-sm">O'quvchilar</h3>
+          <span className="text-xs text-gray-400">{onlineCount}/{participants.length} onlayn</span>
+        </div>
+      )}
+      <div className={`flex-1 overflow-y-auto flex flex-col gap-1 ${bare ? "p-2" : ""}`}>
         {sorted.length === 0 && <p className="text-sm text-gray-400 py-4 text-center">Hozircha o'quvchi yo'q</p>}
         {sorted.map((p) => {
           const status = STATUS_LABEL[p.status];
@@ -53,7 +58,7 @@ export function ClassroomParticipants({ participants, speakingUserIds, isHost, m
         })}
       </div>
       {!isHost && (
-        <p className="text-[11px] text-gray-400 flex items-center gap-1">
+        <p className={`text-[11px] text-gray-400 flex items-center gap-1 ${bare ? "px-2 pb-2" : ""}`}>
           <Mic size={12} /> Gapirish uchun pastdagi mikrofon tugmasini yoqing
         </p>
       )}
