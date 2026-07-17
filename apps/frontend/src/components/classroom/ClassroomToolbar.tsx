@@ -8,17 +8,16 @@ interface Props {
   color: string;
   page: number;
   pageCount: number;
-  uploading: boolean;
   onToolChange: (tool: DrawTool) => void;
   onColorChange: (color: string) => void;
   onUndo: () => void;
   onClear: () => void;
-  onUploadPdf: (file: File) => void;
+  onOpenPdfLibrary: () => void;
 }
 
 export function ClassroomToolbar({
-  tool, color, page, pageCount, uploading,
-  onToolChange, onColorChange, onUndo, onClear, onUploadPdf,
+  tool, color, page, pageCount,
+  onToolChange, onColorChange, onUndo, onClear, onOpenPdfLibrary,
 }: Props) {
   const btn = (active: boolean) =>
     `p-2 rounded-xl transition-colors ${active ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"}`;
@@ -65,21 +64,14 @@ export function ClassroomToolbar({
 
       <div className="flex-1" />
 
-      <label className={`flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium cursor-pointer ${uploading ? "bg-gray-100 text-gray-400" : "bg-indigo-50 text-indigo-700 hover:bg-indigo-100"}`}>
+      <button
+        type="button"
+        onClick={onOpenPdfLibrary}
+        className="flex items-center gap-2 px-3 py-2 rounded-xl text-sm font-medium bg-indigo-50 text-indigo-700 hover:bg-indigo-100"
+      >
         <Upload size={16} />
-        {uploading ? "Yuklanmoqda..." : pageCount > 0 ? "Boshqa PDF" : "PDF yuklash"}
-        <input
-          type="file"
-          accept=".pdf"
-          className="hidden"
-          disabled={uploading}
-          onChange={(e) => {
-            const file = e.target.files?.[0];
-            if (file) onUploadPdf(file);
-            e.target.value = "";
-          }}
-        />
-      </label>
+        {pageCount > 0 ? "Boshqa PDF" : "PDF yuklash"}
+      </button>
     </div>
   );
 }

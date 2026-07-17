@@ -9,7 +9,9 @@ import { ClassroomPdfViewer, type DrawTool } from "../components/classroom/Class
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { AutoHideHeader } from "../components/classroom/AutoHideHeader";
-import { apiMuteParticipant, apiUploadClassPdf } from "../api/classroom";
+import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
+import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
+import { apiAttachClassPdf, apiMuteParticipant, type PdfLibraryAsset } from "../api/classroom";
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -25,19 +27,22 @@ export function ClassroomHostPage() {
   const voice = useClassroomVoice(state.joined ? id : undefined, false);
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
-  const [uploading, setUploading] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
+  const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
+  const [pageSelectAsset, setPageSelectAsset] = useState<PdfLibraryAsset | null>(null);
+  const [attaching, setAttaching] = useState(false);
 
-  const handleUpload = async (file: File) => {
-    if (!id) return;
-    setUploading(true);
+  const handleAttachPages = async (pageNumbers: number[]) => {
+    if (!id || !pageSelectAsset) return;
+    setAttaching(true);
     try {
-      await apiUploadClassPdf(id, file);
-      toast.success("PDF yuklandi");
+      await apiAttachClassPdf(id, pageSelectAsset.id, pageNumbers);
+      toast.success("PDF qo'shildi");
+      setPageSelectAsset(null);
     } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? "PDF yuklashda xatolik");
+      toast.error(e?.response?.data?.message ?? "PDF qo'shishda xatolik");
     } finally {
-      setUploading(false);
+      setAttaching(false);
     }
   };
 
@@ -127,12 +132,11 @@ export function ClassroomHostPage() {
           color={color}
           page={state.currentPage}
           pageCount={state.pages.length}
-          uploading={uploading}
           onToolChange={setTool}
           onColorChange={setColor}
           onUndo={() => hostActions.undo(state.currentPage)}
           onClear={() => hostActions.clearPage(state.currentPage)}
-          onUploadPdf={(f) => void handleUpload(f)}
+          onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
         />
       </div>
 
@@ -150,6 +154,29 @@ export function ClassroomHostPage() {
           onPointerMove={(page, x, y, active) => hostActions.pointer(page, x, y, active)}
         />
       </div>
+
+      {pdfLibraryOpen && (
+        <ClassroomPdfLibraryModal
+          onClose={() => setPdfLibraryOpen(false)}
+          onSelect={(asset) => {
+            setPdfLibraryOpen(false);
+            setPageSelectAsset(asset);
+          }}
+        />
+      )}
+
+      {pageSelectAsset && (
+        <PdfPageSelectModal
+          asset={pageSelectAsset}
+          submitting={attaching}
+          onConfirm={(pageNumbers) => void handleAttachPages(pageNumbers)}
+          onBack={() => {
+            setPageSelectAsset(null);
+            setPdfLibraryOpen(true);
+          }}
+          onClose={() => setPageSelectAsset(null)}
+        />
+      )}
 
       {confirmEnd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

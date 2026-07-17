@@ -10,14 +10,31 @@ const REVEAL_ZONE_PX = 12; // desktopda sichqoncha shu masofada bo'lsa ochiladi
 export function AutoHideHeader({ children }: { children: ReactNode }) {
   const [visible, setVisible] = useState(true);
   const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
+  // Tinch holatda (yoyilgan, animatsiya tugagan) overflow ochiq bo'lishi
+  // kerak — aks holda ichkaridagi popover (masalan O'quvchilar paneli)
+  // header chegarasidan tashqariga chiqolmay kesilib qoladi. Faqat
+  // yashirinish/ochilish animatsiyasi paytida vaqtincha kesamiz.
+  const [clipDuringAnim, setClipDuringAnim] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
   const contentRef = useRef<HTMLDivElement>(null);
   const timerRef = useRef<number | null>(null);
+  const clipTimerRef = useRef<number | null>(null);
 
   const scheduleHide = () => {
     if (timerRef.current) window.clearTimeout(timerRef.current);
     timerRef.current = window.setTimeout(() => setVisible(false), AUTO_HIDE_MS);
   };
+
+  // visible o'zgarganda 300ms (animatsiya davomiyligi) davomida kesamiz,
+  // shundan keyin ochiq holatda tiniq ko'rinishi uchun overflow'ni ochamiz.
+  useEffect(() => {
+    setClipDuringAnim(true);
+    if (clipTimerRef.current) window.clearTimeout(clipTimerRef.current);
+    clipTimerRef.current = window.setTimeout(() => setClipDuringAnim(false), 300);
+    return () => {
+      if (clipTimerRef.current) window.clearTimeout(clipTimerRef.current);
+    };
+  }, [visible]);
 
   useEffect(() => {
     const el = contentRef.current;
@@ -64,7 +81,7 @@ export function AutoHideHeader({ children }: { children: ReactNode }) {
   return (
     <div
       ref={wrapRef}
-      className="overflow-hidden shrink-0 transition-[height] duration-300 ease-in-out"
+      className={`shrink-0 transition-[height] duration-300 ease-in-out ${clipDuringAnim ? "overflow-hidden" : "overflow-visible"}`}
       style={{ height: visible ? (measuredHeight ?? "auto") : 0 }}
       onMouseEnter={reveal}
       onPointerDown={reveal}
