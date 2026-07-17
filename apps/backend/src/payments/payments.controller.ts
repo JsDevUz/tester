@@ -3,7 +3,7 @@ import { PaymentsService } from './payments.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { IsDateString, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 class RecordPaymentDto {
   @IsInt() @Min(1) amount: number;
@@ -11,6 +11,7 @@ class RecordPaymentDto {
   @IsOptional() @IsIn(['cash', 'click', 'payme', 'card', 'other']) method?: string;
   @IsOptional() @IsString() note?: string;
   @IsOptional() @IsString() receiptUrl?: string;
+  @IsOptional() @IsDateString() paymentDate?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -39,6 +40,7 @@ export class PaymentsController {
       dto.method,
       dto.note,
       dto.receiptUrl,
+      dto.paymentDate,
     );
   }
 

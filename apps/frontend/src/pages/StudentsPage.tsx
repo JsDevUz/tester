@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Inbox, ChevronLeft, ChevronRight, Star } from "lucide-react";
+import { Search, Inbox, Star } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
@@ -14,6 +14,7 @@ import { StudentProfileModal } from "../components/students/StudentProfileModal"
 import { StudentLearningProgressModal } from "../components/students/StudentLearningProgressModal";
 import { UserAvatar } from "../components/UserAvatar";
 import { DataLoadingState } from "../components/DataLoadingState";
+import { PaginationControls } from "../components/PaginationControls";
 
 export interface StudentRow {
   id: string;
@@ -86,8 +87,6 @@ function progressColor(pct: number) {
   return "text-gray-400";
 }
 
-const PAGE_SIZE = 7;
-
 type SectionStatus = "all" | "list";
 
 function statusForPath(pathname: string): SectionStatus {
@@ -100,11 +99,14 @@ export function StudentsPage() {
   const status = statusForPath(location.pathname);
 
   const [query, setQuery] = useState("");
+  const [courseFilter, setCourseFilter] = useState("");
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
   const [allUsersTotal, setAllUsersTotal] = useState(0);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
   const [enrollmentsTotal, setEnrollmentsTotal] = useState(0);
+  const [courseOptions, setCourseOptions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; telegramName: string | null; phone: string | null; avatarUrl: string | null } | null>(null);
@@ -112,18 +114,19 @@ export function StudentsPage() {
 
   useEffect(() => {
     setQuery("");
+    setCourseFilter("");
     setPage(1);
   }, [status]);
 
   useEffect(() => {
     let cancelled = false;
-    const offset = (page - 1) * PAGE_SIZE;
+    const offset = (page - 1) * pageSize;
     setLoading(true);
     setLoadError(null);
 
     const request = status === "all"
       ? Promise.all([
-          apiListAllStudents(PAGE_SIZE, offset, query),
+          apiListAllStudents(pageSize, offset, query),
           apiListEnrollments(1, 0),
         ]).then(([result, enrollmentMeta]) => {
           if (cancelled) return;
@@ -132,13 +135,15 @@ export function StudentsPage() {
           setEnrollmentsTotal(enrollmentMeta.total);
         })
       : Promise.all([
-          apiListEnrollments(PAGE_SIZE, offset, query),
+          apiListEnrollments(pageSize, offset, query, courseFilter),
           apiListAllStudents(1, 0),
-        ]).then(([result, allUsersMeta]) => {
+          apiListEnrollments(100, 0),
+        ]).then(([result, allUsersMeta, courseCatalog]) => {
           if (cancelled) return;
           setEnrollments(result.items);
           setEnrollmentsTotal(result.total);
           setAllUsersTotal(allUsersMeta.total);
+          setCourseOptions(Array.from(new Set(courseCatalog.items.map((enrollment) => enrollment.courseTitle))).sort());
         });
 
     void request
@@ -152,13 +157,11 @@ export function StudentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [status, page, query]);
+  }, [status, page, pageSize, query, courseFilter]);
 
-  const pageCount = Math.max(1, Math.ceil(allUsersTotal / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
+  const pageCount = Math.max(1, Math.ceil(allUsersTotal / pageSize));
   const pageItems = allUsers;
-  const enrollmentPageCount = Math.max(1, Math.ceil(enrollmentsTotal / PAGE_SIZE));
-  const currentEnrollmentPage = Math.min(page, enrollmentPageCount);
+  const enrollmentPageCount = Math.max(1, Math.ceil(enrollmentsTotal / pageSize));
   const enrollmentPageItems = enrollments;
 
   function handleSearch(value: string) {
@@ -206,6 +209,18 @@ export function StudentsPage() {
               className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
             />
           </div>
+
+          {status === "list" && (
+            <select
+              value={courseFilter}
+              onChange={(event) => { setCourseFilter(event.target.value); setPage(1); }}
+              className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 outline-none"
+              aria-label="Kurs bo'yicha filter"
+            >
+              <option value="">Barcha kurslar</option>
+              {courseOptions.map((course) => <option key={course} value={course}>{course}</option>)}
+            </select>
+          )}
 
           {loading ? (
             <DataLoadingState label="O'quvchilar yuklanmoqda..." className="min-h-80" />
@@ -326,42 +341,7 @@ export function StudentsPage() {
                     </table>
                   </div>
 
-                  {enrollmentPageCount > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 pb-5 pt-2">
-                      <button
-                        type="button"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={currentEnrollmentPage === 1}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Oldingi sahifa"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      {Array.from({ length: enrollmentPageCount }, (_, i) => i + 1).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPage(p)}
-                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
-                            p === currentEnrollmentPage
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-500 hover:bg-gray-50"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setPage((p) => Math.min(enrollmentPageCount, p + 1))}
-                        disabled={currentEnrollmentPage === enrollmentPageCount}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Keyingi sahifa"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
+                  <PaginationControls page={page} pageCount={enrollmentPageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
                 </>
               )}
             </div>
@@ -451,42 +431,7 @@ export function StudentsPage() {
                     </table>
                   </div>
 
-                  {pageCount > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 mt-5 pb-5">
-                      <button
-                        type="button"
-                        onClick={() => setPage((p) => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Oldingi sahifa"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      {Array.from({ length: pageCount }, (_, i) => i + 1).map((p) => (
-                        <button
-                          key={p}
-                          type="button"
-                          onClick={() => setPage(p)}
-                          className={`w-8 h-8 rounded-xl text-sm font-semibold transition-colors ${
-                            p === currentPage
-                              ? "bg-gray-900 text-white"
-                              : "text-gray-500 hover:bg-gray-50"
-                          }`}
-                        >
-                          {p}
-                        </button>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setPage((p) => Math.min(pageCount, p + 1))}
-                        disabled={currentPage === pageCount}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Keyingi sahifa"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
-                    </div>
-                  )}
+                  <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
                 </>
               )}
             </div>
@@ -503,6 +448,10 @@ export function StudentsPage() {
           studentAvatarUrl={profileTarget.avatarUrl}
           onClose={() => setProfileTarget(null)}
           onEnrolled={() => setPage(1)}
+          onNameUpdated={(name) => {
+            setProfileTarget((current) => current ? { ...current, name } : current);
+            setAllUsers((users) => users.map((user) => user.id === profileTarget.id ? { ...user, name } : user));
+          }}
         />
       )}
       {progressTarget && (

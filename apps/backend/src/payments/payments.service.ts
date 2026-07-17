@@ -58,6 +58,7 @@ export class PaymentsService {
     method?: string,
     note?: string,
     receiptUrl?: string,
+    paymentDate?: string,
   ) {
     const payment = await this.assertPaymentOwnership(paymentId, adminId);
     if (payment.status === 'cancelled') {
@@ -80,6 +81,8 @@ export class PaymentsService {
       );
     }
     const nextStatus = computeStatus(payment.expectedAmount, nextDiscountAmount, nextPaidAmount);
+    const recordedAt = paymentDate ? new Date(`${paymentDate}T12:00:00.000Z`) : new Date();
+    if (Number.isNaN(recordedAt.getTime())) throw new BadRequestException('To\'lov sanasi noto\'g\'ri');
 
     const [updated] = await db
       .update(monthlyPayments)
@@ -90,7 +93,7 @@ export class PaymentsService {
         ...(method !== undefined ? { paymentMethod: method } : {}),
         ...(note !== undefined ? { note } : {}),
         ...(receiptUrl !== undefined ? { receiptUrl } : {}),
-        updatedAt: new Date(),
+        updatedAt: recordedAt,
       })
       .where(eq(monthlyPayments.id, paymentId))
       .returning();

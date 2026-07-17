@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { GraduationCap, MoreVertical, Star, UserRound, X } from 'lucide-react';
+import { Check, GraduationCap, MoreVertical, Pencil, Star, UserRound, X } from 'lucide-react';
 import { apiListCourses, type ApiCourse } from '../../api/courses';
 import { apiListGroups, apiEnrollStudent, apiUpdateGroupMember, type ApiGroup } from '../../api/groups';
-import { apiListEnrollments, type ApiSchoolEnrollment } from '../../api/school';
+import { apiListEnrollments, apiUpdateStudentName, type ApiSchoolEnrollment } from '../../api/school';
 import { apiListLaunches, type ApiPricingPlan } from '../../api/launches';
 import { useAuthStore } from '../../stores/authStore';
 import { UserAvatar } from '../UserAvatar';
@@ -15,6 +15,7 @@ interface StudentProfileModalProps {
   studentAvatarUrl: string | null;
   onClose: () => void;
   onEnrolled: () => void;
+  onNameUpdated: (name: string) => void;
 }
 
 const AVATAR_PALETTES = [
@@ -38,7 +39,7 @@ function progressColor(pct: number) {
   return 'text-gray-400';
 }
 
-export function StudentProfileModal({ studentId, studentName, studentTelegramName, studentPhone, studentAvatarUrl, onClose, onEnrolled }: StudentProfileModalProps) {
+export function StudentProfileModal({ studentId, studentName, studentTelegramName, studentPhone, studentAvatarUrl, onClose, onEnrolled, onNameUpdated }: StudentProfileModalProps) {
   const admin = useAuthStore((s) => s.admin);
   const canManageCourses = admin?.role === 'teacher' || admin?.role === 'super';
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
@@ -56,6 +57,9 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
   const [loadingPlans, setLoadingPlans] = useState(false);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState(false);
+  const [nameDraft, setNameDraft] = useState(studentName);
+  const [savingName, setSavingName] = useState(false);
 
   function refreshEnrollments() {
     setLoadingEnrollments(true);
@@ -129,6 +133,21 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
   );
 
   const canSave = Boolean(groupId);
+
+  async function handleSaveName() {
+    const trimmedName = nameDraft.trim();
+    if (!trimmedName || savingName) return;
+    setSavingName(true);
+    try {
+      const updated = await apiUpdateStudentName(studentId, trimmedName);
+      onNameUpdated(updated.name);
+      setEditingName(false);
+    } catch (error: any) {
+      setSaveError(error?.response?.data?.message ?? "Ismni yangilab bo'lmadi.");
+    } finally {
+      setSavingName(false);
+    }
+  }
 
   useEffect(() => {
     if (courseId && enrolledCourseIds.has(courseId)) {
@@ -216,6 +235,14 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
                       <GraduationCap size={16} className="text-gray-600" />
                       Kursga qo'shish
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => { setActionsOpen(false); setNameDraft(studentName); setEditingName(true); setSaveError(null); }}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <Pencil size={16} className="text-gray-600" />
+                      Ismni tahrirlash
+                    </button>
                   </div>
                 </>
               )}
@@ -231,6 +258,18 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
             </button>
           </div>
         </div>
+
+        {editingName && (
+          <div className="mx-6 mb-4 rounded-2xl bg-gray-50 p-3">
+            <label className="mb-1.5 block text-xs font-semibold text-gray-500">O'quvchi ismi</label>
+            <div className="flex gap-2">
+              <input autoFocus value={nameDraft} onChange={(event) => setNameDraft(event.target.value)} maxLength={120} className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400" />
+              <button type="button" onClick={() => void handleSaveName()} disabled={savingName || !nameDraft.trim()} className="inline-flex items-center gap-1 rounded-xl bg-indigo-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Check size={14} /> Saqlash</button>
+              <button type="button" onClick={() => setEditingName(false)} className="rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-200">Bekor</button>
+            </div>
+            {saveError && <p className="mt-2 text-xs text-red-500">{saveError}</p>}
+          </div>
+        )}
 
         {totalStarsMax > 0 && (
           <div className="mx-6 mb-4 flex items-center gap-2 rounded-2xl bg-amber-50 px-3.5 py-2.5">

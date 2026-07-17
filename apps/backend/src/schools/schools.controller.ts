@@ -3,7 +3,7 @@ import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsIn, IsOptional, IsString, IsUUID, MinLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 class UpdateSchoolDto {
   @IsOptional() @IsString() name?: string;
@@ -13,6 +13,10 @@ class UpdateSchoolDto {
 class AddStaffDto {
   @IsUUID() studentId: string;
   @IsIn(['curator', 'teacher_staff']) role: string;
+}
+
+class UpdateStudentNameDto {
+  @IsString() @IsNotEmpty() @MaxLength(120) name: string;
 }
 
 @Controller()
@@ -70,9 +74,9 @@ export class SchoolsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super', 'curator')
   @Get('school/students/enrollments')
-  async listEnrollments(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string, @Query('q') query?: string) {
+  async listEnrollments(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string, @Query('q') query?: string, @Query('course') course?: string) {
     const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
-    return this.schoolsService.listEnrollments(schoolAdminId, req.admin.id, req.admin.role, Number(limit) || 7, Number(offset) || 0, query || '');
+    return this.schoolsService.listEnrollments(schoolAdminId, req.admin.id, req.admin.role, Number(limit) || 7, Number(offset) || 0, query || '', course || '');
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
@@ -91,6 +95,13 @@ export class SchoolsController {
       req.admin.id,
       req.admin.role,
     );
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('school/students/:studentId/name')
+  updateStudentName(@Req() req: any, @Param('studentId') studentId: string, @Body() dto: UpdateStudentNameDto) {
+    return this.schoolsService.updateStudentName(req.admin.id, studentId, dto.name);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

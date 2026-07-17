@@ -10,8 +10,7 @@ import {
   type Submission,
 } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
-
-const LIMIT = 10;
+import { PageSizeSelect } from "../components/PaginationControls";
 
 export function SubmissionsPage() {
   const { id: testId } = useParams<{ id: string }>();
@@ -24,6 +23,7 @@ export function SubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
@@ -40,10 +40,10 @@ export function SubmissionsPage() {
       setLoadingMore(true);
     }
     try {
-      const rows = await apiGetSubmissions(testId, LIMIT, offsetRef.current);
+      const rows = await apiGetSubmissions(testId, pageSize, offsetRef.current);
       setSubmissions((prev) => (reset ? rows : [...prev, ...rows]));
       offsetRef.current += rows.length;
-      if (rows.length < LIMIT) setHasMore(false);
+      if (rows.length < pageSize) setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -57,7 +57,7 @@ export function SubmissionsPage() {
       apiGetTest(testId)
         .then(setFetchedTest)
         .catch(() => {});
-  }, [testId]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [testId, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -96,9 +96,10 @@ export function SubmissionsPage() {
           >
             <ChevronLeft size={15} /> Orqaga
           </button>
-          <h2 className="text-base sm:text-lg font-bold text-gray-800 mb-4 leading-snug">
-            {test?.name ?? "Test"} — Natijalar
-          </h2>
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+            <h2 className="text-base sm:text-lg font-bold text-gray-800 leading-snug">{test?.name ?? "Test"} — Natijalar</h2>
+            <PageSizeSelect value={pageSize} onChange={(value) => { setPageSize(value); setSubmissions([]); }} />
+          </div>
 
           {loading ? (
             <div className="flex justify-center py-12">

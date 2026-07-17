@@ -5,8 +5,7 @@ import { AppShell } from "../components/AppShell";
 import { NewLiveSessionModal } from "../components/NewLiveSessionModal";
 import { apiListLiveSessions, type LiveSessionHistoryItem } from "../api/live";
 import { formatDateTime } from "../utils/date";
-
-const LIMIT = 20;
+import { PageSizeSelect } from "../components/PaginationControls";
 
 export function LiveCreatePage() {
   const navigate = useNavigate();
@@ -14,6 +13,7 @@ export function LiveCreatePage() {
   const [sessions, setSessions] = useState<LiveSessionHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [pageSize, setPageSize] = useState(20);
   const [hasMore, setHasMore] = useState(true);
   const [showModal, setShowModal] = useState(!!searchParams.get("testId"));
   const offsetRef = useRef(0);
@@ -28,10 +28,10 @@ export function LiveCreatePage() {
       setLoadingMore(true);
     }
     try {
-      const rows = await apiListLiveSessions(LIMIT, offsetRef.current);
+      const rows = await apiListLiveSessions(pageSize, offsetRef.current);
       setSessions((prev) => (reset ? rows : [...prev, ...rows]));
       offsetRef.current += rows.length;
-      if (rows.length < LIMIT) setHasMore(false);
+      if (rows.length < pageSize) setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -40,7 +40,7 @@ export function LiveCreatePage() {
 
   useEffect(() => {
     loadMore(true);
-  }, []);
+  }, [pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleRowClick(s: LiveSessionHistoryItem) {
     if (s.status === "active") navigate(`/live/host/${s.pin}`);
@@ -58,6 +58,8 @@ export function LiveCreatePage() {
                 Jonli musobaqalar
               </h2>
             </div>
+            <div className="flex items-center gap-3">
+            <PageSizeSelect value={pageSize} onChange={setPageSize} />
             <button
               onClick={() => setShowModal(true)}
               title="Yangi jonli musobaqa yaratish"
@@ -66,6 +68,7 @@ export function LiveCreatePage() {
               <Plus size={16} />{" "}
               <span className="hidden sm:inline">Yangi jonli musobaqa</span>
             </button>
+            </div>
           </div>
 
           {loading ? (
