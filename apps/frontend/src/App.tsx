@@ -24,6 +24,8 @@ import { SchoolInvitePage } from './pages/SchoolInvitePage';
 import { SchoolInviteJoinPage } from './pages/SchoolInviteJoinPage';
 import { MyCoursesPage } from './pages/MyCoursesPage';
 import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
+import { ClassroomHostPage } from './pages/ClassroomHostPage';
+import { ClassroomStudentPage } from './pages/ClassroomStudentPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -53,6 +55,8 @@ const router = createBrowserRouter([
   { path: '/live/join', element: <LiveJoinPage /> },
   { path: '/school-invite/:token', element: <SchoolInviteJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
+  { path: '/classroom/host/:id', element: <TeacherRoute><ClassroomHostPage /></TeacherRoute> },
+  { path: '/classroom/:id', element: <PrivateRoute><ClassroomStudentPage /></PrivateRoute> },
   { path: '/lessons', element: <TeacherRoute><CoursesPage /></TeacherRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
   { path: '/messenger', element: <PrivateRoute><PracticeMessengerPage /></PrivateRoute> },
