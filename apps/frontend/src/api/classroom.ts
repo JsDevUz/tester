@@ -4,13 +4,13 @@ import client from './client';
 
 export interface ActiveClassSession {
   id: string;
-  groupId: string;
-  groupName: string;
+  courseId: string;
+  courseName: string;
   startedAt: number;
 }
 
-export async function apiCreateClassSession(groupId: string): Promise<{ id: string }> {
-  const res = await client.post('/classroom/sessions', { groupId });
+export async function apiCreateClassSession(courseId: string): Promise<{ id: string }> {
+  const res = await client.post('/classroom/sessions', { courseId });
   return res.data;
 }
 
@@ -45,8 +45,8 @@ export interface ClassAttendanceEntry {
 
 export interface ClassSessionDetail {
   id: string;
-  groupId: string;
-  groupName: string;
+  courseId: string;
+  courseName: string;
   status: 'active' | 'ended';
   pdfName: string | null;
   startedAt: string | null;
@@ -71,8 +71,8 @@ export interface ClassHistoryItem {
   absentCount: number;
 }
 
-export async function apiClassHistory(groupId: string): Promise<ClassHistoryItem[]> {
-  const res = await client.get(`/classroom/groups/${groupId}/history`);
+export async function apiClassHistory(courseId: string): Promise<ClassHistoryItem[]> {
+  const res = await client.get(`/classroom/courses/${courseId}/history`);
   return res.data;
 }
 

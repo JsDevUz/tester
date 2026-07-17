@@ -5,6 +5,7 @@ import {
   Users,
   Brain,
   ArrowLeft,
+  Radio,
 } from "lucide-react";
 
 interface CourseSidePanelProps {
@@ -14,10 +15,11 @@ interface CourseSidePanelProps {
   activeTab?: "content" | "settings" | "practice";
   onSelectPractice?: () => void;
   onSelectContent?: () => void;
-  activeFullTab?: "content" | "settings" | "launch" | "groups";
+  activeFullTab?: "content" | "settings" | "launch" | "groups" | "classes";
   onSelectSettings?: () => void;
   onSelectLaunch?: () => void;
   onSelectGroups?: () => void;
+  onSelectClasses?: () => void;
 }
 
 interface SideTab {
@@ -52,6 +54,12 @@ const FULL_TABS: SideTab[] = [
     description: "O'quvchilarni ajratish",
     icon: Users,
   },
+  {
+    key: "classes",
+    label: "Jonli darslar",
+    description: "Tarix va davomat",
+    icon: Radio,
+  },
 ];
 
 const LESSON_TABS: SideTab[] = [
@@ -80,6 +88,7 @@ export function CourseSidePanel({
   onSelectSettings,
   onSelectLaunch,
   onSelectGroups,
+  onSelectClasses,
 }: CourseSidePanelProps) {
   const tabs = variant === "lesson" ? LESSON_TABS : FULL_TABS;
 
@@ -94,7 +103,8 @@ export function CourseSidePanel({
         key === "content" ||
         key === "settings" ||
         key === "launch" ||
-        key === "groups"
+        key === "groups" ||
+        key === "classes"
       );
     }
     if (key === "content") return true;
@@ -109,6 +119,7 @@ export function CourseSidePanel({
     if (key === "settings") onSelectSettings?.();
     if (key === "launch") onSelectLaunch?.();
     if (key === "groups") onSelectGroups?.();
+    if (key === "classes") onSelectClasses?.();
   }
 
   return (

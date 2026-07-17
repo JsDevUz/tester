@@ -8,8 +8,8 @@ import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './class
 function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSession {
   return {
     id: 'cs-1',
-    groupId: 'g-1',
-    groupName: 'Guruh A',
+    courseId: 'c-1',
+    courseName: 'Kurs A',
     hostUserId: 'host-1',
     hostSocketId: 'sock-host',
     pdfName: 'dars.pdf',

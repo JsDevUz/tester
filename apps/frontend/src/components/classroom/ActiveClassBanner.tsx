@@ -34,7 +34,7 @@ export function ActiveClassBanner() {
         >
           <Radio size={20} className="shrink-0 animate-pulse text-red-500" />
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-semibold text-gray-900">Jonli dars ketmoqda — {s.groupName}</span>
+            <span className="block truncate text-sm font-semibold text-gray-900">Jonli dars ketmoqda — {s.courseName}</span>
             <span className="block text-xs text-gray-500">Darsni boshqarish uchun bosing</span>
           </span>
           <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">Kirish</span>

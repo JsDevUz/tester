@@ -14,7 +14,7 @@ import { ClassroomService } from './classroom.service';
 const MAX_PDF_SIZE = 25 * 1024 * 1024; // 25 MB
 
 class CreateClassSessionDto {
-  @IsString() groupId!: string;
+  @IsString() courseId!: string;
 }
 
 class OverrideAttendanceDto {
@@ -29,7 +29,7 @@ export class ClassroomController {
   @Post('sessions')
   @Roles('teacher', 'super')
   createSession(@Body() dto: CreateClassSessionDto, @Req() req: any) {
-    return this.classroomService.createSession(dto.groupId, req.admin.id, req.admin.role);
+    return this.classroomService.createSession(dto.courseId, req.admin.id, req.admin.role);
   }
 
   @Post('sessions/:id/pdf')
@@ -72,10 +72,10 @@ export class ClassroomController {
     return this.classroomService.getSessionWithAttendance(id, req.admin.id, req.admin.role);
   }
 
-  @Get('groups/:groupId/history')
+  @Get('courses/:courseId/history')
   @Roles('teacher', 'super')
-  groupHistory(@Param('groupId', ParseUUIDPipe) groupId: string, @Req() req: any) {
-    return this.classroomService.groupHistory(groupId, req.admin.id, req.admin.role);
+  courseHistory(@Param('courseId', ParseUUIDPipe) courseId: string, @Req() req: any) {
+    return this.classroomService.courseHistory(courseId, req.admin.id, req.admin.role);
   }
 
   @Patch('attendance/:recordId')

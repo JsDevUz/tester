@@ -3,10 +3,10 @@ import {
   OnModuleInit, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
-import { attendanceRecords, classSessions, groupEnrollments, groups } from '../db/schema';
+import { attendanceRecords, classSessions, courses, groupEnrollments, groups } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
@@ -43,23 +43,31 @@ export class ClassroomService implements OnModuleInit {
 
   // ---------- REST: lifecycle ----------
 
-  async createSession(groupId: string, teacherId: string, role: string): Promise<{ id: string }> {
-    const group = await db.query.groups.findFirst({
-      where: eq(groups.id, groupId),
-      with: { course: true },
+  // Kursning barcha guruhlaridagi aktiv enrollmentlari — bitta darsni butun
+  // kursga o'tish mumkin bo'lishi kerak, guruhga cheklab bo'lmaydi.
+  private async loadCourseEnrollments(courseId: string) {
+    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, courseId) });
+    if (courseGroups.length === 0) return [];
+    const groupIds = courseGroups.map((g) => g.id);
+    return db.query.groupEnrollments.findMany({
+      where: and(inArray(groupEnrollments.groupId, groupIds), isNull(groupEnrollments.removedAt)),
+      with: { schoolMember: { with: { student: true } } },
     });
-    if (!group) throw new NotFoundException('Guruh topilmadi');
-    const course = group.course as unknown as { adminId: string };
+  }
+
+  async createSession(courseId: string, teacherId: string, role: string): Promise<{ id: string }> {
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
     if (role !== 'super' && course.adminId !== teacherId) {
-      throw new ForbiddenException('Bu guruh sizga tegishli emas');
+      throw new ForbiddenException('Bu kurs sizga tegishli emas');
     }
 
     for (const s of this.sessions.values()) {
-      if (s.groupId === groupId) throw new ConflictException('Bu guruhda jonli dars allaqachon ochiq');
+      if (s.courseId === courseId) throw new ConflictException('Bu kursda jonli dars allaqachon ochiq');
     }
     // Restartdan qolgan stale row bo'lsa yopib qo'yamiz
     const staleRow = await db.query.classSessions.findFirst({
-      where: and(eq(classSessions.groupId, groupId), eq(classSessions.status, 'active')),
+      where: and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'active')),
     });
     if (staleRow) {
       await db.update(classSessions)
@@ -67,12 +75,9 @@ export class ClassroomService implements OnModuleInit {
         .where(eq(classSessions.id, staleRow.id));
     }
 
-    const [row] = await db.insert(classSessions).values({ groupId, teacherId }).returning();
+    const [row] = await db.insert(classSessions).values({ courseId, teacherId }).returning();
 
-    const enrollments = await db.query.groupEnrollments.findMany({
-      where: and(eq(groupEnrollments.groupId, groupId), isNull(groupEnrollments.removedAt)),
-      with: { schoolMember: { with: { student: true } } },
-    });
+    const enrollments = await this.loadCourseEnrollments(courseId);
 
     if (enrollments.length > 0) {
       await db.insert(attendanceRecords)
@@ -96,8 +101,8 @@ export class ClassroomService implements OnModuleInit {
 
     this.sessions.set(row.id, {
       id: row.id,
-      groupId,
-      groupName: group.name,
+      courseId,
+      courseName: course.title,
       hostUserId: teacherId,
       hostSocketId: null,
       pdfName: null,
@@ -192,11 +197,8 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireSession(sessionId);
     let p = s.participants.get(userId);
     if (!p) {
-      // Sessiya ochilganidan keyin guruhga qo'shilgan bo'lishi mumkin
-      const rows = await db.query.groupEnrollments.findMany({
-        where: and(eq(groupEnrollments.groupId, s.groupId), isNull(groupEnrollments.removedAt)),
-        with: { schoolMember: { with: { student: true } } },
-      });
+      // Sessiya ochilganidan keyin kursning biror guruhiga qo'shilgan bo'lishi mumkin
+      const rows = await this.loadCourseEnrollments(s.courseId);
       const enrollment = rows.find(
         (r) => (r.schoolMember as unknown as { studentId: string }).studentId === userId,
       );
@@ -304,12 +306,12 @@ export class ClassroomService implements OnModuleInit {
   // ---------- REST: ro'yxatlar / davomat ----------
 
   async listActiveForUser(userId: string, role: string) {
-    const result: Array<{ id: string; groupId: string; groupName: string; startedAt: number }> = [];
+    const result: Array<{ id: string; courseId: string; courseName: string; startedAt: number }> = [];
     for (const s of this.sessions.values()) {
       const isHost = s.hostUserId === userId && (role === 'teacher' || role === 'super');
       const isMember = role === 'student' && s.participants.has(userId);
       if (isHost || isMember) {
-        result.push({ id: s.id, groupId: s.groupId, groupName: s.groupName, startedAt: s.startedAtMs });
+        result.push({ id: s.id, courseId: s.courseId, courseName: s.courseName, startedAt: s.startedAtMs });
       }
     }
     return result;
@@ -319,18 +321,18 @@ export class ClassroomService implements OnModuleInit {
     const row = await db.query.classSessions.findFirst({
       where: eq(classSessions.id, sessionId),
       with: {
-        group: { with: { course: true } },
+        course: true,
         attendance: { with: { enrollment: { with: { schoolMember: { with: { student: true } } } } } },
       },
     });
     if (!row) throw new NotFoundException('Sessiya topilmadi');
-    const course = (row.group as unknown as { course: { adminId: string } }).course;
+    const course = row.course as unknown as { adminId: string; title: string };
     if (role !== 'super' && course.adminId !== callerId) throw new ForbiddenException();
     const live = this.sessions.get(sessionId);
     return {
       id: row.id,
-      groupId: row.groupId,
-      groupName: (row.group as unknown as { name: string }).name,
+      courseId: row.courseId,
+      courseName: course.title,
       status: row.status,
       pdfName: row.pdfName,
       startedAt: row.startedAt?.toISOString() ?? null,
@@ -358,17 +360,13 @@ export class ClassroomService implements OnModuleInit {
     };
   }
 
-  async groupHistory(groupId: string, callerId: string, role: string) {
-    const group = await db.query.groups.findFirst({
-      where: eq(groups.id, groupId),
-      with: { course: true },
-    });
-    if (!group) throw new NotFoundException('Guruh topilmadi');
-    const course = group.course as unknown as { adminId: string };
+  async courseHistory(courseId: string, callerId: string, role: string) {
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
     if (role !== 'super' && course.adminId !== callerId) throw new ForbiddenException();
 
     const rows = await db.query.classSessions.findMany({
-      where: eq(classSessions.groupId, groupId),
+      where: eq(classSessions.courseId, courseId),
       orderBy: [desc(classSessions.startedAt)],
       limit: 100,
       with: { attendance: true },
@@ -396,13 +394,13 @@ export class ClassroomService implements OnModuleInit {
     const record = await db.query.attendanceRecords.findFirst({
       where: eq(attendanceRecords.id, recordId),
       with: {
-        session: { with: { group: { with: { course: true } } } },
+        session: { with: { course: true } },
         enrollment: { with: { schoolMember: true } },
       },
     });
     if (!record) throw new NotFoundException('Davomat yozuvi topilmadi');
-    const session = record.session as unknown as { id: string; group: { course: { adminId: string } } };
-    if (role !== 'super' && session.group.course.adminId !== adminId) throw new ForbiddenException();
+    const session = record.session as unknown as { id: string; course: { adminId: string } };
+    if (role !== 'super' && session.course.adminId !== adminId) throw new ForbiddenException();
 
     await db.update(attendanceRecords)
       .set({ status, overriddenByAdminId: adminId })

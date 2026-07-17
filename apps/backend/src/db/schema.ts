@@ -558,7 +558,7 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
 
 export const classSessions = pgTable('class_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  groupId: uuid('group_id').notNull().references(() => groups.id, { onDelete: 'cascade' }),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
   teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
   status: text('status').notNull().default('active'),
   pdfName: text('pdf_name'),
@@ -566,7 +566,7 @@ export const classSessions = pgTable('class_sessions', {
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
 }, (table) => ({
-  groupIdIdx: index('class_sessions_group_id_idx').on(table.groupId),
+  courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));
 
 export const attendanceRecords = pgTable('attendance_records', {
@@ -583,7 +583,7 @@ export const attendanceRecords = pgTable('attendance_records', {
 }));
 
 export const classSessionsRelations = relations(classSessions, ({ one, many }) => ({
-  group: one(groups, { fields: [classSessions.groupId], references: [groups.id] }),
+  course: one(courses, { fields: [classSessions.courseId], references: [courses.id] }),
   teacher: one(users, { fields: [classSessions.teacherId], references: [users.id] }),
   attendance: many(attendanceRecords),
 }));

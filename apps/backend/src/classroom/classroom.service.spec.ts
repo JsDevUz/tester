@@ -14,7 +14,8 @@ jest.mock('../db', () => ({
     })),
     update: jest.fn(() => ({ set: jest.fn(() => ({ where: async () => {} })) })),
     query: {
-      groups: { findFirst: jest.fn() },
+      courses: { findFirst: jest.fn() },
+      groups: { findFirst: jest.fn(), findMany: jest.fn() },
       classSessions: { findFirst: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn(), findFirst: jest.fn() },
       attendanceRecords: { findFirst: jest.fn() },
@@ -41,9 +42,10 @@ function enrollmentRow(enrollmentId: string, userId: string, name: string) {
 }
 
 function setupDbForCreate() {
-  mockedDb.query.groups.findFirst.mockResolvedValue({
-    id: 'g-1', name: 'Guruh A', course: { adminId: 'teacher-1' },
+  mockedDb.query.courses.findFirst.mockResolvedValue({
+    id: 'c-1', title: 'Kurs A', adminId: 'teacher-1',
   });
+  mockedDb.query.groups.findMany.mockResolvedValue([{ id: 'g-1', courseId: 'c-1' }]);
   mockedDb.query.classSessions.findFirst.mockResolvedValue(undefined);
   mockedDb.query.groupEnrollments.findMany.mockResolvedValue([
     enrollmentRow('e-1', 'stu-1', 'Ali'),
@@ -59,7 +61,7 @@ async function setup() {
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
   setupDbForCreate();
-  const { id } = await service.createSession('g-1', 'teacher-1', 'teacher');
+  const { id } = await service.createSession('c-1', 'teacher-1', 'teacher');
   return { service, events, sessionId: id };
 }
 
@@ -82,13 +84,13 @@ describe('createSession', () => {
   it('begona ustoz uchun taqiqlanadi', async () => {
     const service = new ClassroomService({} as any, { get: () => undefined } as any);
     setupDbForCreate();
-    await expect(service.createSession('g-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
+    await expect(service.createSession('c-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
   });
 
-  it('bitta guruhda ikkinchi aktiv sessiya ochilmaydi', async () => {
+  it('bitta kursda ikkinchi aktiv sessiya ochilmaydi', async () => {
     const { service } = await setup();
     setupDbForCreate();
-    await expect(service.createSession('g-1', 'teacher-1', 'teacher')).rejects.toThrow();
+    await expect(service.createSession('c-1', 'teacher-1', 'teacher')).rejects.toThrow();
   });
 });
 
