@@ -197,6 +197,7 @@ export class SchoolsService {
             : {
                 id: m.studentId,
                 name: m.student.displayName,
+                telegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
                 phone: m.student.phone,
                 avatarUrl: m.student.displayAvatarUrl,
                 productsCount: 0,
@@ -224,6 +225,7 @@ export class SchoolsService {
         return {
           id: m.studentId,
           name: m.student.displayName,
+          telegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
           phone: m.student.phone,
           avatarUrl: m.student.displayAvatarUrl,
           productsCount: uniqueCourseIds.size,
@@ -238,7 +240,7 @@ export class SchoolsService {
     return this.paginate(filteredRows, limit, offset);
   }
 
-  async listEnrollments(adminId: string, callerId: string, callerRole: string, limit = 7, offset = 0, query = '') {
+  async listEnrollments(adminId: string, callerId: string, callerRole: string, limit = 7, offset = 0, query = '', courseFilter = '') {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
@@ -259,6 +261,7 @@ export class SchoolsService {
     const rows: Array<{
       studentId: string;
       studentName: string;
+      studentTelegramName: string | null;
       studentPhone: string | null;
       studentAvatarUrl: string | null;
       active: boolean;
@@ -320,6 +323,7 @@ export class SchoolsService {
         rows.push({
           studentId: m.studentId,
           studentName: m.student.displayName,
+          studentTelegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
           studentPhone: m.student.phone,
           studentAvatarUrl: m.student.displayAvatarUrl,
           active: !enrollment.forcedClosed,
@@ -338,14 +342,20 @@ export class SchoolsService {
     }
 
     const normalizedQuery = query.trim().toLowerCase();
+    const normalizedCourse = courseFilter.trim().toLowerCase();
     const filteredRows = normalizedQuery
       ? rows.filter((row) =>
           row.studentName.toLowerCase().includes(normalizedQuery)
+          || (row.studentTelegramName ?? '').toLowerCase().includes(normalizedQuery)
           || (row.studentPhone ?? '').toLowerCase().includes(normalizedQuery)
           || row.courseTitle.toLowerCase().includes(normalizedQuery),
         )
       : rows;
-    return this.paginate(filteredRows, limit, offset);
+    return this.paginate(
+      normalizedCourse ? filteredRows.filter((row) => row.courseTitle.toLowerCase() === normalizedCourse) : filteredRows,
+      limit,
+      offset,
+    );
   }
 
   async getStudentCourseProgress(
@@ -537,6 +547,18 @@ export class SchoolsService {
         };
       }),
     };
+  }
+
+  async updateStudentName(adminId: string, studentId: string, name: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const member = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    if (!member) throw new NotFoundException('Student not found in this school');
+    const trimmedName = name.trim();
+    if (!trimmedName) throw new BadRequestException("O'quvchi ismi bo'sh bo'lishi mumkin emas.");
+    const [updated] = await db.update(users).set({ customName: trimmedName }).where(eq(users.id, studentId)).returning();
+    return { id: updated.id, name: updated.displayName, telegramName: updated.name, phone: updated.phone, avatarUrl: updated.displayAvatarUrl };
   }
 
   async findStudentsWithoutGroup(adminId: string) {

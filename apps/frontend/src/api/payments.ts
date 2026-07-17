@@ -49,8 +49,9 @@ export async function apiRecordPayment(
   method?: string,
   note?: string,
   receiptUrl?: string,
+  paymentDate?: string,
 ): Promise<ApiMonthlyPayment> {
-  const res = await client.post(`/payments/${paymentId}/pay`, { amount, discount, method, note, receiptUrl });
+  const res = await client.post(`/payments/${paymentId}/pay`, { amount, discount, method, note, receiptUrl, paymentDate });
   return res.data;
 }
 

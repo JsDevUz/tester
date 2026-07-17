@@ -4,14 +4,14 @@ import { ChevronRight, Trophy, BookOpen, ThumbsUp } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { apiGetMySubmissions, type Submission } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
-
-const LIMIT = 10;
+import { PageSizeSelect } from "../components/PaginationControls";
 
 export function StudentHistoryPage() {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
@@ -26,10 +26,10 @@ export function StudentHistoryPage() {
       setLoadingMore(true);
     }
     try {
-      const rows = await apiGetMySubmissions(LIMIT, offsetRef.current);
+      const rows = await apiGetMySubmissions(pageSize, offsetRef.current);
       setSubmissions((prev) => (reset ? rows : [...prev, ...rows]));
       offsetRef.current += rows.length;
-      if (rows.length < LIMIT) setHasMore(false);
+      if (rows.length < pageSize) setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -38,7 +38,7 @@ export function StudentHistoryPage() {
 
   useEffect(() => {
     loadMore(true);
-  }, []);
+  }, [pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -62,9 +62,10 @@ export function StudentHistoryPage() {
   return (
     <StudentShell>
       <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
-        <h2 className="mb-3 text-xl font-bold text-gray-900 lg:mb-4 lg:text-lg lg:text-gray-800">
-          Amaliyotlar tarixi
-        </h2>
+        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 lg:mb-4">
+          <h2 className="text-xl font-bold text-gray-900 lg:text-lg lg:text-gray-800">Amaliyotlar tarixi</h2>
+          <PageSizeSelect value={pageSize} onChange={setPageSize} />
+        </div>
 
         {loading ? (
           <div className="flex justify-center py-12">

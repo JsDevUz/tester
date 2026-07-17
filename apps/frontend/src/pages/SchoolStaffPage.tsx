@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronLeft, ChevronRight, Inbox, Plus, X } from 'lucide-react';
+import { Inbox, Plus, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
@@ -7,6 +7,7 @@ import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
 import { UserAvatar } from '../components/UserAvatar';
 import { DataLoadingState } from '../components/DataLoadingState';
+import { PaginationControls } from '../components/PaginationControls';
 
 const AVATAR_PALETTES = [
   'bg-gray-200 text-gray-700',
@@ -26,19 +27,17 @@ const ROLE_BADGE: Record<SchoolStaffRole, { label: string; className: string }> 
   curator: { label: 'Kurator', className: 'bg-amber-100 text-amber-600' },
 };
 
-const PAGE_SIZE = 7;
-
 export function SchoolStaffPage() {
   const { staff, staffTotal, staffLoading, staffLoaded, staffError, loadStaff, searchStudents, addStaff, removeStaff } = useSchoolStore();
   const [modalOpen, setModalOpen] = useState(false);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
 
   useEffect(() => {
-    void loadStaff(PAGE_SIZE, (page - 1) * PAGE_SIZE).catch(() => undefined);
-  }, [loadStaff, page]);
+    void loadStaff(pageSize, (page - 1) * pageSize).catch(() => undefined);
+  }, [loadStaff, page, pageSize]);
 
-  const pageCount = Math.max(1, Math.ceil(staffTotal / PAGE_SIZE));
-  const currentPage = Math.min(page, pageCount);
+  const pageCount = Math.max(1, Math.ceil(staffTotal / pageSize));
   const pageStaff = staff;
   const staffLimitReached = staffTotal >= 30;
 
@@ -47,7 +46,7 @@ export function SchoolStaffPage() {
     try {
       await addStaff(studentId, role);
       setModalOpen(false);
-      setPage(Math.ceil((staffTotal + 1) / PAGE_SIZE));
+      setPage(Math.ceil((staffTotal + 1) / pageSize));
       toast.success("Xodim qo'shildi");
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Xodim qo'shib bo'lmadi");
@@ -82,7 +81,7 @@ export function SchoolStaffPage() {
           ) : staffError && staff.length === 0 ? (
             <div className="rounded-2xl bg-white py-16 text-center text-sm text-gray-400">
               <p>{staffError}</p>
-              <button type="button" onClick={() => void loadStaff(PAGE_SIZE, (page - 1) * PAGE_SIZE).catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
+              <button type="button" onClick={() => void loadStaff(pageSize, (page - 1) * pageSize).catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
             </div>
           ) : staffLoaded && staff.length === 0 ? (
             <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
@@ -114,42 +113,7 @@ export function SchoolStaffPage() {
                   </div>
                 );
               })}
-              {pageCount > 1 && (
-                <div className="flex items-center justify-center gap-1.5 py-3">
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.max(1, currentPage - 1))}
-                    disabled={currentPage === 1}
-                    className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                    aria-label="Oldingi sahifa"
-                  >
-                    <ChevronLeft size={16} />
-                  </button>
-                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
-                    <button
-                      key={pageNumber}
-                      type="button"
-                      onClick={() => setPage(pageNumber)}
-                      className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
-                        pageNumber === currentPage
-                          ? 'bg-gray-900 text-white'
-                          : 'text-gray-500 hover:bg-gray-100'
-                      }`}
-                    >
-                      {pageNumber}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
-                    disabled={currentPage === pageCount}
-                    className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                    aria-label="Keyingi sahifa"
-                  >
-                    <ChevronRight size={16} />
-                  </button>
-                </div>
-              )}
+              <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
             </div>
           )}
         </div>

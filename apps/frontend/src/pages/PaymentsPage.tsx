@@ -4,7 +4,6 @@ import {
   AlertCircle,
   Banknote,
   CalendarDays,
-  Check,
   ChevronDown,
   CreditCard,
   Download,
@@ -169,10 +168,10 @@ export function PaymentsPage() {
     note?: string,
     receiptUrl?: string,
     discount?: number,
+    paymentDate?: string,
   ) {
-    await apiRecordPayment(paymentId, amount, discount, method, note, receiptUrl);
+    await apiRecordPayment(paymentId, amount, discount, method, note, receiptUrl, paymentDate);
     await refresh();
-    setModalOpen(false);
   }
 
   if (loading) {
@@ -578,6 +577,7 @@ function PaymentModal({
     note?: string,
     receiptUrl?: string,
     discount?: number,
+    paymentDate?: string,
   ) => Promise<void>;
   onClose: () => void;
 }) {
@@ -592,8 +592,10 @@ function PaymentModal({
   );
 
   const [studentQuery, setStudentQuery] = useState("");
-  const [selectedId, setSelectedId] = useState(duePayments[0]?.id ?? "");
+  const [selectedIds, setSelectedIds] = useState<string[]>(duePayments[0]?.id ? [duePayments[0].id] : []);
   const [amount, setAmount] = useState("");
+  const [payFullAmount, setPayFullAmount] = useState(false);
+  const [paymentDate, setPaymentDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [discount, setDiscount] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("cash");
   const [note, setNote] = useState("");
@@ -601,21 +603,26 @@ function PaymentModal({
   const [saving, setSaving] = useState(false);
   const [uploadingReceipt, setUploadingReceipt] = useState(false);
 
-  const selectedRow = duePayments.find((row) => row.id === selectedId) ?? null;
+  const selectedRows = duePayments.filter((row) => selectedIds.includes(row.id));
+  const selectedRow = selectedRows[0] ?? null;
   const filteredPayments = duePayments.filter((row) =>
     `${row.studentName} ${row.studentPhone ?? ""} ${formatMonthLabel(row.periodMonth)}`
       .toLowerCase()
       .includes(studentQuery.trim().toLowerCase()),
   );
+  const allVisibleSelected = filteredPayments.length > 0 && filteredPayments.every((row) => selectedIds.includes(row.id));
   const numericAmount = Number(amount.replace(/\D/g, ""));
   const numericDiscount = discount ? Number(discount.replace(/\D/g, "")) : undefined;
-  const discountTooHigh = !!selectedRow && numericDiscount !== undefined && numericDiscount > selectedRow.expectedAmount;
+  const discountTooHigh = selectedRows.some((row) => numericDiscount !== undefined && numericDiscount > row.expectedAmount);
   const dueAfterDiscount = selectedRow
     ? Math.max(selectedRow.expectedAmount - (numericDiscount ?? selectedRow.discountAmount) - selectedRow.paidAmount, 0)
     : 0;
-  const amountTooHigh = !!selectedRow && numericAmount > dueAfterDiscount;
+  const amountTooHigh = selectedRows.some((row) => numericAmount > Math.max(row.expectedAmount - (numericDiscount ?? row.discountAmount) - row.paidAmount, 0));
+  const amountForRow = (row: ApiPaymentRow) => payFullAmount
+    ? Math.max(row.expectedAmount - (numericDiscount ?? row.discountAmount) - row.paidAmount, 0)
+    : numericAmount;
   const canSave =
-    !!selectedRow && numericAmount > 0 && !amountTooHigh && !discountTooHigh;
+    selectedRows.length > 0 && selectedRows.every((row) => amountForRow(row) > 0) && (payFullAmount || numericAmount > 0) && (payFullAmount || !amountTooHigh) && !discountTooHigh;
 
   function handlePickReceipt(event: React.ChangeEvent<HTMLInputElement>) {
     const file = event.target.files?.[0];
@@ -634,7 +641,10 @@ function PaymentModal({
         receiptUrl = uploaded.url;
         setUploadingReceipt(false);
       }
-      await onSave(selectedRow.id, numericAmount, method, note.trim() || undefined, receiptUrl, numericDiscount);
+      for (const row of selectedRows) {
+        await onSave(row.id, amountForRow(row), method, note.trim() || undefined, receiptUrl, numericDiscount, paymentDate);
+      }
+      onClose();
     } catch (err: any) {
       toast.error(err?.response?.data?.message ?? "Xato yuz berdi. Qayta urinib ko'ring.");
     } finally {
@@ -701,20 +711,32 @@ function PaymentModal({
                 />
               </div>
               <div className="max-h-36 overflow-y-auto">
+                <label className="mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-white">
+                  <input
+                    type="checkbox"
+                    checked={allVisibleSelected}
+                    onChange={(event) => {
+                      if (event.target.checked) {
+                        setSelectedIds((current) => Array.from(new Set([...current, ...filteredPayments.map((row) => row.id)])));
+                      } else {
+                        const visibleIds = new Set(filteredPayments.map((row) => row.id));
+                        setSelectedIds((current) => current.filter((id) => !visibleIds.has(id)));
+                      }
+                    }}
+                    className="h-4 w-4 accent-indigo-500"
+                  />
+                  Barchasini tanlash ({filteredPayments.length})
+                </label>
                 {filteredPayments.map((row) => {
-                  const selected = selectedId === row.id;
+                  const selected = selectedIds.includes(row.id);
                   return (
-                    <button
+                    <label
                       key={row.id}
-                      type="button"
-                      onClick={() => {
-                        setSelectedId(row.id);
-                        setDiscount("");
-                      }}
                       className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
                         selected ? "bg-gray-100 text-gray-900" : "hover:bg-white"
                       }`}
                     >
+                      <input type="checkbox" checked={selected} onChange={() => setSelectedIds((current) => selected ? current.filter((id) => id !== row.id) : [...current, row.id])} className="h-4 w-4 accent-indigo-500" />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-gray-800">
                           {row.studentName}
@@ -723,8 +745,7 @@ function PaymentModal({
                           {row.courseTitle} • {formatMonthLabel(row.periodMonth)}
                         </p>
                       </div>
-                      {selected && <Check size={16} className="text-gray-900 shrink-0" />}
-                    </button>
+                    </label>
                   );
                 })}
               </div>
@@ -733,7 +754,7 @@ function PaymentModal({
 
           {selectedRow && (
             <div className="sm:col-span-2 rounded-2xl bg-gray-50 p-4 text-sm">
-              <p className="font-semibold text-gray-800">{selectedRow.studentName}</p>
+              <p className="font-semibold text-gray-800">{selectedRows.length > 1 ? `${selectedRows.length} ta o'quvchi tanlandi` : selectedRow.studentName}</p>
               <p className="mt-1 text-xs text-gray-500">
                 {selectedRow.courseTitle} • {selectedRow.groupName} • {selectedRow.planName ?? "Tarifsiz"}
               </p>
@@ -748,15 +769,20 @@ function PaymentModal({
           )}
 
           <Field label="Summa">
+            <label className="mb-2 flex cursor-pointer items-center gap-2 text-xs font-semibold text-gray-600">
+              <input type="checkbox" checked={payFullAmount} onChange={(event) => setPayFullAmount(event.target.checked)} className="h-4 w-4 accent-indigo-500" />
+              Har bir o'quvchining to'liq summasi bilan
+            </label>
             <input
               value={amount}
               onChange={(event) => setAmount(event.target.value.replace(/[^\d\s]/g, ""))}
-              placeholder="300000"
-              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none ${
+              disabled={payFullAmount}
+              placeholder={payFullAmount ? "Tarif bo'yicha avtomatik hisoblanadi" : "300000"}
+              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
                 amountTooHigh ? "ring-1 ring-red-400" : ""
               }`}
             />
-            {amountTooHigh && (
+            {!payFullAmount && amountTooHigh && (
               <p className="mt-1 text-xs text-red-500">
                 Summa kutilayotgan to'lovdan ({formatMoney(dueAfterDiscount)}) oshib ketmasligi kerak
               </p>
@@ -783,7 +809,11 @@ function PaymentModal({
               onChange={setMethod}
               options={METHOD_OPTIONS}
               getLabel={(value) => METHOD_LABEL[value]}
+              disabled={payFullAmount}
             />
+          </Field>
+          <Field label="To'lov sanasi">
+            <input type="date" value={paymentDate} onChange={(event) => setPaymentDate(event.target.value)} className="w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-700 outline-none" />
           </Field>
           <Field label="Izoh" className="sm:col-span-2">
             <textarea
@@ -853,18 +883,21 @@ function SelectField<TValue extends string>({
   onChange,
   options,
   getLabel = (option) => option,
+  disabled = false,
 }: {
   value: TValue;
   onChange: (value: TValue) => void;
   options: TValue[];
   getLabel?: (value: TValue) => string;
+  disabled?: boolean;
 }) {
   return (
     <div className="relative">
       <select
         value={value}
         onChange={(event) => onChange(event.target.value as TValue)}
-        className="w-full appearance-none rounded-2xl bg-gray-50 px-4 py-3 pr-10 text-sm text-gray-700 outline-none"
+        disabled={disabled}
+        className="w-full appearance-none rounded-2xl bg-gray-50 px-4 py-3 pr-10 text-sm text-gray-700 outline-none disabled:cursor-not-allowed disabled:opacity-50"
       >
         {options.map((option) => (
           <option key={option} value={option}>

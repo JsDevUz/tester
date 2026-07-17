@@ -68,6 +68,7 @@ export async function apiGetSchoolStaff(limit = 7, offset = 0): Promise<Paginate
 export interface ApiSchoolStudent {
   id: string;
   name: string;
+  telegramName: string | null;
   phone: string | null;
   productsCount: number;
   totalPaid: number;
@@ -79,9 +80,15 @@ export async function apiListAllStudents(limit = 7, offset = 0, query = ''): Pro
   return res.data;
 }
 
+export async function apiUpdateStudentName(studentId: string, name: string): Promise<{ id: string; name: string; telegramName: string | null; phone: string | null; avatarUrl: string | null }> {
+  const res = await client.patch(`/school/students/${studentId}/name`, { name });
+  return res.data;
+}
+
 export interface ApiSchoolEnrollment {
   studentId: string;
   studentName: string;
+  studentTelegramName: string | null;
   studentPhone: string | null;
   studentAvatarUrl: string | null;
   active: boolean;
@@ -97,8 +104,8 @@ export interface ApiSchoolEnrollment {
   starsMax: number;
 }
 
-export async function apiListEnrollments(limit = 7, offset = 0, query = ''): Promise<PaginatedResponse<ApiSchoolEnrollment>> {
-  const res = await client.get('/school/students/enrollments', { params: { limit, offset, q: query || undefined } });
+export async function apiListEnrollments(limit = 7, offset = 0, query = '', course = ''): Promise<PaginatedResponse<ApiSchoolEnrollment>> {
+  const res = await client.get('/school/students/enrollments', { params: { limit, offset, q: query || undefined, course: course || undefined } });
   return res.data;
 }
 
