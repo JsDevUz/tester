@@ -14,7 +14,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsInt, Min } from 'class-validator';
+import { IsIn, IsInt, IsString, Min, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -27,6 +27,13 @@ import { VideoUploadService } from './video-upload.service';
 class SaveWatchProgressDto {
   @IsInt() @Min(0) startSec: number;
   @IsInt() @Min(0) endSec: number;
+}
+
+class InitiateVideoUploadDto {
+  @IsString() @MinLength(1) fileName: string;
+  @IsString() @IsIn(['video/mp4', 'video/quicktime', 'video/x-m4v', 'video/webm', 'video/x-matroska'])
+  mimeType: string;
+  label?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -57,6 +64,22 @@ export class VideosController {
     @Req() req: any,
   ) {
     return this.videoUploadService.uploadVideo(lessonId, req.admin.id, file, label);
+  }
+
+  @Post('lessons/:lessonId/videos/initiate')
+  @Roles('teacher', 'super')
+  initiateUpload(
+    @Param('lessonId') lessonId: string,
+    @Body() dto: InitiateVideoUploadDto,
+    @Req() req: any,
+  ) {
+    return this.videoUploadService.initiateUpload(lessonId, req.admin.id, dto.fileName, dto.mimeType, dto.label);
+  }
+
+  @Post('blocks/:blockId/videos/complete')
+  @Roles('teacher', 'super')
+  completeUpload(@Param('blockId') blockId: string, @Req() req: any) {
+    return this.videoUploadService.completeUpload(blockId, req.admin.id);
   }
 
   @Post('blocks/:blockId/videos/retry')

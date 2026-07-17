@@ -167,3 +167,26 @@ livekit.SIZNING-DOMEN.uz {
 ```
 
 Brauzer mikrofonga faqat HTTPS sahifada ruxsat beradi, shuning uchun productionda `LIVEKIT_URL` albatta `wss://` bo'lishi kerak. Konfiguratsiya: `docker/livekit.yaml`.
+
+## Video upload uchun S3/R2 CORS
+
+Video fayllar endi backend orqali proxy qilinmaydi — brauzer to'g'ridan-to'g'ri
+object storage'ga (S3/R2) yuklaydi (tezlik uchun). Buning ishlashi uchun
+bucket'da CORS sozlangan bo'lishi **shart**, aks holda brauzer yuklashni
+bloklaydi ("CORS error" konsolda).
+
+Cloudflare R2 uchun bucket sozlamalarida (yoki `rclone`/`aws s3api` orqali):
+
+```json
+[
+  {
+    "AllowedOrigins": ["https://SIZNING-DOMEN.uz"],
+    "AllowedMethods": ["PUT"],
+    "AllowedHeaders": ["Content-Type"],
+    "MaxAgeSeconds": 3600
+  }
+]
+```
+
+`AllowedOrigins`ga faqat frontend domeningizni yozing (lokal ishlab chiqish
+uchun qo'shimcha qator: `http://localhost:5173`).

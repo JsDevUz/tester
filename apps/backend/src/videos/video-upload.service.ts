@@ -9,6 +9,8 @@ import { VideoJobService } from './video-job.service';
 
 const CONTENT_BLOCK_LIMIT = 7;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.mkv'];
+const VIDEO_MIME_PREFIX = 'video/';
+const MAX_VIDEO_BYTES = 500 * 1024 * 1024;
 
 @Injectable()
 export class VideoUploadService {
@@ -64,6 +66,78 @@ export class VideoUploadService {
       .returning();
 
     this.videoJobService.enqueue(block.id);
+    return updated;
+  }
+
+  // 1-bosqich: client fayl yubormasdan oldin — bo'sh content-block yaratamiz
+  // va S3'ga to'g'ridan-to'g'ri yuklash uchun muddati qisqa havola qaytaramiz.
+  // Bu backend orqali proxy qilishning o'rnini bosadi (katta videolarda tez).
+  async initiateUpload(
+    lessonId: string,
+    adminId: string,
+    fileName: string,
+    mimeType: string,
+    label?: string,
+  ) {
+    const ext = extname(fileName).toLowerCase();
+    if (!VIDEO_EXTENSIONS.includes(ext) || !mimeType.startsWith(VIDEO_MIME_PREFIX)) {
+      throw new BadRequestException('Faqat video fayllar qabul qilinadi');
+    }
+
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({
+        lessonId,
+        type: 'video',
+        orderIndex: existing.length,
+        fileName,
+        label: label?.trim() || fileName,
+        processingStatus: 'pending',
+      })
+      .returning();
+
+    const sourceKey = `videos/${lessonId}/${block.id}/source/${randomUUID()}${ext}`;
+    const uploadUrl = await this.storageService.createPresignedUploadUrl(sourceKey, mimeType);
+
+    await db.update(contentBlocks).set({ sourceKey }).where(eq(contentBlocks.id, block.id));
+
+    return { blockId: block.id, uploadUrl, sourceKey };
+  }
+
+  // 2-bosqich: client S3'ga yuklashni tugatgach chaqiradi. Client "tugadi"
+  // deganiga ishonmaymiz — S3'dan faylning haqiqatan borligini va hajmini
+  // o'zimiz tekshiramiz, shundan keyingina transcode job ishga tushadi.
+  async completeUpload(blockId: string, adminId: string) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'video' || !block.sourceKey) {
+      throw new NotFoundException('Video block not found');
+    }
+    await this.assertLessonOwnership(block.lessonId, adminId);
+
+    const info = await this.storageService.headObject(block.sourceKey);
+    if (!info) {
+      throw new BadRequestException("Fayl S3'da topilmadi — yuklash yakunlanmagan bo'lishi mumkin");
+    }
+    if (info.sizeBytes > MAX_VIDEO_BYTES) {
+      throw new BadRequestException('Video hajmi 500 MB dan oshmasligi kerak');
+    }
+    if (info.sizeBytes === 0) {
+      throw new BadRequestException("Yuklangan fayl bo'sh");
+    }
+
+    const [updated] = await db
+      .update(contentBlocks)
+      .set({ processingStatus: 'pending', errorMessage: null })
+      .where(eq(contentBlocks.id, blockId))
+      .returning();
+
+    this.videoJobService.enqueue(blockId);
     return updated;
   }
 
