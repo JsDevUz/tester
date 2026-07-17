@@ -119,7 +119,9 @@ export function ClassroomHostPage() {
             Ovozni yoqish uchun bosing
           </button>
         )}
+      </AutoHideHeader>
 
+      <div className="shrink-0 px-2 pt-2 sm:px-4 sm:pt-4">
         <ClassroomToolbar
           tool={tool}
           color={color}
@@ -132,7 +134,7 @@ export function ClassroomHostPage() {
           onClear={() => hostActions.clearPage(state.currentPage)}
           onUploadPdf={(f) => void handleUpload(f)}
         />
-      </AutoHideHeader>
+      </div>
 
       <div className="flex-1 min-h-0 flex flex-col p-2 sm:p-4">
         <ClassroomPdfViewer
