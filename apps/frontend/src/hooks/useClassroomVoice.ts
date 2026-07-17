@@ -11,6 +11,9 @@ interface VoiceState {
   // true — brauzer autoplay siyosati kiruvchi ovozni bloklagan, foydalanuvchi
   // amali (tugma bosish) bilan qo'lda ijro ettirish kerak.
   needsAudioUnlock: boolean;
+  // Foydalanuvchi tanlashi mumkin bo'lgan mikrofon (audioinput) qurilmalari
+  audioInputs: MediaDeviceInfo[];
+  activeAudioInputId: string | null;
 }
 
 export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean) {
@@ -21,8 +24,23 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     micEnabled: false,
     speakingUserIds: new Set(),
     needsAudioUnlock: false,
+    audioInputs: [],
+    activeAudioInputId: null,
   });
   const pendingAudioElsRef = useRef<Set<HTMLMediaElement>>(new Set());
+
+  // Mikrofon qurilmalar ro'yxatini yangilaydi — LiveKit ruxsat berilgandan
+  // keyingina qurilma nomlarini (label) to'liq qaytaradi.
+  const refreshAudioInputs = useCallback(async (room: Room) => {
+    try {
+      const devices = await Room.getLocalDevices("audioinput");
+      setState((s) => ({ ...s, audioInputs: devices }));
+      const activeId = room.getActiveDevice("audioinput");
+      if (activeId) setState((s) => ({ ...s, activeAudioInputId: activeId }));
+    } catch (e) {
+      console.error("Mikrofon qurilmalarini olib bo'lmadi:", e);
+    }
+  }, []);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -80,6 +98,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
           await room.localParticipant.setMicrophoneEnabled(true);
           setState((s) => ({ ...s, micEnabled: true }));
         }
+        void refreshAudioInputs(room);
       } catch (e: any) {
         if (cancelled) return;
         if (e?.response?.status === 503) {
@@ -121,5 +140,18 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     setState((s) => ({ ...s, needsAudioUnlock: false }));
   }, []);
 
-  return { ...state, toggleMic, unlockAudio };
+  // Foydalanuvchi boshqa mikrofon qurilmasini tanlaganda — LiveKit shu
+  // qurilmaga jonli almashadi (mikrofonni qayta yoqmasdan).
+  const switchAudioInput = useCallback(async (deviceId: string) => {
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.switchActiveDevice("audioinput", deviceId);
+      setState((s) => ({ ...s, activeAudioInputId: deviceId }));
+    } catch (e) {
+      console.error("Mikrofon qurilmasini almashtirib bo'lmadi:", e);
+    }
+  }, []);
+
+  return { ...state, toggleMic, unlockAudio, switchAudioInput };
 }

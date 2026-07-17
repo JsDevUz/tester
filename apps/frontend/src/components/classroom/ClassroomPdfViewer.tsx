@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { Minus, Move, Plus, RotateCcw as ResetZoom } from "lucide-react";
 import type { CsPointer, CsStroke, CsTool } from "../../api/classroom";
+import { useAutoHideOverlay } from "../../hooks/useAutoHideOverlay";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
@@ -57,9 +58,11 @@ interface Props {
   toolbarActions?: ReactNode;
 }
 
-// O'q boshi (arrowhead) ekran-piksellarida fixed o'lchamda chiziladi —
-// chiziq qanchalik uzun bo'lmasin, uchi kattalashib ketmaydi.
-const ARROW_HEAD_LEN = 22;
+// O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
+// strokeWidth kabi) — shunda ekran/qurilma o'lchamidan (mobil/desktop)
+// qat'i nazar sahifaga nisbatan bir xil ko'rinishda bo'ladi. Chiziq
+// qanchalik uzun bo'lmasin, uchi kattalashib ketmaydi.
+const ARROW_HEAD_LEN_REF = 22;
 const ARROW_HEAD_ANGLE = Math.PI / 7;
 
 function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
@@ -75,7 +78,8 @@ function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   // Chiziqni o'q boshi uzunligicha oldinroq to'xtatamiz — aks holda
   // asosiy chiziqning uchi ochiq "V" bosh ichidan chiqib qolib, to'g'ri
   // chiziq ko'rinishida bo'lib qoladi.
-  const headLen = ARROW_HEAD_LEN * Math.min(1, ctx.lineWidth / 3 + 0.6);
+  const arrowHeadLen = ARROW_HEAD_LEN_REF * (w / REF_WIDTH);
+  const headLen = arrowHeadLen * Math.min(1, ctx.lineWidth / 3 + 0.6);
   const lineEndX = x1 - headLen * 0.6 * Math.cos(angle);
   const lineEndY = y1 - headLen * 0.6 * Math.sin(angle);
 
@@ -142,9 +146,9 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: nu
 // 0..1) yaqin bo'lsa "tegdi" deb hisoblanadi. Chiziq qalinligi (strokeWidth,
 // REF_WIDTH=1000 birligida) ga proportsional — qalinroq chiziq bilan ishlaganda
 // o'chirg'ich radiusi ham kattaroq bo'ladi, foydalanuvchi ko'rgan doiraga mos keladi.
-const ERASE_HIT_BASE = 0.01;
+const ERASE_HIT_BASE = 0.0025;
 function eraseHitRadius(strokeWidth: number): number {
-  return ERASE_HIT_BASE + (strokeWidth / REF_WIDTH) * 4;
+  return ERASE_HIT_BASE + (strokeWidth / REF_WIDTH) * 1;
 }
 
 function distToSegment(px: number, py: number, x0: number, y0: number, x1: number, y1: number): number {
@@ -289,12 +293,12 @@ function ClassroomPdfPage({
       drawStroke(ctx, { id: "__draft__", tool: tool === "laser" ? "pen" : tool, color, width: strokeWidth, points: draftRef.current }, size.w, size.h);
     }
     if (showPointer && pointer && pointer.active) {
+      // Ustoz kursori: faqat yarim shaffof doira (border/markaz nuqtasiz) —
+      // ostidagi matn ko'rinib tursin.
       ctx.save();
-      ctx.fillStyle = "#ef4444";
-      ctx.shadowColor = "rgba(239,68,68,0.6)";
-      ctx.shadowBlur = 8;
       ctx.beginPath();
-      ctx.arc(pointer.x * size.w, pointer.y * size.h, 6, 0, Math.PI * 2);
+      ctx.arc(pointer.x * size.w, pointer.y * size.h, 12, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(59,130,246,0.25)";
       ctx.fill();
       ctx.restore();
     }
@@ -302,7 +306,7 @@ function ClassroomPdfPage({
       // O'chirg'ich qancha joyni qamrab olishini ko'rsatuvchi opacity-doira —
       // chiziq qalinligiga (strokeWidth) qarab o'lchami o'zgaradi.
       const [cx, cy] = eraserCursorRef.current;
-      const r = eraseHitRadius(strokeWidth) * Math.max(size.w, size.h);
+      const r = eraseHitRadius(strokeWidth) * size.w;
       ctx.save();
       ctx.beginPath();
       ctx.arc(cx * size.w, cy * size.h, r, 0, Math.PI * 2);
@@ -487,6 +491,11 @@ export function ClassroomPdfViewer({
   hostScroll, onScrollChange, tool, color, strokeWidth, onStrokeComplete, onPointerMove,
   onEraseStroke, onSplitStroke, onPageChange, toolbar, toolbarActions,
 }: Props) {
+  // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
+  // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
+  // shuning uchun ular hech qachon yashirilmaydi.
+  const { visible: autoHideVisible } = useAutoHideOverlay();
+  const overlayVisible = isHost || autoHideVisible;
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
   // Ustoz uchun: local zoom, o'zgarganda serverga yuboriladi (onZoomChange).
@@ -723,31 +732,56 @@ export function ClassroomPdfViewer({
   }, []);
 
   const pinchStartRef = useRef<{ distance: number; zoom: number; cx: number; cy: number } | null>(null);
-  const handleTouchStart = useCallback((e: React.TouchEvent) => {
-    if (!freeToMove) { if (e.touches.length >= 2) e.preventDefault(); return; }
-    if (e.touches.length !== 2) return;
-    e.preventDefault();
-    const [a, b] = [e.touches[0], e.touches[1]];
-    const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    const cx = (a.clientX + b.clientX) / 2;
-    const cy = (a.clientY + b.clientY) / 2;
-    pinchStartRef.current = { distance, zoom, cx, cy };
-  }, [freeToMove, zoom]);
-  const handleTouchMove = useCallback((e: React.TouchEvent) => {
-    if (!freeToMove) { if (e.touches.length >= 2) e.preventDefault(); return; }
-    if (e.touches.length !== 2 || !pinchStartRef.current) return;
-    e.preventDefault();
-    const [a, b] = [e.touches[0], e.touches[1]];
-    const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    const { distance: startDistance, zoom: startZoom, cx, cy } = pinchStartRef.current;
-    applyZoomAnchored(startZoom * (distance / startDistance), cx, cy);
-  }, [freeToMove, applyZoomAnchored]);
-  const handleTouchEnd = useCallback((e: React.TouchEvent) => {
-    if (e.touches.length < 2) pinchStartRef.current = null;
+
+  // React'ning sintetik touch handlerlari ba'zi brauzerlarda passive bo'lib
+  // qolib preventDefault()ni e'tiborsiz qoldirishi mumkin — shu sabab
+  // ikki barmoq bilan pinch qilinganda butun brauzer sahifasi (body) zoom
+  // bo'lib ketardi. Native, passive:false listener bilan bu to'liq bloklanadi.
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+
+    const onNativeTouchStart = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      if (!freeToMoveRef.current) { e.preventDefault(); return; }
+      e.preventDefault();
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const cx = (a.clientX + b.clientX) / 2;
+      const cy = (a.clientY + b.clientY) / 2;
+      pinchStartRef.current = { distance, zoom: zoomRef.current, cx, cy };
+    };
+    const onNativeTouchMove = (e: TouchEvent) => {
+      if (e.touches.length < 2) return;
+      if (!freeToMoveRef.current) { e.preventDefault(); return; }
+      if (!pinchStartRef.current) return;
+      e.preventDefault();
+      const [a, b] = [e.touches[0], e.touches[1]];
+      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
+      const { distance: startDistance, zoom: startZoom, cx, cy } = pinchStartRef.current;
+      applyZoomAnchoredRef.current(startZoom * (distance / startDistance), cx, cy);
+    };
+    const onNativeTouchEnd = (e: TouchEvent) => {
+      if (e.touches.length < 2) pinchStartRef.current = null;
+    };
+
+    el.addEventListener("touchstart", onNativeTouchStart, { passive: false });
+    el.addEventListener("touchmove", onNativeTouchMove, { passive: false });
+    el.addEventListener("touchend", onNativeTouchEnd, { passive: false });
+    el.addEventListener("touchcancel", onNativeTouchEnd, { passive: false });
+    return () => {
+      el.removeEventListener("touchstart", onNativeTouchStart);
+      el.removeEventListener("touchmove", onNativeTouchMove);
+      el.removeEventListener("touchend", onNativeTouchEnd);
+      el.removeEventListener("touchcancel", onNativeTouchEnd);
+    };
   }, []);
 
   const toolbarRow = (toolbar || toolbarActions) && (
-    <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2">
+    <div
+      className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out"
+      style={{ transform: overlayVisible ? "translateY(0)" : "translateY(-150%)" }}
+    >
       <div>{toolbar}</div>
       <div className="flex items-center gap-2">{toolbarActions}</div>
     </div>
@@ -769,13 +803,13 @@ export function ClassroomPdfViewer({
         ref={scrollRef}
         className="w-full h-full overflow-auto overscroll-contain"
         style={{
-          touchAction: freeToMove ? "pan-x pan-y pinch-zoom" : "none",
+          // "pinch-zoom" atayin qo'shilmagan: bu qiymat brauzerning NATIVE
+          // pinch-zoom xatti-harakatini yoqib, bizning custom JS-zoom bilan
+          // to'qnashib, butun sahifani (body) zoom qilib yuborardi.
+          touchAction: freeToMove ? "pan-x pan-y" : "none",
           overflow: freeToMove ? "auto" : "hidden",
         }}
         onWheel={handleWheel}
-        onTouchStart={handleTouchStart}
-        onTouchMove={handleTouchMove}
-        onTouchEnd={handleTouchEnd}
         onScroll={handleScroll}
       >
         <div
@@ -810,55 +844,57 @@ export function ClassroomPdfViewer({
         </div>
       </div>
 
-      <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
-        <div className="flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md px-1 py-0.5">
-          <span className="px-1.5 text-[11px] font-medium text-gray-500 tabular-nums select-none">
-            {currentPage} / {pageUrls.length}
-          </span>
+      {(() => {
+        const zoomPanel = (
+          <div className="flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md px-1 py-0.5">
+            <span className="px-1.5 text-[11px] font-medium text-gray-500 tabular-nums select-none">
+              {currentPage} / {pageUrls.length}
+            </span>
 
-          <div className="w-px h-4 bg-gray-200" />
+            <div className="w-px h-4 bg-gray-200" />
 
-          <button
-            type="button"
-            onClick={() => applyZoom(zoom - ZOOM_STEP)}
-            disabled={zoom <= MIN_ZOOM || !freeToMove}
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Kichraytirish"
-          >
-            <Minus size={13} />
-          </button>
-          <button
-            type="button"
-            onClick={() => applyZoom(1)}
-            disabled={!freeToMove}
-            className="px-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 min-w-9 text-center disabled:opacity-30 tabular-nums"
-            title="Asl o'lchamga qaytarish"
-          >
-            {Math.round(zoom * 100)}%
-          </button>
-          <button
-            type="button"
-            onClick={() => applyZoom(zoom + ZOOM_STEP)}
-            disabled={zoom >= MAX_ZOOM || !freeToMove}
-            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-            title="Kattalashtirish"
-          >
-            <Plus size={13} />
-          </button>
-          {zoom !== 1 && (
+            <button
+              type="button"
+              onClick={() => applyZoom(zoom - ZOOM_STEP)}
+              disabled={zoom <= MIN_ZOOM || !freeToMove}
+              className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Kichraytirish"
+            >
+              <Minus size={13} />
+            </button>
             <button
               type="button"
               onClick={() => applyZoom(1)}
               disabled={!freeToMove}
-              className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
-              title="Reset"
+              className="px-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 min-w-9 text-center disabled:opacity-30 tabular-nums"
+              title="Asl o'lchamga qaytarish"
             >
-              <ResetZoom size={12} />
+              {Math.round(zoom * 100)}%
             </button>
-          )}
-        </div>
+            <button
+              type="button"
+              onClick={() => applyZoom(zoom + ZOOM_STEP)}
+              disabled={zoom >= MAX_ZOOM || !freeToMove}
+              className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              title="Kattalashtirish"
+            >
+              <Plus size={13} />
+            </button>
+            {zoom !== 1 && (
+              <button
+                type="button"
+                onClick={() => applyZoom(1)}
+                disabled={!freeToMove}
+                className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                title="Reset"
+              >
+                <ResetZoom size={12} />
+              </button>
+            )}
+          </div>
+        );
 
-        {!isHost && (
+        const moveButton = !isHost && (
           <button
             type="button"
             onClick={toggleSynced}
@@ -869,8 +905,40 @@ export function ClassroomPdfViewer({
           >
             <Move size={14} />
           </button>
-        )}
-      </div>
+        );
+
+        // Ustoz uchun: page-info+zoom+move birga, bottom-left'da.
+        // O'quvchi uchun: page-info+zoom top-left'ga (toolbar qatoridan
+        // pastroq), move esa bottom-left'da alohida qoladi.
+        if (isHost) {
+          return (
+            <div
+              className="absolute bottom-3 left-3 flex items-center gap-1.5 transition-transform duration-300 ease-in-out"
+              style={{ transform: overlayVisible ? "translateY(0)" : "translateY(150%)" }}
+            >
+              {zoomPanel}
+              {moveButton}
+            </div>
+          );
+        }
+
+        return (
+          <>
+            <div
+              className="absolute top-3 left-3 z-10 transition-transform duration-300 ease-in-out"
+              style={{ transform: overlayVisible ? "translateY(0)" : "translateY(-150%)" }}
+            >
+              {zoomPanel}
+            </div>
+            <div
+              className="absolute bottom-3 left-3 transition-transform duration-300 ease-in-out"
+              style={{ transform: overlayVisible ? "translateY(0)" : "translateY(150%)" }}
+            >
+              {moveButton}
+            </div>
+          </>
+        );
+      })()}
     </div>
   );
 }

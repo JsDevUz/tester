@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, GraduationCap, MoreVertical, Pencil, Star, UserRound, X } from 'lucide-react';
+import { Check, GraduationCap, KeyRound, MoreVertical, Pencil, Star, UserRound, X } from 'lucide-react';
 import { apiListCourses, type ApiCourse } from '../../api/courses';
 import { apiListGroups, apiEnrollStudent, apiUpdateGroupMember, type ApiGroup } from '../../api/groups';
-import { apiListEnrollments, apiUpdateStudentName, type ApiSchoolEnrollment } from '../../api/school';
+import { apiListEnrollments, apiUpdateStudentName, apiUpdateStudentPassword, type ApiSchoolEnrollment } from '../../api/school';
 import { apiListLaunches, type ApiPricingPlan } from '../../api/launches';
 import { useAuthStore } from '../../stores/authStore';
 import { UserAvatar } from '../UserAvatar';
@@ -60,6 +60,11 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
   const [editingName, setEditingName] = useState(false);
   const [nameDraft, setNameDraft] = useState(studentName);
   const [savingName, setSavingName] = useState(false);
+  const [editingPassword, setEditingPassword] = useState(false);
+  const [passwordDraft, setPasswordDraft] = useState('');
+  const [savingPassword, setSavingPassword] = useState(false);
+  const [passwordError, setPasswordError] = useState<string | null>(null);
+  const [passwordSuccess, setPasswordSuccess] = useState(false);
 
   function refreshEnrollments() {
     setLoadingEnrollments(true);
@@ -146,6 +151,24 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
       setSaveError(error?.response?.data?.message ?? "Ismni yangilab bo'lmadi.");
     } finally {
       setSavingName(false);
+    }
+  }
+
+  async function handleSavePassword() {
+    const trimmedPassword = passwordDraft.trim();
+    if (trimmedPassword.length < 8 || savingPassword) return;
+    setSavingPassword(true);
+    setPasswordError(null);
+    try {
+      await apiUpdateStudentPassword(studentId, trimmedPassword);
+      setEditingPassword(false);
+      setPasswordDraft('');
+      setPasswordSuccess(true);
+      setTimeout(() => setPasswordSuccess(false), 3000);
+    } catch (error: any) {
+      setPasswordError(error?.response?.data?.message ?? "Parolni yangilab bo'lmadi.");
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -243,6 +266,14 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
                       <Pencil size={16} className="text-gray-600" />
                       Ismni tahrirlash
                     </button>
+                    <button
+                      type="button"
+                      onClick={() => { setActionsOpen(false); setPasswordDraft(''); setEditingPassword(true); setPasswordError(null); }}
+                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                    >
+                      <KeyRound size={16} className="text-gray-600" />
+                      Parolni o'zgartirish
+                    </button>
                   </div>
                 </>
               )}
@@ -268,6 +299,32 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
               <button type="button" onClick={() => setEditingName(false)} className="rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-200">Bekor</button>
             </div>
             {saveError && <p className="mt-2 text-xs text-red-500">{saveError}</p>}
+          </div>
+        )}
+
+        {editingPassword && (
+          <div className="mx-6 mb-4 rounded-2xl bg-gray-50 p-3">
+            <label className="mb-1.5 block text-xs font-semibold text-gray-500">Yangi parol (kamida 8 belgi)</label>
+            <div className="flex gap-2">
+              <input
+                autoFocus
+                type="text"
+                value={passwordDraft}
+                onChange={(event) => setPasswordDraft(event.target.value)}
+                maxLength={128}
+                placeholder="Yangi parol"
+                className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm outline-none focus:border-indigo-400"
+              />
+              <button type="button" onClick={() => void handleSavePassword()} disabled={savingPassword || passwordDraft.trim().length < 8} className="inline-flex items-center gap-1 rounded-xl bg-indigo-500 px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"><Check size={14} /> Saqlash</button>
+              <button type="button" onClick={() => setEditingPassword(false)} className="rounded-xl px-3 py-2 text-xs font-semibold text-gray-500 hover:bg-gray-200">Bekor</button>
+            </div>
+            {passwordError && <p className="mt-2 text-xs text-red-500">{passwordError}</p>}
+          </div>
+        )}
+
+        {passwordSuccess && (
+          <div className="mx-6 mb-4 rounded-2xl bg-green-50 px-3.5 py-2.5 text-xs font-semibold text-green-600">
+            Parol muvaffaqiyatli yangilandi.
           </div>
         )}
 

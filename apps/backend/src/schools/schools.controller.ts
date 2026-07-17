@@ -19,6 +19,10 @@ class UpdateStudentNameDto {
   @IsString() @IsNotEmpty() @MaxLength(120) name: string;
 }
 
+class UpdateStudentPasswordDto {
+  @IsString() @MinLength(8) @MaxLength(128) password: string;
+}
+
 class CreateStudentDto {
   @IsString() @IsNotEmpty() @MaxLength(120) name: string;
   @IsString() @IsNotEmpty() @MaxLength(30) phone: string;
@@ -115,6 +119,13 @@ export class SchoolsController {
   @Patch('school/students/:studentId/name')
   updateStudentName(@Req() req: any, @Param('studentId') studentId: string, @Body() dto: UpdateStudentNameDto) {
     return this.schoolsService.updateStudentName(req.admin.id, studentId, dto.name);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Patch('school/students/:studentId/password')
+  updateStudentPassword(@Req() req: any, @Param('studentId') studentId: string, @Body() dto: UpdateStudentPasswordDto) {
+    return this.schoolsService.updateStudentPassword(req.admin.id, studentId, dto.password);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

@@ -92,6 +92,11 @@ export async function apiUpdateStudentName(studentId: string, name: string): Pro
   return res.data;
 }
 
+export async function apiUpdateStudentPassword(studentId: string, password: string): Promise<{ ok: boolean }> {
+  const res = await client.patch(`/school/students/${studentId}/password`, { password });
+  return res.data;
+}
+
 export interface ApiSchoolEnrollment {
   studentId: string;
   studentName: string;

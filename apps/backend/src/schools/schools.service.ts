@@ -600,6 +600,17 @@ export class SchoolsService {
     return { id: updated.id, name: updated.displayName, telegramName: updated.name, phone: updated.phone, avatarUrl: updated.displayAvatarUrl };
   }
 
+  async updateStudentPassword(adminId: string, studentId: string, password: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const member = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    if (!member) throw new NotFoundException('Student not found in this school');
+    const passwordHash = await bcrypt.hash(password, 10);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, studentId));
+    return { ok: true };
+  }
+
   async findStudentsWithoutGroup(adminId: string) {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
