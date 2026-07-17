@@ -39,24 +39,50 @@ export async function apiUpdateBlock(
   return res.data;
 }
 
+// Video to'g'ridan-to'g'ri S3'ga yuklanadi (backend orqali proxy qilinmaydi) —
+// katta fayllarda bu ancha tezroq, chunki backend serverning tarmoq
+// kanali cheklovchi bo'g'in bo'lmay qoladi. Uch bosqich:
+// 1) backend'dan muddati qisqa yuklash havolasi olinadi
+// 2) brauzer faylni to'g'ridan-to'g'ri shu havolaga PUT qiladi
+// 3) backend'ga "tugadi" deb signal beriladi — u S3'dan haqiqiy holatni
+//    tekshiradi va shundan keyingina HLS transcode job'ni ishga tushiradi
 export async function apiUploadVideoBlock(
   lessonId: string,
   file: File,
   label?: string,
   onProgress?: (percent: number) => void,
 ): Promise<ApiContentBlock> {
-  const formData = new FormData();
-  formData.append('file', file);
-  if (label) formData.append('label', label);
-  const res = await client.post(`/lessons/${lessonId}/videos`, formData, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-    onUploadProgress: (event) => {
-      if (event.total && onProgress) {
+  const { blockId, uploadUrl } = (
+    await client.post(`/lessons/${lessonId}/videos/initiate`, {
+      fileName: file.name,
+      mimeType: file.type,
+      label,
+    })
+  ).data;
+
+  await uploadFileToPresignedUrl(uploadUrl, file, onProgress);
+
+  const res = await client.post(`/blocks/${blockId}/videos/complete`);
+  return res.data;
+}
+
+function uploadFileToPresignedUrl(url: string, file: File, onProgress?: (percent: number) => void): Promise<void> {
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    xhr.open('PUT', url, true);
+    xhr.setRequestHeader('Content-Type', file.type);
+    xhr.upload.onprogress = (event) => {
+      if (event.lengthComputable && onProgress) {
         onProgress(Math.round((event.loaded / event.total) * 100));
       }
-    },
+    };
+    xhr.onload = () => {
+      if (xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`Video yuklashda xatolik (status ${xhr.status})`));
+    };
+    xhr.onerror = () => reject(new Error('Video yuklashda tarmoq xatosi'));
+    xhr.send(file);
   });
-  return res.data;
 }
 
 export async function apiUploadFileBlock(

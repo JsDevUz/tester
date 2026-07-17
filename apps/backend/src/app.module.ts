@@ -23,6 +23,7 @@ import { LiveModule } from './live/live.module';
 import { SchoolsModule } from './schools/schools.module';
 import { VideosModule } from './videos/videos.module';
 import { PracticeMessengerModule } from './practice-messenger/practice-messenger.module';
+import { ClassroomModule } from './classroom/classroom.module';
 import 'dotenv/config';
 
 @Module({
@@ -56,6 +57,7 @@ import 'dotenv/config';
     SchoolsModule,
     VideosModule,
     PracticeMessengerModule,
+    ClassroomModule,
   ],
   providers: [
     {

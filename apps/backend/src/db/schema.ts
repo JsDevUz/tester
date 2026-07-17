@@ -555,3 +555,41 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
   schoolAdmin: one(users, { fields: [mediaAssets.schoolAdminId], references: [users.id] }),
   uploader: one(users, { fields: [mediaAssets.uploaderId], references: [users.id] }),
 }));
+
+export const classSessions = pgTable('class_sessions', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
+  status: text('status').notNull().default('active'),
+  pdfName: text('pdf_name'),
+  pdfPages: jsonb('pdf_pages').notNull().default([]),
+  startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
+  endedAt: timestamp('ended_at', { withTimezone: true }),
+}, (table) => ({
+  courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
+}));
+
+export const attendanceRecords = pgTable('attendance_records', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id').notNull().references(() => classSessions.id, { onDelete: 'cascade' }),
+  enrollmentId: uuid('enrollment_id').notNull().references(() => groupEnrollments.id, { onDelete: 'cascade' }),
+  firstJoinedAt: timestamp('first_joined_at', { withTimezone: true }),
+  lastLeftAt: timestamp('last_left_at', { withTimezone: true }),
+  totalSeconds: integer('total_seconds').notNull().default(0),
+  status: text('status').notNull().default('absent'),
+  overriddenByAdminId: uuid('overridden_by_admin_id').references(() => users.id, { onDelete: 'set null' }),
+}, (table) => ({
+  uniqueSessionEnrollment: uniqueIndex('attendance_records_session_id_enrollment_id_key').on(table.sessionId, table.enrollmentId),
+}));
+
+export const classSessionsRelations = relations(classSessions, ({ one, many }) => ({
+  course: one(courses, { fields: [classSessions.courseId], references: [courses.id] }),
+  teacher: one(users, { fields: [classSessions.teacherId], references: [users.id] }),
+  attendance: many(attendanceRecords),
+}));
+
+export const attendanceRecordsRelations = relations(attendanceRecords, ({ one }) => ({
+  session: one(classSessions, { fields: [attendanceRecords.sessionId], references: [classSessions.id] }),
+  enrollment: one(groupEnrollments, { fields: [attendanceRecords.enrollmentId], references: [groupEnrollments.id] }),
+  overriddenByAdmin: one(users, { fields: [attendanceRecords.overriddenByAdminId], references: [users.id] }),
+}));

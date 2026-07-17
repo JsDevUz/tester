@@ -24,23 +24,21 @@ interface PaginationControlsProps {
 export function PaginationControls({ page, pageCount, pageSize, onPageChange, onPageSizeChange }: PaginationControlsProps) {
   const currentPage = Math.min(page, pageCount);
   return (
-    <div className="flex flex-wrap items-center justify-center gap-3 py-3">
+    <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
       <PageSizeSelect value={pageSize} onChange={onPageSizeChange} />
-      {pageCount > 1 && (
-        <div className="flex items-center gap-1.5">
-          <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Oldingi sahifa">
-            <ChevronLeft size={16} />
+      <div className="ml-auto flex items-center gap-1.5">
+        <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Oldingi sahifa">
+          <ChevronLeft size={16} />
+        </button>
+        {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+          <button key={pageNumber} type="button" onClick={() => onPageChange(pageNumber)} className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${pageNumber === currentPage ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
+            {pageNumber}
           </button>
-          {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
-            <button key={pageNumber} type="button" onClick={() => onPageChange(pageNumber)} className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${pageNumber === currentPage ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-100'}`}>
-              {pageNumber}
-            </button>
-          ))}
-          <button type="button" onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))} disabled={currentPage === pageCount} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Keyingi sahifa">
-            <ChevronRight size={16} />
-          </button>
-        </div>
-      )}
+        ))}
+        <button type="button" onClick={() => onPageChange(Math.min(pageCount, currentPage + 1))} disabled={currentPage === pageCount} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Keyingi sahifa">
+          <ChevronRight size={16} />
+        </button>
+      </div>
     </div>
   );
 }

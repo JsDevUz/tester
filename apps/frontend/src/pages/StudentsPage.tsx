@@ -196,18 +196,31 @@ export function StudentsPage() {
 
           <StudentsSectionTabs counts={tabCounts} />
 
-          <div className="relative w-fit max-w-full">
-            <Search
-              size={18}
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-            />
-            <input
-              type="text"
-              value={query}
-              onChange={(e) => handleSearch(e.target.value)}
-              placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
-              className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
-            />
+          <div className="flex flex-wrap items-center gap-2">
+            <div className="relative w-fit max-w-full">
+              <Search
+                size={18}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                type="text"
+                value={query}
+                onChange={(e) => handleSearch(e.target.value)}
+                placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
+                className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+              />
+            </div>
+            {status === "list" && (
+              <select
+                value={courseFilter}
+                onChange={(event) => { setCourseFilter(event.target.value); setPage(1); }}
+                className="w-[min(280px,calc(100vw-2rem))] rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 outline-none"
+                aria-label="Kurs bo'yicha filter"
+              >
+                <option value="">Barcha kurslar</option>
+                {courseOptions.map((course) => <option key={course} value={course}>{course}</option>)}
+              </select>
+            )}
           </div>
 
           {status === "list" && (

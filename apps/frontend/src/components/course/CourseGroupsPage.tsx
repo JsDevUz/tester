@@ -15,6 +15,7 @@ interface CourseGroupsPageProps {
   onSelectContent: () => void;
   onSelectSettings: () => void;
   onSelectLaunch: () => void;
+  onSelectClasses: () => void;
 }
 
 const AVATAR_PALETTES = [
@@ -30,7 +31,7 @@ function paletteFor(id: string) {
   return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
 }
 
-export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch }: CourseGroupsPageProps) {
+export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectClasses }: CourseGroupsPageProps) {
   const {
     courses, addGroup, renameGroup,
     removeStudentFromGroup, deleteGroup,
@@ -370,6 +371,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           onSelectSettings={onSelectSettings}
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={() => {}}
+          onSelectClasses={onSelectClasses}
         />
 
         {confirmDelete && (
@@ -472,6 +474,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
         onSelectContent={onSelectContent}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={() => {}}
+          onSelectClasses={onSelectClasses}
       />
     </div>
   );

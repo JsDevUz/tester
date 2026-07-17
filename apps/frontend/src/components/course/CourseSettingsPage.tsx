@@ -11,11 +11,12 @@ interface CourseSettingsPageProps {
   onSelectContent: () => void;
   onSelectLaunch: () => void;
   onSelectGroups: () => void;
+  onSelectClasses: () => void;
 }
 
 const TITLE_MAX = 80;
 
-export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch, onSelectGroups }: CourseSettingsPageProps) {
+export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch, onSelectGroups, onSelectClasses }: CourseSettingsPageProps) {
   const { courses, renameCourse, deleteCourse } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -71,6 +72,7 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
         onSelectSettings={() => {}}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
+        onSelectClasses={onSelectClasses}
       />
 
       {confirmDelete && (

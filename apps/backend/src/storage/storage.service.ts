@@ -5,8 +5,10 @@ import {
   PutObjectCommand,
   DeleteObjectCommand,
   GetObjectCommand,
+  HeadObjectCommand,
   ListObjectsV2Command,
 } from '@aws-sdk/client-s3';
+import { getSignedUrl } from '@aws-sdk/s3-request-presigner';
 import type { Readable } from 'stream';
 
 @Injectable()
@@ -74,6 +76,36 @@ export class StorageService {
     } catch (error) {
       console.error('Object storage upload error:', error);
       throw new InternalServerErrorException('Faylni yuklashda xatolik yuz berdi');
+    }
+  }
+
+  // Client to'g'ridan-to'g'ri shu key'ga PUT qila oladigan, muddati qisqa,
+  // content-type va hajmga qulflangan yuklash havolasi. Backend orqali
+  // proxy qilishning o'rniga ishlatiladi — katta fayllarda (video) ancha tez.
+  async createPresignedUploadUrl(
+    key: string,
+    contentType: string,
+    expiresInSec = 900,
+  ): Promise<string> {
+    this.assertConfigured();
+    const command = new PutObjectCommand({
+      Bucket: this.bucketName,
+      Key: key,
+      ContentType: contentType,
+    });
+    return getSignedUrl(this.s3Client, command, { expiresIn: expiresInSec });
+  }
+
+  async headObject(key: string): Promise<{ sizeBytes: number; contentType: string | undefined } | null> {
+    this.assertConfigured();
+    try {
+      const result = await this.s3Client.send(
+        new HeadObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
+      );
+      return { sizeBytes: result.ContentLength ?? 0, contentType: result.ContentType };
+    } catch (error: any) {
+      if (error?.name === 'NotFound' || error?.$metadata?.httpStatusCode === 404) return null;
+      throw error;
     }
   }
 

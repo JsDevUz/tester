@@ -1,8 +1,10 @@
 import { useState } from 'react';
-import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
+import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, Radio, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { PromptModal } from './PromptModal';
 import { DataLoadingState } from '../DataLoadingState';
+import { ActiveClassBanner } from '../classroom/ActiveClassBanner';
+import { StartClassModal } from '../classroom/StartClassModal';
 
 interface CourseGridProps {
   onOpenCourse: (courseId: string) => void;
@@ -11,6 +13,7 @@ interface CourseGridProps {
 export function CourseGrid({ onOpenCourse }: CourseGridProps) {
   const { courses, coursesLoading, coursesLoaded, coursesError, loadCourses, addCourse } = useCourseStore();
   const [showModal, setShowModal] = useState(false);
+  const [showStartClass, setShowStartClass] = useState(false);
 
   async function handleCreate(title: string) {
     const course = await addCourse(title);
@@ -20,15 +23,26 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
 
   return (
     <div className="p-6">
+      <ActiveClassBanner />
+
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Kurslar</h2>
-        <button
-          type="button"
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition-colors hover:bg-indigo-600"
-        >
-          <Plus size={16} /> Yangi kurs
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setShowStartClass(true)}
+            className="flex items-center gap-1.5 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-100 transition-colors hover:bg-red-600"
+          >
+            <Radio size={16} /> Jonli dars
+          </button>
+          <button
+            type="button"
+            onClick={() => setShowModal(true)}
+            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition-colors hover:bg-indigo-600"
+          >
+            <Plus size={16} /> Yangi kurs
+          </button>
+        </div>
       </div>
 
       {coursesLoading && !coursesLoaded ? (
@@ -57,7 +71,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
                 key={course.id}
                 type="button"
                 onClick={() => onOpenCourse(course.id)}
-                className="relative flex min-h-[148px] cursor-pointer flex-col overflow-hidden rounded-[22px] bg-white p-4 text-left transition-colors hover:bg-gray-50"
+                className="relative flex min-h-37 cursor-pointer flex-col overflow-hidden rounded-[22px] bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 <div className="flex items-center gap-2 pr-20 text-xs font-semibold">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-white">
@@ -120,6 +134,8 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
           onClose={() => setShowModal(false)}
         />
       )}
+
+      {showStartClass && <StartClassModal onClose={() => setShowStartClass(false)} />}
     </div>
   );
 }
