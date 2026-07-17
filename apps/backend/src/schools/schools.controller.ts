@@ -3,7 +3,7 @@ import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 class UpdateSchoolDto {
   @IsOptional() @IsString() name?: string;
@@ -22,7 +22,6 @@ class UpdateStudentNameDto {
 class CreateStudentDto {
   @IsString() @IsNotEmpty() @MaxLength(120) name: string;
   @IsString() @IsNotEmpty() @MaxLength(30) phone: string;
-  @IsEmail() @MaxLength(255) email: string;
   @IsString() @MinLength(8) @MaxLength(128) password: string;
 }
 

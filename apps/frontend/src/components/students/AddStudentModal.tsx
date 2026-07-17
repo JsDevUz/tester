@@ -3,11 +3,12 @@ import { Eye, EyeOff, X } from "lucide-react";
 
 interface AddStudentModalProps {
   onClose: () => void;
-  onSubmit: (input: { name: string; phone: string; email: string; password: string }) => Promise<void>;
+  onSubmit: (input: { name: string; phone: string; password: string }) => Promise<void>;
 }
 
-function randomEmail() {
-  return `student-${crypto.randomUUID().replace(/-/g, "").slice(0, 10)}@jamm.uz`;
+function emailFromPhone(phone: string) {
+  const digits = phone.replace(/\D/g, "");
+  return digits.length === 12 ? `${digits}@jamm.uz` : "Telefon raqamidan avtomatik yaratiladi";
 }
 
 function maskUzPhone(value: string) {
@@ -42,18 +43,17 @@ function randomPassword() {
 }
 
 export function AddStudentModal({ onClose, onSubmit }: AddStudentModalProps) {
-  const defaults = useMemo(() => ({ email: randomEmail(), password: randomPassword() }), []);
+  const defaultPassword = useMemo(() => randomPassword(), []);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("+998 ");
-  const [email, setEmail] = useState(defaults.email);
-  const [password, setPassword] = useState(defaults.password);
+  const [password, setPassword] = useState(defaultPassword);
   const [showPassword, setShowPassword] = useState(false);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
-    if (!name.trim() || !phone.trim() || !email.trim() || !password) {
+    if (!name.trim() || !phone.trim() || !password) {
       setError("Barcha maydonlarni to'ldiring");
       return;
     }
@@ -68,7 +68,7 @@ export function AddStudentModal({ onClose, onSubmit }: AddStudentModalProps) {
     setSaving(true);
     setError(null);
     try {
-      await onSubmit({ name: name.trim(), phone: phone.trim(), email: email.trim(), password });
+      await onSubmit({ name: name.trim(), phone: phone.trim(), password });
     } catch (submitError: any) {
       setError(submitError?.response?.data?.message ?? "O'quvchini yaratib bo'lmadi");
       setSaving(false);
@@ -90,7 +90,7 @@ export function AddStudentModal({ onClose, onSubmit }: AddStudentModalProps) {
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ism" maxLength={120} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
           <input value={phone} onChange={(event) => setPhone(maskUzPhone(event.target.value))} placeholder="+998 XX XXX XX XX" maxLength={17} inputMode="tel" autoComplete="tel" className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
-          <input value={email} onChange={(event) => setEmail(event.target.value)} placeholder="Email" type="email" maxLength={255} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
+          <input value={emailFromPhone(phone)} readOnly aria-label="Avtomatik login email" className="w-full cursor-not-allowed rounded-xl border border-border bg-gray-100 px-4 py-3 text-sm text-gray-500 outline-none" />
           <div className="relative">
             <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Parol" type={showPassword ? "text" : "password"} maxLength={128} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 pr-11 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
             <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}>

@@ -91,11 +91,6 @@ export class TelegramService {
           set: { telegramChatId, telegramUserId, firstName, lastName },
         });
 
-      await this.findOrCreateTelegramUser({
-        phone,
-        name: this.buildDisplayName(firstName, lastName),
-      });
-
       if (telegramUserId) {
         void this.syncProfilePhoto(phone, telegramUserId);
       }
@@ -137,7 +132,10 @@ export class TelegramService {
       throw new BadRequestException("Telegram kontakt bog'lanmagan.");
     }
 
-    await this.sendMessage(link.telegramChatId, `Login: ${email}\nParol: ${password}`);
+    await this.sendMessage(
+      link.telegramChatId,
+      `Bu sizning login va parolingiz:\nLogin: ${email}\nParol: ${password}`,
+    );
   }
 
   private async syncProfilePhoto(phone: string, telegramUserId: string) {
@@ -210,32 +208,8 @@ export class TelegramService {
     return code;
   }
 
-  private async findOrCreateTelegramUser(input: { phone: string; name: string }) {
-    const existingUser = await db.query.users.findFirst({ where: eq(users.phone, input.phone) });
-    if (existingUser) return existingUser;
-
-    const passwordHash = await bcrypt.hash(randomUUID(), 10);
-    const [user] = await db
-      .insert(users)
-      .values({
-        email: this.buildLogin(input.phone),
-        passwordHash,
-        name: input.name,
-        phone: input.phone,
-        role: 'student',
-      })
-      .returning();
-
-    return user;
-  }
-
-  private buildDisplayName(firstName: string | null, lastName: string | null) {
-    const name = [firstName, lastName].filter(Boolean).join(' ').trim();
-    return name || 'Telegram foydalanuvchi';
-  }
-
   private buildLogin(phone: string) {
     const digits = phone.replace(/\D/g, '');
-    return `u${digits}@telegram.local`;
+    return `${digits}@jamm.uz`;
   }
 }

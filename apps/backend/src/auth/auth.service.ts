@@ -1,7 +1,7 @@
 import { BadRequestException, ConflictException, Injectable, UnauthorizedException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { db } from '../db';
-import { authCodes, users } from '../db/schema';
+import { authCodes, userTelegramLinks, users } from '../db/schema';
 import { and, desc, eq, isNull, or } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
@@ -186,8 +186,25 @@ export class AuthService {
 
   async verifyTelegramCode(code: string) {
     const authCode = await this.verifyCodeByPurpose(code, 'login');
-    const user = await db.query.users.findFirst({ where: eq(users.phone, authCode.phone) });
-    if (!user) throw new BadRequestException("Foydalanuvchi topilmadi. Botga /start bosib, kontakt yuboring.");
+    const phone = authCode.phone.replace(/\D/g, '');
+    let user = await db.query.users.findFirst({
+      where: or(eq(users.phone, phone), eq(users.phone, `+${phone}`)),
+    });
+
+    if (!user) {
+      const link = await db.query.userTelegramLinks.findFirst({
+        where: or(eq(userTelegramLinks.phone, phone), eq(userTelegramLinks.phone, `+${phone}`)),
+      });
+      if (!link) throw new BadRequestException("Avval botga kontakt yuboring.");
+      const password = this.generateStrongPassword(10);
+      const passwordHash = await bcrypt.hash(password, 10);
+      const name = [link.firstName, link.lastName].filter(Boolean).join(' ').trim() || 'Telegram foydalanuvchi';
+      [user] = await db
+        .insert(users)
+        .values({ email: `${phone}@jamm.uz`, passwordHash, name, phone, role: 'student' })
+        .returning();
+      await this.telegramService.sendCredentialsToPhone(link.phone, user.email, password);
+    }
 
     return this.createAuthResponse(user);
   }
@@ -218,6 +235,46 @@ export class AuthService {
     await this.telegramService.sendCredentialsToPhone(user.phone, user.email, password);
 
     return { ok: true };
+  }
+
+  async verifyPasswordResetCode(code: string) {
+    const authCode = await this.verifyCodeByPurpose(code, 'login');
+    const phoneDigits = authCode.phone.replace(/\D/g, '');
+    const user = await db.query.users.findFirst({
+      where: or(eq(users.phone, phoneDigits), eq(users.phone, `+${phoneDigits}`)),
+    });
+    if (!user) throw new BadRequestException("Foydalanuvchi topilmadi.");
+    const resetToken = this.jwtService.sign(
+      { sub: user.id, purpose: 'password_reset' },
+      { expiresIn: '10m' },
+    );
+    return { resetToken };
+  }
+
+  async completePasswordReset(resetToken: string, newPassword: string, confirmPassword: string) {
+    if (newPassword !== confirmPassword) throw new BadRequestException('Parollar mos kelmadi.');
+    let payload: { sub?: string; purpose?: string };
+    try {
+      payload = this.jwtService.verify(resetToken);
+    } catch {
+      throw new BadRequestException("Tiklash sessiyasi tugagan. Qaytadan kod oling.");
+    }
+    if (payload.purpose !== 'password_reset' || !payload.sub) {
+      throw new BadRequestException('Noto‘g‘ri tiklash sessiyasi.');
+    }
+
+    const user = await db.query.users.findFirst({ where: eq(users.id, payload.sub) });
+    if (!user) throw new BadRequestException('Foydalanuvchi topilmadi.');
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+    return this.createAuthResponse({
+      id: user.id,
+      email: user.email,
+      displayName: user.displayName,
+      role: user.role,
+      phone: user.phone,
+      displayAvatarUrl: user.displayAvatarUrl,
+    });
   }
 
   private async createAuthCode(input: {
@@ -331,5 +388,17 @@ export class AuthService {
 
   private generatePassword() {
     return randomInt(36 ** 6, 36 ** 7 - 1).toString(36) + randomInt(36 ** 6, 36 ** 7 - 1).toString(36);
+  }
+
+  private generateStrongPassword(length: number) {
+    const groups = ['ABCDEFGHJKLMNPQRSTUVWXYZ', 'abcdefghijkmnopqrstuvwxyz', '23456789', '!@#$%'];
+    const all = groups.join('');
+    const characters = groups.map((group) => group[randomInt(0, group.length)]);
+    while (characters.length < length) characters.push(all[randomInt(0, all.length)]);
+    for (let index = characters.length - 1; index > 0; index--) {
+      const swapIndex = randomInt(0, index + 1);
+      [characters[index], characters[swapIndex]] = [characters[swapIndex], characters[index]];
+    }
+    return characters.join('');
   }
 }

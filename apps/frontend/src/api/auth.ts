@@ -53,3 +53,13 @@ export async function apiVerifyPasswordReset(input: { phoneOrEmail: string; code
   const res = await client.post('/auth/password/reset/verify', input);
   return res.data;
 }
+
+export async function apiVerifyPasswordResetCode(code: string): Promise<{ resetToken: string }> {
+  const res = await client.post('/auth/password/reset/verify-code', { code });
+  return res.data;
+}
+
+export async function apiCompletePasswordReset(input: { resetToken: string; newPassword: string; confirmPassword: string }): Promise<{ access_token: string; admin: Admin; user: Admin }> {
+  const res = await client.post('/auth/password/reset/complete', input);
+  return res.data;
+}

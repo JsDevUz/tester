@@ -141,10 +141,10 @@ export class SchoolsService {
     return member;
   }
 
-  async createStudent(adminId: string, input: { name: string; phone: string; email: string; password: string }) {
+  async createStudent(adminId: string, input: { name: string; phone: string; password: string }) {
     const school = await this.getOrCreateSchool(adminId);
     const phone = this.telegramService.normalizePhone(input.phone).replace(/^\+/, '');
-    const email = input.email.trim().toLowerCase();
+    const email = `${phone}@jamm.uz`;
     const name = input.name.trim();
     if (!/^\+?998\d{9}$/.test(phone)) {
       throw new BadRequestException("Telefon raqami +998 XX XXX XX XX formatida bo'lishi kerak.");

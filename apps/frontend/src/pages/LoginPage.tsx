@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
+import { apiVerifyPasswordResetCode } from "../api/auth";
 
 const CODE_LENGTH = 6;
 
@@ -20,13 +21,20 @@ export function LoginPage() {
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [showPasswordLogin, setShowPasswordLogin] = useState(true);
+  const [forgotMode, setForgotMode] = useState(false);
+  const [forgotStep, setForgotStep] = useState<"code" | "password">("code");
+  const [resetCode, setResetCode] = useState("");
+  const [resetToken, setResetToken] = useState("");
+  const [resetPassword, setResetPassword] = useState("");
+  const [resetPasswordConfirm, setResetPasswordConfirm] = useState("");
   const [loading, setLoading] = useState(false);
-  const { login, loginWithTelegramCode } = useAuthStore();
+  const { login, loginWithTelegramCode, loginWithPasswordReset } = useAuthStore();
   const token = useAuthStore((s) => s.token);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const redirectTo = searchParams.get("redirect") ?? "/";
   const codeRefs = useRef<Array<HTMLInputElement | null>>([]);
+  const resetCodeRefs = useRef<Array<HTMLInputElement | null>>([]);
   const codeDigits = useMemo(() => {
     const digits = code.slice(0, CODE_LENGTH).split("");
     return Array.from(
@@ -34,6 +42,10 @@ export function LoginPage() {
       (_, index) => digits[index] ?? "",
     );
   }, [code]);
+  const resetCodeDigits = useMemo(() => {
+    const digits = resetCode.slice(0, CODE_LENGTH).split("");
+    return Array.from({ length: CODE_LENGTH }, (_, index) => digits[index] ?? "");
+  }, [resetCode]);
 
   useEffect(() => {
     if (token) {
@@ -46,6 +58,11 @@ export function LoginPage() {
     if (showPasswordLogin || code.length !== CODE_LENGTH || loading) return;
     void submitTelegramCode();
   }, [code, showPasswordLogin]);
+
+  useEffect(() => {
+    if (!forgotMode || forgotStep !== "code" || resetCode.length !== CODE_LENGTH || loading) return;
+    void verifyResetCode();
+  }, [forgotMode, forgotStep, resetCode]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -75,6 +92,64 @@ export function LoginPage() {
       toast.error(
         err.response?.data?.message ?? "Kod noto'g'ri yoki muddati tugagan",
       );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function verifyResetCode(event?: React.FormEvent) {
+    event?.preventDefault();
+    if (resetCode.length !== CODE_LENGTH) return;
+    setLoading(true);
+    try {
+      const result = await apiVerifyPasswordResetCode(resetCode);
+      setResetToken(result.resetToken);
+      setForgotStep("password");
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? "Kod noto'g'ri yoki muddati tugagan");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function updateResetCodeDigit(index: number, value: string) {
+    const digit = value.replace(/\D/g, "").slice(-1);
+    const next = [...resetCodeDigits];
+    next[index] = digit;
+    setResetCode(next.join(""));
+    if (digit && index < CODE_LENGTH - 1) resetCodeRefs.current[index + 1]?.focus();
+  }
+
+  function handleResetCodeKeyDown(index: number, event: React.KeyboardEvent<HTMLInputElement>) {
+    if (event.key === "Backspace" && !resetCodeDigits[index] && index > 0) {
+      resetCodeRefs.current[index - 1]?.focus();
+    }
+  }
+
+  function handleResetCodePaste(event: React.ClipboardEvent<HTMLInputElement>) {
+    event.preventDefault();
+    const pasted = event.clipboardData.getData("text").replace(/\D/g, "").slice(0, CODE_LENGTH);
+    setResetCode(pasted);
+    const focusIndex = Math.min(pasted.length, CODE_LENGTH - 1);
+    window.requestAnimationFrame(() => resetCodeRefs.current[focusIndex]?.focus());
+  }
+
+  async function completeReset(event: React.FormEvent) {
+    event.preventDefault();
+    if (resetPassword.length < 8) {
+      toast.error("Parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      return;
+    }
+    if (resetPassword !== resetPasswordConfirm) {
+      toast.error("Parollar mos kelmadi");
+      return;
+    }
+    setLoading(true);
+    try {
+      await loginWithPasswordReset(resetToken, resetPassword, resetPasswordConfirm);
+      navigate(redirectTo);
+    } catch (err: any) {
+      toast.error(err.response?.data?.message ?? "Parolni yangilab bo'lmadi");
     } finally {
       setLoading(false);
     }
@@ -114,7 +189,42 @@ export function LoginPage() {
   return (
     <div className="login-page min-h-screen flex items-center justify-center px-5 py-10">
       <div className="w-full max-w-[560px] text-center">
-        {!showPasswordLogin && (
+        {forgotMode ? (
+          forgotStep === "code" ? (
+            <form onSubmit={verifyResetCode} className="flex flex-col items-center">
+              <h1 className="login-title text-2xl font-black leading-none">Kodni Kiriting</h1>
+              <p className="login-description mt-5 max-w-100 text-center text-sm font-medium leading-relaxed">
+                <a href={botLink || `tg://resolve?domain=BirKodBot`} target="_blank" rel="noreferrer" className="login-bot-link mr-2 whitespace-nowrap underline decoration-2 underline-offset-4">{displayBot}</a>
+                telegram botidan odatdagidek 6 xonali kodingizni oling.
+              </p>
+              <div className="mt-8 flex w-full justify-center gap-2">
+                {resetCodeDigits.map((digit, index) => (
+                  <input
+                    key={index}
+                    ref={(node) => { resetCodeRefs.current[index] = node; }}
+                    autoFocus={index === 0}
+                    value={digit}
+                    onChange={(event) => updateResetCodeDigit(index, event.target.value)}
+                    onKeyDown={(event) => handleResetCodeKeyDown(index, event)}
+                    onPaste={handleResetCodePaste}
+                    inputMode="numeric"
+                    autoComplete={index === 0 ? "one-time-code" : "off"}
+                    aria-label={`Tiklash kodi raqami ${index + 1}`}
+                    className="login-code-input h-12 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
+                  />
+                ))}
+              </div>
+              <button type="submit" disabled={loading || resetCode.length !== CODE_LENGTH} className="sr-only">{loading ? "Tekshirilmoqda..." : "Kodni tasdiqlash"}</button>
+            </form>
+          ) : (
+            <form onSubmit={completeReset} className="flex flex-col gap-4">
+              <h1 className="login-title text-2xl font-bold">Yangi parol</h1>
+              <input autoFocus type="password" value={resetPassword} onChange={(e) => setResetPassword(e.target.value)} placeholder="Yangi parol" className="login-admin-input rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
+              <input type="password" value={resetPasswordConfirm} onChange={(e) => setResetPasswordConfirm(e.target.value)} placeholder="Yangi parolni tasdiqlang" className="login-admin-input rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
+              <button type="submit" disabled={loading || !resetPassword || !resetPasswordConfirm} className="rounded-lg bg-indigo-500 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50">{loading ? "Saqlanmoqda..." : "Parolni saqlash va kirish"}</button>
+            </form>
+          )
+        ) : !showPasswordLogin && (
           <form
             onSubmit={handleTelegramLogin}
             className="flex flex-col items-center"
@@ -161,7 +271,7 @@ export function LoginPage() {
           </form>
         )}
 
-        {showPasswordLogin && (
+        {!forgotMode && showPasswordLogin && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <h1 className="login-title mb-2 text-2xl font-bold">
               Login bilan kirish
@@ -187,10 +297,13 @@ export function LoginPage() {
             >
               {loading ? "Kirish..." : "Kirish"}
             </button>
+            <button type="button" onClick={() => { setForgotMode(true); setForgotStep("code"); }} className="login-toggle text-center text-xs font-medium">
+              Parolni unutdim
+            </button>
           </form>
         )}
 
-        <button
+        {!forgotMode && <button
           type="button"
           onClick={() => setShowPasswordLogin((value) => !value)}
           className="login-toggle mt-10 w-full text-center text-xs font-medium"
@@ -198,7 +311,12 @@ export function LoginPage() {
           {showPasswordLogin
             ? "Telegram kod bilan kirish"
             : "Login bilan kirish"}
-        </button>
+        </button>}
+        {forgotMode && (
+          <button type="button" onClick={() => setForgotMode(false)} className="login-toggle mt-10 w-full text-center text-xs font-medium">
+            Login bilan kirish
+          </button>
+        )}
 
       </div>
     </div>

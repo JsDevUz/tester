@@ -36,6 +36,16 @@ class PasswordResetVerifyDto {
   @IsString() @MinLength(4) code: string;
 }
 
+class PasswordResetCodeDto {
+  @IsString() @MinLength(6) code: string;
+}
+
+class PasswordResetCompleteDto {
+  @IsString() @MinLength(10) resetToken: string;
+  @IsString() @MinLength(8) @MaxLength(128) newPassword: string;
+  @IsString() @MinLength(8) @MaxLength(128) confirmPassword: string;
+}
+
 class UpdateProfileDto {
   @IsOptional() @IsString() @MaxLength(120) name?: string;
   // Empty string clears the custom avatar back to the Telegram-synced one —
@@ -92,6 +102,20 @@ export class AuthController {
   @HttpCode(200)
   verifyPasswordReset(@Body() dto: PasswordResetVerifyDto) {
     return this.authService.verifyPasswordReset(dto.phoneOrEmail, dto.code);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @Post('password/reset/verify-code')
+  @HttpCode(200)
+  verifyPasswordResetCode(@Body() dto: PasswordResetCodeDto) {
+    return this.authService.verifyPasswordResetCode(dto.code);
+  }
+
+  @Throttle(AUTH_THROTTLE)
+  @Post('password/reset/complete')
+  @HttpCode(200)
+  completePasswordReset(@Body() dto: PasswordResetCompleteDto) {
+    return this.authService.completePasswordReset(dto.resetToken, dto.newPassword, dto.confirmPassword);
   }
 
   @UseGuards(JwtAuthGuard)
