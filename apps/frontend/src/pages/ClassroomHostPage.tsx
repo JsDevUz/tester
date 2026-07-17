@@ -31,7 +31,7 @@ export function ClassroomHostPage() {
   const navigate = useNavigate();
   const admin = useAuthStore((s) => s.admin);
   const { state, hostActions } = useClassroomSession(id, "host");
-  const voice = useClassroomVoice(state.joined ? id : undefined, false);
+  const voice = useClassroomVoice(state.joined ? id : undefined, true);
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
   const [strokeWidth, setStrokeWidth] = useState(4);

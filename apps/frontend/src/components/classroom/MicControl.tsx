@@ -32,9 +32,8 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
   return (
     <div ref={wrapRef} className="relative">
       <div
-        className={`flex items-center gap-0.5 rounded-full p-1 shadow-md transition-colors ${
-          micEnabled ? "bg-gray-800" : "bg-red-50"
-        }`}
+        className={`flex items-center rounded-full shadow-md transition-colors ${hasDevices ? "gap-0.5 p-1" : ""}`}
+        style={{ backgroundColor: micEnabled ? "#1f2937" : "#fef2f2" }}
       >
         {hasDevices && (
           <button
