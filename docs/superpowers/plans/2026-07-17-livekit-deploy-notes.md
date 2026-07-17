@@ -80,8 +80,113 @@ curl -I https://livekit.jamm.uz  # HTTP 426 (Upgrade Required) — bu normal jav
 
 ## Holat
 
-Ushbu hujjat yozilgan paytda oxirgi qadam — `.env`ga `LIVEKIT_DOMAIN` qo'shib Caddy'ni qayta ko'tarish — serverda bajarilishi kutilmoqda. Shundan keyin brauzerda darsni ochib mikrofonni yoqib tekshirish kerak: "Ovoz o'chirilgan (server sozlanmagan)" yozuvi ko'rinmasligi kerak.
+`.env`ga `LIVEKIT_DOMAIN` qo'shildi, Caddy va backend qayta ko'tarildi. LiveKit + Caddy + DNS zanjiri to'liq ishga tushdi.
 
 ## Kelajakda shu xil muammoni oldini olish
 
 `network_mode: host` bilan ishlaydigan har qanday yangi xizmat qo'shilsa (masalan boshqa SFU/media-server), xuddi shu `host.docker.internal` + `extra_hosts` patterni ishlatiladi — Caddy konteyner nomlariga emas, faqat shu maxsus hostname'ga ulanadi.
+
+---
+
+## Video upload: Backblaze B2 CORS sozlash
+
+### Nima uchun
+
+Video upload presigned URL orqali to'g'ridan-to'g'ri object storage'ga (Backblaze B2, S3-compatible API) yuklanadigan qilib o'zgartirilgan edi (tezlik uchun — backend orqali proxy qilinmaydi). Bu brauzerdan bucket'ga to'g'ridan-to'g'ri `PUT` so'rovi yuborishni talab qiladi, buning uchun bucket'da CORS sozlangan bo'lishi shart. Sozlanmagan holda video yuklashda **CORS error** chiqib, "Video tayyorlashda xatolik yuz berdi" ko'rinardi.
+
+### Muammo
+
+Backblaze B2 veb-konsolidagi oddiy CORS UI (Buckets → bucket → CORS Rules) faqat oldindan tayyorlangan variantlarni taklif qiladi (`Share everything with one origin` va h.k.) va bular odatda faqat **o'qish** (GET) operatsiyalariga mo'ljallangan — aniq `s3_put` ruxsatini shu UI orqali qo'shib bo'lmaydi. Shuning uchun `b2` CLI orqali custom CORS qoida yozildi.
+
+### Bajarilgan qadamlar (production server, `jamm.uz`)
+
+#### 1. `b2` CLI o'rnatildi
+
+Tizim Python'i "externally managed" bo'lgani uchun (`pip install` to'g'ridan-to'g'ri ishlamadi), `pipx` orqali o'rnatildi:
+
+```bash
+apt-get update && apt-get install -y pipx
+pipx install b2
+pipx ensurepath
+source ~/.bashrc
+```
+
+#### 2. Avtorizatsiya
+
+```bash
+b2 account authorize
+```
+
+`.env`dagi `OBJECT_STORAGE_ACCESS_KEY_ID` (keyID) va `OBJECT_STORAGE_SECRET_ACCESS_KEY` (applicationKey) kiritildi.
+
+#### 3. Bucket holati tekshirildi
+
+```bash
+b2 bucket get jammstorage
+```
+
+Natija: `bucketType: "allPublic"`, `corsRules: []` (bo'sh).
+
+#### 4. CORS qoida yozildi va qo'llandi
+
+```bash
+cat > /tmp/cors-rules.json << 'EOF'
+[
+  {
+    "corsRuleName": "video-upload-direct",
+    "allowedOrigins": ["https://jamm.uz"],
+    "allowedHeaders": ["content-type"],
+    "allowedOperations": ["s3_put", "s3_get", "s3_head"],
+    "maxAgeSeconds": 3600
+  }
+]
+EOF
+
+b2 bucket update --cors-rules "$(cat /tmp/cors-rules.json)" jammstorage allPublic
+```
+
+**Muhim CLI eslatma:** flag nomi `--cors-rules` (defis bilan), `--corsRules` emas. Argument tartibi: `b2 bucket update [flags] <bucketName> <bucketType>` — `bucketType` (`allPublic`/`allPrivate`) buyruqning oxirida, positional argument sifatida beriladi.
+
+Natija tasdiqlandi: `revision: 3`, `corsRules` massivida `video-upload-direct` qoidasi `s3_put`/`s3_get`/`s3_head` va `https://jamm.uz` origin bilan.
+
+### Bucket'ning yakuniy CORS holati
+
+```json
+{
+  "bucketName": "jammstorage",
+  "bucketType": "allPublic",
+  "corsRules": [
+    {
+      "corsRuleName": "video-upload-direct",
+      "allowedOrigins": ["https://jamm.uz"],
+      "allowedHeaders": ["content-type"],
+      "allowedOperations": ["s3_head", "s3_put", "s3_get"],
+      "maxAgeSeconds": 3600
+    }
+  ]
+}
+```
+
+### ⚠️ Xavfsizlik — bajarilishi SHART bo'lgan keyingi qadam
+
+CORS sozlash jarayonida `OBJECT_STORAGE_ACCESS_KEY_ID` va `OBJECT_STORAGE_SECRET_ACCESS_KEY` (hamda ulardan generatsiya qilingan vaqtinchalik `accountAuthToken`) suhbat orqali oshkor bo'ldi (terminal chiqishi orqali). Bu kalit `writeFiles`, `deleteFiles`, `writeBuckets` huquqlariga ega — ya'ni **butun bucket'ni o'chirish/yozib almashtirish** imkoniyatiga ega.
+
+**Qilinishi kerak (hali bajarilmagan):**
+
+1. Backblaze konsoli → **Application Keys** → eski keyni (`005d2cc251b4ba80000000001`) **o'chirish**
+2. Yangi Application Key yaratish (kamida shu bucket uchun, "read and write" huquqi bilan)
+3. `/opt/tester/.env`dagi `OBJECT_STORAGE_ACCESS_KEY_ID` va `OBJECT_STORAGE_SECRET_ACCESS_KEY`ni yangi qiymatlarga almashtirish
+4. Backend'ni qayta ko'tarish:
+   ```bash
+   docker compose up -d --force-recreate backend
+   ```
+
+Bu qadam bajarilmaguncha eski kalit hali ham amal qiladi va xavf saqlanib qoladi.
+
+### Boshqa domen/bucket uchun eslatma
+
+Agar kelajakda frontend boshqa domenga ko'chsa yoki yangi subdomain qo'shilsa, CORS qoidasidagi `allowedOrigins` ro'yxatiga o'sha domenni qo'shish kerak (masalan lokal development uchun `http://localhost:5173`):
+
+```bash
+b2 bucket update --cors-rules '[{"corsRuleName":"video-upload-direct","allowedOrigins":["https://jamm.uz","http://localhost:5173"],"allowedHeaders":["content-type"],"allowedOperations":["s3_put","s3_get","s3_head"],"maxAgeSeconds":3600}]' jammstorage allPublic
+```
