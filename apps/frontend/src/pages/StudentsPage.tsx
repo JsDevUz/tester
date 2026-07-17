@@ -107,7 +107,7 @@ export function StudentsPage() {
   const [enrollmentsTotal, setEnrollmentsTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null; avatarUrl: string | null } | null>(null);
+  const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; telegramName: string | null; phone: string | null; avatarUrl: string | null } | null>(null);
   const [progressTarget, setProgressTarget] = useState<ApiSchoolEnrollment | null>(null);
 
   useEffect(() => {
@@ -238,7 +238,10 @@ export function StudentsPage() {
                                 </span>
                               )}
                             </div>
-                            <p className="text-xs text-gray-400 mt-0.5">{e.studentPhone ?? ""}</p>
+                            {e.studentTelegramName && (
+                              <p className="truncate text-xs font-medium text-indigo-500">tg: {e.studentTelegramName}</p>
+                            )}
+                            <p className="text-xs text-gray-400">{e.studentPhone ?? ""}</p>
                           </div>
                           <div className="text-right shrink-0">
                             <p className="text-xs text-gray-400">{e.joinedAt ? formatDate(e.joinedAt) : ""}</p>
@@ -281,14 +284,15 @@ export function StudentsPage() {
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
                                 <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(e.studentId)}`} />
-                                <div className="flex items-center gap-2 min-w-0">
-                                  <p className="text-sm font-semibold text-gray-800 truncate">
-                                    {e.studentName}
-                                  </p>
-                                  {!e.active && (
-                                    <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
-                                      Faol emas
-                                    </span>
+                                <div className="min-w-0">
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <p className="text-sm font-semibold text-gray-800 truncate">{e.studentName}</p>
+                                    {!e.active && (
+                                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">Faol emas</span>
+                                    )}
+                                  </div>
+                                  {e.studentTelegramName && (
+                                    <p className="truncate text-xs font-medium text-indigo-500">tg: {e.studentTelegramName}</p>
                                   )}
                                 </div>
                               </div>
@@ -377,13 +381,15 @@ export function StudentsPage() {
                       <button
                         key={u.id}
                         type="button"
-                        onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone, avatarUrl: u.avatarUrl })}
+                        onClick={() => setProfileTarget({ id: u.id, name: u.name, telegramName: u.telegramName, phone: u.phone, avatarUrl: u.avatarUrl })}
                         className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-gray-50"
                       >
                         <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(u.id)}`} />
                         <div className="flex-1 min-w-0">
                           <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
-                          <p className="text-xs text-gray-400 mt-0.5">—</p>
+                          <p className={`truncate text-xs mt-0.5 ${u.telegramName ? "font-medium text-indigo-500" : "text-gray-400"}`}>
+                            {u.telegramName ? `tg: ${u.telegramName}` : "—"}
+                          </p>
                         </div>
                         <div className="text-right shrink-0">
                           <span className="student-course-count-badge inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold">
@@ -409,7 +415,7 @@ export function StudentsPage() {
                         {pageItems.map((u) => (
                           <tr
                             key={u.id}
-                            onClick={() => setProfileTarget({ id: u.id, name: u.name, phone: u.phone, avatarUrl: u.avatarUrl })}
+                            onClick={() => setProfileTarget({ id: u.id, name: u.name, telegramName: u.telegramName, phone: u.phone, avatarUrl: u.avatarUrl })}
                             className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5"
                           >
                             <td className="px-5 py-4">
@@ -417,7 +423,9 @@ export function StudentsPage() {
                                 <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(u.id)}`} />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
-                                  <p className="text-xs text-gray-400 mt-0.5">—</p>
+                                  <p className={`truncate text-xs mt-0.5 ${u.telegramName ? "font-medium text-indigo-500" : "text-gray-400"}`}>
+                                    {u.telegramName ? `tg: ${u.telegramName}` : "—"}
+                                  </p>
                                 </div>
                               </div>
                             </td>
@@ -490,6 +498,7 @@ export function StudentsPage() {
         <StudentProfileModal
           studentId={profileTarget.id}
           studentName={profileTarget.name}
+          studentTelegramName={profileTarget.telegramName}
           studentPhone={profileTarget.phone}
           studentAvatarUrl={profileTarget.avatarUrl}
           onClose={() => setProfileTarget(null)}

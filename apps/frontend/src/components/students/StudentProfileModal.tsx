@@ -10,6 +10,7 @@ import { UserAvatar } from '../UserAvatar';
 interface StudentProfileModalProps {
   studentId: string;
   studentName: string;
+  studentTelegramName: string | null;
   studentPhone: string | null;
   studentAvatarUrl: string | null;
   onClose: () => void;
@@ -37,7 +38,7 @@ function progressColor(pct: number) {
   return 'text-gray-400';
 }
 
-export function StudentProfileModal({ studentId, studentName, studentPhone, studentAvatarUrl, onClose, onEnrolled }: StudentProfileModalProps) {
+export function StudentProfileModal({ studentId, studentName, studentTelegramName, studentPhone, studentAvatarUrl, onClose, onEnrolled }: StudentProfileModalProps) {
   const admin = useAuthStore((s) => s.admin);
   const canManageCourses = admin?.role === 'teacher' || admin?.role === 'super';
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
@@ -182,6 +183,9 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, stud
             <UserAvatar name={studentName} avatarUrl={studentAvatarUrl} className={`h-14 w-14 rounded-full text-lg font-bold ${paletteFor(studentId)}`} />
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold text-gray-900">{studentName}</h2>
+              {studentTelegramName && (
+                <p className="truncate text-xs font-medium text-indigo-500">tg: {studentTelegramName}</p>
+              )}
               <p className="truncate text-xs text-gray-400">{studentPhone ?? '—'}</p>
             </div>
           </div>

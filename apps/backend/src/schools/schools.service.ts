@@ -197,6 +197,7 @@ export class SchoolsService {
             : {
                 id: m.studentId,
                 name: m.student.displayName,
+                telegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
                 phone: m.student.phone,
                 avatarUrl: m.student.displayAvatarUrl,
                 productsCount: 0,
@@ -224,6 +225,7 @@ export class SchoolsService {
         return {
           id: m.studentId,
           name: m.student.displayName,
+          telegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
           phone: m.student.phone,
           avatarUrl: m.student.displayAvatarUrl,
           productsCount: uniqueCourseIds.size,
@@ -259,6 +261,7 @@ export class SchoolsService {
     const rows: Array<{
       studentId: string;
       studentName: string;
+      studentTelegramName: string | null;
       studentPhone: string | null;
       studentAvatarUrl: string | null;
       active: boolean;
@@ -320,6 +323,7 @@ export class SchoolsService {
         rows.push({
           studentId: m.studentId,
           studentName: m.student.displayName,
+          studentTelegramName: m.student.customName && m.student.customName !== m.student.name ? m.student.name : null,
           studentPhone: m.student.phone,
           studentAvatarUrl: m.student.displayAvatarUrl,
           active: !enrollment.forcedClosed,
@@ -341,6 +345,7 @@ export class SchoolsService {
     const filteredRows = normalizedQuery
       ? rows.filter((row) =>
           row.studentName.toLowerCase().includes(normalizedQuery)
+          || (row.studentTelegramName ?? '').toLowerCase().includes(normalizedQuery)
           || (row.studentPhone ?? '').toLowerCase().includes(normalizedQuery)
           || row.courseTitle.toLowerCase().includes(normalizedQuery),
         )

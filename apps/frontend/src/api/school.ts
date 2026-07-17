@@ -68,6 +68,7 @@ export async function apiGetSchoolStaff(limit = 7, offset = 0): Promise<Paginate
 export interface ApiSchoolStudent {
   id: string;
   name: string;
+  telegramName: string | null;
   phone: string | null;
   productsCount: number;
   totalPaid: number;
@@ -82,6 +83,7 @@ export async function apiListAllStudents(limit = 7, offset = 0, query = ''): Pro
 export interface ApiSchoolEnrollment {
   studentId: string;
   studentName: string;
+  studentTelegramName: string | null;
   studentPhone: string | null;
   studentAvatarUrl: string | null;
   active: boolean;
