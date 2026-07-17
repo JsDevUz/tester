@@ -12,6 +12,10 @@ const REQUIRED_IN_PRODUCTION = [
   'TELEGRAM_WEBHOOK_SECRET',
 ] as const;
 
+// Ovoz (jonli dars) ixtiyoriy: uchchalasi ham bo'lsa yoqiladi, umuman
+// bo'lmasa o'chiq. Qismi berilgan bo'lsa — bu deyarli har doim xato config.
+const LIVEKIT_ENV_VARS = ['LIVEKIT_URL', 'LIVEKIT_API_KEY', 'LIVEKIT_API_SECRET'] as const;
+
 const INSECURE_DEFAULTS = new Set([
   'change_me',
   'change_me_to_a_long_random_string',
@@ -32,6 +36,16 @@ export function validateEnv() {
     for (const key of REQUIRED_IN_PRODUCTION) {
       if (!process.env[key]) missing.push(key);
     }
+  }
+
+  const livekitSet = LIVEKIT_ENV_VARS.filter((key) => process.env[key]?.trim());
+  if (livekitSet.length > 0 && livekitSet.length < LIVEKIT_ENV_VARS.length) {
+    const livekitMissing = LIVEKIT_ENV_VARS.filter((key) => !process.env[key]?.trim());
+    // eslint-disable-next-line no-console
+    console.warn(
+      `LiveKit config is incomplete (missing: ${livekitMissing.join(', ')}). ` +
+        'Live classroom voice will stay disabled until all three are set.',
+    );
   }
 
   if (missing.length > 0 || insecure.length > 0) {

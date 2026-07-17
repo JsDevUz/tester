@@ -24,6 +24,7 @@
     "@tailwindcss/vite": "^4.3.2",
     "axios": "^1.18.1",
     "hls.js": "^1.6.16",
+    "livekit-client": "^2.20.1",
     "lucide-react": "^1.22.0",
     "react": "^19.2.7",
     "react-confetti": "^6.4.0",
