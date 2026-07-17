@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Room, RoomEvent } from "livekit-client";
+import { RemoteTrack, RemoteTrackPublication, RemoteParticipant, Room, RoomEvent, Track } from "livekit-client";
 import { apiVoiceToken } from "../api/classroom";
 
 interface VoiceState {
@@ -40,6 +40,19 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     room.on(RoomEvent.Disconnected, () => {
       setState((s) => ({ ...s, connected: false }));
     });
+    // Boshqa ishtirokchilarning ovozi shu orqali eshitiladi — track
+    // kelganda audio elementga ulanadi, ketganda tozalanadi.
+    room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
+      if (track.kind !== Track.Kind.Audio) return;
+      const el = track.attach();
+      el.dataset.livekitParticipant = participant.identity;
+      el.autoplay = true;
+      document.body.appendChild(el);
+    });
+    room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
+      if (track.kind !== Track.Kind.Audio) return;
+      track.detach().forEach((el) => el.remove());
+    });
 
     (async () => {
       try {
@@ -67,6 +80,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       cancelled = true;
       roomRef.current = null;
       void room.disconnect();
+      document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());
     };
   }, [sessionId, startMuted]);
 
