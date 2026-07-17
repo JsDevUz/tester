@@ -52,12 +52,12 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
           type="button"
           onClick={onToggleMic}
           disabled={disabled}
-          className={`flex items-center justify-center w-9 h-9 rounded-full disabled:opacity-40 disabled:cursor-not-allowed ${
-            micEnabled ? "text-white hover:bg-white/10" : "bg-red-100 text-red-500"
-          }`}
+          className={`flex items-center justify-center rounded-full disabled:opacity-40 disabled:cursor-not-allowed ${
+            hasDevices ? "w-9 h-9" : "w-12 h-12"
+          } ${micEnabled ? "text-white hover:bg-white/10" : "bg-red-100 text-red-500"}`}
           title={disabled ? "Ovoz o'chirilgan" : micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
         >
-          {micEnabled ? <Mic size={17} /> : <MicOff size={17} />}
+          {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
         </button>
       </div>
 
