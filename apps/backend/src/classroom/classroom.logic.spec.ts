@@ -1,0 +1,167 @@
+import {
+  addStroke, undoStroke, clearPage, setPage,
+  attendanceStatusOnJoin, closeInterval, buildSnapshot,
+  LATE_AFTER_MS, MAX_STROKE_POINTS,
+} from './classroom.logic';
+import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
+
+function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSession {
+  return {
+    id: 'cs-1',
+    groupId: 'g-1',
+    hostUserId: 'host-1',
+    hostSocketId: 'sock-host',
+    pdfName: 'dars.pdf',
+    pdfPages: ['p1.webp', 'p2.webp', 'p3.webp'],
+    currentPage: 1,
+    strokesByPage: new Map(),
+    participants: new Map(),
+    startedAtMs: 1_000_000,
+    hostDisconnectTimer: null,
+    ...overrides,
+  };
+}
+
+function makeStroke(overrides: Partial<ClassroomStroke> = {}): ClassroomStroke {
+  return { id: 's-1', tool: 'pen', color: '#ef4444', width: 3, points: [0.1, 0.1, 0.2, 0.2], ...overrides };
+}
+
+function makeParticipant(overrides: Partial<ClassroomParticipant> = {}): ClassroomParticipant {
+  return {
+    userId: 'u-1', name: 'Ali', enrollmentId: 'e-1',
+    socketId: 'sock-1', joinedAtMs: 1_000_000, totalSeconds: 0, status: 'present',
+    ...overrides,
+  };
+}
+
+describe('addStroke', () => {
+  it('togri stroke sahifa royxatiga qoshiladi', () => {
+    const s = makeSession();
+    expect(addStroke(s, 2, makeStroke())).toBe(true);
+    expect(s.strokesByPage.get(2)!.length).toBe(1);
+  });
+
+  it('points toq sonda bolsa rad etiladi', () => {
+    const s = makeSession();
+    expect(addStroke(s, 1, makeStroke({ points: [0.1, 0.2, 0.3] }))).toBe(false);
+  });
+
+  it('points bosh bolsa rad etiladi', () => {
+    const s = makeSession();
+    expect(addStroke(s, 1, makeStroke({ points: [] }))).toBe(false);
+  });
+
+  it('0..1 dan tashqari koordinata rad etiladi', () => {
+    const s = makeSession();
+    expect(addStroke(s, 1, makeStroke({ points: [0.5, 1.5] }))).toBe(false);
+    expect(addStroke(s, 1, makeStroke({ points: [-0.1, 0.5] }))).toBe(false);
+  });
+
+  it('juda kop nuqta rad etiladi', () => {
+    const s = makeSession();
+    const points = Array.from({ length: MAX_STROKE_POINTS * 2 + 2 }, () => 0.5);
+    expect(addStroke(s, 1, makeStroke({ points }))).toBe(false);
+  });
+
+  it('mavjud bolmagan sahifaga rad etiladi', () => {
+    const s = makeSession();
+    expect(addStroke(s, 0, makeStroke())).toBe(false);
+    expect(addStroke(s, 4, makeStroke())).toBe(false);
+  });
+});
+
+describe('undoStroke', () => {
+  it('oxirgi stroke id sini qaytaradi va ochiradi', () => {
+    const s = makeSession();
+    addStroke(s, 1, makeStroke({ id: 'a' }));
+    addStroke(s, 1, makeStroke({ id: 'b' }));
+    expect(undoStroke(s, 1)).toBe('b');
+    expect(s.strokesByPage.get(1)!.map((x) => x.id)).toEqual(['a']);
+  });
+
+  it('bosh sahifada null', () => {
+    const s = makeSession();
+    expect(undoStroke(s, 1)).toBeNull();
+  });
+});
+
+describe('clearPage', () => {
+  it('sahifadagi barcha strokelarni ochiradi', () => {
+    const s = makeSession();
+    addStroke(s, 1, makeStroke({ id: 'a' }));
+    addStroke(s, 1, makeStroke({ id: 'b' }));
+    clearPage(s, 1);
+    expect(s.strokesByPage.get(1) ?? []).toEqual([]);
+  });
+});
+
+describe('setPage', () => {
+  it('chegara ichida sahifani ozgartiradi', () => {
+    const s = makeSession();
+    expect(setPage(s, 3)).toBe(true);
+    expect(s.currentPage).toBe(3);
+  });
+
+  it('chegaradan tashqarida rad etiladi', () => {
+    const s = makeSession();
+    expect(setPage(s, 0)).toBe(false);
+    expect(setPage(s, 4)).toBe(false);
+    expect(s.currentPage).toBe(1);
+  });
+
+  it('pdf yoq bolsa rad etiladi', () => {
+    const s = makeSession({ pdfPages: [] });
+    expect(setPage(s, 1)).toBe(false);
+  });
+});
+
+describe('attendanceStatusOnJoin', () => {
+  it('10 daqiqagacha present', () => {
+    expect(attendanceStatusOnJoin(0, LATE_AFTER_MS)).toBe('present');
+    expect(attendanceStatusOnJoin(0, 0)).toBe('present');
+  });
+
+  it('10 daqiqadan kech late', () => {
+    expect(attendanceStatusOnJoin(0, LATE_AFTER_MS + 1)).toBe('late');
+  });
+});
+
+describe('closeInterval', () => {
+  it('interval soniyalarini qoshadi va joinedAtMs ni tozalaydi', () => {
+    const p = makeParticipant({ joinedAtMs: 1_000_000, totalSeconds: 10 });
+    const added = closeInterval(p, 1_000_000 + 65_000);
+    expect(added).toBe(65);
+    expect(p.totalSeconds).toBe(75);
+    expect(p.joinedAtMs).toBeNull();
+  });
+
+  it('ochiq interval bolmasa 0', () => {
+    const p = makeParticipant({ joinedAtMs: null, totalSeconds: 10 });
+    expect(closeInterval(p, 2_000_000)).toBe(0);
+    expect(p.totalSeconds).toBe(10);
+  });
+});
+
+describe('buildSnapshot', () => {
+  it('sessiya holatini toliq qaytaradi', () => {
+    const s = makeSession();
+    addStroke(s, 2, makeStroke({ id: 'a' }));
+    s.participants.set('u-1', makeParticipant());
+    s.participants.set('u-2', makeParticipant({ userId: 'u-2', name: 'Vali', socketId: null, status: 'absent' }));
+    const snap = buildSnapshot(s);
+    expect(snap.sessionId).toBe('cs-1');
+    expect(snap.pages).toEqual(['p1.webp', 'p2.webp', 'p3.webp']);
+    expect(snap.currentPage).toBe(1);
+    expect(snap.strokesByPage[2].length).toBe(1);
+    expect(snap.participants).toEqual([
+      { userId: 'u-1', name: 'Ali', online: true, status: 'present' },
+      { userId: 'u-2', name: 'Vali', online: false, status: 'absent' },
+    ]);
+    expect(snap.hostOnline).toBe(true);
+  });
+
+  it('host socketi yoq bolsa hostOnline false', () => {
+    const s = makeSession({ hostSocketId: null });
+    expect(buildSnapshot(s).hostOnline).toBe(false);
+  });
+});
