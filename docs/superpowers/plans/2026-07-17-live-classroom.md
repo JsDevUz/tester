@@ -27,8 +27,8 @@
 
 **Files:** Modify `apps/backend/package.json` (npm i `livekit-server-sdk mupdf sharp`), `apps/backend/src/validate-env.ts` (LiveKit varlar to'liq yoki umuman yo'q bo'lishi kerak — qismi bo'lsa warning).
 
-- [ ] `npm i livekit-server-sdk mupdf sharp -w backend`
-- [ ] validate-env: LiveKit uchqun tekshiruvi (partial config → console.warn, ishga tushishni to'xtatmaydi)
+- [x] `npm i livekit-server-sdk mupdf sharp -w backend`
+- [x] validate-env: LiveKit uchqun tekshiruvi (partial config → console.warn, ishga tushishni to'xtatmaydi)
 
 ### Task 2: DB schema + migratsiya
 
@@ -36,9 +36,9 @@
 
 **Produces:** `classSessions`, `attendanceRecords` jadvallari (spec'dagi ustunlar bilan), relations.
 
-- [ ] Schema qo'shish (classSessions: groupId, teacherId, status, pdfName, pdfPages jsonb, startedAt, endedAt; attendanceRecords: sessionId, enrollmentId, firstJoinedAt, lastLeftAt, totalSeconds, status, overriddenByAdminId; unique(sessionId, enrollmentId))
-- [ ] `npm run db:generate` — migratsiya fayli
-- [ ] Commit
+- [x] Schema qo'shish (classSessions: groupId, teacherId, status, pdfName, pdfPages jsonb, startedAt, endedAt; attendanceRecords: sessionId, enrollmentId, firstJoinedAt, lastLeftAt, totalSeconds, status, overriddenByAdminId; unique(sessionId, enrollmentId))
+- [x] `npm run db:generate` — migratsiya fayli
+- [x] Commit
 
 ### Task 3: classroom.types.ts + classroom.logic.ts (TDD)
 
@@ -55,9 +55,9 @@
 
 **Types:** `ClassroomStroke {id, tool:'pen'|'highlighter', color, width, points:number[]}`, `ClassroomParticipant {userId, name, socketId|null, enrollmentId, joinedAtMs|null, totalSeconds, status}`, `ClassroomSession {id, groupId, hostUserId, hostSocketId|null, pdfName|null, pdfPages:string[], currentPage, strokesByPage:Map<number,ClassroomStroke[]>, participants:Map<string,ClassroomParticipant>, startedAtMs, hostDisconnectTimer}`
 
-- [ ] Failing testlar (stroke validatsiya, undo/clear, setPage chegara, late/present, interval hisobi, snapshot)
-- [ ] Minimal implementatsiya, testlar yashil
-- [ ] Commit
+- [x] Failing testlar (stroke validatsiya, undo/clear, setPage chegara, late/present, interval hisobi, snapshot)
+- [x] Minimal implementatsiya, testlar yashil
+- [x] Commit
 
 ### Task 4: PDF→rasm konvertatsiya
 
@@ -65,8 +65,8 @@
 
 **Produces:** `convertPdfToPageImages(buffer): Promise<Buffer[]>` — mupdf bilan har sahifani 1600px kenglikda render, sharp bilan WebP q80. 60 sahifadan ko'p bo'lsa `PDF_TOO_MANY_PAGES` xato.
 
-- [ ] Implementatsiya + smoke test (minimal 1-sahifali PDF fixture bilan spec)
-- [ ] Commit
+- [x] Implementatsiya + smoke test (minimal 1-sahifali PDF fixture bilan spec)
+- [x] Commit
 
 ### Task 5: classroom.service.ts (+ spec)
 
@@ -85,9 +85,9 @@
 - `onModuleInit` — stale active sessiyalarni ended qilish
 - `setBroadcaster(b: LiveBroadcaster-uslub)` — room = `cs:{sessionId}`
 
-- [ ] Spec testlar (live.service.spec uslubida — db mock/fake broadcaster): create/join/davomat/disconnect/end oqimlari
-- [ ] Implementatsiya, testlar yashil
-- [ ] Commit
+- [x] Spec testlar (live.service.spec uslubida — db mock/fake broadcaster): create/join/davomat/disconnect/end oqimlari
+- [x] Implementatsiya, testlar yashil
+- [x] Commit
 
 ### Task 6: gateway + controller + module
 
@@ -97,9 +97,9 @@
 
 **Controller (spec bo'yicha):** POST `/classroom/sessions`, POST `/classroom/sessions/:id/pdf` (FileInterceptor, 25MB, .pdf), POST `/classroom/sessions/:id/end`, GET `/classroom/sessions/active`, GET `/classroom/sessions/:id`, GET `/classroom/groups/:groupId/history`, PATCH `/classroom/attendance/:recordId`, POST `/classroom/sessions/:id/voice-token`, POST `/classroom/sessions/:id/participants/:userId/mute`.
 
-- [ ] Gateway + controller + module, app.module'ga ulash
-- [ ] `nest build` yashil
-- [ ] Commit
+- [x] Gateway + controller + module, app.module'ga ulash
+- [x] `nest build` yashil
+- [x] Commit
 
 ### Task 7: Frontend API qatlami
 
@@ -107,8 +107,8 @@
 
 **Produces:** REST wrapperlar (`apiCreateClassSession`, `apiUploadClassPdf`, `apiActiveClassSessions`, `apiClassSession`, `apiClassHistory`, `apiOverrideAttendance`, `apiVoiceToken`, `apiMuteParticipant`, `apiEndClassSession`) + `getClassroomSocket()/closeClassroomSocket()` (`api/live.ts` uslubi) + WS payload tiplari (`CsSnapshot`, `CsStroke`, ...).
 
-- [ ] Yozish, `tsc` yashil
-- [ ] Commit
+- [x] Yozish, `tsc` yashil
+- [x] Commit
 
 ### Task 8: PDF viewer + chizish overlay
 
@@ -116,17 +116,17 @@
 
 **Produces:** `<ClassroomPdfViewer pageUrl strokes pointer editable tool color onStrokeComplete onPointerMove />` — `<img>` + overlay canvas, normalizatsiya/denormalizatsiya, resize'da qayta chizish, pointer events bilan chizish (50ms batch), lazer-pointer nuqtasi. Toolbar: qalam 3 rang, marker, lazer, undo, clear, sahifa nav, PDF yuklash tugmasi.
 
-- [ ] Komponentlar, `tsc` yashil
-- [ ] Commit
+- [x] Komponentlar, `tsc` yashil
+- [x] Commit
 
 ### Task 9: Host va Student sahifalar + routelar
 
 **Files:** Create `apps/frontend/src/pages/ClassroomHostPage.tsx`, `ClassroomStudentPage.tsx`; Modify `apps/frontend/src/App.tsx` (routes `/classroom/host/:id` TeacherRoute, `/classroom/:id` PrivateRoute), `apps/frontend/src/components/course/CourseGroupsPage.tsx` ("Jonli dars" tugmasi → create/navigate).
 
-- [ ] Host sahifa: socket join, PDF yuklash (bo'lmasa dropzone), viewer+toolbar, participants panel, end tugmasi
-- [ ] Student sahifa: view-only viewer, host sahifasiga ergashish, hostOnline banner, session:ended → chiqish
-- [ ] Routelar + guruh sahifasidan kirish
-- [ ] Commit
+- [x] Host sahifa: socket join, PDF yuklash (bo'lmasa dropzone), viewer+toolbar, participants panel, end tugmasi
+- [x] Student sahifa: view-only viewer, host sahifasiga ergashish, hostOnline banner, session:ended → chiqish
+- [x] Routelar + guruh sahifasidan kirish
+- [x] Commit
 
 ### Task 10: Ovoz (livekit-client)
 
@@ -134,20 +134,20 @@
 
 **Produces:** `useClassroomVoice(sessionId, enabled)` → `{connected, micEnabled, toggleMic, speakingUserIds, voiceAvailable}`. Student boshida mute; 503 → `voiceAvailable=false`.
 
-- [ ] Hook + panel integratsiyasi, `tsc` yashil
-- [ ] Commit
+- [x] Hook + panel integratsiyasi, `tsc` yashil
+- [x] Commit
 
 ### Task 11: Davomat UI + student banner
 
 **Files:** Modify `apps/frontend/src/components/student/StudentShell.tsx` (mount + 60s poll `apiActiveClassSessions` → banner), `apps/frontend/src/components/course/CourseGroupsPage.tsx` (darslar tarixi ro'yxati + davomat modal, status override).
 
-- [ ] Banner + tarix/davomat UI
-- [ ] Commit
+- [x] Banner + tarix/davomat UI
+- [x] Commit
 
 ### Task 12: Deploy + verifikatsiya
 
 **Files:** Modify `docker-compose.yml` (livekit service), `DEPLOY.md` (env + portlar).
 
-- [ ] livekit service (7880-7881/TCP, 50000-60000/UDP), DEPLOY eslatma
-- [ ] `npm test -w backend` yashil, `nest build` yashil, frontend `npm run build` yashil
-- [ ] Yakuniy commit
+- [x] livekit service (7880-7881/TCP, 50000-60000/UDP), DEPLOY eslatma
+- [x] `npm test -w backend` yashil, `nest build` yashil, frontend `npm run build` yashil
+- [x] Yakuniy commit
