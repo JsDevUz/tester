@@ -65,10 +65,16 @@ services:
       - "${HTTPS_PORT:-443}:443"
     environment:
       DOMAIN: ${DOMAIN:-test.jamm.uz}
+      LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:-}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data
       - caddy_config:/config
+    # Caddy bridge tarmog'ida, livekit esa network_mode: host'da ishlaydi —
+    # ular bir-biriga container nomi orqali ko'rinmaydi. extra_hosts orqali
+    # Caddy konteyneri ichidan host makinaning o'zini nomlash uchun.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     depends_on:
       - web
 

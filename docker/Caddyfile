@@ -35,3 +35,11 @@
         reverse_proxy web:80
     }
 }
+
+# Jonli dars ovozi (LiveKit). livekit konteyneri network_mode: host'da
+# ishlaydi, Caddy esa bridge tarmog'ida — shuning uchun container nomi
+# emas, host.docker.internal (docker-compose.yml'dagi extra_hosts) orqali.
+# Domen LIVEKIT_URL bilan mos kelishi shart (masalan wss://livekit.jamm.uz).
+{$LIVEKIT_DOMAIN:livekit.test.jamm.uz} {
+    reverse_proxy host.docker.internal:7880
+}
