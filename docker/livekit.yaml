@@ -1,0 +1,11 @@
+# LiveKit server konfiguratsiyasi (jonli dars ovozi).
+# Kalitlar docker-compose orqali LIVEKIT_KEYS env bilan beriladi.
+port: 7880
+rtc:
+  tcp_port: 7881
+  port_range_start: 50000
+  port_range_end: 50200
+  # VPS tashqi IP ni avtomatik aniqlaydi (STUN orqali)
+  use_external_ip: true
+logging:
+  level: info

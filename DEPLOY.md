@@ -136,3 +136,34 @@ docker compose down
 ```
 
 Ma'lumotlar `postgres_data` volume ichida saqlanadi. `docker compose down -v` ishlatsangiz database ham o'chadi.
+
+## Jonli dars ovozi (LiveKit)
+
+Jonli dars (PDF + chizish + davomat) ovozsiz ham ishlaydi. Ovoz uchun LiveKit kerak:
+
+1. `.env` ga qo'shing:
+
+```bash
+LIVEKIT_API_KEY=<istalgan-kalit-nomi>          # masalan: lk-mutolaa
+LIVEKIT_API_SECRET=<uzun-tasodifiy-satr>       # openssl rand -hex 32
+LIVEKIT_URL=wss://livekit.SIZNING-DOMEN.uz     # yoki ws://SERVER_IP:7880 (faqat test uchun)
+```
+
+2. LiveKit serverni ishga tushiring (host tarmog'ida ishlaydi):
+
+```bash
+docker compose --profile livekit up -d livekit
+docker compose restart backend
+```
+
+3. Firewall'da oching: `7880/tcp`, `7881/tcp`, `50000-50200/udp`.
+
+4. Production'da `wss://` uchun Caddyfile'ga subdomain qo'shing:
+
+```
+livekit.SIZNING-DOMEN.uz {
+    reverse_proxy localhost:7880
+}
+```
+
+Brauzer mikrofonga faqat HTTPS sahifada ruxsat beradi, shuning uchun productionda `LIVEKIT_URL` albatta `wss://` bo'lishi kerak. Konfiguratsiya: `docker/livekit.yaml`.
