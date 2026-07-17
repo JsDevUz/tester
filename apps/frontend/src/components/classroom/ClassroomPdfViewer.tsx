@@ -725,6 +725,18 @@ export function ClassroomPdfViewer({
     return () => el.removeEventListener("wheel", onNativeWheel);
   }, []);
 
+  // Qo'shimcha himoya: agar trackpad-pinch sichqoncha PDF konteynerdan
+  // chetga (masalan toolbar yoki bo'sh joy ustida) chiqib ketsa ham,
+  // butun sahifa (body) darajasida Ctrl/Cmd+wheel zoom bloklanadi — aks
+  // holda desktop trackpad pinch butun brauzer sahifasini kattalashtirib yuborardi.
+  useEffect(() => {
+    const onDocumentWheel = (e: WheelEvent) => {
+      if (e.ctrlKey || e.metaKey) e.preventDefault();
+    };
+    document.addEventListener("wheel", onDocumentWheel, { passive: false });
+    return () => document.removeEventListener("wheel", onDocumentWheel);
+  }, []);
+
   const handleWheel = useCallback((e: React.WheelEvent) => {
     // Asosiy ish native listenerda bajariladi — bu yerda faqat React'ga
     // event allaqachon boshqarilganini bildiramiz.
@@ -803,10 +815,14 @@ export function ClassroomPdfViewer({
         ref={scrollRef}
         className="w-full h-full overflow-auto overscroll-contain"
         style={{
-          // "pinch-zoom" atayin qo'shilmagan: bu qiymat brauzerning NATIVE
-          // pinch-zoom xatti-harakatini yoqib, bizning custom JS-zoom bilan
-          // to'qnashib, butun sahifani (body) zoom qilib yuborardi.
-          touchAction: freeToMove ? "pan-x pan-y" : "none",
+          // "pinch-zoom" shart — global `html { touch-action: pan-x pan-y }`
+          // qoidasi pinch-gesture'ni butunlay o'chirib qo'ygan (shu sabab
+          // brauzer buni "cancelable" emas deb hisoblab, bizning JS
+          // preventDefault()'imiz ishlamay, body-scale zoom bo'lib ketardi).
+          // Bu yerda uni qayta yoqamiz — brauzerga faqat RUXSAT beradi,
+          // haqiqiy ishni baribir bizning JS handler preventDefault()
+          // orqali to'xtatib, custom zoom'ni qo'llaydi.
+          touchAction: freeToMove ? "pan-x pan-y pinch-zoom" : "none",
           overflow: freeToMove ? "auto" : "hidden",
         }}
         onWheel={handleWheel}
