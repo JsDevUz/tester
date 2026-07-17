@@ -19,6 +19,7 @@ jest.mock('../db', () => ({
       classSessions: { findFirst: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn(), findFirst: jest.fn() },
       attendanceRecords: { findFirst: jest.fn() },
+      mediaAssets: { findFirst: jest.fn() },
     },
   },
 }));
@@ -53,16 +54,23 @@ function setupDbForCreate() {
   ]);
 }
 
-async function setup() {
+function makeFakeMediaLibrary(overrides: Partial<{ pages: string[]; status: string }> = {}) {
+  return {
+    getPdfPages: jest.fn().mockResolvedValue({ pages: overrides.pages ?? [], status: overrides.status ?? 'ready' }),
+  };
+}
+
+async function setup(mediaLibrary = makeFakeMediaLibrary()) {
   const service = new ClassroomService(
     { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
     { get: () => undefined } as any,
+    mediaLibrary as any,
   );
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
   setupDbForCreate();
   const { id } = await service.createSession('c-1', 'teacher-1', 'teacher');
-  return { service, events, sessionId: id };
+  return { service, events, sessionId: id, mediaLibrary };
 }
 
 afterEach(() => {
@@ -82,7 +90,7 @@ describe('createSession', () => {
   });
 
   it('begona ustoz uchun taqiqlanadi', async () => {
-    const service = new ClassroomService({} as any, { get: () => undefined } as any);
+    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any);
     setupDbForCreate();
     await expect(service.createSession('c-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
   });
@@ -119,6 +127,57 @@ describe('studentJoin / davomat', () => {
     const { service, sessionId } = await setup();
     mockedDb.query.groupEnrollments.findMany.mockResolvedValue([]);
     await expect(service.studentJoin(sessionId, 'begona', 'sock-x')).rejects.toThrow('NOT_ENROLLED');
+  });
+});
+
+describe('attachPdfFromLibrary', () => {
+  it('tanlangan sahifalarni jonli darsga qoshadi va pdf:set broadcast qiladi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1', 'p2', 'p3', 'p4'], status: 'ready' });
+    const { service, events, sessionId } = await setup(mediaLibrary);
+    mockedDb.query.mediaAssets.findFirst.mockResolvedValue({ id: 'asset-1', originalName: 'dars.pdf' });
+
+    const result = await service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [1, 3]);
+
+    expect(result).toEqual({ pdfName: 'dars.pdf', pages: ['p1', 'p3'] });
+    expect(mediaLibrary.getPdfPages).toHaveBeenCalledWith('asset-1', 'teacher-1', 'teacher');
+    expect(events.at(-1)).toMatchObject({
+      event: 'pdf:set',
+      payload: { pdfName: 'dars.pdf', pages: ['p1', 'p3'], currentPage: 1 },
+    });
+  });
+
+  it('takrorlangan va tartibsiz sahifa raqamlarini normallashtiradi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1', 'p2', 'p3'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    mockedDb.query.mediaAssets.findFirst.mockResolvedValue({ id: 'asset-1', originalName: 'dars.pdf' });
+
+    const result = await service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [3, 1, 3, 1]);
+
+    expect(result.pages).toEqual(['p1', 'p3']);
+  });
+
+  it('begona ustoz uchun taqiqlanadi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    await expect(
+      service.attachPdfFromLibrary(sessionId, 'boshqa-teacher', 'teacher', 'asset-1', [1]),
+    ).rejects.toThrow();
+  });
+
+  it('PDF hali tayyor bolmasa rad etadi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: [], status: 'processing' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    await expect(
+      service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [1]),
+    ).rejects.toThrow('hali tayyor emas');
+  });
+
+  it("mavjud bolmagan sahifa raqamini rad etadi", async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1', 'p2'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    await expect(
+      service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [5]),
+    ).rejects.toThrow();
   });
 });
 

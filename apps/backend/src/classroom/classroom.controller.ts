@@ -1,17 +1,11 @@
 import {
-  BadRequestException, Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post,
-  Req, UploadedFile, UseGuards, UseInterceptors,
+  Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
-import { memoryStorage } from 'multer';
-import { extname } from 'path';
-import { IsIn, IsString } from 'class-validator';
+import { ArrayMinSize, IsIn, IsInt, IsString, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
 import { ClassroomService } from './classroom.service';
-
-const MAX_PDF_SIZE = 25 * 1024 * 1024; // 25 MB
 
 class CreateClassSessionDto {
   @IsString() courseId!: string;
@@ -19,6 +13,11 @@ class CreateClassSessionDto {
 
 class OverrideAttendanceDto {
   @IsIn(['absent', 'present', 'late']) status!: 'absent' | 'present' | 'late';
+}
+
+class AttachPdfDto {
+  @IsString() mediaAssetId!: string;
+  @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -34,23 +33,12 @@ export class ClassroomController {
 
   @Post('sessions/:id/pdf')
   @Roles('teacher', 'super')
-  @UseInterceptors(
-    FileInterceptor('file', {
-      storage: memoryStorage(),
-      limits: { fileSize: MAX_PDF_SIZE },
-      fileFilter: (_req, file, cb) => {
-        if (extname(file.originalname).toLowerCase() === '.pdf') cb(null, true);
-        else cb(new BadRequestException('Faqat PDF fayl qabul qilinadi'), false);
-      },
-    }),
-  )
-  async uploadPdf(
+  async attachPdf(
     @Param('id', ParseUUIDPipe) id: string,
-    @UploadedFile() file: Express.Multer.File,
+    @Body() dto: AttachPdfDto,
     @Req() req: any,
   ) {
-    if (!file) throw new BadRequestException('Fayl topilmadi');
-    return this.classroomService.attachPdf(id, req.admin.id, file);
+    return this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers);
   }
 
   @Post('sessions/:id/end')

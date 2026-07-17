@@ -548,6 +548,11 @@ export const mediaAssets = pgTable('media_assets', {
   type: text('type').notNull(),
   originalName: text('original_name').notNull(),
   folder: text('folder').notNull(),
+  sizeBytes: integer('size_bytes').notNull().default(0),
+  // PDF fayllar uchun: sahifalar bir marta WebP'ga aylantirilib shu yerda
+  // keshlanadi — jonli darsga har safar qayta konvertatsiya qilinmaydi.
+  pdfPages: jsonb('pdf_pages'),
+  pdfProcessingStatus: text('pdf_processing_status'),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

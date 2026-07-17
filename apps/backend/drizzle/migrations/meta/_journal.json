@@ -71,6 +71,13 @@
       "when": 1784270000000,
       "tag": "0009_classroom_course_scope",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1784298454426,
+      "tag": "0010_curvy_adam_warlock",
+      "breakpoints": true
     }
   ]
 }

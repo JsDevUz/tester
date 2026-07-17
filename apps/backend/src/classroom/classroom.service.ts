@@ -6,13 +6,13 @@ import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
-import { attendanceRecords, classSessions, courses, groupEnrollments, groups } from '../db/schema';
+import { attendanceRecords, classSessions, courses, groupEnrollments, groups, mediaAssets } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
+import { MediaLibraryService } from '../upload/media-library.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, HOST_GRACE_MS, setPage as setSessionPage, undoStroke,
 } from './classroom.logic';
-import { convertPdfToPageImages, PdfConversionError } from './pdf-converter';
 import {
   AttendanceStatus, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
   ClassroomSnapshot, ClassroomStroke,
@@ -28,6 +28,7 @@ export class ClassroomService implements OnModuleInit {
   constructor(
     private readonly storage: StorageService,
     private readonly config: ConfigService,
+    private readonly mediaLibrary: MediaLibraryService,
   ) {}
 
   setBroadcaster(b: ClassroomBroadcaster) {
@@ -117,38 +118,39 @@ export class ClassroomService implements OnModuleInit {
     return { id: row.id };
   }
 
-  async attachPdf(sessionId: string, teacherId: string, file: Express.Multer.File): Promise<{ pdfName: string; pages: string[] }> {
+  // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
+  // ustoz tanlagan sahifalarni jonli darsga qo'shadi. Konvertatsiya bu
+  // yerda sodir bo'lmaydi — u kutubxonaga yuklashda bir marta bajarilgan.
+  async attachPdfFromLibrary(
+    sessionId: string, teacherId: string, teacherRole: string, mediaAssetId: string, pageNumbers: number[],
+  ): Promise<{ pdfName: string; pages: string[] }> {
     const s = this.requireSession(sessionId);
     if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi PDF yuklay oladi');
 
-    let images: Buffer[];
-    try {
-      images = await convertPdfToPageImages(file.buffer);
-    } catch (e) {
-      if (e instanceof PdfConversionError) {
-        const msg = e.message === 'PDF_TOO_MANY_PAGES'
-          ? 'PDF juda katta (60 sahifadan oshmasin)'
-          : "PDF faylni o'qib bo'lmadi";
-        throw new ConflictException(msg);
-      }
-      throw e;
+    const { pages: allPages, status } = await this.mediaLibrary.getPdfPages(mediaAssetId, teacherId, teacherRole);
+    if (status !== 'ready') {
+      throw new ConflictException("PDF hali tayyor emas — konvertatsiya tugashini kuting");
+    }
+    if (allPages.length === 0) {
+      throw new ConflictException('PDF sahifalari topilmadi');
     }
 
-    const prefix = `classroom/${sessionId}/${crypto.randomUUID()}`;
-    const pages: string[] = [];
-    for (let i = 0; i < images.length; i++) {
-      const key = `${prefix}/page-${i + 1}.webp`;
-      await this.storage.uploadBuffer(key, images[i], 'image/webp', 'public, max-age=31536000, immutable');
-      pages.push(this.storage.getPublicUrl(key));
+    const uniqueSorted = [...new Set(pageNumbers)].sort((a, b) => a - b);
+    if (uniqueSorted.some((n) => !Number.isInteger(n) || n < 1 || n > allPages.length)) {
+      throw new ConflictException("Noto'g'ri sahifa raqami tanlangan");
     }
+    const selectedPages = uniqueSorted.map((n) => allPages[n - 1]);
+
+    const asset = await db.query.mediaAssets.findFirst({ where: eq(mediaAssets.id, mediaAssetId) });
+    const pdfName = asset?.originalName ?? 'dars.pdf';
 
     await db.update(classSessions)
-      .set({ pdfName: file.originalname, pdfPages: pages })
+      .set({ pdfName, pdfPages: selectedPages })
       .where(eq(classSessions.id, sessionId));
 
-    this.applyPdf(s, file.originalname, pages);
-    this.broadcaster.toRoom(sessionId, 'pdf:set', { pdfName: s.pdfName, pages, currentPage: 1 });
-    return { pdfName: file.originalname, pages };
+    this.applyPdf(s, pdfName, selectedPages);
+    this.broadcaster.toRoom(sessionId, 'pdf:set', { pdfName: s.pdfName, pages: selectedPages, currentPage: 1 });
+    return { pdfName, pages: selectedPages };
   }
 
   private applyPdf(s: ClassroomSession, pdfName: string, pages: string[]) {

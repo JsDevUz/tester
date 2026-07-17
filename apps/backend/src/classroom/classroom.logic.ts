@@ -5,7 +5,10 @@ import {
 export const LATE_AFTER_MS = 10 * 60 * 1000;
 export const HOST_GRACE_MS = 90_000;
 export const MAX_STROKE_POINTS = 2000;
-export const MAX_PDF_PAGES = 60;
+// Amaliy foydalanishdan ancha yuqori — asosiy himoya kutubxonaning umumiy
+// hajm/fayl-soni cheklovi (media-library.service.ts), bu faqat DoS'ga
+// qarshi yakuniy chegara (juda ko'p sahifali PDF serverni band qilmasin).
+export const MAX_PDF_PAGES = 300;
 export const PDF_RENDER_WIDTH = 1600;
 
 function isValidPage(session: ClassroomSession, page: number): boolean {
