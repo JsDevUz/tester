@@ -3,6 +3,7 @@ import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, RefreshCw, Star, Th
 import { useCourseStore } from '../../stores/courseStore';
 import { PromptModal } from './PromptModal';
 import { DataLoadingState } from '../DataLoadingState';
+import { ActiveClassBanner } from '../classroom/ActiveClassBanner';
 
 interface CourseGridProps {
   onOpenCourse: (courseId: string) => void;
@@ -20,6 +21,8 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
 
   return (
     <div className="p-6">
+      <ActiveClassBanner />
+
       <div className="mb-6 flex items-center justify-between gap-3">
         <h2 className="text-lg font-bold text-gray-800">Kurslar</h2>
         <button
