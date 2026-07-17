@@ -81,7 +81,7 @@ services:
   # Jonli dars ovozi (SFU). Host tarmog'ida ishlaydi — UDP portlar (50000-50200)
   # to'g'ridan-to'g'ri ochiladi. LIVEKIT_API_KEY/SECRET .env da bo'lishi shart.
   livekit:
-    image: livekit/livekit-server:v1.8
+    image: livekit/livekit-server:v1.13.3
     restart: unless-stopped
     profiles: ["livekit"]
     network_mode: host
