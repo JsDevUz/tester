@@ -25,6 +25,7 @@ export interface ClassroomParticipant {
 export interface ClassroomSession {
   id: string;
   groupId: string;
+  groupName: string;
   hostUserId: string;
   hostSocketId: string | null;
   pdfName: string | null;

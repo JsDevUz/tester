@@ -9,6 +9,7 @@ function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSessio
   return {
     id: 'cs-1',
     groupId: 'g-1',
+    groupName: 'Guruh A',
     hostUserId: 'host-1',
     hostSocketId: 'sock-host',
     pdfName: 'dars.pdf',
