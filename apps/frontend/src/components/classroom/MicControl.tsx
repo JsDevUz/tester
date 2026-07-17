@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { ChevronDown, Mic, MicOff } from "lucide-react";
+import { ChevronDown, ChevronUp, Mic, MicOff } from "lucide-react";
 
 interface Props {
   micEnabled: boolean;
@@ -13,6 +13,7 @@ interface Props {
 // Mikrofon yoqish/o'chirish + qaysi mikrofon qurilmasi ishlatilishini
 // tanlash uchun birlashtirilgan pill: asosiy tugma mikrofonni almashtiradi,
 // chevron esa qurilmalar ro'yxatini ochadi (LiveKit switchActiveDevice orqali).
+// Mikrofon o'chirilganda butun pill (chevron qismi ham) qizg'ish fonga o'tadi.
 export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput, disabled }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -26,30 +27,38 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [menuOpen]);
 
+  const hasDevices = audioInputs.length > 1;
+
   return (
     <div ref={wrapRef} className="relative">
-      <div className={`flex items-center rounded-full shadow-md ${micEnabled ? "bg-gray-800" : "bg-gray-800"}`}>
-        {audioInputs.length > 1 && (
+      <div
+        className={`flex items-center gap-0.5 rounded-full p-1 shadow-md transition-colors ${
+          micEnabled ? "bg-gray-800" : "bg-red-50"
+        }`}
+      >
+        {hasDevices && (
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             disabled={disabled}
-            className="pl-3 pr-1.5 py-2.5 text-gray-300 hover:text-white disabled:opacity-40"
+            className={`flex items-center justify-center w-9 h-9 rounded-full disabled:opacity-40 ${
+              micEnabled ? "text-gray-300 hover:bg-white/10" : "text-red-400 hover:bg-red-100"
+            }`}
             title="Mikrofon qurilmasini tanlash"
           >
-            <ChevronDown size={16} className={`transition-transform ${menuOpen ? "rotate-180" : ""}`} />
+            {menuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
           </button>
         )}
         <button
           type="button"
           onClick={onToggleMic}
           disabled={disabled}
-          className={`p-2.5 rounded-full disabled:opacity-40 disabled:cursor-not-allowed ${
-            audioInputs.length > 1 ? "pr-3.5" : "px-3.5"
-          } ${micEnabled ? "text-white" : "text-red-400"}`}
+          className={`flex items-center justify-center w-9 h-9 rounded-full disabled:opacity-40 disabled:cursor-not-allowed ${
+            micEnabled ? "text-white hover:bg-white/10" : "bg-red-100 text-red-500"
+          }`}
           title={disabled ? "Ovoz o'chirilgan" : micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
         >
-          {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+          {micEnabled ? <Mic size={17} /> : <MicOff size={17} />}
         </button>
       </div>
 
