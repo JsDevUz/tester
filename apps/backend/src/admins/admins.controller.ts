@@ -3,10 +3,10 @@ import { AdminsService } from './admins.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsEmail, IsIn, IsString, MinLength } from 'class-validator';
+import { IsIn, IsString, MinLength } from 'class-validator';
 
 class CreateAdminDto {
-  @IsEmail() email: string;
+  @IsString() @MinLength(7) phone: string;
   @IsString() @MinLength(6) password: string;
   @IsString() @MinLength(1) name: string;
 }
@@ -28,7 +28,7 @@ export class AdminsController {
 
   @Post()
   create(@Body() dto: CreateAdminDto) {
-    return this.adminsService.create(dto.email, dto.password, dto.name);
+    return this.adminsService.create(dto.phone, dto.password, dto.name);
   }
 
   @Patch(':id/role')

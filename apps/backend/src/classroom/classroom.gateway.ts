@@ -95,6 +95,22 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:eraseStroke')
+  eraseStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.eraseStroke(body.sessionId, user.sub, body.page, body.strokeId);
+    });
+  }
+
+  @SubscribeMessage('host:splitStroke')
+  splitStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; replacements: ClassroomStroke[] }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.splitStroke(body.sessionId, user.sub, body.page, body.strokeId, body.replacements);
+    });
+  }
+
   @SubscribeMessage('host:clearPage')
   clearPage(@MessageBody() body: BaseBody & { page: number }) {
     return this.run(() => {
@@ -108,6 +124,22 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     return this.run(() => {
       const user = this.verify(body.token);
       this.classroomService.pointer(body.sessionId, user.sub, body.page, body.x, body.y, body.active);
+    });
+  }
+
+  @SubscribeMessage('host:setZoom')
+  setZoom(@MessageBody() body: BaseBody & { zoom: number }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.setZoom(body.sessionId, user.sub, body.zoom);
+    });
+  }
+
+  @SubscribeMessage('host:scroll')
+  scroll(@MessageBody() body: BaseBody & { xRatio: number; yRatio: number }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.scroll(body.sessionId, user.sub, body.xRatio, body.yRatio);
     });
   }
 

@@ -21,8 +21,8 @@ export function AdminsSection({ currentAdminId }: { currentAdminId: string | nul
     load();
   }, []);
 
-  async function handleCreate(email: string, password: string, name: string) {
-    await apiCreateAdmin(email, password, name);
+  async function handleCreate(phone: string, password: string, name: string) {
+    await apiCreateAdmin(phone, password, name);
     setShowModal(false);
     load();
   }
@@ -60,7 +60,7 @@ export function AdminsSection({ currentAdminId }: { currentAdminId: string | nul
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-800">{admin.name}</p>
               <p className="truncate text-xs text-gray-400">
-                {admin.email} · {admin.role}
+                {admin.phone} · {admin.role}
               </p>
             </div>
             <div className="flex shrink-0 items-center gap-2">

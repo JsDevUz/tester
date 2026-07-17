@@ -12,7 +12,7 @@ export interface SchoolStaff {
   id: string;
   studentId: string;
   name: string;
-  email: string;
+  phone: string;
   avatarUrl: string | null;
   role: SchoolStaffRole;
 }
@@ -89,7 +89,7 @@ export const useSchoolStore = create<SchoolState>((set, get) => ({
     try {
       const page = await apiGetSchoolStaff(limit, offset);
       set({
-        staff: page.items.map((r) => ({ id: r.id, studentId: r.studentId, name: r.name, email: r.email, avatarUrl: r.avatarUrl, role: r.role })),
+        staff: page.items.map((r) => ({ id: r.id, studentId: r.studentId, name: r.name, phone: r.phone, avatarUrl: r.avatarUrl, role: r.role })),
         staffTotal: page.total,
         staffLoaded: true,
       });
@@ -108,7 +108,7 @@ export const useSchoolStore = create<SchoolState>((set, get) => ({
   addStaff: async (studentId, role) => {
     const row = await apiAddSchoolStaff(studentId, role);
     const staffMember: SchoolStaff = {
-      id: row.id, studentId: row.studentId, name: row.name, email: row.email, avatarUrl: row.avatarUrl, role: row.role,
+      id: row.id, studentId: row.studentId, name: row.name, phone: row.phone, avatarUrl: row.avatarUrl, role: row.role,
     };
     set({
       staff: [...get().staff.filter((s) => s.studentId !== studentId), staffMember],

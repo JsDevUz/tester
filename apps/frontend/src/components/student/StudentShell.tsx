@@ -16,13 +16,6 @@ const NAV_ITEMS = [
   { label: "Jonli musobaqalar", shortLabel: "Jonli", path: "/live/join", icon: Radio },
 ];
 
-function formatProfileContact(phone?: string | null, email?: string | null) {
-  if (phone) return formatPhone(phone);
-  const telegramPhone = email?.match(/^u(\d{7,})@telegram\.local$/i)?.[1];
-  if (telegramPhone) return `+${telegramPhone}`;
-  return email ?? "Profil";
-}
-
 function isNavActive(pathname: string, path: string) {
   if (path === "/") return pathname === "/" || pathname.startsWith("/history/");
   if (path === "/live/join") return pathname.startsWith("/live/");
@@ -38,7 +31,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
   const [liveClassSessions, setLiveClassSessions] = useState<ActiveClassSession[]>([]);
-  const profileContact = formatProfileContact(admin?.phone, admin?.email);
+  const profileContact = admin?.phone ? formatPhone(admin.phone) : "Profil";
 
   // Aktiv jonli dars bor-yo'qligini davriy tekshiramiz (banner uchun)
   useEffect(() => {

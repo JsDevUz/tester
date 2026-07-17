@@ -29,7 +29,6 @@ export function PdfPageSelectModal({ asset, onConfirm, onBack, onClose, submitti
           return;
         }
         setPages(res.pages);
-        setSelected(new Set(res.pages.map((_, i) => i + 1)));
       })
       .catch(() => { if (!cancelled) toast.error("Sahifalarni yuklab bo'lmadi"); });
     return () => { cancelled = true; };

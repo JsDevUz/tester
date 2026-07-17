@@ -111,7 +111,7 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-testplatform}:${POSTGRES_PASSWORD:-change_me}@db:5432/${POSTGRES_DB:-testplatform}
       JWT_SECRET: ${JWT_SECRET:-change_me_to_a_long_random_string}
-      SUPER_ADMIN_EMAIL: ${SUPER_ADMIN_EMAIL:-admin@example.com}
+      SUPER_ADMIN_PHONE: ${SUPER_ADMIN_PHONE:-998901234567}
       SUPER_ADMIN_PASSWORD: ${SUPER_ADMIN_PASSWORD:-changeme123}
       SUPER_ADMIN_NAME: ${SUPER_ADMIN_NAME:-Super Admin}
     depends_on:

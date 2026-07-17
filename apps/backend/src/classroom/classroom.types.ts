@@ -1,4 +1,4 @@
-export type ClassroomTool = 'pen' | 'highlighter';
+export type ClassroomTool = 'pen' | 'highlighter' | 'arrow';
 
 export interface ClassroomStroke {
   id: string;
@@ -35,6 +35,9 @@ export interface ClassroomSession {
   participants: Map<string, ClassroomParticipant>; // userId → participant
   startedAtMs: number;
   hostDisconnectTimer: NodeJS.Timeout | null;
+  // Ustozning joriy zoom darajasi — o'quvchi sinxron rejimda bo'lsa shu
+  // qiymatga moslashadi. Kech kirganlarga snapshot orqali yetkaziladi.
+  zoom: number;
 }
 
 export interface ClassroomSnapshot {
@@ -46,6 +49,7 @@ export interface ClassroomSnapshot {
   participants: Array<{ userId: string; name: string; online: boolean; status: AttendanceStatus }>;
   startedAt: number;
   hostOnline: boolean;
+  zoom: number;
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

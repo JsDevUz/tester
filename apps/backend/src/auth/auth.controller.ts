@@ -2,20 +2,19 @@ import { Controller, Post, Patch, Body, Get, UseGuards, Req, HttpCode } from '@n
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 // Auth kod/login endpointlari brute-force'ga qarshi qat'iyroq limitga ega:
 // har bir client IP uchun bir daqiqada 5 tagacha urinish.
 const AUTH_THROTTLE = { default: { limit: 5, ttl: 60_000 } };
 
 class LoginDto {
-  @IsString() @MinLength(3) email: string;
+  @IsString() @MinLength(7) phone: string;
   @IsString() @MinLength(1) password: string;
 }
 
 class RegisterRequestDto {
   @IsString() @MinLength(2) name: string;
-  @IsEmail() email: string;
   @IsString() @MinLength(7) phone: string;
 }
 
@@ -28,11 +27,11 @@ class TelegramCodeDto {
 }
 
 class PasswordResetRequestDto {
-  @IsString() @MinLength(3) phoneOrEmail: string;
+  @IsString() @MinLength(7) phone: string;
 }
 
 class PasswordResetVerifyDto {
-  @IsString() @MinLength(3) phoneOrEmail: string;
+  @IsString() @MinLength(7) phone: string;
   @IsString() @MinLength(4) code: string;
 }
 
@@ -66,7 +65,7 @@ export class AuthController {
   @Post('login')
   @HttpCode(200)
   login(@Body() dto: LoginDto) {
-    return this.authService.login(dto.email, dto.password);
+    return this.authService.login(dto.phone, dto.password);
   }
 
   @Throttle(AUTH_THROTTLE)
@@ -94,14 +93,14 @@ export class AuthController {
   @Post('password/reset/request')
   @HttpCode(200)
   requestPasswordReset(@Body() dto: PasswordResetRequestDto) {
-    return this.authService.requestPasswordReset(dto.phoneOrEmail);
+    return this.authService.requestPasswordReset(dto.phone);
   }
 
   @Throttle(AUTH_THROTTLE)
   @Post('password/reset/verify')
   @HttpCode(200)
   verifyPasswordReset(@Body() dto: PasswordResetVerifyDto) {
-    return this.authService.verifyPasswordReset(dto.phoneOrEmail, dto.code);
+    return this.authService.verifyPasswordReset(dto.phone, dto.code);
   }
 
   @Throttle(AUTH_THROTTLE)

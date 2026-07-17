@@ -6,6 +6,14 @@ import { apiVerifyPasswordResetCode } from "../api/auth";
 
 const CODE_LENGTH = 6;
 
+function maskUzPhone(value: string) {
+  let digits = value.replace(/\D/g, "");
+  if (digits.startsWith("998")) digits = digits.slice(3);
+  digits = digits.slice(0, 9);
+  const parts = [digits.slice(0, 2), digits.slice(2, 5), digits.slice(5, 7), digits.slice(7, 9)].filter(Boolean);
+  return `+998${parts.length ? ` ${parts.join(" ")}` : " "}`;
+}
+
 export function LoginPage() {
   const botUsername = import.meta.env.VITE_TELEGRAM_BOT_USERNAME as
     string | undefined;
@@ -17,7 +25,7 @@ export function LoginPage() {
       ? botUsername
       : `@${botUsername}`
     : "@BirKodBot";
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("+998 ");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
   const [showPasswordLogin, setShowPasswordLogin] = useState(true);
@@ -68,10 +76,10 @@ export function LoginPage() {
     e.preventDefault();
     setLoading(true);
     try {
-      await login(email, password);
+      await login(phone, password);
       navigate(redirectTo);
     } catch {
-      toast.error("Email yoki parol noto'g'ri");
+      toast.error("Telefon yoki parol noto'g'ri");
     } finally {
       setLoading(false);
     }
@@ -278,9 +286,12 @@ export function LoginPage() {
             </h1>
             <input
               type="text"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="Email yoki telefon"
+              value={phone}
+              onChange={(e) => setPhone(maskUzPhone(e.target.value))}
+              placeholder="Telefon raqami"
+              inputMode="tel"
+              autoComplete="tel"
+              maxLength={17}
               className="login-admin-input border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
             />
             <input

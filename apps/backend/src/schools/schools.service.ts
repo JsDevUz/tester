@@ -143,27 +143,23 @@ export class SchoolsService {
 
   async createStudent(adminId: string, input: { name: string; phone: string; password: string }) {
     const school = await this.getOrCreateSchool(adminId);
-    const phone = this.telegramService.normalizePhone(input.phone).replace(/^\+/, '');
-    const email = `${phone}@jamm.uz`;
+    const phone = this.telegramService.normalizePhone(input.phone);
     const name = input.name.trim();
     if (!/^\+?998\d{9}$/.test(phone)) {
       throw new BadRequestException("Telefon raqami +998 XX XXX XX XX formatida bo'lishi kerak.");
     }
 
-    const existing = await db.query.users.findFirst({
-      where: or(eq(users.email, email), eq(users.phone, phone), eq(users.phone, `+${phone}`)),
-    });
-    if (existing) throw new ConflictException('Bu email yoki telefon allaqachon ishlatilgan.');
+    const existing = await db.query.users.findFirst({ where: eq(users.phone, phone) });
+    if (existing) throw new ConflictException('Bu telefon allaqachon ishlatilgan.');
 
     const passwordHash = await bcrypt.hash(input.password, 10);
     try {
       return await db.transaction(async (tx) => {
         const [student] = await tx
           .insert(users)
-          .values({ email, phone, name, passwordHash, role: 'student' })
+          .values({ phone, name, passwordHash, role: 'student' })
           .returning({
             id: users.id,
-            email: users.email,
             name: users.displayName,
             phone: users.phone,
             role: users.role,
@@ -177,7 +173,7 @@ export class SchoolsService {
       });
     } catch (error) {
       if (error instanceof ConflictException) throw error;
-      throw new ConflictException('O\'quvchini yaratib bo\'lmadi: email yoki telefon band.');
+      throw new ConflictException('O\'quvchini yaratib bo\'lmadi: telefon band.');
     }
   }
 
@@ -191,7 +187,7 @@ export class SchoolsService {
       id: m.id,
       studentId: m.studentId,
       name: m.student.displayName,
-      email: m.student.email,
+      phone: m.student.phone,
       avatarUrl: m.student.displayAvatarUrl,
       role: m.role,
     }));
@@ -642,7 +638,7 @@ export class SchoolsService {
       where: and(eq(users.role, 'student'), or(ilike(users.displayName, q), ilike(users.phone, q))),
       limit: 20,
     });
-    return rows.map((u) => ({ id: u.id, name: u.displayName, phone: u.phone, email: u.email, avatarUrl: u.displayAvatarUrl }));
+    return rows.map((u) => ({ id: u.id, name: u.displayName, phone: u.phone, avatarUrl: u.displayAvatarUrl }));
   }
 
   async addStaff(adminId: string, studentId: string, role: string) {
@@ -672,14 +668,14 @@ export class SchoolsService {
         .set({ role })
         .where(eq(schoolMembers.id, existing.id))
         .returning();
-      return { ...updated, name: student.displayName, email: student.email, avatarUrl: student.displayAvatarUrl };
+      return { ...updated, name: student.displayName, phone: student.phone, avatarUrl: student.displayAvatarUrl };
     }
 
     const [created] = await db
       .insert(schoolMembers)
       .values({ schoolId: school.id, studentId, role })
       .returning();
-    return { ...created, name: student.displayName, email: student.email, avatarUrl: student.displayAvatarUrl };
+    return { ...created, name: student.displayName, phone: student.phone, avatarUrl: student.displayAvatarUrl };
   }
 
   private async assertStaffOwnership(memberId: string, adminId: string) {

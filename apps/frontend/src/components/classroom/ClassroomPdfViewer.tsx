@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
-import { Minus, Plus, RotateCcw as ResetZoom, ArrowDownToLine } from "lucide-react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Minus, Move, Plus, RotateCcw as ResetZoom } from "lucide-react";
 import type { CsPointer, CsStroke, CsTool } from "../../api/classroom";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
@@ -13,41 +13,191 @@ function clampZoom(z: number): number {
   return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
 }
 
-export type DrawTool = CsTool | "laser";
+export type DrawTool = CsTool | "laser" | "arrow" | "eraser-pixel" | "eraser-stroke";
 
 interface Props {
   // Ustoz hozirgacha ochgan barcha sahifalar (1-indexed ko'rinishda tartiblangan)
   pageUrls: string[];
-  // 1-indexed — ustozning joriy sahifasi. Kuzatish yoqilganda shu yerga scroll qilinadi.
+  // 1-indexed — ustozning joriy sahifasi. Sinxron rejimda shu yerga scroll qilinadi.
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
   pointer: CsPointer | null;
   editable: boolean;
+  // Ustoz uchun erkin/sinxron toggle ko'rsatilmaydi — u har doim o'zi boshqaradi.
+  isHost: boolean;
+  // Ustozning serverga saqlangan zoom darajasi — o'quvchi sinxron rejimda
+  // shunga moslashadi. Ustoz uchun bu boshlang'ich qiymat, keyin local
+  // boshqariladi (onZoomChange orqali serverga yuboriladi).
+  hostZoom: number;
+  onZoomChange?: (zoom: number) => void;
+  // Ustozning aniq scroll pozitsiyasi — content balandligi/kengligiga
+  // nisbatan foiz (0..1), device/ekran o'lchamidan qat'i nazar bir xil
+  // nisbiy joyni bildiradi. O'quvchi shu foizga scroll qiladi.
+  hostScroll: { xRatio: number; yRatio: number } | null;
+  onScrollChange?: (xRatio: number, yRatio: number) => void;
   tool: DrawTool;
   color: string;
   strokeWidth: number;
   onStrokeComplete?: (page: number, stroke: CsStroke) => void;
   onPointerMove?: (page: number, x: number, y: number, active: boolean) => void;
+  onEraseStroke?: (page: number, strokeId: string) => void;
+  // Pixel-eraser: bitta chizmani (strokeId) bir nechta yangi kesim-chizmalar
+  // bilan almashtiradi (segment-darajasida o'chirish natijasi).
+  onSplitStroke?: (page: number, strokeId: string, replacements: CsStroke[]) => void;
+  // Ustoz qo'lda scroll qilib sahifa almashtirganda chaqiriladi (faqat isHost=true'da) —
+  // shu orqali toolbar'dagi sahifa raqami va serverga yuboriladigan currentPage yangilanadi.
+  onPageChange?: (page: number) => void;
+  // PDF konteyner ustiga (absolute) chizish asboblari panelini joylashtirish
+  // uchun — shu konteyner ichida bo'lishi kerak, aks holda uning DOM
+  // balandligi PDF konteyner balandligini o'zgartirib scroll-ratio
+  // hisoblarini (xRatio/yRatio) buzadi.
+  toolbar?: ReactNode;
+  // Toolbar qatorining o'ng tomoni — mikrofon, o'quvchilar, darsni
+  // yakunlash kabi tugmalar uchun (faqat isHost holatida beriladi).
+  toolbarActions?: ReactNode;
 }
 
-function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number) {
-  if (s.points.length < 2) return;
+// O'q boshi (arrowhead) ekran-piksellarida fixed o'lchamda chiziladi —
+// chiziq qanchalik uzun bo'lmasin, uchi kattalashib ketmaydi.
+const ARROW_HEAD_LEN = 22;
+const ARROW_HEAD_ANGLE = Math.PI / 7;
+
+function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
+  const [x0, y0, x1, y1] = [s.points[0] * w, s.points[1] * h, s.points[2] * w, s.points[3] * h];
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   ctx.strokeStyle = s.color;
-  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH)) * (s.tool === "highlighter" ? 3 : 1);
-  ctx.globalAlpha = s.tool === "highlighter" ? 0.35 : 1;
+  ctx.globalAlpha = dimmed ? 0.25 : 1;
+  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+
+  const angle = Math.atan2(y1 - y0, x1 - x0);
+  // Chiziqni o'q boshi uzunligicha oldinroq to'xtatamiz — aks holda
+  // asosiy chiziqning uchi ochiq "V" bosh ichidan chiqib qolib, to'g'ri
+  // chiziq ko'rinishida bo'lib qoladi.
+  const headLen = ARROW_HEAD_LEN * Math.min(1, ctx.lineWidth / 3 + 0.6);
+  const lineEndX = x1 - headLen * 0.6 * Math.cos(angle);
+  const lineEndY = y1 - headLen * 0.6 * Math.sin(angle);
+
   ctx.beginPath();
-  ctx.moveTo(s.points[0] * w, s.points[1] * h);
-  if (s.points.length === 2) {
-    ctx.lineTo(s.points[0] * w + 0.5, s.points[1] * h + 0.5);
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(lineEndX, lineEndY);
+  ctx.stroke();
+
+  // Ochiq "V" (>) shaklidagi o'q boshi — closePath yo'q, ikkita alohida
+  // qiya chiziq, shuning uchun orqa tomoni yopiq uchburchak bo'lmaydi.
+  ctx.beginPath();
+  ctx.moveTo(x1 - headLen * Math.cos(angle - ARROW_HEAD_ANGLE), y1 - headLen * Math.sin(angle - ARROW_HEAD_ANGLE));
+  ctx.lineTo(x1, y1);
+  ctx.lineTo(x1 - headLen * Math.cos(angle + ARROW_HEAD_ANGLE), y1 - headLen * Math.sin(angle + ARROW_HEAD_ANGLE));
+  ctx.stroke();
+  ctx.restore();
+}
+
+function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
+  if (s.points.length < 2) return;
+  if (s.tool === "arrow") {
+    if (s.points.length >= 4) drawArrow(ctx, s, w, h, dimmed);
+    return;
   }
-  for (let i = 2; i < s.points.length; i += 2) {
-    ctx.lineTo(s.points[i] * w, s.points[i + 1] * h);
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = s.color;
+  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  const baseAlpha = s.tool === "highlighter" ? 0.35 : 1;
+  // Stroke-eraser hover-preview: o'chirilishi mumkin bo'lgan chizma
+  // xiralashib ko'rsatiladi, foydalanuvchi nima o'chishini oldindan ko'radi.
+  ctx.globalAlpha = dimmed ? baseAlpha * 0.25 : baseAlpha;
+  ctx.beginPath();
+  if (s.points.length === 2) {
+    ctx.moveTo(s.points[0] * w, s.points[1] * h);
+    ctx.lineTo(s.points[0] * w + 0.5, s.points[1] * h + 0.5);
+  } else if (s.points.length === 4) {
+    ctx.moveTo(s.points[0] * w, s.points[1] * h);
+    ctx.lineTo(s.points[2] * w, s.points[3] * h);
+  } else {
+    // Nuqtalar orasidagi burchaklarni silliqlash uchun har juft nuqtaning
+    // o'rta nuqtasiga quadratic curve tortiladi (Catmull-Rom emas, lekin
+    // tez harakatda siyraklashgan nuqtalarni ham silliq ko'rsatadi).
+    ctx.moveTo(s.points[0] * w, s.points[1] * h);
+    let prevX = s.points[0] * w;
+    let prevY = s.points[1] * h;
+    for (let i = 2; i + 1 < s.points.length; i += 2) {
+      const curX = s.points[i] * w;
+      const curY = s.points[i + 1] * h;
+      const midX = (prevX + curX) / 2;
+      const midY = (prevY + curY) / 2;
+      ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+      prevX = curX;
+      prevY = curY;
+    }
+    ctx.lineTo(prevX, prevY);
   }
   ctx.stroke();
   ctx.restore();
+}
+
+// Nuqta stroke chizig'iga (yoki uning segmentiga) shu masofadan (normalized,
+// 0..1) yaqin bo'lsa "tegdi" deb hisoblanadi. Chiziq qalinligi (strokeWidth,
+// REF_WIDTH=1000 birligida) ga proportsional — qalinroq chiziq bilan ishlaganda
+// o'chirg'ich radiusi ham kattaroq bo'ladi, foydalanuvchi ko'rgan doiraga mos keladi.
+const ERASE_HIT_BASE = 0.01;
+function eraseHitRadius(strokeWidth: number): number {
+  return ERASE_HIT_BASE + (strokeWidth / REF_WIDTH) * 4;
+}
+
+function distToSegment(px: number, py: number, x0: number, y0: number, x1: number, y1: number): number {
+  const dx = x1 - x0;
+  const dy = y1 - y0;
+  const lenSq = dx * dx + dy * dy;
+  let t = lenSq === 0 ? 0 : ((px - x0) * dx + (py - y0) * dy) / lenSq;
+  t = Math.max(0, Math.min(1, t));
+  const cx = x0 + t * dx;
+  const cy = y0 + t * dy;
+  return Math.hypot(px - cx, py - cy);
+}
+
+function findStrokeAt(strokes: CsStroke[], x: number, y: number, hitRadius: number): CsStroke | null {
+  // Oxirgi chizilgandan boshlab tekshiramiz — ustma-ust chizmalarda eng
+  // "tepadagi" (oxirgi chizilgan) ni topish tabiiyroq.
+  for (let i = strokes.length - 1; i >= 0; i--) {
+    const s = strokes[i];
+    const pts = s.points;
+    if (pts.length < 4) {
+      if (pts.length === 2 && Math.hypot(x - pts[0], y - pts[1]) <= hitRadius) return s;
+      continue;
+    }
+    for (let j = 0; j + 3 < pts.length; j += 2) {
+      if (distToSegment(x, y, pts[j], pts[j + 1], pts[j + 2], pts[j + 3]) <= hitRadius) return s;
+    }
+  }
+  return null;
+}
+
+// Pixel-eraser: berilgan nuqtaga tegib turgan segment(lar)ni chizmadan
+// "kesib" olib tashlaydi. Qolgan uzluksiz bo'laklar alohida yangi
+// chizmalar sifatida qaytariladi (kamida 2 nuqtali bo'laklar saqlanadi).
+function eraseNearPoint(stroke: CsStroke, x: number, y: number, hitRadius: number): CsStroke[] | null {
+  const pts = stroke.points;
+  if (pts.length < 4 || stroke.tool === "arrow") return null;
+
+  const keptRuns: number[][] = [[pts[0], pts[1]]];
+  let hitAny = false;
+  for (let j = 0; j + 3 < pts.length; j += 2) {
+    const [x0, y0, x1, y1] = [pts[j], pts[j + 1], pts[j + 2], pts[j + 3]];
+    if (distToSegment(x, y, x0, y0, x1, y1) <= hitRadius) {
+      hitAny = true;
+      keptRuns.push([]); // yangi bo'lak boshlanadi
+    } else {
+      keptRuns[keptRuns.length - 1].push(x1, y1);
+    }
+  }
+  if (!hitAny) return null;
+
+  return keptRuns
+    .filter((run) => run.length >= 4)
+    .map((run) => ({ id: crypto.randomUUID(), tool: stroke.tool, color: stroke.color, width: stroke.width, points: run }));
 }
 
 interface PageProps {
@@ -62,6 +212,8 @@ interface PageProps {
   strokeWidth: number;
   onStrokeComplete?: (page: number, stroke: CsStroke) => void;
   onPointerMove?: (page: number, x: number, y: number, active: boolean) => void;
+  onEraseStroke?: (page: number, strokeId: string) => void;
+  onSplitStroke?: (page: number, strokeId: string, replacements: CsStroke[]) => void;
   registerEl: (page: number, el: HTMLDivElement | null) => void;
 }
 
@@ -70,14 +222,21 @@ interface PageProps {
 // yuklanib xotira/tarmoqni og'irlashtirmasin.
 function ClassroomPdfPage({
   pageNumber, url, strokes, pointer, showPointer, editable, tool, color, strokeWidth,
-  onStrokeComplete, onPointerMove, registerEl,
+  onStrokeComplete, onPointerMove, onEraseStroke, onSplitStroke, registerEl,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const imgRef = useRef<HTMLImageElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visible, setVisible] = useState(pageNumber <= 2);
+  // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
+  // xiralashtirib ko'rsatiladi (o'chirilmasdan oldin preview).
+  const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
+  const erasedThisDragRef = useRef<Set<string>>(new Set());
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const draftRef = useRef<number[] | null>(null);
+  // O'chirg'ich rejimida sichqoncha ostida qancha joy o'chishini ko'rsatadigan
+  // opacity-doira uchun joriy kursor pozitsiyasi (normalized).
+  const eraserCursorRef = useRef<[number, number] | null>(null);
   const [, forceRedraw] = useState(0);
 
   useEffect(() => {
@@ -125,8 +284,8 @@ function ClassroomPdfPage({
     if (!ctx) return;
     ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     ctx.clearRect(0, 0, size.w, size.h);
-    for (const s of strokes) drawStroke(ctx, s, size.w, size.h);
-    if (draftRef.current && draftRef.current.length >= 2) {
+    for (const s of strokes) drawStroke(ctx, s, size.w, size.h, s.id === hoveredStrokeId);
+    if (draftRef.current && draftRef.current.length >= 2 && tool !== "eraser-pixel" && tool !== "eraser-stroke") {
       drawStroke(ctx, { id: "__draft__", tool: tool === "laser" ? "pen" : tool, color, width: strokeWidth, points: draftRef.current }, size.w, size.h);
     }
     if (showPointer && pointer && pointer.active) {
@@ -137,6 +296,21 @@ function ClassroomPdfPage({
       ctx.beginPath();
       ctx.arc(pointer.x * size.w, pointer.y * size.h, 6, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
+    }
+    if ((tool === "eraser-pixel" || tool === "eraser-stroke") && eraserCursorRef.current) {
+      // O'chirg'ich qancha joyni qamrab olishini ko'rsatuvchi opacity-doira —
+      // chiziq qalinligiga (strokeWidth) qarab o'lchami o'zgaradi.
+      const [cx, cy] = eraserCursorRef.current;
+      const r = eraseHitRadius(strokeWidth) * Math.max(size.w, size.h);
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx * size.w, cy * size.h, r, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(107,114,128,0.18)";
+      ctx.fill();
+      ctx.strokeStyle = "rgba(107,114,128,0.6)";
+      ctx.lineWidth = 1;
+      ctx.stroke();
       ctx.restore();
     }
   });
@@ -151,6 +325,29 @@ function ClassroomPdfPage({
     return [Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000];
   };
 
+  const isEraser = tool === "eraser-pixel" || tool === "eraser-stroke";
+  const draggingEraserRef = useRef(false);
+
+  // Pixel-eraser: nuqta atrofidagi segmentni chizmadan kesib oladi. Agar
+  // hech nima qolmasa butunlay o'chiradi, aks holda qolgan bo'lak(lar)ni
+  // yangi chizmalar sifatida yuboradi.
+  const erasePixelAt = useCallback((x: number, y: number) => {
+    const hitRadius = eraseHitRadius(strokeWidth);
+    const hit = findStrokeAt(strokes, x, y, hitRadius);
+    if (!hit || erasedThisDragRef.current.has(hit.id)) return;
+    erasedThisDragRef.current.add(hit.id);
+    // Strelka segmentlarga bo'linmaydi (faqat 2 nuqtali chiziq+bosh) —
+    // teginilsa butunlay o'chadi.
+    if (hit.tool === "arrow") {
+      onEraseStroke?.(pageNumber, hit.id);
+      return;
+    }
+    const remaining = eraseNearPoint(hit, x, y, hitRadius);
+    if (remaining === null) return;
+    if (remaining.length === 0) onEraseStroke?.(pageNumber, hit.id);
+    else onSplitStroke?.(pageNumber, hit.id, remaining);
+  }, [strokes, strokeWidth, pageNumber, onEraseStroke, onSplitStroke]);
+
   const handlePointerDown = (e: React.PointerEvent) => {
     if (!editable) return;
     const p = normPoint(e);
@@ -158,7 +355,23 @@ function ClassroomPdfPage({
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     onPointerMove?.(pageNumber, p[0], p[1], true);
     if (tool === "laser") return;
-    draftRef.current = [...p];
+    if (tool === "eraser-pixel") {
+      draggingEraserRef.current = true;
+      erasedThisDragRef.current = new Set();
+      erasePixelAt(p[0], p[1]);
+      return;
+    }
+    if (tool === "eraser-stroke") {
+      draggingEraserRef.current = true;
+      erasedThisDragRef.current = new Set();
+      const hit = findStrokeAt(strokes, p[0], p[1], eraseHitRadius(strokeWidth));
+      if (hit && !erasedThisDragRef.current.has(hit.id)) {
+        erasedThisDragRef.current.add(hit.id);
+        onEraseStroke?.(pageNumber, hit.id);
+      }
+      return;
+    }
+    draftRef.current = tool === "arrow" ? [p[0], p[1], p[0], p[1]] : [...p];
     forceRedraw((n) => n + 1);
   };
 
@@ -168,11 +381,45 @@ function ClassroomPdfPage({
     if (!p) return;
     onPointerMove?.(pageNumber, p[0], p[1], true);
     if (tool === "laser") return;
+    if (tool === "eraser-pixel" || tool === "eraser-stroke") {
+      eraserCursorRef.current = p;
+      forceRedraw((n) => n + 1);
+    }
+    if (tool === "eraser-pixel") {
+      // Drag paytida teginilgan har bir joyni darhol kesib o'chiradi —
+      // hover-preview yo'q, oddiy o'chirg'ich xatti-harakati.
+      if (draggingEraserRef.current) erasePixelAt(p[0], p[1]);
+      return;
+    }
+    if (tool === "eraser-stroke") {
+      const hit = findStrokeAt(strokes, p[0], p[1], eraseHitRadius(strokeWidth));
+      if (draggingEraserRef.current) {
+        if (hit && !erasedThisDragRef.current.has(hit.id)) {
+          erasedThisDragRef.current.add(hit.id);
+          onEraseStroke?.(pageNumber, hit.id);
+        }
+      } else {
+        // Sichqoncha ustidan o'tayotgan chizma xiralashib ko'rsatiladi
+        // (preview) — bosilganda butunlay o'chadi.
+        setHoveredStrokeId(hit?.id ?? null);
+      }
+      return;
+    }
     const draft = draftRef.current;
     if (!draft) return;
+    if (tool === "arrow") {
+      // Strelka uchun faqat boshlanish + hozirgi nuqta saqlanadi (freehand emas)
+      draft[2] = p[0];
+      draft[3] = p[1];
+      forceRedraw((n) => n + 1);
+      return;
+    }
     const lastX = draft[draft.length - 2];
     const lastY = draft[draft.length - 1];
-    if (Math.abs(p[0] - lastX) + Math.abs(p[1] - lastY) < 0.002) return;
+    // Juda-juda yaqin nuqtalarni (masalan bir xil pozitsiyada ikki marta
+    // event kelishi) tashlab ketamiz — bundan ortiq filtrlash burchakli
+    // chiziqqa olib keladi, chunki tez harakatda nuqtalar allaqachon siyrak.
+    if (Math.abs(p[0] - lastX) + Math.abs(p[1] - lastY) < 0.0005) return;
     draft.push(p[0], p[1]);
     forceRedraw((n) => n + 1);
   };
@@ -181,6 +428,10 @@ function ClassroomPdfPage({
     if (!editable) return;
     onPointerMove?.(pageNumber, 0, 0, false);
     if (tool === "laser") return;
+    if (isEraser) {
+      draggingEraserRef.current = false;
+      return;
+    }
     const draft = draftRef.current;
     draftRef.current = null;
     if (draft && draft.length >= 2) {
@@ -189,6 +440,12 @@ function ClassroomPdfPage({
       });
     }
     forceRedraw((n) => n + 1);
+  };
+
+  const handlePointerLeave = () => {
+    setHoveredStrokeId(null);
+    eraserCursorRef.current = null;
+    finishStroke();
   };
 
   return (
@@ -208,14 +465,14 @@ function ClassroomPdfPage({
             className="absolute top-0 left-0"
             style={{
               touchAction: editable ? "none" : "auto",
-              cursor: editable ? "crosshair" : "default",
+              cursor: editable ? (isEraser ? "cell" : "crosshair") : "default",
               pointerEvents: editable ? "auto" : "none",
             }}
             onPointerDown={handlePointerDown}
             onPointerMove={handlePointerMove}
             onPointerUp={finishStroke}
             onPointerCancel={finishStroke}
-            onPointerLeave={finishStroke}
+            onPointerLeave={handlePointerLeave}
           />
         </div>
       ) : (
@@ -226,17 +483,59 @@ function ClassroomPdfPage({
 }
 
 export function ClassroomPdfViewer({
-  pageUrls, currentPage, strokesByPage, pointer, editable, tool, color, strokeWidth,
-  onStrokeComplete, onPointerMove,
+  pageUrls, currentPage, strokesByPage, pointer, editable, isHost, hostZoom, onZoomChange,
+  hostScroll, onScrollChange, tool, color, strokeWidth, onStrokeComplete, onPointerMove,
+  onEraseStroke, onSplitStroke, onPageChange, toolbar, toolbarActions,
 }: Props) {
   const scrollRef = useRef<HTMLDivElement>(null);
-  const zoomLayerRef = useRef<HTMLDivElement>(null);
   const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
-  const [zoom, setZoom] = useState(1);
-  // Foydalanuvchi qo'lda scroll qilsa o'chadi; ustoz sahifasiga qaytarish
-  // tugmasi bosilsa yoki ustoz o'zi yangi sahifaga o'tsa qayta yoqiladi.
-  const [following, setFollowing] = useState(true);
+  // Ustoz uchun: local zoom, o'zgarganda serverga yuboriladi (onZoomChange).
+  // O'quvchi uchun: sinxron rejimda hostZoom'ga ko'r-ko'rona ergashadi,
+  // erkin rejimda esa o'zining local zoom'i ishlaydi.
+  const [localZoom, setLocalZoom] = useState(hostZoom);
+  // O'quvchi uchun: yoqilgan = sinxron (ustoz bilan birga, hech narsa
+  // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
+  // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
+  const [synced, setSynced] = useState(true);
   const suppressScrollDetectRef = useRef(false);
+  const currentPageRef = useRef(currentPage);
+  currentPageRef.current = currentPage;
+
+  const zoom = isHost ? localZoom : (synced ? hostZoom : localZoom);
+
+  // Ustoz zoom'i o'zgarganda: sinxron o'quvchida darhol qo'llanadi.
+  // Ustozning o'zida esa bu prop faqat boshlang'ich qiymat (keyin local).
+  // Scroll konteynerining markazini anchor sifatida olamiz — chunki
+  // o'quvchining sichqonchasi ustozning zoom nuqtasida emas.
+  useEffect(() => {
+    if (isHost) return;
+    const scrollEl = scrollRef.current;
+    setLocalZoom((prevZoom) => {
+      if (scrollEl && hostZoom !== prevZoom) {
+        const rect = scrollEl.getBoundingClientRect();
+        const localX = rect.width / 2;
+        const localY = rect.height / 2;
+        const contentX = scrollEl.scrollLeft + localX;
+        const contentY = scrollEl.scrollTop + localY;
+        const ratio = hostZoom / prevZoom;
+        const newScrollLeft = contentX * ratio - localX;
+        const newScrollTop = contentY * ratio - localY;
+        requestAnimationFrame(() => {
+          suppressScrollDetectRef.current = true;
+          scrollEl.scrollLeft = newScrollLeft;
+          scrollEl.scrollTop = newScrollTop;
+          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
+        });
+      }
+      return hostZoom;
+    });
+  }, [isHost, hostZoom]);
+
+  // Sinxron rejimga qaytilganda zoom ham ustoznikiga tenglashadi.
+  useEffect(() => {
+    if (!isHost && synced) setLocalZoom(hostZoom);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [synced]);
 
   const registerEl = useCallback((page: number, el: HTMLDivElement | null) => {
     if (el) pageElsRef.current.set(page, el);
@@ -244,63 +543,220 @@ export function ClassroomPdfViewer({
   }, []);
 
   const scrollToPage = useCallback((page: number, smooth: boolean) => {
-    const el = pageElsRef.current.get(page);
+    // requestAnimationFrame: sahifa lazy-render bo'lgan bo'lsa (visible
+    // endigina true bo'lgan), DOM layout hali hisoblanmagan bo'lishi
+    // mumkin — bir frame kutib, keyin haqiqiy offsetTop'ni o'qiymiz.
+    requestAnimationFrame(() => {
+      const el = pageElsRef.current.get(page);
+      const scrollEl = scrollRef.current;
+      if (!el || !scrollEl) return;
+      suppressScrollDetectRef.current = true;
+      // offsetTop eng yaqin position:relative ota-elementga nisbatan
+      // hisoblanadi, bu scroll konteynerning o'zi bo'lmasligi mumkin
+      // (oralarida zoom-wide-div bor) — shuning uchun getBoundingClientRect
+      // farqidan foydalanamiz, bu har doim to'g'ri natija beradi.
+      const elRect = el.getBoundingClientRect();
+      const scrollRect = scrollEl.getBoundingClientRect();
+      const top = scrollEl.scrollTop + (elRect.top - scrollRect.top);
+      scrollEl.scrollTo({ top, behavior: smooth ? "smooth" : "instant" });
+      window.setTimeout(() => { suppressScrollDetectRef.current = false; }, smooth ? 500 : 50);
+    });
+  }, []);
+
+  // Ustozning scroll pozitsiyasini piksel-aniq qayta tiklaydi: xRatio/yRatio
+  // — scrollLeft/scrollTop ning umumiy scrollWidth/scrollHeight'ga nisbati
+  // (0..1). Bu qurilma/ekran o'lchamidan qat'i nazar bir xil nisbiy joyni
+  // bildiradi, shuning uchun student ekrani host bilan piksel darajasida mos keladi.
+  const applyScrollRatio = useCallback((xRatio: number, yRatio: number, smooth: boolean) => {
     const scrollEl = scrollRef.current;
-    if (!el || !scrollEl) return;
+    if (!scrollEl) return;
     suppressScrollDetectRef.current = true;
-    const top = el.offsetTop - scrollEl.offsetTop;
-    scrollEl.scrollTo({ top, behavior: smooth ? "smooth" : "instant" });
+    const maxLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+    const maxTop = scrollEl.scrollHeight - scrollEl.clientHeight;
+    scrollEl.scrollTo({
+      left: Math.max(0, maxLeft) * xRatio,
+      top: Math.max(0, maxTop) * yRatio,
+      behavior: smooth ? "smooth" : "instant",
+    });
     window.setTimeout(() => { suppressScrollDetectRef.current = false; }, smooth ? 500 : 50);
   }, []);
 
-  // Ustoz sahifa o'zgartirganda — kuzatish yoqiq bo'lsa avtomatik scroll
+  // Ustoz uchun currentPage/hostScroll manba emas, natija: u qo'lda scroll
+  // qiladi, biz shuni kuzatib chiqarib beramiz (pastda handleScroll).
+  // O'quvchi uchun esa bular ustozdan kelgan manba — faqat "synced" yoqiq
+  // bo'lsa avtomatik shu pozitsiyaga scroll qilinadi. "instant" ishlatamiz
+  // (smooth emas): ustoz tez-tez scroll qilsa, ketma-ket smooth-animatsiyalar
+  // bir-birini kesib, oxirgi pozitsiya ustozning haqiqiy joyidan orqada
+  // qolib "sinxron chalkashish"ga olib kelardi.
   useLayoutEffect(() => {
-    if (!following) return;
-    scrollToPage(currentPage, true);
-  }, [currentPage, following, scrollToPage]);
+    if (isHost || !synced) return;
+    if (hostScroll) applyScrollRatio(hostScroll.xRatio, hostScroll.yRatio, false);
+    else scrollToPage(currentPage, false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, hostScroll, isHost, synced, scrollToPage, applyScrollRatio]);
 
-  // Foydalanuvchi qo'lda scroll qilsa kuzatishni o'chiramiz — avtomatik
-  // scroll paytida esa suppressScrollDetectRef bloklaydi.
+  // Ustoz qo'lda scroll qilganda: ko'rinadigan oyna markaziga eng yaqin
+  // sahifani "joriy sahifa" deb hisoblaymiz (toolbar uchun) va aniq
+  // scroll foizini (xRatio/yRatio) tashqariga chiqarib beramiz.
+  const scrollDetectRaf = useRef<number | null>(null);
   const handleScroll = useCallback(() => {
+    if (!isHost) return;
     if (suppressScrollDetectRef.current) return;
-    setFollowing(false);
+    if (scrollDetectRaf.current) cancelAnimationFrame(scrollDetectRaf.current);
+    scrollDetectRaf.current = requestAnimationFrame(() => {
+      const scrollEl = scrollRef.current;
+      if (!scrollEl) return;
+      if (onPageChange) {
+        const viewportMid = scrollEl.getBoundingClientRect().top + scrollEl.clientHeight / 2;
+        let closestPage = currentPageRef.current;
+        let closestDist = Infinity;
+        for (const [page, el] of pageElsRef.current) {
+          const rect = el.getBoundingClientRect();
+          const mid = rect.top + rect.height / 2;
+          const dist = Math.abs(mid - viewportMid);
+          if (dist < closestDist) { closestDist = dist; closestPage = page; }
+        }
+        if (closestPage !== currentPageRef.current) onPageChange(closestPage);
+      }
+      if (onScrollChange) {
+        const maxLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
+        const maxTop = scrollEl.scrollHeight - scrollEl.clientHeight;
+        const xRatio = maxLeft > 0 ? scrollEl.scrollLeft / maxLeft : 0;
+        const yRatio = maxTop > 0 ? scrollEl.scrollTop / maxTop : 0;
+        onScrollChange(xRatio, yRatio);
+      }
+    });
+  }, [isHost, onPageChange, onScrollChange]);
+
+  const toggleSynced = useCallback(() => {
+    setSynced((prev) => {
+      const next = !prev;
+      if (next) {
+        // Sinxron rejimga qaytilganda ustoz zoomiga va pozitsiyasiga tenglashadi
+        setLocalZoom(hostZoom);
+        if (hostScroll) applyScrollRatio(hostScroll.xRatio, hostScroll.yRatio, true);
+        else scrollToPage(currentPageRef.current, true);
+      } else {
+        // Erkin rejimga o'tilganda 100% dan boshlanadi
+        setLocalZoom(1);
+      }
+      return next;
+    });
+  }, [scrollToPage, applyScrollRatio, hostScroll, hostZoom]);
+
+  // Zoom o'zgarganda sichqoncha/pinch markazi ekranda bir joyda qolishi
+  // uchun: eski va yangi zoom nisbatiga qarab scroll pozitsiyasini
+  // qayta hisoblaymiz (anchor — konteyner ichidagi piksel nuqta).
+  const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
+    const clamped = clampZoom(next);
+    const scrollEl = scrollRef.current;
+    setLocalZoom((prevZoom) => {
+      if (scrollEl && clamped !== prevZoom) {
+        const rect = scrollEl.getBoundingClientRect();
+        const localX = anchorClientX - rect.left;
+        const localY = anchorClientY - rect.top;
+        const contentX = scrollEl.scrollLeft + localX;
+        const contentY = scrollEl.scrollTop + localY;
+        const ratio = clamped / prevZoom;
+        const newScrollLeft = contentX * ratio - localX;
+        const newScrollTop = contentY * ratio - localY;
+        requestAnimationFrame(() => {
+          suppressScrollDetectRef.current = true;
+          scrollEl.scrollLeft = newScrollLeft;
+          scrollEl.scrollTop = newScrollTop;
+          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
+        });
+      }
+      return clamped;
+    });
+    if (isHost) onZoomChange?.(clamped);
+  }, [isHost, onZoomChange]);
+
+  // Tugmalar (+/-/reset) uchun: aniq anchor nuqta yo'q, shuning uchun
+  // ko'rinadigan oyna markazini anchor sifatida olamiz.
+  const applyZoom = useCallback((next: number) => {
+    const scrollEl = scrollRef.current;
+    if (scrollEl) {
+      const rect = scrollEl.getBoundingClientRect();
+      applyZoomAnchored(next, rect.left + rect.width / 2, rect.top + rect.height / 2);
+      return;
+    }
+    const clamped = clampZoom(next);
+    setLocalZoom(clamped);
+    if (isHost) onZoomChange?.(clamped);
+  }, [isHost, onZoomChange, applyZoomAnchored]);
+
+  const freeToMove = isHost || !synced;
+
+  // React'ning onWheel'i sintetik va ba'zi brauzerlarda passive bo'lib
+  // qolishi mumkin — bu holda preventDefault() e'tiborsiz qoldiriladi va
+  // trackpad pinch/Ctrl+wheel butun sahifani (body) zoom qilib yuboradi.
+  // Shuning uchun native, passive:false listener bilan qo'shimcha
+  // to'siq qo'yamiz — bu har doim ishonchli ishlaydi.
+  const freeToMoveRef = useRef(freeToMove);
+  freeToMoveRef.current = freeToMove;
+  const zoomRef = useRef(zoom);
+  zoomRef.current = zoom;
+  const applyZoomAnchoredRef = useRef(applyZoomAnchored);
+  applyZoomAnchoredRef.current = applyZoomAnchored;
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onNativeWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) {
+        if (!freeToMoveRef.current) e.preventDefault();
+        return;
+      }
+      e.preventDefault();
+      if (!freeToMoveRef.current) return;
+      applyZoomAnchoredRef.current(zoomRef.current - e.deltaY * 0.01, e.clientX, e.clientY);
+    };
+    el.addEventListener("wheel", onNativeWheel, { passive: false });
+    return () => el.removeEventListener("wheel", onNativeWheel);
   }, []);
 
-  const resumeFollowing = useCallback(() => {
-    setFollowing(true);
-    scrollToPage(currentPage, true);
-  }, [currentPage, scrollToPage]);
-
-  const applyZoom = useCallback((next: number) => setZoom(clampZoom(next)), []);
-
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    if (!e.ctrlKey && !e.metaKey) return;
+    // Asosiy ish native listenerda bajariladi — bu yerda faqat React'ga
+    // event allaqachon boshqarilganini bildiramiz.
     e.preventDefault();
-    applyZoom(zoom - e.deltaY * 0.01);
-  }, [zoom, applyZoom]);
+  }, []);
 
-  const pinchStartRef = useRef<{ distance: number; zoom: number } | null>(null);
+  const pinchStartRef = useRef<{ distance: number; zoom: number; cx: number; cy: number } | null>(null);
   const handleTouchStart = useCallback((e: React.TouchEvent) => {
+    if (!freeToMove) { if (e.touches.length >= 2) e.preventDefault(); return; }
     if (e.touches.length !== 2) return;
+    e.preventDefault();
     const [a, b] = [e.touches[0], e.touches[1]];
     const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    pinchStartRef.current = { distance, zoom };
-  }, [zoom]);
+    const cx = (a.clientX + b.clientX) / 2;
+    const cy = (a.clientY + b.clientY) / 2;
+    pinchStartRef.current = { distance, zoom, cx, cy };
+  }, [freeToMove, zoom]);
   const handleTouchMove = useCallback((e: React.TouchEvent) => {
+    if (!freeToMove) { if (e.touches.length >= 2) e.preventDefault(); return; }
     if (e.touches.length !== 2 || !pinchStartRef.current) return;
     e.preventDefault();
     const [a, b] = [e.touches[0], e.touches[1]];
     const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-    const { distance: startDistance, zoom: startZoom } = pinchStartRef.current;
-    applyZoom(startZoom * (distance / startDistance));
-  }, [applyZoom]);
+    const { distance: startDistance, zoom: startZoom, cx, cy } = pinchStartRef.current;
+    applyZoomAnchored(startZoom * (distance / startDistance), cx, cy);
+  }, [freeToMove, applyZoomAnchored]);
   const handleTouchEnd = useCallback((e: React.TouchEvent) => {
     if (e.touches.length < 2) pinchStartRef.current = null;
   }, []);
 
+  const toolbarRow = (toolbar || toolbarActions) && (
+    <div className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2">
+      <div>{toolbar}</div>
+      <div className="flex items-center gap-2">{toolbarActions}</div>
+    </div>
+  );
+
   if (pageUrls.length === 0) {
     return (
-      <div className="flex-1 flex items-center justify-center bg-gray-100 rounded-2xl min-h-75">
+      <div className="relative flex-1 flex items-center justify-center bg-gray-100 rounded-2xl min-h-75">
+        {toolbarRow}
         <p className="text-gray-400 text-sm">PDF hali yuklanmagan</p>
       </div>
     );
@@ -308,9 +764,14 @@ export function ClassroomPdfViewer({
 
   return (
     <div className="relative flex-1 min-h-0 bg-gray-100 rounded-2xl overflow-hidden">
+      {toolbarRow}
       <div
         ref={scrollRef}
-        className="w-full h-full overflow-y-auto overflow-x-hidden overscroll-contain"
+        className="w-full h-full overflow-auto overscroll-contain"
+        style={{
+          touchAction: freeToMove ? "pan-x pan-y pinch-zoom" : "none",
+          overflow: freeToMove ? "auto" : "hidden",
+        }}
         onWheel={handleWheel}
         onTouchStart={handleTouchStart}
         onTouchMove={handleTouchMove}
@@ -318,9 +779,11 @@ export function ClassroomPdfViewer({
         onScroll={handleScroll}
       >
         <div
-          ref={zoomLayerRef}
           className="flex flex-col items-center gap-3 py-3"
-          style={{ transform: `scale(${zoom})`, transformOrigin: "top center" }}
+          style={{
+            width: `${zoom * 100}%`,
+            minWidth: "100%",
+          }}
         >
           {pageUrls.map((url, idx) => {
             const pageNumber = idx + 1;
@@ -338,6 +801,8 @@ export function ClassroomPdfViewer({
                 strokeWidth={strokeWidth}
                 onStrokeComplete={onStrokeComplete}
                 onPointerMove={onPointerMove}
+                onEraseStroke={onEraseStroke}
+                onSplitStroke={onSplitStroke}
                 registerEl={registerEl}
               />
             );
@@ -345,55 +810,67 @@ export function ClassroomPdfViewer({
         </div>
       </div>
 
-      <div className="absolute bottom-3 left-3 flex items-center gap-0.5 rounded-xl bg-white shadow-md p-1">
-        <button
-          type="button"
-          onClick={() => applyZoom(zoom - ZOOM_STEP)}
-          disabled={zoom <= MIN_ZOOM}
-          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Kichraytirish"
-        >
-          <Minus size={16} />
-        </button>
-        <button
-          type="button"
-          onClick={() => applyZoom(1)}
-          className="px-1.5 text-xs font-medium text-gray-500 hover:text-gray-800 min-w-11 text-center"
-          title="Asl o'lchamga qaytarish"
-        >
-          {Math.round(zoom * 100)}%
-        </button>
-        <button
-          type="button"
-          onClick={() => applyZoom(zoom + ZOOM_STEP)}
-          disabled={zoom >= MAX_ZOOM}
-          className="p-1.5 rounded-lg text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
-          title="Kattalashtirish"
-        >
-          <Plus size={16} />
-        </button>
-        {zoom !== 1 && (
+      <div className="absolute bottom-3 left-3 flex items-center gap-1.5">
+        <div className="flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md px-1 py-0.5">
+          <span className="px-1.5 text-[11px] font-medium text-gray-500 tabular-nums select-none">
+            {currentPage} / {pageUrls.length}
+          </span>
+
+          <div className="w-px h-4 bg-gray-200" />
+
+          <button
+            type="button"
+            onClick={() => applyZoom(zoom - ZOOM_STEP)}
+            disabled={zoom <= MIN_ZOOM || !freeToMove}
+            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Kichraytirish"
+          >
+            <Minus size={13} />
+          </button>
           <button
             type="button"
             onClick={() => applyZoom(1)}
-            className="p-1.5 rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700"
-            title="Reset"
+            disabled={!freeToMove}
+            className="px-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 min-w-9 text-center disabled:opacity-30 tabular-nums"
+            title="Asl o'lchamga qaytarish"
           >
-            <ResetZoom size={14} />
+            {Math.round(zoom * 100)}%
+          </button>
+          <button
+            type="button"
+            onClick={() => applyZoom(zoom + ZOOM_STEP)}
+            disabled={zoom >= MAX_ZOOM || !freeToMove}
+            className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+            title="Kattalashtirish"
+          >
+            <Plus size={13} />
+          </button>
+          {zoom !== 1 && (
+            <button
+              type="button"
+              onClick={() => applyZoom(1)}
+              disabled={!freeToMove}
+              className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+              title="Reset"
+            >
+              <ResetZoom size={12} />
+            </button>
+          )}
+        </div>
+
+        {!isHost && (
+          <button
+            type="button"
+            onClick={toggleSynced}
+            title={synced ? "Erkin harakatlanish (ustozdan mustaqil)" : "Ustoz bilan sinxronlash"}
+            className={`rounded-xl p-1.5 shadow-md transition-colors ${
+              synced ? "bg-white text-gray-400 hover:bg-gray-50" : "bg-indigo-600 text-white hover:bg-indigo-700"
+            }`}
+          >
+            <Move size={14} />
           </button>
         )}
       </div>
-
-      {!following && (
-        <button
-          type="button"
-          onClick={resumeFollowing}
-          className="absolute bottom-3 right-3 flex items-center gap-2 rounded-xl bg-indigo-600 text-white shadow-md px-3 py-2 text-xs font-semibold hover:bg-indigo-700"
-        >
-          <ArrowDownToLine size={14} />
-          Ustozga qaytish
-        </button>
-      )}
     </div>
   );
 }

@@ -62,8 +62,12 @@ export function AutoHideHeader({ children }: { children: ReactNode }) {
     function handleMouseMove(e: MouseEvent) {
       if (e.clientY <= REVEAL_ZONE_PX) reveal();
     }
-    // Mobil: ekranning istalgan joyiga tegilsa ochiladi (agar yashirin bo'lsa)
-    function handleTouchStart() {
+    // Mobil: faqat ekranning tepa chetiga (reveal zone) tegilsa ochiladi —
+    // PDF ustidagi zoom/move/o'quvchilar kabi tugmalarga tegish header'ni
+    // ochib yubormasligi kerak, aks holda ular bosilganda ekran "sakraydi".
+    function handleTouchStart(e: TouchEvent) {
+      const touch = e.touches[0];
+      if (!touch || touch.clientY > REVEAL_ZONE_PX) return;
       setVisible((v) => {
         if (!v) { scheduleHide(); return true; }
         return v;

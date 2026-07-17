@@ -3,7 +3,6 @@ import { relations, sql, type SQL } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
-  email: text('email').unique().notNull(),
   username: text('username').unique(),
   passwordHash: text('password_hash').notNull(),
   // `name`/`avatarUrl` are the Telegram-sourced values, kept in sync by the bot
@@ -17,7 +16,7 @@ export const users = pgTable('users', {
     (): SQL => sql`coalesce(${users.customName}, ${users.name})`,
   ),
   role: text('role').notNull().default('student'),
-  phone: text('phone').unique(),
+  phone: text('phone').unique().notNull(),
   telegramChatId: text('telegram_chat_id'),
   telegramUserId: text('telegram_user_id'),
   avatarUrl: text('avatar_url'),
@@ -31,7 +30,6 @@ export const users = pgTable('users', {
 export const authCodes = pgTable('auth_codes', {
   id: uuid('id').primaryKey().defaultRandom(),
   phone: text('phone').notNull(),
-  email: text('email'),
   name: text('name'),
   telegramChatId: text('telegram_chat_id'),
   purpose: text('purpose').notNull(),

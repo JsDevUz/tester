@@ -24,9 +24,7 @@ export class TelegramService {
   constructor(private storageService: StorageService) {}
 
   normalizePhone(phone: string) {
-    const cleaned = phone.trim().replace(/[^\d+]/g, '');
-    if (cleaned.startsWith('+')) return `+${cleaned.slice(1).replace(/\D/g, '')}`;
-    return cleaned.replace(/\D/g, '');
+    return phone.replace(/\D/g, '');
   }
 
   async handleUpdate(update: unknown) {
@@ -122,7 +120,7 @@ export class TelegramService {
     return link.telegramChatId;
   }
 
-  async sendCredentialsToPhone(phone: string, email: string, password: string) {
+  async sendCredentialsToPhone(phone: string, password: string) {
     const normalizedPhone = this.normalizePhone(phone);
     const link = await db.query.userTelegramLinks.findFirst({
       where: eq(userTelegramLinks.phone, normalizedPhone),
@@ -134,7 +132,7 @@ export class TelegramService {
 
     await this.sendMessage(
       link.telegramChatId,
-      `Bu sizning login va parolingiz:\nLogin: ${email}\nParol: ${password}`,
+      `Bu sizning login va parolingiz:\nLogin: +${normalizedPhone}\nParol: ${password}`,
     );
   }
 
@@ -198,7 +196,6 @@ export class TelegramService {
 
     await db.insert(authCodes).values({
       phone: input.phone,
-      email: this.buildLogin(input.phone),
       telegramChatId: input.telegramChatId,
       purpose: 'login',
       codeHash,
@@ -206,10 +203,5 @@ export class TelegramService {
     });
 
     return code;
-  }
-
-  private buildLogin(phone: string) {
-    const digits = phone.replace(/\D/g, '');
-    return `${digits}@jamm.uz`;
   }
 }

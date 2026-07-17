@@ -17,15 +17,16 @@ export class AdminsService {
     return rows.map((u) => ({ ...u, name: u.displayName, avatarUrl: u.displayAvatarUrl }));
   }
 
-  async create(email: string, password: string, name: string) {
-    const existing = await db.query.users.findFirst({ where: eq(users.email, email) });
-    if (existing) throw new ConflictException('Email already in use');
+  async create(phoneInput: string, password: string, name: string) {
+    const phone = phoneInput.replace(/\D/g, '');
+    const existing = await db.query.users.findFirst({ where: eq(users.phone, phone) });
+    if (existing) throw new ConflictException('Telefon raqami band');
 
     const passwordHash = await bcrypt.hash(password, 10);
     const [user] = await db
       .insert(users)
-      .values({ email, passwordHash, name, role: 'teacher' })
-      .returning({ id: users.id, email: users.email, name: users.displayName, role: users.role, phone: users.phone });
+      .values({ phone, passwordHash, name, role: 'teacher' })
+      .returning({ id: users.id, name: users.displayName, role: users.role, phone: users.phone });
     return user;
   }
 
@@ -39,7 +40,7 @@ export class AdminsService {
       .update(users)
       .set({ role })
       .where(eq(users.id, id))
-      .returning({ id: users.id, email: users.email, name: users.displayName, role: users.role, phone: users.phone });
+      .returning({ id: users.id, name: users.displayName, role: users.role, phone: users.phone });
 
     if (!user) throw new BadRequestException('User not found');
     return user;

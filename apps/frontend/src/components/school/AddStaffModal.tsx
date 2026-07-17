@@ -87,7 +87,7 @@ export function AddStaffModal({ onSearch, onConfirm, onClose }: AddStaffModalPro
                   <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className="h-9 w-9 rounded-full bg-gray-100 text-xs font-bold text-gray-600" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-medium text-gray-800">{s.name}</p>
-                    <p className="text-xs text-gray-400">{s.phone ?? s.email}</p>
+                    <p className="text-xs text-gray-400">{s.phone}</p>
                   </div>
                 </label>
               ))}

@@ -20,7 +20,7 @@ export interface ApiGroupMember {
   selectedPlanId: string | null;
   forcedClosed: boolean;
   joinedAt: string;
-  student: { id: string; name: string; phone: string | null; email: string; avatarUrl: string | null };
+  student: { id: string; name: string; phone: string; avatarUrl: string | null };
   selectedPlan: { id: string; name: string; price: number } | null;
   latestPayment: {
     id: string;

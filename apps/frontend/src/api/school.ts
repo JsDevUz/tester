@@ -15,7 +15,7 @@ export interface ApiSchoolStaffMember {
   id: string;
   studentId: string;
   name: string;
-  email: string;
+  phone: string;
   role: 'curator' | 'teacher_staff';
   avatarUrl: string | null;
 }
@@ -30,8 +30,7 @@ export interface PaginatedResponse<T> {
 export interface ApiStudentSearchResult {
   id: string;
   name: string;
-  phone: string | null;
-  email: string;
+  phone: string;
   avatarUrl: string | null;
 }
 
@@ -81,7 +80,7 @@ export async function apiListAllStudents(limit = 7, offset = 0, query = ''): Pro
 }
 
 export async function apiCreateStudent(input: { name: string; phone: string; password: string }): Promise<{
-  student: { id: string; name: string; email: string; phone: string | null; role: string; avatarUrl: string | null };
+  student: { id: string; name: string; phone: string; role: string; avatarUrl: string | null };
   membership: { id: string; joinedAt: string | null };
 }> {
   const res = await client.post('/school/students', input);

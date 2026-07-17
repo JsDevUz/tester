@@ -7,12 +7,6 @@ import { useAuthStore } from "../stores/authStore";
 import { UserAvatar } from "./UserAvatar";
 import { formatPhone } from "../utils/phone";
 
-function profileContact(phone?: string | null, email?: string | null) {
-  if (phone) return formatPhone(phone);
-  const telegramPhone = email?.match(/^u(\d{7,})@telegram\.local$/i)?.[1];
-  return telegramPhone ? formatPhone(telegramPhone) : email;
-}
-
 export function EditProfileSection() {
   const admin = useAuthStore((s) => s.admin);
   const setAdmin = useAuthStore((s) => s.setAdmin);
@@ -118,7 +112,7 @@ export function EditProfileSection() {
         </div>
         <div className="min-w-0 text-center sm:text-left">
           <p className="text-sm font-semibold text-gray-900">{admin?.name}</p>
-          <p className="text-xs text-gray-400">{profileContact(admin?.phone, admin?.email)}</p>
+          <p className="text-xs text-gray-400">{admin?.phone ? formatPhone(admin.phone) : ""}</p>
         </div>
       </div>
 

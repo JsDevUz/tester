@@ -9,12 +9,14 @@ interface Props {
   isHost: boolean;
   myUserId: string | null;
   onMute?: (userId: string) => void;
+  // Ixcham toolbar qatorlarida (kichikroq padding, "O'quvchilar" matni yashirin) ishlatish uchun
+  compact?: boolean;
 }
 
 // Header'dagi icon orqali ochiladigan/yopiladigan o'quvchilar paneli.
 // position: absolute bilan PDF ustiga tushadi — asosiy kontent joyini
 // egallamaydi. Tashqariga bosilganda va Escape bosilganda yopiladi.
-export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost, myUserId, onMute }: Props) {
+export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost, myUserId, onMute, compact }: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
@@ -50,46 +52,56 @@ export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost,
         aria-haspopup="dialog"
         aria-label="O'quvchilar ro'yxati"
         title="O'quvchilar"
-        className={`relative flex items-center gap-1.5 rounded-xl px-2.5 py-2.5 text-sm font-medium transition-colors sm:px-3 ${
-          open ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"
+        className={`relative flex items-center transition-colors ${
+          compact
+            ? `gap-1 rounded-full px-2 py-1.5 text-xs font-medium ${open ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"}`
+            : `gap-1.5 rounded-xl px-2.5 py-2.5 text-sm font-medium sm:px-3 ${open ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"}`
         }`}
       >
-        <Users size={18} />
-        <span className="hidden sm:inline">O'quvchilar</span>
-        <span className="rounded-full bg-gray-900 px-1.5 py-0.5 text-[10px] font-semibold text-white">
+        <Users size={compact ? 14 : 18} />
+        {!compact && <span className="hidden sm:inline">O'quvchilar</span>}
+        <span className={`rounded-full bg-gray-900 text-white font-semibold ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"}`}>
           {onlineCount}/{participants.length}
         </span>
       </button>
 
       {open && (
-        <div
-          ref={panelRef}
-          role="dialog"
-          aria-label="O'quvchilar ro'yxati"
-          className="classroom-panel-in absolute right-0 top-[calc(100%+0.5rem)] z-40 w-[min(20rem,calc(100vw-2rem))] origin-top-right"
-        >
-          <div className="max-h-[min(28rem,calc(100vh-6rem))] overflow-hidden rounded-2xl bg-white shadow-xl ring-1 ring-black/5">
-            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-              <span className="text-sm font-semibold text-gray-800">O'quvchilar</span>
-              <button
-                type="button"
-                onClick={() => setOpen(false)}
-                aria-label="Yopish"
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-              >
-                <X size={16} />
-              </button>
+        <>
+          {/* Mobil: pastdan chiqadigan sheet, orqa fonni qoraytiradi */}
+          <div
+            className="sm:hidden fixed inset-0 z-40 bg-black/30"
+            onClick={() => setOpen(false)}
+            aria-hidden="true"
+          />
+          <div
+            ref={panelRef}
+            role="dialog"
+            aria-label="O'quvchilar ro'yxati"
+            className="classroom-panel-in z-40 bg-white ring-1 ring-black/5 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl max-h-[75vh] sm:absolute sm:inset-x-auto sm:bottom-auto sm:right-0 sm:top-[calc(100%+0.5rem)] sm:rounded-2xl sm:shadow-xl sm:w-[min(20rem,calc(100vw-2rem))] sm:max-h-[min(28rem,calc(100vh-6rem))] sm:origin-top-right"
+          >
+            <div className="overflow-hidden rounded-t-2xl sm:rounded-2xl">
+              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                <span className="text-sm font-semibold text-gray-800">O'quvchilar</span>
+                <button
+                  type="button"
+                  onClick={() => setOpen(false)}
+                  aria-label="Yopish"
+                  className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <ClassroomParticipants
+                participants={participants}
+                speakingUserIds={speakingUserIds}
+                isHost={isHost}
+                myUserId={myUserId}
+                onMute={onMute}
+                bare
+              />
             </div>
-            <ClassroomParticipants
-              participants={participants}
-              speakingUserIds={speakingUserIds}
-              isHost={isHost}
-              myUserId={myUserId}
-              onMute={onMute}
-              bare
-            />
           </div>
-        </div>
+        </>
       )}
     </div>
   );

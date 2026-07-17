@@ -13,12 +13,17 @@ export interface ClassroomState {
   participants: CsParticipant[];
   hostOnline: boolean;
   pointer: CsPointer | null;
+  // Ustozning zoom darajasi — o'quvchi sinxron rejimda bo'lsa shunga qarab kattalashtiradi.
+  zoom: number;
+  // Ustozning nisbiy scroll pozitsiyasi (0..1, device/ekrandan mustaqil) —
+  // o'quvchi sinxron rejimda shu joyga piksel-aniq scroll qiladi.
+  scroll: { xRatio: number; yRatio: number } | null;
 }
 
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
-  strokesByPage: {}, participants: [], hostOnline: false, pointer: null,
+  strokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
 };
 
 export function useClassroomSession(sessionId: string | undefined, role: "host" | "student") {
@@ -46,6 +51,7 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
             pdfName: snap.pdfName, pages: snap.pages, currentPage: snap.currentPage,
             strokesByPage: snap.strokesByPage ?? {},
             participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
+            zoom: snap.zoom ?? 1, scroll: null,
           });
         },
       );
@@ -61,16 +67,35 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       setState((s) => ({ ...s, currentPage: p.page, pointer: null }));
     });
     socket.on("stroke:add", (p: { page: number; stroke: CsStroke }) => {
-      setState((s) => ({
-        ...s,
-        strokesByPage: { ...s.strokesByPage, [p.page]: [...(s.strokesByPage[p.page] ?? []), p.stroke] },
-      }));
+      setState((s) => {
+        const existing = s.strokesByPage[p.page] ?? [];
+        // Optimistik qo'shilgan (o'zimiz chizgan) stroke server javobida
+        // qaytib kelganda dublikat bo'lib qo'shilib qolmasin.
+        if (existing.some((x) => x.id === p.stroke.id)) return s;
+        return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, p.stroke] } };
+      });
     });
     socket.on("stroke:undo", (p: { page: number; strokeId: string }) => {
       setState((s) => ({
         ...s,
         strokesByPage: { ...s.strokesByPage, [p.page]: (s.strokesByPage[p.page] ?? []).filter((x) => x.id !== p.strokeId) },
       }));
+    });
+    socket.on("stroke:split", (p: { page: number; strokeId: string; replacements: CsStroke[] }) => {
+      setState((s) => {
+        const existing = s.strokesByPage[p.page] ?? [];
+        const idx = existing.findIndex((x) => x.id === p.strokeId);
+        // O'zimiz optimistik split qilgan bo'lsak, eski ID allaqachon yo'q —
+        // shu holatda o'rniga qo'shishning o'rniga dublikatni tekshirib qo'shamiz.
+        if (idx === -1) {
+          const news = p.replacements.filter((r) => !existing.some((x) => x.id === r.id));
+          if (news.length === 0) return s;
+          return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, ...news] } };
+        }
+        const next = [...existing];
+        next.splice(idx, 1, ...p.replacements);
+        return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: next } };
+      });
     });
     socket.on("page:clear", (p: { page: number }) => {
       setState((s) => ({ ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [] } }));
@@ -81,6 +106,8 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     socket.on("presence:update", (p: { participants: CsParticipant[]; hostOnline: boolean }) => {
       setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
     });
+    socket.on("zoom:set", (p: { zoom: number }) => setState((s) => ({ ...s, zoom: p.zoom })));
+    socket.on("scroll:set", (p: { xRatio: number; yRatio: number }) => setState((s) => ({ ...s, scroll: p })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -91,9 +118,12 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       socket.off("page:set");
       socket.off("stroke:add");
       socket.off("stroke:undo");
+      socket.off("stroke:split");
       socket.off("page:clear");
       socket.off("pointer:move");
       socket.off("presence:update");
+      socket.off("zoom:set");
+      socket.off("scroll:set");
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
@@ -108,10 +138,45 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
 
   const hostActions = {
     setPage: (page: number) => emitHost("host:setPage", { page }),
-    sendStroke: (page: number, stroke: CsStroke) => emitHost("host:stroke", { page, stroke }),
+    // Optimistik: local ekranga darhol qo'shiladi (socket round-trip'ni
+    // kutmasdan) — shuning uchun ustoz o'zi chizganda chiziq "yo'qolib
+    // qayta paydo bo'lish" holati bo'lmaydi. Server javobi kelganda
+    // stroke:add handleri id bo'yicha dublikatni tashlab yuboradi.
+    sendStroke: (page: number, stroke: CsStroke) => {
+      setState((s) => {
+        const existing = s.strokesByPage[page] ?? [];
+        if (existing.some((x) => x.id === stroke.id)) return s;
+        return { ...s, strokesByPage: { ...s.strokesByPage, [page]: [...existing, stroke] } };
+      });
+      emitHost("host:stroke", { page, stroke });
+    },
     undo: (page: number) => emitHost("host:undo", { page }),
+    // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
+    // darhol o'chiradi, keyin serverga ID bilan yuboradi.
+    eraseStroke: (page: number, strokeId: string) => {
+      setState((s) => ({
+        ...s,
+        strokesByPage: { ...s.strokesByPage, [page]: (s.strokesByPage[page] ?? []).filter((x) => x.id !== strokeId) },
+      }));
+      emitHost("host:eraseStroke", { page, strokeId });
+    },
+    // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
+    // yangi chizmalar bilan optimistik almashtiradi.
+    splitStroke: (page: number, strokeId: string, replacements: CsStroke[]) => {
+      setState((s) => {
+        const existing = s.strokesByPage[page] ?? [];
+        const idx = existing.findIndex((x) => x.id === strokeId);
+        if (idx === -1) return s;
+        const next = [...existing];
+        next.splice(idx, 1, ...replacements);
+        return { ...s, strokesByPage: { ...s.strokesByPage, [page]: next } };
+      });
+      emitHost("host:splitStroke", { page, strokeId, replacements });
+    },
     clearPage: (page: number) => emitHost("host:clearPage", { page }),
     pointer: (page: number, x: number, y: number, active: boolean) => emitHost("host:pointer", { page, x, y, active }),
+    setZoom: (zoom: number) => emitHost("host:setZoom", { zoom }),
+    setScroll: (xRatio: number, yRatio: number) => emitHost("host:scroll", { xRatio, yRatio }),
     endLesson: () => emitHost("host:end"),
   };
 

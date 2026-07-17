@@ -10,9 +10,8 @@ interface HlsVideoPlayerProps {
   watermark?: boolean;
 }
 
-function extractWatermarkPhone(phone?: string | null, email?: string | null) {
-  const fromPhone = phone?.replace(/\D/g, '') ?? '';
-  const rawPhone = fromPhone.length >= 7 ? fromPhone : (email?.match(/\d{7,}/)?.[0] ?? '');
+function extractWatermarkPhone(phone?: string | null) {
+  const rawPhone = phone?.replace(/\D/g, '') ?? '';
   if (!rawPhone) return '';
 
   const withoutCountryCode = rawPhone.startsWith('998') ? rawPhone.slice(3) : rawPhone;
@@ -47,7 +46,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const lastTimeRef = useRef<number>(0);
   const watchedSegmentsRef = useRef<WatchSegment[]>([]);
 
-  const watermarkText = extractWatermarkPhone(admin?.phone, admin?.email);
+  const watermarkText = extractWatermarkPhone(admin?.phone);
 
   useEffect(() => {
     const syncFullscreen = () => {

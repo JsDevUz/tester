@@ -11,7 +11,8 @@ import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
-  closeInterval, HOST_GRACE_MS, setPage as setSessionPage, undoStroke,
+  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, setPage as setSessionPage,
+  splitStroke as splitStrokeInSession, undoStroke,
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
@@ -113,6 +114,7 @@ export class ClassroomService implements OnModuleInit {
       participants,
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
+      zoom: 1,
     });
 
     return { id: row.id };
@@ -294,6 +296,25 @@ export class ClassroomService implements OnModuleInit {
     if (strokeId) this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId });
   }
 
+  // Stroke-eraser asbobi: sichqoncha ustidan o'tgan chizmani ID bo'yicha
+  // to'g'ridan-to'g'ri o'chiradi (undo kabi faqat oxirgisini emas).
+  eraseStroke(sessionId: string, userId: string, page: number, strokeId: string): void {
+    const s = this.requireHost(sessionId, userId);
+    if (eraseStrokeById(s, page, strokeId)) {
+      this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId });
+    }
+  }
+
+  // Pixel-eraser: bitta chizmaning faqat teginilgan qismini "kesib"
+  // o'chiradi — qolgan uzluksiz bo'laklari yangi alohida chizmalar bo'lib qoladi.
+  splitStroke(
+    sessionId: string, userId: string, page: number, strokeId: string, replacements: ClassroomStroke[],
+  ): void {
+    const s = this.requireHost(sessionId, userId);
+    if (!splitStrokeInSession(s, page, strokeId, replacements)) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:split', { page, strokeId, replacements });
+  }
+
   clearPage(sessionId: string, userId: string, page: number): void {
     const s = this.requireHost(sessionId, userId);
     clearPageStrokes(s, page);
@@ -303,6 +324,24 @@ export class ClassroomService implements OnModuleInit {
   pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean): void {
     const s = this.requireHost(sessionId, userId);
     this.broadcaster.toRoom(s.id, 'pointer:move', { page, x, y, active });
+  }
+
+  // Ustozning zoom darajasi — kech kirgan o'quvchiga snapshot orqali,
+  // hozir ulangan o'quvchilarga esa broadcast orqali yetkaziladi.
+  setZoom(sessionId: string, userId: string, zoom: number): void {
+    const s = this.requireHost(sessionId, userId);
+    const clamped = Math.min(4, Math.max(1, zoom));
+    s.zoom = clamped;
+    this.broadcaster.toRoom(s.id, 'zoom:set', { zoom: clamped });
+  }
+
+  // Ustozning scroll pozitsiyasi (nisbiy, 0..1) — juda tez-tez o'zgaradi,
+  // shuning uchun session holatiga saqlanmaydi, faqat live broadcast qilinadi.
+  scroll(sessionId: string, userId: string, xRatio: number, yRatio: number): void {
+    const s = this.requireHost(sessionId, userId);
+    const cx = Math.min(1, Math.max(0, xRatio));
+    const cy = Math.min(1, Math.max(0, yRatio));
+    this.broadcaster.toRoom(s.id, 'scroll:set', { xRatio: cx, yRatio: cy });
   }
 
   // ---------- REST: ro'yxatlar / davomat ----------

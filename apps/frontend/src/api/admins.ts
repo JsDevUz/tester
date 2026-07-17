@@ -6,8 +6,8 @@ export async function apiListAdmins(): Promise<Admin[]> {
   return res.data;
 }
 
-export async function apiCreateAdmin(email: string, password: string, name: string): Promise<Admin> {
-  const res = await client.post('/admins', { email, password, name });
+export async function apiCreateAdmin(phone: string, password: string, name: string): Promise<Admin> {
+  const res = await client.post('/admins', { phone, password, name });
   return res.data;
 }
 

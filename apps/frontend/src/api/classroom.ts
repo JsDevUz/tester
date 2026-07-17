@@ -151,7 +151,7 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 
 // ---------- WS payload tiplari ----------
 
-export type CsTool = 'pen' | 'highlighter';
+export type CsTool = 'pen' | 'highlighter' | 'arrow';
 
 export interface CsStroke {
   id: string;
@@ -178,6 +178,7 @@ export interface CsSnapshot {
   participants: CsParticipant[];
   startedAt: number;
   hostOnline: boolean;
+  zoom: number;
 }
 
 export interface CsPresenceUpdate {

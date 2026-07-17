@@ -1,20 +1,20 @@
 import { useState } from 'react';
 
 interface Props {
-  onSubmit: (email: string, password: string, name: string) => void;
+  onSubmit: (phone: string, password: string, name: string) => void;
   onClose: () => void;
 }
 
 export function AdminModal({ onSubmit, onClose }: Props) {
   const [name, setName] = useState('');
-  const [email, setEmail] = useState('');
+  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!name || !email || !password) { setError('Barcha maydonlar to\'ldirilishi shart'); return; }
-    onSubmit(email, password, name);
+    if (!name || !phone || !password) { setError('Barcha maydonlar to\'ldirilishi shart'); return; }
+    onSubmit(phone, password, name);
   }
 
   return (
@@ -23,7 +23,7 @@ export function AdminModal({ onSubmit, onClose }: Props) {
         <h2 className="font-semibold text-gray-800 mb-4">Admin qo'shish</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-3">
           <input autoFocus value={name} onChange={(e) => setName(e.target.value)} placeholder="Ism" className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
-          <input value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Email" type="email" className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
+          <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Telefon raqami" inputMode="tel" className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
           <input value={password} onChange={(e) => setPassword(e.target.value)} placeholder="Parol (kamida 6 ta)" type="password" className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400" />
           {error && <p className="text-red-500 text-xs">{error}</p>}
           <div className="flex gap-2 justify-end mt-1">

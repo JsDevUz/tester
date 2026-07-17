@@ -97,7 +97,7 @@ export function SchoolStaffPage() {
                     <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(s.id)}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-800">{s.name}</p>
-                      <p className="truncate text-xs text-gray-400">{s.email}</p>
+                      <p className="truncate text-xs text-gray-400">{s.phone}</p>
                     </div>
                     <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${badge.className}`}>
                       {badge.label}

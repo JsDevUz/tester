@@ -56,7 +56,6 @@ describe('AuthService telegram auth', () => {
     const authCode = {
       id: 'code-1',
       phone: '+998901112233',
-      email: 'student@example.com',
       name: 'Student One',
       codeHash: 'hashed-code',
       expiresAt: new Date(Date.now() + 60_000),
@@ -66,7 +65,6 @@ describe('AuthService telegram auth', () => {
     (db.query.users.findFirst as jest.Mock).mockResolvedValue(null);
     mockInsertReturning({
       id: 'user-1',
-      email: 'student@example.com',
       name: 'Student One',
       displayName: 'Student One',
       role: 'student',
@@ -80,17 +78,12 @@ describe('AuthService telegram auth', () => {
 
     expect(result.user.role).toBe('student');
     expect(db.insert).toHaveBeenCalled();
-    expect(telegramService.sendCredentialsToPhone).toHaveBeenCalledWith(
-      '+998901112233',
-      'student@example.com',
-      expect.any(String),
-    );
+    expect(telegramService.sendCredentialsToPhone).toHaveBeenCalledWith('+998901112233', expect.any(String));
   });
 
   it('rejects a reset code after it has been used once', async () => {
     (db.query.users.findFirst as jest.Mock).mockResolvedValue({
       id: 'user-1',
-      email: 'student@example.com',
       phone: '+998901112233',
     });
     (db.query.authCodes.findFirst as jest.Mock).mockResolvedValue({
@@ -104,7 +97,7 @@ describe('AuthService telegram auth', () => {
 
     const service = new AuthService(jwtService as any, telegramService as any, storageService as any);
 
-    await expect((service as any).verifyPasswordReset('student@example.com', '123456')).rejects.toBeInstanceOf(
+    await expect((service as any).verifyPasswordReset('+998901112233', '123456')).rejects.toBeInstanceOf(
       BadRequestException,
     );
   });
@@ -122,7 +115,6 @@ describe('AuthService telegram auth', () => {
     ]);
     (db.query.users.findFirst as jest.Mock).mockResolvedValue({
       id: 'user-1',
-      email: 'u998901112233@telegram.local',
       name: 'Student One',
       displayName: 'Student One',
       avatarUrl: null,

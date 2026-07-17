@@ -33,6 +33,36 @@ export function undoStroke(session: ClassroomSession, page: number): string | nu
   return list.pop()!.id;
 }
 
+// Stroke-eraser asbobi uchun — ID bo'yicha aniq bitta chizmani (oxirgisi
+// bo'lmasa ham) o'chiradi.
+export function eraseStroke(session: ClassroomSession, page: number, strokeId: string): boolean {
+  const list = session.strokesByPage.get(page);
+  if (!list) return false;
+  const idx = list.findIndex((s) => s.id === strokeId);
+  if (idx === -1) return false;
+  list.splice(idx, 1);
+  return true;
+}
+
+// Pixel-eraser (segment-darajasida): bitta eski chizmani o'sha o'rniga
+// (bir xil tartibda) bir nechta yangi kesim-chizmalar bilan almashtiradi —
+// masalan uzun chiziqning o'rtasi o'chirilganda ikki bo'lakka bo'linadi.
+export function splitStroke(
+  session: ClassroomSession, page: number, strokeId: string, replacements: ClassroomStroke[],
+): boolean {
+  const list = session.strokesByPage.get(page);
+  if (!list) return false;
+  const idx = list.findIndex((s) => s.id === strokeId);
+  if (idx === -1) return false;
+  for (const r of replacements) {
+    if (!Array.isArray(r.points) || r.points.length < 4 || r.points.length % 2 !== 0) return false;
+    if (r.points.length > MAX_STROKE_POINTS * 2) return false;
+    if (r.points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
+  }
+  list.splice(idx, 1, ...replacements);
+  return true;
+}
+
 export function clearPage(session: ClassroomSession, page: number): void {
   session.strokesByPage.set(page, []);
 }
@@ -69,5 +99,6 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     })),
     startedAt: session.startedAtMs,
     hostOnline: session.hostSocketId !== null,
+    zoom: session.zoom,
   };
 }

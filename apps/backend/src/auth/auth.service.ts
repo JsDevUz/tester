@@ -2,7 +2,7 @@ import { BadRequestException, ConflictException, Injectable, UnauthorizedExcepti
 import { JwtService } from '@nestjs/jwt';
 import { db } from '../db';
 import { authCodes, userTelegramLinks, users } from '../db/schema';
-import { and, desc, eq, isNull, or } from 'drizzle-orm';
+import { and, desc, eq, isNull } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { TelegramService } from '../telegram/telegram.service';
@@ -16,14 +16,9 @@ export class AuthService {
     private storageService: StorageService,
   ) {}
 
-  async login(email: string, password: string) {
-    const login = email.trim();
-    const normalizedPhone = this.telegramService.normalizePhone(login).replace(/^\+/, '');
-    const user = await db.query.users.findFirst({
-      where: login.includes('@')
-        ? eq(users.email, login.toLowerCase())
-        : or(eq(users.phone, normalizedPhone), eq(users.phone, `+${normalizedPhone}`)),
-    });
+  async login(phone: string, password: string) {
+    const normalizedPhone = this.telegramService.normalizePhone(phone);
+    const user = await db.query.users.findFirst({ where: eq(users.phone, normalizedPhone) });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -31,14 +26,13 @@ export class AuthService {
 
     const token = this.jwtService.sign({
       sub: user.id,
-      email: user.email,
+      phone: user.phone,
       name: user.displayName,
       role: user.role,
     });
 
     const safeUser = {
       id: user.id,
-      email: user.email,
       name: user.displayName,
       role: user.role,
       phone: user.phone,
@@ -52,17 +46,13 @@ export class AuthService {
     };
   }
 
-  async requestRegistration(input: { name: string; email: string; phone: string }) {
+  async requestRegistration(input: { name: string; phone: string }) {
     const phone = this.telegramService.normalizePhone(input.phone);
-    const email = input.email.trim().toLowerCase();
-    const existingUser = await db.query.users.findFirst({
-      where: or(eq(users.email, email), eq(users.phone, phone)),
-    });
-    if (existingUser) throw new ConflictException("Bu email yoki telefon allaqachon ro'yxatdan o'tgan.");
+    const existingUser = await db.query.users.findFirst({ where: eq(users.phone, phone) });
+    if (existingUser) throw new ConflictException("Bu telefon allaqachon ro'yxatdan o'tgan.");
 
     await this.createAuthCode({
       phone,
-      email,
       name: input.name.trim(),
       purpose: 'register',
     });
@@ -74,27 +64,26 @@ export class AuthService {
     const authCode = await this.verifyRegistrationCode(code);
     const phone = authCode.phone;
 
-    if (!authCode.email || !authCode.name) {
+    if (!authCode.name) {
       throw new BadRequestException("Ro'yxatdan o'tish so'rovi topilmadi.");
     }
 
     const password = this.generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
 
-    // existingUser check + insert wrapped in one transaction: the `users.email`/
-    // `users.phone` unique constraints are the real guard against a race between
+    // existingUser check + insert wrapped in one transaction: the `users.phone`
+    // unique constraint is the real guard against a race between
     // two concurrent verify calls, but doing the check-then-insert inside a
     // transaction keeps the read consistent with the write.
     const user = await db.transaction(async (tx) => {
       const existingUser = await tx.query.users.findFirst({
-        where: or(eq(users.email, authCode.email!), eq(users.phone, phone)),
+        where: eq(users.phone, phone),
       });
       if (existingUser) throw new ConflictException("Bu foydalanuvchi allaqachon mavjud.");
 
       const [created] = await tx
         .insert(users)
         .values({
-          email: authCode.email!,
           passwordHash,
           name: authCode.name!,
           phone,
@@ -102,7 +91,6 @@ export class AuthService {
         })
         .returning({
           id: users.id,
-          email: users.email,
           name: users.displayName,
           role: users.role,
           phone: users.phone,
@@ -110,7 +98,7 @@ export class AuthService {
       return created;
     });
 
-    await this.telegramService.sendCredentialsToPhone(phone, authCode.email, password);
+    await this.telegramService.sendCredentialsToPhone(phone, password);
     return { ok: true, user };
   }
 
@@ -119,7 +107,6 @@ export class AuthService {
     if (!user) throw new UnauthorizedException('User not found');
     return {
       id: user.id,
-      email: user.email,
       name: user.displayName,
       role: user.role,
       phone: user.phone,
@@ -161,7 +148,6 @@ export class AuthService {
 
     return {
       id: updated.id,
-      email: updated.email,
       name: updated.displayName,
       role: updated.role,
       phone: updated.phone,
@@ -186,36 +172,31 @@ export class AuthService {
 
   async verifyTelegramCode(code: string) {
     const authCode = await this.verifyCodeByPurpose(code, 'login');
-    const phone = authCode.phone.replace(/\D/g, '');
-    let user = await db.query.users.findFirst({
-      where: or(eq(users.phone, phone), eq(users.phone, `+${phone}`)),
-    });
+    const phone = this.telegramService.normalizePhone(authCode.phone);
+    let user = await db.query.users.findFirst({ where: eq(users.phone, phone) });
 
     if (!user) {
-      const link = await db.query.userTelegramLinks.findFirst({
-        where: or(eq(userTelegramLinks.phone, phone), eq(userTelegramLinks.phone, `+${phone}`)),
-      });
+      const link = await db.query.userTelegramLinks.findFirst({ where: eq(userTelegramLinks.phone, phone) });
       if (!link) throw new BadRequestException("Avval botga kontakt yuboring.");
       const password = this.generateStrongPassword(10);
       const passwordHash = await bcrypt.hash(password, 10);
       const name = [link.firstName, link.lastName].filter(Boolean).join(' ').trim() || 'Telegram foydalanuvchi';
       [user] = await db
         .insert(users)
-        .values({ email: `${phone}@jamm.uz`, passwordHash, name, phone, role: 'student' })
+        .values({ passwordHash, name, phone, role: 'student' })
         .returning();
-      await this.telegramService.sendCredentialsToPhone(link.phone, user.email, password);
+      await this.telegramService.sendCredentialsToPhone(link.phone, password);
     }
 
     return this.createAuthResponse(user);
   }
 
-  async requestPasswordReset(phoneOrEmail: string) {
-    const user = await this.findUserByPhoneOrEmail(phoneOrEmail);
+  async requestPasswordReset(phone: string) {
+    const user = await this.findUserByPhone(phone);
     if (!user?.phone) return { ok: true };
 
     await this.createAuthCode({
       phone: user.phone,
-      email: user.email,
       name: user.name,
       purpose: 'reset',
     });
@@ -223,26 +204,24 @@ export class AuthService {
     return { ok: true };
   }
 
-  async verifyPasswordReset(phoneOrEmail: string, code: string) {
-    const user = await this.findUserByPhoneOrEmail(phoneOrEmail);
-    if (!user?.phone) throw new BadRequestException("Foydalanuvchi yoki telefon topilmadi.");
+  async verifyPasswordReset(phone: string, code: string) {
+    const user = await this.findUserByPhone(phone);
+    if (!user?.phone) throw new BadRequestException("Foydalanuvchi topilmadi.");
 
     await this.verifyAuthCode(user.phone, 'reset', code);
 
     const password = this.generatePassword();
     const passwordHash = await bcrypt.hash(password, 10);
     await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
-    await this.telegramService.sendCredentialsToPhone(user.phone, user.email, password);
+    await this.telegramService.sendCredentialsToPhone(user.phone, password);
 
     return { ok: true };
   }
 
   async verifyPasswordResetCode(code: string) {
     const authCode = await this.verifyCodeByPurpose(code, 'login');
-    const phoneDigits = authCode.phone.replace(/\D/g, '');
-    const user = await db.query.users.findFirst({
-      where: or(eq(users.phone, phoneDigits), eq(users.phone, `+${phoneDigits}`)),
-    });
+    const phone = this.telegramService.normalizePhone(authCode.phone);
+    const user = await db.query.users.findFirst({ where: eq(users.phone, phone) });
     if (!user) throw new BadRequestException("Foydalanuvchi topilmadi.");
     const resetToken = this.jwtService.sign(
       { sub: user.id, purpose: 'password_reset' },
@@ -269,7 +248,6 @@ export class AuthService {
     await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
     return this.createAuthResponse({
       id: user.id,
-      email: user.email,
       displayName: user.displayName,
       role: user.role,
       phone: user.phone,
@@ -279,7 +257,6 @@ export class AuthService {
 
   private async createAuthCode(input: {
     phone: string;
-    email?: string;
     name?: string;
     purpose: 'register' | 'reset';
   }) {
@@ -289,7 +266,6 @@ export class AuthService {
 
     await db.insert(authCodes).values({
       phone: input.phone,
-      email: input.email,
       name: input.name,
       telegramChatId,
       purpose: input.purpose,
@@ -341,22 +317,20 @@ export class AuthService {
 
   private createAuthResponse(user: {
     id: string;
-    email: string;
     displayName: string;
     role: string;
-    phone: string | null;
+    phone: string;
     displayAvatarUrl: string | null;
   }) {
     const token = this.jwtService.sign({
       sub: user.id,
-      email: user.email,
+      phone: user.phone,
       name: user.displayName,
       role: user.role,
     });
 
     const safeUser = {
       id: user.id,
-      email: user.email,
       name: user.displayName,
       role: user.role,
       phone: user.phone,
@@ -370,16 +344,9 @@ export class AuthService {
     };
   }
 
-  private async findUserByPhoneOrEmail(phoneOrEmail: string) {
-    const value = phoneOrEmail.trim();
-    if (value.includes('@')) {
-      return db.query.users.findFirst({ where: eq(users.email, value.toLowerCase()) });
-    }
-
-    const normalizedPhone = this.telegramService.normalizePhone(value).replace(/^\+/, '');
-    return db.query.users.findFirst({
-      where: or(eq(users.phone, normalizedPhone), eq(users.phone, `+${normalizedPhone}`)),
-    });
+  private async findUserByPhone(phone: string) {
+    const normalizedPhone = this.telegramService.normalizePhone(phone);
+    return db.query.users.findFirst({ where: eq(users.phone, normalizedPhone) });
   }
 
   private generateCode() {
