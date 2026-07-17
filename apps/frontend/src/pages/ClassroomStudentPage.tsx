@@ -1,5 +1,5 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Mic, MicOff, Radio, WifiOff } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, Radio, Volume2, WifiOff } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
@@ -83,6 +83,17 @@ export function ClassroomStudentPage() {
           <WifiOff size={14} />
           Ustoz bilan aloqa uzildi — qayta ulanish kutilmoqda...
         </div>
+      )}
+
+      {voice.needsAudioUnlock && (
+        <button
+          type="button"
+          onClick={voice.unlockAudio}
+          className="bg-indigo-50 text-indigo-700 text-sm px-4 py-2.5 flex items-center justify-center gap-2 font-medium hover:bg-indigo-100"
+        >
+          <Volume2 size={16} />
+          Ovozni yoqish uchun bosing
+        </button>
       )}
 
       <main className="flex-1 flex flex-col p-4 min-h-0">

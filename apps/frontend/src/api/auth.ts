@@ -29,6 +29,11 @@ export async function apiUpdateProfile(input: { name?: string; avatarUrl?: strin
   return res.data;
 }
 
+export async function apiChangePassword(currentPassword: string, newPassword: string): Promise<{ ok: true }> {
+  const res = await client.patch('/auth/me/password', { currentPassword, newPassword });
+  return res.data;
+}
+
 export async function apiRequestRegistration(input: { name: string; email: string; phone: string }) {
   const res = await client.post('/auth/register/request', input);
   return res.data;

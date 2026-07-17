@@ -3,8 +3,10 @@ import { db } from '../db';
 import { schools, schoolMembers, users, courses, groups, groupEnrollments, monthlyPayments, modules, lessons, lessonCompletions, contentBlocks, videoWatchSegments } from '../db/schema';
 import { and, eq, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
+import * as bcrypt from 'bcrypt';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
 import { StorageService } from '../storage/storage.service';
+import { TelegramService } from '../telegram/telegram.service';
 
 export function resolveVisibleGroupIds(
   callerRole: string,
@@ -23,6 +25,7 @@ export class SchoolsService {
   constructor(
     private practiceBlocksService: PracticeBlocksService,
     private storageService: StorageService,
+    private telegramService: TelegramService,
   ) {}
 
   private async resolveVideoDuration(block: { id: string; hlsMasterKey: string | null; durationSec: number | null }) {
@@ -136,6 +139,46 @@ export class SchoolsService {
       .values({ schoolId: school.id, studentId, role: 'student' })
       .returning();
     return member;
+  }
+
+  async createStudent(adminId: string, input: { name: string; phone: string; email: string; password: string }) {
+    const school = await this.getOrCreateSchool(adminId);
+    const phone = this.telegramService.normalizePhone(input.phone).replace(/^\+/, '');
+    const email = input.email.trim().toLowerCase();
+    const name = input.name.trim();
+    if (!/^\+?998\d{9}$/.test(phone)) {
+      throw new BadRequestException("Telefon raqami +998 XX XXX XX XX formatida bo'lishi kerak.");
+    }
+
+    const existing = await db.query.users.findFirst({
+      where: or(eq(users.email, email), eq(users.phone, phone), eq(users.phone, `+${phone}`)),
+    });
+    if (existing) throw new ConflictException('Bu email yoki telefon allaqachon ishlatilgan.');
+
+    const passwordHash = await bcrypt.hash(input.password, 10);
+    try {
+      return await db.transaction(async (tx) => {
+        const [student] = await tx
+          .insert(users)
+          .values({ email, phone, name, passwordHash, role: 'student' })
+          .returning({
+            id: users.id,
+            email: users.email,
+            name: users.displayName,
+            phone: users.phone,
+            role: users.role,
+            avatarUrl: users.displayAvatarUrl,
+          });
+        const [member] = await tx
+          .insert(schoolMembers)
+          .values({ schoolId: school.id, studentId: student.id, role: 'student' })
+          .returning({ id: schoolMembers.id, joinedAt: schoolMembers.joinedAt });
+        return { student, membership: member };
+      });
+    } catch (error) {
+      if (error instanceof ConflictException) throw error;
+      throw new ConflictException('O\'quvchini yaratib bo\'lmadi: email yoki telefon band.');
+    }
   }
 
   async findStaff(adminId: string, limit = 7, offset = 0) {

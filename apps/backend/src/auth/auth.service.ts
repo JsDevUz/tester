@@ -18,10 +18,11 @@ export class AuthService {
 
   async login(email: string, password: string) {
     const login = email.trim();
+    const normalizedPhone = this.telegramService.normalizePhone(login).replace(/^\+/, '');
     const user = await db.query.users.findFirst({
       where: login.includes('@')
         ? eq(users.email, login.toLowerCase())
-        : eq(users.phone, this.telegramService.normalizePhone(login)),
+        : or(eq(users.phone, normalizedPhone), eq(users.phone, `+${normalizedPhone}`)),
     });
     if (!user) throw new UnauthorizedException('Invalid credentials');
 
@@ -168,6 +169,21 @@ export class AuthService {
     };
   }
 
+  async changePassword(userId: string, currentPassword: string, newPassword: string) {
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const currentValid = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!currentValid) throw new BadRequestException("Joriy parol noto'g'ri");
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('Yangi parol joriy paroldan farq qilishi kerak');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+    await db.update(users).set({ passwordHash }).where(eq(users.id, userId));
+    return { ok: true };
+  }
+
   async verifyTelegramCode(code: string) {
     const authCode = await this.verifyCodeByPurpose(code, 'login');
     const user = await db.query.users.findFirst({ where: eq(users.phone, authCode.phone) });
@@ -303,8 +319,9 @@ export class AuthService {
       return db.query.users.findFirst({ where: eq(users.email, value.toLowerCase()) });
     }
 
+    const normalizedPhone = this.telegramService.normalizePhone(value).replace(/^\+/, '');
     return db.query.users.findFirst({
-      where: eq(users.phone, this.telegramService.normalizePhone(value)),
+      where: or(eq(users.phone, normalizedPhone), eq(users.phone, `+${normalizedPhone}`)),
     });
   }
 

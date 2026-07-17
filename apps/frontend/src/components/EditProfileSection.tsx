@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
-import { Camera, Loader2 } from "lucide-react";
+import { Camera, Loader2, LockKeyhole } from "lucide-react";
 import { toast } from "sonner";
-import { apiUpdateProfile } from "../api/auth";
+import { apiChangePassword, apiUpdateProfile } from "../api/auth";
 import { apiUploadMedia } from "../api/questions";
 import { useAuthStore } from "../stores/authStore";
 import { UserAvatar } from "./UserAvatar";
@@ -19,6 +19,10 @@ export function EditProfileSection() {
   const [name, setName] = useState(admin?.name ?? "");
   const [savingName, setSavingName] = useState(false);
   const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const nameChanged = name.trim() !== (admin?.name ?? "").trim();
@@ -55,6 +59,30 @@ export function EditProfileSection() {
       toast.error("Rasmni yuklab bo'lmadi");
     } finally {
       setUploadingAvatar(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (savingPassword) return;
+    if (newPassword.length < 8) {
+      toast.error("Yangi parol kamida 8 ta belgidan iborat bo'lishi kerak");
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      toast.error("Yangi parollar mos kelmadi");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await apiChangePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+      toast.success("Parol yangilandi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Parolni yangilab bo'lmadi");
+    } finally {
+      setSavingPassword(false);
     }
   }
 
@@ -114,6 +142,49 @@ export function EditProfileSection() {
           >
             {savingName ? "Saqlanmoqda..." : "Saqlash"}
           </button>
+        </div>
+      </div>
+
+      <div className="border-t border-border pt-5">
+        <div className="mb-3 flex items-center gap-2">
+          <LockKeyhole size={15} className="text-gray-400" />
+          <p className="text-sm font-semibold text-gray-700">Parolni o'zgartirish</p>
+        </div>
+        <div className="flex flex-col gap-2.5">
+          <input
+            type="password"
+            value={currentPassword}
+            onChange={(e) => setCurrentPassword(e.target.value)}
+            placeholder="Joriy parol"
+            autoComplete="current-password"
+            className="w-full rounded-xl border border-border bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-gray-400 focus:bg-white"
+          />
+          <input
+            type="password"
+            value={newPassword}
+            onChange={(e) => setNewPassword(e.target.value)}
+            placeholder="Yangi parol (kamida 8 ta belgi)"
+            autoComplete="new-password"
+            className="w-full rounded-xl border border-border bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-gray-400 focus:bg-white"
+          />
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <input
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder="Yangi parolni tasdiqlang"
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-border bg-gray-50 px-4 py-2.5 text-sm outline-none transition-colors focus:border-gray-400 focus:bg-white"
+            />
+            <button
+              type="button"
+              onClick={handleChangePassword}
+              disabled={savingPassword || !currentPassword || !newPassword || !confirmPassword}
+              className="shrink-0 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
+            >
+              {savingPassword ? "Saqlanmoqda..." : "Parolni saqlash"}
+            </button>
+          </div>
         </div>
       </div>
     </div>

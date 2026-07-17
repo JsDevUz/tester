@@ -43,6 +43,11 @@ class UpdateProfileDto {
   @IsOptional() @IsString() @MaxLength(2048) avatarUrl?: string;
 }
 
+class ChangePasswordDto {
+  @IsString() @MinLength(1) currentPassword: string;
+  @IsString() @MinLength(8) @MaxLength(128) newPassword: string;
+}
+
 @Controller('auth')
 export class AuthController {
   constructor(private authService: AuthService) {}
@@ -99,5 +104,12 @@ export class AuthController {
   @Patch('me')
   updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(req.admin.id, dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Throttle(AUTH_THROTTLE)
+  @Patch('me/password')
+  changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+    return this.authService.changePassword(req.admin.id, dto.currentPassword, dto.newPassword);
   }
 }

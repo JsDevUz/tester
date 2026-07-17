@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
-import { Search, Inbox, Star } from "lucide-react";
+import { Search, Inbox, Star, Plus } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { StudentsSectionTabs } from "../components/students/StudentsSectionTabs";
 import { formatDate } from "../utils/date";
 import {
   apiListAllStudents,
   apiListEnrollments,
+  apiCreateStudent,
   type ApiSchoolStudent,
   type ApiSchoolEnrollment,
 } from "../api/school";
@@ -15,6 +16,9 @@ import { StudentLearningProgressModal } from "../components/students/StudentLear
 import { UserAvatar } from "../components/UserAvatar";
 import { DataLoadingState } from "../components/DataLoadingState";
 import { PaginationControls } from "../components/PaginationControls";
+import { AddStudentModal } from "../components/students/AddStudentModal";
+import { toast } from "sonner";
+import { useAuthStore } from "../stores/authStore";
 
 export interface StudentRow {
   id: string;
@@ -97,6 +101,8 @@ function statusForPath(pathname: string): SectionStatus {
 export function StudentsPage() {
   const location = useLocation();
   const status = statusForPath(location.pathname);
+  const currentAdmin = useAuthStore((state) => state.admin);
+  const canCreateStudent = currentAdmin?.role === "teacher" || currentAdmin?.role === "super";
 
   const [query, setQuery] = useState("");
   const [courseFilter, setCourseFilter] = useState("");
@@ -111,6 +117,8 @@ export function StudentsPage() {
   const [loadError, setLoadError] = useState<string | null>(null);
   const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; telegramName: string | null; phone: string | null; avatarUrl: string | null } | null>(null);
   const [progressTarget, setProgressTarget] = useState<ApiSchoolEnrollment | null>(null);
+  const [showAddStudent, setShowAddStudent] = useState(false);
+  const [refreshKey, setRefreshKey] = useState(0);
 
   useEffect(() => {
     setQuery("");
@@ -157,7 +165,7 @@ export function StudentsPage() {
     return () => {
       cancelled = true;
     };
-  }, [status, page, pageSize, query, courseFilter]);
+  }, [status, page, pageSize, query, courseFilter, refreshKey]);
 
   const pageCount = Math.max(1, Math.ceil(allUsersTotal / pageSize));
   const pageItems = allUsers;
@@ -186,12 +194,17 @@ export function StudentsPage() {
       <div className="min-h-screen p-3 sm:p-4">
         <div className="flex min-h-full flex-col gap-3">
           <div className="rounded-2xl bg-white p-4">
-            <h1 className="text-lg sm:text-xl font-bold text-gray-800">
-              {title}
-            </h1>
-            <p className="text-xs sm:text-sm text-gray-400 mt-0.5">
-              {subtitle}
-            </p>
+            <div className="flex flex-wrap items-start justify-between gap-3">
+              <div>
+                <h1 className="text-lg sm:text-xl font-bold text-gray-800">{title}</h1>
+                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{subtitle}</p>
+              </div>
+              {canCreateStudent && (
+                <button type="button" onClick={() => setShowAddStudent(true)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-600">
+                  <Plus size={16} /> O'quvchi qo'shish
+                </button>
+              )}
+            </div>
           </div>
 
           <StudentsSectionTabs counts={tabCounts} />
@@ -452,6 +465,19 @@ export function StudentsPage() {
           onNameUpdated={(name) => {
             setProfileTarget((current) => current ? { ...current, name } : current);
             setAllUsers((users) => users.map((user) => user.id === profileTarget.id ? { ...user, name } : user));
+          }}
+        />
+      )}
+
+      {showAddStudent && (
+        <AddStudentModal
+          onClose={() => setShowAddStudent(false)}
+          onSubmit={async (input) => {
+            await apiCreateStudent(input);
+            setShowAddStudent(false);
+            setPage(1);
+            setRefreshKey((value) => value + 1);
+            toast.success("O'quvchi maktabga qo'shildi");
           }}
         />
       )}

@@ -3,7 +3,7 @@ import { SchoolsService } from './schools.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
+import { IsEmail, IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } from 'class-validator';
 
 class UpdateSchoolDto {
   @IsOptional() @IsString() name?: string;
@@ -17,6 +17,13 @@ class AddStaffDto {
 
 class UpdateStudentNameDto {
   @IsString() @IsNotEmpty() @MaxLength(120) name: string;
+}
+
+class CreateStudentDto {
+  @IsString() @IsNotEmpty() @MaxLength(120) name: string;
+  @IsString() @IsNotEmpty() @MaxLength(30) phone: string;
+  @IsEmail() @MaxLength(255) email: string;
+  @IsString() @MinLength(8) @MaxLength(128) password: string;
 }
 
 @Controller()
@@ -69,6 +76,13 @@ export class SchoolsController {
   async listAllStudents(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string, @Query('q') query?: string) {
     const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
     return this.schoolsService.listAllStudents(schoolAdminId, req.admin.id, req.admin.role, Number(limit) || 7, Number(offset) || 0, query || '');
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
+  @Post('school/students')
+  createStudent(@Req() req: any, @Body() dto: CreateStudentDto) {
+    return this.schoolsService.createStudent(req.admin.id, dto);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

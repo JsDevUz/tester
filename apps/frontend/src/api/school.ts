@@ -80,6 +80,14 @@ export async function apiListAllStudents(limit = 7, offset = 0, query = ''): Pro
   return res.data;
 }
 
+export async function apiCreateStudent(input: { name: string; phone: string; email: string; password: string }): Promise<{
+  student: { id: string; name: string; email: string; phone: string | null; role: string; avatarUrl: string | null };
+  membership: { id: string; joinedAt: string | null };
+}> {
+  const res = await client.post('/school/students', input);
+  return res.data;
+}
+
 export async function apiUpdateStudentName(studentId: string, name: string): Promise<{ id: string; name: string; telegramName: string | null; phone: string | null; avatarUrl: string | null }> {
   const res = await client.patch(`/school/students/${studentId}/name`, { name });
   return res.data;

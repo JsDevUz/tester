@@ -19,7 +19,7 @@ export function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(true);
   const [loading, setLoading] = useState(false);
   const { login, loginWithTelegramCode } = useAuthStore();
   const token = useAuthStore((s) => s.token);
@@ -164,7 +164,7 @@ export function LoginPage() {
         {showPasswordLogin && (
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">
             <h1 className="login-title mb-2 text-2xl font-bold">
-              Admin kirish
+              Login bilan kirish
             </h1>
             <input
               type="text"
@@ -197,7 +197,7 @@ export function LoginPage() {
         >
           {showPasswordLogin
             ? "Telegram kod bilan kirish"
-            : "Admin parol bilan kirish"}
+            : "Login bilan kirish"}
         </button>
 
       </div>

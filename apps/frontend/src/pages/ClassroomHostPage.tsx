@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Mic, MicOff, PhoneOff, Radio } from "lucide-react";
+import { ArrowLeft, Mic, MicOff, PhoneOff, Radio, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -109,6 +109,17 @@ export function ClassroomHostPage() {
           <span className="hidden sm:inline">Darsni yakunlash</span>
         </button>
       </header>
+
+      {voice.needsAudioUnlock && (
+        <button
+          type="button"
+          onClick={voice.unlockAudio}
+          className="bg-indigo-50 text-indigo-700 text-sm px-4 py-2.5 flex items-center justify-center gap-2 font-medium hover:bg-indigo-100"
+        >
+          <Volume2 size={16} />
+          Ovozni yoqish uchun bosing
+        </button>
+      )}
 
       <main className="flex-1 flex flex-col gap-3 p-4 min-h-0">
         <ClassroomToolbar

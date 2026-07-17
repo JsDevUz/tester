@@ -8,6 +8,9 @@ interface VoiceState {
   connected: boolean;
   micEnabled: boolean;
   speakingUserIds: Set<string>;
+  // true — brauzer autoplay siyosati kiruvchi ovozni bloklagan, foydalanuvchi
+  // amali (tugma bosish) bilan qo'lda ijro ettirish kerak.
+  needsAudioUnlock: boolean;
 }
 
 export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean) {
@@ -17,7 +20,9 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     connected: false,
     micEnabled: false,
     speakingUserIds: new Set(),
+    needsAudioUnlock: false,
   });
+  const pendingAudioElsRef = useRef<Set<HTMLMediaElement>>(new Set());
 
   useEffect(() => {
     if (!sessionId) return;
@@ -48,10 +53,20 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       el.dataset.livekitParticipant = participant.identity;
       el.autoplay = true;
       document.body.appendChild(el);
+      // Brauzer autoplay siyosati user-gesture'siz pleybackni jimgina rad
+      // etishi mumkin — shunda foydalanuvchiga "Ovozni yoqish" tugmasi
+      // ko'rsatiladi, bosilganda shu elementlar qo'lda play() qilinadi.
+      el.play().catch(() => {
+        pendingAudioElsRef.current.add(el);
+        setState((s) => ({ ...s, needsAudioUnlock: true }));
+      });
     });
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
       if (track.kind !== Track.Kind.Audio) return;
-      track.detach().forEach((el) => el.remove());
+      track.detach().forEach((el) => {
+        pendingAudioElsRef.current.delete(el);
+        el.remove();
+      });
     });
 
     (async () => {
@@ -96,5 +111,15 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     }
   }, []);
 
-  return { ...state, toggleMic };
+  // "Ovozni yoqish" tugmasi bosilganda — user gesture ichida chaqirilgani
+  // uchun brauzer endi pleybackka ruxsat beradi.
+  const unlockAudio = useCallback(() => {
+    for (const el of pendingAudioElsRef.current) {
+      void el.play().catch(() => {});
+    }
+    pendingAudioElsRef.current.clear();
+    setState((s) => ({ ...s, needsAudioUnlock: false }));
+  }, []);
+
+  return { ...state, toggleMic, unlockAudio };
 }
