@@ -8,7 +8,8 @@ import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { ClassroomPdfViewer, type DrawTool } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
-import { apiMuteParticipant, apiUploadClassPdf, type CsStroke } from "../api/classroom";
+import { AutoHideHeader } from "../components/classroom/AutoHideHeader";
+import { apiMuteParticipant, apiUploadClassPdf } from "../api/classroom";
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -26,9 +27,6 @@ export function ClassroomHostPage() {
   const [color, setColor] = useState("#ef4444");
   const [uploading, setUploading] = useState(false);
   const [confirmEnd, setConfirmEnd] = useState(false);
-
-  const pageUrl = state.pages[state.currentPage - 1] ?? null;
-  const strokes = state.strokesByPage[state.currentPage] ?? [];
 
   const handleUpload = async (file: File) => {
     if (!id) return;
@@ -69,59 +67,59 @@ export function ClassroomHostPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white shadow-sm px-4 py-3 flex items-center gap-3">
-        <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100" title="Orqaga">
-          <ArrowLeft size={18} />
-        </button>
-        <div className="flex items-center gap-2 min-w-0">
-          <Radio size={18} className="text-red-500 animate-pulse shrink-0" />
-          <h1 className="font-semibold text-gray-800 truncate">Jonli dars</h1>
-          {state.pdfName && <span className="text-sm text-gray-400 truncate hidden sm:inline">— {state.pdfName}</span>}
-        </div>
-        <div className="flex-1" />
-        {!voice.voiceAvailable && (
-          <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg hidden sm:inline">Ovoz o'chirilgan (server sozlanmagan)</span>
-        )}
-        {voice.voiceAvailable && (
+    <div className="h-dvh bg-gray-50 flex flex-col overflow-hidden">
+      <AutoHideHeader>
+        <header className="bg-white shadow-sm px-4 py-3 flex items-center gap-3">
+          <button type="button" onClick={() => navigate(-1)} className="p-2 rounded-xl text-gray-500 hover:bg-gray-100" title="Orqaga">
+            <ArrowLeft size={18} />
+          </button>
+          <div className="flex items-center gap-2 min-w-0">
+            <Radio size={18} className="text-red-500 animate-pulse shrink-0" />
+            <h1 className="font-semibold text-gray-800 truncate">Jonli dars</h1>
+            {state.pdfName && <span className="text-sm text-gray-400 truncate hidden sm:inline">— {state.pdfName}</span>}
+          </div>
+          <div className="flex-1" />
+          {!voice.voiceAvailable && (
+            <span className="text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded-lg hidden sm:inline">Ovoz o'chirilgan (server sozlanmagan)</span>
+          )}
+          {voice.voiceAvailable && (
+            <button
+              type="button"
+              onClick={() => void voice.toggleMic()}
+              className={`p-2.5 rounded-xl ${voice.micEnabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
+              title={voice.micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
+            >
+              {voice.micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+            </button>
+          )}
+          <ParticipantsPanelToggle
+            participants={state.participants}
+            speakingUserIds={voice.speakingUserIds}
+            isHost
+            myUserId={admin?.id ?? null}
+            onMute={(uid) => void handleMute(uid)}
+          />
           <button
             type="button"
-            onClick={() => void voice.toggleMic()}
-            className={`p-2.5 rounded-xl ${voice.micEnabled ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
-            title={voice.micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
+            onClick={() => setConfirmEnd(true)}
+            className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium"
           >
-            {voice.micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+            <PhoneOff size={16} />
+            <span className="hidden sm:inline">Darsni yakunlash</span>
+          </button>
+        </header>
+
+        {voice.needsAudioUnlock && (
+          <button
+            type="button"
+            onClick={voice.unlockAudio}
+            className="w-full bg-indigo-50 text-indigo-700 text-sm px-4 py-2.5 flex items-center justify-center gap-2 font-medium hover:bg-indigo-100"
+          >
+            <Volume2 size={16} />
+            Ovozni yoqish uchun bosing
           </button>
         )}
-        <ParticipantsPanelToggle
-          participants={state.participants}
-          speakingUserIds={voice.speakingUserIds}
-          isHost
-          myUserId={admin?.id ?? null}
-          onMute={(uid) => void handleMute(uid)}
-        />
-        <button
-          type="button"
-          onClick={() => setConfirmEnd(true)}
-          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-red-50 text-red-600 hover:bg-red-100 text-sm font-medium"
-        >
-          <PhoneOff size={16} />
-          <span className="hidden sm:inline">Darsni yakunlash</span>
-        </button>
-      </header>
 
-      {voice.needsAudioUnlock && (
-        <button
-          type="button"
-          onClick={voice.unlockAudio}
-          className="bg-indigo-50 text-indigo-700 text-sm px-4 py-2.5 flex items-center justify-center gap-2 font-medium hover:bg-indigo-100"
-        >
-          <Volume2 size={16} />
-          Ovozni yoqish uchun bosing
-        </button>
-      )}
-
-      <main className="flex-1 flex flex-col gap-3 p-4 min-h-0">
         <ClassroomToolbar
           tool={tool}
           color={color}
@@ -130,23 +128,26 @@ export function ClassroomHostPage() {
           uploading={uploading}
           onToolChange={setTool}
           onColorChange={setColor}
-          onPageChange={(p) => hostActions.setPage(p)}
           onUndo={() => hostActions.undo(state.currentPage)}
           onClear={() => hostActions.clearPage(state.currentPage)}
           onUploadPdf={(f) => void handleUpload(f)}
         />
+      </AutoHideHeader>
+
+      <div className="flex-1 min-h-0 flex flex-col p-2 sm:p-4">
         <ClassroomPdfViewer
-          pageUrl={pageUrl}
-          strokes={strokes}
-          pointer={state.pointer?.page === state.currentPage ? state.pointer : null}
+          pageUrls={state.pages}
+          currentPage={state.currentPage}
+          strokesByPage={state.strokesByPage}
+          pointer={state.pointer}
           editable={state.pages.length > 0}
           tool={tool}
           color={tool === "highlighter" ? "#facc15" : color}
           strokeWidth={tool === "highlighter" ? 8 : 3}
-          onStrokeComplete={(s: CsStroke) => hostActions.sendStroke(state.currentPage, s)}
-          onPointerMove={(x, y, active) => hostActions.pointer(state.currentPage, x, y, active)}
+          onStrokeComplete={(page, s) => hostActions.sendStroke(page, s)}
+          onPointerMove={(page, x, y, active) => hostActions.pointer(page, x, y, active)}
         />
-      </main>
+      </div>
 
       {confirmEnd && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">

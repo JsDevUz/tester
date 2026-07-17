@@ -1,4 +1,4 @@
-import { ChevronLeft, ChevronRight, Eraser, Highlighter, Pen, RotateCcw, Upload, Wand2 } from "lucide-react";
+import { Eraser, Highlighter, Pen, RotateCcw, Upload, Wand2 } from "lucide-react";
 import { type DrawTool } from "./ClassroomPdfViewer";
 
 const PEN_COLORS = ["#ef4444", "#2563eb", "#16a34a"];
@@ -11,7 +11,6 @@ interface Props {
   uploading: boolean;
   onToolChange: (tool: DrawTool) => void;
   onColorChange: (color: string) => void;
-  onPageChange: (page: number) => void;
   onUndo: () => void;
   onClear: () => void;
   onUploadPdf: (file: File) => void;
@@ -19,7 +18,7 @@ interface Props {
 
 export function ClassroomToolbar({
   tool, color, page, pageCount, uploading,
-  onToolChange, onColorChange, onPageChange, onUndo, onClear, onUploadPdf,
+  onToolChange, onColorChange, onUndo, onClear, onUploadPdf,
 }: Props) {
   const btn = (active: boolean) =>
     `p-2 rounded-xl transition-colors ${active ? "bg-indigo-100 text-indigo-700" : "text-gray-500 hover:bg-gray-100"}`;
@@ -60,29 +59,9 @@ export function ClassroomToolbar({
 
       <div className="w-px h-6 bg-gray-200" />
 
-      <div className="flex items-center gap-1">
-        <button
-          type="button"
-          className={btn(false)}
-          disabled={page <= 1}
-          onClick={() => onPageChange(page - 1)}
-          title="Oldingi sahifa"
-        >
-          <ChevronLeft size={18} />
-        </button>
-        <span className="text-sm font-medium text-gray-600 min-w-[3.5rem] text-center">
-          {pageCount > 0 ? `${page} / ${pageCount}` : "—"}
-        </span>
-        <button
-          type="button"
-          className={btn(false)}
-          disabled={page >= pageCount}
-          onClick={() => onPageChange(page + 1)}
-          title="Keyingi sahifa"
-        >
-          <ChevronRight size={18} />
-        </button>
-      </div>
+      <span className="text-sm font-medium text-gray-600 min-w-14 text-center">
+        {pageCount > 0 ? `${page} / ${pageCount}` : "—"}
+      </span>
 
       <div className="flex-1" />
 
