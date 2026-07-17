@@ -228,7 +228,7 @@ export class PaymentsService {
         note: p.note,
         receiptUrl: p.receiptUrl,
         updatedAt: p.updatedAt,
-        studentName: enrollment.schoolMember.student.name,
+        studentName: enrollment.schoolMember.student.displayName,
         studentPhone: enrollment.schoolMember.student.phone,
         courseTitle: course.title,
         groupName: group.name,

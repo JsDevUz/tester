@@ -10,10 +10,11 @@ type UserRole = typeof USER_ROLES[number];
 @Injectable()
 export class AdminsService {
   async findAll() {
-    return db.query.users.findMany({
+    const rows = await db.query.users.findMany({
       columns: { passwordHash: false },
       orderBy: (u, { asc }) => [asc(u.createdAt)],
     });
+    return rows.map((u) => ({ ...u, name: u.displayName, avatarUrl: u.displayAvatarUrl }));
   }
 
   async create(email: string, password: string, name: string) {
@@ -24,7 +25,7 @@ export class AdminsService {
     const [user] = await db
       .insert(users)
       .values({ email, passwordHash, name, role: 'teacher' })
-      .returning({ id: users.id, email: users.email, name: users.name, role: users.role, phone: users.phone });
+      .returning({ id: users.id, email: users.email, name: users.displayName, role: users.role, phone: users.phone });
     return user;
   }
 
@@ -38,7 +39,7 @@ export class AdminsService {
       .update(users)
       .set({ role })
       .where(eq(users.id, id))
-      .returning({ id: users.id, email: users.email, name: users.name, role: users.role, phone: users.phone });
+      .returning({ id: users.id, email: users.email, name: users.displayName, role: users.role, phone: users.phone });
 
     if (!user) throw new BadRequestException('User not found');
     return user;

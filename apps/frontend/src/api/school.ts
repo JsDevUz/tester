@@ -6,6 +6,8 @@ export interface ApiSchool {
   name: string;
   description: string;
   inviteToken: string;
+  inviteRegenerationsRemaining: number;
+  inviteRegenerationResetAt: string | null;
   createdAt: string;
 }
 
@@ -16,6 +18,13 @@ export interface ApiSchoolStaffMember {
   email: string;
   role: 'curator' | 'teacher_staff';
   avatarUrl: string | null;
+}
+
+export interface PaginatedResponse<T> {
+  items: T[];
+  total: number;
+  limit: number;
+  offset: number;
 }
 
 export interface ApiStudentSearchResult {
@@ -51,8 +60,8 @@ export async function apiJoinSchool(token: string): Promise<{ id: string }> {
   return res.data;
 }
 
-export async function apiGetSchoolStaff(): Promise<ApiSchoolStaffMember[]> {
-  const res = await client.get('/school/staff');
+export async function apiGetSchoolStaff(limit = 7, offset = 0): Promise<PaginatedResponse<ApiSchoolStaffMember>> {
+  const res = await client.get('/school/staff', { params: { limit, offset } });
   return res.data;
 }
 
@@ -65,8 +74,8 @@ export interface ApiSchoolStudent {
   avatarUrl: string | null;
 }
 
-export async function apiListAllStudents(): Promise<ApiSchoolStudent[]> {
-  const res = await client.get('/school/students');
+export async function apiListAllStudents(limit = 7, offset = 0, query = ''): Promise<PaginatedResponse<ApiSchoolStudent>> {
+  const res = await client.get('/school/students', { params: { limit, offset, q: query || undefined } });
   return res.data;
 }
 
@@ -88,8 +97,8 @@ export interface ApiSchoolEnrollment {
   starsMax: number;
 }
 
-export async function apiListEnrollments(): Promise<ApiSchoolEnrollment[]> {
-  const res = await client.get('/school/students/enrollments');
+export async function apiListEnrollments(limit = 7, offset = 0, query = ''): Promise<PaginatedResponse<ApiSchoolEnrollment>> {
+  const res = await client.get('/school/students/enrollments', { params: { limit, offset, q: query || undefined } });
   return res.data;
 }
 

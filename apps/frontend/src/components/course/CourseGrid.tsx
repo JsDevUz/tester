@@ -1,14 +1,15 @@
 import { useState } from 'react';
-import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, Star, ThumbsUp, Users } from 'lucide-react';
+import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { PromptModal } from './PromptModal';
+import { DataLoadingState } from '../DataLoadingState';
 
 interface CourseGridProps {
   onOpenCourse: (courseId: string) => void;
 }
 
 export function CourseGrid({ onOpenCourse }: CourseGridProps) {
-  const { courses, addCourse } = useCourseStore();
+  const { courses, coursesLoading, coursesLoaded, coursesError, loadCourses, addCourse } = useCourseStore();
   const [showModal, setShowModal] = useState(false);
 
   async function handleCreate(title: string) {
@@ -30,7 +31,16 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
         </button>
       </div>
 
-      {courses.length === 0 ? (
+      {coursesLoading && !coursesLoaded ? (
+        <DataLoadingState label="Kurslar yuklanmoqda..." className="min-h-64" />
+      ) : coursesError && courses.length === 0 ? (
+        <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl bg-white text-center text-gray-400">
+          <p className="text-sm">{coursesError}</p>
+          <button type="button" onClick={() => void loadCourses().catch(() => undefined)} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white">
+            <RefreshCw size={14} /> Qayta urinish
+          </button>
+        </div>
+      ) : coursesLoaded && courses.length === 0 ? (
         <div className="py-16 text-center text-gray-300">
           <Inbox size={32} className="mx-auto mb-3 opacity-50" />
           <p className="text-sm">Hali kurs yaratilmagan</p>

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { courses, modules, lessons } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
@@ -25,6 +25,9 @@ export class LessonsService {
   async create(moduleId: string, adminId: string, title: string) {
     await this.assertModuleOwnership(moduleId, adminId);
     const existing = await db.query.lessons.findMany({ where: eq(lessons.moduleId, moduleId) });
+    if (existing.length >= 100) {
+      throw new BadRequestException("Bitta modulga maksimal 100 ta dars qo'shish mumkin.");
+    }
     const [lesson] = await db
       .insert(lessons)
       .values({ moduleId, title, orderIndex: existing.length })

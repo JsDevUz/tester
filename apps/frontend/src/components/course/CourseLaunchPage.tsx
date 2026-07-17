@@ -43,10 +43,17 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
   if (!course) return null;
   const launch = course.launches[0];
   if (!launch) return null;
+  const totalPlanCount = course.launches.reduce((count, item) => count + item.plans.length, 0);
+  const planLimitReached = totalPlanCount >= 4;
 
-  function handleCreatePlan(plan: Omit<PricingPlan, 'id'>) {
-    addPricingPlan(courseId, launch.id, plan);
-    setModalOpen(false);
+  async function handleCreatePlan(plan: Omit<PricingPlan, 'id'>) {
+    try {
+      await addPricingPlan(courseId, launch.id, plan);
+      setModalOpen(false);
+      toast.success("Tarif yaratildi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Tarif yaratib bo'lmadi");
+    }
   }
 
   async function handleUpdatePlan(plan: Omit<PricingPlan, 'id'>) {
@@ -94,11 +101,18 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600"
+              disabled={planLimitReached}
+              title={planLimitReached ? "Bitta kursga maksimal 4 ta tarif ochish mumkin" : undefined}
+              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
             >
               <Plus size={16} /> Tarif yaratish
             </button>
           </div>
+          {planLimitReached && (
+            <p className="mb-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              Bu kursda maksimal 4 ta tarif mavjud. Yangi tarif yaratish uchun avval mavjud tariflardan birini o'chiring.
+            </p>
+          )}
 
           {launch.plans.length === 0 ? (
             <div className="rounded-2xl bg-gray-50 py-14 text-center">

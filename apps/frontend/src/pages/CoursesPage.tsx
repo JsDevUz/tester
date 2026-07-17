@@ -21,7 +21,7 @@ export function CoursesPage() {
   const loadCourses = useCourseStore((s) => s.loadCourses);
 
   useEffect(() => {
-    loadCourses();
+    void loadCourses().catch(() => undefined);
   }, [loadCourses]);
 
   function backToList() {

@@ -30,6 +30,7 @@ describe('AuthService telegram auth', () => {
     sendCodeToPhone: jest.fn(),
     sendCredentialsToPhone: jest.fn(),
   };
+  const storageService = { deleteFile: jest.fn() };
 
   beforeEach(() => {
     jest.clearAllMocks();
@@ -67,12 +68,13 @@ describe('AuthService telegram auth', () => {
       id: 'user-1',
       email: 'student@example.com',
       name: 'Student One',
+      displayName: 'Student One',
       role: 'student',
       phone: '+998901112233',
     });
     mockUpdate();
 
-    const service = new AuthService(jwtService as any, telegramService as any);
+    const service = new AuthService(jwtService as any, telegramService as any, storageService as any);
 
     const result = await (service as any).verifyRegistration('123456');
 
@@ -100,7 +102,7 @@ describe('AuthService telegram auth', () => {
       usedAt: new Date(),
     });
 
-    const service = new AuthService(jwtService as any, telegramService as any);
+    const service = new AuthService(jwtService as any, telegramService as any, storageService as any);
 
     await expect((service as any).verifyPasswordReset('student@example.com', '123456')).rejects.toBeInstanceOf(
       BadRequestException,
@@ -122,12 +124,15 @@ describe('AuthService telegram auth', () => {
       id: 'user-1',
       email: 'u998901112233@telegram.local',
       name: 'Student One',
+      displayName: 'Student One',
+      avatarUrl: null,
+      displayAvatarUrl: null,
       role: 'student',
       phone: '+998901112233',
     });
     mockUpdate();
 
-    const service = new AuthService(jwtService as any, telegramService as any);
+    const service = new AuthService(jwtService as any, telegramService as any, storageService as any);
 
     const result = await service.verifyTelegramCode('123456');
 

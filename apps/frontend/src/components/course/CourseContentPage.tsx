@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox, Eye, EyeOff } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
@@ -35,6 +36,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
   if (!course) return null;
 
   const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
+  const moduleLimitReached = course.modules.length >= 30;
 
   function toggleModule(moduleId: string) {
     setCollapsedModules((prev) => {
@@ -46,15 +48,26 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
   }
 
   async function handleCreateModule(title: string) {
-    await addModule(courseId, title);
-    setModal(null);
+    if (moduleLimitReached) return;
+    try {
+      await addModule(courseId, title);
+      setModal(null);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Modul yaratib bo'lmadi");
+    }
   }
 
   async function handleCreateLesson(title: string) {
     if (modal?.type !== 'newLesson') return;
-    const lesson = await addLesson(courseId, modal.moduleId, title);
-    setModal(null);
-    if (lesson) onOpenLesson(modal.moduleId, lesson.id);
+    const targetModule = course?.modules.find((item) => item.id === modal.moduleId);
+    if (!targetModule || targetModule.lessons.length >= 100) return;
+    try {
+      const lesson = await addLesson(courseId, modal.moduleId, title);
+      setModal(null);
+      if (lesson) onOpenLesson(modal.moduleId, lesson.id);
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Dars yaratib bo'lmadi");
+    }
   }
 
   async function handleConfirmDelete() {
@@ -88,7 +101,9 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
             <button
               type="button"
               onClick={() => setModal({ type: 'newModule' })}
-              className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-600"
+              disabled={moduleLimitReached}
+              title={moduleLimitReached ? "Bitta kursga maksimal 30 ta modul qo'shish mumkin" : undefined}
+              className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
             >
               <Plus size={16} /> Modul qo'shish
             </button>
@@ -96,6 +111,11 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
               {course.modules.length} modul • {lessonCount} dars
             </p>
           </div>
+          {moduleLimitReached && (
+            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              Bu kursda maksimal 30 ta modul mavjud. Yangi modul yaratish uchun avval mavjud modullardan birini o'chiring.
+            </p>
+          )}
         </div>
 
         {course.modules.length === 0 ? (
@@ -168,9 +188,11 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                       <button
                         type="button"
                         onClick={() => setModal({ type: 'newLesson', moduleId: module.id })}
-                        className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-gray-500 hover:bg-gray-50"
+                        disabled={module.lessons.length >= 100}
+                        title={module.lessons.length >= 100 ? "Bitta modulga maksimal 100 ta dars qo'shish mumkin" : undefined}
+                        className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-amber-50 disabled:text-amber-600"
                       >
-                        + Dars qo'shish
+                        {module.lessons.length >= 100 ? "100 ta dars limiti to'ldi" : "+ Dars qo'shish"}
                       </button>
                     </div>
                   )}

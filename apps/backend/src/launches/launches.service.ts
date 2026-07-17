@@ -57,7 +57,15 @@ export class LaunchesService {
       endDate?: string | null;
     },
   ) {
-    await this.assertLaunchOwnership(launchId, adminId);
+    const launch = await this.assertLaunchOwnership(launchId, adminId);
+    const courseLaunches = await db.query.launches.findMany({
+      where: eq(launches.courseId, launch.courseId),
+      with: { plans: true },
+    });
+    const planCount = courseLaunches.reduce((count, item) => count + item.plans.length, 0);
+    if (planCount >= 4) {
+      throw new BadRequestException("Bitta kursga maksimal 4 ta tarif ochish mumkin.");
+    }
     const [plan] = await db
       .insert(pricingPlans)
       .values({

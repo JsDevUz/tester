@@ -1,8 +1,8 @@
-import { Controller, Post, Body, Get, UseGuards, Req, HttpCode } from '@nestjs/common';
+import { Controller, Post, Patch, Body, Get, UseGuards, Req, HttpCode } from '@nestjs/common';
 import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 
 // Auth kod/login endpointlari brute-force'ga qarshi qat'iyroq limitga ega:
 // har bir client IP uchun bir daqiqada 5 tagacha urinish.
@@ -34,6 +34,13 @@ class PasswordResetRequestDto {
 class PasswordResetVerifyDto {
   @IsString() @MinLength(3) phoneOrEmail: string;
   @IsString() @MinLength(4) code: string;
+}
+
+class UpdateProfileDto {
+  @IsOptional() @IsString() @MaxLength(120) name?: string;
+  // Empty string clears the custom avatar back to the Telegram-synced one —
+  // only validate as a URL when non-empty.
+  @IsOptional() @IsString() @MaxLength(2048) avatarUrl?: string;
 }
 
 @Controller('auth')
@@ -86,5 +93,11 @@ export class AuthController {
   @Get('me')
   me(@Req() req: any) {
     return this.authService.getMe(req.admin.id);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Patch('me')
+  updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+    return this.authService.updateProfile(req.admin.id, dto);
   }
 }

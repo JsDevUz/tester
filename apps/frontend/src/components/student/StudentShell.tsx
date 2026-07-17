@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { BookOpen, ClipboardList, LogOut, MessageCircle, Moon, Radio, Sun, UserRound, X } from "lucide-react";
+import { BookOpen, ClipboardList, MessageCircle, Radio, Settings, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
-import { useThemeStore } from "../../stores/themeStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessengerNotifications";
 import { UserAvatar } from "../UserAvatar";
+import { SettingsModal } from "../SettingsModal";
+import { formatPhone } from "../../utils/phone";
 
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
@@ -15,7 +16,7 @@ const NAV_ITEMS = [
 ];
 
 function formatProfileContact(phone?: string | null, email?: string | null) {
-  if (phone) return phone;
+  if (phone) return formatPhone(phone);
   const telegramPhone = email?.match(/^u(\d{7,})@telegram\.local$/i)?.[1];
   if (telegramPhone) return `+${telegramPhone}`;
   return email ?? "Profil";
@@ -30,7 +31,6 @@ function isNavActive(pathname: string, path: string) {
 export function StudentShell({ children }: { children: ReactNode }) {
   const admin = useAuthStore((s) => s.admin);
   const logout = useAuthStore((s) => s.logout);
-  const { theme, toggleTheme } = useThemeStore();
   const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
   usePracticeMessengerNotifications();
   const location = useLocation();
@@ -103,7 +103,11 @@ export function StudentShell({ children }: { children: ReactNode }) {
     >
       <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
-          <div className="rounded-2xl bg-white p-4">
+          <button
+            type="button"
+            onClick={() => setProfileOpen(true)}
+            className="rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
+          >
             <div className="flex items-center gap-3">
               <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-12 w-12 rounded-full bg-yellow-300 text-base font-bold text-white" />
               <div className="min-w-0">
@@ -115,7 +119,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 </p>
               </div>
             </div>
-          </div>
+          </button>
 
           <nav className="flex gap-1.5 overflow-x-auto rounded-2xl bg-white p-3 lg:flex-col lg:overflow-visible">
             {NAV_ITEMS.map((item) => {
@@ -147,28 +151,16 @@ export function StudentShell({ children }: { children: ReactNode }) {
             })}
           </nav>
 
-          <div className="rounded-2xl bg-white p-3">
+          <nav className="hidden rounded-2xl bg-white p-3 lg:block">
             <button
               type="button"
-              onClick={toggleTheme}
+              onClick={() => setProfileOpen(true)}
               className="inline-flex w-full shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
-              {theme === "dark" ? (
-                <Sun size={20} className="text-gray-400" />
-              ) : (
-                <Moon size={20} className="text-gray-400" />
-              )}
-              <span>{theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}</span>
+              <Settings size={20} className="text-gray-400" />
+              <span>Sozlamalar</span>
             </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-1 inline-flex w-full shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
-            >
-              <LogOut size={20} className="text-gray-400" />
-              <span>Chiqish</span>
-            </button>
-          </div>
+          </nav>
         </aside>
 
         <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>{children}</main>
@@ -208,7 +200,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
           })}
           <button
             type="button"
-            onClick={() => setProfileOpen((open) => !open)}
+            onClick={() => setProfileOpen(true)}
             className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
               profileOpen ? "bg-gray-100 text-gray-900" : "text-gray-500"
             }`}
@@ -222,59 +214,12 @@ export function StudentShell({ children }: { children: ReactNode }) {
         </nav>
       )}
 
-      {profileOpen && !isInnerPage && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center px-5 lg:hidden">
-          <button
-            type="button"
-            aria-label="Profil oynasini yopish"
-            className="fixed inset-0 -z-10 bg-black/35"
-            onClick={() => setProfileOpen(false)}
-          />
-          <div className="w-full max-w-xs rounded-2xl bg-white p-4 shadow-[0_20px_60px_rgba(15,23,42,0.22)]">
-            <div className="mb-3 flex items-center justify-between">
-              <p className="text-base font-bold text-gray-900">Profil</p>
-              <button
-                type="button"
-                aria-label="Yopish"
-                onClick={() => setProfileOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-full bg-gray-50 text-gray-400"
-              >
-                <X size={18} />
-              </button>
-            </div>
-            <div className="flex items-center gap-3">
-              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-11 w-11 rounded-full bg-yellow-300 text-sm font-bold text-white" />
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-bold text-gray-900">
-                  {admin?.name ?? "O'quvchi"}
-                </p>
-                <p className="truncate text-xs font-medium text-gray-400">
-                  {profileContact}
-                </p>
-              </div>
-            </div>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700"
-            >
-              {theme === "dark" ? (
-                <Sun size={18} className="text-gray-400" />
-              ) : (
-                <Moon size={18} className="text-gray-400" />
-              )}
-              <span>{theme === "dark" ? "Yorug' rejim" : "Tungi rejim"}</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className="mt-2 flex w-full items-center justify-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm font-semibold text-gray-700"
-            >
-              <LogOut size={18} className="text-gray-400" />
-              <span>Chiqish</span>
-            </button>
-          </div>
-        </div>
+      {profileOpen && (
+        <SettingsModal
+          admin={admin}
+          onClose={() => setProfileOpen(false)}
+          onLogout={handleLogout}
+        />
       )}
     </div>
   );

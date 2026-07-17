@@ -507,7 +507,7 @@ export class PracticeBlocksService {
       id: s.id,
       practiceBlockId: s.practiceBlockId,
       studentId: s.studentId,
-      studentName: s.student.name,
+      studentName: s.student.displayName,
       imageUrl: s.imageUrl,
       submittedAt: s.submittedAt!.toISOString(),
       score: s.score,

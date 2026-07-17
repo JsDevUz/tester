@@ -23,7 +23,7 @@ export interface Question {
 
 export async function apiUploadMedia(
   file: File,
-  folder: 'lessons' | 'questions' | 'payments' | 'practice-submissions' = 'questions',
+  folder: 'lessons' | 'questions' | 'payments' | 'practice-submissions' | 'avatars' = 'questions',
 ): Promise<{ url: string; type: 'image' | 'audio' | 'file' }> {
   const form = new FormData();
   form.append('file', file);

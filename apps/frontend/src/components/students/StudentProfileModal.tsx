@@ -58,8 +58,8 @@ export function StudentProfileModal({ studentId, studentName, studentPhone, stud
 
   function refreshEnrollments() {
     setLoadingEnrollments(true);
-    return apiListEnrollments()
-      .then((rows) => setEnrollments(rows.filter((r) => r.studentId === studentId)))
+    return apiListEnrollments(100, 0)
+      .then((page) => setEnrollments(page.items.filter((r) => r.studentId === studentId)))
       .finally(() => setLoadingEnrollments(false));
   }
 

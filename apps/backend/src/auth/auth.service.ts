@@ -6,12 +6,14 @@ import { and, desc, eq, isNull, or } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { randomInt } from 'crypto';
 import { TelegramService } from '../telegram/telegram.service';
+import { StorageService } from '../storage/storage.service';
 
 @Injectable()
 export class AuthService {
   constructor(
     private jwtService: JwtService,
     private telegramService: TelegramService,
+    private storageService: StorageService,
   ) {}
 
   async login(email: string, password: string) {
@@ -29,17 +31,17 @@ export class AuthService {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      name: user.name,
+      name: user.displayName,
       role: user.role,
     });
 
     const safeUser = {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.displayName,
       role: user.role,
       phone: user.phone,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: user.displayAvatarUrl,
     };
 
     return {
@@ -100,7 +102,7 @@ export class AuthService {
         .returning({
           id: users.id,
           email: users.email,
-          name: users.name,
+          name: users.displayName,
           role: users.role,
           phone: users.phone,
         });
@@ -117,10 +119,52 @@ export class AuthService {
     return {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.displayName,
       role: user.role,
       phone: user.phone,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: user.displayAvatarUrl,
+    };
+  }
+
+  // Updates the user's custom profile fields. These always take priority over
+  // the Telegram-synced `name`/`avatarUrl` — see displayName/displayAvatarUrl
+  // generated columns in schema.ts. Passing an empty string clears the custom
+  // value, reverting the display back to the Telegram-sourced one.
+  async updateProfile(userId: string, input: { name?: string; avatarUrl?: string }) {
+    const user = await db.query.users.findFirst({ where: eq(users.id, userId) });
+    if (!user) throw new UnauthorizedException('User not found');
+
+    const patch: { customName?: string | null; customAvatarUrl?: string | null } = {};
+
+    if (input.name !== undefined) {
+      const trimmed = input.name.trim();
+      patch.customName = trimmed || null;
+    }
+
+    if (input.avatarUrl !== undefined) {
+      const trimmed = input.avatarUrl.trim();
+      patch.customAvatarUrl = trimmed || null;
+      // A new custom avatar replaces the old one — delete the old file from
+      // object storage so it doesn't linger as an orphaned upload. Only ever
+      // touch customAvatarUrl here, never the Telegram-synced avatarUrl.
+      if (user.customAvatarUrl && user.customAvatarUrl !== trimmed) {
+        void this.storageService.deleteFile(user.customAvatarUrl).catch(() => {});
+      }
+    }
+
+    const [updated] = await db
+      .update(users)
+      .set(patch)
+      .where(eq(users.id, userId))
+      .returning();
+
+    return {
+      id: updated.id,
+      email: updated.email,
+      name: updated.displayName,
+      role: updated.role,
+      phone: updated.phone,
+      avatarUrl: updated.displayAvatarUrl,
     };
   }
 
@@ -225,25 +269,25 @@ export class AuthService {
   private createAuthResponse(user: {
     id: string;
     email: string;
-    name: string;
+    displayName: string;
     role: string;
     phone: string | null;
-    avatarUrl: string | null;
+    displayAvatarUrl: string | null;
   }) {
     const token = this.jwtService.sign({
       sub: user.id,
       email: user.email,
-      name: user.name,
+      name: user.displayName,
       role: user.role,
     });
 
     const safeUser = {
       id: user.id,
       email: user.email,
-      name: user.name,
+      name: user.displayName,
       role: user.role,
       phone: user.phone,
-      avatarUrl: user.avatarUrl,
+      avatarUrl: user.displayAvatarUrl,
     };
 
     return {

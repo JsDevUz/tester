@@ -35,9 +35,9 @@ export function TopProgressBar() {
   if (!visible) return null;
 
   return (
-    <div className="fixed top-0 left-0 right-0 z-[9999] h-0.5 pointer-events-none">
+    <div className="fixed top-0 left-0 right-0 z-[9999] h-1 pointer-events-none">
       <div
-        className="h-full bg-gray-900 transition-all"
+        className="h-full bg-indigo-500 transition-all shadow-[0_0_10px_rgba(99,102,241,0.65)]"
         style={{
           width: `${width}%`,
           transitionDuration: active ? '300ms' : '200ms',

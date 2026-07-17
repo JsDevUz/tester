@@ -7,6 +7,7 @@ interface AuthState {
   login: (email: string, password: string) => Promise<void>;
   loginWithTelegramCode: (code: string) => Promise<void>;
   logout: () => void;
+  setAdmin: (admin: Admin) => void;
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -26,4 +27,5 @@ export const useAuthStore = create<AuthState>((set) => ({
     localStorage.removeItem('token');
     set({ token: null, admin: null });
   },
+  setAdmin: (admin) => set({ admin }),
 }));

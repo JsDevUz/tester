@@ -3,6 +3,9 @@ import { apiFetchFolders, apiCreateFolder, apiUpdateFolder, apiDeleteFolder, typ
 
 interface FolderState {
   folders: Folder[];
+  foldersLoading: boolean;
+  foldersLoaded: boolean;
+  foldersError: string | null;
   fetchFolders: () => Promise<void>;
   createFolder: (name: string, color?: string, icon?: string) => Promise<void>;
   updateFolder: (id: string, data: { name?: string; color?: string; icon?: string }) => Promise<void>;
@@ -11,9 +14,20 @@ interface FolderState {
 
 export const useFolderStore = create<FolderState>((set, get) => ({
   folders: [],
+  foldersLoading: false,
+  foldersLoaded: false,
+  foldersError: null,
   fetchFolders: async () => {
-    const folders = await apiFetchFolders();
-    set({ folders });
+    set({ foldersLoading: true, foldersError: null });
+    try {
+      const folders = await apiFetchFolders();
+      set({ folders, foldersLoaded: true });
+    } catch (error) {
+      set({ foldersError: "Papkalarni yuklab bo'lmadi", foldersLoaded: true });
+      throw error;
+    } finally {
+      set({ foldersLoading: false });
+    }
   },
   createFolder: async (name, color, icon) => {
     const folder = await apiCreateFolder(name, color, icon);

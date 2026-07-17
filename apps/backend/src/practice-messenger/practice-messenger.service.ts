@@ -24,7 +24,7 @@ type PracticeContext = {
   course: typeof courses.$inferSelect;
 };
 
-type ChatUser = { id: string; name: string; avatarUrl: string | null };
+type ChatUser = { id: string; displayName: string; displayAvatarUrl: string | null };
 type ChatGroup = { name: string };
 
 function testPracticeScore(
@@ -74,8 +74,8 @@ export class PracticeMessengerService {
         return {
           id: chat.id,
           courseId: chat.courseId,
-          student: { id: student.id, name: student.name, avatarUrl: student.avatarUrl },
-          curator: { id: curator.id, name: curator.name, avatarUrl: curator.avatarUrl },
+          student: { id: student.id, name: student.displayName, avatarUrl: student.displayAvatarUrl },
+          curator: { id: curator.id, name: curator.displayName, avatarUrl: curator.displayAvatarUrl },
           groupName: group.name,
           courseTitle: course.title,
           lastMessage: lastMessages[index]
@@ -196,8 +196,8 @@ export class PracticeMessengerService {
     return {
       chat: {
         id: chat.id,
-        student: { id: student.id, name: student.name, avatarUrl: student.avatarUrl },
-        curator: { id: curator.id, name: curator.name, avatarUrl: curator.avatarUrl },
+        student: { id: student.id, name: student.displayName, avatarUrl: student.displayAvatarUrl },
+        curator: { id: curator.id, name: curator.displayName, avatarUrl: curator.displayAvatarUrl },
         groupName: group.name,
         courseTitle: course.title,
       },
@@ -214,8 +214,8 @@ export class PracticeMessengerService {
         id: message.id,
         sender: {
           id: (message.sender as unknown as ChatUser).id,
-          name: (message.sender as unknown as ChatUser).name,
-          avatarUrl: (message.sender as unknown as ChatUser).avatarUrl,
+          name: (message.sender as unknown as ChatUser).displayName,
+          avatarUrl: (message.sender as unknown as ChatUser).displayAvatarUrl,
         },
         type: message.type,
         content: message.content,
@@ -228,7 +228,7 @@ export class PracticeMessengerService {
               return repliedMessage
                 ? {
                     id: repliedMessage.id,
-                    senderName: (repliedMessage.sender as unknown as ChatUser).name,
+                    senderName: (repliedMessage.sender as unknown as ChatUser).displayName,
                     content: repliedMessage.deletedAt
                       ? 'Xabar o‘chirildi'
                       : repliedMessage.content,

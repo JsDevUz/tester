@@ -137,6 +137,9 @@ export interface Course {
 
 interface CourseState {
   courses: Course[];
+  coursesLoading: boolean;
+  coursesLoaded: boolean;
+  coursesError: string | null;
   loadCourses: () => Promise<void>;
   addCourse: (title: string) => Promise<Course>;
   renameCourse: (courseId: string, title: string) => Promise<void>;
@@ -237,10 +240,15 @@ function isPersistedFileBlock(block: ContentBlock | undefined): boolean {
 
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
+  coursesLoading: false,
+  coursesLoaded: false,
+  coursesError: null,
 
   loadCourses: async () => {
-    const courseRows = await apiListCourses();
-    const courses = await Promise.all(
+    set({ coursesLoading: true, coursesError: null });
+    try {
+      const courseRows = await apiListCourses();
+      const courses = await Promise.all(
       courseRows.map(async (courseRow) => {
         const [moduleRows, groupRows, launchRows] = await Promise.all([
           apiListModules(courseRow.id),
@@ -340,8 +348,14 @@ export const useCourseStore = create<CourseState>((set, get) => ({
           groups: groupList,
         };
       }),
-    );
-    set({ courses });
+      );
+      set({ courses, coursesLoaded: true });
+    } catch (error) {
+      set({ coursesError: "Kurslarni yuklab bo'lmadi", coursesLoaded: true });
+      throw error;
+    } finally {
+      set({ coursesLoading: false });
+    }
   },
   addCourse: async (title) => {
     const row = await apiCreateCourse(title);

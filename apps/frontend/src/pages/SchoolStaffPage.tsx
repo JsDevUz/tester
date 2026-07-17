@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
-import { Inbox, Plus, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, Plus, X } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { AddStaffModal } from '../components/school/AddStaffModal';
 import { useSchoolStore, type SchoolStaffRole } from '../stores/schoolStore';
 import { UserAvatar } from '../components/UserAvatar';
+import { DataLoadingState } from '../components/DataLoadingState';
 
 const AVATAR_PALETTES = [
   'bg-gray-200 text-gray-700',
@@ -24,16 +26,32 @@ const ROLE_BADGE: Record<SchoolStaffRole, { label: string; className: string }> 
   curator: { label: 'Kurator', className: 'bg-amber-100 text-amber-600' },
 };
 
+const PAGE_SIZE = 7;
+
 export function SchoolStaffPage() {
-  const { staff, loadStaff, searchStudents, addStaff, removeStaff } = useSchoolStore();
+  const { staff, staffTotal, staffLoading, staffLoaded, staffError, loadStaff, searchStudents, addStaff, removeStaff } = useSchoolStore();
   const [modalOpen, setModalOpen] = useState(false);
+  const [page, setPage] = useState(1);
 
   useEffect(() => {
-    void loadStaff();
-  }, [loadStaff]);
+    void loadStaff(PAGE_SIZE, (page - 1) * PAGE_SIZE).catch(() => undefined);
+  }, [loadStaff, page]);
 
-  function handleAddStaff(studentId: string, role: SchoolStaffRole) {
-    void addStaff(studentId, role).then(() => setModalOpen(false));
+  const pageCount = Math.max(1, Math.ceil(staffTotal / PAGE_SIZE));
+  const currentPage = Math.min(page, pageCount);
+  const pageStaff = staff;
+  const staffLimitReached = staffTotal >= 30;
+
+  async function handleAddStaff(studentId: string, role: SchoolStaffRole) {
+    if (staffLimitReached) return;
+    try {
+      await addStaff(studentId, role);
+      setModalOpen(false);
+      setPage(Math.ceil((staffTotal + 1) / PAGE_SIZE));
+      toast.success("Xodim qo'shildi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Xodim qo'shib bo'lmadi");
+    }
   }
 
   return (
@@ -45,20 +63,35 @@ export function SchoolStaffPage() {
             <button
               type="button"
               onClick={() => setModalOpen(true)}
-              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600"
+              disabled={staffLimitReached}
+              title={staffLimitReached ? "Bitta maktabga maksimal 30 ta xodim qo'shish mumkin" : undefined}
+              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
             >
               <Plus size={16} /> Xodim qo'shish
             </button>
           </div>
 
-          {staff.length === 0 ? (
+          {staffLimitReached && (
+            <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              Maksimal 30 ta xodim qo'shilgan. Yangi xodim qo'shish uchun avval mavjud xodimlardan birini olib tashlang.
+            </p>
+          )}
+
+          {staffLoading && !staffLoaded ? (
+            <DataLoadingState label="Xodimlar yuklanmoqda..." />
+          ) : staffError && staff.length === 0 ? (
+            <div className="rounded-2xl bg-white py-16 text-center text-sm text-gray-400">
+              <p>{staffError}</p>
+              <button type="button" onClick={() => void loadStaff(PAGE_SIZE, (page - 1) * PAGE_SIZE).catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
+            </div>
+          ) : staffLoaded && staff.length === 0 ? (
             <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
               <Inbox size={32} className="mx-auto mb-3 opacity-50" />
               <p className="text-sm">Hali xodim yo'q</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
-              {staff.map((s) => {
+              {pageStaff.map((s) => {
                 const badge = ROLE_BADGE[s.role];
                 return (
                   <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
@@ -81,6 +114,42 @@ export function SchoolStaffPage() {
                   </div>
                 );
               })}
+              {pageCount > 1 && (
+                <div className="flex items-center justify-center gap-1.5 py-3">
+                  <button
+                    type="button"
+                    onClick={() => setPage(Math.max(1, currentPage - 1))}
+                    disabled={currentPage === 1}
+                    className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Oldingi sahifa"
+                  >
+                    <ChevronLeft size={16} />
+                  </button>
+                  {Array.from({ length: pageCount }, (_, index) => index + 1).map((pageNumber) => (
+                    <button
+                      key={pageNumber}
+                      type="button"
+                      onClick={() => setPage(pageNumber)}
+                      className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
+                        pageNumber === currentPage
+                          ? 'bg-gray-900 text-white'
+                          : 'text-gray-500 hover:bg-gray-100'
+                      }`}
+                    >
+                      {pageNumber}
+                    </button>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={() => setPage(Math.min(pageCount, currentPage + 1))}
+                    disabled={currentPage === pageCount}
+                    className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                    aria-label="Keyingi sahifa"
+                  >
+                    <ChevronRight size={16} />
+                  </button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useLocation } from "react-router-dom";
 import { Search, Inbox, ChevronLeft, ChevronRight, Star } from "lucide-react";
 import { AppShell } from "../components/AppShell";
@@ -13,6 +13,7 @@ import {
 import { StudentProfileModal } from "../components/students/StudentProfileModal";
 import { StudentLearningProgressModal } from "../components/students/StudentLearningProgressModal";
 import { UserAvatar } from "../components/UserAvatar";
+import { DataLoadingState } from "../components/DataLoadingState";
 
 export interface StudentRow {
   id: string;
@@ -101,52 +102,64 @@ export function StudentsPage() {
   const [query, setQuery] = useState("");
   const [page, setPage] = useState(1);
   const [allUsers, setAllUsers] = useState<ApiSchoolStudent[]>([]);
+  const [allUsersTotal, setAllUsersTotal] = useState(0);
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
+  const [enrollmentsTotal, setEnrollmentsTotal] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [profileTarget, setProfileTarget] = useState<{ id: string; name: string; phone: string | null; avatarUrl: string | null } | null>(null);
   const [progressTarget, setProgressTarget] = useState<ApiSchoolEnrollment | null>(null);
-
-  function refreshAllUsers() {
-    return apiListAllStudents().then(setAllUsers);
-  }
-
-  useEffect(() => {
-    if (status === "all") {
-      void refreshAllUsers();
-    } else if (status === "list") {
-      void apiListEnrollments().then(setEnrollments);
-    }
-  }, [status]);
 
   useEffect(() => {
     setQuery("");
     setPage(1);
   }, [status]);
 
-  const filteredUsers = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return allUsers;
-    return allUsers.filter(
-      (u) => u.name.toLowerCase().includes(q) || (u.phone ?? "").includes(q),
-    );
-  }, [query, allUsers]);
+  useEffect(() => {
+    let cancelled = false;
+    const offset = (page - 1) * PAGE_SIZE;
+    setLoading(true);
+    setLoadError(null);
 
-  const filteredEnrollments = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return enrollments;
-    return enrollments.filter(
-      (e) =>
-        e.studentName.toLowerCase().includes(q) ||
-        (e.studentPhone ?? "").includes(q) ||
-        e.courseTitle.toLowerCase().includes(q),
-    );
-  }, [query, enrollments]);
+    const request = status === "all"
+      ? Promise.all([
+          apiListAllStudents(PAGE_SIZE, offset, query),
+          apiListEnrollments(1, 0),
+        ]).then(([result, enrollmentMeta]) => {
+          if (cancelled) return;
+          setAllUsers(result.items);
+          setAllUsersTotal(result.total);
+          setEnrollmentsTotal(enrollmentMeta.total);
+        })
+      : Promise.all([
+          apiListEnrollments(PAGE_SIZE, offset, query),
+          apiListAllStudents(1, 0),
+        ]).then(([result, allUsersMeta]) => {
+          if (cancelled) return;
+          setEnrollments(result.items);
+          setEnrollmentsTotal(result.total);
+          setAllUsersTotal(allUsersMeta.total);
+        });
 
-  const pageCount = Math.max(1, Math.ceil(filteredUsers.length / PAGE_SIZE));
+    void request
+      .catch(() => {
+        if (!cancelled) setLoadError("O'quvchilarni yuklab bo'lmadi");
+      })
+      .finally(() => {
+        if (!cancelled) setLoading(false);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [status, page, query]);
+
+  const pageCount = Math.max(1, Math.ceil(allUsersTotal / PAGE_SIZE));
   const currentPage = Math.min(page, pageCount);
-  const pageItems = filteredUsers.slice(
-    (currentPage - 1) * PAGE_SIZE,
-    currentPage * PAGE_SIZE,
-  );
+  const pageItems = allUsers;
+  const enrollmentPageCount = Math.max(1, Math.ceil(enrollmentsTotal / PAGE_SIZE));
+  const currentEnrollmentPage = Math.min(page, enrollmentPageCount);
+  const enrollmentPageItems = enrollments;
 
   function handleSearch(value: string) {
     setQuery(value);
@@ -154,8 +167,8 @@ export function StudentsPage() {
   }
 
   const tabCounts = {
-    "/students": allUsers.length,
-    "/students/list": allUsers.length,
+    "/students": allUsersTotal,
+    "/students/list": enrollmentsTotal,
   };
 
   const title = status === "list" ? "O'quvchilar" : "Barcha maktab foydalanuvchilari";
@@ -194,9 +207,13 @@ export function StudentsPage() {
             />
           </div>
 
-          {status === "list" ? (
+          {loading ? (
+            <DataLoadingState label="O'quvchilar yuklanmoqda..." className="min-h-80" />
+          ) : loadError ? (
+            <div className="rounded-2xl bg-white py-16 text-center text-sm text-gray-400">{loadError}</div>
+          ) : status === "list" ? (
             <div className="rounded-2xl bg-white">
-              {filteredEnrollments.length === 0 ? (
+              {enrollmentsTotal === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <Inbox size={36} className="mx-auto mb-3 opacity-30" />
                   <p className="text-sm">
@@ -206,7 +223,7 @@ export function StudentsPage() {
               ) : (
                 <>
                   <div className="md:hidden flex flex-col gap-2">
-                    {filteredEnrollments.map((e) => (
+                    {enrollmentPageItems.map((e) => (
                       <button type="button" onClick={() => setProgressTarget(e)} key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-gray-50">
                         <div className="flex items-center gap-3">
                           <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(e.studentId)}`} />
@@ -259,7 +276,7 @@ export function StudentsPage() {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredEnrollments.map((e) => (
+                        {enrollmentPageItems.map((e) => (
                           <tr key={`${e.studentId}-${e.courseId}`} onClick={() => setProgressTarget(e)} className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5">
                             <td className="px-5 py-4">
                               <div className="flex items-center gap-3">
@@ -304,12 +321,49 @@ export function StudentsPage() {
                       </tbody>
                     </table>
                   </div>
+
+                  {enrollmentPageCount > 1 && (
+                    <div className="flex items-center justify-center gap-1.5 pb-5 pt-2">
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        disabled={currentEnrollmentPage === 1}
+                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Oldingi sahifa"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {Array.from({ length: enrollmentPageCount }, (_, i) => i + 1).map((p) => (
+                        <button
+                          key={p}
+                          type="button"
+                          onClick={() => setPage(p)}
+                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
+                            p === currentEnrollmentPage
+                              ? "bg-gray-900 text-white"
+                              : "text-gray-500 hover:bg-gray-50"
+                          }`}
+                        >
+                          {p}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setPage((p) => Math.min(enrollmentPageCount, p + 1))}
+                        disabled={currentEnrollmentPage === enrollmentPageCount}
+                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-50 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Keyingi sahifa"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
                 </>
               )}
             </div>
           ) : (
             <div className="rounded-2xl bg-white">
-              {filteredUsers.length === 0 ? (
+              {allUsersTotal === 0 ? (
                 <div className="text-center py-16 text-gray-400">
                   <Inbox size={36} className="mx-auto mb-3 opacity-30" />
                   <p className="text-sm">
@@ -390,7 +444,7 @@ export function StudentsPage() {
                   </div>
 
                   {pageCount > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 mt-5">
+                    <div className="flex items-center justify-center gap-1.5 mt-5 pb-5">
                       <button
                         type="button"
                         onClick={() => setPage((p) => Math.max(1, p - 1))}
@@ -439,7 +493,7 @@ export function StudentsPage() {
           studentPhone={profileTarget.phone}
           studentAvatarUrl={profileTarget.avatarUrl}
           onClose={() => setProfileTarget(null)}
-          onEnrolled={() => void refreshAllUsers()}
+          onEnrolled={() => setPage(1)}
         />
       )}
       {progressTarget && (

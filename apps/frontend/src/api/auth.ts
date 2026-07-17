@@ -24,6 +24,11 @@ export async function apiGetMe(): Promise<Admin> {
   return res.data;
 }
 
+export async function apiUpdateProfile(input: { name?: string; avatarUrl?: string }): Promise<Admin> {
+  const res = await client.patch('/auth/me', input);
+  return res.data;
+}
+
 export async function apiRequestRegistration(input: { name: string; email: string; phone: string }) {
   const res = await client.post('/auth/register/request', input);
   return res.data;

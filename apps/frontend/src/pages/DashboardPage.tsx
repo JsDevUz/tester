@@ -6,18 +6,19 @@ import { FolderCard } from "../components/FolderCard";
 import { NewFolderModal } from "../components/NewFolderModal";
 import { useFolderStore } from "../stores/folderStore";
 import type { Folder } from "../api/folders";
+import { DataLoadingState } from "../components/DataLoadingState";
 
 export function DashboardPage() {
   const navigate = useNavigate();
-  const { folders, fetchFolders, createFolder, updateFolder, deleteFolder } =
+  const { folders, foldersLoading, foldersLoaded, foldersError, fetchFolders, createFolder, updateFolder, deleteFolder } =
     useFolderStore();
   const [showNewModal, setShowNewModal] = useState(false);
   const [editFolder, setEditFolder] = useState<Folder | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Folder | null>(null);
 
   useEffect(() => {
-    fetchFolders();
-  }, []);
+    void fetchFolders().catch(() => undefined);
+  }, [fetchFolders]);
 
   async function handleCreate(name: string, color: string) {
     await createFolder(name, color);
@@ -60,6 +61,14 @@ export function DashboardPage() {
               </button>
             </div>
           </div>
+          {foldersLoading && !foldersLoaded ? (
+            <DataLoadingState label="Papkalar yuklanmoqda..." className="min-h-64" />
+          ) : foldersError && folders.length === 0 ? (
+            <div className="py-16 text-center text-sm text-gray-400">
+              <p>{foldersError}</p>
+              <button type="button" onClick={() => void fetchFolders().catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
+            </div>
+          ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
             {folders.map((folder) => (
               <FolderCard
@@ -71,12 +80,13 @@ export function DashboardPage() {
                 onDelete={() => setConfirmDelete(folder)}
               />
             ))}
-            {folders.length === 0 && (
+            {foldersLoaded && folders.length === 0 && (
               <p className="text-gray-400 text-sm mt-8 col-span-full text-center">
                 Hali papkalar yo'q. Yangisini yarating!
               </p>
             )}
           </div>
+          )}
         </div>
 
         {showNewModal && (

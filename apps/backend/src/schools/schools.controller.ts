@@ -55,24 +55,24 @@ export class SchoolsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
   @Get('school/staff')
-  findStaff(@Req() req: any) {
-    return this.schoolsService.findStaff(req.admin.id);
+  findStaff(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string) {
+    return this.schoolsService.findStaff(req.admin.id, Number(limit) || 7, Number(offset) || 0);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super', 'curator')
   @Get('school/students')
-  async listAllStudents(@Req() req: any) {
+  async listAllStudents(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string, @Query('q') query?: string) {
     const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
-    return this.schoolsService.listAllStudents(schoolAdminId, req.admin.id, req.admin.role);
+    return this.schoolsService.listAllStudents(schoolAdminId, req.admin.id, req.admin.role, Number(limit) || 7, Number(offset) || 0, query || '');
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super', 'curator')
   @Get('school/students/enrollments')
-  async listEnrollments(@Req() req: any) {
+  async listEnrollments(@Req() req: any, @Query('limit') limit?: string, @Query('offset') offset?: string, @Query('q') query?: string) {
     const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
-    return this.schoolsService.listEnrollments(schoolAdminId, req.admin.id, req.admin.role);
+    return this.schoolsService.listEnrollments(schoolAdminId, req.admin.id, req.admin.role, Number(limit) || 7, Number(offset) || 0, query || '');
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

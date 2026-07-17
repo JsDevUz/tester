@@ -27,6 +27,7 @@ import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
+import { GlobalLoadingIndicator } from './components/GlobalLoadingIndicator';
 import { useAuthStore } from './stores/authStore';
 
 function HomeRoute() {
@@ -71,6 +72,7 @@ export default function App() {
   return (
     <>
       <TopProgressBar />
+      <GlobalLoadingIndicator />
       <RouterProvider router={router} />
       <Toaster richColors position="top-right" theme="system" />
     </>

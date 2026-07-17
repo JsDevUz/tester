@@ -17,7 +17,7 @@ import { and, desc, eq } from 'drizzle-orm';
 const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
 const ALLOWED_FILE = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip', '.txt'];
-const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments', 'practice-submissions'];
+const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments', 'practice-submissions', 'avatars'];
 const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
 const MEDIA_TYPES = ['image', 'audio', 'file'];
 
@@ -96,7 +96,7 @@ export class UploadController {
       url: asset.url,
       type: asset.type,
       originalName: asset.originalName,
-      uploaderName: (asset.uploader as unknown as { name: string }).name,
+      uploaderName: (asset.uploader as unknown as { displayName: string }).displayName,
       createdAt: asset.createdAt!.toISOString(),
     }));
   }

@@ -1,9 +1,11 @@
 import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, LogOut, Mail, Moon, Phone, Settings, ShieldCheck, X } from "lucide-react";
+import { ChevronLeft, ChevronRight, LogOut, Moon, Phone, Settings, ShieldCheck, User, X } from "lucide-react";
 import type { Admin } from "../api/auth";
 import { useThemeStore } from "../stores/themeStore";
 import { UserAvatar } from "./UserAvatar";
 import { AdminsSection } from "./AdminsSection";
+import { EditProfileSection } from "./EditProfileSection";
+import { formatPhone } from "../utils/phone";
 
 interface SettingsModalProps {
   admin: Admin | null;
@@ -11,7 +13,7 @@ interface SettingsModalProps {
   onLogout: () => void;
 }
 
-type SectionKey = "general" | "admins";
+type SectionKey = "general" | "profile" | "admins";
 
 const ROLE_LABELS: Record<Admin["role"], string> = {
   student: "O'quvchi",
@@ -105,12 +107,7 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
               <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-gray-400">
                 {admin?.phone && (
                   <span className="inline-flex items-center gap-1.5">
-                    <Phone size={11} /> {admin.phone}
-                  </span>
-                )}
-                {admin?.email && (
-                  <span className="inline-flex min-w-0 items-center gap-1.5">
-                    <Mail size={11} /> <span className="truncate">{admin.email}</span>
+                    <Phone size={11} /> {formatPhone(admin.phone)}
                   </span>
                 )}
                 {admin?.role && <span>{ROLE_LABELS[admin.role]}</span>}
@@ -121,8 +118,28 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
           <nav className="flex-1 overflow-y-auto p-2">
             <button
               type="button"
-              onClick={() => openSection("general")}
+              onClick={() => openSection("profile")}
               className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                activeSection === "profile"
+                  ? "bg-indigo-500 text-white"
+                  : "text-gray-700 hover:bg-gray-100"
+              }`}
+            >
+              <span
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
+                  activeSection === "profile" ? "bg-white/15" : "bg-gray-200"
+                }`}
+              >
+                <User size={15} />
+              </span>
+              Profile
+              <ChevronRight size={15} className="ml-auto text-gray-300 sm:hidden" />
+            </button>
+
+            <button
+              type="button"
+              onClick={() => openSection("general")}
+              className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
                 activeSection === "general"
                   ? "bg-indigo-500 text-white"
                   : "text-gray-700 hover:bg-gray-100"
@@ -185,7 +202,11 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
               <ChevronLeft size={17} />
             </button>
             <h3 className="text-base font-semibold">
-              {activeSection === "general" ? "General Settings" : "Adminlar"}
+              {activeSection === "profile"
+                ? "Profile"
+                : activeSection === "general"
+                  ? "General Settings"
+                  : "Adminlar"}
             </h3>
             <button
               type="button"
@@ -198,7 +219,9 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {activeSection === "general" ? (
+            {activeSection === "profile" ? (
+              <EditProfileSection />
+            ) : activeSection === "general" ? (
               <>
                 <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   Appearance

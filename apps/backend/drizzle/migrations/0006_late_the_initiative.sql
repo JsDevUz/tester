@@ -1,0 +1,2 @@
+ALTER TABLE "schools" ADD COLUMN "invite_regeneration_count" integer DEFAULT 0 NOT NULL;--> statement-breakpoint
+ALTER TABLE "schools" ADD COLUMN "invite_regeneration_window_started_at" timestamp with time zone;

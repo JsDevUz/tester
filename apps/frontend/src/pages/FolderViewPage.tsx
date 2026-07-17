@@ -6,13 +6,14 @@ import { TestSettingsModal } from "../components/TestSettingsModal";
 import { useTestStore } from "../stores/testStore";
 import { useFolderStore } from "../stores/folderStore";
 import type { Test, CreateTestData } from "../api/tests";
+import { DataLoadingState } from "../components/DataLoadingState";
 
 export function FolderViewPage() {
   const { id: folderId } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { tests, fetchTests, createTest, updateTest, deleteTest } =
+  const { tests, testsLoading, testsLoaded, testsError, fetchTests, createTest, updateTest, deleteTest } =
     useTestStore();
-  const { folders, fetchFolders } = useFolderStore();
+  const { folders, foldersLoaded, fetchFolders } = useFolderStore();
   const [showModal, setShowModal] = useState(false);
   const [editTest, setEditTest] = useState<Test | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Test | null>(null);
@@ -20,9 +21,12 @@ export function FolderViewPage() {
   const folder = folders.find((f) => f.id === folderId);
 
   useEffect(() => {
-    if (folderId) fetchTests(folderId);
-    if (folders.length === 0) fetchFolders();
-  }, [folderId]);
+    if (folderId) void fetchTests(folderId).catch(() => undefined);
+  }, [folderId, fetchTests]);
+
+  useEffect(() => {
+    if (!foldersLoaded) void fetchFolders().catch(() => undefined);
+  }, [foldersLoaded, fetchFolders]);
 
   async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
@@ -66,6 +70,14 @@ export function FolderViewPage() {
               + Yangi test
             </button>
           </div>
+          {testsLoading && !testsLoaded ? (
+            <DataLoadingState label="Testlar yuklanmoqda..." className="min-h-64" />
+          ) : testsError && tests.length === 0 ? (
+            <div className="py-16 text-center text-sm text-gray-400">
+              <p>{testsError}</p>
+              <button type="button" onClick={() => folderId && void fetchTests(folderId).catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
+            </div>
+          ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-4 gap-5 items-start">
             {tests.map((test) => (
               <TestCard
@@ -78,12 +90,13 @@ export function FolderViewPage() {
                 onLive={() => navigate(`/live?testId=${test.id}`)}
               />
             ))}
-            {tests.length === 0 && (
+            {testsLoaded && tests.length === 0 && (
               <p className="text-gray-400 text-sm mt-8 w-full text-center">
                 Hali testlar yo'q. Yangisini yarating!
               </p>
             )}
           </div>
+          )}
         </div>
 
         {showModal && folderId && (

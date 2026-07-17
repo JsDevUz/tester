@@ -76,7 +76,18 @@ export function SchoolInviteJoinPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
       <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center">
-        {error && <p className="mb-4 text-sm text-red-500">{error}</p>}
+        {error && (
+          <>
+            <p className="mb-4 text-sm text-red-500">{error}</p>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="w-full rounded-2xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-200"
+            >
+              Orqaga qaytish
+            </button>
+          </>
+        )}
 
         {!error && !preview && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 
@@ -96,9 +107,18 @@ export function SchoolInviteJoinPage() {
         )}
 
         {joined && (
-          <p className="text-sm font-semibold text-green-600">
-            Muvaffaqiyatli qo'shildingiz!
-          </p>
+          <>
+            <p className="mb-4 text-sm font-semibold text-green-600">
+              Muvaffaqiyatli qo'shildingiz!
+            </p>
+            <button
+              type="button"
+              onClick={() => navigate('/')}
+              className="w-full rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+            >
+              Davom etish
+            </button>
+          </>
         )}
       </div>
     </div>

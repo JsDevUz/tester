@@ -1,17 +1,30 @@
 import { pgTable, text, uuid, timestamp, integer, boolean, varchar, jsonb, index, uniqueIndex, type AnyPgColumn } from 'drizzle-orm/pg-core';
-import { relations, sql } from 'drizzle-orm';
+import { relations, sql, type SQL } from 'drizzle-orm';
 
 export const users = pgTable('users', {
   id: uuid('id').primaryKey().defaultRandom(),
   email: text('email').unique().notNull(),
   username: text('username').unique(),
   passwordHash: text('password_hash').notNull(),
+  // `name`/`avatarUrl` are the Telegram-sourced values, kept in sync by the bot
+  // on every login (see telegram.service.ts). `customName`/`customAvatarUrl`
+  // are set by the user via profile edit. `displayName`/`displayAvatarUrl` are
+  // DB-generated columns (COALESCE(custom, telegram)) — always read these two
+  // for anything shown in the UI; never read `name`/`avatarUrl` directly.
   name: text('name').notNull(),
+  customName: text('custom_name'),
+  displayName: text('display_name').notNull().generatedAlwaysAs(
+    (): SQL => sql`coalesce(${users.customName}, ${users.name})`,
+  ),
   role: text('role').notNull().default('student'),
   phone: text('phone').unique(),
   telegramChatId: text('telegram_chat_id'),
   telegramUserId: text('telegram_user_id'),
   avatarUrl: text('avatar_url'),
+  customAvatarUrl: text('custom_avatar_url'),
+  displayAvatarUrl: text('display_avatar_url').generatedAlwaysAs(
+    (): SQL => sql`coalesce(${users.customAvatarUrl}, ${users.avatarUrl})`,
+  ),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 
@@ -344,6 +357,8 @@ export const schools = pgTable('schools', {
   name: text('name').notNull().default('Mening maktabim'),
   description: text('description').notNull().default(''),
   inviteToken: text('invite_token').notNull().unique(),
+  inviteRegenerationCount: integer('invite_regeneration_count').notNull().default(0),
+  inviteRegenerationWindowStartedAt: timestamp('invite_regeneration_window_started_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
 });
 

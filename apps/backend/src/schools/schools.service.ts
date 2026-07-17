@@ -1,7 +1,7 @@
-import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ConflictException, HttpException, HttpStatus, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { schools, schoolMembers, users, courses, groups, groupEnrollments, monthlyPayments, modules, lessons, lessonCompletions, contentBlocks, videoWatchSegments } from '../db/schema';
-import { and, eq, ilike, inArray, isNull, ne, or } from 'drizzle-orm';
+import { and, eq, ilike, inArray, isNull, ne, or, sql } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { PracticeBlocksService, computeCombinedPercent } from '../practice-blocks/practice-blocks.service';
 import { StorageService } from '../storage/storage.service';
@@ -51,8 +51,32 @@ export class SchoolsService {
     return school;
   }
 
+  private paginate<T>(rows: T[], limit = 7, offset = 0) {
+    const safeLimit = Math.min(100, Math.max(1, limit));
+    const safeOffset = Math.max(0, offset);
+    return {
+      items: rows.slice(safeOffset, safeOffset + safeLimit),
+      total: rows.length,
+      limit: safeLimit,
+      offset: safeOffset,
+    };
+  }
+
+  private withInviteRateLimit(school: typeof schools.$inferSelect) {
+    const windowStartedAt = school.inviteRegenerationWindowStartedAt;
+    const windowExpired = !windowStartedAt || Date.now() - windowStartedAt.getTime() >= 24 * 60 * 60 * 1000;
+    const used = windowExpired ? 0 : school.inviteRegenerationCount;
+    return {
+      ...school,
+      inviteRegenerationsRemaining: Math.max(0, 2 - used),
+      inviteRegenerationResetAt: windowExpired || !windowStartedAt
+        ? null
+        : new Date(windowStartedAt.getTime() + 24 * 60 * 60 * 1000),
+    };
+  }
+
   async getSchool(adminId: string) {
-    return this.getOrCreateSchool(adminId);
+    return this.withInviteRateLimit(await this.getOrCreateSchool(adminId));
   }
 
   async updateSchool(adminId: string, data: { name?: string; description?: string }) {
@@ -63,12 +87,33 @@ export class SchoolsService {
 
   async regenerateInviteToken(adminId: string) {
     const school = await this.getOrCreateSchool(adminId);
-    const [updated] = await db
-      .update(schools)
-      .set({ inviteToken: randomUUID() })
-      .where(eq(schools.id, school.id))
-      .returning();
-    return updated;
+    return db.transaction(async (tx) => {
+      await tx.execute(sql`select ${schools.id} from ${schools} where ${schools.id} = ${school.id} for update`);
+      const current = await tx.query.schools.findFirst({ where: eq(schools.id, school.id) });
+      if (!current) throw new NotFoundException('School not found');
+
+      const now = new Date();
+      const windowExpired = !current.inviteRegenerationWindowStartedAt
+        || now.getTime() - current.inviteRegenerationWindowStartedAt.getTime() >= 24 * 60 * 60 * 1000;
+      const used = windowExpired ? 0 : current.inviteRegenerationCount;
+      if (used >= 2) {
+        throw new HttpException(
+          "Maktab havolasini 24 soat ichida faqat 2 marta yangilash mumkin.",
+          HttpStatus.TOO_MANY_REQUESTS,
+        );
+      }
+
+      const [updated] = await tx
+        .update(schools)
+        .set({
+          inviteToken: randomUUID(),
+          inviteRegenerationCount: used + 1,
+          inviteRegenerationWindowStartedAt: windowExpired ? now : current.inviteRegenerationWindowStartedAt,
+        })
+        .where(eq(schools.id, school.id))
+        .returning();
+      return this.withInviteRateLimit(updated);
+    });
   }
 
   async getJoinPreview(token: string) {
@@ -93,20 +138,21 @@ export class SchoolsService {
     return member;
   }
 
-  async findStaff(adminId: string) {
+  async findStaff(adminId: string, limit = 7, offset = 0) {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), ne(schoolMembers.role, 'student')),
       with: { student: true },
     });
-    return members.map((m) => ({
+    const rows = members.map((m) => ({
       id: m.id,
       studentId: m.studentId,
-      name: m.student.name,
+      name: m.student.displayName,
       email: m.student.email,
-      avatarUrl: m.student.avatarUrl,
+      avatarUrl: m.student.displayAvatarUrl,
       role: m.role,
     }));
+    return this.paginate(rows, limit, offset);
   }
 
   private async findCuratorGroupIds(callerId: string) {
@@ -127,7 +173,7 @@ export class SchoolsService {
     return membership.school.adminId;
   }
 
-  async listAllStudents(adminId: string, callerId: string, callerRole: string) {
+  async listAllStudents(adminId: string, callerId: string, callerRole: string, limit = 7, offset = 0, query = '') {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
@@ -143,16 +189,16 @@ export class SchoolsService {
     const groupIds = resolveVisibleGroupIds(callerRole, adminGroups, curatorGroupIds);
     const groupById = new Map(adminGroups.map((g) => [g.id, g]));
 
-    return Promise.all(
+    const rows = await Promise.all(
       members.map(async (m) => {
         if (groupIds.length === 0) {
           return callerRole === 'curator'
             ? null
             : {
                 id: m.studentId,
-                name: m.student.name,
+                name: m.student.displayName,
                 phone: m.student.phone,
-                avatarUrl: m.student.avatarUrl,
+                avatarUrl: m.student.displayAvatarUrl,
                 productsCount: 0,
                 totalPaid: 0,
               };
@@ -177,17 +223,22 @@ export class SchoolsService {
         }
         return {
           id: m.studentId,
-          name: m.student.name,
+          name: m.student.displayName,
           phone: m.student.phone,
-          avatarUrl: m.student.avatarUrl,
+          avatarUrl: m.student.displayAvatarUrl,
           productsCount: uniqueCourseIds.size,
           totalPaid,
         };
       }),
     ).then((rows) => rows.filter((row): row is NonNullable<typeof row> => row !== null));
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredRows = normalizedQuery
+      ? rows.filter((row) => row.name.toLowerCase().includes(normalizedQuery) || (row.phone ?? '').toLowerCase().includes(normalizedQuery))
+      : rows;
+    return this.paginate(filteredRows, limit, offset);
   }
 
-  async listEnrollments(adminId: string, callerId: string, callerRole: string) {
+  async listEnrollments(adminId: string, callerId: string, callerRole: string, limit = 7, offset = 0, query = '') {
     const school = await this.getOrCreateSchool(adminId);
     const members = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
@@ -196,14 +247,14 @@ export class SchoolsService {
 
     const adminCourses = await db.query.courses.findMany({ where: eq(courses.adminId, adminId) });
     const courseIds = adminCourses.map((c) => c.id);
-    if (courseIds.length === 0) return [];
+    if (courseIds.length === 0) return this.paginate([], limit, offset);
     const courseById = new Map(adminCourses.map((c) => [c.id, c]));
 
     const adminGroups = await db.query.groups.findMany({ where: (g, { inArray }) => inArray(g.courseId, courseIds) });
     const curatorGroupIds = callerRole === 'curator' ? await this.findCuratorGroupIds(callerId) : [];
     const groupIds = resolveVisibleGroupIds(callerRole, adminGroups, curatorGroupIds);
     const groupById = new Map(adminGroups.map((g) => [g.id, g]));
-    if (groupIds.length === 0) return [];
+    if (groupIds.length === 0) return this.paginate([], limit, offset);
 
     const rows: Array<{
       studentId: string;
@@ -268,9 +319,9 @@ export class SchoolsService {
 
         rows.push({
           studentId: m.studentId,
-          studentName: m.student.name,
+          studentName: m.student.displayName,
           studentPhone: m.student.phone,
-          studentAvatarUrl: m.student.avatarUrl,
+          studentAvatarUrl: m.student.displayAvatarUrl,
           active: !enrollment.forcedClosed,
           courseId: course.id,
           courseTitle: course.title,
@@ -286,7 +337,15 @@ export class SchoolsService {
       }
     }
 
-    return rows;
+    const normalizedQuery = query.trim().toLowerCase();
+    const filteredRows = normalizedQuery
+      ? rows.filter((row) =>
+          row.studentName.toLowerCase().includes(normalizedQuery)
+          || (row.studentPhone ?? '').toLowerCase().includes(normalizedQuery)
+          || row.courseTitle.toLowerCase().includes(normalizedQuery),
+        )
+      : rows;
+    return this.paginate(filteredRows, limit, offset);
   }
 
   async getStudentCourseProgress(
@@ -427,7 +486,7 @@ export class SchoolsService {
       ?? null;
 
     return {
-      student: { id: member.studentId, name: member.student.name, phone: member.student.phone, avatarUrl: member.student.avatarUrl },
+      student: { id: member.studentId, name: member.student.displayName, phone: member.student.phone, avatarUrl: member.student.displayAvatarUrl },
       course: { id: course.id, title: course.title, groupName: group?.name ?? '—', joinedAt: enrollment.joinedAt?.toISOString() ?? null },
       lastActivityAt: lastActivityAt?.toISOString() ?? null,
       lessonsCompleted: completions.length,
@@ -497,14 +556,14 @@ export class SchoolsService {
     const result: { id: string; name: string; phone: string | null; avatarUrl: string | null; joinedAt: Date | null }[] = [];
     for (const m of members) {
       if (groupIds.length === 0) {
-        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, avatarUrl: m.student.avatarUrl, joinedAt: m.joinedAt });
+        result.push({ id: m.studentId, name: m.student.displayName, phone: m.student.phone, avatarUrl: m.student.displayAvatarUrl, joinedAt: m.joinedAt });
         continue;
       }
       const activeEnrollment = await db.query.groupEnrollments.findFirst({
         where: (e, { inArray }) => and(eq(e.schoolMemberId, m.id), inArray(e.groupId, groupIds), isNull(e.removedAt)),
       });
       if (!activeEnrollment) {
-        result.push({ id: m.studentId, name: m.student.name, phone: m.student.phone, avatarUrl: m.student.avatarUrl, joinedAt: m.joinedAt });
+        result.push({ id: m.studentId, name: m.student.displayName, phone: m.student.phone, avatarUrl: m.student.displayAvatarUrl, joinedAt: m.joinedAt });
       }
     }
     return result;
@@ -515,10 +574,10 @@ export class SchoolsService {
     if (!query.trim()) return [];
     const q = `%${query.trim()}%`;
     const rows = await db.query.users.findMany({
-      where: and(eq(users.role, 'student'), or(ilike(users.name, q), ilike(users.phone, q))),
+      where: and(eq(users.role, 'student'), or(ilike(users.displayName, q), ilike(users.phone, q))),
       limit: 20,
     });
-    return rows.map((u) => ({ id: u.id, name: u.name, phone: u.phone, email: u.email, avatarUrl: u.avatarUrl }));
+    return rows.map((u) => ({ id: u.id, name: u.displayName, phone: u.phone, email: u.email, avatarUrl: u.displayAvatarUrl }));
   }
 
   async addStaff(adminId: string, studentId: string, role: string) {
@@ -529,20 +588,33 @@ export class SchoolsService {
     const existing = await db.query.schoolMembers.findFirst({
       where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.studentId, studentId)),
     });
+    const existingIsStaff = existing?.role === 'curator' || existing?.role === 'teacher_staff';
+    if (!existingIsStaff) {
+      const staffMembers = await db.query.schoolMembers.findMany({
+        where: and(
+          eq(schoolMembers.schoolId, school.id),
+          inArray(schoolMembers.role, ['curator', 'teacher_staff']),
+        ),
+        columns: { id: true },
+      });
+      if (staffMembers.length >= 30) {
+        throw new BadRequestException("Bitta maktabga maksimal 30 ta xodim qo'shish mumkin.");
+      }
+    }
     if (existing) {
       const [updated] = await db
         .update(schoolMembers)
         .set({ role })
         .where(eq(schoolMembers.id, existing.id))
         .returning();
-      return { ...updated, name: student.name, email: student.email, avatarUrl: student.avatarUrl };
+      return { ...updated, name: student.displayName, email: student.email, avatarUrl: student.displayAvatarUrl };
     }
 
     const [created] = await db
       .insert(schoolMembers)
       .values({ schoolId: school.id, studentId, role })
       .returning();
-    return { ...created, name: student.name, email: student.email, avatarUrl: student.avatarUrl };
+    return { ...created, name: student.displayName, email: student.email, avatarUrl: student.displayAvatarUrl };
   }
 
   private async assertStaffOwnership(memberId: string, adminId: string) {

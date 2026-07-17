@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Inbox, Plus, Users, X, Trash2 } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Inbox, Plus, Users, X, Trash2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
 import { useSchoolStore } from '../../stores/schoolStore';
 import { Breadcrumb } from './Breadcrumb';
@@ -42,10 +43,12 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [payments, setPayments] = useState<ApiMonthlyPayment[]>([]);
+  const [studentPage, setStudentPage] = useState(1);
 
   const group = course && selectedGroupId ? course.groups.find((g) => g.id === selectedGroupId) : undefined;
 
   useEffect(() => {
+    setStudentPage(1);
     if (group && innerTab === 'settings') {
       void loadGroupPayments(group.id).then(setPayments);
       if (!staffLoaded) void loadStaff();
@@ -56,12 +59,17 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
   function handleCreateGroup() {
     if (!course) return;
-    void addGroup(courseId, `Guruh ${course.groups.length + 1}`).then((newGroup) => {
-      if (newGroup) {
-        setSelectedGroupId(newGroup.id);
-        setInnerTab('students');
-      }
-    });
+    if (course.groups.length >= 4) return;
+    void addGroup(courseId, `Guruh ${course.groups.length + 1}`)
+      .then((newGroup) => {
+        if (newGroup) {
+          setSelectedGroupId(newGroup.id);
+          setInnerTab('students');
+        }
+      })
+      .catch((error: any) => {
+        toast.error(error?.response?.data?.message ?? "Guruh yaratib bo'lmadi");
+      });
   }
 
   function handleConfirmDeleteGroup() {
@@ -80,6 +88,9 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   if (group) {
     const students = group.members.filter((m) => m.role === 'student');
     const curators = group.members.filter((m) => m.role === 'curator');
+    const studentPageCount = Math.max(1, Math.ceil(students.length / 7));
+    const currentStudentPage = Math.min(studentPage, studentPageCount);
+    const pageStudents = students.slice((currentStudentPage - 1) * 7, currentStudentPage * 7);
 
     return (
       <div className="flex flex-col gap-3 p-6 sm:flex-row">
@@ -133,7 +144,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 </div>
               ) : (
                 <div className="flex flex-col gap-2">
-                  {students.map((m) => (
+                  {pageStudents.map((m) => (
                     <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
                       <UserAvatar name={m.studentName} avatarUrl={m.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(m.id)}`} />
                       <div className="min-w-0 flex-1">
@@ -184,6 +195,42 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                       </button>
                     </div>
                   ))}
+                  {studentPageCount > 1 && (
+                    <div className="flex items-center justify-center gap-1.5 pt-3">
+                      <button
+                        type="button"
+                        onClick={() => setStudentPage((page) => Math.max(1, page - 1))}
+                        disabled={currentStudentPage === 1}
+                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Oldingi sahifa"
+                      >
+                        <ChevronLeft size={16} />
+                      </button>
+                      {Array.from({ length: studentPageCount }, (_, index) => index + 1).map((page) => (
+                        <button
+                          key={page}
+                          type="button"
+                          onClick={() => setStudentPage(page)}
+                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
+                            page === currentStudentPage
+                              ? 'bg-gray-900 text-white'
+                              : 'text-gray-500 hover:bg-gray-100'
+                          }`}
+                        >
+                          {page}
+                        </button>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))}
+                        disabled={currentStudentPage === studentPageCount}
+                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
+                        aria-label="Keyingi sahifa"
+                      >
+                        <ChevronRight size={16} />
+                      </button>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
@@ -358,12 +405,19 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
             <button
               type="button"
               onClick={handleCreateGroup}
-              className="flex items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600"
+              disabled={course.groups.length >= 4}
+              title={course.groups.length >= 4 ? "Bitta kursga maksimal 4 ta guruh ochish mumkin" : undefined}
+              className="flex items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
             >
               <Plus size={16} /> Guruh yaratish
             </button>
             <p className="text-xs text-gray-400">{course.groups.length} ta guruh</p>
           </div>
+          {course.groups.length >= 4 && (
+            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
+              Bu kursda maksimal 4 ta guruh mavjud. Yangi guruh yaratish uchun avval mavjud guruhlardan birini o'chiring.
+            </p>
+          )}
         </div>
 
         {course.groups.length === 0 ? (

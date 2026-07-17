@@ -66,6 +66,13 @@ export class GroupsService {
 
   async create(courseId: string, adminId: string, name: string, paymentDay: number) {
     await this.assertCourseOwnership(courseId, adminId);
+    const existingGroups = await db.query.groups.findMany({
+      where: eq(groups.courseId, courseId),
+      columns: { id: true },
+    });
+    if (existingGroups.length >= 4) {
+      throw new BadRequestException("Bitta kursga maksimal 4 ta guruh ochish mumkin.");
+    }
     const [group] = await db
       .insert(groups)
       .values({ courseId, name, paymentDay, inviteToken: randomUUID() })
@@ -291,8 +298,8 @@ export class GroupsService {
         const course = group ? courseById.get(group.courseId) : undefined;
         return {
           id: e.id,
-          studentName: e.schoolMember.student.name,
-          studentAvatarUrl: e.schoolMember.student.avatarUrl,
+          studentName: e.schoolMember.student.displayName,
+          studentAvatarUrl: e.schoolMember.student.displayAvatarUrl,
           studentPhone: e.schoolMember.student.phone,
           groupName: group?.name ?? '',
           courseTitle: course?.title ?? '',
@@ -418,8 +425,8 @@ export class GroupsService {
       const member = members.get(memberStudentId)!;
       return {
         studentId: memberStudentId,
-        studentName: member.name,
-        studentAvatarUrl: member.avatarUrl,
+        studentName: member.displayName,
+        studentAvatarUrl: member.displayAvatarUrl,
         starsEarned,
         lessonsCompleted,
         lessonsTotal: courseLessons.length,
@@ -458,7 +465,7 @@ export class GroupsService {
       : [];
     const curatorEnrollment = curatorEnrollments.find((enrollment) => enrollment.schoolMember.role === 'curator');
     const curatorName =
-      curatorEnrollment?.schoolMember.student.name ?? null;
+      curatorEnrollment?.schoolMember.student.displayName ?? null;
 
     const courseModules = await db.query.modules.findMany({
       where: eq(modules.courseId, courseId),
