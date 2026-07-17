@@ -7,6 +7,7 @@ import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessen
 import { UserAvatar } from "../UserAvatar";
 import { SettingsModal } from "../SettingsModal";
 import { formatPhone } from "../../utils/phone";
+import { apiActiveClassSessions, type ActiveClassSession } from "../../api/classroom";
 
 const NAV_ITEMS = [
   { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
@@ -36,7 +37,20 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [liveClassSessions, setLiveClassSessions] = useState<ActiveClassSession[]>([]);
   const profileContact = formatProfileContact(admin?.phone, admin?.email);
+
+  // Aktiv jonli dars bor-yo'qligini davriy tekshiramiz (banner uchun)
+  useEffect(() => {
+    const load = () => {
+      apiActiveClassSessions()
+        .then(setLiveClassSessions)
+        .catch(() => {});
+    };
+    load();
+    const timer = window.setInterval(load, 60_000);
+    return () => window.clearInterval(timer);
+  }, []);
   const isInnerPage =
     location.pathname.startsWith("/history/") ||
     location.pathname.startsWith("/live/play/");
@@ -163,7 +177,24 @@ export function StudentShell({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>{children}</main>
+        <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>
+          {!isMessenger && liveClassSessions.map((s) => (
+            <button
+              key={s.id}
+              type="button"
+              onClick={() => navigate(`/classroom/${s.id}`)}
+              className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
+            >
+              <Radio size={20} className="shrink-0 animate-pulse text-red-500" />
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-gray-900">Jonli dars ketmoqda — {s.groupName}</span>
+                <span className="block text-xs text-gray-500">Darsga kirish uchun bosing</span>
+              </span>
+              <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">Kirish</span>
+            </button>
+          ))}
+          {children}
+        </main>
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (

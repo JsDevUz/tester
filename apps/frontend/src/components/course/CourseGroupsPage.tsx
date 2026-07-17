@@ -8,6 +8,7 @@ import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import type { ApiMonthlyPayment } from '../../api/payments';
 import { UserAvatar } from '../UserAvatar';
+import { GroupLessonsTab } from '../classroom/GroupLessonsTab';
 
 interface CourseGroupsPageProps {
   courseId: string;
@@ -40,7 +41,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
   const course = courses.find((c) => c.id === courseId);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
-  const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');
+  const [innerTab, setInnerTab] = useState<'students' | 'lessons' | 'settings'>('students');
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [payments, setPayments] = useState<ApiMonthlyPayment[]>([]);
   const [studentPage, setStudentPage] = useState(1);
@@ -113,6 +114,15 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               }`}
             >
               O'quvchilar
+            </button>
+            <button
+              type="button"
+              onClick={() => setInnerTab('lessons')}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
+                innerTab === 'lessons' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+              }`}
+            >
+              Darslar
             </button>
             <button
               type="button"
@@ -234,6 +244,8 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 </div>
               )}
             </div>
+          ) : innerTab === 'lessons' ? (
+            <GroupLessonsTab groupId={group.id} />
           ) : (
             <div className="flex flex-col gap-4">
               <div className="rounded-2xl bg-white p-5">
