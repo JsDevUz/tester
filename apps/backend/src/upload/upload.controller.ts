@@ -18,7 +18,9 @@ const ALLOWED_IMAGE = ['.jpg', '.jpeg', '.png', '.gif', '.webp'];
 const ALLOWED_AUDIO = ['.mp3', '.wav', '.ogg', '.m4a'];
 const ALLOWED_FILE = ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.zip', '.txt'];
 const ALLOWED_FOLDERS = ['lessons', 'questions', 'payments', 'practice-submissions', 'avatars'];
-const MAX_SIZE = 10 * 1024 * 1024; // 10 MB
+// Lesson file blocks use this shared library endpoint and support documents
+// up to 50 MB (the dedicated content-block endpoint has the same limit).
+const MAX_SIZE = 50 * 1024 * 1024; // 50 MB
 const MEDIA_TYPES = ['image', 'audio', 'file'];
 
 function resolveType(ext: string): 'image' | 'audio' | 'file' {

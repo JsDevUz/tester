@@ -60,8 +60,8 @@ export function MediaLibraryModal({
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("Fayl hajmi 10 MB dan oshmasligi kerak");
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("Fayl hajmi 50 MB dan oshmasligi kerak");
       return;
     }
     setUploading(true);
