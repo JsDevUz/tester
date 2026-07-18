@@ -18,8 +18,8 @@ import {
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
-  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
-  ClassroomSnapshot, ClassroomStroke,
+  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomNotebookStyle, ClassroomParticipant,
+  ClassroomSession, ClassroomSnapshot, ClassroomStroke,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -118,6 +118,7 @@ export class ClassroomService implements OnModuleInit {
       boardMode: 'pdf',
       boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
       classroomTheme: 'light',
+      notebookStyle: 'grid',
       strokesByMode: new Map([['pdf', new Map()]]),
       participants,
       startedAtMs: Date.now(),
@@ -149,6 +150,7 @@ export class ClassroomService implements OnModuleInit {
       boardMode: 'pdf',
       boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
       classroomTheme: 'light',
+      notebookStyle: 'grid',
       strokesByMode: new Map([['pdf', new Map()]]),
       participants: new Map(),
       startedAtMs: Date.now(),
@@ -393,6 +395,13 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'theme:set', { theme });
   }
 
+  setNotebookStyle(sessionId: string, userId: string, style: ClassroomNotebookStyle): void {
+    const s = this.requireHost(sessionId, userId);
+    if (!['grid', 'lined', 'plain'].includes(style)) throw new Error('INVALID_NOTEBOOK_STYLE');
+    s.notebookStyle = style;
+    this.broadcaster.toRoom(sessionId, 'notebookStyle:set', { style });
+  }
+
   stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
@@ -464,9 +473,9 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'page:clear', { page });
   }
 
-  pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean): void {
+  pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    this.broadcaster.toRoom(s.id, 'pointer:move', { page, x, y, active });
+    this.broadcaster.toRoom(s.id, 'pointer:move', { page, x, y, active, pane });
   }
 
   // Ustozning zoom darajasi — kech kirgan o'quvchiga snapshot orqali,

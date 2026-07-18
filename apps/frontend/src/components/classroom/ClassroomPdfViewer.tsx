@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { AlignCenter, AlignLeft, AlignRight, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom } from "lucide-react";
 import type {
-  CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsPointer, CsScrollPosition,
+  CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
   CsStroke, CsStrokeStyle, CsTool,
 } from "../../api/classroom";
 import { useAutoHideOverlay } from "../../hooks/useAutoHideOverlay";
@@ -157,7 +157,7 @@ interface Props {
   onUpdateTextStroke?: (page: number, stroke: CsStroke) => void;
   onPaneUpdateTextStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, stroke: CsStroke) => void;
   onPaneStrokeComplete?: (pane: "left" | "right", mode: CsBoardMode, page: number, stroke: CsStroke) => void;
-  onPointerMove?: (page: number, x: number, y: number, active: boolean) => void;
+  onPointerMove?: (page: number, x: number, y: number, active: boolean, pane: "left" | "right") => void;
   onEraseStroke?: (page: number, strokeId: string) => void;
   // Pixel-eraser: bitta chizmani (strokeId) bir nechta yangi kesim-chizmalar
   // bilan almashtiradi (segment-darajasida o'chirish natijasi).
@@ -179,6 +179,8 @@ interface Props {
   leftBoardMode?: CsBoardMode;
   rightBoardMode?: CsBoardMode;
   onBoardViewChange?: (layout: CsBoardLayout, left: CsBoardMode, right: CsBoardMode) => void;
+  // Daftar foni: katakli, yo'l-yo'l yoki naqshsiz (bo'sh oq varaq).
+  notebookStyle?: CsNotebookStyle;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -1001,6 +1003,7 @@ interface PageProps {
   pageNumber: number;
   url?: string;
   notebook?: boolean;
+  notebookStyle?: CsNotebookStyle;
   strokes: CsStroke[];
   pointer: CsPointer | null;
   showPointer: boolean;
@@ -1029,7 +1032,7 @@ interface PageProps {
 // <img src> qo'yilmaydi (lazy) — ko'p sahifali darsda hammasi birdan
 // yuklanib xotira/tarmoqni og'irlashtirmasin.
 function ClassroomPdfPage({
-  pageNumber, url, notebook = false, strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
+  pageNumber, url, notebook = false, notebookStyle = "grid", strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
   onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, registerEl,
 }: PageProps) {
@@ -1725,14 +1728,25 @@ function ClassroomPdfPage({
               ref={(element) => { surfaceRef.current = element; }}
               aria-label={`Daftar sahifasi ${pageNumber}`}
               className="absolute inset-0 bg-white"
-              style={{
-                backgroundImage:
-                  "linear-gradient(rgba(96,165,250,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,.22) 1px, transparent 1px)",
-                // Kataklar qat'iy pikselda emas, A4 sahifa kengligiga
-                // proporsional: katta-kichik ekran va split panelda daftar
-                // doim bir xil miqdordagi (32 ta) katak bilan ko'rinadi.
-                backgroundSize: `${size.w > 0 ? size.w / 32 : 24}px ${size.w > 0 ? size.w / 32 : 24}px`,
-              }}
+              style={
+                notebookStyle === "plain"
+                  ? undefined
+                  : notebookStyle === "lined"
+                    ? {
+                        // Yo'l-yo'l (chiziqli) daftar — faqat gorizontal
+                        // chiziqlar, katak/vertikal chiziqsiz.
+                        backgroundImage: "linear-gradient(rgba(96,165,250,.28) 1px, transparent 1px)",
+                        backgroundSize: `100% ${size.w > 0 ? size.w / 22 : 32}px`,
+                      }
+                    : {
+                        // Kataklar qat'iy pikselda emas, A4 sahifa kengligiga
+                        // proporsional: katta-kichik ekran va split panelda daftar
+                        // doim bir xil miqdordagi (32 ta) katak bilan ko'rinadi.
+                        backgroundImage:
+                          "linear-gradient(rgba(96,165,250,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,.22) 1px, transparent 1px)",
+                        backgroundSize: `${size.w > 0 ? size.w / 32 : 24}px ${size.w > 0 ? size.w / 32 : 24}px`,
+                      }
+              }
             />
           ) : (
             <img
@@ -1962,6 +1976,7 @@ export function ClassroomPdfViewer({
   hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
   onEraseStroke, onSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
+  notebookStyle = "grid",
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -2243,11 +2258,15 @@ export function ClassroomPdfViewer({
               <div
                 className="flex shrink-0 flex-col items-center gap-1 sm:gap-3"
                 style={{
+                  // Split rejimida daftar ham PDF kabi panel kengligiga
+                  // NISBATAN (%) o'lchanadi — REF_WIDTH'ga bog'langan mutlaq
+                  // piksel (masalan 1000px) yarim ekranga sig'may, 100%
+                  // zoom'da ham gorizontal scroll chiqarib yuborardi.
                   width: displayLayout === "split"
-                    ? `${(paneMode === "notebook" ? (paneIndex === 1 ? rightZoom : zoom) * REF_WIDTH : (paneIndex === 1 ? rightZoom : zoom) * PDF_BASE_SCALE * 100)}${paneMode === "notebook" ? "px" : "%"}`
+                    ? `${(paneIndex === 1 ? rightZoom : zoom) * 100}%`
                     : "100%",
                   minWidth: displayLayout === "split"
-                    ? `${(paneMode === "notebook" ? (paneIndex === 1 ? rightZoom : zoom) * REF_WIDTH : (paneIndex === 1 ? rightZoom : zoom) * PDF_BASE_SCALE * 100)}${paneMode === "notebook" ? "px" : "%"}`
+                    ? `${(paneIndex === 1 ? rightZoom : zoom) * 100}%`
                     : "100%",
                 }}
               >
@@ -2259,9 +2278,10 @@ export function ClassroomPdfViewer({
                     pageNumber={pageNumber}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
+                    notebookStyle={notebookStyle}
                     strokes={displayLayout === "split" && paneIndex === 1 ? (rightStrokesByPage[pageNumber] ?? []) : (strokesByPage[pageNumber] ?? [])}
                     pointer={pointer}
-                    showPointer={pointer?.page === pageNumber}
+                    showPointer={pointer?.page === pageNumber && (pointer?.pane ?? "left") === (paneIndex === 1 ? "right" : "left")}
                     editable={editable}
                     tool={tool}
                     showStylePanel={activeStyleSurface.paneIndex === paneIndex && activeStyleSurface.page === pageNumber}
@@ -2297,7 +2317,7 @@ export function ClassroomPdfViewer({
                 onUpdateTextStroke?.(page, stroke);
               }
             }}
-                    onPointerMove={onPointerMove}
+                    onPointerMove={(page, x, y, active) => onPointerMove?.(page, x, y, active, paneIndex === 1 ? "right" : "left")}
                     onEraseStroke={onEraseStroke}
                     onSplitStroke={onSplitStroke}
                     registerEl={displayLayout === "split" && paneIndex === 1 ? () => undefined : registerEl}

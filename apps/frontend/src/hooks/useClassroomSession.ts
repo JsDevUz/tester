@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
-import type { CsBoardLayout, CsBoardMode, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
+import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 
 function moveStrokePoints(stroke: CsStroke, x: number, y: number): number[] {
   const dx = x - stroke.points[0];
@@ -36,6 +36,7 @@ export interface ClassroomState {
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   classroomTheme: "light" | "dark";
+  notebookStyle: CsNotebookStyle;
 }
 
 const INITIAL: ClassroomState = {
@@ -43,6 +44,7 @@ const INITIAL: ClassroomState = {
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
   isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, classroomTheme: "light",
+  notebookStyle: "grid",
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -106,6 +108,7 @@ export function useClassroomSession(
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? "light",
+            notebookStyle: snap.notebookStyle ?? "grid",
           });
         },
       );
@@ -214,6 +217,7 @@ export function useClassroomSession(
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
+    socket.on("notebookStyle:set", (p: { style: CsNotebookStyle }) => setState((s) => ({ ...s, notebookStyle: p.style })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -235,6 +239,7 @@ export function useClassroomSession(
       socket.off("zoom:set");
       socket.off("scroll:set");
       socket.off("theme:set");
+      socket.off("notebookStyle:set");
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
@@ -321,25 +326,25 @@ export function useClassroomSession(
     // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
     // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida
     // "yopishib" qolib, hech qachon yashirinmasligi mumkin edi.
-    pointer: (page: number, x: number, y: number, active: boolean) => {
+    pointer: (page: number, x: number, y: number, active: boolean, pane: "left" | "right" = "left") => {
       if (pointerThrottleTimerRef.current) {
         window.clearTimeout(pointerThrottleTimerRef.current);
         pointerThrottleTimerRef.current = null;
       }
       if (!active) {
         lastPointerSentRef.current = Date.now();
-        emitHost("host:pointer", { page, x, y, active });
+        emitHost("host:pointer", { page, x, y, active, pane });
         return;
       }
       const now = Date.now();
       const elapsed = now - lastPointerSentRef.current;
       if (elapsed >= POINTER_THROTTLE_MS) {
         lastPointerSentRef.current = now;
-        emitHost("host:pointer", { page, x, y, active });
+        emitHost("host:pointer", { page, x, y, active, pane });
       } else {
         pointerThrottleTimerRef.current = window.setTimeout(() => {
           lastPointerSentRef.current = Date.now();
-          emitHost("host:pointer", { page, x, y, active });
+          emitHost("host:pointer", { page, x, y, active, pane });
         }, POINTER_THROTTLE_MS - elapsed);
       }
     },
@@ -350,6 +355,10 @@ export function useClassroomSession(
     setTheme: (theme: "light" | "dark") => {
       setState((s) => ({ ...s, classroomTheme: theme }));
       emitHost("host:setTheme", { theme });
+    },
+    setNotebookStyle: (style: CsNotebookStyle) => {
+      setState((s) => ({ ...s, notebookStyle: style }));
+      emitHost("host:setNotebookStyle", { style });
     },
     endLesson: () => emitHost("host:end"),
   };

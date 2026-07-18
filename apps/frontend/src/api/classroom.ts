@@ -161,6 +161,7 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
+export type CsNotebookStyle = 'grid' | 'lined' | 'plain';
 
 export type CsFontFamily = "Inter" | "Arial" | "Georgia" | "Comic Sans MS" | "Nunito";
 export type CsFillStyle = "hachure" | "cross-hatch" | "solid";
@@ -231,6 +232,7 @@ export interface CsSnapshot {
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   classroomTheme: "light" | "dark";
+  notebookStyle: CsNotebookStyle;
 }
 
 export interface CsPresenceUpdate {
@@ -243,4 +245,5 @@ export interface CsPointer {
   x: number;
   y: number;
   active: boolean;
+  pane?: "left" | "right";
 }

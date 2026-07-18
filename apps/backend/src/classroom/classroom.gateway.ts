@@ -104,6 +104,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:setNotebookStyle')
+  setNotebookStyle(@MessageBody() body: BaseBody & { style: 'grid' | 'lined' | 'plain' }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.setNotebookStyle(body.sessionId, user.sub, body.style);
+    });
+  }
+
   @SubscribeMessage('host:stroke')
   stroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
@@ -169,10 +177,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:pointer')
-  pointer(@MessageBody() body: BaseBody & { page: number; x: number; y: number; active: boolean }) {
+  pointer(@MessageBody() body: BaseBody & { page: number; x: number; y: number; active: boolean; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.pointer(body.sessionId, user.sub, body.page, body.x, body.y, body.active);
+      this.classroomService.pointer(body.sessionId, user.sub, body.page, body.x, body.y, body.active, body.pane);
     });
   }
 

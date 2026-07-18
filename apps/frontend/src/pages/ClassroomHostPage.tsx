@@ -1,12 +1,13 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Link2, Volume2 } from "lucide-react";
+import { Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
+import { useFullscreen } from "../hooks/useFullscreen";
 import {
   ClassroomPdfViewer,
   DEFAULT_SHAPE_STYLE,
@@ -16,6 +17,7 @@ import {
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
+import { NotebookStyleToggle } from "../components/classroom/NotebookStyleToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
@@ -38,6 +40,8 @@ export function ClassroomHostPage() {
   const { state, hostActions } = useClassroomSession(id, "host");
   useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
+  const pageRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
   const [strokeWidth, setStrokeWidth] = useState(4);
@@ -120,7 +124,7 @@ export function ClassroomHostPage() {
   }
 
   return (
-    <div className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div ref={pageRef} className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
       {voice.needsAudioUnlock && (
         <button
           type="button"
@@ -164,8 +168,8 @@ export function ClassroomHostPage() {
           onPaneMoveStroke={(pane, mode, page, strokeId, x, y) => hostActions.moveStroke(page, strokeId, x, y, pane, mode)}
           onUpdateTextStroke={(page, stroke) => hostActions.updateTextStroke(page, stroke, "left", state.boardMode)}
           onPaneUpdateTextStroke={(pane, mode, page, stroke) => hostActions.updateTextStroke(page, stroke, pane, mode)}
-          onPointerMove={(page, x, y, active) =>
-            hostActions.pointer(page, x, y, active)
+          onPointerMove={(page, x, y, active, pane) =>
+            hostActions.pointer(page, x, y, active, pane)
           }
           onEraseStroke={(page, strokeId) =>
             hostActions.eraseStroke(page, strokeId)
@@ -179,6 +183,7 @@ export function ClassroomHostPage() {
           leftBoardMode={state.leftBoardMode}
           rightBoardMode={state.rightBoardMode}
           onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
+          notebookStyle={state.notebookStyle}
           onPageChange={(page) => hostActions.setPage(page)}
           toolbar={
             <ClassroomToolbar
@@ -206,6 +211,20 @@ export function ClassroomHostPage() {
                   <span className="hidden sm:inline">Havola</span>
                 </button>
               )}
+              {fullscreen.supported && (
+                <button
+                  type="button"
+                  onClick={() => void fullscreen.toggle()}
+                  title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
+                  className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                >
+                  {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              )}
+              <NotebookStyleToggle
+                style={state.notebookStyle}
+                onChange={(style) => hostActions.setNotebookStyle(style)}
+              />
               <ClassroomThemeToggle
                 theme={state.classroomTheme}
                 onToggle={() => hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")}

@@ -1,12 +1,13 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Volume2, WifiOff } from "lucide-react";
+import { Maximize2, Minimize2, Volume2, WifiOff } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
+import { useFullscreen } from "../hooks/useFullscreen";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
@@ -56,6 +57,8 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
     true,
   );
   const { visible: overlayVisible } = useAutoHideOverlay();
+  const pageRef = useRef<HTMLDivElement>(null);
+  const fullscreen = useFullscreen(pageRef);
 
   if (isFreeRoute && meLoading) {
     return <div className="min-h-screen bg-gray-50" />;
@@ -129,7 +132,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   }
 
   return (
-    <div className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div ref={pageRef} className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
       {!state.hostOnline && state.joined && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-amber-50 text-amber-700 text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2">
           <WifiOff size={14} />
@@ -167,11 +170,22 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           boardLayout={state.boardLayout}
           leftBoardMode={state.leftBoardMode}
           rightBoardMode={state.rightBoardMode}
+          notebookStyle={state.notebookStyle}
           tool="pen"
           color="#ef4444"
           strokeWidth={3}
           toolbarActions={
             <div className="flex items-center gap-1.5">
+              {fullscreen.supported && (
+                <button
+                  type="button"
+                  onClick={() => void fullscreen.toggle()}
+                  title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
+                  className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                >
+                  {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                </button>
+              )}
               <ParticipantsPanelToggle
                 participants={state.participants}
                 speakingUserIds={voice.speakingUserIds}

@@ -250,5 +250,6 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     leftBoardMode: session.leftBoardMode ?? session.boardMode ?? 'pdf',
     rightBoardMode: session.rightBoardMode ?? session.boardMode ?? 'pdf',
     classroomTheme: session.classroomTheme ?? 'light',
+    notebookStyle: session.notebookStyle ?? 'grid',
   };
 }
