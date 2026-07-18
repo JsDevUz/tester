@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
+import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import {
   ClassroomPdfViewer,
   DEFAULT_SHAPE_STYLE,
@@ -35,6 +36,7 @@ export function ClassroomHostPage() {
   const navigate = useNavigate();
   const admin = useAuthStore((s) => s.admin);
   const { state, hostActions } = useClassroomSession(id, "host");
+  useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
@@ -204,7 +206,10 @@ export function ClassroomHostPage() {
                   <span className="hidden sm:inline">Havola</span>
                 </button>
               )}
-              <ClassroomThemeToggle />
+              <ClassroomThemeToggle
+                theme={state.classroomTheme}
+                onToggle={() => hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")}
+              />
               <ParticipantsPanelToggle
                 participants={state.participants}
                 speakingUserIds={voice.speakingUserIds}

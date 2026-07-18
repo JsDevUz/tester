@@ -1080,6 +1080,7 @@ interface PageProps {
   pageNumber: number;
   url?: string;
   notebook?: boolean;
+  zoomScale: number;
   strokes: CsStroke[];
   pointer: CsPointer | null;
   showPointer: boolean;
@@ -1108,7 +1109,7 @@ interface PageProps {
 // <img src> qo'yilmaydi (lazy) — ko'p sahifali darsda hammasi birdan
 // yuklanib xotira/tarmoqni og'irlashtirmasin.
 function ClassroomPdfPage({
-  pageNumber, url, notebook = false, strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
+  pageNumber, url, notebook = false, zoomScale, strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
   onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, registerEl,
 }: PageProps) {
@@ -1792,7 +1793,10 @@ function ClassroomPdfPage({
   return (
     <div ref={wrapRef} data-page={pageNumber} className="relative shrink-0 w-full flex justify-center">
       {visible ? (
-        <div className={`relative ${notebook ? "aspect-[210/297] w-full max-w-3xl bg-white shadow-sm" : ""}`}>
+        <div
+          className={`relative ${notebook ? "aspect-[210/297] w-full bg-white shadow-sm" : "w-full"}`}
+          style={notebook ? { maxWidth: `${768 * zoomScale}px` } : undefined}
+        >
           {notebook ? (
             <div
               ref={(element) => { surfaceRef.current = element; }}
@@ -1812,7 +1816,7 @@ function ClassroomPdfPage({
               ref={(element) => { surfaceRef.current = element; }}
               src={url}
               alt={`Sahifa ${pageNumber}`}
-              className="max-w-full h-auto select-none block"
+              className="block h-auto w-full select-none"
               draggable={false}
               onLoad={syncSize}
             />
@@ -2322,6 +2326,7 @@ export function ClassroomPdfViewer({
                     pageNumber={pageNumber}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
+                    zoomScale={displayLayout === "split" ? (paneIndex === 1 ? rightZoom : zoom) : zoom}
                     strokes={displayLayout === "split" && paneIndex === 1 ? (rightStrokesByPage[pageNumber] ?? []) : (strokesByPage[pageNumber] ?? [])}
                     pointer={pointer}
                     showPointer={pointer?.page === pageNumber}

@@ -117,6 +117,7 @@ export class ClassroomService implements OnModuleInit {
       strokesByPage: new Map(),
       boardMode: 'pdf',
       boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
+      classroomTheme: 'light',
       strokesByMode: new Map([['pdf', new Map()]]),
       participants,
       startedAtMs: Date.now(),
@@ -147,6 +148,7 @@ export class ClassroomService implements OnModuleInit {
       strokesByPage: new Map(),
       boardMode: 'pdf',
       boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
+      classroomTheme: 'light',
       strokesByMode: new Map([['pdf', new Map()]]),
       participants: new Map(),
       startedAtMs: Date.now(),
@@ -382,6 +384,13 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     if (!setSessionPage(s, page)) throw new Error('INVALID_PAGE');
     this.broadcaster.toRoom(sessionId, 'page:set', { page });
+  }
+
+  setTheme(sessionId: string, userId: string, theme: 'light' | 'dark'): void {
+    const s = this.requireHost(sessionId, userId);
+    if (theme !== 'light' && theme !== 'dark') throw new Error('INVALID_THEME');
+    s.classroomTheme = theme;
+    this.broadcaster.toRoom(sessionId, 'theme:set', { theme });
   }
 
   stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {

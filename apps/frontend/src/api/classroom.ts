@@ -230,6 +230,7 @@ export interface CsSnapshot {
   boardLayout: CsBoardLayout;
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
+  classroomTheme: "light" | "dark";
 }
 
 export interface CsPresenceUpdate {

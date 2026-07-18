@@ -26,7 +26,12 @@ interface MediaLibraryModalProps {
   onClose: () => void;
 }
 
-export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibraryModalProps) {
+export function MediaLibraryModal({
+  type,
+  folder,
+  onSelect,
+  onClose,
+}: MediaLibraryModalProps) {
   const [tab, setTab] = useState<"library" | "upload">("library");
   const [assets, setAssets] = useState<MediaLibraryAsset[]>([]);
   const [loading, setLoading] = useState(true);
@@ -55,7 +60,7 @@ export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibr
     const file = e.target.files?.[0];
     e.target.value = "";
     if (!file) return;
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > 100 * 1024 * 1024) {
       toast.error("Fayl hajmi 10 MB dan oshmasligi kerak");
       return;
     }
@@ -70,7 +75,8 @@ export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibr
     }
   }
 
-  const Icon = type === "image" ? ImageIcon : type === "audio" ? Music : FileText;
+  const Icon =
+    type === "image" ? ImageIcon : type === "audio" ? Music : FileText;
 
   return (
     <div
@@ -119,7 +125,9 @@ export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibr
         <div className="max-h-[60vh] min-h-[280px] overflow-y-auto p-5">
           {tab === "library" ? (
             loading ? (
-              <p className="py-10 text-center text-sm text-gray-400">Yuklanmoqda...</p>
+              <p className="py-10 text-center text-sm text-gray-400">
+                Yuklanmoqda...
+              </p>
             ) : assets.length === 0 ? (
               <div className="flex flex-col items-center gap-2 py-10 text-center text-gray-400">
                 <Icon size={28} className="opacity-50" />
@@ -142,7 +150,11 @@ export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibr
                     className="group relative aspect-square overflow-hidden rounded-xl bg-gray-100 ring-1 ring-transparent transition-all hover:ring-2 hover:ring-gray-900"
                     title={asset.originalName}
                   >
-                    <img src={asset.url} alt={asset.originalName} className="h-full w-full object-cover" />
+                    <img
+                      src={asset.url}
+                      alt={asset.originalName}
+                      className="h-full w-full object-cover"
+                    />
                   </button>
                 ))}
               </div>
@@ -190,8 +202,8 @@ export function MediaLibraryModal({ type, folder, onSelect, onClose }: MediaLibr
                 {uploading ? "Yuklanmoqda..." : "Fayl tanlash"}
               </button>
               <p className="max-w-xs text-xs text-gray-400">
-                Yuklangan fayl avtomatik kutubxonaga qo'shiladi va shu maktabdagi boshqa
-                o'qituvchi/kuratorlar ham qayta ishlata oladi.
+                Yuklangan fayl avtomatik kutubxonaga qo'shiladi va shu
+                maktabdagi boshqa o'qituvchi/kuratorlar ham qayta ishlata oladi.
               </p>
             </div>
           )}

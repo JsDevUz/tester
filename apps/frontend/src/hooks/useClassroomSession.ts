@@ -35,13 +35,14 @@ export interface ClassroomState {
   boardLayout: CsBoardLayout;
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
+  classroomTheme: "light" | "dark";
 }
 
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1,
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, classroomTheme: "light",
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -104,6 +105,7 @@ export function useClassroomSession(
             rightScroll: null, rightZoom: snap.zoom ?? 1,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
+            classroomTheme: snap.classroomTheme ?? "light",
           });
         },
       );
@@ -211,6 +213,7 @@ export function useClassroomSession(
     });
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
+    socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -231,6 +234,7 @@ export function useClassroomSession(
       socket.off("presence:update");
       socket.off("zoom:set");
       socket.off("scroll:set");
+      socket.off("theme:set");
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
@@ -343,6 +347,10 @@ export function useClassroomSession(
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
+    setTheme: (theme: "light" | "dark") => {
+      setState((s) => ({ ...s, classroomTheme: theme }));
+      emitHost("host:setTheme", { theme });
+    },
     endLesson: () => emitHost("host:end"),
   };
 

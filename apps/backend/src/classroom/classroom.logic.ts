@@ -249,5 +249,6 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     boardLayout: session.boardLayout ?? 'single',
     leftBoardMode: session.leftBoardMode ?? session.boardMode ?? 'pdf',
     rightBoardMode: session.rightBoardMode ?? session.boardMode ?? 'pdf',
+    classroomTheme: session.classroomTheme ?? 'light',
   };
 }

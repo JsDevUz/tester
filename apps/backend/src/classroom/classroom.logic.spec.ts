@@ -174,6 +174,7 @@ describe('buildSnapshot', () => {
       { userId: 'u-2', name: 'Vali', online: false, status: 'absent' },
     ]);
     expect(snap.hostOnline).toBe(true);
+    expect(snap.classroomTheme).toBe('light');
   });
 
   it('host socketi yoq bolsa hostOnline false', () => {

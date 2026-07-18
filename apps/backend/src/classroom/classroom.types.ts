@@ -1,6 +1,7 @@
 export type ClassroomTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
 export type ClassroomBoardMode = 'pdf' | 'notebook';
 export type ClassroomBoardLayout = 'single' | 'split';
+export type ClassroomTheme = 'light' | 'dark';
 
 export type ClassroomFontFamily = 'Inter' | 'Arial' | 'Georgia' | 'Comic Sans MS' | 'Nunito';
 export type ClassroomFillStyle = 'hachure' | 'cross-hatch' | 'solid';
@@ -87,6 +88,7 @@ export interface ClassroomSession {
   boardLayout?: ClassroomBoardLayout;
   leftBoardMode?: ClassroomBoardMode;
   rightBoardMode?: ClassroomBoardMode;
+  classroomTheme?: ClassroomTheme;
 }
 
 export interface ClassroomSnapshot {
@@ -106,6 +108,7 @@ export interface ClassroomSnapshot {
   boardLayout: ClassroomBoardLayout;
   leftBoardMode: ClassroomBoardMode;
   rightBoardMode: ClassroomBoardMode;
+  classroomTheme: ClassroomTheme;
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

@@ -96,6 +96,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:setTheme')
+  setTheme(@MessageBody() body: BaseBody & { theme: 'light' | 'dark' }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.setTheme(body.sessionId, user.sub, body.theme);
+    });
+  }
+
   @SubscribeMessage('host:stroke')
   stroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {

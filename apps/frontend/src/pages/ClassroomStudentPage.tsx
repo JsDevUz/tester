@@ -5,10 +5,10 @@ import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
+import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
-import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 
 const ERROR_TEXT: Record<string, string> = {
@@ -48,6 +48,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
 
   const needsGuestForm = isFreeRoute && !meLoading && !admin && guestNameSubmitted === null;
   const { state } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
+  useClassroomTheme(state.classroomTheme);
   // Anonim mehmon token'siz — voice-token so'rovi auth talab qilgani uchun
   // unga ovoz ulanmaydi, faqat ustoz/login qilgan ishtirokchilarni ko'radi/eshitadi.
   const voice = useClassroomVoice(
@@ -171,7 +172,6 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           strokeWidth={3}
           toolbarActions={
             <div className="flex items-center gap-1.5">
-              <ClassroomThemeToggle />
               <ParticipantsPanelToggle
                 participants={state.participants}
                 speakingUserIds={voice.speakingUserIds}

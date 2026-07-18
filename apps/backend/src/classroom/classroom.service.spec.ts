@@ -100,6 +100,19 @@ describe('createSession', () => {
     setupDbForCreate();
     await expect(service.createSession('c-1', 'teacher-1', 'teacher')).rejects.toThrow();
   });
+
+  it('ustoz classroom mavzusini barcha oquvchilarga yuboradi va snapshotda saqlaydi', async () => {
+    const { service, events, sessionId } = await setup();
+    service.setTheme(sessionId, 'teacher-1', 'dark');
+
+    expect(events.at(-1)).toEqual({
+      target: `room:${sessionId}`,
+      event: 'theme:set',
+      payload: { theme: 'dark' },
+    });
+    expect(service.hostJoin(sessionId, 'teacher-1', 'sock-h').classroomTheme).toBe('dark');
+    expect(() => service.setTheme(sessionId, 'stu-1', 'light')).toThrow('FORBIDDEN');
+  });
 });
 
 describe('studentJoin / davomat', () => {
