@@ -66,7 +66,7 @@ export function ClassroomHostPage() {
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
   useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
-  useHotkeys("mod+z", () => hostActions.undo(state.currentPage), {
+  useHotkeys("mod+z", () => hostActions.undo(state.currentPage, "left", state.boardMode), {
     preventDefault: true,
   });
 
@@ -172,11 +172,13 @@ export function ClassroomHostPage() {
             hostActions.pointer(page, x, y, active, pane)
           }
           onEraseStroke={(page, strokeId) =>
-            hostActions.eraseStroke(page, strokeId)
+            hostActions.eraseStroke(page, strokeId, "left", state.boardMode)
           }
+          onPaneEraseStroke={(pane, mode, page, strokeId) => hostActions.eraseStroke(page, strokeId, pane, mode)}
           onSplitStroke={(page, strokeId, replacements) =>
-            hostActions.splitStroke(page, strokeId, replacements)
+            hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode)
           }
+          onPaneSplitStroke={(pane, mode, page, strokeId, replacements) => hostActions.splitStroke(page, strokeId, replacements, pane, mode)}
           boardMode={state.boardMode}
           onBoardModeChange={(mode) => hostActions.setBoardMode(mode)}
           boardLayout={state.boardLayout}
@@ -193,8 +195,8 @@ export function ClassroomHostPage() {
               onToolChange={setTool}
               onColorChange={setColor}
               onStrokeWidthChange={setStrokeWidth}
-              onUndo={() => hostActions.undo(state.currentPage)}
-              onClear={() => hostActions.clearPage(state.currentPage)}
+              onUndo={() => hostActions.undo(state.currentPage, "left", state.boardMode)}
+              onClear={() => hostActions.clearPage(state.currentPage, "left", state.boardMode)}
               onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
             />
           }

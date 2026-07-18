@@ -183,30 +183,42 @@ export function useClassroomSession(
         return { ...s, [key]: { ...source, [p.page]: next } };
       });
     });
-    socket.on("stroke:undo", (p: { page: number; strokeId: string }) => {
-      setState((s) => ({
-        ...s,
-        strokesByPage: { ...s.strokesByPage, [p.page]: (s.strokesByPage[p.page] ?? []).filter((x) => x.id !== p.strokeId) },
-      }));
-    });
-    socket.on("stroke:split", (p: { page: number; strokeId: string; replacements: CsStroke[] }) => {
+    socket.on("stroke:undo", (p: { page: number; strokeId: string; pane?: "left" | "right"; mode?: CsBoardMode }) => {
       setState((s) => {
-        const existing = s.strokesByPage[p.page] ?? [];
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        return { ...s, [key]: { ...source, [p.page]: (source[p.page] ?? []).filter((x) => x.id !== p.strokeId) } };
+      });
+    });
+    socket.on("stroke:split", (p: { page: number; strokeId: string; replacements: CsStroke[]; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const existing = source[p.page] ?? [];
         const idx = existing.findIndex((x) => x.id === p.strokeId);
         // O'zimiz optimistik split qilgan bo'lsak, eski ID allaqachon yo'q —
         // shu holatda o'rniga qo'shishning o'rniga dublikatni tekshirib qo'shamiz.
         if (idx === -1) {
           const news = p.replacements.filter((r) => !existing.some((x) => x.id === r.id));
           if (news.length === 0) return s;
-          return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, ...news] } };
+          return { ...s, [key]: { ...source, [p.page]: [...existing, ...news] } };
         }
         const next = [...existing];
         next.splice(idx, 1, ...p.replacements);
-        return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: next } };
+        return { ...s, [key]: { ...source, [p.page]: next } };
       });
     });
-    socket.on("page:clear", (p: { page: number }) => {
-      setState((s) => ({ ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [] } }));
+    socket.on("page:clear", (p: { page: number; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        return { ...s, [key]: { ...s[key], [p.page]: [] } };
+      });
     });
     socket.on("pointer:move", (p: CsPointer) => {
       setState((s) => ({ ...s, pointer: p.active ? p : null }));
@@ -298,30 +310,32 @@ export function useClassroomSession(
       });
       emitHost("host:updateShapeStroke", { page, stroke, pane, mode });
     },
-    undo: (page: number) => emitHost("host:undo", { page }),
+    undo: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:undo", { page, pane, mode }),
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
     // darhol o'chiradi, keyin serverga ID bilan yuboradi.
-    eraseStroke: (page: number, strokeId: string) => {
+    eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
       setState((s) => ({
         ...s,
-        strokesByPage: { ...s.strokesByPage, [page]: (s.strokesByPage[page] ?? []).filter((x) => x.id !== strokeId) },
+        [key]: { ...s[key], [page]: (s[key][page] ?? []).filter((x) => x.id !== strokeId) },
       }));
-      emitHost("host:eraseStroke", { page, strokeId });
+      emitHost("host:eraseStroke", { page, strokeId, pane, mode });
     },
     // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
     // yangi chizmalar bilan optimistik almashtiradi.
-    splitStroke: (page: number, strokeId: string, replacements: CsStroke[]) => {
+    splitStroke: (page: number, strokeId: string, replacements: CsStroke[], pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
       setState((s) => {
-        const existing = s.strokesByPage[page] ?? [];
+        const existing = s[key][page] ?? [];
         const idx = existing.findIndex((x) => x.id === strokeId);
         if (idx === -1) return s;
         const next = [...existing];
         next.splice(idx, 1, ...replacements);
-        return { ...s, strokesByPage: { ...s.strokesByPage, [page]: next } };
+        return { ...s, [key]: { ...s[key], [page]: next } };
       });
-      emitHost("host:splitStroke", { page, strokeId, replacements });
+      emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode });
     },
-    clearPage: (page: number) => emitHost("host:clearPage", { page }),
+    clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:clearPage", { page, pane, mode }),
     // ~30ms throttle: pointermove juda tez-tez otiladi, lekin ko'zga bu
     // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
     // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida

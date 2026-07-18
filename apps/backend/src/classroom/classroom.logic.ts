@@ -166,16 +166,19 @@ export function updateStrokePosition(
   return true;
 }
 
-export function undoStroke(session: ClassroomSession, page: number): string | null {
-  const list = activeStrokeMap(session).get(page);
+export function undoStroke(session: ClassroomSession, page: number, targetMap?: Map<number, ClassroomStroke[]>): string | null {
+  const list = (targetMap ?? activeStrokeMap(session)).get(page);
   if (!list || list.length === 0) return null;
   return list.pop()!.id;
 }
 
 // Stroke-eraser asbobi uchun — ID bo'yicha aniq bitta chizmani (oxirgisi
-// bo'lmasa ham) o'chiradi.
-export function eraseStroke(session: ClassroomSession, page: number, strokeId: string): boolean {
-  const list = activeStrokeMap(session).get(page);
+// bo'lmasa ham) o'chiradi. targetMap berilmasa, joriy session.boardMode'ga
+// mos xarita ishlatiladi (split rejimida noto'g'ri natija berishi mumkin,
+// shuning uchun chaqiruvchi tomon har doim aniq mode/pane orqali strokeMapFor
+// natijasini berishi kerak).
+export function eraseStroke(session: ClassroomSession, page: number, strokeId: string, targetMap?: Map<number, ClassroomStroke[]>): boolean {
+  const list = (targetMap ?? activeStrokeMap(session)).get(page);
   if (!list) return false;
   const idx = list.findIndex((s) => s.id === strokeId);
   if (idx === -1) return false;
@@ -188,8 +191,9 @@ export function eraseStroke(session: ClassroomSession, page: number, strokeId: s
 // masalan uzun chiziqning o'rtasi o'chirilganda ikki bo'lakka bo'linadi.
 export function splitStroke(
   session: ClassroomSession, page: number, strokeId: string, replacements: ClassroomStroke[],
+  targetMap?: Map<number, ClassroomStroke[]>,
 ): boolean {
-  const list = activeStrokeMap(session).get(page);
+  const list = (targetMap ?? activeStrokeMap(session)).get(page);
   if (!list) return false;
   const idx = list.findIndex((s) => s.id === strokeId);
   if (idx === -1) return false;
@@ -202,8 +206,8 @@ export function splitStroke(
   return true;
 }
 
-export function clearPage(session: ClassroomSession, page: number): void {
-  activeStrokeMap(session).set(page, []);
+export function clearPage(session: ClassroomSession, page: number, targetMap?: Map<number, ClassroomStroke[]>): void {
+  (targetMap ?? activeStrokeMap(session)).set(page, []);
 }
 
 export function setPage(session: ClassroomSession, page: number): boolean {

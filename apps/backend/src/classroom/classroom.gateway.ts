@@ -145,34 +145,34 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:undo')
-  undo(@MessageBody() body: BaseBody & { page: number }) {
+  undo(@MessageBody() body: BaseBody & { page: number; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.undo(body.sessionId, user.sub, body.page);
+      this.classroomService.undo(body.sessionId, user.sub, body.page, body.mode, body.pane);
     });
   }
 
   @SubscribeMessage('host:eraseStroke')
-  eraseStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string }) {
+  eraseStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.eraseStroke(body.sessionId, user.sub, body.page, body.strokeId);
+      this.classroomService.eraseStroke(body.sessionId, user.sub, body.page, body.strokeId, body.mode, body.pane);
     });
   }
 
   @SubscribeMessage('host:splitStroke')
-  splitStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; replacements: ClassroomStroke[] }) {
+  splitStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; replacements: ClassroomStroke[]; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.splitStroke(body.sessionId, user.sub, body.page, body.strokeId, body.replacements);
+      this.classroomService.splitStroke(body.sessionId, user.sub, body.page, body.strokeId, body.replacements, body.mode, body.pane);
     });
   }
 
   @SubscribeMessage('host:clearPage')
-  clearPage(@MessageBody() body: BaseBody & { page: number }) {
+  clearPage(@MessageBody() body: BaseBody & { page: number; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.clearPage(body.sessionId, user.sub, body.page);
+      this.classroomService.clearPage(body.sessionId, user.sub, body.page, body.mode, body.pane);
     });
   }
 

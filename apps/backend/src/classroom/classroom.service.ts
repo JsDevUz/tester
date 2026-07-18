@@ -442,18 +442,25 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', { page, stroke, pane, mode });
   }
 
-  undo(sessionId: string, userId: string, page: number): void {
+  undo(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    const strokeId = undoStroke(s, page);
-    if (strokeId) this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId });
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const strokeId = undoStroke(s, page, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (strokeId) this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
   }
 
   // Stroke-eraser asbobi: sichqoncha ustidan o'tgan chizmani ID bo'yicha
   // to'g'ridan-to'g'ri o'chiradi (undo kabi faqat oxirgisini emas).
-  eraseStroke(sessionId: string, userId: string, page: number, strokeId: string): void {
+  eraseStroke(sessionId: string, userId: string, page: number, strokeId: string, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    if (eraseStrokeById(s, page, strokeId)) {
-      this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId });
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const erased = eraseStrokeById(s, page, strokeId, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (erased) {
+      this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
     }
   }
 
@@ -461,16 +468,24 @@ export class ClassroomService implements OnModuleInit {
   // o'chiradi — qolgan uzluksiz bo'laklari yangi alohida chizmalar bo'lib qoladi.
   splitStroke(
     sessionId: string, userId: string, page: number, strokeId: string, replacements: ClassroomStroke[],
+    mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left',
   ): void {
     const s = this.requireHost(sessionId, userId);
-    if (!splitStrokeInSession(s, page, strokeId, replacements)) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:split', { page, strokeId, replacements });
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = splitStrokeInSession(s, page, strokeId, replacements, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:split', { page, strokeId, replacements, pane, mode });
   }
 
-  clearPage(sessionId: string, userId: string, page: number): void {
+  clearPage(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    clearPageStrokes(s, page);
-    this.broadcaster.toRoom(sessionId, 'page:clear', { page });
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    clearPageStrokes(s, page, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    this.broadcaster.toRoom(sessionId, 'page:clear', { page, pane, mode });
   }
 
   pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean, pane: 'left' | 'right' = 'left'): void {

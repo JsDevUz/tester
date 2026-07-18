@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AlignCenter, AlignLeft, AlignRight, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
   CsStroke, CsStrokeStyle, CsTool,
@@ -159,9 +159,11 @@ interface Props {
   onPaneStrokeComplete?: (pane: "left" | "right", mode: CsBoardMode, page: number, stroke: CsStroke) => void;
   onPointerMove?: (page: number, x: number, y: number, active: boolean, pane: "left" | "right") => void;
   onEraseStroke?: (page: number, strokeId: string) => void;
+  onPaneEraseStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, strokeId: string) => void;
   // Pixel-eraser: bitta chizmani (strokeId) bir nechta yangi kesim-chizmalar
   // bilan almashtiradi (segment-darajasida o'chirish natijasi).
   onSplitStroke?: (page: number, strokeId: string, replacements: CsStroke[]) => void;
+  onPaneSplitStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, strokeId: string, replacements: CsStroke[]) => void;
   // Ustoz qo'lda scroll qilib sahifa almashtirganda chaqiriladi (faqat isHost=true'da) —
   // shu orqali toolbar'dagi sahifa raqami va serverga yuboriladigan currentPage yangilanadi.
   onPageChange?: (page: number) => void;
@@ -558,6 +560,10 @@ interface TextStylePanelProps {
   onFontSizeChange: (fontSize: number) => void;
   onFontWeightChange: (fontWeight: 400 | 500 | 600 | 700) => void;
   onTextAlignChange: (textAlign: "left" | "center" | "right") => void;
+  // Faqat allaqachon saqlangan (tanlangan) matn uchun beriladi — yozilayotgan
+  // (hali commit qilinmagan) matnda o'chirish tugmasi ko'rsatilmaydi, chunki
+  // Escape orqali bekor qilish allaqachon mavjud.
+  onDelete?: () => void;
 }
 
 // Excalidraw'ning chap tomondagi to'liq balandlikdagi sozlamalar paneliga
@@ -566,7 +572,7 @@ interface TextStylePanelProps {
 // qo'ymaydi.
 function TextStylePanel({
   color, fontFamily, fontSize, fontWeight, textAlign,
-  onColorChange, onFontFamilyChange, onFontSizeChange, onFontWeightChange, onTextAlignChange,
+  onColorChange, onFontFamilyChange, onFontSizeChange, onFontWeightChange, onTextAlignChange, onDelete,
 }: TextStylePanelProps) {
   return (
     <div
@@ -655,6 +661,17 @@ function TextStylePanel({
           <option value={700}>Bold</option>
         </select>
       </div>
+
+      {onDelete && (
+        <button
+          type="button"
+          onClick={onDelete}
+          className="flex items-center justify-center gap-1.5 rounded-lg bg-red-50 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+        >
+          <Trash2 size={13} />
+          O'chirish
+        </button>
+      )}
     </div>
   );
 }
@@ -1881,6 +1898,10 @@ function ClassroomPdfPage({
               onFontSizeChange={(fontSize) => updateSelectedText({ fontSize })}
               onFontWeightChange={(fontWeight) => updateSelectedText({ fontWeight })}
               onTextAlignChange={(textAlign) => updateSelectedText({ textAlign })}
+              onDelete={() => {
+                onEraseStroke?.(pageNumber, selectedText.id);
+                setSelectedTextId(null);
+              }}
             />}
             </>
           )}
@@ -1974,7 +1995,7 @@ function ClassroomPdfPage({
 export function ClassroomPdfViewer({
   pageUrls, currentPage, strokesByPage, rightStrokesByPage = {}, pointer, editable, isHost, hostZoom, onZoomChange,
   hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
-  onEraseStroke, onSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke,
+  onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
 }: Props) {
@@ -1986,6 +2007,17 @@ export function ClassroomPdfViewer({
   const scrollRef = useRef<HTMLDivElement>(null);
   const paneScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  // O'ng panel (split rejimdagi ikkinchi taxta) uchun ham chap paneldagi
+  // kabi ANIQ page+yRatio modeli ishlatiladi — avval faqat umumiy
+  // scrollHeight foizi (viewport balandligiga bog'liq) ishlatilardi, bu
+  // ustoz va talaba turli ekran o'lchamida (masalan mobil fullscreen) bo'lsa
+  // pozitsiyani mos kelmasligiga olib kelardi. `rightScrollRef` — paneScrollRefs
+  // Map'idagi element uchun useClassroomScrollSync talab qiladigan
+  // RefObject ko'rinishidagi proksi.
+  const rightPageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
+  const rightScrollRef = useRef<{ current: HTMLDivElement | null }>({
+    get current() { return paneScrollRefs.current.get(1) ?? null; },
+  }).current;
   // O'quvchi uchun: yoqilgan = sinxron (ustoz bilan birga, hech narsa
   // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
   // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
@@ -2026,7 +2058,6 @@ export function ClassroomPdfViewer({
     if (isHost || displayLayout !== "split" || !synced || !rightHostScroll) return;
     const rightPane = paneScrollRefs.current.get(1);
     if (!rightPane) return;
-    rightPane.scrollTop = rightHostScroll.yRatio * Math.max(0, rightPane.scrollHeight - rightPane.clientHeight);
     rightPane.scrollLeft = (rightHostScroll.xRatio ?? 0) * Math.max(0, rightPane.scrollWidth - rightPane.clientWidth);
   }, [displayLayout, synced, rightHostScroll, isHost]);
 
@@ -2040,6 +2071,15 @@ export function ClassroomPdfViewer({
     isHost, synced, currentPage, hostScroll, scrollRef, pageElsRef, onPageChange, onScrollChange,
   });
 
+  // O'ng panel uchun ham xuddi shu aniq page+yRatio modeli — avvalgi
+  // umumiy scrollHeight foizi o'rniga. onPageChange berilmaydi (o'ng
+  // panelning "joriy sahifasi" alohida kuzatilmaydi, faqat currentPage
+  // ishlatiladi — chap panel bilan bir xil sahifa nomerlanishi taxmin qilinadi).
+  const { scrollToPagePosition: scrollToRightPagePosition, handleScroll: handleRightScroll } = useClassroomScrollSync({
+    isHost, synced, currentPage, hostScroll: rightHostScroll, scrollRef: rightScrollRef, pageElsRef: rightPageElsRef,
+    onScrollChange: onPaneScrollChange ? (page, yRatio, xRatio) => onPaneScrollChange("right", page, yRatio, xRatio) : undefined,
+  });
+
   const { zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, handleWheel } = useClassroomZoom({
     isHost, synced, hostZoom, onZoomChange, scrollRef, suppressScrollDetectRef,
   });
@@ -2048,6 +2088,11 @@ export function ClassroomPdfViewer({
   const registerEl = useCallback((page: number, el: HTMLDivElement | null) => {
     if (el) pageElsRef.current.set(page, el);
     else pageElsRef.current.delete(page);
+  }, []);
+
+  const registerRightEl = useCallback((page: number, el: HTMLDivElement | null) => {
+    if (el) rightPageElsRef.current.set(page, el);
+    else rightPageElsRef.current.delete(page);
   }, []);
 
   const toggleSynced = useCallback(() => {
@@ -2059,13 +2104,14 @@ export function ClassroomPdfViewer({
         syncZoomToHost();
         if (hostScroll) scrollToPagePosition(hostScroll.page, hostScroll.yRatio, true);
         else scrollToPage(currentPageRef.current, true);
+        if (rightHostScroll) scrollToRightPagePosition(rightHostScroll.page, rightHostScroll.yRatio, true);
       } else {
         // Erkin rejimga o'tilganda 100% dan boshlanadi
         resetZoomTo1();
       }
       return next;
     });
-  }, [boardMode, boardLayout, leftBoardMode, rightBoardMode, scrollToPage, scrollToPagePosition, hostScroll, syncZoomToHost, resetZoomTo1]);
+  }, [boardMode, boardLayout, leftBoardMode, rightBoardMode, scrollToPage, scrollToPagePosition, hostScroll, rightHostScroll, scrollToRightPagePosition, syncZoomToHost, resetZoomTo1]);
 
   const changeDisplayMode = (mode: CsBoardMode) => {
     if (isHost) onBoardModeChange?.(mode);
@@ -2229,14 +2275,7 @@ export function ClassroomPdfViewer({
                   if (paneIndex === 0) scrollRef.current = element;
                 } else if (displayLayout === "split") paneScrollRefs.current.delete(paneIndex);
               }}
-              onScroll={displayLayout === "split" ? (paneIndex === 0 ? handleScroll : () => {
-                if (!isHost || !onPaneScrollChange) return;
-                const pane = paneScrollRefs.current.get(1);
-                if (!pane) return;
-                const max = Math.max(1, pane.scrollHeight - pane.clientHeight);
-                const xMax = Math.max(1, pane.scrollWidth - pane.clientWidth);
-                onPaneScrollChange("right", currentPageRef.current, Math.min(1, Math.max(0, pane.scrollTop / max)), Math.min(1, Math.max(0, pane.scrollLeft / xMax)));
-              }) : undefined}
+              onScroll={displayLayout === "split" ? (paneIndex === 0 ? handleScroll : handleRightScroll) : undefined}
               className={displayLayout === "split"
                 ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col items-center gap-1 sm:gap-3 border-r border-gray-200/70 last:border-r-0 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
                 : "flex w-full flex-col items-center gap-1 sm:gap-3"}
@@ -2318,9 +2357,15 @@ export function ClassroomPdfViewer({
               }
             }}
                     onPointerMove={(page, x, y, active) => onPointerMove?.(page, x, y, active, paneIndex === 1 ? "right" : "left")}
-                    onEraseStroke={onEraseStroke}
-                    onSplitStroke={onSplitStroke}
-                    registerEl={displayLayout === "split" && paneIndex === 1 ? () => undefined : registerEl}
+                    onEraseStroke={(page, strokeId) => {
+                      if (displayLayout === "split") onPaneEraseStroke?.(paneIndex === 1 ? "right" : "left", paneMode, page, strokeId);
+                      else onEraseStroke?.(page, strokeId);
+                    }}
+                    onSplitStroke={(page, strokeId, replacements) => {
+                      if (displayLayout === "split") onPaneSplitStroke?.(paneIndex === 1 ? "right" : "left", paneMode, page, strokeId, replacements);
+                      else onSplitStroke?.(page, strokeId, replacements);
+                    }}
+                    registerEl={displayLayout === "split" && paneIndex === 1 ? registerRightEl : registerEl}
                   />
                 );
               })}
