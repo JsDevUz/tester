@@ -9,7 +9,7 @@ interface Args {
   scrollRef: React.RefObject<HTMLDivElement | null>;
   pageElsRef: React.RefObject<Map<number, HTMLDivElement>>;
   onPageChange?: (page: number) => void;
-  onScrollChange?: (page: number, yRatio: number) => void;
+  onScrollChange?: (page: number, yRatio: number, xRatio: number) => void;
 }
 
 // Ustoz va o'quvchi orasidagi scroll sinxronizatsiyasi — sahifa raqami +
@@ -45,7 +45,11 @@ export function useClassroomScrollSync({
       const elRect = el.getBoundingClientRect();
       const scrollRect = scrollEl.getBoundingClientRect();
       const pageTop = scrollEl.scrollTop + (elRect.top - scrollRect.top);
-      const top = pageTop + elRect.height * yRatio;
+      // Host yRatio'ni viewport MARKAZI bo'yicha yuboradi. Studentda ham
+      // xuddi shu hujjat nuqtasi viewport markazida turishi kerak; uni
+      // scroll oynasining tepasiga qo'yish yarim ekranlik doimiy offset
+      // keltirib chiqarardi.
+      const top = pageTop + elRect.height * yRatio - scrollEl.clientHeight / 2;
       scrollEl.scrollTo({ top, behavior: smooth ? "smooth" : "instant" });
       window.setTimeout(() => { suppressScrollDetectRef.current = false; }, smooth ? 500 : 50);
     });
@@ -98,7 +102,10 @@ export function useClassroomScrollSync({
         const yRatio = closestRect.height > 0
           ? Math.min(1, Math.max(0, (viewportMid - closestRect.top) / closestRect.height))
           : 0;
-        onScrollChange(closestPage, yRatio);
+        const xRatio = scrollEl.scrollWidth > scrollEl.clientWidth
+          ? Math.min(1, Math.max(0, scrollEl.scrollLeft / (scrollEl.scrollWidth - scrollEl.clientWidth)))
+          : 0;
+        onScrollChange(closestPage, yRatio, xRatio);
       }
     });
   }, [isHost, onPageChange, onScrollChange, scrollRef, pageElsRef]);

@@ -1,16 +1,20 @@
 import { useState } from "react";
+import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Volume2 } from "lucide-react";
+import { Link2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import {
   ClassroomPdfViewer,
+  DEFAULT_SHAPE_STYLE,
   type DrawTool,
+  type ShapeStyle,
 } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
+import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
@@ -35,11 +39,30 @@ export function ClassroomHostPage() {
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
   const [strokeWidth, setStrokeWidth] = useState(4);
+  const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
   const [pageSelectAsset, setPageSelectAsset] =
     useState<PdfLibraryAsset | null>(null);
   const [attaching, setAttaching] = useState(false);
+
+  // Classroom toolbar shortcuts. `mod` maps to Ctrl on Windows/Linux and
+  // Command on macOS. Form fields are intentionally excluded by the hook.
+  useHotkeys("1", () => setTool("select"), { preventDefault: true });
+  useHotkeys("2", () => setTool("pen"), { preventDefault: true });
+  useHotkeys("3", () => setTool("text"), { preventDefault: true });
+  useHotkeys("4", () => setTool("highlighter"), { preventDefault: true });
+  useHotkeys("5", () => setTool("arrow"), { preventDefault: true });
+  useHotkeys("6", () => setTool("rectangle"), { preventDefault: true });
+  useHotkeys("7", () => setTool("ellipse"), { preventDefault: true });
+  useHotkeys("8", () => setTool("eraser-pixel"), { preventDefault: true });
+  useHotkeys("9", () => setTool("eraser-stroke"), { preventDefault: true });
+  useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
+  useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
+  useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
+  useHotkeys("mod+z", () => hostActions.undo(state.currentPage), {
+    preventDefault: true,
+  });
 
   const handleAttachPages = async (pageNumbers: number[]) => {
     if (!id || !pageSelectAsset) return;
@@ -67,6 +90,14 @@ export function ClassroomHostPage() {
   const handleEnd = () => {
     hostActions.endLesson();
     navigate(-1);
+  };
+
+  const handleCopyLink = () => {
+    const url = `${window.location.origin}/classroom/free/${id}`;
+    void navigator.clipboard.writeText(url).then(
+      () => toast.success("Havola nusxalandi"),
+      () => toast.error("Havolani nusxalab bo'lmadi"),
+    );
   };
 
   if (state.error) {
@@ -104,19 +135,33 @@ export function ClassroomHostPage() {
           pageUrls={state.pages}
           currentPage={state.currentPage}
           strokesByPage={state.strokesByPage}
+          rightStrokesByPage={state.rightStrokesByPage}
           pointer={state.pointer}
-          editable={state.pages.length > 0}
+          editable={state.pages.length > 0 || state.boardMode === "notebook"}
           isHost
           hostZoom={state.zoom}
+          rightHostZoom={state.rightZoom}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
           hostScroll={state.scroll}
-          onScrollChange={(page, yRatio) =>
-            hostActions.setScroll(page, yRatio)
-          }
+          onScrollChange={(page, yRatio, xRatio) => hostActions.setScroll(page, yRatio, "left", xRatio)}
+          onPaneScrollChange={(pane, page, yRatio, xRatio) => hostActions.setScroll(page, yRatio, pane, xRatio)}
+          onPaneZoomChange={(pane, zoom) => hostActions.setZoom(zoom, pane)}
           tool={tool}
+          onToolChange={setTool}
           color={color}
+          onColorChange={setColor}
           strokeWidth={tool === "highlighter" ? strokeWidth * 7 : strokeWidth}
+          onStrokeWidthChange={setStrokeWidth}
+          shapeStyle={shapeStyle}
+          onShapeStyleChange={setShapeStyle}
+          onUpdateShapeStroke={(page, stroke) => hostActions.updateShapeStroke(page, stroke, "left", state.boardMode)}
+          onPaneUpdateShapeStroke={(pane, mode, page, stroke) => hostActions.updateShapeStroke(page, stroke, pane, mode)}
           onStrokeComplete={(page, s) => hostActions.sendStroke(page, s)}
+          onPaneStrokeComplete={(pane, mode, page, s) => hostActions.sendStroke(page, s, pane, mode)}
+          onMoveStroke={(page, strokeId, x, y) => hostActions.moveStroke(page, strokeId, x, y, "left", state.boardMode)}
+          onPaneMoveStroke={(pane, mode, page, strokeId, x, y) => hostActions.moveStroke(page, strokeId, x, y, pane, mode)}
+          onUpdateTextStroke={(page, stroke) => hostActions.updateTextStroke(page, stroke, "left", state.boardMode)}
+          onPaneUpdateTextStroke={(pane, mode, page, stroke) => hostActions.updateTextStroke(page, stroke, pane, mode)}
           onPointerMove={(page, x, y, active) =>
             hostActions.pointer(page, x, y, active)
           }
@@ -126,6 +171,12 @@ export function ClassroomHostPage() {
           onSplitStroke={(page, strokeId, replacements) =>
             hostActions.splitStroke(page, strokeId, replacements)
           }
+          boardMode={state.boardMode}
+          onBoardModeChange={(mode) => hostActions.setBoardMode(mode)}
+          boardLayout={state.boardLayout}
+          leftBoardMode={state.leftBoardMode}
+          rightBoardMode={state.rightBoardMode}
+          onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
           onPageChange={(page) => hostActions.setPage(page)}
           toolbar={
             <ClassroomToolbar
@@ -141,14 +192,28 @@ export function ClassroomHostPage() {
             />
           }
           toolbarActions={
-            <ParticipantsPanelToggle
-              participants={state.participants}
-              speakingUserIds={voice.speakingUserIds}
-              isHost
-              myUserId={admin?.id ?? null}
-              onMute={(uid) => void handleMute(uid)}
-              compact
-            />
+            <div className="flex items-center gap-1.5">
+              {state.isFree && (
+                <button
+                  type="button"
+                  onClick={handleCopyLink}
+                  title="Havolani nusxalash"
+                  className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-gray-900 shadow-md border border-gray-100 hover:bg-indigo-50"
+                >
+                  <Link2 size={14} />
+                  <span className="hidden sm:inline">Havola</span>
+                </button>
+              )}
+              <ClassroomThemeToggle />
+              <ParticipantsPanelToggle
+                participants={state.participants}
+                speakingUserIds={voice.speakingUserIds}
+                isHost
+                myUserId={admin?.id ?? null}
+                onMute={(uid) => void handleMute(uid)}
+                compact
+              />
+            </div>
           }
         />
 
@@ -157,7 +222,9 @@ export function ClassroomHostPage() {
           onToggleMic={() => void voice.toggleMic()}
           audioInputs={voice.audioInputs}
           activeAudioInputId={voice.activeAudioInputId}
-          onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+          onSwitchAudioInput={(deviceId) =>
+            void voice.switchAudioInput(deviceId)
+          }
           micDisabled={!voice.voiceAvailable}
           onEndCall={() => setConfirmEnd(true)}
           endCallTitle="Darsni yakunlash"
@@ -194,7 +261,9 @@ export function ClassroomHostPage() {
               Darsni yakunlaysizmi?
             </h2>
             <p className="text-sm text-gray-500">
-              Barcha o'quvchilar darsdan chiqariladi va davomat yakunlanadi.
+              {state.isFree
+                ? "Barcha ishtirokchilar darsdan chiqariladi."
+                : "Barcha o'quvchilar darsdan chiqariladi va davomat yakunlanadi."}
             </p>
             <div className="flex gap-2 justify-end">
               <button

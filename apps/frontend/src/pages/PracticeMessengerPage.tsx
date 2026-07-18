@@ -762,7 +762,7 @@ function PracticeMessengerContent() {
                                 {!message.deletedAt && (
                                   <div
                                     onClick={(event) => event.stopPropagation()}
-                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5 shadow-sm transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5 shadow-sm transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:after:absolute sm:after:left-0 sm:after:top-full sm:after:h-1 sm:after:w-full sm:after:content-[''] sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
                                   >
                                     <button
                                       type="button"

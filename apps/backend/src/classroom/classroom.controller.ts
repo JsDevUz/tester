@@ -31,6 +31,15 @@ export class ClassroomController {
     return this.classroomService.createSession(dto.courseId, req.admin.id, req.admin.role);
   }
 
+  // Erkin (guruhsiz) dars — kursga, guruhga bog'liq emas, DB'ga hech
+  // qanday yozuv qilinmaydi. Havolasi orqali login qilmagan mehmon ham
+  // kira oladi (WS "student:join" orqali, guestName bilan).
+  @Post('sessions/free')
+  @Roles('teacher', 'super')
+  createFreeSession(@Req() req: any) {
+    return this.classroomService.createFreeSession(req.admin.id);
+  }
+
   @Post('sessions/:id/pdf')
   @Roles('teacher', 'super')
   async attachPdf(

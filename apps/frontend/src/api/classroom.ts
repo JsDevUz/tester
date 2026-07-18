@@ -14,6 +14,13 @@ export async function apiCreateClassSession(courseId: string): Promise<{ id: str
   return res.data;
 }
 
+// Erkin (guruhsiz) dars — kursga bog'liq emas, DB'ga yozuv qilinmaydi.
+// Havolasi orqali login qilmagan mehmon ham kira oladi.
+export async function apiCreateFreeClassSession(): Promise<{ id: string }> {
+  const res = await client.post('/classroom/sessions/free');
+  return res.data;
+}
+
 // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
 // ustoz tanlagan sahifalarni jonli darsga qo'shadi.
 export async function apiAttachClassPdf(
@@ -151,14 +158,40 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 
 // ---------- WS payload tiplari ----------
 
-export type CsTool = 'pen' | 'highlighter' | 'arrow';
+export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
+export type CsBoardMode = 'pdf' | 'notebook';
+export type CsBoardLayout = 'single' | 'split';
+
+export type CsFontFamily = "Inter" | "Arial" | "Georgia" | "Comic Sans MS" | "Nunito";
+export type CsFillStyle = "hachure" | "cross-hatch" | "solid";
+export type CsStrokeStyle = "none" | "solid" | "dashed" | "dotted";
+export type CsSloppiness = 0 | 1 | 2;
+export type CsEdges = "sharp" | "round";
 
 export interface CsStroke {
   id: string;
   tool: CsTool;
   color: string;
   width: number;
-  // Normalizatsiyalangan (0..1), flat: [x0, y0, x1, y1, ...]
+  text?: string;
+  fontFamily?: CsFontFamily;
+  fontSize?: number;
+  fontWeight?: 400 | 500 | 600 | 700;
+  textAlign?: "left" | "center" | "right";
+  textBoxWidth?: number;
+  textBoxHeight?: number;
+  rotation?: number;
+  // Shape (rectangle/ellipse) uchun sozlamalar — Excalidraw uslubidagi
+  // to'liq to'plam. backgroundColor undefined/"transparent" bo'lsa ichi
+  // bo'sh chiziladi.
+  backgroundColor?: string;
+  fillStyle?: CsFillStyle;
+  strokeStyle?: CsStrokeStyle;
+  sloppiness?: CsSloppiness;
+  edges?: CsEdges;
+  opacity?: number;
+  // Normalizatsiyalangan (0..1), flat: [x0, y0, x1, y1, ...]. Shape uchun
+  // bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];
 }
 
@@ -177,6 +210,7 @@ export interface CsParticipant {
 export interface CsScrollPosition {
   page: number;
   yRatio: number;
+  xRatio?: number;
 }
 
 export interface CsSnapshot {
@@ -185,11 +219,17 @@ export interface CsSnapshot {
   pages: string[];
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
+  rightStrokesByPage: Record<number, CsStroke[]>;
   participants: CsParticipant[];
   startedAt: number;
   hostOnline: boolean;
   zoom: number;
   scroll: CsScrollPosition | null;
+  isFree: boolean;
+  boardMode: CsBoardMode;
+  boardLayout: CsBoardLayout;
+  leftBoardMode: CsBoardMode;
+  rightBoardMode: CsBoardMode;
 }
 
 export interface CsPresenceUpdate {

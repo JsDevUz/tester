@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
-import type { CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
+import type { CsBoardLayout, CsBoardMode, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
+
+function moveStrokePoints(stroke: CsStroke, x: number, y: number): number[] {
+  const dx = x - stroke.points[0];
+  const dy = y - stroke.points[1];
+  return stroke.points.map((value, index) => value + (index % 2 === 0 ? dx : dy));
+}
 
 export interface ClassroomState {
   joined: boolean;
@@ -10,21 +16,32 @@ export interface ClassroomState {
   pages: string[];
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
+  rightStrokesByPage: Record<number, CsStroke[]>;
   participants: CsParticipant[];
   hostOnline: boolean;
   pointer: CsPointer | null;
   // Ustozning zoom darajasi — o'quvchi sinxron rejimda bo'lsa shunga qarab kattalashtiradi.
   zoom: number;
+  rightZoom: number;
   // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
   // balandligi ichidagi nisbiy joy. O'quvchi sinxron rejimda shu sahifaning
   // aynan shu foiziga scroll qiladi (device/ekrandan mustaqil, piksel-aniq).
   scroll: CsScrollPosition | null;
+  rightScroll: CsScrollPosition | null;
+  // Erkin (guruhsiz) dars — kursga bog'liq emas, davomat/attendance
+  // yozilmaydi, anonim mehmonlar kirishi mumkin.
+  isFree: boolean;
+  boardMode: CsBoardMode;
+  boardLayout: CsBoardLayout;
+  leftBoardMode: CsBoardMode;
+  rightBoardMode: CsBoardMode;
 }
 
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
-  strokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
+  strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1,
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -32,7 +49,23 @@ const INITIAL: ClassroomState = {
 // sezmaydi. Throttle bo'lmasa server/tarmoq yuki keraksiz ravishda ortadi.
 const POINTER_THROTTLE_MS = 30;
 
-export function useClassroomSession(sessionId: string | undefined, role: "host" | "student") {
+// Login qilmagan mehmon uchun barqaror ID — shu tab/sessiyada qayta
+// ulanishlarda bir xil qolishi uchun sessionStorage'da saqlanadi (login
+// qilingandan farqli, bu foydalanuvchi identifikatsiyasi emas — faqat
+// bitta jonli dars davomida boshqalardan farqlash uchun).
+function getGuestId(): string {
+  const key = "classroom_guest_id";
+  let id = sessionStorage.getItem(key);
+  if (!id) {
+    id = crypto.randomUUID();
+    sessionStorage.setItem(key, id);
+  }
+  return id;
+}
+
+export function useClassroomSession(
+  sessionId: string | undefined, role: "host" | "student", guestName?: string,
+) {
   const [state, setState] = useState<ClassroomState>(INITIAL);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
@@ -45,9 +78,16 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     const token = localStorage.getItem("token");
 
     const join = () => {
+      const joinPayload: Record<string, unknown> = { sessionId, token };
+      // Login qilmagan mehmon uchun: token bo'sh, o'rniga guestId+guestName
+      // yuboriladi — erkin darsda server buni qabul qiladi.
+      if (!token && guestName) {
+        joinPayload.guestId = getGuestId();
+        joinPayload.guestName = guestName;
+      }
       socket.emit(
         role === "host" ? "host:join" : "student:join",
-        { sessionId, token },
+        joinPayload,
         (res: { ok: boolean; code?: string; state?: CsSnapshot }) => {
           if (!res.ok || !res.state) {
             setState((s) => ({ ...s, error: res.code ?? "ERROR" }));
@@ -58,8 +98,12 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
             joined: true, error: null, ended: false,
             pdfName: snap.pdfName, pages: snap.pages, currentPage: snap.currentPage,
             strokesByPage: snap.strokesByPage ?? {},
+            rightStrokesByPage: snap.rightStrokesByPage ?? {},
             participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
-            zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null,
+            zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
+            rightScroll: null, rightZoom: snap.zoom ?? 1,
+            boardMode: snap.boardMode ?? "pdf",
+            boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
           });
         },
       );
@@ -69,18 +113,69 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     socket.on("connect", join);
 
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
-      setState((s) => ({ ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, strokesByPage: {}, pointer: null }));
+      setState((s) => ({ ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", strokesByPage: {}, rightStrokesByPage: {}, pointer: null }));
+    });
+    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]> }) => {
+      setState((s) => ({ ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: p.leftMode ?? p.mode, rightBoardMode: p.rightMode ?? p.mode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, pointer: null, scroll: null }));
     });
     socket.on("page:set", (p: { page: number }) => {
       setState((s) => ({ ...s, currentPage: p.page, pointer: null }));
     });
-    socket.on("stroke:add", (p: { page: number; stroke: CsStroke }) => {
+    socket.on("stroke:add", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      if (p.pane === "right") {
+        setState((s) => {
+          if (p.mode && p.mode !== s.rightBoardMode) return s;
+          const existing = s.rightStrokesByPage[p.page] ?? [];
+          if (existing.some((x) => x.id === p.stroke.id)) return s;
+          return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: [...existing, p.stroke] } };
+        });
+        return;
+      }
       setState((s) => {
+        if (p.mode && p.mode !== s.leftBoardMode) return s;
         const existing = s.strokesByPage[p.page] ?? [];
         // Optimistik qo'shilgan (o'zimiz chizgan) stroke server javobida
         // qaytib kelganda dublikat bo'lib qo'shilib qolmasin.
         if (existing.some((x) => x.id === p.stroke.id)) return s;
         return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, p.stroke] } };
+      });
+    });
+    socket.on("stroke:update", (p: { page: number; strokeId: string; x: number; y: number; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const source = right ? s.rightStrokesByPage : s.strokesByPage;
+        const list = source[p.page] ?? [];
+        const next = list.map((stroke) => stroke.id === p.strokeId ? { ...stroke, points: moveStrokePoints(stroke, p.x, p.y) } : stroke);
+        return right
+          ? { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: next } }
+          : { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: next } };
+      });
+    });
+    socket.on("stroke:textUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const list = source[p.page] ?? [];
+        const next = list.some((stroke) => stroke.id === p.stroke.id)
+          ? list.map((stroke) => stroke.id === p.stroke.id ? p.stroke : stroke)
+          : [...list, p.stroke];
+        return { ...s, [key]: { ...source, [p.page]: next } };
+      });
+    });
+    socket.on("stroke:shapeUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const list = source[p.page] ?? [];
+        const next = list.some((stroke) => stroke.id === p.stroke.id)
+          ? list.map((stroke) => stroke.id === p.stroke.id ? p.stroke : stroke)
+          : [...list, p.stroke];
+        return { ...s, [key]: { ...source, [p.page]: next } };
       });
     });
     socket.on("stroke:undo", (p: { page: number; strokeId: string }) => {
@@ -114,8 +209,8 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     socket.on("presence:update", (p: { participants: CsParticipant[]; hostOnline: boolean }) => {
       setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
     });
-    socket.on("zoom:set", (p: { zoom: number }) => setState((s) => ({ ...s, zoom: p.zoom })));
-    socket.on("scroll:set", (p: CsScrollPosition) => setState((s) => ({ ...s, scroll: p })));
+    socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
+    socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -123,8 +218,12 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     return () => {
       socket.off("connect", join);
       socket.off("pdf:set");
+      socket.off("board:set");
       socket.off("page:set");
       socket.off("stroke:add");
+      socket.off("stroke:update");
+      socket.off("stroke:textUpdate");
+      socket.off("stroke:shapeUpdate");
       socket.off("stroke:undo");
       socket.off("stroke:split");
       socket.off("page:clear");
@@ -138,7 +237,7 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       if (pointerThrottleTimerRef.current) window.clearTimeout(pointerThrottleTimerRef.current);
       closeClassroomSocket();
     };
-  }, [sessionId, role]);
+  }, [sessionId, role, guestName]);
 
   const emitHost = useCallback((event: string, payload: Record<string, unknown> = {}) => {
     const socket = getClassroomSocket();
@@ -151,13 +250,44 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
     // kutmasdan) — shuning uchun ustoz o'zi chizganda chiziq "yo'qolib
     // qayta paydo bo'lish" holati bo'lmaydi. Server javobi kelganda
     // stroke:add handleri id bo'yicha dublikatni tashlab yuboradi.
-    sendStroke: (page: number, stroke: CsStroke) => {
+    sendStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      if (pane === "right") {
+        setState((s) => ({ ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [page]: [...(s.rightStrokesByPage[page] ?? []), stroke] } }));
+      } else {
+        setState((s) => {
+          const existing = s.strokesByPage[page] ?? [];
+          if (existing.some((x) => x.id === stroke.id)) return s;
+          return { ...s, strokesByPage: { ...s.strokesByPage, [page]: [...existing, stroke] } };
+        });
+      }
+      emitHost("host:stroke", { page, stroke, pane, mode });
+    },
+    moveStroke: (page: number, strokeId: string, x: number, y: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
       setState((s) => {
-        const existing = s.strokesByPage[page] ?? [];
-        if (existing.some((x) => x.id === stroke.id)) return s;
-        return { ...s, strokesByPage: { ...s.strokesByPage, [page]: [...existing, stroke] } };
+        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const next = (source[page] ?? []).map((stroke) => stroke.id === strokeId ? { ...stroke, points: moveStrokePoints(stroke, x, y) } : stroke);
+        return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:stroke", { page, stroke });
+      emitHost("host:moveStroke", { page, strokeId, x, y, pane, mode });
+    },
+    updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      setState((s) => {
+        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
+        return { ...s, [key]: { ...source, [page]: next } };
+      });
+      emitHost("host:updateTextStroke", { page, stroke, pane, mode });
+    },
+    updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      setState((s) => {
+        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
+        return { ...s, [key]: { ...source, [page]: next } };
+      });
+      emitHost("host:updateShapeStroke", { page, stroke, pane, mode });
     },
     undo: (page: number) => emitHost("host:undo", { page }),
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
@@ -209,8 +339,10 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
         }, POINTER_THROTTLE_MS - elapsed);
       }
     },
-    setZoom: (zoom: number) => emitHost("host:setZoom", { zoom }),
-    setScroll: (page: number, yRatio: number) => emitHost("host:scroll", { page, yRatio }),
+    setZoom: (zoom: number, pane: "left" | "right" = "left") => emitHost("host:setZoom", { zoom, pane }),
+    setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
+    setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
+    setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
     endLesson: () => emitHost("host:end"),
   };
 

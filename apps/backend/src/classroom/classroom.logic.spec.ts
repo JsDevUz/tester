@@ -1,5 +1,5 @@
 import {
-  addStroke, undoStroke, clearPage, setPage,
+  addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
   attendanceStatusOnJoin, closeInterval, buildSnapshot,
   LATE_AFTER_MS, MAX_STROKE_POINTS,
 } from './classroom.logic';
@@ -10,6 +10,7 @@ function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSessio
     id: 'cs-1',
     courseId: 'c-1',
     courseName: 'Kurs A',
+    isFree: false,
     hostUserId: 'host-1',
     hostSocketId: 'sock-host',
     pdfName: 'dars.pdf',
@@ -85,6 +86,18 @@ describe('undoStroke', () => {
   it('bosh sahifada null', () => {
     const s = makeSession();
     expect(undoStroke(s, 1)).toBeNull();
+  });
+});
+
+describe('updateStrokePosition', () => {
+  it('freehand stroke kochirilganda barcha nuqtalar birga siljiydi', () => {
+    const s = makeSession();
+    addStroke(s, 1, makeStroke({ id: 'pen-1', points: [0.2, 0.2, 0.3, 0.4, 0.4, 0.5] }));
+    expect(updateStrokePosition(s, 1, 'pen-1', 0.4, 0.3)).toBe(true);
+    expect(s.strokesByPage.get(1)?.[0].points).toEqual([
+      expect.closeTo(0.4), expect.closeTo(0.3), expect.closeTo(0.5),
+      expect.closeTo(0.5), expect.closeTo(0.6), expect.closeTo(0.6),
+    ]);
   });
 });
 

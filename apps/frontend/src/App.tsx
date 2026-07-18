@@ -55,6 +55,9 @@ const router = createBrowserRouter([
   { path: '/school-invite/:token', element: <SchoolInviteJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/classroom/host/:id', element: <TeacherRoute><ClassroomHostPage /></TeacherRoute> },
+  // Erkin (guruhsiz) dars — login qilmagan mehmon ham havola orqali kira
+  // olishi kerak, shuning uchun PrivateRoute bilan o'ralmaydi.
+  { path: '/classroom/free/:id', element: <ClassroomStudentPage isFreeRoute /> },
   { path: '/classroom/:id', element: <PrivateRoute><ClassroomStudentPage /></PrivateRoute> },
   { path: '/lessons', element: <TeacherRoute><CoursesPage /></TeacherRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },

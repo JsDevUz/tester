@@ -1,11 +1,36 @@
-export type ClassroomTool = 'pen' | 'highlighter' | 'arrow';
+export type ClassroomTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
+export type ClassroomBoardMode = 'pdf' | 'notebook';
+export type ClassroomBoardLayout = 'single' | 'split';
+
+export type ClassroomFontFamily = 'Inter' | 'Arial' | 'Georgia' | 'Comic Sans MS' | 'Nunito';
+export type ClassroomFillStyle = 'hachure' | 'cross-hatch' | 'solid';
+export type ClassroomStrokeStyle = 'none' | 'solid' | 'dashed' | 'dotted';
+export type ClassroomSloppiness = 0 | 1 | 2;
+export type ClassroomEdges = 'sharp' | 'round';
 
 export interface ClassroomStroke {
   id: string;
   tool: ClassroomTool;
   color: string;
   width: number;
-  // Normalizatsiyalangan (0..1) koordinatalar, flat: [x0, y0, x1, y1, ...]
+  // Text asbobi uchun matn mazmuni; points esa matnning chap-yuqori anchor'i.
+  text?: string;
+  fontFamily?: ClassroomFontFamily;
+  fontSize?: number;
+  fontWeight?: 400 | 500 | 600 | 700;
+  textAlign?: 'left' | 'center' | 'right';
+  textBoxWidth?: number;
+  textBoxHeight?: number;
+  rotation?: number;
+  // Shape (rectangle/ellipse) sozlamalari.
+  backgroundColor?: string;
+  fillStyle?: ClassroomFillStyle;
+  strokeStyle?: ClassroomStrokeStyle;
+  sloppiness?: ClassroomSloppiness;
+  edges?: ClassroomEdges;
+  opacity?: number;
+  // Normalizatsiyalangan (0..1) koordinatalar, flat: [x0, y0, x1, y1, ...].
+  // Shape uchun bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];
 }
 
@@ -14,7 +39,8 @@ export type AttendanceStatus = 'absent' | 'present' | 'late';
 export interface ClassroomParticipant {
   userId: string;
   name: string;
-  enrollmentId: string;
+  // Erkin (guruhsiz) darsda enrollment umuman bo'lmaydi — davomat yozilmaydi.
+  enrollmentId: string | null;
   socketId: string | null;
   // Joriy ulanish intervalining boshlanishi; offline bo'lsa null
   joinedAtMs: number | null;
@@ -30,12 +56,16 @@ export interface ClassroomParticipant {
 export interface ClassroomScrollPosition {
   page: number;
   yRatio: number;
+  xRatio?: number;
 }
 
 export interface ClassroomSession {
   id: string;
-  courseId: string;
-  courseName: string;
+  // Erkin (guruhsiz) darsda courseId/courseName null — kursga umuman
+  // bog'liq emas, DB'ga hech qanday yozuv qilinmaydi.
+  courseId: string | null;
+  courseName: string | null;
+  isFree: boolean;
   hostUserId: string;
   hostSocketId: string | null;
   pdfName: string | null;
@@ -51,6 +81,12 @@ export interface ClassroomSession {
   // Ustozning oxirgi scroll pozitsiyasi — kech kirgan o'quvchiga snapshot
   // orqali, hozir ulanganlarga broadcast orqali yetkaziladi.
   scroll: ClassroomScrollPosition | null;
+  boardMode?: ClassroomBoardMode;
+  strokesByMode?: Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>;
+  rightStrokesByMode?: Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>;
+  boardLayout?: ClassroomBoardLayout;
+  leftBoardMode?: ClassroomBoardMode;
+  rightBoardMode?: ClassroomBoardMode;
 }
 
 export interface ClassroomSnapshot {
@@ -59,11 +95,17 @@ export interface ClassroomSnapshot {
   pages: string[];
   currentPage: number;
   strokesByPage: Record<number, ClassroomStroke[]>;
+  rightStrokesByPage: Record<number, ClassroomStroke[]>;
   participants: Array<{ userId: string; name: string; online: boolean; status: AttendanceStatus }>;
   startedAt: number;
   hostOnline: boolean;
   zoom: number;
   scroll: ClassroomScrollPosition | null;
+  isFree: boolean;
+  boardMode: ClassroomBoardMode;
+  boardLayout: ClassroomBoardLayout;
+  leftBoardMode: ClassroomBoardMode;
+  rightBoardMode: ClassroomBoardMode;
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

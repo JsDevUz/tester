@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   ConflictException, ForbiddenException, Injectable, NotFoundException,
   OnModuleInit, ServiceUnavailableException,
@@ -12,10 +13,12 @@ import { MediaLibraryService } from '../upload/media-library.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
-  setPage as setSessionPage, splitStroke as splitStrokeInSession, undoStroke,
+  setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
+  updateShapeStroke as updateShapeStrokeInSession,
+  updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
-  AttendanceStatus, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
+  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
   ClassroomSnapshot, ClassroomStroke,
 } from './classroom.types';
 
@@ -105,12 +108,16 @@ export class ClassroomService implements OnModuleInit {
       id: row.id,
       courseId,
       courseName: course.title,
+      isFree: false,
       hostUserId: teacherId,
       hostSocketId: null,
       pdfName: null,
       pdfPages: [],
       currentPage: 1,
       strokesByPage: new Map(),
+      boardMode: 'pdf',
+      boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
+      strokesByMode: new Map([['pdf', new Map()]]),
       participants,
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
@@ -119,6 +126,35 @@ export class ClassroomService implements OnModuleInit {
     });
 
     return { id: row.id };
+  }
+
+  // Erkin (guruhsiz) dars: kursga, guruhga, enrollmentga umuman bog'liq
+  // emas. DB'ga hech qanday yozuv qilinmaydi — session faqat xotirada
+  // yashaydi, server qayta ishga tushsa yoki dars tugasa butunlay yo'qoladi.
+  // Istalgan kishi (login qilgan yoki anonim mehmon) havola orqali kira oladi.
+  createFreeSession(teacherId: string): { id: string } {
+    const id = randomUUID();
+    this.sessions.set(id, {
+      id,
+      courseId: null,
+      courseName: null,
+      isFree: true,
+      hostUserId: teacherId,
+      hostSocketId: null,
+      pdfName: null,
+      pdfPages: [],
+      currentPage: 1,
+      strokesByPage: new Map(),
+      boardMode: 'pdf',
+      boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
+      strokesByMode: new Map([['pdf', new Map()]]),
+      participants: new Map(),
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      scroll: null,
+    });
+    return { id };
   }
 
   // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
@@ -160,7 +196,11 @@ export class ClassroomService implements OnModuleInit {
     s.pdfName = pdfName;
     s.pdfPages = pages;
     s.currentPage = 1;
+    s.boardMode = 'pdf';
+    s.boardLayout = 'single'; s.leftBoardMode = 'pdf'; s.rightBoardMode = 'pdf';
     s.strokesByPage = new Map();
+    s.strokesByMode = new Map([['pdf', s.strokesByPage]]);
+    s.rightStrokesByMode = new Map();
     s.scroll = null;
   }
 
@@ -169,21 +209,56 @@ export class ClassroomService implements OnModuleInit {
     this.applyPdf(this.requireSession(sessionId), pdfName, pages);
   }
 
+  setBoardMode(sessionId: string, userId: string, mode: ClassroomBoardMode): void {
+    const s = this.requireHost(sessionId, userId);
+    if (mode !== 'pdf' && mode !== 'notebook') throw new Error('INVALID_BOARD_MODE');
+    s.boardLayout = 'single'; s.leftBoardMode = mode; s.rightBoardMode = mode;
+    switchBoardMode(s, mode);
+    const snapshot = buildSnapshot(s);
+    this.broadcaster.toRoom(sessionId, 'board:set', {
+      mode,
+      layout: 'single', leftMode: mode, rightMode: mode,
+      currentPage: snapshot.currentPage,
+      strokesByPage: snapshot.strokesByPage,
+      rightStrokesByPage: snapshot.rightStrokesByPage,
+    });
+  }
+
+  setBoardView(sessionId: string, userId: string, layout: 'single' | 'split', leftMode: ClassroomBoardMode, rightMode: ClassroomBoardMode): void {
+    const s = this.requireHost(sessionId, userId);
+    if (!['pdf', 'notebook'].includes(leftMode) || !['pdf', 'notebook'].includes(rightMode)) throw new Error('INVALID_BOARD_MODE');
+    if (layout === 'split' && leftMode === rightMode) throw new Error('DUPLICATE_SPLIT_MODE');
+    s.boardLayout = layout === 'split' ? 'split' : 'single';
+    s.leftBoardMode = leftMode;
+    s.rightBoardMode = rightMode;
+    s.boardMode = leftMode;
+    switchBoardMode(s, leftMode);
+    const snapshot = buildSnapshot(s);
+    this.broadcaster.toRoom(sessionId, 'board:set', {
+      mode: leftMode, layout: s.boardLayout, leftMode, rightMode,
+      currentPage: snapshot.currentPage, strokesByPage: snapshot.strokesByPage,
+      rightStrokesByPage: snapshot.rightStrokesByPage,
+    });
+  }
+
   async endSession(sessionId: string, byUserId: string | null): Promise<void> {
     const s = this.requireSession(sessionId);
     if (byUserId !== null && s.hostUserId !== byUserId) throw new ForbiddenException('Faqat dars ustozi yakunlay oladi');
 
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
-    const now = Date.now();
-    for (const p of s.participants.values()) {
-      if (p.joinedAtMs !== null) {
-        closeInterval(p, now);
-        await this.persistAttendance(s.id, p);
+    // Erkin darsda hech qanday davomat/DB yozuvi yo'q — shunchaki xotiradan o'chiriladi.
+    if (!s.isFree) {
+      const now = Date.now();
+      for (const p of s.participants.values()) {
+        if (p.joinedAtMs !== null) {
+          closeInterval(p, now);
+          await this.persistAttendance(s.id, p);
+        }
       }
+      await db.update(classSessions)
+        .set({ status: 'ended', endedAt: new Date() })
+        .where(eq(classSessions.id, sessionId));
     }
-    await db.update(classSessions)
-      .set({ status: 'ended', endedAt: new Date() })
-      .where(eq(classSessions.id, sessionId));
     this.broadcaster.toRoom(sessionId, 'session:ended', {});
     this.sessions.delete(sessionId);
   }
@@ -199,30 +274,50 @@ export class ClassroomService implements OnModuleInit {
     return buildSnapshot(s);
   }
 
-  async studentJoin(sessionId: string, userId: string, socketId: string): Promise<ClassroomSnapshot> {
+  // guestName faqat erkin (isFree) sessiyalarda ishlatiladi — login qilmagan
+  // mehmon o'zi kiritgan ism. Login qilgan foydalanuvchi uchun esa haqiqiy
+  // ismi (displayName) ishlatiladi, guestName e'tiborsiz qoldiriladi.
+  async studentJoin(
+    sessionId: string, userId: string, socketId: string, guestName?: string, displayName?: string,
+  ): Promise<ClassroomSnapshot> {
     const s = this.requireSession(sessionId);
     let p = s.participants.get(userId);
     if (!p) {
-      // Sessiya ochilganidan keyin kursning biror guruhiga qo'shilgan bo'lishi mumkin
-      const rows = await this.loadCourseEnrollments(s.courseId);
-      const enrollment = rows.find(
-        (r) => (r.schoolMember as unknown as { studentId: string }).studentId === userId,
-      );
-      if (!enrollment) throw new Error('NOT_ENROLLED');
-      const member = enrollment.schoolMember as unknown as { studentId: string; student: { displayName: string } };
-      p = {
-        userId,
-        name: member.student.displayName,
-        enrollmentId: enrollment.id,
-        socketId: null,
-        joinedAtMs: null,
-        totalSeconds: 0,
-        status: 'absent',
-      };
-      s.participants.set(userId, p);
-      await db.insert(attendanceRecords)
-        .values({ sessionId: s.id, enrollmentId: enrollment.id })
-        .onConflictDoNothing();
+      if (s.isFree) {
+        // Erkin dars: guruh/enrollment tekshiruvi yo'q, DB'ga hech narsa
+        // yozilmaydi — istalgan kishi (anonim yoki login qilgan) kira oladi.
+        p = {
+          userId,
+          name: displayName ?? guestName ?? 'Mehmon',
+          enrollmentId: null,
+          socketId: null,
+          joinedAtMs: null,
+          totalSeconds: 0,
+          status: 'absent',
+        };
+        s.participants.set(userId, p);
+      } else {
+        // Sessiya ochilganidan keyin kursning biror guruhiga qo'shilgan bo'lishi mumkin
+        const rows = await this.loadCourseEnrollments(s.courseId!);
+        const enrollment = rows.find(
+          (r) => (r.schoolMember as unknown as { studentId: string }).studentId === userId,
+        );
+        if (!enrollment) throw new Error('NOT_ENROLLED');
+        const member = enrollment.schoolMember as unknown as { studentId: string; student: { displayName: string } };
+        p = {
+          userId,
+          name: member.student.displayName,
+          enrollmentId: enrollment.id,
+          socketId: null,
+          joinedAtMs: null,
+          totalSeconds: 0,
+          status: 'absent',
+        };
+        s.participants.set(userId, p);
+        await db.insert(attendanceRecords)
+          .values({ sessionId: s.id, enrollmentId: enrollment.id })
+          .onConflictDoNothing();
+      }
     }
 
     const now = Date.now();
@@ -230,9 +325,11 @@ export class ClassroomService implements OnModuleInit {
     if (p.joinedAtMs === null) p.joinedAtMs = now;
     if (p.status === 'absent') {
       p.status = attendanceStatusOnJoin(s.startedAtMs, now);
-      await db.update(attendanceRecords)
-        .set({ firstJoinedAt: new Date(now), status: p.status })
-        .where(and(eq(attendanceRecords.sessionId, s.id), eq(attendanceRecords.enrollmentId, p.enrollmentId)));
+      if (!s.isFree) {
+        await db.update(attendanceRecords)
+          .set({ firstJoinedAt: new Date(now), status: p.status })
+          .where(and(eq(attendanceRecords.sessionId, s.id), eq(attendanceRecords.enrollmentId, p.enrollmentId!)));
+      }
     }
     this.broadcastPresence(s);
     return buildSnapshot(s);
@@ -248,6 +345,7 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private persistAttendance(sessionId: string, p: ClassroomParticipant): Promise<unknown> {
+    if (p.enrollmentId === null) return Promise.resolve();
     return db.update(attendanceRecords)
       .set({ totalSeconds: p.totalSeconds, lastLeftAt: new Date() })
       .where(and(eq(attendanceRecords.sessionId, sessionId), eq(attendanceRecords.enrollmentId, p.enrollmentId)));
@@ -270,7 +368,7 @@ export class ClassroomService implements OnModuleInit {
         if (p.socketId === socketId) {
           p.socketId = null;
           closeInterval(p, Date.now());
-          await this.persistAttendance(s.id, p);
+          if (!s.isFree) await this.persistAttendance(s.id, p);
           this.broadcastPresence(s);
           return;
         }
@@ -286,10 +384,44 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'page:set', { page });
   }
 
-  stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke): void {
+  stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    if (!addStroke(s, page, stroke)) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:add', { page, stroke });
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:add', { page, stroke, pane, mode });
+  }
+
+  moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+    const s = this.requireHost(sessionId, userId);
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = updateStrokePosition(s, page, strokeId, x, y, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:update', { page, strokeId, x, y, pane, mode });
+  }
+
+  updateTextStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+    const s = this.requireHost(sessionId, userId);
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = updateTextStrokeInSession(s, page, stroke, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', { page, stroke, pane, mode });
+  }
+
+  updateShapeStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+    const s = this.requireHost(sessionId, userId);
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = updateShapeStrokeInSession(s, page, stroke, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', { page, stroke, pane, mode });
   }
 
   undo(sessionId: string, userId: string, page: number): void {
@@ -330,23 +462,24 @@ export class ClassroomService implements OnModuleInit {
 
   // Ustozning zoom darajasi — kech kirgan o'quvchiga snapshot orqali,
   // hozir ulangan o'quvchilarga esa broadcast orqali yetkaziladi.
-  setZoom(sessionId: string, userId: string, zoom: number): void {
+  setZoom(sessionId: string, userId: string, zoom: number, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
     const clamped = Math.min(4, Math.max(1, zoom));
-    s.zoom = clamped;
-    this.broadcaster.toRoom(s.id, 'zoom:set', { zoom: clamped });
+    if (pane === 'left') s.zoom = clamped;
+    this.broadcaster.toRoom(s.id, 'zoom:set', { zoom: clamped, pane });
   }
 
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
   // ichidagi nisbiy joy (0..1). Session holatiga saqlanadi (kech kirgan
   // o'quvchi snapshot orqali darhol to'g'ri joyni oladi), va hozir
   // ulanganlarga live broadcast qilinadi.
-  scroll(sessionId: string, userId: string, page: number, yRatio: number): void {
+  scroll(sessionId: string, userId: string, page: number, yRatio: number, pane: 'left' | 'right' = 'left', xRatio = 0): void {
     const s = this.requireHost(sessionId, userId);
     if (!isValidPage(s, page)) throw new Error('INVALID_PAGE');
     const cy = Math.min(1, Math.max(0, yRatio));
-    s.scroll = { page, yRatio: cy };
-    this.broadcaster.toRoom(s.id, 'scroll:set', { page, yRatio: cy });
+    const cx = Math.min(1, Math.max(0, Number.isFinite(xRatio) ? xRatio : 0));
+    if (pane === 'left') s.scroll = { page, yRatio: cy, xRatio: cx };
+    this.broadcaster.toRoom(s.id, 'scroll:set', { page, yRatio: cy, xRatio: cx, pane });
   }
 
   // ---------- REST: ro'yxatlar / davomat ----------
@@ -354,10 +487,13 @@ export class ClassroomService implements OnModuleInit {
   async listActiveForUser(userId: string, role: string) {
     const result: Array<{ id: string; courseId: string; courseName: string; startedAt: number }> = [];
     for (const s of this.sessions.values()) {
+      // Erkin darslar bu ro'yxatda ko'rinmaydi — ularga faqat to'g'ridan-to'g'ri
+      // havola orqali kirish mumkin, "faol darslarim" ro'yxatiga chiqmaydi.
+      if (s.isFree) continue;
       const isHost = s.hostUserId === userId && (role === 'teacher' || role === 'super');
       const isMember = role === 'student' && s.participants.has(userId);
       if (isHost || isMember) {
-        result.push({ id: s.id, courseId: s.courseId, courseName: s.courseName, startedAt: s.startedAtMs });
+        result.push({ id: s.id, courseId: s.courseId!, courseName: s.courseName!, startedAt: s.startedAtMs });
       }
     }
     return result;

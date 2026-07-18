@@ -150,9 +150,10 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   }, []);
 
   const handleWheel = useCallback((e: React.WheelEvent) => {
-    // Asosiy ish native listenerda bajariladi — bu yerda faqat React'ga
-    // event allaqachon boshqarilganini bildiramiz.
-    e.preventDefault();
+    // Oddiy wheel event tabiiy ravishda panelni scroll qilishi kerak.
+    // Faqat Ctrl/Cmd+wheel browser zoomga aylanib ketmasligi uchun
+    // bloklanadi; custom zoom native listenerda bajariladi.
+    if (e.ctrlKey || e.metaKey) e.preventDefault();
   }, []);
 
   const pinchStartRef = useRef<{ distance: number; zoom: number; cx: number; cy: number } | null>(null);

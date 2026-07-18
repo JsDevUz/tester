@@ -206,6 +206,22 @@ describe('sahifa va chizish', () => {
     expect(events.at(-1)).toMatchObject({ event: 'stroke:add', payload: { page: 1, stroke } });
   });
 
+  it('qisqa text stroke broadcast qilinadi va keyingi snapshotda saqlanadi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    const stroke = {
+      id: 'text-1', tool: 'text' as const, color: '#ef4444', width: 4,
+      points: [0.25, 0.2], text: 'Salom', fontFamily: 'Inter' as const,
+      fontSize: 24, fontWeight: 600 as const, textAlign: 'left' as const,
+      textBoxWidth: 80, textBoxHeight: 40,
+    };
+
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+
+    expect(events.at(-1)).toMatchObject({ event: 'stroke:add', payload: { page: 1, stroke } });
+    const refreshed = service.hostJoin(sessionId, 'teacher-1', 'sock-refreshed');
+    expect(refreshed.strokesByPage[1]).toContainEqual(stroke);
+  });
+
   it('notogri stroke rad etiladi', async () => {
     const { service, sessionId } = await withPdf();
     const bad = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [5, 5] };
@@ -236,7 +252,7 @@ describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
 
     // Kech kirgan o'quvchi snapshot orqali shu pozitsiyani darhol oladi
     const snap = await service.studentJoin(sessionId, 'stu-1', 'sock-1');
-    expect(snap.scroll).toEqual({ page: 2, yRatio: 0.42 });
+    expect(snap.scroll).toEqual({ page: 2, yRatio: 0.42, xRatio: 0 });
   });
 
   it('yRatio 0..1 oralig\'iga clamp qilinadi', async () => {
@@ -318,5 +334,77 @@ describe('voiceToken', () => {
   it('LiveKit sozlanmagan bolsa VOICE_DISABLED xatosi', async () => {
     const { service, sessionId } = await setup();
     await expect(service.voiceToken(sessionId, 'teacher-1', 'Ustoz')).rejects.toThrow('VOICE_DISABLED');
+  });
+});
+
+describe('erkin (guruhsiz) dars', () => {
+  function makeFreeService() {
+    const service = new ClassroomService(
+      { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
+      { get: () => undefined } as any,
+      makeFakeMediaLibrary() as any,
+    );
+    const { b, events } = makeFakeBroadcaster();
+    service.setBroadcaster(b);
+    return { service, events };
+  }
+
+  it('kurs/DB yozuvisiz sessiya yaratadi', () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    expect(id).toBeTruthy();
+    expect(mockedDb.insert).not.toHaveBeenCalled();
+    const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
+    expect(snap.isFree).toBe(true);
+  });
+
+  it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    expect(() => service.setBoardView(id, 'teacher-1', 'split', 'pdf', 'pdf'))
+      .toThrow('DUPLICATE_SPLIT_MODE');
+    expect(() => service.setBoardView(id, 'teacher-1', 'split', 'notebook', 'notebook'))
+      .toThrow('DUPLICATE_SPLIT_MODE');
+  });
+
+  it('anonim mehmon enrollmentsiz, guestName bilan kira oladi va DB ga yozilmaydi', async () => {
+    const { service, events } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    const snap = await service.studentJoin(id, 'guest:abc123', 'sock-1', 'Anvar');
+    expect(snap.participants).toEqual([
+      { userId: 'guest:abc123', name: 'Anvar', online: true, status: expect.any(String) },
+    ]);
+    expect(mockedDb.insert).not.toHaveBeenCalled();
+    expect(mockedDb.update).not.toHaveBeenCalled();
+    expect(events.some((e) => e.event === 'presence:update')).toBe(true);
+  });
+
+  it('login qilgan foydalanuvchi ozining haqiqiy ismi bilan koradi, guestName etiborsiz qoldiriladi', async () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    const snap = await service.studentJoin(id, 'stu-1', 'sock-1', 'Boshqa ism', 'Haqiqiy Ism');
+    expect(snap.participants[0]).toMatchObject({ userId: 'stu-1', name: 'Haqiqiy Ism' });
+  });
+
+  it('uzilganda ham davomat DB ga yozilmaydi', async () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    await service.studentJoin(id, 'guest:abc', 'sock-1', 'Mehmon');
+    await service.handleDisconnect('sock-1');
+    expect(mockedDb.update).not.toHaveBeenCalled();
+  });
+
+  it('endSession chaqirilganda ham classSessions jadvaliga yozilmaydi va xotiradan ochiriladi', async () => {
+    const { service, events } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    await service.endSession(id, 'teacher-1');
+    expect(mockedDb.update).not.toHaveBeenCalled();
+    expect(events.some((e) => e.event === 'session:ended')).toBe(true);
+    expect(() => service.hostJoin(id, 'teacher-1', 'sock-h')).toThrow();
+  });
+
+  it("erkin bolmagan (oddiy) sessiyada guestId bilan kirish NOT_ENROLLED bilan rad etiladi", async () => {
+    const { service, sessionId } = await setup();
+    await expect(service.studentJoin(sessionId, 'guest:xyz', 'sock-1', 'Notanish')).rejects.toThrow('NOT_ENROLLED');
   });
 });

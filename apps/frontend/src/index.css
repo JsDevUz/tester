@@ -1,5 +1,55 @@
 @import "tailwindcss";
 
+/* Classroom shape opacity — Excalidraw kabi ingichka track va ixcham thumb. */
+.classroom-opacity-slider {
+  height: 18px;
+  margin: 0;
+  appearance: none;
+  -webkit-appearance: none;
+  cursor: pointer;
+  background: transparent !important;
+}
+
+.classroom-opacity-slider::-webkit-slider-runnable-track {
+  height: 3px;
+  border-radius: 999px;
+  background: #d9d9ee;
+}
+
+.classroom-opacity-slider::-webkit-slider-thumb {
+  width: 16px;
+  height: 16px;
+  margin-top: -6.5px;
+  border: 0;
+  border-radius: 999px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: #4f46e5;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.9);
+}
+
+.classroom-opacity-slider::-moz-range-track {
+  height: 3px;
+  border: 0;
+  border-radius: 999px;
+  background: #d9d9ee;
+}
+
+.classroom-opacity-slider::-moz-range-progress {
+  height: 3px;
+  border-radius: 999px;
+  background: #a5a6f6;
+}
+
+.classroom-opacity-slider::-moz-range-thumb {
+  width: 16px;
+  height: 16px;
+  border: 0;
+  border-radius: 999px;
+  background: #4f46e5;
+  box-shadow: 0 0 0 1px rgb(255 255 255 / 0.9);
+}
+
 @theme {
   --color-border: #d7d8d9;
 }
@@ -551,6 +601,10 @@ select::-ms-expand {
     background-color: #171a20;
   }
 
+  :root:not([data-theme="light"]) textarea.classroom-text-editor {
+    background-color: transparent !important;
+  }
+
   :root:not([data-theme="light"]) input::placeholder,
   :root:not([data-theme="light"]) textarea::placeholder {
     color: #717786;
@@ -709,6 +763,10 @@ select::-ms-expand {
 :root[data-theme="dark"] select {
   color: #e8eaed;
   background-color: #171a20;
+}
+
+:root[data-theme="dark"] textarea.classroom-text-editor {
+  background-color: transparent !important;
 }
 
 :root[data-theme="dark"] input::placeholder,
