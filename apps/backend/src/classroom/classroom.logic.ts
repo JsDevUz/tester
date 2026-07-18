@@ -11,7 +11,7 @@ export const MAX_STROKE_POINTS = 2000;
 export const MAX_PDF_PAGES = 300;
 export const PDF_RENDER_WIDTH = 1600;
 
-function isValidPage(session: ClassroomSession, page: number): boolean {
+export function isValidPage(session: ClassroomSession, page: number): boolean {
   return Number.isInteger(page) && page >= 1 && page <= session.pdfPages.length;
 }
 
@@ -100,5 +100,6 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     startedAt: session.startedAtMs,
     hostOnline: session.hostSocketId !== null,
     zoom: session.zoom,
+    scroll: session.scroll,
   };
 }

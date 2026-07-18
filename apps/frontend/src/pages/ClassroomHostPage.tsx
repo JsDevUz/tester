@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { PhoneOff, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -11,7 +11,7 @@ import {
 } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
-import { MicControl } from "../components/classroom/MicControl";
+import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
 import {
@@ -110,8 +110,8 @@ export function ClassroomHostPage() {
           hostZoom={state.zoom}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
           hostScroll={state.scroll}
-          onScrollChange={(xRatio, yRatio) =>
-            hostActions.setScroll(xRatio, yRatio)
+          onScrollChange={(page, yRatio) =>
+            hostActions.setScroll(page, yRatio)
           }
           tool={tool}
           color={color}
@@ -152,24 +152,16 @@ export function ClassroomHostPage() {
           }
         />
 
-        <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2">
-          <MicControl
-            micEnabled={voice.micEnabled}
-            onToggleMic={() => void voice.toggleMic()}
-            audioInputs={voice.audioInputs}
-            activeAudioInputId={voice.activeAudioInputId}
-            onSwitchAudioInput={(id) => void voice.switchAudioInput(id)}
-            disabled={!voice.voiceAvailable}
-          />
-          <button
-            type="button"
-            onClick={() => setConfirmEnd(true)}
-            className="p-3 rounded-full bg-red-500 text-white shadow-md hover:bg-red-600"
-            title="Darsni yakunlash"
-          >
-            <PhoneOff size={18} />
-          </button>
-        </div>
+        <ClassroomCallBar
+          micEnabled={voice.micEnabled}
+          onToggleMic={() => void voice.toggleMic()}
+          audioInputs={voice.audioInputs}
+          activeAudioInputId={voice.activeAudioInputId}
+          onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+          micDisabled={!voice.voiceAvailable}
+          onEndCall={() => setConfirmEnd(true)}
+          endCallTitle="Darsni yakunlash"
+        />
       </div>
 
       {pdfLibraryOpen && (

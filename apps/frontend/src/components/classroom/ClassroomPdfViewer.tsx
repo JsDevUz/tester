@@ -1,18 +1,13 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Minus, Move, Plus, RotateCcw as ResetZoom } from "lucide-react";
-import type { CsPointer, CsStroke, CsTool } from "../../api/classroom";
+import type { CsPointer, CsScrollPosition, CsStroke, CsTool } from "../../api/classroom";
 import { useAutoHideOverlay } from "../../hooks/useAutoHideOverlay";
+import { useClassroomScrollSync } from "../../hooks/useClassroomScrollSync";
+import { useClassroomZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from "../../hooks/useClassroomZoom";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
 const MAX_DPR = 2;
-const MIN_ZOOM = 1;
-const MAX_ZOOM = 4;
-const ZOOM_STEP = 0.25;
-
-function clampZoom(z: number): number {
-  return Math.min(MAX_ZOOM, Math.max(MIN_ZOOM, z));
-}
 
 export type DrawTool = CsTool | "laser" | "arrow" | "eraser-pixel" | "eraser-stroke";
 
@@ -31,11 +26,11 @@ interface Props {
   // boshqariladi (onZoomChange orqali serverga yuboriladi).
   hostZoom: number;
   onZoomChange?: (zoom: number) => void;
-  // Ustozning aniq scroll pozitsiyasi — content balandligi/kengligiga
-  // nisbatan foiz (0..1), device/ekran o'lchamidan qat'i nazar bir xil
-  // nisbiy joyni bildiradi. O'quvchi shu foizga scroll qiladi.
-  hostScroll: { xRatio: number; yRatio: number } | null;
-  onScrollChange?: (xRatio: number, yRatio: number) => void;
+  // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
+  // balandligi ichidagi nisbiy joy. Device/ekran o'lchamidan qat'i nazar
+  // bir xil joyni bildiradi (umumiy scrollHeight'ga bog'liq emas).
+  hostScroll: CsScrollPosition | null;
+  onScrollChange?: (page: number, yRatio: number) => void;
   tool: DrawTool;
   color: string;
   strokeWidth: number;
@@ -498,296 +493,41 @@ export function ClassroomPdfViewer({
   const overlayVisible = isHost || autoHideVisible;
   const scrollRef = useRef<HTMLDivElement>(null);
   const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
-  // Ustoz uchun: local zoom, o'zgarganda serverga yuboriladi (onZoomChange).
-  // O'quvchi uchun: sinxron rejimda hostZoom'ga ko'r-ko'rona ergashadi,
-  // erkin rejimda esa o'zining local zoom'i ishlaydi.
-  const [localZoom, setLocalZoom] = useState(hostZoom);
   // O'quvchi uchun: yoqilgan = sinxron (ustoz bilan birga, hech narsa
   // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
   // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
   const [synced, setSynced] = useState(true);
-  const suppressScrollDetectRef = useRef(false);
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
 
-  const zoom = isHost ? localZoom : (synced ? hostZoom : localZoom);
+  const { suppressScrollDetectRef, scrollToPage, scrollToPagePosition, handleScroll } = useClassroomScrollSync({
+    isHost, synced, currentPage, hostScroll, scrollRef, pageElsRef, onPageChange, onScrollChange,
+  });
 
-  // Ustoz zoom'i o'zgarganda: sinxron o'quvchida darhol qo'llanadi.
-  // Ustozning o'zida esa bu prop faqat boshlang'ich qiymat (keyin local).
-  // Scroll konteynerining markazini anchor sifatida olamiz — chunki
-  // o'quvchining sichqonchasi ustozning zoom nuqtasida emas.
-  useEffect(() => {
-    if (isHost) return;
-    const scrollEl = scrollRef.current;
-    setLocalZoom((prevZoom) => {
-      if (scrollEl && hostZoom !== prevZoom) {
-        const rect = scrollEl.getBoundingClientRect();
-        const localX = rect.width / 2;
-        const localY = rect.height / 2;
-        const contentX = scrollEl.scrollLeft + localX;
-        const contentY = scrollEl.scrollTop + localY;
-        const ratio = hostZoom / prevZoom;
-        const newScrollLeft = contentX * ratio - localX;
-        const newScrollTop = contentY * ratio - localY;
-        requestAnimationFrame(() => {
-          suppressScrollDetectRef.current = true;
-          scrollEl.scrollLeft = newScrollLeft;
-          scrollEl.scrollTop = newScrollTop;
-          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
-        });
-      }
-      return hostZoom;
-    });
-  }, [isHost, hostZoom]);
-
-  // Sinxron rejimga qaytilganda zoom ham ustoznikiga tenglashadi.
-  useEffect(() => {
-    if (!isHost && synced) setLocalZoom(hostZoom);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [synced]);
+  const { zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, handleWheel } = useClassroomZoom({
+    isHost, synced, hostZoom, onZoomChange, scrollRef, suppressScrollDetectRef,
+  });
 
   const registerEl = useCallback((page: number, el: HTMLDivElement | null) => {
     if (el) pageElsRef.current.set(page, el);
     else pageElsRef.current.delete(page);
   }, []);
 
-  const scrollToPage = useCallback((page: number, smooth: boolean) => {
-    // requestAnimationFrame: sahifa lazy-render bo'lgan bo'lsa (visible
-    // endigina true bo'lgan), DOM layout hali hisoblanmagan bo'lishi
-    // mumkin — bir frame kutib, keyin haqiqiy offsetTop'ni o'qiymiz.
-    requestAnimationFrame(() => {
-      const el = pageElsRef.current.get(page);
-      const scrollEl = scrollRef.current;
-      if (!el || !scrollEl) return;
-      suppressScrollDetectRef.current = true;
-      // offsetTop eng yaqin position:relative ota-elementga nisbatan
-      // hisoblanadi, bu scroll konteynerning o'zi bo'lmasligi mumkin
-      // (oralarida zoom-wide-div bor) — shuning uchun getBoundingClientRect
-      // farqidan foydalanamiz, bu har doim to'g'ri natija beradi.
-      const elRect = el.getBoundingClientRect();
-      const scrollRect = scrollEl.getBoundingClientRect();
-      const top = scrollEl.scrollTop + (elRect.top - scrollRect.top);
-      scrollEl.scrollTo({ top, behavior: smooth ? "smooth" : "instant" });
-      window.setTimeout(() => { suppressScrollDetectRef.current = false; }, smooth ? 500 : 50);
-    });
-  }, []);
-
-  // Ustozning scroll pozitsiyasini piksel-aniq qayta tiklaydi: xRatio/yRatio
-  // — scrollLeft/scrollTop ning umumiy scrollWidth/scrollHeight'ga nisbati
-  // (0..1). Bu qurilma/ekran o'lchamidan qat'i nazar bir xil nisbiy joyni
-  // bildiradi, shuning uchun student ekrani host bilan piksel darajasida mos keladi.
-  const applyScrollRatio = useCallback((xRatio: number, yRatio: number, smooth: boolean) => {
-    const scrollEl = scrollRef.current;
-    if (!scrollEl) return;
-    suppressScrollDetectRef.current = true;
-    const maxLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
-    const maxTop = scrollEl.scrollHeight - scrollEl.clientHeight;
-    scrollEl.scrollTo({
-      left: Math.max(0, maxLeft) * xRatio,
-      top: Math.max(0, maxTop) * yRatio,
-      behavior: smooth ? "smooth" : "instant",
-    });
-    window.setTimeout(() => { suppressScrollDetectRef.current = false; }, smooth ? 500 : 50);
-  }, []);
-
-  // Ustoz uchun currentPage/hostScroll manba emas, natija: u qo'lda scroll
-  // qiladi, biz shuni kuzatib chiqarib beramiz (pastda handleScroll).
-  // O'quvchi uchun esa bular ustozdan kelgan manba — faqat "synced" yoqiq
-  // bo'lsa avtomatik shu pozitsiyaga scroll qilinadi. "instant" ishlatamiz
-  // (smooth emas): ustoz tez-tez scroll qilsa, ketma-ket smooth-animatsiyalar
-  // bir-birini kesib, oxirgi pozitsiya ustozning haqiqiy joyidan orqada
-  // qolib "sinxron chalkashish"ga olib kelardi.
-  useLayoutEffect(() => {
-    if (isHost || !synced) return;
-    if (hostScroll) applyScrollRatio(hostScroll.xRatio, hostScroll.yRatio, false);
-    else scrollToPage(currentPage, false);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [currentPage, hostScroll, isHost, synced, scrollToPage, applyScrollRatio]);
-
-  // Ustoz qo'lda scroll qilganda: ko'rinadigan oyna markaziga eng yaqin
-  // sahifani "joriy sahifa" deb hisoblaymiz (toolbar uchun) va aniq
-  // scroll foizini (xRatio/yRatio) tashqariga chiqarib beramiz.
-  const scrollDetectRaf = useRef<number | null>(null);
-  const handleScroll = useCallback(() => {
-    if (!isHost) return;
-    if (suppressScrollDetectRef.current) return;
-    if (scrollDetectRaf.current) cancelAnimationFrame(scrollDetectRaf.current);
-    scrollDetectRaf.current = requestAnimationFrame(() => {
-      const scrollEl = scrollRef.current;
-      if (!scrollEl) return;
-      if (onPageChange) {
-        const viewportMid = scrollEl.getBoundingClientRect().top + scrollEl.clientHeight / 2;
-        let closestPage = currentPageRef.current;
-        let closestDist = Infinity;
-        for (const [page, el] of pageElsRef.current) {
-          const rect = el.getBoundingClientRect();
-          const mid = rect.top + rect.height / 2;
-          const dist = Math.abs(mid - viewportMid);
-          if (dist < closestDist) { closestDist = dist; closestPage = page; }
-        }
-        if (closestPage !== currentPageRef.current) onPageChange(closestPage);
-      }
-      if (onScrollChange) {
-        const maxLeft = scrollEl.scrollWidth - scrollEl.clientWidth;
-        const maxTop = scrollEl.scrollHeight - scrollEl.clientHeight;
-        const xRatio = maxLeft > 0 ? scrollEl.scrollLeft / maxLeft : 0;
-        const yRatio = maxTop > 0 ? scrollEl.scrollTop / maxTop : 0;
-        onScrollChange(xRatio, yRatio);
-      }
-    });
-  }, [isHost, onPageChange, onScrollChange]);
-
   const toggleSynced = useCallback(() => {
     setSynced((prev) => {
       const next = !prev;
       if (next) {
         // Sinxron rejimga qaytilganda ustoz zoomiga va pozitsiyasiga tenglashadi
-        setLocalZoom(hostZoom);
-        if (hostScroll) applyScrollRatio(hostScroll.xRatio, hostScroll.yRatio, true);
+        syncZoomToHost();
+        if (hostScroll) scrollToPagePosition(hostScroll.page, hostScroll.yRatio, true);
         else scrollToPage(currentPageRef.current, true);
       } else {
         // Erkin rejimga o'tilganda 100% dan boshlanadi
-        setLocalZoom(1);
+        resetZoomTo1();
       }
       return next;
     });
-  }, [scrollToPage, applyScrollRatio, hostScroll, hostZoom]);
-
-  // Zoom o'zgarganda sichqoncha/pinch markazi ekranda bir joyda qolishi
-  // uchun: eski va yangi zoom nisbatiga qarab scroll pozitsiyasini
-  // qayta hisoblaymiz (anchor — konteyner ichidagi piksel nuqta).
-  const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
-    const clamped = clampZoom(next);
-    const scrollEl = scrollRef.current;
-    setLocalZoom((prevZoom) => {
-      if (scrollEl && clamped !== prevZoom) {
-        const rect = scrollEl.getBoundingClientRect();
-        const localX = anchorClientX - rect.left;
-        const localY = anchorClientY - rect.top;
-        const contentX = scrollEl.scrollLeft + localX;
-        const contentY = scrollEl.scrollTop + localY;
-        const ratio = clamped / prevZoom;
-        const newScrollLeft = contentX * ratio - localX;
-        const newScrollTop = contentY * ratio - localY;
-        requestAnimationFrame(() => {
-          suppressScrollDetectRef.current = true;
-          scrollEl.scrollLeft = newScrollLeft;
-          scrollEl.scrollTop = newScrollTop;
-          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
-        });
-      }
-      return clamped;
-    });
-    if (isHost) onZoomChange?.(clamped);
-  }, [isHost, onZoomChange]);
-
-  // Tugmalar (+/-/reset) uchun: aniq anchor nuqta yo'q, shuning uchun
-  // ko'rinadigan oyna markazini anchor sifatida olamiz.
-  const applyZoom = useCallback((next: number) => {
-    const scrollEl = scrollRef.current;
-    if (scrollEl) {
-      const rect = scrollEl.getBoundingClientRect();
-      applyZoomAnchored(next, rect.left + rect.width / 2, rect.top + rect.height / 2);
-      return;
-    }
-    const clamped = clampZoom(next);
-    setLocalZoom(clamped);
-    if (isHost) onZoomChange?.(clamped);
-  }, [isHost, onZoomChange, applyZoomAnchored]);
-
-  const freeToMove = isHost || !synced;
-
-  // React'ning onWheel'i sintetik va ba'zi brauzerlarda passive bo'lib
-  // qolishi mumkin — bu holda preventDefault() e'tiborsiz qoldiriladi va
-  // trackpad pinch/Ctrl+wheel butun sahifani (body) zoom qilib yuboradi.
-  // Shuning uchun native, passive:false listener bilan qo'shimcha
-  // to'siq qo'yamiz — bu har doim ishonchli ishlaydi.
-  const freeToMoveRef = useRef(freeToMove);
-  freeToMoveRef.current = freeToMove;
-  const zoomRef = useRef(zoom);
-  zoomRef.current = zoom;
-  const applyZoomAnchoredRef = useRef(applyZoomAnchored);
-  applyZoomAnchoredRef.current = applyZoomAnchored;
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const onNativeWheel = (e: WheelEvent) => {
-      if (!e.ctrlKey && !e.metaKey) {
-        if (!freeToMoveRef.current) e.preventDefault();
-        return;
-      }
-      e.preventDefault();
-      if (!freeToMoveRef.current) return;
-      applyZoomAnchoredRef.current(zoomRef.current - e.deltaY * 0.01, e.clientX, e.clientY);
-    };
-    el.addEventListener("wheel", onNativeWheel, { passive: false });
-    return () => el.removeEventListener("wheel", onNativeWheel);
-  }, []);
-
-  // Qo'shimcha himoya: agar trackpad-pinch sichqoncha PDF konteynerdan
-  // chetga (masalan toolbar yoki bo'sh joy ustida) chiqib ketsa ham,
-  // butun sahifa (body) darajasida Ctrl/Cmd+wheel zoom bloklanadi — aks
-  // holda desktop trackpad pinch butun brauzer sahifasini kattalashtirib yuborardi.
-  useEffect(() => {
-    const onDocumentWheel = (e: WheelEvent) => {
-      if (e.ctrlKey || e.metaKey) e.preventDefault();
-    };
-    document.addEventListener("wheel", onDocumentWheel, { passive: false });
-    return () => document.removeEventListener("wheel", onDocumentWheel);
-  }, []);
-
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    // Asosiy ish native listenerda bajariladi — bu yerda faqat React'ga
-    // event allaqachon boshqarilganini bildiramiz.
-    e.preventDefault();
-  }, []);
-
-  const pinchStartRef = useRef<{ distance: number; zoom: number; cx: number; cy: number } | null>(null);
-
-  // React'ning sintetik touch handlerlari ba'zi brauzerlarda passive bo'lib
-  // qolib preventDefault()ni e'tiborsiz qoldirishi mumkin — shu sabab
-  // ikki barmoq bilan pinch qilinganda butun brauzer sahifasi (body) zoom
-  // bo'lib ketardi. Native, passive:false listener bilan bu to'liq bloklanadi.
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-
-    const onNativeTouchStart = (e: TouchEvent) => {
-      if (e.touches.length < 2) return;
-      if (!freeToMoveRef.current) { e.preventDefault(); return; }
-      e.preventDefault();
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const cx = (a.clientX + b.clientX) / 2;
-      const cy = (a.clientY + b.clientY) / 2;
-      pinchStartRef.current = { distance, zoom: zoomRef.current, cx, cy };
-    };
-    const onNativeTouchMove = (e: TouchEvent) => {
-      if (e.touches.length < 2) return;
-      if (!freeToMoveRef.current) { e.preventDefault(); return; }
-      if (!pinchStartRef.current) return;
-      e.preventDefault();
-      const [a, b] = [e.touches[0], e.touches[1]];
-      const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
-      const { distance: startDistance, zoom: startZoom, cx, cy } = pinchStartRef.current;
-      applyZoomAnchoredRef.current(startZoom * (distance / startDistance), cx, cy);
-    };
-    const onNativeTouchEnd = (e: TouchEvent) => {
-      if (e.touches.length < 2) pinchStartRef.current = null;
-    };
-
-    el.addEventListener("touchstart", onNativeTouchStart, { passive: false });
-    el.addEventListener("touchmove", onNativeTouchMove, { passive: false });
-    el.addEventListener("touchend", onNativeTouchEnd, { passive: false });
-    el.addEventListener("touchcancel", onNativeTouchEnd, { passive: false });
-    return () => {
-      el.removeEventListener("touchstart", onNativeTouchStart);
-      el.removeEventListener("touchmove", onNativeTouchMove);
-      el.removeEventListener("touchend", onNativeTouchEnd);
-      el.removeEventListener("touchcancel", onNativeTouchEnd);
-    };
-  }, []);
+  }, [scrollToPage, scrollToPagePosition, hostScroll, syncZoomToHost, resetZoomTo1]);
 
   const toolbarRow = (toolbar || toolbarActions) && (
     <div
@@ -815,14 +555,16 @@ export function ClassroomPdfViewer({
         ref={scrollRef}
         className="w-full h-full overflow-auto overscroll-contain"
         style={{
-          // "pinch-zoom" shart — global `html { touch-action: pan-x pan-y }`
-          // qoidasi pinch-gesture'ni butunlay o'chirib qo'ygan (shu sabab
-          // brauzer buni "cancelable" emas deb hisoblab, bizning JS
-          // preventDefault()'imiz ishlamay, body-scale zoom bo'lib ketardi).
-          // Bu yerda uni qayta yoqamiz — brauzerga faqat RUXSAT beradi,
-          // haqiqiy ishni baribir bizning JS handler preventDefault()
-          // orqali to'xtatib, custom zoom'ni qo'llaydi.
-          touchAction: freeToMove ? "pan-x pan-y pinch-zoom" : "none",
+          // MUHIM: "pinch-zoom" QO'SHILMAYDI. Bu qiymat aynan brauzerga
+          // ikki-barmoq gesture'ni NATIVE document-zoom sifatida bajarishga
+          // ruxsat beradi — shu sabab avval mobil'da pinch qilinganda butun
+          // sahifa (html/body) kattalashib ketardi. "pan-x pan-y" (pinch-zoom
+          // so'zisiz) qoldirilsa, brauzer ikki-barmoqni "zoom" deb umuman
+          // belgilamaydi va bizning onNativeTouchStart/Move handler (pastda)
+          // preventDefault() orqali to'liq nazorat qiladi — natijada faqat
+          // PDF ichida custom zoom ishlaydi, browser darajasida hech narsa
+          // kattalashmaydi.
+          touchAction: freeToMove ? "pan-x pan-y" : "none",
           overflow: freeToMove ? "auto" : "hidden",
         }}
         onWheel={handleWheel}

@@ -169,6 +169,16 @@ export interface CsParticipant {
   status: 'absent' | 'present' | 'late';
 }
 
+// Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
+// balandligi ichidagi nisbiy joy (0..1). Umumiy scrollHeight ratio o'rniga
+// ishlatiladi, chunki lazy-loading tufayli ustoz/o'quvchida render qilingan
+// sahifalar soni farq qilsa ham, bitta sahifa fixed o'lchamda bo'lgani
+// uchun natija hech qachon siljimaydi.
+export interface CsScrollPosition {
+  page: number;
+  yRatio: number;
+}
+
 export interface CsSnapshot {
   sessionId: string;
   pdfName: string | null;
@@ -179,6 +189,7 @@ export interface CsSnapshot {
   startedAt: number;
   hostOnline: boolean;
   zoom: number;
+  scroll: CsScrollPosition | null;
 }
 
 export interface CsPresenceUpdate {

@@ -19,6 +19,8 @@ function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSessio
     participants: new Map(),
     startedAtMs: 1_000_000,
     hostDisconnectTimer: null,
+    zoom: 1,
+    scroll: null,
     ...overrides,
   };
 }

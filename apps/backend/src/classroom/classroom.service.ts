@@ -11,8 +11,8 @@ import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
-  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, setPage as setSessionPage,
-  splitStroke as splitStrokeInSession, undoStroke,
+  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
+  setPage as setSessionPage, splitStroke as splitStrokeInSession, undoStroke,
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBroadcaster, ClassroomParticipant, ClassroomSession,
@@ -115,6 +115,7 @@ export class ClassroomService implements OnModuleInit {
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
       zoom: 1,
+      scroll: null,
     });
 
     return { id: row.id };
@@ -160,6 +161,7 @@ export class ClassroomService implements OnModuleInit {
     s.pdfPages = pages;
     s.currentPage = 1;
     s.strokesByPage = new Map();
+    s.scroll = null;
   }
 
   // Testlar uchun to'g'ridan-to'g'ri holat o'rnatish (S3/konvertatsiyasiz)
@@ -335,13 +337,16 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(s.id, 'zoom:set', { zoom: clamped });
   }
 
-  // Ustozning scroll pozitsiyasi (nisbiy, 0..1) — juda tez-tez o'zgaradi,
-  // shuning uchun session holatiga saqlanmaydi, faqat live broadcast qilinadi.
-  scroll(sessionId: string, userId: string, xRatio: number, yRatio: number): void {
+  // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
+  // ichidagi nisbiy joy (0..1). Session holatiga saqlanadi (kech kirgan
+  // o'quvchi snapshot orqali darhol to'g'ri joyni oladi), va hozir
+  // ulanganlarga live broadcast qilinadi.
+  scroll(sessionId: string, userId: string, page: number, yRatio: number): void {
     const s = this.requireHost(sessionId, userId);
-    const cx = Math.min(1, Math.max(0, xRatio));
+    if (!isValidPage(s, page)) throw new Error('INVALID_PAGE');
     const cy = Math.min(1, Math.max(0, yRatio));
-    this.broadcaster.toRoom(s.id, 'scroll:set', { xRatio: cx, yRatio: cy });
+    s.scroll = { page, yRatio: cy };
+    this.broadcaster.toRoom(s.id, 'scroll:set', { page, yRatio: cy });
   }
 
   // ---------- REST: ro'yxatlar / davomat ----------

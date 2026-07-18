@@ -136,10 +136,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:scroll')
-  scroll(@MessageBody() body: BaseBody & { xRatio: number; yRatio: number }) {
+  scroll(@MessageBody() body: BaseBody & { page: number; yRatio: number }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.scroll(body.sessionId, user.sub, body.xRatio, body.yRatio);
+      this.classroomService.scroll(body.sessionId, user.sub, body.page, body.yRatio);
     });
   }
 

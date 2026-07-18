@@ -222,6 +222,55 @@ describe('sahifa va chizish', () => {
   });
 });
 
+describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
+  async function withPdf() {
+    const ctx = await setup();
+    ctx.service.setPdfForTests(ctx.sessionId, 'dars.pdf', ['u1', 'u2', 'u3']);
+    return ctx;
+  }
+
+  it('host scroll qilsa scroll:set broadcast va session holatiga saqlanadi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.scroll(sessionId, 'teacher-1', 2, 0.42);
+    expect(events.at(-1)).toMatchObject({ event: 'scroll:set', payload: { page: 2, yRatio: 0.42 } });
+
+    // Kech kirgan o'quvchi snapshot orqali shu pozitsiyani darhol oladi
+    const snap = await service.studentJoin(sessionId, 'stu-1', 'sock-1');
+    expect(snap.scroll).toEqual({ page: 2, yRatio: 0.42 });
+  });
+
+  it('yRatio 0..1 oralig\'iga clamp qilinadi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.scroll(sessionId, 'teacher-1', 1, 1.5);
+    expect(events.at(-1)).toMatchObject({ payload: { page: 1, yRatio: 1 } });
+    service.scroll(sessionId, 'teacher-1', 1, -0.5);
+    expect(events.at(-1)).toMatchObject({ payload: { page: 1, yRatio: 0 } });
+  });
+
+  it("mavjud bo'lmagan sahifaga scroll rad etiladi", async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.scroll(sessionId, 'teacher-1', 99, 0.5)).toThrow('INVALID_PAGE');
+  });
+
+  it('host bolmagan foydalanuvchi scroll yubora olmaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.scroll(sessionId, 'stu-1', 1, 0.5)).toThrow();
+  });
+
+  it('yangi PDF biriktirilganda eski scroll pozitsiyasi tozalanadi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1', 'p2'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['u1', 'u2']);
+    service.scroll(sessionId, 'teacher-1', 1, 0.7);
+
+    mockedDb.query.mediaAssets.findFirst.mockResolvedValue({ id: 'asset-1', originalName: 'dars2.pdf' });
+    await service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [1]);
+
+    const snap = service.hostJoin(sessionId, 'teacher-1', 'sock-h');
+    expect(snap.scroll).toBeNull();
+  });
+});
+
 describe('disconnect va yakunlash', () => {
   it('oquvchi uzilsa presence:update va interval yopiladi', async () => {
     const { service, events, sessionId } = await setup();

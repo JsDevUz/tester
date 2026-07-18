@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
-import type { CsParticipant, CsPointer, CsSnapshot, CsStroke } from "../api/classroom";
+import type { CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 
 export interface ClassroomState {
   joined: boolean;
@@ -15,9 +15,10 @@ export interface ClassroomState {
   pointer: CsPointer | null;
   // Ustozning zoom darajasi — o'quvchi sinxron rejimda bo'lsa shunga qarab kattalashtiradi.
   zoom: number;
-  // Ustozning nisbiy scroll pozitsiyasi (0..1, device/ekrandan mustaqil) —
-  // o'quvchi sinxron rejimda shu joyga piksel-aniq scroll qiladi.
-  scroll: { xRatio: number; yRatio: number } | null;
+  // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
+  // balandligi ichidagi nisbiy joy. O'quvchi sinxron rejimda shu sahifaning
+  // aynan shu foiziga scroll qiladi (device/ekrandan mustaqil, piksel-aniq).
+  scroll: CsScrollPosition | null;
 }
 
 const INITIAL: ClassroomState = {
@@ -26,10 +27,17 @@ const INITIAL: ClassroomState = {
   strokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
 };
 
+// Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
+// sekundiga 60-120 marta otishi mumkin, lekin ko'z 30ms'dan tezroq farqni
+// sezmaydi. Throttle bo'lmasa server/tarmoq yuki keraksiz ravishda ortadi.
+const POINTER_THROTTLE_MS = 30;
+
 export function useClassroomSession(sessionId: string | undefined, role: "host" | "student") {
   const [state, setState] = useState<ClassroomState>(INITIAL);
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
+  const lastPointerSentRef = useRef(0);
+  const pointerThrottleTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -51,7 +59,7 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
             pdfName: snap.pdfName, pages: snap.pages, currentPage: snap.currentPage,
             strokesByPage: snap.strokesByPage ?? {},
             participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
-            zoom: snap.zoom ?? 1, scroll: null,
+            zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null,
           });
         },
       );
@@ -107,7 +115,7 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
     });
     socket.on("zoom:set", (p: { zoom: number }) => setState((s) => ({ ...s, zoom: p.zoom })));
-    socket.on("scroll:set", (p: { xRatio: number; yRatio: number }) => setState((s) => ({ ...s, scroll: p })));
+    socket.on("scroll:set", (p: CsScrollPosition) => setState((s) => ({ ...s, scroll: p })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -127,6 +135,7 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
+      if (pointerThrottleTimerRef.current) window.clearTimeout(pointerThrottleTimerRef.current);
       closeClassroomSocket();
     };
   }, [sessionId, role]);
@@ -174,9 +183,34 @@ export function useClassroomSession(sessionId: string | undefined, role: "host" 
       emitHost("host:splitStroke", { page, strokeId, replacements });
     },
     clearPage: (page: number) => emitHost("host:clearPage", { page }),
-    pointer: (page: number, x: number, y: number, active: boolean) => emitHost("host:pointer", { page, x, y, active }),
+    // ~30ms throttle: pointermove juda tez-tez otiladi, lekin ko'zga bu
+    // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
+    // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida
+    // "yopishib" qolib, hech qachon yashirinmasligi mumkin edi.
+    pointer: (page: number, x: number, y: number, active: boolean) => {
+      if (pointerThrottleTimerRef.current) {
+        window.clearTimeout(pointerThrottleTimerRef.current);
+        pointerThrottleTimerRef.current = null;
+      }
+      if (!active) {
+        lastPointerSentRef.current = Date.now();
+        emitHost("host:pointer", { page, x, y, active });
+        return;
+      }
+      const now = Date.now();
+      const elapsed = now - lastPointerSentRef.current;
+      if (elapsed >= POINTER_THROTTLE_MS) {
+        lastPointerSentRef.current = now;
+        emitHost("host:pointer", { page, x, y, active });
+      } else {
+        pointerThrottleTimerRef.current = window.setTimeout(() => {
+          lastPointerSentRef.current = Date.now();
+          emitHost("host:pointer", { page, x, y, active });
+        }, POINTER_THROTTLE_MS - elapsed);
+      }
+    },
     setZoom: (zoom: number) => emitHost("host:setZoom", { zoom }),
-    setScroll: (xRatio: number, yRatio: number) => emitHost("host:scroll", { xRatio, yRatio }),
+    setScroll: (page: number, yRatio: number) => emitHost("host:scroll", { page, yRatio }),
     endLesson: () => emitHost("host:end"),
   };
 
