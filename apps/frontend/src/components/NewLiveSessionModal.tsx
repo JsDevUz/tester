@@ -1,11 +1,12 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Search, Radio, ChevronRight, X } from "lucide-react";
+import { Search, Radio, ChevronRight, X, Info } from "lucide-react";
 import {
   apiLiveTests,
   apiCreateLiveSession,
   type LiveTestItem,
 } from "../api/live";
+import { LiveSessionInfoModal } from "./LiveSessionInfoModal";
 
 const TIMES = [10, 20, 30, 60];
 
@@ -26,6 +27,7 @@ export function NewLiveSessionModal({
   const [mode, setMode] = useState<"individual" | "team">("individual");
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [infoOpen, setInfoOpen] = useState(false);
 
   useEffect(() => {
     apiLiveTests().then(setTests);
@@ -70,13 +72,25 @@ export function NewLiveSessionModal({
               Jonli musobaqa yaratish
             </h2>
           </div>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
-          >
-            <X size={18} />
-          </button>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setInfoOpen(true)}
+              title="Jonli musobaqa qanday tashkillashtiriladi?"
+              className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
+            >
+              <Info size={18} />
+            </button>
+            <button
+              onClick={onClose}
+              className="p-1.5 rounded-xl text-gray-400 hover:bg-gray-100 transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
         </div>
+
+        {infoOpen && <LiveSessionInfoModal onClose={() => setInfoOpen(false)} />}
 
         <div className="px-6 pb-6">
           {/* Test tanlash */}

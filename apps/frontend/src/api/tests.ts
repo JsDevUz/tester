@@ -68,9 +68,9 @@ export interface AllTestsItem {
 
 export async function apiListAllTests(): Promise<AllTestsItem[]> {
   const res = await client.get('/live/tests');
-  return res.data.map((t: { id: string; name: string; liveQuestionCount: number }) => ({
+  return res.data.map((t: { id: string; name: string; questionCount?: number; liveQuestionCount: number }) => ({
     id: t.id,
     name: t.name,
-    questionCount: t.liveQuestionCount,
+    questionCount: t.questionCount ?? t.liveQuestionCount,
   }));
 }

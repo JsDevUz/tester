@@ -18,6 +18,8 @@ import {
   type WsTeamUpdate,
   type WsSuggestionUpdate,
 } from "../api/live";
+import { useLiveVoice } from "../hooks/useLiveVoice";
+import { MicControl } from "../components/classroom/MicControl";
 
 const BACKEND =
   import.meta.env.VITE_API_URL?.replace("/api/v1", "") ??
@@ -357,6 +359,10 @@ export function LivePlayPage() {
   const token = localStorage.getItem("token") ?? "";
 
   const [phase, setPhase] = useState<Phase>("connecting");
+  const voice = useLiveVoice(
+    phase !== "connecting" && phase !== "error" ? pin : undefined,
+    false,
+  );
   const [errorCode, setErrorCode] = useState("");
   const [players, setPlayers] = useState<Array<{ name: string }>>([]);
   const [question, setQuestion] = useState<WsQuestion | null>(null);
@@ -637,6 +643,29 @@ export function LivePlayPage() {
       }}
     >
       <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-500 to-gray-300" />
+
+      {voice.voiceAvailable && phase !== "connecting" && phase !== "error" && (
+        <div className="fixed left-1/2 z-50 -translate-x-1/2" style={{ bottom: "max(76px, calc(env(safe-area-inset-bottom) + 70px))" }}>
+          <MicControl
+            micEnabled={voice.micEnabled}
+            onToggleMic={() => void voice.toggleMic()}
+            audioInputs={voice.audioInputs}
+            activeAudioInputId={voice.activeAudioInputId}
+            onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+            disabled={!voice.connected}
+          />
+        </div>
+      )}
+
+      {voice.needsAudioUnlock && (
+        <button
+          type="button"
+          onClick={voice.unlockAudio}
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md font-medium hover:bg-indigo-700"
+        >
+          Ovozni yoqish uchun bosing
+        </button>
+      )}
 
       {phase === "connecting" && (
         <div className="flex-1 flex items-center justify-center">

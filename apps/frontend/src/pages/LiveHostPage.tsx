@@ -31,6 +31,8 @@ import {
   type WsTeamMember,
   type WsTeamUpdate,
 } from "../api/live";
+import { useLiveVoice } from "../hooks/useLiveVoice";
+import { MicControl } from "../components/classroom/MicControl";
 
 const UNASSIGNED_DROP_ID = "__unassigned__";
 
@@ -126,6 +128,10 @@ export function LiveHostPage() {
   );
 
   const [phase, setPhase] = useState<Phase>("connecting");
+  const voice = useLiveVoice(
+    phase !== "connecting" && phase !== "error" ? pin : undefined,
+    false,
+  );
   const [players, setPlayers] = useState<Array<{ name: string }>>([]);
   const [testName, setTestName] = useState("");
   const [question, setQuestion] = useState<WsQuestion | null>(null);
@@ -301,6 +307,29 @@ export function LiveHostPage() {
       }}
     >
       <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-600 to-gray-400" />
+
+      {voice.voiceAvailable && phase !== "connecting" && phase !== "error" && (
+        <div className="fixed bottom-3 left-1/2 -translate-x-1/2 z-20">
+          <MicControl
+            micEnabled={voice.micEnabled}
+            onToggleMic={() => void voice.toggleMic()}
+            audioInputs={voice.audioInputs}
+            activeAudioInputId={voice.activeAudioInputId}
+            onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+            disabled={!voice.connected}
+          />
+        </div>
+      )}
+
+      {voice.needsAudioUnlock && (
+        <button
+          type="button"
+          onClick={voice.unlockAudio}
+          className="fixed top-3 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md font-medium hover:bg-indigo-700"
+        >
+          Ovozni yoqish uchun bosing
+        </button>
+      )}
 
       {phase === "connecting" && (
         <div className="flex-1 flex items-center justify-center">

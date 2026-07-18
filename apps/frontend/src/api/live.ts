@@ -20,6 +20,7 @@ export function closeLiveSocket() {
 export interface LiveTestItem {
   id: string;
   name: string;
+  questionCount: number;
   liveQuestionCount: number;
 }
 
@@ -51,6 +52,15 @@ export interface LiveSessionHistoryItem {
 export async function apiListLiveSessions(limit: number, offset: number): Promise<LiveSessionHistoryItem[]> {
   const res = await client.get('/live/sessions', { params: { limit, offset } });
   return res.data;
+}
+
+export async function apiLiveVoiceToken(pin: string): Promise<{ token: string; url: string }> {
+  const res = await client.post(`/live/sessions/${pin}/voice-token`);
+  return res.data;
+}
+
+export async function apiMuteLiveParticipant(pin: string, userId: string): Promise<void> {
+  await client.post(`/live/sessions/${pin}/participants/${userId}/mute`);
 }
 
 // WS payload tiplari

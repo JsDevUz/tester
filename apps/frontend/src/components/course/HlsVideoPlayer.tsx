@@ -52,13 +52,22 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     const syncFullscreen = () => {
       const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
       const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
-      setIsFullscreen(fullscreenElement === wrapperRef.current);
+      const video = videoRef.current as (HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }) | null;
+      setIsFullscreen(fullscreenElement === wrapperRef.current || Boolean(video?.webkitDisplayingFullscreen));
     };
+
+    const video = videoRef.current as (HTMLVideoElement & {
+      addEventListener: HTMLVideoElement['addEventListener'];
+    }) | null;
+    video?.addEventListener('webkitbeginfullscreen', syncFullscreen);
+    video?.addEventListener('webkitendfullscreen', syncFullscreen);
 
     document.addEventListener('fullscreenchange', syncFullscreen);
     document.addEventListener('webkitfullscreenchange', syncFullscreen);
 
     return () => {
+      video?.removeEventListener('webkitbeginfullscreen', syncFullscreen);
+      video?.removeEventListener('webkitendfullscreen', syncFullscreen);
       document.removeEventListener('fullscreenchange', syncFullscreen);
       document.removeEventListener('webkitfullscreenchange', syncFullscreen);
     };
@@ -225,15 +234,25 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
   const toggleFullscreen = async () => {
     const wrapper = wrapperRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> | void }) | null;
-    const fullscreenDocument = document as Document & { webkitExitFullscreen?: () => Promise<void> | void };
+    const video = videoRef.current as (HTMLVideoElement & {
+      webkitEnterFullscreen?: () => void;
+      webkitExitFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
+    }) | null;
+    const fullscreenDocument = document as Document & { webkitExitFullscreen?: () => Promise<void> | void; webkitFullscreenElement?: Element | null };
 
     try {
-      if (document.fullscreenElement) {
+      if (document.fullscreenElement || fullscreenDocument.webkitFullscreenElement === wrapper) {
         await document.exitFullscreen();
         return;
       }
 
-      if (fullscreenDocument.webkitExitFullscreen && fullscreenDocument.fullscreenElement) {
+      if (video?.webkitDisplayingFullscreen) {
+        video.webkitExitFullscreen?.();
+        return;
+      }
+
+      if (fullscreenDocument.webkitExitFullscreen && fullscreenDocument.webkitFullscreenElement) {
         await fullscreenDocument.webkitExitFullscreen();
         return;
       }
@@ -243,7 +262,14 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
-      await wrapper?.webkitRequestFullscreen?.();
+      if (wrapper?.webkitRequestFullscreen) {
+        await wrapper.webkitRequestFullscreen();
+        return;
+      }
+
+      // iOS Safari does not implement Element.requestFullscreen for normal
+      // elements; its supported path is the native video fullscreen API.
+      video?.webkitEnterFullscreen?.();
     } catch {
       setError('Fullscreen ochilmadi');
     }

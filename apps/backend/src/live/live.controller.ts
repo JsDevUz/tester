@@ -1,4 +1,4 @@
-import { Controller, Post, Get, Body, Query, Req, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Query, Req, UseGuards, BadRequestException, NotFoundException } from '@nestjs/common';
 import { IsString, IsInt, IsIn, IsOptional } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -39,5 +39,18 @@ export class LiveController {
       if (e?.message === 'INVALID_TIME') throw new BadRequestException('INVALID_TIME');
       throw e;
     }
+  }
+
+  @Post('sessions/:pin/voice-token')
+  @Roles('teacher', 'super', 'student', 'curator')
+  voiceToken(@Param('pin') pin: string, @Req() req: any) {
+    return this.liveService.voiceToken(pin, req.admin.id, req.admin.name ?? '');
+  }
+
+  @Post('sessions/:pin/participants/:userId/mute')
+  @Roles('teacher', 'super')
+  async mute(@Param('pin') pin: string, @Param('userId') userId: string, @Req() req: any) {
+    await this.liveService.muteParticipant(pin, req.admin.id, userId);
+    return { ok: true };
   }
 }

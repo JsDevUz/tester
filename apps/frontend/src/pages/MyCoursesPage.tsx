@@ -1001,8 +1001,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
     return (
       <a
         href={block.previewUrl}
-        target="_blank"
-        rel="noreferrer"
+        download={block.fileName ?? block.label ?? "fayl"}
         className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
       >
         <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">

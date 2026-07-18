@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import { AlignCenter, AlignLeft, AlignRight, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsPointer, CsScrollPosition,
-  CsSloppiness, CsStroke, CsStrokeStyle, CsTool,
+  CsStroke, CsStrokeStyle, CsTool,
 } from "../../api/classroom";
 import { useAutoHideOverlay } from "../../hooks/useAutoHideOverlay";
 import { useClassroomScrollSync } from "../../hooks/useClassroomScrollSync";
@@ -10,6 +10,10 @@ import { useClassroomZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from "../../hooks/use
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
+// PDF 100% holatda daftar bilan bir xilroq masofada ko'rinishi uchun
+// viewport kengligining biroz kichikroq qismi ishlatiladi. Toolbar'dagi
+// ko'rsatiladigan zoom foizi esa foydalanuvchi uchun baribir 100% bo'lib qoladi.
+const PDF_BASE_SCALE = 0.78;
 const MAX_DPR = 2;
 
 // To'rtburchak/doira asboblari uchun joriy uslub — Excalidraw'dagi
@@ -19,13 +23,12 @@ export interface ShapeStyle {
   backgroundColor: string;
   fillStyle: CsFillStyle;
   strokeStyle: CsStrokeStyle;
-  sloppiness: CsSloppiness;
   edges: CsEdges;
   opacity: number;
 }
 
 export const DEFAULT_SHAPE_STYLE: ShapeStyle = {
-  backgroundColor: "transparent", fillStyle: "hachure", strokeStyle: "solid", sloppiness: 0, edges: "sharp", opacity: 100,
+  backgroundColor: "transparent", fillStyle: "hachure", strokeStyle: "solid", edges: "sharp", opacity: 100,
 };
 
 let measureCtx: CanvasRenderingContext2D | null = null;
@@ -218,46 +221,6 @@ function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   ctx.restore();
 }
 
-// Oddiy deterministik pseudo-random — stroke ID'dan "seed" olinadi, shu
-// bilan har bir shape har renderда BIR XIL "qo'lda chizilgandek" jitter
-// bilan chiqadi (rasm chizilganda titrab turmaydi), lekin turli
-// shape'lar bir-biridan farqli ko'rinadi.
-function seededRandom(seed: number) {
-  let state = seed % 2147483647;
-  if (state <= 0) state += 2147483646;
-  return () => {
-    state = (state * 16807) % 2147483647;
-    return (state - 1) / 2147483646;
-  };
-}
-
-function hashString(str: string): number {
-  let hash = 0;
-  for (let i = 0; i < str.length; i++) hash = (hash * 31 + str.charCodeAt(i)) | 0;
-  return Math.abs(hash) || 1;
-}
-
-// "Sloppiness" (0=Architect/aniq, 1=Artist/biroz, 2=Cartoonist/ko'proq
-// qo'lda chizilgandek) — chiziq bir necha marta, har birida kichik tasodifiy
-// siljish bilan qayta chiziladi. Bu Excalidraw'ning "rough.js" uslubiga
-// soddalashtirilgan yaqinlashuv.
-function jitteredRect(
-  ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number,
-  radius: number, sloppiness: number, rand: () => number,
-) {
-  if (sloppiness === 0) {
-    drawRoundRectPath(ctx, x, y, width, height, radius);
-    return;
-  }
-  const passes = sloppiness === 2 ? 2 : 1;
-  const jitter = Math.max(width, height) * (sloppiness === 2 ? 0.012 : 0.006);
-  for (let i = 0; i < passes; i++) {
-    const dx = (rand() - 0.5) * jitter;
-    const dy = (rand() - 0.5) * jitter;
-    drawRoundRectPath(ctx, x + dx, y + dy, width, height, radius);
-  }
-}
-
 function drawRoundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   ctx.beginPath();
   if (radius <= 0) {
@@ -271,25 +234,6 @@ function drawRoundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.arcTo(x, y + height, x, y, r);
   ctx.arcTo(x, y, x + width, y, r);
   ctx.closePath();
-}
-
-function jitteredEllipse(
-  ctx: CanvasRenderingContext2D, cx: number, cy: number, rx: number, ry: number,
-  sloppiness: number, rand: () => number,
-) {
-  if (sloppiness === 0) {
-    ctx.beginPath();
-    ctx.ellipse(cx, cy, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
-    return;
-  }
-  const passes = sloppiness === 2 ? 2 : 1;
-  const jitter = Math.max(rx, ry) * (sloppiness === 2 ? 0.02 : 0.01);
-  for (let i = 0; i < passes; i++) {
-    const dx = (rand() - 0.5) * jitter;
-    const dy = (rand() - 0.5) * jitter;
-    ctx.beginPath();
-    ctx.ellipse(cx + dx, cy + dy, Math.abs(rx), Math.abs(ry), 0, 0, Math.PI * 2);
-  }
 }
 
 // Hachure/cross-hatch fill: shape yo'lini clip qilib, ichiga parallel
@@ -352,15 +296,15 @@ function drawShape(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   else if (strokeStyle === "dotted") ctx.setLineDash([lineWidth, lineWidth * 1.5]);
   else ctx.setLineDash([]);
 
-  // Shape'lar doim aniq geometrik kontur bilan chiziladi; eski stroke'lardagi
-  // sloppiness qiymati ham endi renderga ta'sir qilmaydi.
-  const sloppiness = 0;
-  const rand = seededRandom(hashString(s.id));
   const radius = s.edges === "round" ? Math.min(width, height) * 0.12 : 0;
 
   const buildPath = () => {
-    if (s.tool === "ellipse") jitteredEllipse(ctx, x + width / 2, y + height / 2, width / 2, height / 2, sloppiness, rand);
-    else jitteredRect(ctx, x, y, width, height, radius, sloppiness, rand);
+    if (s.tool === "ellipse") {
+      ctx.beginPath();
+      ctx.ellipse(x + width / 2, y + height / 2, width / 2, height / 2, 0, 0, Math.PI * 2);
+    } else {
+      drawRoundRectPath(ctx, x, y, width, height, radius);
+    }
   };
 
   const background = s.backgroundColor;
@@ -750,9 +694,6 @@ function StrokeStyleIcon({ style }: { style: CsStrokeStyle }) {
     </svg>
   );
 }
-const SLOPPINESS_OPTIONS: Array<{ value: CsSloppiness; label: string }> = [
-  { value: 0, label: "Aniq" }, { value: 1, label: "O'rtacha" }, { value: 2, label: "Erkin" },
-];
 const EDGES_OPTIONS: Array<{ value: CsEdges; label: string }> = [
   { value: "sharp", label: "Keskin" }, { value: "round", label: "Yumaloq" },
 ];
@@ -933,13 +874,11 @@ interface ShapeStyleOnlyPanelProps {
   backgroundColor: string;
   fillStyle: CsFillStyle;
   strokeStyle: CsStrokeStyle;
-  sloppiness: CsSloppiness;
   edges: CsEdges;
   opacity: number;
   onBackgroundColorChange: (color: string) => void;
   onFillStyleChange: (fillStyle: CsFillStyle) => void;
   onStrokeStyleChange: (strokeStyle: CsStrokeStyle) => void;
-  onSloppinessChange: (sloppiness: CsSloppiness) => void;
   onEdgesChange: (edges: CsEdges) => void;
   onOpacityChange: (opacity: number) => void;
 }
@@ -949,8 +888,8 @@ interface ShapeStyleOnlyPanelProps {
 // asosiy toolbar orqali (pen/highlighter bilan bir xil) boshqariladi,
 // shuning uchun bu yerda takrorlanmaydi.
 export function ShapeStyleOnlyPanel({
-  backgroundColor, fillStyle, strokeStyle, sloppiness, edges, opacity,
-  onBackgroundColorChange, onFillStyleChange, onStrokeStyleChange, onSloppinessChange, onEdgesChange, onOpacityChange,
+  backgroundColor, fillStyle, strokeStyle, edges, opacity,
+  onBackgroundColorChange, onFillStyleChange, onStrokeStyleChange, onEdgesChange, onOpacityChange,
 }: ShapeStyleOnlyPanelProps) {
   const hasBackground = backgroundColor !== "transparent";
   return (
@@ -1019,24 +958,6 @@ export function ShapeStyleOnlyPanel({
         </div>
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Erkinlik</p>
-        <div className="grid grid-cols-3 gap-1">
-          {SLOPPINESS_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onSloppinessChange(option.value)}
-              className={`rounded-lg py-1.5 text-[10px] font-medium transition-colors ${
-                sloppiness === option.value ? "bg-indigo-600 text-white" : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
       {(
         <div className="flex flex-col gap-1.5">
           <p className="text-[11px] font-medium text-gray-400">Burchaklar</p>
@@ -1080,7 +1001,6 @@ interface PageProps {
   pageNumber: number;
   url?: string;
   notebook?: boolean;
-  zoomScale: number;
   strokes: CsStroke[];
   pointer: CsPointer | null;
   showPointer: boolean;
@@ -1109,7 +1029,7 @@ interface PageProps {
 // <img src> qo'yilmaydi (lazy) — ko'p sahifali darsda hammasi birdan
 // yuklanib xotira/tarmoqni og'irlashtirmasin.
 function ClassroomPdfPage({
-  pageNumber, url, notebook = false, zoomScale, strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
+  pageNumber, url, notebook = false, strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
   onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, registerEl,
 }: PageProps) {
@@ -1795,7 +1715,10 @@ function ClassroomPdfPage({
       {visible ? (
         <div
           className={`relative ${notebook ? "aspect-[210/297] w-full bg-white shadow-sm" : "w-full"}`}
-          style={notebook ? { maxWidth: `${768 * zoomScale}px` } : undefined}
+          // Daftar 100% zoom'da viewport kengligini to'liq egallaydi. Zoom
+          // konteynerning tashqi width'i orqali qo'llanadi; max-width bilan
+          // yana 768px ga qisqartirish teacher/student nisbatini buzardi.
+          style={notebook ? { width: "100%" } : undefined}
         >
           {notebook ? (
             <div
@@ -2106,6 +2029,7 @@ export function ClassroomPdfViewer({
     isHost, synced, hostZoom, onZoomChange, scrollRef, suppressScrollDetectRef,
   });
 
+
   const registerEl = useCallback((page: number, el: HTMLDivElement | null) => {
     if (el) pageElsRef.current.set(page, el);
     else pageElsRef.current.delete(page);
@@ -2257,8 +2181,8 @@ export function ClassroomPdfViewer({
   return (
     <div className="relative flex-1 min-h-0 bg-gray-100 rounded-2xl overflow-hidden">
       {toolbarRow}
-      <div
-        ref={(element) => {
+            <div
+              ref={(element) => {
           // Splitdan monolitga qaytganda scrollRef eski chap pane'da
           // qolmasin: sync hook monolitdagi asosiy viewportni kuzatishi kerak.
           if (displayLayout !== "split") scrollRef.current = element;
@@ -2280,7 +2204,7 @@ export function ClassroomPdfViewer({
         onWheel={handleWheel}
         onScroll={handleScroll}
       >
-        <div className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row" : "flex-col"} items-start gap-1 sm:gap-3 py-3`} style={{ width: "100%", minWidth: "100%" }}>
+        <div className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start" : "flex-col items-center"} gap-1 sm:gap-3 py-3`} style={{ width: "100%", minWidth: "100%" }}>
           {(displayLayout === "split" ? [leftMode, rightMode] : [displayMode]).map((paneMode, paneIndex) => (
             <div
               key={`${paneMode}-${paneIndex}`}
@@ -2309,13 +2233,22 @@ export function ClassroomPdfViewer({
                     flex: "1 1 0%",
                     touchAction: freeToMove ? "pan-x pan-y" : "none",
                   }
-                : { width: `${zoom * 100}%` }}
+                : {
+                    // Daftar 100% zoom'da qurilma viewport'iga emas, bitta
+                    // reference sahifa kengligiga tayanadi. Shu bilan teacher
+                    // va student grid/stroke o'lchami bir xil qoladi.
+                    width: displayMode === "notebook" ? `${zoom * REF_WIDTH}px` : `${zoom * PDF_BASE_SCALE * 100}%`,
+                  }}
             >
               <div
                 className="flex shrink-0 flex-col items-center gap-1 sm:gap-3"
                 style={{
-                  width: displayLayout === "split" ? `${(paneIndex === 1 ? rightZoom : zoom) * 100}%` : "100%",
-                  minWidth: displayLayout === "split" ? `${(paneIndex === 1 ? rightZoom : zoom) * 100}%` : "100%",
+                  width: displayLayout === "split"
+                    ? `${(paneMode === "notebook" ? (paneIndex === 1 ? rightZoom : zoom) * REF_WIDTH : (paneIndex === 1 ? rightZoom : zoom) * PDF_BASE_SCALE * 100)}${paneMode === "notebook" ? "px" : "%"}`
+                    : "100%",
+                  minWidth: displayLayout === "split"
+                    ? `${(paneMode === "notebook" ? (paneIndex === 1 ? rightZoom : zoom) * REF_WIDTH : (paneIndex === 1 ? rightZoom : zoom) * PDF_BASE_SCALE * 100)}${paneMode === "notebook" ? "px" : "%"}`
+                    : "100%",
                 }}
               >
               {Array.from({ length: visiblePageCount(paneMode) }, (_, idx) => {
@@ -2326,7 +2259,6 @@ export function ClassroomPdfViewer({
                     pageNumber={pageNumber}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
-                    zoomScale={displayLayout === "split" ? (paneIndex === 1 ? rightZoom : zoom) : zoom}
                     strokes={displayLayout === "split" && paneIndex === 1 ? (rightStrokesByPage[pageNumber] ?? []) : (strokesByPage[pageNumber] ?? [])}
                     pointer={pointer}
                     showPointer={pointer?.page === pageNumber}

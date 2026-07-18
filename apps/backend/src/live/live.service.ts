@@ -1,5 +1,7 @@
-import { Injectable } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
+import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
 import { tests, submissions, answers, liveSessions } from '../db/schema';
 import {
@@ -35,6 +37,8 @@ export class LiveService {
   private sessions = new Map<string, LiveSession>();
   private broadcaster: LiveBroadcaster = { toRoom: () => {}, toSocket: () => {} };
 
+  constructor(private readonly config: ConfigService) {}
+
   setBroadcaster(b: LiveBroadcaster) { this.broadcaster = b; }
 
   // ── REST uchun ──────────────────────────────────────────────
@@ -48,6 +52,7 @@ export class LiveService {
     return rows.map((t) => ({
       id: t.id,
       name: t.name,
+      questionCount: t.questions.length,
       liveQuestionCount: t.questions.filter((q) => (LIVE_TYPES as readonly string[]).includes(q.type)).length,
     }));
   }
@@ -372,6 +377,71 @@ export class LiveService {
     const s = this.mustGet(pin);
     if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
     await this.finish(s);
+  }
+
+  // ---------- Ovoz (LiveKit) ----------
+
+  private livekitConfig(): { url: string; apiKey: string; apiSecret: string } | null {
+    const url = this.config.get<string>('LIVEKIT_URL');
+    const apiKey = this.config.get<string>('LIVEKIT_API_KEY');
+    const apiSecret = this.config.get<string>('LIVEKIT_API_SECRET');
+    if (!url || !apiKey || !apiSecret) return null;
+    return { url, apiKey, apiSecret };
+  }
+
+  // Musobaqada ishtirokchi bo'lish — individual rejimda players xaritasida,
+  // jamoa rejimida esa istalgan jamoa a'zosi bo'lishi kifoya (faqat kapitan
+  // emas, chunki barcha a'zolar ovozda gaplasha olishi kerak).
+  private isParticipant(s: LiveSession, userId: string): boolean {
+    if (s.players.has(userId)) return true;
+    if (s.teams) {
+      for (const t of s.teams.values()) if (t.memberUserIds.has(userId)) return true;
+    }
+    return false;
+  }
+
+  async voiceToken(pin: string, userId: string, displayName: string): Promise<{ token: string; url: string }> {
+    const s = this.sessions.get(pin);
+    if (!s) throw new NotFoundException('Musobaqa topilmadi yoki allaqachon tugagan');
+    const isHost = s.hostAdminId === userId;
+    if (!isHost && !this.isParticipant(s, userId)) throw new ForbiddenException('Siz bu musobaqaning ishtirokchisi emassiz');
+
+    const cfg = this.livekitConfig();
+    if (!cfg) throw new ServiceUnavailableException('VOICE_DISABLED');
+
+    const at = new AccessToken(cfg.apiKey, cfg.apiSecret, {
+      identity: userId,
+      name: displayName,
+      ttl: '10h',
+    });
+    at.addGrant({
+      roomJoin: true,
+      room: `live-${pin}`,
+      canPublish: true,
+      canSubscribe: true,
+      roomAdmin: isHost,
+    });
+    return { token: await at.toJwt(), url: cfg.url };
+  }
+
+  async muteParticipant(pin: string, adminId: string, targetUserId: string): Promise<void> {
+    const s = this.sessions.get(pin);
+    if (!s) throw new NotFoundException('Musobaqa topilmadi yoki allaqachon tugagan');
+    if (s.hostAdminId !== adminId) throw new ForbiddenException();
+    const cfg = this.livekitConfig();
+    if (!cfg) throw new ServiceUnavailableException('VOICE_DISABLED');
+
+    const httpUrl = cfg.url.replace(/^ws/, 'http');
+    const client = new RoomServiceClient(httpUrl, cfg.apiKey, cfg.apiSecret);
+    const room = `live-${pin}`;
+    const participants = await client.listParticipants(room);
+    const target = participants.find((p) => p.identity === targetUserId);
+    if (!target) throw new NotFoundException('Ishtirokchi ovoz xonasida emas');
+    for (const track of target.tracks) {
+      if (track.type === 1 /* AUDIO */ && !track.muted) {
+        await client.mutePublishedTrack(room, targetUserId, track.sid, true);
+      }
+    }
   }
 
   handleDisconnect(socketId: string) {

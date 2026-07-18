@@ -72,7 +72,7 @@ function makeFakeBroadcaster() {
 }
 
 function setup() {
-  const service = new LiveService();
+  const service = new LiveService({ get: () => undefined } as any);
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
   jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -288,7 +288,7 @@ describe('LiveService state machine', () => {
   });
 
   it('host hech qachon join qilmasa, 120s dan keyin sessiya finished bo\'ladi', () => {
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -312,7 +312,7 @@ describe('LiveService individual mode — all 10 question types', () => {
   afterEach(() => { jest.useRealTimers(); });
 
   function setupAllTypes() {
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -380,7 +380,7 @@ describe('LiveService team mode — creation and assignment', () => {
   afterEach(() => { jest.useRealTimers(); });
 
   function setupTeam() {
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -474,7 +474,7 @@ describe('LiveService team mode — creation and assignment', () => {
   });
 
   it('createTeam/assignPlayer/setCaptain reject when session mode is "individual"', () => {
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     const pin = service.initSession('admin1', 'test1', 'Matematika', makeTeamQuestions(), 10, 'individual');
@@ -487,7 +487,7 @@ describe('LiveService team mode — gameplay', () => {
   afterEach(() => { jest.useRealTimers(); });
 
   function setupReadyTeamGame() {
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -633,7 +633,7 @@ describe('LiveService — live_sessions persistence', () => {
       ],
     });
 
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     service.setBroadcaster(makeFakeBroadcaster().b);
     await service.createSession('admin1', 'test1', 20, 'individual');
 
@@ -657,7 +657,7 @@ describe('LiveService — live_sessions persistence', () => {
       values: () => ({ returning: async () => [{ id: 'row-1' }] }),
     }));
 
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -681,7 +681,7 @@ describe('LiveService — live_sessions persistence', () => {
       values: () => ({ returning: async () => [{ id: 'row-1' }] }),
     }));
 
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const { b } = makeFakeBroadcaster();
     service.setBroadcaster(b);
     jest.spyOn(service as any, 'persistResults').mockResolvedValue(undefined);
@@ -704,7 +704,7 @@ describe('LiveService — live_sessions persistence', () => {
       },
     }));
 
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     service.setBroadcaster(makeFakeBroadcaster().b);
     await expect(service.hostJoin('999999', 'admin1', 'hs')).rejects.toThrow();
 
@@ -720,11 +720,48 @@ describe('LiveService — live_sessions persistence', () => {
       findMany: jest.fn().mockResolvedValue(rows),
     };
 
-    const service = new LiveService();
+    const service = new LiveService({ get: () => undefined } as any);
     const result = await service.listSessionHistory('admin1', 20, 0);
 
     expect(result).toHaveLength(2);
     expect(result[0]).toMatchObject({ id: 'row-2', pin: '222222', testName: 'Fizika', mode: 'team', status: 'finished' });
     expect(result[1]).toMatchObject({ id: 'row-1', pin: '111111', testName: 'Matematika', mode: 'individual', status: 'active' });
+  });
+});
+
+describe('voiceToken / muteParticipant (LiveKit)', () => {
+  it('LiveKit sozlanmagan bo\'lsa VOICE_DISABLED xatosi', async () => {
+    const { service, pin } = setup();
+    service.hostJoin(pin, 'admin1', 'hs');
+    await expect(service.voiceToken(pin, 'admin1', 'Ustoz')).rejects.toThrow('VOICE_DISABLED');
+  });
+
+  it('musobaqa topilmasa NOT_FOUND xatosi', async () => {
+    const service = new LiveService({ get: () => undefined } as any);
+    await expect(service.voiceToken('000000', 'admin1', 'Ustoz')).rejects.toThrow();
+  });
+
+  it("ishtirokchi bo'lmagan foydalanuvchi rad etiladi (LiveKit sozlangan bo'lsa ham)", async () => {
+    const { service, pin } = setup();
+    const configured = { get: (key: string) => ({ LIVEKIT_URL: 'wss://lk.test', LIVEKIT_API_KEY: 'k', LIVEKIT_API_SECRET: 's' } as any)[key] };
+    (service as any).config = configured;
+    await expect(service.voiceToken(pin, 'not-a-participant', 'Kimdir')).rejects.toThrow();
+  });
+
+  it("jamoa a'zosi (kapitan bo'lmasa ham) ishtirokchi hisoblanadi", async () => {
+    const { service, pin } = setup();
+    const configured = { get: (key: string) => ({ LIVEKIT_URL: 'wss://lk.test', LIVEKIT_API_KEY: 'k', LIVEKIT_API_SECRET: 's' } as any)[key] };
+    (service as any).config = configured;
+    service.playerJoin(pin, { id: 'u1', name: 'Ali' }, 's1');
+    const session = (service as any).sessions.get(pin);
+    session.teams = new Map([['t1', { id: 't1', name: 'Team A', captainUserId: null, memberUserIds: new Set(['u1']), score: 0, answers: new Map(), suggestions: new Map() }]]);
+    const result = await service.voiceToken(pin, 'u1', 'Ali');
+    expect(result.token).toBeTruthy();
+    expect(result.url).toBe('wss://lk.test');
+  });
+
+  it('muteParticipant faqat host uchun ishlaydi', async () => {
+    const { service, pin } = setup();
+    await expect(service.muteParticipant(pin, 'not-the-host', 'u1')).rejects.toThrow();
   });
 });

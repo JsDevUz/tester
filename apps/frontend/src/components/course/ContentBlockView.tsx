@@ -213,8 +213,7 @@ export function ContentBlockView({
                     ) : (
                       <a
                         href={block.previewUrl}
-                        target="_blank"
-                        rel="noreferrer"
+                        download={block.fileName ?? block.label ?? "fayl"}
                         className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-4 py-5 text-sm font-semibold text-gray-700"
                         onClick={(e) => e.stopPropagation()}
                       >

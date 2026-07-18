@@ -190,15 +190,27 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       if (e.touches.length < 2) pinchStartRef.current = null;
     };
 
-    el.addEventListener("touchstart", onNativeTouchStart, { passive: false });
-    el.addEventListener("touchmove", onNativeTouchMove, { passive: false });
-    el.addEventListener("touchend", onNativeTouchEnd, { passive: false });
-    el.addEventListener("touchcancel", onNativeTouchEnd, { passive: false });
+    // Mobile Safari ba'zan touch event'ni canvas/child elementda ushlab,
+    // scroll container listeneriga yetkazmaydi. Capture document listeneri
+    // gesture'ni barqaror ushlaydi, lekin faqat classroom viewport ichida.
+    const scopedStart = (e: TouchEvent) => {
+      if (e.target instanceof Node && el.contains(e.target)) onNativeTouchStart(e);
+    };
+    const scopedMove = (e: TouchEvent) => {
+      if (e.target instanceof Node && el.contains(e.target)) onNativeTouchMove(e);
+    };
+    const scopedEnd = (e: TouchEvent) => {
+      if (e.target instanceof Node && el.contains(e.target)) onNativeTouchEnd(e);
+    };
+    document.addEventListener("touchstart", scopedStart, { passive: false, capture: true });
+    document.addEventListener("touchmove", scopedMove, { passive: false, capture: true });
+    document.addEventListener("touchend", scopedEnd, { passive: false, capture: true });
+    document.addEventListener("touchcancel", scopedEnd, { passive: false, capture: true });
     return () => {
-      el.removeEventListener("touchstart", onNativeTouchStart);
-      el.removeEventListener("touchmove", onNativeTouchMove);
-      el.removeEventListener("touchend", onNativeTouchEnd);
-      el.removeEventListener("touchcancel", onNativeTouchEnd);
+      document.removeEventListener("touchstart", scopedStart, true);
+      document.removeEventListener("touchmove", scopedMove, true);
+      document.removeEventListener("touchend", scopedEnd, true);
+      document.removeEventListener("touchcancel", scopedEnd, true);
     };
   }, [scrollRef]);
 
