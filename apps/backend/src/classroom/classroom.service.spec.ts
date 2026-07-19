@@ -351,6 +351,34 @@ describe('sahifa va chizish', () => {
     expect(history[0].atMs).toBeGreaterThanOrEqual(0);
   });
 
+  it('replay uchun board/theme/style/zoom/scroll eventlari tarixga yoziladi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    service.setTheme(sessionId, 'teacher-1', 'dark');
+    service.setNotebookStyle(sessionId, 'teacher-1', 'lined');
+    service.setZoom(sessionId, 'teacher-1', 1.75, 'right');
+    service.scroll(sessionId, 'teacher-1', 1, 0.4, 'right', 0.2);
+
+    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toEqual([
+      'board:set', 'theme:set', 'notebookStyle:set', 'zoom:set', 'scroll:set',
+    ]);
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.rightZoom).toBe(1.75);
+    expect(snapshot.rightScroll).toEqual({ page: 1, yRatio: 0.4, xRatio: 0.2 });
+  });
+
+  it('single rejimda daftarga o\'tish va chizish replay tarixida ketma-ket saqlanadi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    const stroke = { id: 'note-1', tool: 'pen' as const, color: '#111', width: 4, points: [0.1, 0.1, 0.3, 0.3] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke, 'notebook', 'left');
+
+    const history = service.getHistoryEventsForTests(sessionId);
+    expect(history.map((event) => event.type)).toEqual(['board:set', 'stroke:add']);
+    expect(history[0].payload).toMatchObject({ mode: 'notebook', layout: 'single', leftMode: 'notebook' });
+    expect(history[1].payload).toMatchObject({ mode: 'notebook', pane: 'left', stroke });
+  });
+
   it('qisqa text stroke broadcast qilinadi va keyingi snapshotda saqlanadi', async () => {
     const { service, events, sessionId } = await withPdf();
     const stroke = {

@@ -257,7 +257,9 @@ export interface CsSnapshot {
   startedAt: number;
   hostOnline: boolean;
   zoom: number;
+  rightZoom?: number;
   scroll: CsScrollPosition | null;
+  rightScroll?: CsScrollPosition | null;
   isFree: boolean;
   boardMode: CsBoardMode;
   boardLayout: CsBoardLayout;

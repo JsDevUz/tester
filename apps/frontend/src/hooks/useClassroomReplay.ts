@@ -1,16 +1,9 @@
 import { useCallback, useMemo, useRef, useState } from "react";
-import type { CsStroke } from "../api/classroom";
 import type { ClassroomState } from "./useClassroomSession";
 import {
-  applyBoardSet, applyPageClear, applyPageSet, applyStrokeAdd, applyStrokeReorder,
+  applyBoardSet, applyPageClear, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
   applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo, applyStrokeUpdate,
 } from "./classroomReducers";
-
-// Play paytida eng oxirgi qalam chizig'i shu davomiylikda "chizilib
-// borayotgandek" progressiv ko'rsatiladi — backend haqiqiy chizish
-// tezligini saqlamaydi (faqat stroke tugagan ondagi holatni), shuning
-// uchun bu sun'iy/taxminiy animatsiya, real replay emas.
-const STROKE_DRAW_ANIMATION_MS = 400;
 
 export interface ReplayHistoryEvent {
   type: string;
@@ -20,6 +13,7 @@ export interface ReplayHistoryEvent {
 
 const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = {
   "board:set": applyBoardSet,
+  "pdf:set": applyPdfSet,
   "page:set": applyPageSet,
   "stroke:add": applyStrokeAdd,
   "stroke:update": applyStrokeUpdate,
@@ -29,6 +23,10 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
   "stroke:undo": applyStrokeUndo,
   "stroke:split": applyStrokeSplit,
   "page:clear": applyPageClear,
+  "zoom:set": (s, p: { zoom: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightZoom: p.zoom } : { ...s, zoom: p.zoom },
+  "scroll:set": (s, p: { page: number; yRatio: number; xRatio?: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightScroll: p } : { ...s, scroll: p },
+  "theme:set": (s, p: { theme: "light" | "dark" }) => ({ ...s, classroomTheme: p.theme }),
+  "notebookStyle:set": (s, p: { style: "grid" | "lined" | "plain" }) => ({ ...s, notebookStyle: p.style }),
 };
 
 function baseState(pdfName: string | null, pdfPages: string[]): ClassroomState {
@@ -42,53 +40,27 @@ function baseState(pdfName: string | null, pdfPages: string[]): ClassroomState {
   };
 }
 
-// Qalam chizig'ining nuqtalarini progress (0..1) nisbatiga qarab kesadi —
-// "hozirgacha chizilgan qism"ni simulyatsiya qiladi. Kamida bitta segment
-// (4 ta koordinata) qoladi, shunda chiziq ko'rinmas bo'lib qolmaydi.
-function truncateStrokePoints(points: number[], progress: number): number[] {
-  const segmentCount = Math.max(0, points.length / 2 - 1);
-  if (segmentCount <= 0) return points;
-  const visibleSegments = Math.max(1, Math.ceil(segmentCount * progress));
-  return points.slice(0, (visibleSegments + 1) * 2);
-}
-
 // Berilgan vaqtgacha (inclusive) bo'lgan barcha eventlarni boshidan qayta
 // qo'llab, o'sha lahzadagi holatni hisoblaydi — playback "scrub" qilinganda
 // har safar noldan qayta hisoblanadi (event soni kichik, bu arzon).
-// `animate=true` bo'lsa (play paytida), eng oxirgi qo'llangan qalam
-// chizig'i STROKE_DRAW_ANIMATION_MS ichida bo'lsa, uning nuqtalari
-// progressiv ravishda "chizilib borayotgandek" kesib ko'rsatiladi —
-// scrub paytida (animate=false) esa har doim to'liq chiziq ko'rsatiladi.
-function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: string | null, pdfPages: string[], animate: boolean): ClassroomState {
-  let state = baseState(pdfName, pdfPages);
-  let lastStrokeAddEvent: ReplayHistoryEvent | null = null;
+function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: string | null, pdfPages: string[]): ClassroomState {
+  // Yangi yozuvlarda PDF biriktirilishi ham event sifatida keladi. Unda
+  // final PDF'ni t=0 da ko'rsatmaymiz; eski yozuvlar bilan moslik uchun
+  // pdf:set bo'lmasa API'dagi yakuniy PDF boshlang'ich holat bo'lib qoladi.
+  const hasPdfEvent = events.some((event) => event.type === "pdf:set");
+  let state = baseState(hasPdfEvent ? null : pdfName, hasPdfEvent ? [] : pdfPages);
   for (const event of events) {
     if (event.atMs > timeMs) break;
     const reducer = REDUCERS[event.type];
     if (reducer) state = reducer(state, event.payload);
-    lastStrokeAddEvent = event.type === "stroke:add" ? event : null;
   }
-
-  if (!animate || !lastStrokeAddEvent) return state;
-  const elapsedSinceDraw = timeMs - lastStrokeAddEvent.atMs;
-  if (elapsedSinceDraw < 0 || elapsedSinceDraw >= STROKE_DRAW_ANIMATION_MS) return state;
-
-  const payload = lastStrokeAddEvent.payload as { page: number; stroke: CsStroke; pane?: "left" | "right" };
-  if (payload.stroke.tool !== "pen") return state;
-  const progress = elapsedSinceDraw / STROKE_DRAW_ANIMATION_MS;
-  const key = payload.pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-  const list = state[key][payload.page] ?? [];
-  const truncated = list.map((stroke) =>
-    stroke.id === payload.stroke.id
-      ? { ...stroke, points: truncateStrokePoints(stroke.points, progress) }
-      : stroke,
-  );
-  return { ...state, [key]: { ...state[key], [payload.page]: truncated } };
+  return state;
 }
 
-export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName: string | null, pdfPages: string[]) {
+export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName: string | null, pdfPages: string[], mediaDurationMs = 0) {
   const sorted = useMemo(() => [...historyEvents].sort((a, b) => a.atMs - b.atMs), [historyEvents]);
-  const durationMs = sorted.length > 0 ? sorted[sorted.length - 1].atMs : 0;
+  const eventDurationMs = sorted.length > 0 ? sorted[sorted.length - 1].atMs : 0;
+  const durationMs = Math.max(eventDurationMs, mediaDurationMs);
   const [currentTimeMs, setCurrentTimeMs] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
   const rafRef = useRef<number | null>(null);
@@ -134,8 +106,8 @@ export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName:
   }, [durationMs, isPlaying]);
 
   const state = useMemo(
-    () => computeStateAt(sorted, currentTimeMs, pdfName, pdfPages, isPlaying),
-    [sorted, currentTimeMs, pdfName, pdfPages, isPlaying],
+    () => computeStateAt(sorted, currentTimeMs, pdfName, pdfPages),
+    [sorted, currentTimeMs, pdfName, pdfPages],
   );
 
   return { state, currentTimeMs, isPlaying, durationMs, play, pause, seek };

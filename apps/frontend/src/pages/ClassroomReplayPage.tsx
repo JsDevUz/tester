@@ -1,9 +1,11 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Play, Pause, ArrowLeft } from "lucide-react";
+import { Play, Pause, Users, X } from "lucide-react";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
 import { useClassroomReplay } from "../hooks/useClassroomReplay";
+import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
+import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 
 function formatMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -17,7 +19,10 @@ export function ClassroomReplayPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<ClassReplayData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [audioDurationMs, setAudioDurationMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const { visible: controlsVisible, reveal: revealControls } = useAutoHideOverlay();
 
   useEffect(() => {
     if (!sessionId) return;
@@ -26,14 +31,17 @@ export function ClassroomReplayPage() {
       .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
   }, [sessionId]);
 
-  const replay = useClassroomReplay(data?.historyEvents ?? [], data?.pdfName ?? null, data?.pdfPages ?? []);
-
   const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl;
   // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
   // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
   // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
   // uni bilmasdan audio va chizma tarixi replay'da mos kelmaydi.
   const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
+  const replay = useClassroomReplay(
+    data?.historyEvents ?? [], data?.pdfName ?? null, data?.pdfPages ?? [],
+    hasRecording ? recordingOffsetMs + audioDurationMs : 0,
+  );
+  useClassroomTheme(replay.state.classroomTheme);
   // Scrub joriy vaqti audio boshlanishidan oldin bo'lsa (masalan o'qituvchi
   // ovoz ulanishidan oldin chiza boshlagan bo'lsa), audio hali "mavjud
   // emas" — uni ijro etib bo'lmaydi, pauzada qoldiramiz.
@@ -96,14 +104,37 @@ export function ClassroomReplayPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-gray-100">
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
-        <button type="button" onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-gray-100">
-          <ArrowLeft size={18} />
-        </button>
-        <span className="text-sm font-semibold text-gray-800">Dars tarixi</span>
-      </div>
-
-      <div className="flex flex-1 min-h-0">
+      <div className="relative flex flex-1 min-h-0">
+        <div className="absolute right-3 top-3 z-30 flex items-start gap-1.5">
+          <div className="relative">
+            <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`flex h-[29px] items-center gap-1 rounded-full border px-2 text-[11px] font-medium shadow-md backdrop-blur transition-colors ${attendanceOpen ? "border-indigo-200 bg-indigo-100 text-indigo-700" : "border-gray-100 bg-white/95 text-gray-600 hover:bg-white"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
+              <Users size={14} /> <span className="hidden sm:inline">Davomat</span>
+            </button>
+            {attendanceOpen && (
+              <div role="dialog" aria-label="Davomat" className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl bg-white text-left shadow-2xl ring-1 ring-black/5">
+                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+                  <h3 className="text-sm font-semibold text-gray-800">Davomat</h3>
+                  <button type="button" onClick={() => setAttendanceOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100" aria-label="Yopish"><X size={16} /></button>
+                </div>
+                <div className="max-h-[min(60vh,24rem)] overflow-y-auto p-3">
+                  <div className="flex flex-col gap-1.5">
+                    {data.attendance.map((a) => (
+                      <div key={a.userId} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                        <span className="text-gray-700">{a.name}</span>
+                        <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
+                          {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+          <button type="button" onClick={() => navigate(-1)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Replay'dan chiqish" title="Chiqish">
+            <X size={15} />
+          </button>
+        </div>
         <div className="relative flex-1 min-h-0 flex flex-col">
           <ClassroomPdfViewer
             pageUrls={data.pdfPages}
@@ -127,39 +158,29 @@ export function ClassroomReplayPage() {
             notebookStyle={replay.state.notebookStyle}
           />
         </div>
-        <div className="hidden w-72 shrink-0 overflow-y-auto border-l border-gray-200 bg-white p-4 lg:block">
-          <h3 className="mb-3 text-sm font-semibold text-gray-800">Davomat</h3>
-          <div className="flex flex-col gap-2">
-            {data.attendance.map((a) => (
-              <div key={a.userId} className="flex items-center justify-between text-sm">
-                <span className="text-gray-700">{a.name}</span>
-                <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
-                  {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3">
+      <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
+        <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-xl border border-indigo-300/20 bg-indigo-950/90 px-2.5 py-1.5 text-white shadow-2xl backdrop-blur-md sm:gap-3 sm:px-3">
+        <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
         <button
           type="button"
           onClick={handlePlayPause}
-          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
+          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white hover:bg-indigo-800/70 sm:h-9 sm:w-9"
         >
           {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
         </button>
-        <span className="w-10 shrink-0 text-xs tabular-nums text-gray-500">{formatMs(replay.currentTimeMs)}</span>
+        <span className="hidden w-10 shrink-0 text-right text-xs tabular-nums text-white/80 sm:block">{formatMs(replay.currentTimeMs)}</span>
         <input
           type="range"
           min={0}
           max={replay.durationMs}
           value={replay.currentTimeMs}
           onChange={(e) => handleSeek(Number(e.target.value))}
-          className="flex-1"
+          onClick={revealControls}
+          className="h-1 flex-1 cursor-pointer accent-indigo-400"
         />
-        <span className="w-10 shrink-0 text-xs tabular-nums text-gray-500">{formatMs(replay.durationMs)}</span>
+        <span className="w-10 shrink-0 text-xs tabular-nums text-white/80">{formatMs(replay.durationMs)}</span>
         {data.recordingStatus === "pending" && (
           <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
         )}
@@ -167,8 +188,14 @@ export function ClassroomReplayPage() {
           <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
         )}
         {hasRecording && (
-          <audio ref={audioRef} src={data.recordingUrl ?? undefined} className="h-0 w-0 opacity-0" />
+          <audio
+            ref={audioRef}
+            src={data.recordingUrl ?? undefined}
+            onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
+            className="h-0 w-0 opacity-0"
+          />
         )}
+        </div>
       </div>
     </div>
   );

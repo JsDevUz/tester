@@ -156,13 +156,22 @@ export class ClassroomRecordingService {
           }),
         },
       });
+      // Egress API request va real recorder start orasidagi vaqtni ochiq
+      // qaytarmaydi; response esa startdan keyin keladi. Request vaqtini
+      // to'g'ridan-to'g'ri ishlatish audio'ni 2-3s oldinga suradi, response
+      // vaqtini ishlatish esa butun RPC kechikishini qo'shib yuboradi. Ikki
+      // boundary'ning midpoint'i LiveKit recorder start'iga eng yaqin
+      // barqaror bahodir.
+      const egressRequestedAtMs = Date.now();
       const info = await egress.startRoomCompositeEgress(
         `cs-${sessionId}`,
         { file: output },
         { audioOnly: true },
       );
-      const recordingStartedAtMs =
-        startedAtMs !== undefined ? Date.now() - startedAtMs : null;
+      const egressResponseAtMs = Date.now();
+      const recordingStartedAtMs = startedAtMs !== undefined
+        ? Math.round(((egressRequestedAtMs + egressResponseAtMs) / 2) - startedAtMs)
+        : null;
       await db
         .update(classSessions)
         .set({

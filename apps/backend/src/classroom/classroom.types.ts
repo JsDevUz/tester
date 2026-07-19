@@ -90,9 +90,11 @@ export interface ClassroomSession {
   // Ustozning joriy zoom darajasi — o'quvchi sinxron rejimda bo'lsa shu
   // qiymatga moslashadi. Kech kirganlarga snapshot orqali yetkaziladi.
   zoom: number;
+  rightZoom?: number;
   // Ustozning oxirgi scroll pozitsiyasi — kech kirgan o'quvchiga snapshot
   // orqali, hozir ulanganlarga broadcast orqali yetkaziladi.
   scroll: ClassroomScrollPosition | null;
+  rightScroll?: ClassroomScrollPosition | null;
   boardMode?: ClassroomBoardMode;
   // MUHIM: chap va o'ng panel bir xil mode-bo'yicha havuzdan o'qiydi/yozadi
   // (pane emas, mode identifikator) — shu sabab split taxtalar almashtirilganda
@@ -119,7 +121,9 @@ export interface ClassroomSnapshot {
   startedAt: number;
   hostOnline: boolean;
   zoom: number;
+  rightZoom: number;
   scroll: ClassroomScrollPosition | null;
+  rightScroll: ClassroomScrollPosition | null;
   isFree: boolean;
   boardMode: ClassroomBoardMode;
   boardLayout: ClassroomBoardLayout;

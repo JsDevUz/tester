@@ -127,7 +127,9 @@ export class ClassroomService implements OnModuleInit {
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
       zoom: 1,
+      rightZoom: 1,
       scroll: null,
+      rightScroll: null,
     });
 
     return { id: row.id };
@@ -159,7 +161,9 @@ export class ClassroomService implements OnModuleInit {
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
       zoom: 1,
+      rightZoom: 1,
       scroll: null,
+      rightScroll: null,
     });
     return { id };
   }
@@ -195,7 +199,9 @@ export class ClassroomService implements OnModuleInit {
       .where(eq(classSessions.id, sessionId));
 
     this.applyPdf(s, pdfName, selectedPages);
-    this.broadcaster.toRoom(sessionId, 'pdf:set', { pdfName: s.pdfName, pages: selectedPages, currentPage: 1 });
+    const payload = { pdfName: s.pdfName, pages: selectedPages, currentPage: 1 };
+    this.recordHistoryEvent(s, 'pdf:set', payload);
+    this.broadcaster.toRoom(sessionId, 'pdf:set', payload);
     return { pdfName, pages: selectedPages };
   }
 
@@ -208,6 +214,7 @@ export class ClassroomService implements OnModuleInit {
     s.strokesByPage = new Map();
     s.strokesByMode = new Map([['pdf', s.strokesByPage]]);
     s.scroll = null;
+    s.rightScroll = null;
   }
 
   // Testlar uchun to'g'ridan-to'g'ri holat o'rnatish (S3/konvertatsiyasiz)
@@ -221,13 +228,15 @@ export class ClassroomService implements OnModuleInit {
     s.boardLayout = 'single'; s.leftBoardMode = mode; s.rightBoardMode = mode;
     switchBoardMode(s, mode);
     const snapshot = buildSnapshot(s);
-    this.broadcaster.toRoom(sessionId, 'board:set', {
+    const payload = {
       mode,
       layout: 'single', leftMode: mode, rightMode: mode,
       currentPage: snapshot.currentPage,
       strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
-    });
+    };
+    this.recordHistoryEvent(s, 'board:set', payload);
+    this.broadcaster.toRoom(sessionId, 'board:set', payload);
   }
 
   setBoardView(sessionId: string, userId: string, layout: 'single' | 'split', leftMode: ClassroomBoardMode, rightMode: ClassroomBoardMode): void {
@@ -399,14 +408,18 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     if (theme !== 'light' && theme !== 'dark') throw new Error('INVALID_THEME');
     s.classroomTheme = theme;
-    this.broadcaster.toRoom(sessionId, 'theme:set', { theme });
+    const payload = { theme };
+    this.recordHistoryEvent(s, 'theme:set', payload);
+    this.broadcaster.toRoom(sessionId, 'theme:set', payload);
   }
 
   setNotebookStyle(sessionId: string, userId: string, style: ClassroomNotebookStyle): void {
     const s = this.requireHost(sessionId, userId);
     if (!['grid', 'lined', 'plain'].includes(style)) throw new Error('INVALID_NOTEBOOK_STYLE');
     s.notebookStyle = style;
-    this.broadcaster.toRoom(sessionId, 'notebookStyle:set', { style });
+    const payload = { style };
+    this.recordHistoryEvent(s, 'notebookStyle:set', payload);
+    this.broadcaster.toRoom(sessionId, 'notebookStyle:set', payload);
   }
 
   stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -542,7 +555,10 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const clamped = Math.min(4, Math.max(1, zoom));
     if (pane === 'left') s.zoom = clamped;
-    this.broadcaster.toRoom(s.id, 'zoom:set', { zoom: clamped, pane });
+    else s.rightZoom = clamped;
+    const payload = { zoom: clamped, pane };
+    this.recordHistoryEvent(s, 'zoom:set', payload);
+    this.broadcaster.toRoom(s.id, 'zoom:set', payload);
   }
 
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
@@ -554,8 +570,12 @@ export class ClassroomService implements OnModuleInit {
     if (!isValidPage(s, page)) throw new Error('INVALID_PAGE');
     const cy = Math.min(1, Math.max(0, yRatio));
     const cx = Math.min(1, Math.max(0, Number.isFinite(xRatio) ? xRatio : 0));
-    if (pane === 'left') s.scroll = { page, yRatio: cy, xRatio: cx };
-    this.broadcaster.toRoom(s.id, 'scroll:set', { page, yRatio: cy, xRatio: cx, pane });
+    const position = { page, yRatio: cy, xRatio: cx };
+    if (pane === 'left') s.scroll = position;
+    else s.rightScroll = position;
+    const payload = { ...position, pane };
+    this.recordHistoryEvent(s, 'scroll:set', payload);
+    this.broadcaster.toRoom(s.id, 'scroll:set', payload);
   }
 
   // ---------- REST: ro'yxatlar / davomat ----------

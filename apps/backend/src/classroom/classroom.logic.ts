@@ -136,13 +136,15 @@ export function updateShapeStroke(
   session: ClassroomSession, page: number, updated: ClassroomStroke,
   targetMap?: Map<number, ClassroomStroke[]>,
 ): boolean {
-  if ((updated.tool !== 'rectangle' && updated.tool !== 'ellipse') || !isValidPage(session, page)) return false;
+  if (updated.tool === 'text' || !isValidPage(session, page)) return false;
   const list = (targetMap ?? activeStrokeMap(session)).get(page);
   if (!list) return false;
   const index = list.findIndex((item) => item.id === updated.id);
   if (index === -1) return false;
   const candidate = { ...updated, points: [...updated.points] };
-  if (candidate.points.length !== 4 || candidate.points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
+  if (candidate.points.length === 0 || candidate.points.length % 2 !== 0 || candidate.points.length > MAX_STROKE_POINTS * 2) return false;
+  if (candidate.points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
+  if ((candidate.tool === 'rectangle' || candidate.tool === 'ellipse') && candidate.points.length !== 4) return false;
   if (!validateShapeFields(candidate)) return false;
   if (candidate.rotation !== undefined && (!Number.isFinite(candidate.rotation) || candidate.rotation < -360 || candidate.rotation > 360)) return false;
   list[index] = candidate;
@@ -284,7 +286,9 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     startedAt: session.startedAtMs,
     hostOnline: session.hostSocketId !== null,
     zoom: session.zoom,
+    rightZoom: session.rightZoom ?? session.zoom,
     scroll: session.scroll,
+    rightScroll: session.rightScroll ?? null,
     isFree: session.isFree,
     boardMode: session.boardMode ?? 'pdf',
     boardLayout: session.boardLayout ?? 'single',

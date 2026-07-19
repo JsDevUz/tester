@@ -1399,9 +1399,12 @@ function ClassroomPdfPage({
 
   const commitGroupStroke = useCallback((stroke: CsStroke) => {
     if (stroke.tool === "text") onUpdateTextStroke?.(pageNumber, stroke);
-    else if (stroke.tool === "rectangle" || stroke.tool === "ellipse") onUpdateShapeStroke?.(pageNumber, stroke);
-    else onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
-  }, [pageNumber, onUpdateTextStroke, onUpdateShapeStroke, onMoveStroke]);
+    // Lasso resize barcha nuqtalarni va stroke.width'ni o'zgartiradi. Faqat
+    // birinchi nuqtani moveStroke orqali yuborish pen/highlighter/arrow'ning
+    // serverdagi eski geometriyasini saqlab qolardi; hostda esa lokal mutation
+    // sabab vaqtincha to'g'ri ko'rinardi. To'liq stroke'ni atomik yangilaymiz.
+    else onUpdateShapeStroke?.(pageNumber, stroke);
+  }, [pageNumber, onUpdateTextStroke, onUpdateShapeStroke]);
 
   const deleteSelectedGroup = () => {
     for (const id of selectedGroupIds) onEraseStroke?.(pageNumber, id);

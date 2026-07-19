@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
+import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
   applyBoardSet, applyPageClear, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
@@ -68,7 +69,14 @@ function getGuestId(): string {
 export function useClassroomSession(
   sessionId: string | undefined, role: "host" | "student", guestName?: string,
 ) {
-  const [state, setState] = useState<ClassroomState>(INITIAL);
+  // Ustoz classroom route'iga kirgan birinchi freymda global theme'ni ko'rsin;
+  // server snapshot kelguncha light default sababli ko'zga tashlanadigan flash
+  // bo'lmasin. Student esa classroom server theme'ini kutadi.
+  const globalTheme = useThemeStore((s) => s.theme);
+  const [state, setState] = useState<ClassroomState>(() => ({
+    ...INITIAL,
+    classroomTheme: role === "host" ? globalTheme : INITIAL.classroomTheme,
+  }));
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const lastPointerSentRef = useRef(0);
@@ -103,12 +111,18 @@ export function useClassroomSession(
             rightStrokesByPage: snap.rightStrokesByPage ?? {},
             participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
-            rightScroll: null, rightZoom: snap.zoom ?? 1,
+            rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? "light",
             notebookStyle: snap.notebookStyle ?? "grid",
           });
+          // Yangi classroom'ni ustozning asosiy theme'i bilan boshlaymiz.
+          // Bu faqat farq bo'lsa yuboriladi; keyingi studentlar snapshot'dan
+          // shu qiymatni oladi.
+          if (role === "host" && snap.classroomTheme !== globalTheme) {
+            socket.emit("host:setTheme", { sessionId, theme: globalTheme });
+          }
         },
       );
     };

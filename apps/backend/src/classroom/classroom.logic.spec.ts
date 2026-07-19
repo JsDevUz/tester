@@ -1,7 +1,7 @@
 import {
   addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
-  LATE_AFTER_MS, MAX_STROKE_POINTS,
+  LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -71,6 +71,18 @@ describe('addStroke', () => {
     const s = makeSession();
     expect(addStroke(s, 0, makeStroke())).toBe(false);
     expect(addStroke(s, 4, makeStroke())).toBe(false);
+  });
+});
+
+describe('updateShapeStroke (to\'liq geometriya update)', () => {
+  it('lasso resize qilgan pen stroke barcha nuqtalari va width bilan yangilanadi', () => {
+    const s = makeSession();
+    const original = makeStroke();
+    expect(addStroke(s, 1, original)).toBe(true);
+    const resized = { ...original, width: 2, points: [0.2, 0.2, 0.25, 0.25] };
+
+    expect(updateShapeStroke(s, 1, resized)).toBe(true);
+    expect(s.strokesByPage.get(1)?.[0]).toEqual(resized);
   });
 });
 
