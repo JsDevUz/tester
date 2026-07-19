@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, contentBlocks } from '../db/schema';
+import { courses, modules, lessons, contentBlocks, classSessions } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { StorageService } from '../storage/storage.service';
 import { extname } from 'path';
@@ -104,6 +104,32 @@ export class ContentBlocksService {
         label: fileName,
         previewUrl: url,
       })
+      .returning();
+    return block;
+  }
+
+  async createLiveClassBlock(lessonId: string, adminId: string, classSessionId: string) {
+    await this.assertLessonOwnership(lessonId, adminId);
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+    const module = lesson ? await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) }) : null;
+    if (!module) throw new NotFoundException('Lesson not found');
+
+    // classSessionId shu darsning kursiga tegishli EKANI tekshiriladi —
+    // aks holda ustoz boshqa kursning (yoki boshqa ustozning) jonli
+    // darsini bog'lab qo'yishi mumkin bo'lardi.
+    const session = await db.query.classSessions.findFirst({ where: eq(classSessions.id, classSessionId) });
+    if (!session || session.courseId !== module.courseId || session.status !== 'ended') {
+      throw new BadRequestException('Yaroqsiz jonli dars');
+    }
+
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({ lessonId, type: 'live_class', orderIndex: existing.length, classSessionId })
       .returning();
     return block;
   }

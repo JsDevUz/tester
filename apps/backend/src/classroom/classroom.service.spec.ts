@@ -60,17 +60,22 @@ function makeFakeMediaLibrary(overrides: Partial<{ pages: string[]; status: stri
   };
 }
 
-async function setup(mediaLibrary = makeFakeMediaLibrary()) {
+function makeFakeRecordingService() {
+  return { startRecording: jest.fn().mockResolvedValue(undefined), stopRecording: jest.fn().mockResolvedValue(undefined) };
+}
+
+async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = makeFakeRecordingService()) {
   const service = new ClassroomService(
     { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
     { get: () => undefined } as any,
     mediaLibrary as any,
+    recordingService as any,
   );
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
   setupDbForCreate();
   const { id } = await service.createSession('c-1', 'teacher-1', 'teacher');
-  return { service, events, sessionId: id, mediaLibrary };
+  return { service, events, sessionId: id, mediaLibrary, recordingService };
 }
 
 afterEach(() => {
@@ -89,8 +94,14 @@ describe('createSession', () => {
     expect(snap.hostOnline).toBe(true);
   });
 
+  it('createSession chaqirilganda recordingService.startRecording chaqiriladi', async () => {
+    const { sessionId, recordingService } = await setup();
+    expect(recordingService.startRecording).toHaveBeenCalledWith(expect.any(String));
+    expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId);
+  });
+
   it('begona ustoz uchun taqiqlanadi', async () => {
-    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any);
+    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any, makeFakeRecordingService() as any);
     setupDbForCreate();
     await expect(service.createSession('c-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
   });
@@ -219,6 +230,20 @@ describe('sahifa va chizish', () => {
     expect(events.at(-1)).toMatchObject({ event: 'stroke:add', payload: { page: 1, stroke } });
   });
 
+  it('stroke qoshilganda historyEvents ga type/payload/atMs bilan yoziladi (isFree=false)', async () => {
+    const { service, sessionId } = await withPdf();
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+    const history = service.getHistoryEventsForTests(sessionId);
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      type: 'stroke:add',
+      payload: { page: 1, stroke },
+    });
+    expect(typeof history[0].atMs).toBe('number');
+    expect(history[0].atMs).toBeGreaterThanOrEqual(0);
+  });
+
   it('qisqa text stroke broadcast qilinadi va keyingi snapshotda saqlanadi', async () => {
     const { service, events, sessionId } = await withPdf();
     const stroke = {
@@ -248,6 +273,97 @@ describe('sahifa va chizish', () => {
     expect(events.at(-1)).toMatchObject({ event: 'stroke:undo', payload: { page: 1, strokeId: 's1' } });
     service.clearPage(sessionId, 'teacher-1', 1);
     expect(events.at(-1)).toMatchObject({ event: 'page:clear', payload: { page: 1 } });
+  });
+
+  it('endSession da historyEvents DB ga saqlanadi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
+    mockedDb.update.mockClear();
+    await service.endSession(sessionId, 'teacher-1');
+    expect(mockedDb.update).toHaveBeenCalled();
+    const setCalls = mockedDb.update.mock.results.map((r: any) => r.value.set.mock.calls[0][0]);
+    expect(setCalls.some((c: any) => Array.isArray(c.historyEvents) && c.historyEvents.length === 1)).toBe(true);
+  });
+
+  it('getReplay tarix+recording+attendance qaytaradi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
+    const history = service.getHistoryEventsForTests(sessionId);
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: ['page1.png'],
+      historyEvents: history,
+      recordingUrl: null,
+      recordingStatus: 'pending',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [
+        {
+          status: 'present',
+          enrollment: { schoolMember: { studentId: 'stu-1', student: { displayName: 'Ali' } } },
+        },
+      ],
+    });
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+    expect(replay.historyEvents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'stroke:add' })]),
+    );
+    expect(replay).toHaveProperty('attendance');
+    expect(replay).toHaveProperty('recordingStatus');
+  });
+
+  it('getReplay boshqa kursning ustoziga ForbiddenException otadi', async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [],
+    });
+
+    await expect(service.getReplay(sessionId, 'some-other-teacher'))
+      .rejects.toThrow();
+  });
+
+  it('getReplay attendance qatoridagi null bog\'lanishlarda 500 bermaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [
+        {
+          status: 'present',
+          enrollment: { schoolMember: { studentId: 'stu-1', student: { displayName: 'Ali' } } },
+        },
+        {
+          status: 'absent',
+          enrollment: null,
+        },
+        {
+          status: 'late',
+          enrollment: { schoolMember: null },
+        },
+      ],
+    });
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+    expect(replay.attendance).toEqual([{ userId: 'stu-1', name: 'Ali', status: 'present' }]);
   });
 });
 
@@ -352,14 +468,16 @@ describe('voiceToken', () => {
 
 describe('erkin (guruhsiz) dars', () => {
   function makeFreeService() {
+    const recordingService = makeFakeRecordingService();
     const service = new ClassroomService(
       { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
       { get: () => undefined } as any,
       makeFakeMediaLibrary() as any,
+      recordingService as any,
     );
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
-    return { service, events };
+    return { service, events, recordingService };
   }
 
   it('kurs/DB yozuvisiz sessiya yaratadi', () => {
@@ -369,6 +487,15 @@ describe('erkin (guruhsiz) dars', () => {
     expect(mockedDb.insert).not.toHaveBeenCalled();
     const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
     expect(snap.isFree).toBe(true);
+  });
+
+  it('erkin (isFree) sessiyada historyEvents umuman yozilmaydi', () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    service.setBoardView(id, 'teacher-1', 'single', 'notebook', 'notebook');
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    service.stroke(id, 'teacher-1', 1, stroke, 'notebook', 'left');
+    expect(service.getHistoryEventsForTests(id)).toHaveLength(0);
   });
 
   it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', () => {

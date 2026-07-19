@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
   LayoutGrid, Film, MousePointer2, Paperclip, type LucideIcon,
+  // Radio, — jonli dars blok item'i bilan birga vaqtincha o'chirilgan
 } from 'lucide-react';
 import { MediaLibraryModal } from '../MediaLibraryModal';
 
@@ -8,6 +9,7 @@ interface BlockPickerProps {
   onPickEditor: () => void;
   onPickFile: (type: 'video' | 'image' | 'file', file: File) => void;
   onPickFileFromLibrary: (url: string, fileName: string) => void;
+  onPickLiveClass: () => void;
   disabled?: boolean;
   limitText?: string;
 }
@@ -28,11 +30,13 @@ interface BlockItem {
 const BLOCK_ITEMS: BlockItem[] = [
   { key: 'editor', label: 'Tahrirchi', icon: LayoutGrid },
   { key: 'video', label: 'Video', icon: Film },
+  // Vaqtincha o'chirilgan — jonli dars blokini qo'shish qaytadan yoqilguncha.
+  // { key: 'live_class', label: 'Jonli dars', icon: Radio },
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
 
-export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, disabled = false, limitText }: BlockPickerProps) {
+export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, onPickLiveClass, disabled = false, limitText }: BlockPickerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingTypeRef = useRef<'video' | 'image' | 'file'>('file');
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -61,6 +65,7 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, d
     if (item.key === 'editor') onPickEditor();
     else if (item.key === 'video') openFilePicker(item.key);
     else if (item.key === 'file') setLibraryOpen(true);
+    else if (item.key === 'live_class') onPickLiveClass();
   }
 
   return (

@@ -43,6 +43,10 @@ class CreateFileBlockFromLibraryDto {
   @IsString() @MinLength(1) fileName: string;
 }
 
+class CreateLiveClassBlockDto {
+  @IsString() @MinLength(1) classSessionId: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('teacher', 'super')
 @Controller()
@@ -87,6 +91,15 @@ export class ContentBlocksController {
     @Body() dto: CreateFileBlockFromLibraryDto,
   ) {
     return this.contentBlocksService.createFileBlockFromLibrary(lessonId, req.admin.id, dto.url, dto.fileName);
+  }
+
+  @Post('lessons/:lessonId/blocks/live-class')
+  createLiveClassBlock(
+    @Param('lessonId') lessonId: string,
+    @Req() req: any,
+    @Body() dto: CreateLiveClassBlockDto,
+  ) {
+    return this.contentBlocksService.createLiveClassBlock(lessonId, req.admin.id, dto.classSessionId);
   }
 
   @Patch('blocks/:id')
