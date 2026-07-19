@@ -13,6 +13,7 @@ jest.mock('../db', () => ({
       })),
     })),
     update: jest.fn(() => ({ set: jest.fn(() => ({ where: async () => {} })) })),
+    delete: jest.fn(() => ({ where: jest.fn(async () => {}) })),
     query: {
       courses: { findFirst: jest.fn() },
       groups: { findFirst: jest.fn(), findMany: jest.fn() },
@@ -65,8 +66,9 @@ function makeFakeRecordingService() {
 }
 
 async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = makeFakeRecordingService()) {
+  const storage = { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}`, deleteFile: jest.fn().mockResolvedValue(true) };
   const service = new ClassroomService(
-    { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
+    storage as any,
     { get: () => undefined } as any,
     mediaLibrary as any,
     recordingService as any,
@@ -75,7 +77,7 @@ async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = m
   service.setBroadcaster(b);
   setupDbForCreate();
   const { id } = await service.createSession('c-1', 'teacher-1', 'teacher');
-  return { service, events, sessionId: id, mediaLibrary, recordingService };
+  return { service, events, sessionId: id, mediaLibrary, recordingService, storage };
 }
 
 afterEach(() => {
@@ -123,6 +125,88 @@ describe('createSession', () => {
     });
     expect(service.hostJoin(sessionId, 'teacher-1', 'sock-h').classroomTheme).toBe('dark');
     expect(() => service.setTheme(sessionId, 'stu-1', 'light')).toThrow('FORBIDDEN');
+  });
+});
+
+describe('deleteSession', () => {
+  it('yakunlangan sessiyani ustoz ochiradi: recording, contentBlocks va sessiya ozi ochiriladi', async () => {
+    const { service, sessionId, storage } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'ended',
+      recordingStatus: 'ready',
+      recordingUrl: 'https://cdn/classroom-recordings/x.ogg',
+      course: { adminId: 'teacher-1' },
+    });
+
+    await service.deleteSession(sessionId, 'teacher-1');
+
+    expect(storage.deleteFile).toHaveBeenCalledWith(`classroom-recordings/${sessionId}.ogg`);
+    expect(mockedDb.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it("recordingStatus 'ready' bolmasa deleteFile chaqirilmaydi", async () => {
+    const { service, sessionId, storage } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'ended',
+      recordingStatus: 'none',
+      recordingUrl: null,
+      course: { adminId: 'teacher-1' },
+    });
+
+    await service.deleteSession(sessionId, 'teacher-1');
+
+    expect(storage.deleteFile).not.toHaveBeenCalled();
+    expect(mockedDb.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('deleteFile false qaytarsa (fayl topilmadi) baribir sessiya ochiriladi', async () => {
+    const { service, sessionId, storage } = await setup();
+    storage.deleteFile.mockResolvedValueOnce(false);
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'ended',
+      recordingStatus: 'ready',
+      recordingUrl: 'https://cdn/classroom-recordings/x.ogg',
+      course: { adminId: 'teacher-1' },
+    });
+
+    await expect(service.deleteSession(sessionId, 'teacher-1')).resolves.toBeUndefined();
+    expect(mockedDb.delete).toHaveBeenCalledTimes(2);
+  });
+
+  it('sessiya topilmasa NotFoundException otadi', async () => {
+    const { service } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce(undefined);
+
+    await expect(service.deleteSession('missing-id', 'teacher-1')).rejects.toThrow();
+  });
+
+  it('boshqa kursning ustoziga ForbiddenException otadi', async () => {
+    const { service, sessionId } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'ended',
+      recordingStatus: 'none',
+      recordingUrl: null,
+      course: { adminId: 'boshqa-teacher' },
+    });
+
+    await expect(service.deleteSession(sessionId, 'teacher-1')).rejects.toThrow();
+  });
+
+  it("faol (active) sessiyani ochirishga urinilsa xato otadi", async () => {
+    const { service, sessionId } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'active',
+      recordingStatus: 'none',
+      recordingUrl: null,
+      course: { adminId: 'teacher-1' },
+    });
+
+    await expect(service.deleteSession(sessionId, 'teacher-1')).rejects.toThrow();
   });
 });
 

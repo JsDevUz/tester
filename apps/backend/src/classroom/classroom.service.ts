@@ -7,7 +7,7 @@ import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
-import { attendanceRecords, classSessions, courses, groupEnrollments, groups, mediaAssets } from '../db/schema';
+import { attendanceRecords, classSessions, contentBlocks, courses, groupEnrollments, groups, mediaAssets } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
@@ -658,6 +658,33 @@ export class ClassroomService implements OnModuleInit {
           status: a.status,
         })),
     };
+  }
+
+  // Yakunlangan sessiyani butunlay ochiradi: DB yozuvi, audio yozuv fayli
+  // (agar bo'lsa) va unga bog'langan "Jonli dars" content_blocks. PDF
+  // sahifalari (pdfPages) HECH QACHON ochirilmaydi — ular media-kutubxona
+  // resursi, boshqa darslar/kurslarda ham ishlatilgan bo'lishi mumkin.
+  async deleteSession(sessionId: string, callerId: string): Promise<void> {
+    const row = await db.query.classSessions.findFirst({
+      where: eq(classSessions.id, sessionId),
+      with: { course: true },
+    });
+    if (!row) throw new NotFoundException('Dars topilmadi');
+    const course = row.course as unknown as { adminId: string };
+    if (course.adminId !== callerId) throw new ForbiddenException();
+    if (row.status !== 'ended') throw new ConflictException("Faqat yakunlangan darsni o'chirish mumkin");
+
+    // deleteFile hech qachon otmaydi (Promise<boolean> qaytaradi) — fayl
+    // topilmasa yoki storage sozlanmagan bo'lsa false qaytaradi, bu
+    // qolgan o'chirish jarayonini to'xtatmaydi.
+    if (row.recordingStatus === 'ready' && row.recordingUrl) {
+      await this.storage.deleteFile(`classroom-recordings/${sessionId}.ogg`);
+    }
+
+    await db.delete(contentBlocks).where(eq(contentBlocks.classSessionId, sessionId));
+    await db.delete(classSessions).where(eq(classSessions.id, sessionId));
+    // attendanceRecords o'zi cascade-delete bo'ladi (sessionId FK'ida
+    // onDelete: 'cascade') — alohida so'rov kerak emas.
   }
 
   async courseHistory(courseId: string, callerId: string, role: string) {
