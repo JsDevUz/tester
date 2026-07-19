@@ -3,7 +3,7 @@ import client from './client';
 export interface ApiContentBlock {
   id: string;
   lessonId: string;
-  type: 'editor' | 'video' | 'image' | 'file';
+  type: 'editor' | 'video' | 'image' | 'file' | 'live_class';
   orderIndex: number;
   html: string | null;
   fileName: string | null;
@@ -19,6 +19,7 @@ export interface ApiContentBlock {
   errorMessage: string | null;
   processedAt: string | null;
   createdAt: string;
+  classSessionId: string | null;
 }
 
 export async function apiListBlocks(lessonId: string): Promise<ApiContentBlock[]> {
@@ -111,6 +112,11 @@ export async function apiCreateFileBlockFromLibrary(
   fileName: string,
 ): Promise<ApiContentBlock> {
   const res = await client.post(`/lessons/${lessonId}/files/from-library`, { url, fileName });
+  return res.data;
+}
+
+export async function apiCreateLiveClassBlock(lessonId: string, classSessionId: string): Promise<ApiContentBlock> {
+  const res = await client.post(`/lessons/${lessonId}/blocks/live-class`, { classSessionId });
   return res.data;
 }
 

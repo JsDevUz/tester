@@ -15,6 +15,7 @@ import {
   apiUploadVideoBlock,
   apiUploadFileBlock,
   apiCreateFileBlockFromLibrary,
+  apiCreateLiveClassBlock,
   apiRetryVideoBlock,
   type ApiContentBlock,
 } from '../api/contentBlocks';
@@ -30,7 +31,7 @@ import {
 import { apiListGroupPayments, apiRecordPayment, type ApiMonthlyPayment } from '../api/payments';
 import { hasPendingPersistence, persistLatest } from '../utils/latestPersistence';
 
-export type ContentBlockType = 'editor' | 'video' | 'image' | 'file';
+export type ContentBlockType = 'editor' | 'video' | 'image' | 'file' | 'live_class';
 export const CONTENT_BLOCK_LIMIT = 7;
 export const PRACTICE_BLOCK_LIMIT = 4;
 
@@ -54,6 +55,7 @@ export interface ContentBlock {
   errorMessage?: string;
   processedAt?: string;
   uploadProgress?: number;
+  classSessionId?: string;
 }
 
 export type PracticeBlockType = 'test' | 'image' | 'oral';
@@ -156,6 +158,7 @@ interface CourseState {
 
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock, file?: File) => Promise<void>;
   addFileBlockFromLibrary: (courseId: string, moduleId: string, lessonId: string, url: string, fileName: string) => Promise<void>;
+  addLiveClassBlock: (courseId: string, moduleId: string, lessonId: string, classSessionId: string) => Promise<void>;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => Promise<void>;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
@@ -217,6 +220,7 @@ function toFrontendBlock(b: ApiContentBlock): ContentBlock {
     durationSec: b.durationSec ?? undefined,
     errorMessage: b.errorMessage ?? undefined,
     processedAt: b.processedAt ?? undefined,
+    classSessionId: b.classSessionId ?? undefined,
   };
 }
 
@@ -666,6 +670,36 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
 
     const row = await apiCreateFileBlockFromLibrary(lessonId, url, fileName);
+    const newBlock = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
+                          ? l
+                          : { ...l, blocks: [...l.blocks, newBlock] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addLiveClassBlock: async (courseId, moduleId, lessonId, classSessionId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
+
+    const row = await apiCreateLiveClassBlock(lessonId, classSessionId);
     const newBlock = toFrontendBlock(row);
     set({
       courses: get().courses.map((c) =>
