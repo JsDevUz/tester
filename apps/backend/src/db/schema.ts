@@ -568,6 +568,15 @@ export const classSessions = pgTable('class_sessions', {
   pdfPages: jsonb('pdf_pages').notNull().default([]),
   startedAt: timestamp('started_at', { withTimezone: true }).defaultNow(),
   endedAt: timestamp('ended_at', { withTimezone: true }),
+  // Har bir chizma/board o'zgarishi { type, payload, atMs } shaklida —
+  // faqat isFree=false sessiyalar uchun to'ldiriladi.
+  historyEvents: jsonb('history_events'),
+  recordingUrl: text('recording_url'),
+  // 'none' | 'pending' | 'ready' | 'failed'
+  recordingStatus: text('recording_status').notNull().default('none'),
+  // LiveKit egress_ended webhook shu ustun orqali qaysi sessionId'ga
+  // tegishli ekanini topadi.
+  egressId: text('egress_id'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));
