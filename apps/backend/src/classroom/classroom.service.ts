@@ -636,8 +636,8 @@ export class ClassroomService implements OnModuleInit {
     const isTeacher = course.adminId === callerId;
     let isEnrolledStudent = false;
     if (!isTeacher) {
-      const attendanceRows = row.attendance as unknown as Array<{ enrollment: { schoolMember: { studentId: string } } }>;
-      isEnrolledStudent = attendanceRows.some((a) => a.enrollment.schoolMember.studentId === callerId);
+      const attendanceRows = row.attendance as unknown as Array<{ enrollment?: { schoolMember?: { studentId?: string } } }>;
+      isEnrolledStudent = attendanceRows.some((a) => a.enrollment?.schoolMember?.studentId === callerId);
     }
     if (!isTeacher && !isEnrolledStudent) throw new ForbiddenException();
 
@@ -648,13 +648,15 @@ export class ClassroomService implements OnModuleInit {
       recordingUrl: row.recordingUrl,
       recordingStatus: row.recordingStatus,
       attendance: (row.attendance as unknown as Array<{
-        enrollment: { schoolMember: { studentId: string; student: { displayName: string } } };
+        enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
         status: string;
-      }>).map((a) => ({
-        userId: a.enrollment.schoolMember.studentId,
-        name: a.enrollment.schoolMember.student.displayName,
-        status: a.status,
-      })),
+      }>)
+        .filter((a) => a.enrollment?.schoolMember?.studentId)
+        .map((a) => ({
+          userId: a.enrollment!.schoolMember!.studentId as string,
+          name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
+          status: a.status,
+        })),
     };
   }
 

@@ -70,7 +70,7 @@ export class ClassroomController {
   }
 
   @Get('sessions/:id/replay')
-  @Roles('teacher', 'super', 'student', 'curator')
+  @Roles('teacher', 'super', 'student')
   getReplay(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.classroomService.getReplay(id, req.admin.id);
   }

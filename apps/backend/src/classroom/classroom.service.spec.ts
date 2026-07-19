@@ -333,6 +333,38 @@ describe('sahifa va chizish', () => {
     await expect(service.getReplay(sessionId, 'some-other-teacher'))
       .rejects.toThrow();
   });
+
+  it('getReplay attendance qatoridagi null bog\'lanishlarda 500 bermaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [
+        {
+          status: 'present',
+          enrollment: { schoolMember: { studentId: 'stu-1', student: { displayName: 'Ali' } } },
+        },
+        {
+          status: 'absent',
+          enrollment: null,
+        },
+        {
+          status: 'late',
+          enrollment: { schoolMember: null },
+        },
+      ],
+    });
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+    expect(replay.attendance).toEqual([{ userId: 'stu-1', name: 'Ali', status: 'present' }]);
+  });
 });
 
 describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
