@@ -1494,7 +1494,7 @@ function ClassroomPdfPage({
       // bo'sh joy qolishi mumkin — tugagach tekis moslashtiramiz (yakka
       // handle resize'dagi finishTextTransform bilan bir xil mantiq).
       if (stroke.tool === "text" && stroke.text) {
-        const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+        const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "Inter", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
         stroke.textBoxWidth = measured.width + 8;
         stroke.textBoxHeight = measured.height;
       }
@@ -1525,7 +1525,7 @@ function ClassroomPdfPage({
       // nusxani ham chizish ikkita matn ustma-ust ko'rinishiga olib keladi.
       if (s.id !== editingTextId) drawStroke(ctx, s, size.w, size.h, s.id === hoveredStrokeId);
     }
-    if (draftRef.current && draftRef.current.length >= 2 && tool !== "eraser-pixel" && tool !== "eraser-stroke" && tool !== "select" && tool !== "text") {
+    if (draftRef.current && draftRef.current.length >= 2 && tool !== "eraser-pixel" && tool !== "eraser-stroke" && tool !== "select" && tool !== "text" && tool !== "lasso") {
       const isShape = tool === "rectangle" || tool === "ellipse";
       drawStroke(ctx, {
         id: "__draft__", tool: tool === "laser" ? "pen" : tool, color, width: strokeWidth, points: draftRef.current,
@@ -1762,7 +1762,7 @@ function ClassroomPdfPage({
     // ("bo'sh joy" bilan) qolib ketishi mumkin — tugagach, matnning haqiqiy
     // (natural, o'ralmagan) o'lchamiga qarab box'ni tekis moslashtiramiz.
     if (stroke.text) {
-      const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+      const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "Inter", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
       stroke.textBoxWidth = measured.width + 8;
       stroke.textBoxHeight = measured.height;
     }
