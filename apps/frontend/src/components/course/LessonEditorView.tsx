@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { NotebookPen, Brain } from "lucide-react";
 import { CONTENT_BLOCK_LIMIT, useCourseStore, type ContentBlock } from "../../stores/courseStore";
 import { BlockPicker } from "./BlockPicker";
+import { LiveClassPickerModal } from "./LiveClassPickerModal";
 import { ContentBlockView } from "./ContentBlockView";
 import { Breadcrumb } from "./Breadcrumb";
 import { CourseSidePanel } from "./CourseSidePanel";
@@ -66,6 +67,7 @@ export function LessonEditorView({
     renameLesson,
     addBlock,
     addFileBlockFromLibrary,
+    addLiveClassBlock,
     updateBlock,
     removeBlock,
     moveBlock,
@@ -84,6 +86,7 @@ export function LessonEditorView({
   const [activeTab, setActiveTab] = useState<"content" | "practice">(
     "content",
   );
+  const [liveClassPickerOpen, setLiveClassPickerOpen] = useState(false);
 
   useEffect(() => {
     if (!lesson) return;
@@ -141,6 +144,17 @@ export function LessonEditorView({
     if (contentLimitReached) return;
     collapseAllExisting();
     void addFileBlockFromLibrary(courseId, moduleId, lessonId, url, fileName);
+  }
+
+  function handlePickLiveClass() {
+    if (contentLimitReached) return;
+    setLiveClassPickerOpen(true);
+  }
+
+  function handleSelectLiveClass(classSessionId: string) {
+    collapseAllExisting();
+    setLiveClassPickerOpen(false);
+    void addLiveClassBlock(courseId, moduleId, lessonId, classSessionId);
   }
 
   function toggleCollapse(blockId: string) {
@@ -281,6 +295,7 @@ export function LessonEditorView({
                 onPickEditor={handlePickEditor}
                 onPickFile={handlePickFile}
                 onPickFileFromLibrary={handlePickFileFromLibrary}
+                onPickLiveClass={handlePickLiveClass}
                 disabled={contentLimitReached}
                 limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
               />
@@ -311,6 +326,14 @@ export function LessonEditorView({
           onSelectPractice={() => setActiveTab("practice")}
         />
       </div>
+
+      {liveClassPickerOpen && (
+        <LiveClassPickerModal
+          courseId={courseId}
+          onSelect={handleSelectLiveClass}
+          onClose={() => setLiveClassPickerOpen(false)}
+        />
+      )}
     </div>
   );
 }
