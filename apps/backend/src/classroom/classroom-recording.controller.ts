@@ -4,6 +4,7 @@ import { WebhookReceiver } from 'livekit-server-sdk';
 import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { classSessions } from '../db/schema';
+import { StorageService } from '../storage/storage.service';
 
 // LiveKit signs webhook payloads itself — this route has NO JwtAuthGuard,
 // signature verification via WebhookReceiver is the auth mechanism.
@@ -11,7 +12,10 @@ import { classSessions } from '../db/schema';
 // bu shunchaki keyinroq recordingUrl'ni to'ldiradigan fon jarayoni.
 @Controller('webhooks/livekit')
 export class ClassroomRecordingController {
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    private readonly storage: StorageService,
+  ) {}
 
   @Post()
   async handleWebhook(@Body() rawBody: Buffer, @Headers('authorization') authHeader = ''): Promise<{ ok: true }> {
@@ -32,10 +36,11 @@ export class ClassroomRecordingController {
 
       const failed = info.error && info.error.length > 0;
       const location = info.fileResults?.[0]?.location ?? info.fileResults?.[0]?.filename ?? null;
+      const recordingUrl = location ? this.storage.getPublicUrl(location) : null;
       await db.update(classSessions)
         .set({
           recordingStatus: failed ? 'failed' : (location ? 'ready' : 'failed'),
-          recordingUrl: failed ? null : location,
+          recordingUrl: failed ? null : recordingUrl,
         })
         .where(eq(classSessions.id, sessionRow.id));
     } catch (e) {

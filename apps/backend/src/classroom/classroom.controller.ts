@@ -1,5 +1,5 @@
 import {
-  Body, Controller, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards,
+  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards,
 } from '@nestjs/common';
 import { ArrayMinSize, IsIn, IsInt, IsString, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -73,6 +73,12 @@ export class ClassroomController {
   @Roles('teacher', 'super', 'student')
   getReplay(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.classroomService.getReplay(id, req.admin.id);
+  }
+
+  @Delete('sessions/:id')
+  @Roles('teacher', 'super')
+  deleteSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.classroomService.deleteSession(id, req.admin.id, req.admin.role);
   }
 
   @Get('courses/:courseId/history')

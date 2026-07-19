@@ -645,7 +645,9 @@ export class ClassroomService implements OnModuleInit {
       pdfName: row.pdfName,
       pdfPages: (row.pdfPages as string[]) ?? [],
       historyEvents: (row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? [],
-      recordingUrl: row.recordingUrl,
+      // Older webhook versions stored only the S3 key (or an s3:// URL).
+      // Normalize on read as well so already-finished lessons become playable.
+      recordingUrl: row.recordingUrl ? this.storage.getPublicUrl(row.recordingUrl) : null,
       recordingStatus: row.recordingStatus,
       attendance: (row.attendance as unknown as Array<{
         enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
@@ -664,14 +666,14 @@ export class ClassroomService implements OnModuleInit {
   // (agar bo'lsa) va unga bog'langan "Jonli dars" content_blocks. PDF
   // sahifalari (pdfPages) HECH QACHON ochirilmaydi — ular media-kutubxona
   // resursi, boshqa darslar/kurslarda ham ishlatilgan bo'lishi mumkin.
-  async deleteSession(sessionId: string, callerId: string): Promise<void> {
+  async deleteSession(sessionId: string, callerId: string, callerRole = 'teacher'): Promise<void> {
     const row = await db.query.classSessions.findFirst({
       where: eq(classSessions.id, sessionId),
       with: { course: true },
     });
     if (!row) throw new NotFoundException('Dars topilmadi');
     const course = row.course as unknown as { adminId: string };
-    if (course.adminId !== callerId) throw new ForbiddenException();
+    if (callerRole !== 'super' && course.adminId !== callerId) throw new ForbiddenException();
     if (row.status !== 'ended') throw new ConflictException("Faqat yakunlangan darsni o'chirish mumkin");
 
     // deleteFile hech qachon otmaydi (Promise<boolean> qaytaradi) — fayl

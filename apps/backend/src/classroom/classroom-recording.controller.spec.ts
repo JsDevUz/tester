@@ -2,6 +2,7 @@ import { Test } from '@nestjs/testing';
 import { ConfigService } from '@nestjs/config';
 import { ClassroomRecordingController } from './classroom-recording.controller';
 import { db } from '../db';
+import { StorageService } from '../storage/storage.service';
 
 jest.mock('../db', () => ({
   db: { update: jest.fn(() => ({ set: jest.fn(() => ({ where: jest.fn().mockResolvedValue(undefined) })) })) },
@@ -11,7 +12,10 @@ describe('ClassroomRecordingController', () => {
   async function makeController(env: Record<string, string> = {}) {
     const moduleRef = await Test.createTestingModule({
       controllers: [ClassroomRecordingController],
-      providers: [{ provide: ConfigService, useValue: { get: (key: string) => env[key] } }],
+      providers: [
+        { provide: ConfigService, useValue: { get: (key: string) => env[key] } },
+        { provide: StorageService, useValue: { getPublicUrl: jest.fn((value: string) => value) } },
+      ],
     }).compile();
     return moduleRef.get(ClassroomRecordingController);
   }

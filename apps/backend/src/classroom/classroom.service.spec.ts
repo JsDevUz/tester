@@ -200,6 +200,20 @@ describe('deleteSession', () => {
     await expect(service.deleteSession(sessionId, 'teacher-1')).rejects.toThrow();
   });
 
+  it("super boshqa ustozning yakunlangan sessiyasini o'chira oladi", async () => {
+    const { service, sessionId } = await setup();
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      status: 'ended',
+      recordingStatus: 'none',
+      recordingUrl: null,
+      course: { adminId: 'boshqa-teacher' },
+    });
+
+    await expect(service.deleteSession(sessionId, 'super-1', 'super')).resolves.toBeUndefined();
+    expect(mockedDb.delete).toHaveBeenCalledTimes(2);
+  });
+
   it("faol (active) sessiyani ochirishga urinilsa xato otadi", async () => {
     const { service, sessionId } = await setup();
     mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({

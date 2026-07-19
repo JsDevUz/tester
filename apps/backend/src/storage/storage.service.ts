@@ -115,10 +115,17 @@ export class StorageService {
     if (this.publicDomain && clean.startsWith(this.publicDomain)) {
       return clean.slice(this.publicDomain.length + 1);
     }
+    if (/^s3:\/\//i.test(clean)) {
+      const withoutScheme = clean.replace(/^s3:\/\//i, '');
+      const slashIndex = withoutScheme.indexOf('/');
+      return slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : '';
+    }
     return clean.replace(/^\/+/, '');
   }
 
   getPublicUrl(key: string): string {
+    const clean = key.trim();
+    if (/^https?:\/\//i.test(clean)) return clean;
     const cleanKey = this.getKeyFromUrlOrKey(key);
     return this.publicDomain ? `${this.publicDomain}/${cleanKey}` : cleanKey;
   }

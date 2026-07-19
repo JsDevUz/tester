@@ -163,6 +163,10 @@ export async function apiClassReplay(sessionId: string): Promise<ClassReplayData
   return res.data;
 }
 
+export async function apiDeleteClassSession(sessionId: string): Promise<void> {
+  await client.delete(`/classroom/sessions/${sessionId}`);
+}
+
 export async function apiOverrideAttendance(recordId: string, status: 'absent' | 'present' | 'late'): Promise<void> {
   await client.patch(`/classroom/attendance/${recordId}`, { status });
 }
