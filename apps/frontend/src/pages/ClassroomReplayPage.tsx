@@ -73,7 +73,7 @@ export function ClassroomReplayPage() {
       </div>
 
       <div className="flex flex-1 min-h-0">
-        <div className="relative flex-1 min-h-0">
+        <div className="relative flex-1 min-h-0 flex flex-col">
           <ClassroomPdfViewer
             pageUrls={data.pdfPages}
             currentPage={replay.state.currentPage}
