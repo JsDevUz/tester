@@ -186,6 +186,44 @@ export function eraseStroke(session: ClassroomSession, page: number, strokeId: s
   return true;
 }
 
+// Layer tartibini o'zgartirish: massiv tartibi = render tartibi (z-order),
+// shuning uchun alohida zIndex maydoni shart emas — faqat massivda
+// ko'chirish kifoya. Guruh (bir nechta strokeIds) uchun ularning o'zaro
+// nisbiy tartibi saqlanadi.
+export function reorderStrokes(
+  session: ClassroomSession, page: number, strokeIds: string[],
+  op: 'front' | 'back' | 'forward' | 'backward',
+  targetMap?: Map<number, ClassroomStroke[]>,
+): boolean {
+  if (!isValidPage(session, page) || strokeIds.length === 0) return false;
+  const list = (targetMap ?? activeStrokeMap(session)).get(page);
+  if (!list) return false;
+  const idSet = new Set(strokeIds);
+  if (![...idSet].every((id) => list.some((s) => s.id === id))) return false;
+
+  if (op === 'front' || op === 'back') {
+    const selected = list.filter((s) => idSet.has(s.id));
+    const rest = list.filter((s) => !idSet.has(s.id));
+    const next = op === 'front' ? [...rest, ...selected] : [...selected, ...rest];
+    list.splice(0, list.length, ...next);
+    return true;
+  }
+
+  // forward: har bir tanlangan elementni undan keyingi (tanlanmagan)
+  // qo'shni bilan almashtiradi; backward — oldingisi bilan. Eng chetdagi
+  // (front/back'da allaqachon turgan) elementlar o'tkazib yuboriladi.
+  const step = op === 'forward' ? 1 : -1;
+  const indices = op === 'forward'
+    ? [...list.keys()].filter((i) => idSet.has(list[i].id)).reverse()
+    : [...list.keys()].filter((i) => idSet.has(list[i].id));
+  for (const i of indices) {
+    const j = i + step;
+    if (j < 0 || j >= list.length || idSet.has(list[j].id)) continue;
+    [list[i], list[j]] = [list[j], list[i]];
+  }
+  return true;
+}
+
 // Pixel-eraser (segment-darajasida): bitta eski chizmani o'sha o'rniga
 // (bir xil tartibda) bir nechta yangi kesim-chizmalar bilan almashtiradi —
 // masalan uzun chiziqning o'rtasi o'chirilganda ikki bo'lakka bo'linadi.

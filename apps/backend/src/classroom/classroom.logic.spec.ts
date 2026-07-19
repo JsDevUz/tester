@@ -1,6 +1,6 @@
 import {
   addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
-  attendanceStatusOnJoin, closeInterval, buildSnapshot,
+  attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
   LATE_AFTER_MS, MAX_STROKE_POINTS,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
@@ -86,6 +86,88 @@ describe('undoStroke', () => {
   it('bosh sahifada null', () => {
     const s = makeSession();
     expect(undoStroke(s, 1)).toBeNull();
+  });
+});
+
+describe('reorderStrokes', () => {
+  function makeFour(s: ClassroomSession) {
+    addStroke(s, 1, makeStroke({ id: 'a' }));
+    addStroke(s, 1, makeStroke({ id: 'b' }));
+    addStroke(s, 1, makeStroke({ id: 'c' }));
+    addStroke(s, 1, makeStroke({ id: 'd' }));
+  }
+  function ids(s: ClassroomSession) {
+    return s.strokesByPage.get(1)!.map((x) => x.id);
+  }
+
+  it('front: tanlangan elementlarni royxat oxiriga (eng tepaga) kochiradi, ozaro tartib saqlanadi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['b', 'a'], 'front')).toBe(true);
+    expect(ids(s)).toEqual(['c', 'd', 'a', 'b']);
+  });
+
+  it('back: tanlangan elementlarni royxat boshiga (eng pastga) kochiradi, ozaro tartib saqlanadi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['c', 'd'], 'back')).toBe(true);
+    expect(ids(s)).toEqual(['c', 'd', 'a', 'b']);
+  });
+
+  it('forward: har bir elementni bittaga oldinga (keyingi qoshniga) siljitadi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['b'], 'forward')).toBe(true);
+    expect(ids(s)).toEqual(['a', 'c', 'b', 'd']);
+  });
+
+  it('forward: eng oxirgi element allaqachon tepada bolsa ozgarmaydi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['d'], 'forward')).toBe(true);
+    expect(ids(s)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('backward: har bir elementni bittaga orqaga (oldingi qoshniga) siljitadi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['c'], 'backward')).toBe(true);
+    expect(ids(s)).toEqual(['a', 'c', 'b', 'd']);
+  });
+
+  it('backward: eng birinchi element allaqachon pastda bolsa ozgarmaydi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['a'], 'backward')).toBe(true);
+    expect(ids(s)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('forward guruh holatida qoshni tanlangan elementlar orasidan otkazib yuboriladi', () => {
+    const s = makeSession();
+    makeFour(s);
+    // b va c qoshni tanlangan — forward'da ular bir-birini "to'sib" turmasligi kerak,
+    // d bilan almashadi (c, keyin b navbat bilan)
+    expect(reorderStrokes(s, 1, ['b', 'c'], 'forward')).toBe(true);
+    expect(ids(s)).toEqual(['a', 'd', 'b', 'c']);
+  });
+
+  it("mavjud bo'lmagan strokeId uchun rad etiladi", () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, ['zzz'], 'front')).toBe(false);
+    expect(ids(s)).toEqual(['a', 'b', 'c', 'd']);
+  });
+
+  it('bosh strokeIds royxati rad etiladi', () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 1, [], 'front')).toBe(false);
+  });
+
+  it("mavjud bo'lmagan sahifa uchun rad etiladi", () => {
+    const s = makeSession();
+    makeFour(s);
+    expect(reorderStrokes(s, 5, ['a'], 'front')).toBe(false);
   });
 });
 

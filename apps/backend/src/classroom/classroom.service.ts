@@ -13,6 +13,7 @@ import { MediaLibraryService } from '../upload/media-library.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
+  reorderStrokes as reorderStrokesInSession,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
   updateShapeStroke as updateShapeStrokeInSession,
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
@@ -462,6 +463,22 @@ export class ClassroomService implements OnModuleInit {
     if (erased) {
       this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
     }
+  }
+
+  // Layer tartibini o'zgartirish: send-to-back/send-backward/bring-forward/
+  // bring-to-front. Guruh (lasso) uchun bir nechta strokeIds birga keladi.
+  reorderStroke(
+    sessionId: string, userId: string, page: number, strokeIds: string[],
+    op: 'front' | 'back' | 'forward' | 'backward',
+    mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left',
+  ): void {
+    const s = this.requireHost(sessionId, userId);
+    const previousMode = s.boardMode;
+    s.boardMode = mode;
+    const accepted = reorderStrokesInSession(s, page, strokeIds, op, strokeMapFor(s, mode, pane));
+    s.boardMode = previousMode;
+    if (!accepted) throw new Error('INVALID_STROKE');
+    this.broadcaster.toRoom(sessionId, 'stroke:reorder', { page, strokeIds, op, pane, mode });
   }
 
   // Pixel-eraser: bitta chizmaning faqat teginilgan qismini "kesib"

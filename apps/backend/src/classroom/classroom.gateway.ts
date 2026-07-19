@@ -160,6 +160,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:reorderStroke')
+  reorderStroke(@MessageBody() body: BaseBody & { page: number; strokeIds: string[]; op: 'front' | 'back' | 'forward' | 'backward'; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.reorderStroke(body.sessionId, user.sub, body.page, body.strokeIds, body.op, body.mode, body.pane);
+    });
+  }
+
   @SubscribeMessage('host:splitStroke')
   splitStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; replacements: ClassroomStroke[]; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
     return this.run(() => {
