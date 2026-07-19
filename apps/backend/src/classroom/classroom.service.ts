@@ -262,7 +262,7 @@ export class ClassroomService implements OnModuleInit {
         }
       }
       await db.update(classSessions)
-        .set({ status: 'ended', endedAt: new Date() })
+        .set({ status: 'ended', endedAt: new Date(), historyEvents: s.historyEvents ?? [] })
         .where(eq(classSessions.id, sessionId));
     }
     this.broadcaster.toRoom(sessionId, 'session:ended', {});

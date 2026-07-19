@@ -263,6 +263,16 @@ describe('sahifa va chizish', () => {
     service.clearPage(sessionId, 'teacher-1', 1);
     expect(events.at(-1)).toMatchObject({ event: 'page:clear', payload: { page: 1 } });
   });
+
+  it('endSession da historyEvents DB ga saqlanadi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
+    mockedDb.update.mockClear();
+    await service.endSession(sessionId, 'teacher-1');
+    expect(mockedDb.update).toHaveBeenCalled();
+    const setCalls = mockedDb.update.mock.results.map((r: any) => r.value.set.mock.calls[0][0]);
+    expect(setCalls.some((c: any) => Array.isArray(c.historyEvents) && c.historyEvents.length === 1)).toBe(true);
+  });
 });
 
 describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
