@@ -4,7 +4,6 @@ import { ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
-import * as express from 'express';
 import 'dotenv/config';
 import { validateEnv } from './validate-env';
 
@@ -12,22 +11,6 @@ validateEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
-  // LiveKit webhook so'rovlari Content-Type: application/webhook+json bilan
-  // keladi — bu standart 'application/json' parser mos keladigan turlar
-  // ro'yxatiga kirmaydi, shuning uchun req.rawBody hech qachon
-  // to'ldirilmasdi (ClassroomRecordingController jimgina erta qaytib
-  // ketardi, log ham qoldirmasdan). Faqat shu bitta yo'lga cheklangan
-  // holda express.json({ verify }) qo'shiladi — boshqa barcha route'lar
-  // Nest'ning o'z global JSON parseriga tegilmagan holda qoladi.
-  app.use(
-    '/api/v1/webhooks/livekit',
-    express.json({
-      type: 'application/webhook+json',
-      verify: (req: any, _res, buf) => {
-        req.rawBody = buf;
-      },
-    }),
-  );
   const uploadsDir = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
