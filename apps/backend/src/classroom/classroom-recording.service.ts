@@ -37,16 +37,17 @@ export class ClassroomRecordingService {
     error?: string;
     fileResults?: Array<{ location?: string; filename?: string }>;
   }): Promise<boolean> {
-    const failed = info.status >= 4 || !!info.error;
     const result = info.fileResults?.[0];
     const location = result?.location || result?.filename || null;
-    if (!failed && !location) return false;
+    const terminal = info.status >= 3 || !!info.error;
+    if (!terminal) return false;
+    const failed = info.status >= 4 || !!info.error || !location;
 
     const storage = this.storageConfig();
     await db.update(classSessions)
       .set({
-        recordingStatus: failed || !location ? 'failed' : 'ready',
-        recordingUrl: failed || !location || !storage ? null : this.publicRecordingUrl(location, storage),
+        recordingStatus: failed ? 'failed' : 'ready',
+        recordingUrl: failed || !storage ? null : this.publicRecordingUrl(location, storage),
       })
       .where(eq(classSessions.id, sessionId));
     return true;
@@ -129,6 +130,12 @@ export class ClassroomRecordingService {
       if (!row?.egressId) return;
       const httpUrl = lk.url.replace(/^ws/, 'http');
       const egress = new EgressClient(httpUrl, lk.apiKey, lk.apiSecret);
+      // Room yopilganda Egress o'zi yakunlanishi mumkin. Complete bo'lgan
+      // jobga StopEgress yuborish failed_precondition qaytaradi; avval
+      // holatni o'qib, mavjud yakuniy natijani saqlaymiz.
+      const existing = await egress.listEgress({ egressId: row.egressId });
+      if (existing[0] && await this.persistEgressResult(sessionId, existing[0])) return;
+
       let info = await egress.stopEgress(row.egressId);
       if (await this.persistEgressResult(sessionId, info)) return;
 
@@ -156,7 +163,7 @@ export class ClassroomRecordingService {
       const lk = this.livekitConfig();
       if (!lk) return;
       const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
-      if (!row?.egressId || row.recordingStatus !== 'pending') return;
+      if (!row?.egressId || (row.recordingStatus !== 'pending' && row.recordingStatus !== 'failed')) return;
 
       const egress = new EgressClient(lk.url.replace(/^ws/, 'http'), lk.apiKey, lk.apiSecret);
       const items = await egress.listEgress({ egressId: row.egressId });
