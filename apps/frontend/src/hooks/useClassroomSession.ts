@@ -8,6 +8,26 @@ function moveStrokePoints(stroke: CsStroke, x: number, y: number): number[] {
   return stroke.points.map((value, index) => value + (index % 2 === 0 ? dx : dy));
 }
 
+function reorderStrokeList(list: CsStroke[], strokeIds: string[], op: "front" | "back" | "forward" | "backward"): CsStroke[] {
+  const idSet = new Set(strokeIds);
+  if (op === "front" || op === "back") {
+    const selected = list.filter((s) => idSet.has(s.id));
+    const rest = list.filter((s) => !idSet.has(s.id));
+    return op === "front" ? [...rest, ...selected] : [...selected, ...rest];
+  }
+  const next = [...list];
+  const step = op === "forward" ? 1 : -1;
+  const indices = op === "forward"
+    ? [...next.keys()].filter((i) => idSet.has(next[i].id)).reverse()
+    : [...next.keys()].filter((i) => idSet.has(next[i].id));
+  for (const i of indices) {
+    const j = i + step;
+    if (j < 0 || j >= next.length || idSet.has(next[j].id)) continue;
+    [next[i], next[j]] = [next[j], next[i]];
+  }
+  return next;
+}
+
 export interface ClassroomState {
   joined: boolean;
   error: string | null;
@@ -183,6 +203,16 @@ export function useClassroomSession(
         return { ...s, [key]: { ...source, [p.page]: next } };
       });
     });
+    socket.on("stroke:reorder", (p: { page: number; strokeIds: string[]; op: "front" | "back" | "forward" | "backward"; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      setState((s) => {
+        const right = p.pane === "right";
+        if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+        const key = right ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const list = source[p.page] ?? [];
+        return { ...s, [key]: { ...source, [p.page]: reorderStrokeList(list, p.strokeIds, p.op) } };
+      });
+    });
     socket.on("stroke:undo", (p: { page: number; strokeId: string; pane?: "left" | "right"; mode?: CsBoardMode }) => {
       setState((s) => {
         const right = p.pane === "right";
@@ -243,6 +273,7 @@ export function useClassroomSession(
       socket.off("stroke:update");
       socket.off("stroke:textUpdate");
       socket.off("stroke:shapeUpdate");
+      socket.off("stroke:reorder");
       socket.off("stroke:undo");
       socket.off("stroke:split");
       socket.off("page:clear");
@@ -309,6 +340,15 @@ export function useClassroomSession(
         return { ...s, [key]: { ...source, [page]: next } };
       });
       emitHost("host:updateShapeStroke", { page, stroke, pane, mode });
+    },
+    reorderStroke: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward", pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+      setState((s) => {
+        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+        const source = s[key];
+        const list = source[page] ?? [];
+        return { ...s, [key]: { ...source, [page]: reorderStrokeList(list, strokeIds, op) } };
+      });
+      emitHost("host:reorderStroke", { page, strokeIds, op, pane, mode });
     },
     undo: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:undo", { page, pane, mode }),
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
