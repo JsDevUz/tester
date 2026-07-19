@@ -1,5 +1,5 @@
 import {
-  Film, Image as ImageIcon, Paperclip, LayoutGrid, ChevronUp, ChevronDown,
+  Film, Image as ImageIcon, Paperclip, LayoutGrid, Radio, ChevronUp, ChevronDown,
   X, Link2, Plus, ArrowUp, ArrowDown, Loader2, ExternalLink,
 } from 'lucide-react';
 import type { ContentBlock } from '../../stores/courseStore';
@@ -28,6 +28,7 @@ const TYPE_META: Record<ContentBlock['type'], { label: string; icon: typeof Film
   video: { label: 'Video', icon: Film },
   image: { label: 'Rasm', icon: ImageIcon },
   file: { label: 'Fayl', icon: Paperclip },
+  live_class: { label: 'Jonli dars', icon: Radio },
 };
 
 export function ContentBlockView({
@@ -113,6 +114,13 @@ export function ContentBlockView({
                 />
               </div>
               <EditorBlock html={block.html ?? ''} onChange={onChangeHtml} />
+            </div>
+          )}
+
+          {block.type === 'live_class' && (
+            <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-3 text-sm text-gray-600">
+              <Radio size={16} className="text-indigo-500" />
+              <span>Ushbu blok bitta yakunlangan jonli darsga bog'langan. Boshqasini tanlash uchun blokni o'chirib, qayta qo'shing.</span>
             </div>
           )}
 
