@@ -143,6 +143,26 @@ export async function apiClassHistory(courseId: string): Promise<ClassHistoryIte
   return res.data;
 }
 
+export interface ClassReplayEvent {
+  type: string;
+  payload: unknown;
+  atMs: number;
+}
+
+export interface ClassReplayData {
+  pdfName: string | null;
+  pdfPages: string[];
+  historyEvents: ClassReplayEvent[];
+  recordingUrl: string | null;
+  recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
+  attendance: Array<{ userId: string; name: string; status: 'absent' | 'present' | 'late' }>;
+}
+
+export async function apiClassReplay(sessionId: string): Promise<ClassReplayData> {
+  const res = await client.get(`/classroom/sessions/${sessionId}/replay`);
+  return res.data;
+}
+
 export async function apiOverrideAttendance(recordId: string, status: 'absent' | 'present' | 'late'): Promise<void> {
   await client.patch(`/classroom/attendance/${recordId}`, { status });
 }
