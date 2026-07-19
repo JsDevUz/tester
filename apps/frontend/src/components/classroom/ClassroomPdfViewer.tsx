@@ -2121,6 +2121,7 @@ function ClassroomPdfPage({
               onFontSizeChange={(fontSize) => setTextEditor((current) => current ? { ...current, fontSize } : current)}
               onFontWeightChange={(fontWeight) => setTextEditor((current) => current ? { ...current, fontWeight } : current)}
               onTextAlignChange={(textAlign) => setTextEditor((current) => current ? { ...current, textAlign } : current)}
+              onReorder={() => {}}
             />}
             </>
           )}
@@ -2179,6 +2180,7 @@ function ClassroomPdfPage({
               onFontSizeChange={(fontSize) => updateSelectedText({ fontSize })}
               onFontWeightChange={(fontWeight) => updateSelectedText({ fontWeight })}
               onTextAlignChange={(textAlign) => updateSelectedText({ textAlign })}
+              onReorder={(op) => selectedText && onReorderStroke?.(pageNumber, [selectedText.id], op)}
               onDelete={() => {
                 onEraseStroke?.(pageNumber, selectedText.id);
                 setSelectedTextId(null);
@@ -2206,6 +2208,7 @@ function ClassroomPdfPage({
               onStrokeStyleChange={(strokeStyle) => onShapeStyleChange({ ...shapeStyle, strokeStyle })}
               onEdgesChange={(edges) => onShapeStyleChange({ ...shapeStyle, edges })}
               onOpacityChange={(opacity) => onShapeStyleChange({ ...shapeStyle, opacity })}
+              onReorder={() => {}}
             />
           )}
           {tool === "select" && selectedShape && (
@@ -2262,6 +2265,7 @@ function ClassroomPdfPage({
               onStrokeStyleChange={(strokeStyle) => updateSelectedShape({ strokeStyle })}
               onEdgesChange={(edges) => updateSelectedShape({ edges })}
               onOpacityChange={(opacity) => updateSelectedShape({ opacity })}
+              onReorder={(op) => selectedShape && onReorderStroke?.(pageNumber, [selectedShape.id], op)}
             />}
             </>
           )}
@@ -2288,14 +2292,28 @@ function ClassroomPdfPage({
                   onPointerCancel={finishGroupResize}
                 />
               ))}
-              <button
-                type="button"
-                aria-label="Tanlangan guruhni o'chirish"
-                onClick={deleteSelectedGroup}
-                className="pointer-events-auto absolute -top-9 left-1/2 -translate-x-1/2 rounded-full bg-red-500 p-1.5 text-white shadow-md hover:bg-red-600"
-              >
-                <Trash2 size={13} />
-              </button>
+              <div className="pointer-events-auto absolute -top-9 left-1/2 flex -translate-x-1/2 items-center gap-1">
+                {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
+                  <button
+                    key={value}
+                    type="button"
+                    aria-label={label}
+                    title={label}
+                    onClick={() => onReorderStroke?.(pageNumber, [...selectedGroupIds], value)}
+                    className="rounded-full bg-white p-1.5 text-gray-600 shadow-md hover:bg-gray-100"
+                  >
+                    <Icon size={13} />
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  aria-label="Tanlangan guruhni o'chirish"
+                  onClick={deleteSelectedGroup}
+                  className="rounded-full bg-red-500 p-1.5 text-white shadow-md hover:bg-red-600"
+                >
+                  <Trash2 size={13} />
+                </button>
+              </div>
             </div>
           )}
         </div>
