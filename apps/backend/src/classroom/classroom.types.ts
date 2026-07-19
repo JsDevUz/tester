@@ -61,6 +61,16 @@ export interface ClassroomScrollPosition {
   xRatio?: number;
 }
 
+// Har bir chizma/board mutatsiyasi shu shaklda saqlanadi (faqat
+// isFree=false sessiyalarda) — payload har doim mos socket broadcast
+// payload'i bilan bir xil, shunda frontend bir xil reducer'ni ham
+// jonli sinxronizatsiyada, ham replay'da qayta ishlata oladi.
+export interface ClassroomHistoryEvent {
+  type: string;
+  payload: unknown;
+  atMs: number;
+}
+
 export interface ClassroomSession {
   id: string;
   // Erkin (guruhsiz) darsda courseId/courseName null — kursga umuman
@@ -93,6 +103,9 @@ export interface ClassroomSession {
   rightBoardMode?: ClassroomBoardMode;
   classroomTheme?: ClassroomTheme;
   notebookStyle?: ClassroomNotebookStyle;
+  // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
+  // class_sessions.history_events'ga saqlanadi.
+  historyEvents?: ClassroomHistoryEvent[];
 }
 
 export interface ClassroomSnapshot {
