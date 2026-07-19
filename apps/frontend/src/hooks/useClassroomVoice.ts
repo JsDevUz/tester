@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RemoteTrack, RemoteTrackPublication, RemoteParticipant, Room, RoomEvent, Track } from "livekit-client";
-import { apiVoiceToken } from "../api/classroom";
+import { apiStartClassRecording, apiVoiceToken } from "../api/classroom";
 
 interface VoiceState {
   // false — LiveKit sozlanmagan (dars ovozsiz rejimda)
@@ -16,7 +16,7 @@ interface VoiceState {
   activeAudioInputId: string | null;
 }
 
-export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean) {
+export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean, recordRoom = false) {
   const roomRef = useRef<Room | null>(null);
   const [state, setState] = useState<VoiceState>({
     voiceAvailable: true,
@@ -93,6 +93,11 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
         if (cancelled) return;
         await room.connect(url, token);
         if (cancelled) { await room.disconnect(); return; }
+        if (recordRoom) {
+          void apiStartClassRecording(sessionId).catch((e) => {
+            console.error("Dars ovozini yozib olishni boshlab bo'lmadi:", e);
+          });
+        }
         setState((s) => ({ ...s, connected: true }));
         if (!startMuted) {
           await room.localParticipant.setMicrophoneEnabled(true);
@@ -116,7 +121,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       void room.disconnect();
       document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());
     };
-  }, [sessionId, startMuted]);
+  }, [sessionId, startMuted, recordRoom]);
 
   const toggleMic = useCallback(async () => {
     const room = roomRef.current;

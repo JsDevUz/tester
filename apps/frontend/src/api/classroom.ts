@@ -176,6 +176,10 @@ export async function apiVoiceToken(sessionId: string): Promise<{ token: string;
   return res.data;
 }
 
+export async function apiStartClassRecording(sessionId: string): Promise<void> {
+  await client.post(`/classroom/sessions/${sessionId}/recording/start`);
+}
+
 export async function apiMuteParticipant(sessionId: string, userId: string): Promise<void> {
   await client.post(`/classroom/sessions/${sessionId}/participants/${userId}/mute`);
 }

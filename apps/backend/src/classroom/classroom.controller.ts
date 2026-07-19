@@ -104,6 +104,13 @@ export class ClassroomController {
     return this.classroomService.voiceToken(id, req.admin.id, req.admin.name ?? '');
   }
 
+  @Post('sessions/:id/recording/start')
+  @Roles('teacher', 'super')
+  async startRecording(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    await this.classroomService.startSessionRecording(id, req.admin.id);
+    return { ok: true };
+  }
+
   @Post('sessions/:id/participants/:userId/mute')
   @Roles('teacher', 'super')
   async mute(

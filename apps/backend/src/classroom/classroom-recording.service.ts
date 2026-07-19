@@ -8,7 +8,7 @@ import { classSessions } from '../db/schema';
 interface LiveKitConfig { url: string; apiKey: string; apiSecret: string }
 interface StorageConfig {
   bucket: string; region: string; endpoint: string;
-  accessKeyId: string; secretAccessKey: string; publicBaseUrl: string;
+  accessKeyId: string; secretAccessKey: string; publicBaseUrl: string; forcePathStyle: boolean;
 }
 
 // LiveKit Egress orqali dars ovozini yozib olish — MUHIM: bu xizmatning
@@ -17,6 +17,8 @@ interface StorageConfig {
 // yuqoriga otilmaydi — faqat console.error orqali log yoziladi.
 @Injectable()
 export class ClassroomRecordingService {
+  private readonly starting = new Set<string>();
+
   constructor(private readonly config: ConfigService) {}
 
   private livekitConfig(): LiveKitConfig | null {
@@ -38,14 +40,23 @@ export class ClassroomRecordingService {
     return {
       bucket, accessKeyId, secretAccessKey, endpoint, publicBaseUrl,
       region: this.config.get<string>('OBJECT_STORAGE_REGION') || 'auto',
+      forcePathStyle: this.config.get<string>('OBJECT_STORAGE_FORCE_PATH_STYLE') === 'true',
     };
   }
 
   async startRecording(sessionId: string): Promise<void> {
+    if (this.starting.has(sessionId)) return;
+    this.starting.add(sessionId);
     try {
       const lk = this.livekitConfig();
       const storage = this.storageConfig();
-      if (!lk || !storage) return;
+      if (!lk || !storage) {
+        console.error(`startRecording: LiveKit yoki object storage sozlanmagan (${sessionId})`);
+        return;
+      }
+
+      const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+      if (!row || row.egressId || row.recordingStatus === 'pending' || row.recordingStatus === 'ready') return;
 
       const httpUrl = lk.url.replace(/^ws/, 'http');
       const egress = new EgressClient(httpUrl, lk.apiKey, lk.apiSecret);
@@ -61,6 +72,7 @@ export class ClassroomRecordingService {
             region: storage.region,
             endpoint: storage.endpoint,
             bucket: storage.bucket,
+            forcePathStyle: storage.forcePathStyle,
           }),
         },
       });
@@ -70,6 +82,11 @@ export class ClassroomRecordingService {
         .where(eq(classSessions.id, sessionId));
     } catch (e) {
       console.error(`startRecording: failed for session ${sessionId}`, e);
+      await db.update(classSessions)
+        .set({ recordingStatus: 'failed' })
+        .where(eq(classSessions.id, sessionId));
+    } finally {
+      this.starting.delete(sessionId);
     }
   }
 

@@ -22,7 +22,7 @@ describe('ClassroomRecordingController', () => {
 
   it('LiveKit sozlanmagan bolsa webhook 200 qaytaradi lekin hech narsa yozmaydi', async () => {
     const controller = await makeController({});
-    const res = await controller.handleWebhook(Buffer.from('{}'), '');
+    const res = await controller.handleWebhook({ rawBody: Buffer.from('{}') } as any, '');
     expect(res).toEqual({ ok: true });
     expect(db.update).not.toHaveBeenCalled();
   });

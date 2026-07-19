@@ -97,9 +97,10 @@ describe('createSession', () => {
     expect(snap.hostOnline).toBe(true);
   });
 
-  it('createSession chaqirilganda recordingService.startRecording chaqiriladi', async () => {
-    const { sessionId, recordingService } = await setup();
-    expect(recordingService.startRecording).toHaveBeenCalledWith(expect.any(String));
+  it('host LiveKit roomga ulangandan keyin recording boshlanadi', async () => {
+    const { service, sessionId, recordingService } = await setup();
+    expect(recordingService.startRecording).not.toHaveBeenCalled();
+    await service.startSessionRecording(sessionId, 'teacher-1');
     expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId);
   });
 

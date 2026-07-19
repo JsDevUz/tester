@@ -39,7 +39,7 @@ export function ClassroomHostPage() {
   const admin = useAuthStore((s) => s.admin);
   const { state, hostActions } = useClassroomSession(id, "host");
   useClassroomTheme(state.classroomTheme);
-  const voice = useClassroomVoice(state.joined ? id : undefined, true);
+  const voice = useClassroomVoice(state.joined ? id : undefined, true, true);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");

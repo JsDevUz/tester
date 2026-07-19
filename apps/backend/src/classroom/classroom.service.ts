@@ -130,8 +130,6 @@ export class ClassroomService implements OnModuleInit {
       scroll: null,
     });
 
-    void this.recording.startRecording(row.id);
-
     return { id: row.id };
   }
 
@@ -748,6 +746,12 @@ export class ClassroomService implements OnModuleInit {
   }
 
   // ---------- Ovoz (LiveKit) ----------
+
+  async startSessionRecording(sessionId: string, userId: string): Promise<void> {
+    const session = this.requireSessionHttp(sessionId);
+    if (session.isFree || session.hostUserId !== userId) throw new ForbiddenException();
+    await this.recording.startRecording(sessionId);
+  }
 
   private livekitConfig(): { url: string; apiKey: string; apiSecret: string } | null {
     const url = this.config.get<string>('LIVEKIT_URL');

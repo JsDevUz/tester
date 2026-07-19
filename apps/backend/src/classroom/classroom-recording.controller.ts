@@ -1,4 +1,6 @@
-import { Body, Controller, Headers, Post } from '@nestjs/common';
+import { Controller, Headers, Post, Req } from '@nestjs/common';
+import type { RawBodyRequest } from '@nestjs/common';
+import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { WebhookReceiver } from 'livekit-server-sdk';
 import { eq } from 'drizzle-orm';
@@ -18,14 +20,18 @@ export class ClassroomRecordingController {
   ) {}
 
   @Post()
-  async handleWebhook(@Body() rawBody: Buffer, @Headers('authorization') authHeader = ''): Promise<{ ok: true }> {
+  async handleWebhook(
+    @Req() req: RawBodyRequest<Request>,
+    @Headers('authorization') authHeader = '',
+  ): Promise<{ ok: true }> {
     try {
       const apiKey = this.config.get<string>('LIVEKIT_API_KEY');
       const apiSecret = this.config.get<string>('LIVEKIT_API_SECRET');
       if (!apiKey || !apiSecret) return { ok: true };
 
       const receiver = new WebhookReceiver(apiKey, apiSecret);
-      const event = await receiver.receive(rawBody.toString('utf8'), authHeader);
+      if (!req.rawBody) return { ok: true };
+      const event = await receiver.receive(req.rawBody.toString('utf8'), authHeader);
       if (event.event !== 'egress_ended') return { ok: true };
 
       const info = event.egressInfo;
