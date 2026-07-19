@@ -84,8 +84,10 @@ export interface ClassroomSession {
   // orqali, hozir ulanganlarga broadcast orqali yetkaziladi.
   scroll: ClassroomScrollPosition | null;
   boardMode?: ClassroomBoardMode;
+  // MUHIM: chap va o'ng panel bir xil mode-bo'yicha havuzdan o'qiydi/yozadi
+  // (pane emas, mode identifikator) — shu sabab split taxtalar almashtirilganda
+  // (swap) o'sha mode'ga tegishli chizmalar ham birga "ko'chib" o'tadi.
   strokesByMode?: Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>;
-  rightStrokesByMode?: Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>;
   boardLayout?: ClassroomBoardLayout;
   leftBoardMode?: ClassroomBoardMode;
   rightBoardMode?: ClassroomBoardMode;

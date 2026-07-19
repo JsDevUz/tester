@@ -217,7 +217,7 @@ export function MyCoursesPage() {
               <button
                 type="button"
                 onClick={() => setLeaderboardCourse(c)}
-                className="mt-3 inline-flex items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                className="mt-3 inline-flex w-fit shrink-0 self-start items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
               >
                 <Trophy size={14} className="text-amber-500" /> Peshqadamlar
               </button>

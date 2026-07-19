@@ -26,24 +26,23 @@ export function activeStrokeMap(session: ClassroomSession): Map<number, Classroo
   return map;
 }
 
+// MUHIM: chizmalar MODE (pdf/notebook) bo'yicha saqlanadi, PANE (chap/o'ng)
+// bo'yicha EMAS — `pane` parametri faqat activeStrokeMap'ning yon
+// ta'sirlaridan (session.boardMode/session.strokesByPage) himoyalanish uchun
+// ishlatiladi, lekin ikkala pane bir xil session.strokesByMode havuzidan
+// o'qiydi/yozadi. Avval 'right' pane uchun butunlay alohida
+// (session.rightStrokesByMode) havuz ishlatilardi — shu sabab split
+// taxtalarni almashtirish (swap) tugmasi bosilganda daftarga chapda
+// chizilgan chizmalar o'ngga o'tganda "yo'qolib qolar", chunki ular hali
+// ham eski (endi hech kim o'qimaydigan) chap havuzda qolib ketardi.
 export function strokeMapFor(
   session: ClassroomSession,
   mode: ClassroomBoardMode,
-  pane: 'left' | 'right' = 'left',
 ): Map<number, ClassroomStroke[]> {
-  if (pane === 'left') {
-    const previousMode = session.boardMode;
-    session.boardMode = mode;
-    const map = activeStrokeMap(session);
-    session.boardMode = previousMode;
-    return map;
-  }
-  if (!session.rightStrokesByMode) session.rightStrokesByMode = new Map();
-  let map = session.rightStrokesByMode.get(mode);
-  if (!map) {
-    map = new Map();
-    session.rightStrokesByMode.set(mode, map);
-  }
+  const previousMode = session.boardMode;
+  session.boardMode = mode;
+  const map = activeStrokeMap(session);
+  session.boardMode = previousMode;
   return map;
 }
 
@@ -78,12 +77,12 @@ export function addStroke(session: ClassroomSession, page: number, stroke: Class
   if (!Array.isArray(points) || points.length === 0 || points.length % 2 !== 0) return false;
   if (stroke.tool === 'text') {
     if (points.length !== 2 || typeof stroke.text !== 'string' || stroke.text.trim().length === 0 || stroke.text.length > 500) return false;
-    if (stroke.fontSize !== undefined && (!Number.isFinite(stroke.fontSize) || stroke.fontSize < 10 || stroke.fontSize > 96)) return false;
+    if (stroke.fontSize !== undefined && (!Number.isFinite(stroke.fontSize) || stroke.fontSize < 1 || stroke.fontSize > 96)) return false;
     if (stroke.fontWeight !== undefined && ![400, 500, 600, 700].includes(stroke.fontWeight)) return false;
     if (stroke.fontFamily !== undefined && !FONT_FAMILIES.includes(stroke.fontFamily)) return false;
     if (stroke.textAlign !== undefined && !['left', 'center', 'right'].includes(stroke.textAlign)) return false;
-    if (stroke.textBoxWidth !== undefined && (!Number.isFinite(stroke.textBoxWidth) || stroke.textBoxWidth < 80 || stroke.textBoxWidth > 1000)) return false;
-    if (stroke.textBoxHeight !== undefined && (!Number.isFinite(stroke.textBoxHeight) || stroke.textBoxHeight < 40 || stroke.textBoxHeight > 2000)) return false;
+    if (stroke.textBoxWidth !== undefined && (!Number.isFinite(stroke.textBoxWidth) || stroke.textBoxWidth < 4 || stroke.textBoxWidth > 1000)) return false;
+    if (stroke.textBoxHeight !== undefined && (!Number.isFinite(stroke.textBoxHeight) || stroke.textBoxHeight < 1 || stroke.textBoxHeight > 2000)) return false;
     if (stroke.rotation !== undefined && (!Number.isFinite(stroke.rotation) || stroke.rotation < -360 || stroke.rotation > 360)) return false;
   }
   if (stroke.tool === 'rectangle' || stroke.tool === 'ellipse') {
@@ -121,12 +120,12 @@ function addStrokeValidation(stroke: ClassroomStroke): boolean {
   const points = stroke.points;
   if (!Array.isArray(points) || points.length !== 2 || points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
   if (typeof stroke.text !== 'string' || stroke.text.trim().length === 0 || stroke.text.length > 500) return false;
-  if (stroke.fontSize !== undefined && (!Number.isFinite(stroke.fontSize) || stroke.fontSize < 10 || stroke.fontSize > 96)) return false;
+  if (stroke.fontSize !== undefined && (!Number.isFinite(stroke.fontSize) || stroke.fontSize < 1 || stroke.fontSize > 96)) return false;
   if (stroke.fontWeight !== undefined && ![400, 500, 600, 700].includes(stroke.fontWeight)) return false;
   if (stroke.fontFamily !== undefined && !FONT_FAMILIES.includes(stroke.fontFamily)) return false;
   if (stroke.textAlign !== undefined && !['left', 'center', 'right'].includes(stroke.textAlign)) return false;
-  if (stroke.textBoxWidth !== undefined && (!Number.isFinite(stroke.textBoxWidth) || stroke.textBoxWidth < 80 || stroke.textBoxWidth > 1000)) return false;
-  if (stroke.textBoxHeight !== undefined && (!Number.isFinite(stroke.textBoxHeight) || stroke.textBoxHeight < 40 || stroke.textBoxHeight > 2000)) return false;
+  if (stroke.textBoxWidth !== undefined && (!Number.isFinite(stroke.textBoxWidth) || stroke.textBoxWidth < 4 || stroke.textBoxWidth > 1000)) return false;
+  if (stroke.textBoxHeight !== undefined && (!Number.isFinite(stroke.textBoxHeight) || stroke.textBoxHeight < 1 || stroke.textBoxHeight > 2000)) return false;
   return stroke.rotation === undefined || (Number.isFinite(stroke.rotation) && stroke.rotation >= -360 && stroke.rotation <= 360);
 }
 
@@ -271,7 +270,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
   for (const [page, strokes] of activeStrokeMap(session)) strokesByPage[page] = strokes;
   const rightStrokesByPage: Record<number, ClassroomStroke[]> = {};
   const rightMode = session.rightBoardMode ?? session.boardMode ?? 'pdf';
-  for (const [page, strokes] of strokeMapFor(session, rightMode, 'right')) rightStrokesByPage[page] = strokes;
+  for (const [page, strokes] of strokeMapFor(session, rightMode)) rightStrokesByPage[page] = strokes;
   return {
     sessionId: session.id,
     pdfName: session.pdfName,

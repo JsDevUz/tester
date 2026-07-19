@@ -205,7 +205,6 @@ export class ClassroomService implements OnModuleInit {
     s.boardLayout = 'single'; s.leftBoardMode = 'pdf'; s.rightBoardMode = 'pdf';
     s.strokesByPage = new Map();
     s.strokesByMode = new Map([['pdf', s.strokesByPage]]);
-    s.rightStrokesByMode = new Map();
     s.scroll = null;
   }
 
@@ -407,7 +406,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode, pane));
+    const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:add', { page, stroke, pane, mode });
@@ -417,7 +416,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateStrokePosition(s, page, strokeId, x, y, strokeMapFor(s, mode, pane));
+    const accepted = updateStrokePosition(s, page, strokeId, x, y, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:update', { page, strokeId, x, y, pane, mode });
@@ -427,7 +426,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateTextStrokeInSession(s, page, stroke, strokeMapFor(s, mode, pane));
+    const accepted = updateTextStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', { page, stroke, pane, mode });
@@ -437,7 +436,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateShapeStrokeInSession(s, page, stroke, strokeMapFor(s, mode, pane));
+    const accepted = updateShapeStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', { page, stroke, pane, mode });
@@ -447,7 +446,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const strokeId = undoStroke(s, page, strokeMapFor(s, mode, pane));
+    const strokeId = undoStroke(s, page, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (strokeId) this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
   }
@@ -458,7 +457,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const erased = eraseStrokeById(s, page, strokeId, strokeMapFor(s, mode, pane));
+    const erased = eraseStrokeById(s, page, strokeId, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (erased) {
       this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
@@ -475,7 +474,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = reorderStrokesInSession(s, page, strokeIds, op, strokeMapFor(s, mode, pane));
+    const accepted = reorderStrokesInSession(s, page, strokeIds, op, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:reorder', { page, strokeIds, op, pane, mode });
@@ -490,7 +489,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = splitStrokeInSession(s, page, strokeId, replacements, strokeMapFor(s, mode, pane));
+    const accepted = splitStrokeInSession(s, page, strokeId, replacements, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
     this.broadcaster.toRoom(sessionId, 'stroke:split', { page, strokeId, replacements, pane, mode });
@@ -500,7 +499,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    clearPageStrokes(s, page, strokeMapFor(s, mode, pane));
+    clearPageStrokes(s, page, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     this.broadcaster.toRoom(sessionId, 'page:clear', { page, pane, mode });
   }

@@ -48,6 +48,11 @@ export function ClassroomHostPage() {
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
+  // Split rejimda foydalanuvchi oxirgi marta qaysi panelda (chap/o'ng)
+  // faol bo'lganini kuzatadi — Undo/Clear tugmalari shu panelga
+  // qo'llanishi kerak, aks holda "sahifani tozalash" har doim chap
+  // (birinchi) panelga tegib, o'ng panelni tozalab bo'lmasdi.
+  const [activePane, setActivePane] = useState<"left" | "right">("left");
   const [pageSelectAsset, setPageSelectAsset] =
     useState<PdfLibraryAsset | null>(null);
   const [attaching, setAttaching] = useState(false);
@@ -63,6 +68,7 @@ export function ClassroomHostPage() {
   useHotkeys("7", () => setTool("ellipse"), { preventDefault: true });
   useHotkeys("8", () => setTool("eraser-pixel"), { preventDefault: true });
   useHotkeys("9", () => setTool("eraser-stroke"), { preventDefault: true });
+  useHotkeys("0", () => setTool("lasso"), { preventDefault: true });
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
   useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
@@ -94,6 +100,10 @@ export function ClassroomHostPage() {
   };
 
   const handleEnd = () => {
+    // Dars fullscreen rejimida yakunlansa, brauzer avtomatik chiqmaydi —
+    // foydalanuvchi navigatsiyadan keyin ham fullscreen holatida qolib
+    // ketmasin deb aniq chiqariladi.
+    if (fullscreen.isFullscreen) void fullscreen.toggle();
     hostActions.endLesson();
     navigate(-1);
   };
@@ -189,6 +199,7 @@ export function ClassroomHostPage() {
           onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
           notebookStyle={state.notebookStyle}
           onPageChange={(page) => hostActions.setPage(page)}
+          onActivePaneChange={setActivePane}
           toolbar={
             <ClassroomToolbar
               tool={tool}
@@ -197,8 +208,8 @@ export function ClassroomHostPage() {
               onToolChange={setTool}
               onColorChange={setColor}
               onStrokeWidthChange={setStrokeWidth}
-              onUndo={() => hostActions.undo(state.currentPage, "left", state.boardMode)}
-              onClear={() => hostActions.clearPage(state.currentPage, "left", state.boardMode)}
+              onUndo={() => hostActions.undo(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
+              onClear={() => hostActions.clearPage(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
               onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
             />
           }
@@ -225,10 +236,12 @@ export function ClassroomHostPage() {
                   {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
               )}
-              <NotebookStyleToggle
-                style={state.notebookStyle}
-                onChange={(style) => hostActions.setNotebookStyle(style)}
-              />
+              {(state.boardMode === "notebook" || state.boardLayout === "split") && (
+                <NotebookStyleToggle
+                  style={state.notebookStyle}
+                  onChange={(style) => hostActions.setNotebookStyle(style)}
+                />
+              )}
               <ClassroomThemeToggle
                 theme={state.classroomTheme}
                 onToggle={() => hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")}

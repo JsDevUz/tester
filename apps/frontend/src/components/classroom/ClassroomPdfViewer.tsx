@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, SendToBack, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
@@ -177,6 +177,12 @@ interface Props {
   // Toolbar qatorining o'ng tomoni — mikrofon, o'quvchilar, darsni
   // yakunlash kabi tugmalar uchun (faqat isHost holatida beriladi).
   toolbarActions?: ReactNode;
+  // Split rejimda foydalanuvchi oxirgi marta qaysi panelda (chizma/matn
+  // ustiga bosib) faol bo'lganini ota komponentga xabar beradi — toolbar
+  // (Undo/Clear) ota tomonda tuzilgani uchun, u qaysi panelni nishonlashni
+  // bilishi kerak. Har doim "left"/"right" qiymati bilan chaqiriladi,
+  // hatto single (split bo'lmagan) rejimda ham har doim "left".
+  onActivePaneChange?: (pane: "left" | "right") => void;
   boardMode: CsBoardMode;
   onBoardModeChange?: (mode: CsBoardMode) => void;
   boardLayout?: CsBoardLayout;
@@ -211,8 +217,14 @@ function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   // uzun bo'lmasin, boshi hech qachon nomutanosib katta bo'lib ketmaydi.
   // Qisqa chiziqlarda esa boshi butun chiziqdan uzun chiqmasin deb
   // dist/3 bilan ham cheklanadi.
-  const arrowHeadLen = ARROW_HEAD_LEN_REF * (w / REF_WIDTH);
-  const headLen = Math.min(arrowHeadLen * Math.max(1, Math.sqrt(ctx.lineWidth)), arrowHeadLen * 1.4, dist / 3);
+  // headLen endi bevosita stroke.width (REF_WIDTH'ga nisbiy chiziq
+  // qalinligi)ga proporsional — lasso bilan butun o'q strelkasi
+  // kichraytirilganda (stroke.width ham shu bilan proporsional kamayadi)
+  // o'q boshi ham HAQIQIY ravishda kichrayadi, faqat ctx.lineWidth'ning
+  // (piksel darajasidagi) o'zi orqali emas. REF_WIDTH'dagi odatiy
+  // qalinlik (~4) uchun ARROW_HEAD_LEN_REF chiqadigan qilib normallashtirilgan.
+  const arrowHeadLen = ARROW_HEAD_LEN_REF * (w / REF_WIDTH) * Math.max(0.35, Math.min(1.4, s.width / 4));
+  const headLen = Math.min(arrowHeadLen, dist / 3);
 
   // Shaft to'g'ridan-to'g'ri o'q uchigacha (x1,y1) chiziladi — headLen
   // masofasida oldinroq to'xtatilmaydi, aks holda shaft uchi va "V" boshining
@@ -1143,6 +1155,13 @@ interface PageProps {
   onEraseStroke?: (page: number, strokeId: string) => void;
   onSplitStroke?: (page: number, strokeId: string, replacements: CsStroke[]) => void;
   registerEl: (page: number, el: HTMLDivElement | null) => void;
+  // Ota konteynerning joriy zoom darajasi — faqat canvas o'lchamini
+  // ResizeObserver'ning ASINXRON qayta chaqirilishini kutmasdan, zoom
+  // o'zgargan HAR BIR commit'da SINXRON (useLayoutEffect) qayta o'lchash
+  // uchun ishlatiladi. Aks holda ResizeObserver hali ishga tushmagan
+  // qisqa vaqt oralig'ida canvas eski o'lchamda qolib, ustidagi chizmalar
+  // PDF/daftar sahifasidan orqada qolib ketganday (siljib) ko'rinardi.
+  zoomVersion: number;
 }
 
 // Bitta sahifa: rasm + chizish canvas. Ko'rinish oynasiga yaqinlashguncha
@@ -1151,7 +1170,7 @@ interface PageProps {
 function ClassroomPdfPage({
   pageNumber, url, notebook = false, notebookStyle = "grid", strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
-  onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, onReorderStroke, registerEl,
+  onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, onReorderStroke, registerEl, zoomVersion,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
@@ -1227,9 +1246,30 @@ function ClassroomPdfPage({
     return () => ro.disconnect();
   }, [syncSize, visible]);
 
+  // MUHIM: zoom o'zgarganda ResizeObserver'ning asinxron (keyingi freym)
+  // qayta chaqirilishini kutmasdan, canvas o'lchami shu yerda SINXRON
+  // (useLayoutEffect, paintdan oldin) qayta o'lchanadi — aks holda qisqa
+  // vaqt davomida canvas eski o'lchamda qolib, ustidagi chizmalar
+  // PDF/daftar rasmidan orqada qolib ketganday (siljib) ko'rinardi.
+  useLayoutEffect(() => {
+    syncSize();
+  }, [zoomVersion, syncSize]);
+
   useEffect(() => {
     if (!textEditor) return;
-    window.requestAnimationFrame(() => textInputRef.current?.focus());
+    window.requestAnimationFrame(() => {
+      const el = textInputRef.current;
+      if (!el) return;
+      el.focus();
+      // Caret paydo bo'lganda brauzer uni ko'rinadigan qilish uchun
+      // textarea'ni avtomatik ichki scroll qilib qo'yishi mumkin — agar
+      // qutining balandligi caret uchun kerakli to'liq qator balandligidan
+      // (font ascent/descent) ozgina kichikroq bo'lsa. Bu matnning
+      // tahrirlash rejimida haqiqiy joyidan pastroq/kattaroq ko'rinishiga
+      // olib kelardi. Fokusdan keyin scrollTop'ni majburan 0'ga qaytarish
+      // bu siljishni yo'q qiladi.
+      el.scrollTop = 0;
+    });
   }, [textEditor]);
 
   // Matn yozilgan sari textarea balandligini mazmuniga moslab kengaytiramiz.
@@ -1240,11 +1280,22 @@ function ClassroomPdfPage({
     const input = textInputRef.current;
     if (!input) return;
     input.style.height = "auto";
-    const nextHeight = Math.max(24, Math.min(2000, input.scrollHeight));
+    const nextHeight = Math.max(1, Math.min(2000, input.scrollHeight));
     input.style.height = `${nextHeight}px`;
     if (size.w > 0) {
-      const normalizedHeight = Math.max(40, Math.min(2000, nextHeight / size.w * REF_WIDTH));
-      setTextEditor((current) => current && Math.abs(current.textBoxHeight - normalizedHeight) > 0.5
+      // MUHIM: box balandligi yozish paytida (text o'zgarganda) har doim
+      // matnning aniq tabiiy balandligiga TENGLASHTIRILADI (faqat o'sish
+      // emas) — aks holda: matn 2 qatorga o'tib box kattalashadi, keyin
+      // qayta 1 qatorga tushirilsa ham box katta qolib ketardi. Bunday
+      // holatda wrapper flex (justify-center) matnni box o'rtasida
+      // ko'rsatardi, top-anchor esa box yuqorisida qolardi — saqlash
+      // paytida (commitText) box qayta tor o'lchamga qaytganda matn
+      // "yozayotgandagi joyidan tepaga sakrab ketganday" ko'rinardi.
+      // Box faqat qo'lda resize-handle orqali kattalashtirilganda
+      // (finishTextTransform/finishGroupResize) katta qoladi — bu yerga
+      // tegishli emas.
+      const normalizedHeight = Math.max(1, Math.min(2000, nextHeight / size.w * REF_WIDTH));
+      setTextEditor((current) => current && Math.abs(normalizedHeight - current.textBoxHeight) > 0.5
         ? { ...current, textBoxHeight: normalizedHeight }
         : current);
     }
@@ -1264,12 +1315,11 @@ function ClassroomPdfPage({
     // holda shrift kattalashtirilganda yoki qator qisqa bo'lganda qutining
     // o'zi eski (mos kelmaydigan) o'lchamda qolib ketardi.
     const measured = measureTextBox(textEditor.text.trim(), textEditor.fontFamily, textEditor.fontSize, textEditor.fontWeight);
-    // Backend ham text box uchun shu minimumlarni validatsiya qiladi.
-    // Qisqa bir qatorli matn odatda 30px balandlik chiqadi; 20px minimum
-    // bilan yuborilsa server INVALID_STROKE deb rad etar, optimistik nusxa
-    // esa refreshgacha ustozda ko'rinib turardi.
-    const textBoxWidth = Math.max(80, Math.min(1000, measured.width + 8));
-    const textBoxHeight = Math.max(40, Math.min(2000, measured.height));
+    // Backend ham text box uchun shu minimumlarni validatsiya qiladi
+    // (classroom.logic.ts) — shu qiymatlar bilan mos kelishi shart, aks
+    // holda server INVALID_STROKE deb rad etadi.
+    const textBoxWidth = Math.max(4, Math.min(1000, measured.width + 8));
+    const textBoxHeight = Math.max(1, Math.min(2000, measured.height));
     const style = {
       fontFamily: textEditor.fontFamily,
       fontSize: textEditor.fontSize,
@@ -1406,7 +1456,7 @@ function ClassroomPdfPage({
         const [x, y] = remap(original.points[0], original.points[1]);
         stroke.points = [x, y];
         const originalFont = original.fontSize ?? 24;
-        const clampedFont = Math.round(Math.max(10, Math.min(96, originalFont * fontScale)));
+        const clampedFont = Math.round(Math.max(1, Math.min(96, originalFont * fontScale)));
         stroke.fontSize = clampedFont;
         // Qutini fontScale bilan emas, haqiqiy (klemplangan) shrift nisbati
         // bilan kichraytiramiz — aks holda fontSize 10px'da to'xtab qolgach
@@ -1422,6 +1472,13 @@ function ClassroomPdfPage({
           nextPoints.push(x, y);
         }
         stroke.points = nextPoints;
+        // Chiziq qalinligi (stroke.width) avval geometriya bilan birga
+        // o'zgarmasdi — natijada shape/arrow/pen kichraytirilganda chiziq
+        // avvalgi (endi nomutanosib qalin) yo'g'onligicha qolib ketardi.
+        // fontScale bilan bir xil (kichikroq o'q — non-uniform resize'da
+        // ham chiziq juda ingichka/yo'g'on bo'lib ketmasin) nisbatda
+        // proporsional o'zgartiramiz.
+        stroke.width = Math.max(1, Math.round((original.width ?? 4) * fontScale));
       }
     }
     forceRedraw((v) => v + 1);
@@ -1432,10 +1489,26 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     resizingGroupRef.current = null;
-    for (const stroke of selectedGroupStrokes) commitGroupStroke({ ...stroke, points: [...stroke.points] });
+    for (const stroke of selectedGroupStrokes) {
+      // Lasso-resize ham boxni faqat scale qilgani uchun matndan katta
+      // bo'sh joy qolishi mumkin — tugagach tekis moslashtiramiz (yakka
+      // handle resize'dagi finishTextTransform bilan bir xil mantiq).
+      if (stroke.tool === "text" && stroke.text) {
+        const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+        stroke.textBoxWidth = measured.width + 8;
+        stroke.textBoxHeight = measured.height;
+      }
+      commitGroupStroke({ ...stroke, points: [...stroke.points] });
+    }
   };
 
-  useEffect(() => {
+  // MUHIM: useLayoutEffect (useEffect emas) — canvas'ni brauzer paint
+  // qilishidan OLDIN qayta chizadi. Oddiy useEffect paintdan KEYIN ishga
+  // tushadi, shuning uchun zoom (yoki har qanday size.w/h) o'zgarganda
+  // brauzer bir freym davomida canvas'ning ESKI bitmap tarkibini yangi
+  // CSS o'lchamida chizib qo'yardi — bu chizma "eski holatga qaytib
+  // yangilanayotganday" ko'rinishga (flash) olib kelardi.
+  useLayoutEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || size.w === 0) return;
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
@@ -1654,10 +1727,10 @@ function ClassroomPdfPage({
     const rawDy = top ? -dy : dy;
     const startDiagonal = Math.hypot(current.startWidth, current.startHeight) || 1;
     const projected = (current.startWidth * rawDx + current.startHeight * rawDy) / startDiagonal;
-    // Pastki chegara font 10px'ga yetguncha kichrayishga ruxsat beradi —
-    // avval 80x40 ref-piksel floor bo'lgani uchun fontSize 10px'ga hali
-    // yetmasdan box kichrayishi to'xtab qolardi.
-    const minScale = Math.max(10 / current.startFontSize, 20 / current.startWidth, 12 / current.startHeight);
+    // Pastki chegara font 1px'ga yetguncha kichrayishga ruxsat beradi —
+    // avval 80x40 ref-piksel floor bo'lgani uchun fontSize kerakli darajaga
+    // hali yetmasdan box kichrayishi to'xtab qolardi.
+    const minScale = Math.max(1 / current.startFontSize, 2 / current.startWidth, 1.2 / current.startHeight);
     const requestedScale = Math.max(minScale, 1 + projected / startDiagonal);
     // Font 96px ga yetgach faqat matn to'xtab qolmasin: frame ham shu
     // nuqtada to'xtaydi. Eni/bo'yi backend limitlari ham shu clamp'ga kiradi.
@@ -1673,7 +1746,7 @@ function ClassroomPdfPage({
     current.stroke.textBoxHeight = nextHeight;
     // Shrift o'lchami har doim butun son bo'lishi kerak — resize paytida
     // scale koeffitsienti kasr bo'lgani uchun Math.round bilan yaxlitlanadi.
-    current.stroke.fontSize = Math.round(Math.max(10, Math.min(96, current.startFontSize * scale)));
+    current.stroke.fontSize = Math.round(Math.max(1, Math.min(96, current.startFontSize * scale)));
     if (left) current.stroke.points[0] = Math.max(0, Math.min(1, current.startX + (current.startWidth - nextWidth) / REF_WIDTH));
     if (top) current.stroke.points[1] = Math.max(0, Math.min(1, current.startY + (current.startHeight - nextHeight) * size.w / REF_WIDTH / Math.max(size.h, 1)));
     forceRedraw((value) => value + 1);
@@ -1684,7 +1757,16 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     transformingTextRef.current = null;
-    onUpdateTextStroke?.(pageNumber, { ...current.stroke, points: [...current.stroke.points] });
+    const stroke = current.stroke;
+    // Resize paytida box shunchaki scale qilingani uchun matndan katta
+    // ("bo'sh joy" bilan) qolib ketishi mumkin — tugagach, matnning haqiqiy
+    // (natural, o'ralmagan) o'lchamiga qarab box'ni tekis moslashtiramiz.
+    if (stroke.text) {
+      const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+      stroke.textBoxWidth = measured.width + 8;
+      stroke.textBoxHeight = measured.height;
+    }
+    onUpdateTextStroke?.(pageNumber, { ...stroke, points: [...stroke.points] });
   };
 
   const findTextAt = (x: number, y: number): CsStroke | null => {
@@ -1772,11 +1854,22 @@ function ClassroomPdfPage({
         if (e.detail >= 2 || isDoubleClick) {
           lastClickRef.current = null;
           setEditingTextId(existing.id);
+          const existingFontFamily = existing.fontFamily ?? "Inter";
+          const existingFontSize = existing.fontSize ?? 24;
+          const existingFontWeight = existing.fontWeight ?? 600;
+          // Tahrirlashga kirishda box existing.textBoxHeight'ni AYNAN
+          // ko'chirmasdan, matnning haqiqiy tabiiy o'lchamiga moslab
+          // tekislanadi — aks holda avval resize qilib kattalashtirilgan
+          // (yoki eski, hali tekislanmagan) box baland qolib ketib, editor
+          // ichida matn markazga tortilib ancha pastda ko'rinardi, saqlash
+          // (commitText) esa boxni tor o'lchamga qaytarganda matn tepaga
+          // "sakrab" ketganday tuyular edi.
+          const measured = measureTextBox(existing.text ?? "", existingFontFamily, existingFontSize, existingFontWeight);
           setTextEditor({
             x: existing.points[0], y: existing.points[1], text: existing.text ?? "", color: existing.color,
-            fontFamily: existing.fontFamily ?? "Inter", fontSize: existing.fontSize ?? 24,
-            fontWeight: existing.fontWeight ?? 600, textAlign: existing.textAlign ?? "left",
-            textBoxWidth: existing.textBoxWidth ?? 360, textBoxHeight: existing.textBoxHeight ?? 120,
+            fontFamily: existingFontFamily, fontSize: existingFontSize,
+            fontWeight: existingFontWeight, textAlign: existing.textAlign ?? "left",
+            textBoxWidth: Math.max(existing.textBoxWidth ?? 0, measured.width + 8), textBoxHeight: measured.height,
           });
         } else {
           draggingTextRef.current = { stroke: existing, dx: p[0] - existing.points[0], dy: p[1] - existing.points[1] };
@@ -1910,6 +2003,27 @@ function ClassroomPdfPage({
       }
       return;
     }
+    if (tool === "select") {
+      // Select rejimida sichqoncha biror sudrab ko'chirsa bo'ladigan
+      // obyekt (matn/shape/chiziq) ustida turganda — foydalanuvchiga uni
+      // ushlab surish mumkinligini bildirish uchun xiralashtirib
+      // ko'rsatiladi (eraser-stroke'dagi hover-preview bilan bir xil
+      // mexanizm) va kursor "grab" ga o'zgaradi (pastdagi canvas style'da).
+      // Hit-test tartibi handlePointerDown bilan bir xil: matn → shape →
+      // oddiy chiziq.
+      const hoveredText = findTextAt(p[0], p[1]);
+      const hoveredShape = hoveredText ? null : findSelectableShapeAt(
+        strokes.filter((stroke) => stroke.tool === "rectangle" || stroke.tool === "ellipse"),
+        p[0], p[1], eraseHitRadius(strokeWidth),
+      );
+      const hoveredStroke = hoveredText || hoveredShape ? null : findStrokeAt(
+        strokes.filter((stroke) => stroke.tool !== "text" && stroke.tool !== "rectangle" && stroke.tool !== "ellipse"),
+        p[0], p[1], eraseHitRadius(strokeWidth),
+      );
+      const hit = hoveredText ?? hoveredShape ?? hoveredStroke;
+      setHoveredStrokeId(hit?.id ?? null);
+      return;
+    }
     const draft = draftRef.current;
     if (!draft) return;
     if (tool === "arrow" || tool === "rectangle" || tool === "ellipse") {
@@ -2015,15 +2129,23 @@ function ClassroomPdfPage({
     <div ref={wrapRef} data-page={pageNumber} className="relative shrink-0 w-full flex justify-center">
       {visible ? (
         <div
+          ref={(element) => { if (notebook) surfaceRef.current = element; }}
           className={`relative ${notebook ? "aspect-[210/297] w-full bg-white shadow-sm" : "w-full"}`}
           // Daftar 100% zoom'da viewport kengligini to'liq egallaydi. Zoom
           // konteynerning tashqi width'i orqali qo'llanadi; max-width bilan
           // yana 768px ga qisqartirish teacher/student nisbatini buzardi.
+          // MUHIM: ResizeObserver shu TASHQI aspect-ratio box'ning o'ziga
+          // ulanadi, ichki "absolute inset-0" bolaga emas — bola o'z
+          // o'lchamini otadan meros qiladi, shuning uchun zoom paytida
+          // avval ota kengligi o'zgarib, keyin aspect-ratio balandligi
+          // hisoblanib, keyin bolaga uzatilishi kerak edi. Bu qo'shimcha
+          // reflow bosqichi ResizeObserver'ni ikki marta (avval eski/oraliq,
+          // keyin to'g'ri o'lcham bilan) ishga tushirar, natijada zoom
+          // tugmasi bosilganda daftar bir lahza eski joyga sakrab qaytardi.
           style={notebook ? { width: "100%" } : undefined}
         >
           {notebook ? (
             <div
-              ref={(element) => { surfaceRef.current = element; }}
               aria-label={`Daftar sahifasi ${pageNumber}`}
               className="absolute inset-0 bg-white"
               style={
@@ -2061,7 +2183,13 @@ function ClassroomPdfPage({
             className="absolute top-0 left-0"
             style={{
               touchAction: editable ? "none" : "auto",
-              cursor: editable ? (isEraser ? "cell" : (tool === "select" || tool === "text" ? "move" : "crosshair")) : "default",
+              // Select rejimida: bo'sh joy ustida oddiy "pointer" (qo'l),
+              // sudrab ko'chirsa bo'ladigan obyekt (matn/shape/chiziq)
+              // ustiga kelganda "grab" (ushlab olish mumkinligini
+              // bildiradi) — hoveredStrokeId shu holatni kuzatadi.
+              cursor: editable
+                ? (isEraser ? "cell" : tool === "select" ? (hoveredStrokeId ? "grab" : "pointer") : (tool === "text" ? "move" : "crosshair"))
+                : "default",
               pointerEvents: editable ? "auto" : "none",
             }}
             onPointerDown={handlePointerDown}
@@ -2073,7 +2201,7 @@ function ClassroomPdfPage({
           {textEditor && (
             <>
             <div
-              className="absolute z-30"
+              className="absolute z-30 flex flex-col justify-center"
               style={{ left: `${textEditor.x * 100}%`, top: `${textEditor.y * 100}%`, width: editorWidth, height: editorHeight }}
               onPointerDown={(event) => event.stopPropagation()}
               onPointerMove={(event) => event.stopPropagation()}
@@ -2091,13 +2219,19 @@ function ClassroomPdfPage({
                   if (!rect || size.w <= 0) return;
                   setTextEditor((current) => current ? {
                     ...current,
-                    textBoxWidth: Math.max(80, Math.min(1000, rect.width / size.w * REF_WIDTH)),
-                    textBoxHeight: Math.max(40, Math.min(1600, rect.height / size.w * REF_WIDTH)),
+                    textBoxWidth: Math.max(4, Math.min(1000, rect.width / size.w * REF_WIDTH)),
+                    textBoxHeight: Math.max(1, Math.min(1600, rect.height / size.w * REF_WIDTH)),
                   } : current);
                 }}
-                className="classroom-text-editor block w-full resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
+                className="classroom-text-editor block w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
                 style={{
-                  height: `${editorHeight}px`,
+                  // MUHIM: height endi butun qutini (editorHeight) emas,
+                  // faqat matnning o'zi egallaydigan tabiiy balandlikni
+                  // to'ldiradi ("auto" + JS orqali scrollHeight'ga
+                  // moslashtiriladi, pastdagi useEffect'ga qarang) — shunda
+                  // atrofdagi flex konteyner (justify-center) qolgan bo'sh
+                  // joyni tepa/pastga teng taqsimlab, matn qutida vertikal
+                  // markazda ko'rinadi.
                   margin: 0,
                   backgroundColor: "transparent",
                   appearance: "none",
@@ -2125,7 +2259,11 @@ function ClassroomPdfPage({
             />}
             </>
           )}
-          {tool === "select" && selectedText && (
+          {tool === "select" && selectedText && selectedText.id !== editingTextId && (
+            // Tahrirlash (textEditor) paytida shu chizma tanlangan holicha
+            // qolishi mumkin — agar shart tekshirilmasa, tahrirlanayotgan
+            // matn ustiga eski (endi noto'g'ri o'lchamdagi) ko'k ramka va
+            // resize tutqichlari chizib qo'yiladi.
             // MUHIM: TextStylePanel shu divning TASHQARISIDA (pastda,
             // alohida) render qilinadi — bu div "transform: rotate(...)"
             // ishlatadi, va CSS spetsifikatsiyasiga ko'ra HAR QANDAY
@@ -2327,7 +2465,7 @@ function ClassroomPdfPage({
 export function ClassroomPdfViewer({
   pageUrls, currentPage, strokesByPage, rightStrokesByPage = {}, pointer, editable, isHost, hostZoom, onZoomChange,
   hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onReorderStroke, onPaneReorderStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
-  onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke,
+  onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke, onActivePaneChange,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
 }: Props) {
@@ -2358,7 +2496,6 @@ export function ClassroomPdfViewer({
   const [displayLayout, setDisplayLayout] = useState<CsBoardLayout>(boardLayout);
   const [leftMode, setLeftMode] = useState<CsBoardMode>(leftBoardMode);
   const [rightMode, setRightMode] = useState<CsBoardMode>(rightBoardMode);
-  const [rightZoom, setRightZoom] = useState(rightHostZoom);
   // Har bir PDF/daftar sahifasi o'z style paneliga ega, lekin fixed panel
   // faqat oxirgi bosilgan surface uchun ko'rsatiladi. Aks holda splitdagi
   // ikki pane yoki yonma-yon visible sahifalar bir xil panelni ustma-ust
@@ -2375,16 +2512,15 @@ export function ClassroomPdfViewer({
   }, [currentPage, displayLayout]);
 
   useEffect(() => {
+    onActivePaneChange?.(activeStyleSurface.paneIndex === 1 ? "right" : "left");
+  }, [activeStyleSurface.paneIndex, onActivePaneChange]);
+
+  useEffect(() => {
     if (isHost || synced) {
       setDisplayMode(boardMode); setDisplayLayout(boardLayout);
       setLeftMode(leftBoardMode); setRightMode(rightBoardMode);
-      setRightZoom(rightHostZoom);
     }
-  }, [boardMode, boardLayout, leftBoardMode, rightBoardMode, rightHostZoom, isHost, synced]);
-
-  useEffect(() => {
-    if (!isHost && synced) setRightZoom(rightHostZoom);
-  }, [isHost, synced, rightHostZoom]);
+  }, [boardMode, boardLayout, leftBoardMode, rightBoardMode, isHost, synced]);
 
   useEffect(() => {
     if (isHost || displayLayout !== "split" || !synced || !rightHostScroll) return;
@@ -2407,13 +2543,28 @@ export function ClassroomPdfViewer({
   // umumiy scrollHeight foizi o'rniga. onPageChange berilmaydi (o'ng
   // panelning "joriy sahifasi" alohida kuzatilmaydi, faqat currentPage
   // ishlatiladi — chap panel bilan bir xil sahifa nomerlanishi taxmin qilinadi).
-  const { scrollToPagePosition: scrollToRightPagePosition, handleScroll: handleRightScroll } = useClassroomScrollSync({
+  const {
+    suppressScrollDetectRef: rightSuppressScrollDetectRef,
+    scrollToPagePosition: scrollToRightPagePosition, handleScroll: handleRightScroll,
+  } = useClassroomScrollSync({
     isHost, synced, currentPage, hostScroll: rightHostScroll, scrollRef: rightScrollRef, pageElsRef: rightPageElsRef,
     onScrollChange: onPaneScrollChange ? (page, yRatio, xRatio) => onPaneScrollChange("right", page, yRatio, xRatio) : undefined,
   });
 
-  const { zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, handleWheel } = useClassroomZoom({
+  const { zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, setZoomNode } = useClassroomZoom({
     isHost, synced, hostZoom, onZoomChange, scrollRef, suppressScrollDetectRef,
+  });
+
+  // Split rejimdagi O'NG panel avval o'zining pinch/wheel-zoom listenerlariga
+  // ega emas edi — rightZoom faqat +/- tugmalari orqali (anchor'siz)
+  // o'zgarardi, shu sabab shu panelda trackpad-pinch umuman ishlamas edi.
+  // Chap panel bilan bir xil useClassroomZoom instansiyasi (o'z scroll
+  // ref'i, o'z DOM node state'i bilan) shu yerga ham ulanadi.
+  const {
+    zoom: rightZoom, applyZoom: applyRightZoom, setZoomNode: setRightZoomNode,
+  } = useClassroomZoom({
+    isHost, synced, hostZoom: rightHostZoom, onZoomChange: onPaneZoomChange ? (z) => onPaneZoomChange("right", z) : undefined,
+    scrollRef: rightScrollRef, suppressScrollDetectRef: rightSuppressScrollDetectRef,
   });
 
 
@@ -2468,11 +2619,6 @@ export function ClassroomPdfViewer({
   };
 
   const visiblePageCount = (mode: CsBoardMode) => mode === "notebook" ? 4 : pageUrls.length;
-  const changeRightZoom = (next: number) => {
-    const clamped = Math.min(4, Math.max(1, next));
-    if (isHost) onPaneZoomChange?.("right", clamped);
-    else if (!synced) setRightZoom(clamped);
-  };
 
   const toolbarRow = (toolbar || toolbarActions) && (
     <div
@@ -2522,7 +2668,7 @@ export function ClassroomPdfViewer({
         type="button"
         className="rounded-full p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
         disabled={rightZoom <= MIN_ZOOM || (!isHost && synced)}
-        onClick={() => changeRightZoom(rightZoom - ZOOM_STEP)}
+        onClick={() => applyRightZoom(rightZoom - ZOOM_STEP)}
         title="Kichraytirish"
       >
         <Minus size={13} />
@@ -2531,7 +2677,7 @@ export function ClassroomPdfViewer({
         type="button"
         className="min-w-9 px-1 text-center text-[11px] font-medium text-gray-500 hover:text-gray-800 disabled:opacity-30 tabular-nums"
         disabled={!freeToMove}
-        onClick={() => changeRightZoom(1)}
+        onClick={() => applyRightZoom(1)}
         title="Asl o'lchamga qaytarish"
       >
         {Math.round(rightZoom * 100)}%
@@ -2540,7 +2686,7 @@ export function ClassroomPdfViewer({
         type="button"
         className="rounded-full p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
         disabled={rightZoom >= MAX_ZOOM || (!isHost && synced)}
-        onClick={() => changeRightZoom(rightZoom + ZOOM_STEP)}
+        onClick={() => applyRightZoom(rightZoom + ZOOM_STEP)}
         title="Kattalashtirish"
       >
         <Plus size={13} />
@@ -2578,7 +2724,15 @@ export function ClassroomPdfViewer({
               ref={(element) => {
           // Splitdan monolitga qaytganda scrollRef eski chap pane'da
           // qolmasin: sync hook monolitdagi asosiy viewportni kuzatishi kerak.
-          if (displayLayout !== "split") scrollRef.current = element;
+          if (displayLayout !== "split") {
+            scrollRef.current = element;
+            // setZoomNode — wheel/touch-pinch listenerlarni HAQIQIY DOM
+            // node'ga ulash uchun kerak (scrollRef.current shunchaki
+            // o'zgarishi useClassroomZoom ichidagi effektlarni qayta
+            // ishga tushirmaydi, chunki ref obyekti hech qachon
+            // almashmaydi).
+            setZoomNode(element);
+          }
         }}
         className={`w-full h-full overscroll-contain ${displayLayout === "split" ? "overflow-hidden" : "overflow-auto"}`}
         style={{
@@ -2594,23 +2748,46 @@ export function ClassroomPdfViewer({
           touchAction: freeToMove ? "pan-x pan-y" : "none",
           overflow: displayLayout === "split" ? "hidden" : (freeToMove ? "auto" : "hidden"),
         }}
-        onWheel={handleWheel}
         onScroll={handleScroll}
       >
-        <div className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start" : "flex-col items-center"} gap-1 sm:gap-3 py-3`} style={{ width: "100%", minWidth: "100%" }}>
+        <div
+          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start" : "flex-col"} gap-1 sm:gap-3 py-3`}
+          style={{
+            width: "100%", minWidth: "100%",
+            // "items-center" bola (PDF/daftar paneli) zoom bilan konteynerdan
+            // kengroq bo'lib qolganda klassik flexbox xatosiga olib kelardi:
+            // align-items: center bola chap chetini scroll konteyner
+            // tashqarisiga chiqarib yuboradi, lekin scrollLeft manfiy
+            // bo'lolmagani uchun brauzer o'sha chetga scroll qilishga
+            // ruxsat bermaydi ("to'liq chekkagacha scroll qilinmaydi").
+            // "safe center" xuddi shu holatda avtomatik "start"ga
+            // qaytadi — kontent kichkina bo'lsa markazlashtiradi, katta
+            // bo'lsa esa to'liq scroll qilib bo'ladigan qilib qoladi.
+            alignItems: displayLayout === "split" ? undefined : "safe center",
+          }}
+        >
           {(displayLayout === "split" ? [leftMode, rightMode] : [displayMode]).map((paneMode, paneIndex) => (
             <div
               key={`${paneMode}-${paneIndex}`}
               ref={(element) => {
                 if (displayLayout === "split" && element) {
                   paneScrollRefs.current.set(paneIndex, element);
-                  if (paneIndex === 0) scrollRef.current = element;
+                  if (paneIndex === 0) {
+                    scrollRef.current = element;
+                    setZoomNode(element);
+                  } else {
+                    // O'ng panel — o'zining pinch/wheel-zoom listenerlari
+                    // shu DOM node'ga ulanishi uchun kerak (yuqoridagi
+                    // izohga qarang: scrollRef kabi useRef o'zgarishi
+                    // effektlarni qayta ishga tushirmaydi).
+                    setRightZoomNode(element);
+                  }
                 } else if (displayLayout === "split") paneScrollRefs.current.delete(paneIndex);
               }}
               onScroll={displayLayout === "split" ? (paneIndex === 0 ? handleScroll : handleRightScroll) : undefined}
               className={displayLayout === "split"
-                ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col items-center gap-1 sm:gap-3 border-r border-gray-200/70 last:border-r-0 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
-                : "flex w-full flex-col items-center gap-1 sm:gap-3"}
+                ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col gap-1 sm:gap-3 border-r border-gray-200/70 last:border-r-0 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
+                : "flex w-full flex-col gap-1 sm:gap-3"}
               style={displayLayout === "split"
                 ? {
                     // Split panelning o'zi doim 50/50 qoladi. Zoom faqat
@@ -2618,6 +2795,13 @@ export function ClassroomPdfViewer({
                     // butun split layout kengayib ketadi.
                     flex: "1 1 0%",
                     touchAction: freeToMove ? "pan-x pan-y" : "none",
+                    // items-center bola (PDF/daftar paneli) zoomda
+                    // konteynerdan kengroq bo'lib qolganda flexbox
+                    // scrollLeft'ni manfiy qila olmaydi va chap chekkaga
+                    // scroll qilib bo'lmay qolardi — "safe center" kontent
+                    // kichkina bo'lsa markazlaydi, katta bo'lsa "start"ga
+                    // qaytib to'liq scroll imkonini beradi.
+                    alignItems: "safe center",
                   }
                 : {
                     // Daftar ham PDF kabi konteyner kengligiga NISBATAN (%)
@@ -2627,7 +2811,11 @@ export function ClassroomPdfViewer({
                     // yuborardi. Grid/stroke o'lchami baribir REF_WIDTH
                     // asosida hisoblanadi (canvas render'da), shuning uchun
                     // teacher/student o'rtasida nisbiy ko'rinish bir xil qoladi.
-                    width: displayMode === "notebook" ? `${zoom * 100}%` : `${zoom * PDF_BASE_SCALE * 100}%`,
+                    // PDF_BASE_SCALE daftarga ham qo'llaniladi — aks holda
+                    // 100% zoom'da daftar butun viewport kengligini butunlay
+                    // egallab, PDF'dan farqli, "chekkasiz" ko'rinardi.
+                    width: `${zoom * PDF_BASE_SCALE * 100}%`,
+                    alignItems: "safe center",
                   }}
             >
               <div
@@ -2651,6 +2839,7 @@ export function ClassroomPdfViewer({
           <ClassroomPdfPage
                     key={`${paneIndex}-${pageNumber}`}
                     pageNumber={pageNumber}
+                    zoomVersion={paneIndex === 1 ? rightZoom : zoom}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
                     notebookStyle={notebookStyle}

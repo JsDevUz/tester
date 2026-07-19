@@ -5,6 +5,7 @@ import {
   Circle,
   CircleDashed,
   Eraser,
+  Lasso,
   Pen,
   Redo2,
   Square,
@@ -85,7 +86,7 @@ export function ClassroomToolbar({
   );
 
   return (
-    <div className="flex items-center gap-1 bg-white rounded-full shadow-md border border-gray-100 px-0.5 py-0.5">
+    <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto overscroll-contain rounded-full border border-gray-100 bg-white px-0.5 py-0.5 shadow-md scrollbar-none [-ms-overflow-style:none]">
       <button
         type="button"
         className={iconBtn(tool === "select")}
@@ -177,6 +178,18 @@ export function ClassroomToolbar({
           {shortcut("9")}
         </button>
       </div>
+
+      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+
+      <button
+        type="button"
+        className={iconBtn(tool === "lasso")}
+        title="Lasso — guruh tanlash (0)"
+        onClick={() => onToolChange("lasso")}
+      >
+        <Lasso size={15} />
+        {shortcut("0")}
+      </button>
 
       <div className="w-px h-5 bg-gray-200 mx-0.5" />
 

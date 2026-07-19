@@ -380,6 +380,23 @@ describe('erkin (guruhsiz) dars', () => {
       .toThrow('DUPLICATE_SPLIT_MODE');
   });
 
+  it('panellarni almashtirganda (swap) chizmalar mode bilan birga qoladi, pane bilan emas', () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    service.setBoardView(id, 'teacher-1', 'split', 'notebook', 'pdf');
+    const noteStroke = { id: 'n1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    // Daftar hozir CHAPDA (leftMode='notebook') — shu tarafga chiziladi.
+    service.stroke(id, 'teacher-1', 1, noteStroke, 'notebook', 'left');
+
+    // Panellarni almashtiramiz: daftar endi O'NGGA o'tadi.
+    service.setBoardView(id, 'teacher-1', 'split', 'pdf', 'notebook');
+    const afterSwap = service.hostJoin(id, 'teacher-1', 'sock-swap');
+    // Chizma endi rightStrokesByPage'da ko'rinishi kerak (chunki notebook
+    // endi o'ng panelda), avvalgi (endi bo'sh) chap emas.
+    expect(afterSwap.rightStrokesByPage[1]).toContainEqual(noteStroke);
+    expect(afterSwap.strokesByPage[1] ?? []).not.toContainEqual(noteStroke);
+  });
+
   it('anonim mehmon enrollmentsiz, guestName bilan kira oladi va DB ga yozilmaydi', async () => {
     const { service, events } = makeFreeService();
     const { id } = service.createFreeSession('teacher-1');

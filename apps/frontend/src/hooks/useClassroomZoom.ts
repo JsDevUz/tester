@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 
 export const MIN_ZOOM = 1;
 export const MAX_ZOOM = 4;
@@ -28,6 +28,15 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   // erkin rejimda esa o'zining local zoom'i ishlaydi.
   const [localZoom, setLocalZoom] = useState(hostZoom);
   const zoom = isHost ? localZoom : (synced ? hostZoom : localZoom);
+  // Pinch juda tez-tez ketma-ket wheel/touch event chiqaradi. Agar har
+  // chaqiruv "prevZoom"ni faqat React state'dan (u render paytidagina
+  // yangilanadi) olsa, bir nechta event render bo'lishdan oldin bitta eski
+  // qiymatdan hisoblab, natija bir zumda katta sakrashga (keyin "orqaga
+  // tortilganday" tuyulishga — tebranish) olib kelardi. localZoom har
+  // render'da shu yerga sinxron yoziladi, applyZoomAnchored esa navbatdagi
+  // haqiqiy (hali render bo'lmagan) bazadan hisoblaydi.
+  const localZoomRef = useRef(localZoom);
+  localZoomRef.current = localZoom;
 
   // Ustoz zoom'i o'zgarganda: sinxron o'quvchida darhol qo'llanadi.
   // Ustozning o'zida esa bu prop faqat boshlang'ich qiymat (keyin local).
@@ -46,12 +55,15 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
         const ratio = hostZoom / prevZoom;
         const newScrollLeft = contentX * ratio - localX;
         const newScrollTop = contentY * ratio - localY;
-        requestAnimationFrame(() => {
-          suppressScrollDetectRef.current = true;
-          scrollEl.scrollLeft = newScrollLeft;
-          scrollEl.scrollTop = newScrollTop;
-          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
-        });
+        // rAF orqali kechiktirilganda pinch tez-tez chiqaradigan ketma-ket
+        // wheel eventlar orasida scroll pozitsiyasi hali tuzatilmagan
+        // bo'lib qolardi — keyingi hisoblash eski (noto'g'ri) scrollTop'ga
+        // asoslanib, "zoom bilan birga scroll bo'layotganday" ko'rinardi.
+        // Darhol (sinxron) qo'llash bu poyga holatini yo'q qiladi.
+        suppressScrollDetectRef.current = true;
+        scrollEl.scrollLeft = newScrollLeft;
+        scrollEl.scrollTop = newScrollTop;
+        window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
       }
       return hostZoom;
     });
@@ -67,32 +79,63 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   const syncZoomToHost = useCallback(() => setLocalZoom(hostZoom), [hostZoom]);
 
   // Zoom o'zgarganda sichqoncha/pinch markazi ekranda bir joyda qolishi
-  // uchun: eski va yangi zoom nisbatiga qarab scroll pozitsiyasini
-  // qayta hisoblaymiz (anchor — konteyner ichidagi piksel nuqta).
+  // uchun: eski va yangi zoom nisbatiga qarab scroll pozitsiyasini qayta
+  // hisoblaymiz (anchor — konteyner ichidagi piksel nuqta). MUHIM: yangi
+  // scrollLeft/Top qiymati shu yerda DARHOL o'rnatilmaydi — chunki bu payt
+  // konteyner CSS kengligi (width: zoom*100%) hali ESKI zoom asosida
+  // (DOM/layout hali yangilanmagan), scroll'ni shu asosda o'rnatish anchor
+  // nuqtaning asta-sekin chetga "drift" qilib ketishiga olib kelardi.
+  // Buning o'rniga anchor+eski scroll holati ref'ga yoziladi, haqiqiy
+  // scrollLeft/Top esa pastdagi useLayoutEffect'da — zoom DOM'ga to'liq
+  // qo'llanib, konteyner haqiqiy yangi kengligiga ega bo'lgandan KEYIN —
+  // qo'llaniladi.
+  const pendingAnchorRef = useRef<{ anchorClientX: number; anchorClientY: number } | null>(null);
   const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
     const clamped = clampZoom(next);
-    const scrollEl = scrollRef.current;
-    setLocalZoom((prevZoom) => {
-      if (scrollEl && clamped !== prevZoom) {
-        const rect = scrollEl.getBoundingClientRect();
-        const localX = anchorClientX - rect.left;
-        const localY = anchorClientY - rect.top;
-        const contentX = scrollEl.scrollLeft + localX;
-        const contentY = scrollEl.scrollTop + localY;
-        const ratio = clamped / prevZoom;
-        const newScrollLeft = contentX * ratio - localX;
-        const newScrollTop = contentY * ratio - localY;
-        requestAnimationFrame(() => {
-          suppressScrollDetectRef.current = true;
-          scrollEl.scrollLeft = newScrollLeft;
-          scrollEl.scrollTop = newScrollTop;
-          window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
-        });
-      }
-      return clamped;
-    });
+    const prevZoom = localZoomRef.current;
+    if (clamped === prevZoom) return;
+    localZoomRef.current = clamped;
+    pendingAnchorRef.current = { anchorClientX, anchorClientY };
+    setLocalZoom(clamped);
     if (isHost) onZoomChange?.(clamped);
-  }, [isHost, onZoomChange, scrollRef, suppressScrollDetectRef]);
+  }, [isHost, onZoomChange]);
+
+  // MUHIM: ratio endi zoom/prevZoom (state qiymatlari) orqali emas, balki
+  // DOM'ning HOZIRGI (layout allaqachon qo'llangan) scrollWidth/clientWidth
+  // nisbatidan orqaga hisoblanadi — bu safe-center flex-markazlash yoki
+  // boshqa CSS ta'siridagi haqiqiy piksel kengligini aks ettiradi, prevZoom
+  // asosidagi nazariy hisoblash esa (agar width flex/align-items:safe center
+  // orqali markazlangan bo'lsa) chetlarga "borib qaytish" (silkinish)
+  // ko'rinishiga olib kelardi — zoom darajasidan qat'i nazar bir xil kuchda,
+  // chunki xato margin/markazlash effektidan emas, noto'g'ri anchor formula
+  // taxminidan kelib chiqqan edi.
+  const prevScrollWidthRef = useRef<number | null>(null);
+  const prevScrollHeightRef = useRef<number | null>(null);
+  useLayoutEffect(() => {
+    const pending = pendingAnchorRef.current;
+    const scrollEl = scrollRef.current;
+    pendingAnchorRef.current = null;
+    const prevScrollWidth = prevScrollWidthRef.current;
+    const prevScrollHeight = prevScrollHeightRef.current;
+    prevScrollWidthRef.current = scrollEl?.scrollWidth ?? null;
+    prevScrollHeightRef.current = scrollEl?.scrollHeight ?? null;
+    if (!pending || !scrollEl || prevScrollWidth === null || prevScrollHeight === null) return;
+    const { anchorClientX, anchorClientY } = pending;
+    const rect = scrollEl.getBoundingClientRect();
+    const localX = anchorClientX - rect.left;
+    const localY = anchorClientY - rect.top;
+    const ratioX = prevScrollWidth > 0 ? scrollEl.scrollWidth / prevScrollWidth : 1;
+    const ratioY = prevScrollHeight > 0 ? scrollEl.scrollHeight / prevScrollHeight : 1;
+    const newScrollLeft = (scrollEl.scrollLeft + localX) * ratioX - localX;
+    const newScrollTop = (scrollEl.scrollTop + localY) * ratioY - localY;
+    suppressScrollDetectRef.current = true;
+    scrollEl.scrollLeft = newScrollLeft;
+    scrollEl.scrollTop = newScrollTop;
+    prevScrollWidthRef.current = scrollEl.scrollWidth;
+    prevScrollHeightRef.current = scrollEl.scrollHeight;
+    window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom]);
 
   // Tugmalar (+/-/reset) uchun: aniq anchor nuqta yo'q, shuning uchun
   // ko'rinadigan oyna markazini anchor sifatida olamiz.
@@ -116,13 +159,26 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   const applyZoomAnchoredRef = useRef(applyZoomAnchored);
   applyZoomAnchoredRef.current = applyZoomAnchored;
 
+  // scrollRef — useRef bo'lgani uchun uning .current DOM elementi
+  // almashganda (masalan split/single board rejimi orasida almashinganda)
+  // pastdagi useEffect'lar QAYTA ISHGA TUSHMAYDI, chunki ref obyektining
+  // o'zi hech qachon o'zgarmaydi — faqat .current ichidagi qiymati
+  // o'zgaradi. Natijada wheel/touch listenerlar eski (endi DOM'dan
+  // uzilgan) elementga ulangan holda qolib ketishi va trackpad-pinch
+  // "hech narsa qilmayapti"day tuyulishi mumkin edi. `setZoomNode` — chaqiruvchi
+  // tomon o'z callback-ref'i ichida `scrollRef.current = element` bilan
+  // BIRGA chaqirishi kerak bo'lgan qo'shimcha funksiya; u haqiqiy DOM
+  // node'ni React state'ga yozadi, shu bilan effektlar to'g'ri qayta ishga
+  // tushadi.
+  const [zoomNode, setZoomNode] = useState<HTMLDivElement | null>(null);
+
   // React'ning onWheel'i sintetik va ba'zi brauzerlarda passive bo'lib
   // qolishi mumkin — bu holda preventDefault() e'tiborsiz qoldiriladi va
   // trackpad pinch/Ctrl+wheel butun sahifani (body) zoom qilib yuboradi.
   // Shuning uchun native, passive:false listener bilan qo'shimcha
   // to'siq qo'yamiz — bu har doim ishonchli ishlaydi.
   useEffect(() => {
-    const el = scrollRef.current;
+    const el = zoomNode;
     if (!el) return;
     const onNativeWheel = (e: WheelEvent) => {
       if (!e.ctrlKey && !e.metaKey) {
@@ -131,11 +187,11 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       }
       e.preventDefault();
       if (!freeToMoveRef.current) return;
-      applyZoomAnchoredRef.current(zoomRef.current - e.deltaY * 0.01, e.clientX, e.clientY);
+      applyZoomAnchoredRef.current(localZoomRef.current - e.deltaY * 0.01, e.clientX, e.clientY);
     };
     el.addEventListener("wheel", onNativeWheel, { passive: false });
     return () => el.removeEventListener("wheel", onNativeWheel);
-  }, [scrollRef]);
+  }, [zoomNode]);
 
   // Qo'shimcha himoya: agar trackpad-pinch sichqoncha PDF konteynerdan
   // chetga (masalan toolbar yoki bo'sh joy ustida) chiqib ketsa ham,
@@ -149,13 +205,6 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
     return () => document.removeEventListener("wheel", onDocumentWheel);
   }, []);
 
-  const handleWheel = useCallback((e: React.WheelEvent) => {
-    // Oddiy wheel event tabiiy ravishda panelni scroll qilishi kerak.
-    // Faqat Ctrl/Cmd+wheel browser zoomga aylanib ketmasligi uchun
-    // bloklanadi; custom zoom native listenerda bajariladi.
-    if (e.ctrlKey || e.metaKey) e.preventDefault();
-  }, []);
-
   const pinchStartRef = useRef<{ distance: number; zoom: number; cx: number; cy: number } | null>(null);
 
   // React'ning sintetik touch handlerlari ba'zi brauzerlarda passive bo'lib
@@ -163,7 +212,7 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   // ikki barmoq bilan pinch qilinganda butun brauzer sahifasi (body) zoom
   // bo'lib ketardi. Native, passive:false listener bilan bu to'liq bloklanadi.
   useEffect(() => {
-    const el = scrollRef.current;
+    const el = zoomNode;
     if (!el) return;
 
     const onNativeTouchStart = (e: TouchEvent) => {
@@ -174,7 +223,7 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const cx = (a.clientX + b.clientX) / 2;
       const cy = (a.clientY + b.clientY) / 2;
-      pinchStartRef.current = { distance, zoom: zoomRef.current, cx, cy };
+      pinchStartRef.current = { distance, zoom: localZoomRef.current, cx, cy };
     };
     const onNativeTouchMove = (e: TouchEvent) => {
       if (e.touches.length < 2) return;
@@ -212,9 +261,9 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       document.removeEventListener("touchend", scopedEnd, true);
       document.removeEventListener("touchcancel", scopedEnd, true);
     };
-  }, [scrollRef]);
+  }, [zoomNode]);
 
   return {
-    zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, handleWheel,
+    zoom, freeToMove, applyZoom, resetZoomTo1, syncZoomToHost, setZoomNode,
   };
 }
