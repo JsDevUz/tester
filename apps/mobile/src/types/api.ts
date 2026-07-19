@@ -1,9 +1,0 @@
-export type User={id:string;name:string;role:'student'|'teacher'|'super'|'curator';phone?:string|null;avatarUrl?:string|null};
-export type Submission={id:string;testId:string;testName?:string;submittedAt:string|null;score:number|null;total:number|null};
-export type Course={courseId:string;courseTitle:string;groupName:string;hasAccess:boolean;starsEarned:number;starsMax:number;studentCount:number;lessonsCompleted:number;lessonsTotal:number;progressPercent:number};
-export type ContentBlock={id:string;type:string;content?:unknown;text?:string;url?:string|null;title?:string|null;fileName?:string|null;[key:string]:unknown};
-export type Lesson={id:string;title:string;completed:boolean;blocks:ContentBlock[];practiceBlocks:Array<{id:string;type:string;testSlug:string|null;testName:string|null;description:string}>};
-export type CourseDetail={id:string;title:string;curatorName:string|null;modules:Array<{id:string;title:string;lessons:Lesson[]}>};
-export type ChatPreview={id:string;courseTitle:string;groupName:string;curator:{id:string;name:string;avatarUrl:string|null};lastMessage:{content:string;createdAt:string}|null};
-export type ChatMessage={id:string;sender:{id:string;name:string};type:string;content:string;createdAt:string;deletedAt:string|null};
-export type ActiveClass={id:string;courseId:string;courseName:string;startedAt:number};

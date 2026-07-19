@@ -3,3 +3,6 @@ dist/
 .env
 **/.env
 *.local
+
+# React Native mobile workspace is kept local and must not be pushed.
+apps/mobile/
