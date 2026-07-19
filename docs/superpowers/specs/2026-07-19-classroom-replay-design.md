@@ -132,16 +132,19 @@ bo'lsa `'failed'`) yangilanadi — `egressId` webhook payload'ida keladi,
 
 ### 4. Playback API
 
-- `GET /classroom/my/courses/:courseId/replay-history` — o'sha kursning
-  yakunlangan darslari ro'yxati (sana, `recordingStatus`) — talaba (shu
-  kursga enrollment orqali) yoki ustoz (kurs egasi) chaqira oladi. Mavjud
-  `courseHistory` (teacher-only) dan farqli — yangi, talaba-ruxsatli metod.
+Faqat bitta yangi endpoint kerak — alohida "kursning darslar ro'yxati"
+so'rovi kerak emas, chunki blok tanlash (§6) ham, davomat sahifasi (§7) ham
+faqat ustoz tomonidan ochiladi va mavjud teacher-only
+`GET /classroom/courses/:courseId/history` (`courseHistory`)ni qayta
+ishlatadi.
+
 - `GET /classroom/sessions/:id/replay` — bitta darsning to'liq replay
   ma'lumoti: `{ pdfName, pdfPages, historyEvents, recordingUrl,
   recordingStatus, attendance: [...] }`. `attendance` — mavjud
   `attendance_records` jadvalidan (join qilingan `enrollment`/`user` ism
   bilan). Ruxsat: ustoz (kurs egasi) yoki shu darsda davomat yozuvi bor
-  talaba.
+  talaba — bu ikkalasini ham shu metodning o'zi tekshiradi, chunki replay
+  sahifasi ikkala rol tomonidan ham ochilishi mumkin.
 
 Ikkalasi ham mavjud `classroom.controller.ts`ga qo'shiladi (yangi controller
 shart emas — resurs allaqachon shu domenga tegishli). "Jonli dars" blok
