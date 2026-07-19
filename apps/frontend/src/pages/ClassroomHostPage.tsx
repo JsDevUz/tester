@@ -162,6 +162,8 @@ export function ClassroomHostPage() {
           onShapeStyleChange={setShapeStyle}
           onUpdateShapeStroke={(page, stroke) => hostActions.updateShapeStroke(page, stroke, "left", state.boardMode)}
           onPaneUpdateShapeStroke={(pane, mode, page, stroke) => hostActions.updateShapeStroke(page, stroke, pane, mode)}
+          onReorderStroke={(page, strokeIds, op) => hostActions.reorderStroke(page, strokeIds, op, "left", state.boardMode)}
+          onPaneReorderStroke={(pane, mode, page, strokeIds, op) => hostActions.reorderStroke(page, strokeIds, op, pane, mode)}
           onStrokeComplete={(page, s) => hostActions.sendStroke(page, s)}
           onPaneStrokeComplete={(pane, mode, page, s) => hostActions.sendStroke(page, s, pane, mode)}
           onMoveStroke={(page, strokeId, x, y) => hostActions.moveStroke(page, strokeId, x, y, "left", state.boardMode)}
