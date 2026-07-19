@@ -60,17 +60,22 @@ function makeFakeMediaLibrary(overrides: Partial<{ pages: string[]; status: stri
   };
 }
 
-async function setup(mediaLibrary = makeFakeMediaLibrary()) {
+function makeFakeRecordingService() {
+  return { startRecording: jest.fn().mockResolvedValue(undefined), stopRecording: jest.fn().mockResolvedValue(undefined) };
+}
+
+async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = makeFakeRecordingService()) {
   const service = new ClassroomService(
     { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
     { get: () => undefined } as any,
     mediaLibrary as any,
+    recordingService as any,
   );
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
   setupDbForCreate();
   const { id } = await service.createSession('c-1', 'teacher-1', 'teacher');
-  return { service, events, sessionId: id, mediaLibrary };
+  return { service, events, sessionId: id, mediaLibrary, recordingService };
 }
 
 afterEach(() => {
@@ -89,8 +94,14 @@ describe('createSession', () => {
     expect(snap.hostOnline).toBe(true);
   });
 
+  it('createSession chaqirilganda recordingService.startRecording chaqiriladi', async () => {
+    const { sessionId, recordingService } = await setup();
+    expect(recordingService.startRecording).toHaveBeenCalledWith(expect.any(String));
+    expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId);
+  });
+
   it('begona ustoz uchun taqiqlanadi', async () => {
-    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any);
+    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any, makeFakeRecordingService() as any);
     setupDbForCreate();
     await expect(service.createSession('c-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
   });
@@ -376,14 +387,16 @@ describe('voiceToken', () => {
 
 describe('erkin (guruhsiz) dars', () => {
   function makeFreeService() {
+    const recordingService = makeFakeRecordingService();
     const service = new ClassroomService(
       { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
       { get: () => undefined } as any,
       makeFakeMediaLibrary() as any,
+      recordingService as any,
     );
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
-    return { service, events };
+    return { service, events, recordingService };
   }
 
   it('kurs/DB yozuvisiz sessiya yaratadi', () => {

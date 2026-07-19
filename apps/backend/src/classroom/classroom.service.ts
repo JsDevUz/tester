@@ -10,6 +10,7 @@ import { db } from '../db';
 import { attendanceRecords, classSessions, courses, groupEnrollments, groups, mediaAssets } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
+import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
@@ -34,6 +35,7 @@ export class ClassroomService implements OnModuleInit {
     private readonly storage: StorageService,
     private readonly config: ConfigService,
     private readonly mediaLibrary: MediaLibraryService,
+    private readonly recording: ClassroomRecordingService,
   ) {}
 
   setBroadcaster(b: ClassroomBroadcaster) {
@@ -127,6 +129,8 @@ export class ClassroomService implements OnModuleInit {
       zoom: 1,
       scroll: null,
     });
+
+    void this.recording.startRecording(row.id);
 
     return { id: row.id };
   }
@@ -264,6 +268,7 @@ export class ClassroomService implements OnModuleInit {
       await db.update(classSessions)
         .set({ status: 'ended', endedAt: new Date(), historyEvents: s.historyEvents ?? [] })
         .where(eq(classSessions.id, sessionId));
+      void this.recording.stopRecording(s.id);
     }
     this.broadcaster.toRoom(sessionId, 'session:ended', {});
     this.sessions.delete(sessionId);
