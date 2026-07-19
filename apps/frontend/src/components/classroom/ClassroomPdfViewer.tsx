@@ -106,7 +106,7 @@ function measureTextBox(
   };
 }
 
-export type DrawTool = CsTool | "laser" | "arrow" | "select" | "eraser-pixel" | "eraser-stroke";
+export type DrawTool = CsTool | "laser" | "arrow" | "select" | "eraser-pixel" | "eraser-stroke" | "lasso";
 
 interface Props {
   // Ustoz hozirgacha ochgan barcha sahifalar (1-indexed ko'rinishda tartiblangan)
@@ -533,6 +533,58 @@ function eraseNearPoint(stroke: CsStroke, x: number, y: number, hitRadius: numbe
   return keptRuns
     .filter((run) => run.length >= 4)
     .map((run) => ({ id: crypto.randomUUID(), tool: stroke.tool, color: stroke.color, width: stroke.width, points: run }));
+}
+
+// Har qanday turdagi stroke (qalam/marker/strelka/shape/matn) uchun
+// normalizatsiyalangan (0..1) bounding box — lasso tanlovi va guruh
+// ko'chirish/o'lchamini o'zgartirish uchun bir xil interfeys kerak.
+function strokeBoundingBox(stroke: CsStroke): { left: number; top: number; right: number; bottom: number } {
+  if (stroke.tool === "text") {
+    const w = (stroke.textBoxWidth ?? 320) / REF_WIDTH;
+    const h = (stroke.textBoxHeight ?? 120) / REF_WIDTH;
+    return { left: stroke.points[0], top: stroke.points[1], right: stroke.points[0] + w, bottom: stroke.points[1] + h };
+  }
+  const xs = stroke.points.filter((_, i) => i % 2 === 0);
+  const ys = stroke.points.filter((_, i) => i % 2 === 1);
+  return { left: Math.min(...xs), top: Math.min(...ys), right: Math.max(...xs), bottom: Math.max(...ys) };
+}
+
+function strokeCentroid(stroke: CsStroke): [number, number] {
+  const box = strokeBoundingBox(stroke);
+  return [(box.left + box.right) / 2, (box.top + box.bottom) / 2];
+}
+
+// Ray-casting: nuqta yopiq ko'pburchak (lasso yo'li) ichidami tekshiradi.
+function pointInPolygon(x: number, y: number, polygon: number[]): boolean {
+  let inside = false;
+  const n = polygon.length / 2;
+  for (let i = 0, j = n - 1; i < n; j = i++) {
+    const xi = polygon[i * 2], yi = polygon[i * 2 + 1];
+    const xj = polygon[j * 2], yj = polygon[j * 2 + 1];
+    const intersects = (yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi;
+    if (intersects) inside = !inside;
+  }
+  return inside;
+}
+
+// Lasso yo'li ichida markazi (yoki bounding box ustma-ust tushishi) bo'lgan
+// barcha strokelarni topadi — Miro/Excalidraw'dagi "erkin tanlash" kabi.
+function findStrokesInLasso(strokes: CsStroke[], polygon: number[]): string[] {
+  if (polygon.length < 6) return [];
+  const xs = polygon.filter((_, i) => i % 2 === 0);
+  const ys = polygon.filter((_, i) => i % 2 === 1);
+  const polyLeft = Math.min(...xs), polyRight = Math.max(...xs);
+  const polyTop = Math.min(...ys), polyBottom = Math.max(...ys);
+  const ids: string[] = [];
+  for (const stroke of strokes) {
+    const box = strokeBoundingBox(stroke);
+    // Tezkor rad etish: bounding box lasso'ning umumiy bounding box'i bilan
+    // umuman kesishmasa, batafsil tekshirish shart emas.
+    if (box.right < polyLeft || box.left > polyRight || box.bottom < polyTop || box.top > polyBottom) continue;
+    const [cx, cy] = strokeCentroid(stroke);
+    if (pointInPolygon(cx, cy, polygon)) ids.push(stroke.id);
+  }
+  return ids;
 }
 
 const TEXT_COLORS = ["#ffffff", "#000000", "#ef4444", "#3b82f6", "#22c55e", "#f97316"];
@@ -1062,6 +1114,10 @@ function ClassroomPdfPage({
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  // Lasso bilan tanlangan guruh — bir nechta chizma/shape/matnni birga
+  // ko'chirish/o'lchamini o'zgartirish/o'chirish uchun.
+  const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(new Set());
+  const lassoDraftRef = useRef<number[] | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
   const erasedThisDragRef = useRef<Set<string>>(new Set());
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
@@ -1227,6 +1283,103 @@ function ClassroomPdfPage({
     onUpdateShapeStroke?.(pageNumber, { ...selectedShape, ...changes });
   };
 
+  const selectedGroupStrokes = selectedGroupIds.size > 0
+    ? strokes.filter((stroke) => selectedGroupIds.has(stroke.id))
+    : [];
+  const selectedGroupBounds = selectedGroupStrokes.length > 0
+    ? selectedGroupStrokes.reduce(
+        (acc, stroke) => {
+          const box = strokeBoundingBox(stroke);
+          return {
+            left: Math.min(acc.left, box.left), top: Math.min(acc.top, box.top),
+            right: Math.max(acc.right, box.right), bottom: Math.max(acc.bottom, box.bottom),
+          };
+        },
+        { left: Infinity, top: Infinity, right: -Infinity, bottom: -Infinity },
+      )
+    : null;
+
+  const commitGroupStroke = useCallback((stroke: CsStroke) => {
+    if (stroke.tool === "text") onUpdateTextStroke?.(pageNumber, stroke);
+    else if (stroke.tool === "rectangle" || stroke.tool === "ellipse") onUpdateShapeStroke?.(pageNumber, stroke);
+    else onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
+  }, [pageNumber, onUpdateTextStroke, onUpdateShapeStroke, onMoveStroke]);
+
+  const deleteSelectedGroup = () => {
+    for (const id of selectedGroupIds) onEraseStroke?.(pageNumber, id);
+    setSelectedGroupIds(new Set());
+  };
+
+  const draggingGroupRef = useRef<{ ids: Set<string>; startX: number; startY: number } | null>(null);
+  const resizingGroupRef = useRef<{
+    corner: "nw" | "ne" | "sw" | "se";
+    startBounds: { left: number; top: number; right: number; bottom: number };
+    startClientX: number; startClientY: number;
+    startStrokes: Map<string, CsStroke>;
+  } | null>(null);
+
+  const beginGroupResize = (event: React.PointerEvent<HTMLButtonElement>, corner: "nw" | "ne" | "sw" | "se") => {
+    if (!selectedGroupBounds) return;
+    event.preventDefault(); event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    resizingGroupRef.current = {
+      corner, startBounds: selectedGroupBounds,
+      startClientX: event.clientX, startClientY: event.clientY,
+      startStrokes: new Map(selectedGroupStrokes.map((s) => [s.id, { ...s, points: [...s.points] }])),
+    };
+  };
+
+  const transformGroupResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = resizingGroupRef.current;
+    if (!current || size.w <= 0) return;
+    event.preventDefault(); event.stopPropagation();
+    const dx = (event.clientX - current.startClientX) / size.w;
+    const dy = (event.clientY - current.startClientY) / size.h;
+    const left = current.corner.includes("w");
+    const top = current.corner.includes("n");
+    const { startBounds } = current;
+    const nextLeft = left ? Math.max(0, Math.min(startBounds.right - 0.01, startBounds.left + dx)) : startBounds.left;
+    const nextTop = top ? Math.max(0, Math.min(startBounds.bottom - 0.01, startBounds.top + dy)) : startBounds.top;
+    const nextRight = !left ? Math.max(startBounds.left + 0.01, Math.min(1, startBounds.right + dx)) : startBounds.right;
+    const nextBottom = !top ? Math.max(startBounds.top + 0.01, Math.min(1, startBounds.bottom + dy)) : startBounds.bottom;
+    const startW = startBounds.right - startBounds.left || 1;
+    const startH = startBounds.bottom - startBounds.top || 1;
+    const scaleX = (nextRight - nextLeft) / startW;
+    const scaleY = (nextBottom - nextTop) / startH;
+    const fontScale = Math.min(scaleX, scaleY);
+    for (const stroke of selectedGroupStrokes) {
+      const original = current.startStrokes.get(stroke.id);
+      if (!original) continue;
+      const remap = (px: number, py: number): [number, number] => [
+        nextLeft + (px - startBounds.left) * scaleX,
+        nextTop + (py - startBounds.top) * scaleY,
+      ];
+      if (original.tool === "text") {
+        const [x, y] = remap(original.points[0], original.points[1]);
+        stroke.points = [x, y];
+        stroke.textBoxWidth = (original.textBoxWidth ?? 320) * scaleX;
+        stroke.textBoxHeight = (original.textBoxHeight ?? 120) * scaleY;
+        stroke.fontSize = Math.round(Math.max(10, Math.min(96, (original.fontSize ?? 24) * fontScale)));
+      } else {
+        const nextPoints: number[] = [];
+        for (let i = 0; i < original.points.length; i += 2) {
+          const [x, y] = remap(original.points[i], original.points[i + 1]);
+          nextPoints.push(x, y);
+        }
+        stroke.points = nextPoints;
+      }
+    }
+    forceRedraw((v) => v + 1);
+  };
+
+  const finishGroupResize = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = resizingGroupRef.current;
+    if (!current) return;
+    event.preventDefault(); event.stopPropagation();
+    resizingGroupRef.current = null;
+    for (const stroke of selectedGroupStrokes) commitGroupStroke({ ...stroke, points: [...stroke.points] });
+  };
+
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || size.w === 0) return;
@@ -1258,6 +1411,21 @@ function ClassroomPdfPage({
       ctx.beginPath();
       ctx.arc(pointer.x * size.w, pointer.y * size.h, 12, 0, Math.PI * 2);
       ctx.fillStyle = "rgba(59,130,246,0.25)";
+      ctx.fill();
+      ctx.restore();
+    }
+    if (lassoDraftRef.current && lassoDraftRef.current.length >= 4) {
+      const path = lassoDraftRef.current;
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(path[0] * size.w, path[1] * size.h);
+      for (let i = 2; i < path.length; i += 2) ctx.lineTo(path[i] * size.w, path[i + 1] * size.h);
+      ctx.closePath();
+      ctx.strokeStyle = "rgba(99,102,241,0.9)";
+      ctx.lineWidth = 1.5;
+      ctx.setLineDash([4, 3]);
+      ctx.stroke();
+      ctx.fillStyle = "rgba(99,102,241,0.08)";
       ctx.fill();
       ctx.restore();
     }
@@ -1515,6 +1683,21 @@ function ClassroomPdfPage({
       setTextEditor({ x: p[0], y: p[1], text: "", color, textBoxWidth: 360, textBoxHeight: 120, ...lastTextStyleRef.current });
       return;
     }
+    if (tool === "lasso") {
+      // Guruh bounding box ichiga bosilsa — resize tutqichlari alohida
+      // <button>lar orqali ishlaydi, shu yerga kelmaydi — bo'lmasa guruhni
+      // ko'chirish uchun sudrash boshlanadi; bo'sh joyga bosilsa yangi
+      // lasso yo'li chiziladi va eski tanlov bekor qilinadi.
+      if (selectedGroupBounds && p[0] >= selectedGroupBounds.left && p[0] <= selectedGroupBounds.right
+        && p[1] >= selectedGroupBounds.top && p[1] <= selectedGroupBounds.bottom) {
+        draggingGroupRef.current = { ids: new Set(selectedGroupIds), startX: p[0], startY: p[1] };
+        return;
+      }
+      setSelectedGroupIds(new Set());
+      lassoDraftRef.current = [p[0], p[1]];
+      forceRedraw((n) => n + 1);
+      return;
+    }
     if (tool === "select") {
       const existing = findTextAt(p[0], p[1]);
       setSelectedTextId(existing?.id ?? null);
@@ -1592,6 +1775,26 @@ function ClassroomPdfPage({
     if (!p) return;
     onPointerMove?.(pageNumber, p[0], p[1], true);
     if (tool === "laser") return;
+    if (draggingGroupRef.current) {
+      const { ids, startX, startY } = draggingGroupRef.current;
+      const offsetX = p[0] - startX;
+      const offsetY = p[1] - startY;
+      draggingGroupRef.current = { ids, startX: p[0], startY: p[1] };
+      for (const stroke of strokes) {
+        if (!ids.has(stroke.id)) continue;
+        for (let i = 0; i < stroke.points.length; i += 2) {
+          stroke.points[i] += offsetX;
+          stroke.points[i + 1] += offsetY;
+        }
+      }
+      forceRedraw((n) => n + 1);
+      return;
+    }
+    if (lassoDraftRef.current) {
+      lassoDraftRef.current.push(p[0], p[1]);
+      forceRedraw((n) => n + 1);
+      return;
+    }
     if (draggingTextRef.current) {
       const { stroke, dx, dy } = draggingTextRef.current;
       const nextX = Math.max(0, Math.min(1, p[0] - dx));
@@ -1674,6 +1877,25 @@ function ClassroomPdfPage({
     if (tool === "laser") return;
     if (isEraser) {
       draggingEraserRef.current = false;
+      return;
+    }
+    if (draggingGroupRef.current) {
+      const { ids } = draggingGroupRef.current;
+      draggingGroupRef.current = null;
+      for (const stroke of strokes) {
+        if (ids.has(stroke.id)) commitGroupStroke({ ...stroke, points: [...stroke.points] });
+      }
+      forceRedraw((n) => n + 1);
+      return;
+    }
+    if (lassoDraftRef.current) {
+      const path = lassoDraftRef.current;
+      lassoDraftRef.current = null;
+      if (path.length >= 6) {
+        const enclosed = findStrokesInLasso(strokes, path);
+        setSelectedGroupIds(new Set(enclosed));
+      }
+      forceRedraw((n) => n + 1);
       return;
     }
     if (draggingTextRef.current) {
@@ -1984,6 +2206,39 @@ function ClassroomPdfPage({
             />}
             </>
           )}
+          {tool === "lasso" && selectedGroupBounds && (
+            <div
+              className="pointer-events-none absolute z-20 border-2 border-dashed border-indigo-500 bg-indigo-500/5"
+              style={{
+                left: `${selectedGroupBounds.left * 100}%`,
+                top: `${selectedGroupBounds.top * 100}%`,
+                width: `${(selectedGroupBounds.right - selectedGroupBounds.left) * 100}%`,
+                height: `${(selectedGroupBounds.bottom - selectedGroupBounds.top) * 100}%`,
+              }}
+            >
+              {(["nw", "ne", "sw", "se"] as const).map((corner) => (
+                <button
+                  key={corner}
+                  type="button"
+                  aria-label={`Guruh o'lchamini ${corner} tomondan o'zgartirish`}
+                  className={`pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-indigo-500 bg-white ${corner.includes("n") ? "-top-1.5" : "-bottom-1.5"} ${corner.includes("w") ? "-left-1.5" : "-right-1.5"}`}
+                  style={{ cursor: corner === "nw" || corner === "se" ? "nwse-resize" : "nesw-resize" }}
+                  onPointerDown={(event) => beginGroupResize(event, corner)}
+                  onPointerMove={transformGroupResize}
+                  onPointerUp={finishGroupResize}
+                  onPointerCancel={finishGroupResize}
+                />
+              ))}
+              <button
+                type="button"
+                aria-label="Tanlangan guruhni o'chirish"
+                onClick={deleteSelectedGroup}
+                className="pointer-events-auto absolute -top-9 left-1/2 -translate-x-1/2 rounded-full bg-red-500 p-1.5 text-white shadow-md hover:bg-red-600"
+              >
+                <Trash2 size={13} />
+              </button>
+            </div>
+          )}
         </div>
       ) : (
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
@@ -2147,8 +2402,8 @@ export function ClassroomPdfViewer({
       className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out"
       style={{ transform: overlayVisible ? "translateY(0)" : "translateY(-150%)" }}
     >
-      <div>{toolbar}</div>
-      <div className="flex items-center gap-2">{toolbarActions}</div>
+      <div className="min-w-0 flex-1">{toolbar}</div>
+      <div className="flex shrink-0 items-center gap-2">{toolbarActions}</div>
     </div>
   );
 
@@ -2288,10 +2543,14 @@ export function ClassroomPdfViewer({
                     touchAction: freeToMove ? "pan-x pan-y" : "none",
                   }
                 : {
-                    // Daftar 100% zoom'da qurilma viewport'iga emas, bitta
-                    // reference sahifa kengligiga tayanadi. Shu bilan teacher
-                    // va student grid/stroke o'lchami bir xil qoladi.
-                    width: displayMode === "notebook" ? `${zoom * REF_WIDTH}px` : `${zoom * PDF_BASE_SCALE * 100}%`,
+                    // Daftar ham PDF kabi konteyner kengligiga NISBATAN (%)
+                    // o'lchanadi — REF_WIDTH'ga bog'langan mutlaq piksel
+                    // (masalan 1000px) tor mobil ekranda 100% zoom'da ham
+                    // viewport'dan katta bo'lib, gorizontal scroll chiqarib
+                    // yuborardi. Grid/stroke o'lchami baribir REF_WIDTH
+                    // asosida hisoblanadi (canvas render'da), shuning uchun
+                    // teacher/student o'rtasida nisbiy ko'rinish bir xil qoladi.
+                    width: displayMode === "notebook" ? `${zoom * 100}%` : `${zoom * PDF_BASE_SCALE * 100}%`,
                   }}
             >
               <div
