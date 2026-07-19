@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { Play, Pause, ArrowLeft } from "lucide-react";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
@@ -17,6 +17,7 @@ export function ClassroomReplayPage() {
   const navigate = useNavigate();
   const [data, setData] = useState<ClassReplayData | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const audioRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -26,6 +27,26 @@ export function ClassroomReplayPage() {
   }, [sessionId]);
 
   const replay = useClassroomReplay(data?.historyEvents ?? [], data?.pdfName ?? null, data?.pdfPages ?? []);
+
+  const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl;
+
+  useEffect(() => {
+    if (!hasRecording) return;
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (replay.isPlaying) {
+      audio.play().catch(() => {});
+    } else {
+      audio.pause();
+    }
+  }, [replay.isPlaying, hasRecording]);
+
+  const handleSeek = (ms: number) => {
+    replay.seek(ms);
+    if (hasRecording && audioRef.current) {
+      audioRef.current.currentTime = ms / 1000;
+    }
+  };
 
   if (error) {
     return (
@@ -104,12 +125,18 @@ export function ClassroomReplayPage() {
           min={0}
           max={replay.durationMs}
           value={replay.currentTimeMs}
-          onChange={(e) => replay.seek(Number(e.target.value))}
+          onChange={(e) => handleSeek(Number(e.target.value))}
           className="flex-1"
         />
         <span className="w-10 shrink-0 text-xs tabular-nums text-gray-500">{formatMs(replay.durationMs)}</span>
-        {data.recordingStatus === "ready" && data.recordingUrl && (
-          <audio src={data.recordingUrl} className="hidden" />
+        {data.recordingStatus === "pending" && (
+          <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
+        )}
+        {data.recordingStatus === "failed" && (
+          <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
+        )}
+        {hasRecording && (
+          <audio ref={audioRef} src={data.recordingUrl ?? undefined} className="h-0 w-0 opacity-0" />
         )}
       </div>
     </div>
