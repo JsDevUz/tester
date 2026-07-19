@@ -1432,20 +1432,7 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     resizingGroupRef.current = null;
-    for (const stroke of selectedGroupStrokes) {
-      // Lasso-resize ham boxni faqat scale qilgani uchun matndan katta
-      // bo'sh joy qolishi mumkin — tugagach tekis moslashtiramiz (yakka
-      // handle resize'dagi finishTextTransform bilan bir xil mantiq).
-      if (stroke.tool === "text" && stroke.text) {
-        // maxWrapWidth berilmaydi — box har doim matnning haqiqiy (natural)
-        // o'lchamiga tortiladi, oldingi kattalashtirilgan kenglik/balandlik
-        // saqlanib qolmaydi.
-        const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
-        stroke.textBoxWidth = measured.width + 8;
-        stroke.textBoxHeight = measured.height;
-      }
-      commitGroupStroke({ ...stroke, points: [...stroke.points] });
-    }
+    for (const stroke of selectedGroupStrokes) commitGroupStroke({ ...stroke, points: [...stroke.points] });
   };
 
   useEffect(() => {
@@ -1697,20 +1684,7 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     transformingTextRef.current = null;
-    const stroke = current.stroke;
-    // Resize paytida box shunchaki scale qilingani uchun matndan katta
-    // ("bo'sh joy" bilan) qolib ketishi mumkin — tugagach, foydalanuvchi
-    // tanlagan kenglikka nisbatan matnni qayta o'lchab, balandlikni (va
-    // bo'sh bo'lsa kenglikni ham) matnga tekis moslashtiramiz.
-    if (stroke.text) {
-      // maxWrapWidth berilmaydi — natural (o'ralmagan) kenglik o'lchanadi,
-      // shunda box har doim matnning haqiqiy kengligiga tortiladi (agar
-      // matn ko'p qatorli bo'lsa, eng uzun qatorga mos keladi).
-      const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
-      stroke.textBoxWidth = measured.width + 8;
-      stroke.textBoxHeight = measured.height;
-    }
-    onUpdateTextStroke?.(pageNumber, { ...stroke, points: [...stroke.points] });
+    onUpdateTextStroke?.(pageNumber, { ...current.stroke, points: [...current.stroke.points] });
   };
 
   const findTextAt = (x: number, y: number): CsStroke | null => {
