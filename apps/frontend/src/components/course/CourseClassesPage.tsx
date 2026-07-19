@@ -171,11 +171,21 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-3 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex items-center justify-between">
-              <div>
+            <div className="flex items-center justify-between gap-2">
+              <div className="min-w-0 flex-1">
                 <h2 className="font-semibold text-gray-800">Davomat</h2>
                 <p className="text-xs text-gray-400">{fmtDate(detail.startedAt)}{detail.pdfName ? ` — ${detail.pdfName}` : ''}</p>
               </div>
+              {detail.status === 'ended' && (
+                <button
+                  type="button"
+                  onClick={() => navigate(`/classroom-history/${detail.id}/replay`)}
+                  className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                >
+                  <Radio size={14} />
+                  Replay ko'rish
+                </button>
+              )}
               <button type="button" onClick={() => setDetail(null)} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100">
                 <X size={18} />
               </button>
