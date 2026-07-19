@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
-import { AlignCenter, AlignLeft, AlignRight, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, SendToBack, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
   CsStroke, CsStrokeStyle, CsTool,
@@ -610,6 +610,38 @@ const TEXT_ALIGN_OPTIONS: Array<{ value: "left" | "center" | "right"; icon: type
   { value: "right", icon: AlignRight },
 ];
 
+const LAYER_OPTIONS: Array<{ value: "back" | "backward" | "forward" | "front"; label: string; icon: typeof SendToBack }> = [
+  { value: "back", label: "Eng orqaga", icon: SendToBack },
+  { value: "backward", label: "Orqaga", icon: ChevronsDown },
+  { value: "forward", label: "Oldinga", icon: ChevronsUp },
+  { value: "front", label: "Eng oldinga", icon: BringToFront },
+];
+
+// TextStylePanel va ShapeStylePanel'da baravar ishlatiladigan qatlam
+// (z-order) tugmalari — 4 ta amal: eng orqaga/bir pog'ona orqaga/bir
+// pog'ona oldinga/eng oldinga.
+function LayersSection({ onReorder }: { onReorder: (op: "front" | "back" | "forward" | "backward") => void }) {
+  return (
+    <div className="flex flex-col gap-1.5">
+      <p className="text-[11px] font-medium text-gray-400">Qatlamlar</p>
+      <div className="grid grid-cols-4 gap-1">
+        {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            aria-label={label}
+            title={label}
+            onClick={() => onReorder(value)}
+            className="flex items-center justify-center rounded-lg bg-gray-100 py-1.5 text-gray-600 transition-colors hover:bg-gray-200"
+          >
+            <Icon size={14} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 interface TextStylePanelProps {
   color: string;
   fontFamily: CsFontFamily;
@@ -621,6 +653,7 @@ interface TextStylePanelProps {
   onFontSizeChange: (fontSize: number) => void;
   onFontWeightChange: (fontWeight: 400 | 500 | 600 | 700) => void;
   onTextAlignChange: (textAlign: "left" | "center" | "right") => void;
+  onReorder: (op: "front" | "back" | "forward" | "backward") => void;
   // Faqat allaqachon saqlangan (tanlangan) matn uchun beriladi — yozilayotgan
   // (hali commit qilinmagan) matnda o'chirish tugmasi ko'rsatilmaydi, chunki
   // Escape orqali bekor qilish allaqachon mavjud.
@@ -633,7 +666,7 @@ interface TextStylePanelProps {
 // qo'ymaydi.
 function TextStylePanel({
   color, fontFamily, fontSize, fontWeight, textAlign,
-  onColorChange, onFontFamilyChange, onFontSizeChange, onFontWeightChange, onTextAlignChange, onDelete,
+  onColorChange, onFontFamilyChange, onFontSizeChange, onFontWeightChange, onTextAlignChange, onReorder, onDelete,
 }: TextStylePanelProps) {
   return (
     <div
@@ -723,6 +756,8 @@ function TextStylePanel({
         </select>
       </div>
 
+      <LayersSection onReorder={onReorder} />
+
       {onDelete && (
         <button
           type="button"
@@ -801,6 +836,7 @@ interface ShapeStylePanelProps {
   onStrokeStyleChange: (strokeStyle: CsStrokeStyle) => void;
   onEdgesChange: (edges: CsEdges) => void;
   onOpacityChange: (opacity: number) => void;
+  onReorder: (op: "front" | "back" | "forward" | "backward") => void;
 }
 
 // To'rtburchak/doira uchun Excalidraw'ga to'liq mos sozlamalar paneli —
@@ -808,7 +844,7 @@ interface ShapeStylePanelProps {
 function ShapeStylePanel({
   color, backgroundColor, fillStyle, strokeWidth, strokeStyle, edges, opacity,
   onColorChange, onBackgroundColorChange, onFillStyleChange, onStrokeWidthChange,
-  onStrokeStyleChange, onEdgesChange, onOpacityChange,
+  onStrokeStyleChange, onEdgesChange, onOpacityChange, onReorder,
 }: ShapeStylePanelProps) {
   const hasBackground = backgroundColor !== "transparent";
   return (
@@ -946,6 +982,8 @@ function ShapeStylePanel({
           className="classroom-opacity-slider w-full"
         />
       </div>}
+
+      <LayersSection onReorder={onReorder} />
     </div>
   );
 }
@@ -1394,7 +1432,20 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     resizingGroupRef.current = null;
-    for (const stroke of selectedGroupStrokes) commitGroupStroke({ ...stroke, points: [...stroke.points] });
+    for (const stroke of selectedGroupStrokes) {
+      // Lasso-resize ham boxni faqat scale qilgani uchun matndan katta
+      // bo'sh joy qolishi mumkin — tugagach tekis moslashtiramiz (yakka
+      // handle resize'dagi finishTextTransform bilan bir xil mantiq).
+      if (stroke.tool === "text" && stroke.text) {
+        // maxWrapWidth berilmaydi — box har doim matnning haqiqiy (natural)
+        // o'lchamiga tortiladi, oldingi kattalashtirilgan kenglik/balandlik
+        // saqlanib qolmaydi.
+        const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+        stroke.textBoxWidth = measured.width + 8;
+        stroke.textBoxHeight = measured.height;
+      }
+      commitGroupStroke({ ...stroke, points: [...stroke.points] });
+    }
   };
 
   useEffect(() => {
@@ -1646,7 +1697,20 @@ function ClassroomPdfPage({
     if (!current) return;
     event.preventDefault(); event.stopPropagation();
     transformingTextRef.current = null;
-    onUpdateTextStroke?.(pageNumber, { ...current.stroke, points: [...current.stroke.points] });
+    const stroke = current.stroke;
+    // Resize paytida box shunchaki scale qilingani uchun matndan katta
+    // ("bo'sh joy" bilan) qolib ketishi mumkin — tugagach, foydalanuvchi
+    // tanlagan kenglikka nisbatan matnni qayta o'lchab, balandlikni (va
+    // bo'sh bo'lsa kenglikni ham) matnga tekis moslashtiramiz.
+    if (stroke.text) {
+      // maxWrapWidth berilmaydi — natural (o'ralmagan) kenglik o'lchanadi,
+      // shunda box har doim matnning haqiqiy kengligiga tortiladi (agar
+      // matn ko'p qatorli bo'lsa, eng uzun qatorga mos keladi).
+      const measured = measureTextBox(stroke.text, stroke.fontFamily ?? "sans-serif", stroke.fontSize ?? 24, stroke.fontWeight ?? 400);
+      stroke.textBoxWidth = measured.width + 8;
+      stroke.textBoxHeight = measured.height;
+    }
+    onUpdateTextStroke?.(pageNumber, { ...stroke, points: [...stroke.points] });
   };
 
   const findTextAt = (x: number, y: number): CsStroke | null => {
