@@ -9,7 +9,10 @@
   },
   "scripts": {
     "dev:backend": "npm run start:dev --workspace=apps/backend",
-    "dev:frontend": "npm run dev --workspace=apps/frontend"
+    "dev:frontend": "npm run dev --workspace=apps/frontend",
+    "dev:mobile": "npm run start --workspace=apps/mobile",
+    "ios": "npm run ios --workspace=apps/mobile",
+    "android": "npm run android --workspace=apps/mobile"
   },
   "devDependencies": {
     "@types/multer": "^2.1.0"
