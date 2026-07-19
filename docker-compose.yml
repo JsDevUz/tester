@@ -90,6 +90,42 @@ services:
       LIVEKIT_KEYS: "${LIVEKIT_API_KEY:-}: ${LIVEKIT_API_SECRET:-}"
     volumes:
       - ./docker/livekit.yaml:/etc/livekit.yaml:ro
+    depends_on:
+      - redis
+
+  # LiveKit va Egress o'rtasidagi ish navbati — Egress'ga so'rov shu orqali
+  # yetkaziladi, Redis'siz Egress so'rovlari doim timeout bo'ladi.
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    profiles: ["livekit"]
+    network_mode: host
+    command: ["redis-server", "--port", "6379"]
+
+  # Jonli dars audiosini yozib oladi (LiveKit Egress). Chrome-based worker —
+  # LiveKit'ga Redis orqali ulanadi, yozib bo'lgach S3-mos xotiraga yuklaydi
+  # (ClassroomRecordingService shu faylni keyin classroom-recordings/ ostida
+  # kutadi). LIVEKIT_API_KEY/SECRET/URL — asosiy livekit xizmati bilan bir xil.
+  egress:
+    image: livekit/egress:latest
+    restart: unless-stopped
+    profiles: ["livekit"]
+    network_mode: host
+    # Egress ichida Chrome (RoomComposite yozib olish uchun) ishlaydi —
+    # LiveKit'ning o'zi talab qiladi: SYS_ADMIN'siz Chrome sandbox ishga
+    # tushmaydi va Egress darhol chiqib ketadi.
+    cap_add:
+      - SYS_ADMIN
+    environment:
+      EGRESS_CONFIG_FILE: /etc/egress.yaml
+      LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
+      LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      LIVEKIT_WS_URL: ${LIVEKIT_URL:-}
+    volumes:
+      - ./docker/egress.yaml:/etc/egress.yaml:ro
+    depends_on:
+      - redis
+      - livekit
 
   migrate:
     build:

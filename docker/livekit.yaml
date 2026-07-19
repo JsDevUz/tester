@@ -1,5 +1,10 @@
 # LiveKit server konfiguratsiyasi (jonli dars ovozi).
 # Kalitlar docker-compose orqali LIVEKIT_KEYS env bilan beriladi.
+# Redis — Egress (dars audiosini yozib olish) LiveKit bilan shu orqali
+# gaplashadi, shuning uchun majburiy (Egress'siz ham LiveKit ishlayveradi,
+# lekin Egress'ga so'rov yuborilsa Redis'siz doim timeout bo'ladi).
+redis:
+  address: localhost:6379
 port: 7880
 rtc:
   tcp_port: 7881

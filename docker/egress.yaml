@@ -1,0 +1,8 @@
+# LiveKit Egress konfiguratsiyasi (jonli dars audiosini yozib olish).
+# api_key/api_secret/ws_url atayin bu yerda yozilmagan — ular
+# docker-compose'dagi LIVEKIT_API_KEY/LIVEKIT_API_SECRET/LIVEKIT_WS_URL
+# environment orqali beriladi va shu YAML qiymatlaridan ustun turadi.
+redis:
+  address: localhost:6379
+insecure: false
+log_level: info
