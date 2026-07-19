@@ -16,9 +16,11 @@ async function bootstrap() {
   // keladi — bu standart 'application/json' parser mos keladigan turlar
   // ro'yxatiga kirmaydi, shuning uchun req.rawBody hech qachon
   // to'ldirilmasdi (ClassroomRecordingController jimgina erta qaytib
-  // ketardi, log ham qoldirmasdan). express.json({ verify }) NestJS'ning
-  // o'z rawBody mexanizmi qoldiradigan hook'ni qo'lda bajaradi.
+  // ketardi, log ham qoldirmasdan). Faqat shu bitta yo'lga cheklangan
+  // holda express.json({ verify }) qo'shiladi — boshqa barcha route'lar
+  // Nest'ning o'z global JSON parseriga tegilmagan holda qoladi.
   app.use(
+    '/api/v1/webhooks/livekit',
     express.json({
       type: 'application/webhook+json',
       verify: (req: any, _res, buf) => {
