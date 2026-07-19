@@ -341,13 +341,15 @@ export function useClassroomSession(
       });
       emitHost("host:updateShapeStroke", { page, stroke, pane, mode });
     },
+    // MUHIM: bu yerda optimistik local o'zgartirish YO'Q — "forward"/"backward"
+    // amallari (undo/erase/move'dan farqli) ID bo'yicha idempotent emas, balki
+    // nisbiy (bir pog'ona) siljitadi. Server ustozning o'ziga ham broadcast
+    // qaytaradi (socket o'z xonasiga a'zo), shuning uchun optimistik + echo
+    // ikkalasi ham qo'llansa, ustoz ekranida element 2 pog'ona (studentlarda 1
+    // pog'ona) siljib, holat rassinxron bo'lib qolardi. Shu sabab faqat
+    // serverdan qaytgan "stroke:reorder" (yuqoridagi socket.on) orqali
+    // qo'llanadi — kichik kechikish evaziga har doim to'g'ri tartib.
     reorderStroke: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward", pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
-      setState((s) => {
-        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-        const source = s[key];
-        const list = source[page] ?? [];
-        return { ...s, [key]: { ...source, [page]: reorderStrokeList(list, strokeIds, op) } };
-      });
       emitHost("host:reorderStroke", { page, strokeIds, op, pane, mode });
     },
     undo: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:undo", { page, pane, mode }),
