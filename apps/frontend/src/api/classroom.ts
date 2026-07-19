@@ -155,6 +155,10 @@ export interface ClassReplayData {
   historyEvents: ClassReplayEvent[];
   recordingUrl: string | null;
   recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
+  // Audio yozib olish sessiya boshlanishidan necha ms keyin boshlangani —
+  // historyEvents[].atMs bilan bir xil birlik. Audio va chizma tarixi
+  // replay'da mos kelishi uchun shu siljish audio elementiga qo'llanadi.
+  recordingStartedAtMs: number | null;
   attendance: Array<{ userId: string; name: string; status: 'absent' | 'present' | 'late' }>;
 }
 

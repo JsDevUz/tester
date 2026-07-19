@@ -582,6 +582,13 @@ export const classSessions = pgTable('class_sessions', {
   // LiveKit egress_ended webhook shu ustun orqali qaysi sessionId'ga
   // tegishli ekanini topadi.
   egressId: text('egress_id'),
+  // Egress HAQIQATDA ishga tushgan payt, sessiya boshlanishidan (startedAt)
+  // necha millisekund o'tgach — historyEvents[].atMs bilan bir xil birlik.
+  // Chizma tarixi sessiya yaratilgan ondan (t=0) hisoblanadi, lekin audio
+  // yozib olish LiveKit ulanish/token/Egress ishga tushishi tugagandan
+  // keyin (odatda bir necha soniya kech) boshlanadi — shu siljishni
+  // bilmasdan audio va chizma replay'da bir-biriga mos kelmaydi.
+  recordingStartedAtMs: integer('recording_started_at_ms'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));

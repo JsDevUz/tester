@@ -1,0 +1,1 @@
+ALTER TABLE "class_sessions" ADD COLUMN "recording_started_at_ms" integer;

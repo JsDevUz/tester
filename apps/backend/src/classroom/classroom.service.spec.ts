@@ -105,7 +105,7 @@ describe('createSession', () => {
     const { service, sessionId, recordingService } = await setup();
     expect(recordingService.startRecording).not.toHaveBeenCalled();
     await service.startSessionRecording(sessionId, 'teacher-1');
-    expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId);
+    expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId, expect.any(Number));
   });
 
   it('begona ustoz uchun taqiqlanadi', async () => {
@@ -420,6 +420,26 @@ describe('sahifa va chizish', () => {
     );
     expect(replay).toHaveProperty('attendance');
     expect(replay).toHaveProperty('recordingStatus');
+  });
+
+  it('getReplay recordingStartedAtMs ni qaytaradi — audio va chizma tarixini sinxronlashtirish uchun', async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: ['page1.png'],
+      historyEvents: [],
+      recordingUrl: 'https://cdn/rec.ogg',
+      recordingStatus: 'ready',
+      recordingStartedAtMs: 3200,
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [],
+    });
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+    expect(replay.recordingStartedAtMs).toBe(3200);
   });
 
   it('getReplay boshqa kursning ustoziga ForbiddenException otadi', async () => {

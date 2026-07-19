@@ -658,6 +658,10 @@ export class ClassroomService implements OnModuleInit {
       // Normalize on read as well so already-finished lessons become playable.
       recordingUrl: recordingUrl ? this.storage.getPublicUrl(recordingUrl) : null,
       recordingStatus,
+      // Chizma tarixidagi atMs bilan bir xil birlik — audio yozib olish
+      // sessiya boshlanishidan necha ms keyin ishga tushgani, replay
+      // sahifasi audio elementiga shu siljishni qo'llash uchun.
+      recordingStartedAtMs: row.recordingStartedAtMs,
       attendance: (row.attendance as unknown as Array<{
         enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
         status: string;
@@ -761,7 +765,7 @@ export class ClassroomService implements OnModuleInit {
   async startSessionRecording(sessionId: string, userId: string): Promise<void> {
     const session = this.requireSessionHttp(sessionId);
     if (session.isFree || session.hostUserId !== userId) throw new ForbiddenException();
-    await this.recording.startRecording(sessionId);
+    await this.recording.startRecording(sessionId, session.startedAtMs);
   }
 
   private livekitConfig(): { url: string; apiKey: string; apiSecret: string } | null {

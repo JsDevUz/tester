@@ -29,23 +29,54 @@ export function ClassroomReplayPage() {
   const replay = useClassroomReplay(data?.historyEvents ?? [], data?.pdfName ?? null, data?.pdfPages ?? []);
 
   const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl;
+  // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
+  // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
+  // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
+  // uni bilmasdan audio va chizma tarixi replay'da mos kelmaydi.
+  const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
+  // Scrub joriy vaqti audio boshlanishidan oldin bo'lsa (masalan o'qituvchi
+  // ovoz ulanishidan oldin chiza boshlagan bo'lsa), audio hali "mavjud
+  // emas" — uni ijro etib bo'lmaydi, pauzada qoldiramiz.
+  const beforeRecordingStarted = replay.currentTimeMs < recordingOffsetMs;
 
   useEffect(() => {
     if (!hasRecording) return;
     const audio = audioRef.current;
     if (!audio) return;
-    if (replay.isPlaying) {
+    if (replay.isPlaying && !beforeRecordingStarted) {
       audio.play().catch(() => {});
     } else {
       audio.pause();
     }
-  }, [replay.isPlaying, hasRecording]);
+    // replay.currentTimeMs ni deps'ga qo'shmaymiz — play() ni har RAF
+    // freym'ida qayta chaqirmaslik uchun faqat isPlaying/beforeRecordingStarted
+    // O'ZGARGANDA reaksiya beramiz (masalan scrub vaqti recordingOffsetMs'ni
+    // kesib o'tganda). Aniq pozitsiyalash handleSeek orqali bajariladi.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replay.isPlaying, beforeRecordingStarted, hasRecording]);
 
   const handleSeek = (ms: number) => {
     replay.seek(ms);
     if (hasRecording && audioRef.current) {
-      audioRef.current.currentTime = ms / 1000;
+      const audioTimeMs = Math.max(0, ms - recordingOffsetMs);
+      audioRef.current.currentTime = audioTimeMs / 1000;
     }
+  };
+
+  const handlePlayPause = () => {
+    if (replay.isPlaying) {
+      replay.pause();
+      return;
+    }
+    // Play bosilganda audio elementining currentTime'ini scrubber bilan
+    // qayta sinxronlaymiz — aks holda audio o'zining oldingi (masalan
+    // pauzadan oldingi) pozitsiyasidan davom etib, chizma tarixidan
+    // uzilib qolishi mumkin edi.
+    if (hasRecording && audioRef.current) {
+      const audioTimeMs = Math.max(0, replay.currentTimeMs - recordingOffsetMs);
+      audioRef.current.currentTime = audioTimeMs / 1000;
+    }
+    replay.play();
   };
 
   if (error) {
@@ -114,7 +145,7 @@ export function ClassroomReplayPage() {
       <div className="flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3">
         <button
           type="button"
-          onClick={() => (replay.isPlaying ? replay.pause() : replay.play())}
+          onClick={handlePlayPause}
           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white hover:bg-indigo-700"
         >
           {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
