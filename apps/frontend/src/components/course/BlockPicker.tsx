@@ -1,6 +1,7 @@
 import { useRef, useState } from 'react';
 import {
-  LayoutGrid, Film, MousePointer2, Paperclip, Radio, type LucideIcon,
+  LayoutGrid, Film, MousePointer2, Paperclip, type LucideIcon,
+  // Radio, — jonli dars blok item'i bilan birga vaqtincha o'chirilgan
 } from 'lucide-react';
 import { MediaLibraryModal } from '../MediaLibraryModal';
 
@@ -29,7 +30,8 @@ interface BlockItem {
 const BLOCK_ITEMS: BlockItem[] = [
   { key: 'editor', label: 'Tahrirchi', icon: LayoutGrid },
   { key: 'video', label: 'Video', icon: Film },
-  { key: 'live_class', label: 'Jonli dars', icon: Radio },
+  // Vaqtincha o'chirilgan — jonli dars blokini qo'shish qaytadan yoqilguncha.
+  // { key: 'live_class', label: 'Jonli dars', icon: Radio },
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
