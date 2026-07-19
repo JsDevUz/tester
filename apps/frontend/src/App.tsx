@@ -26,6 +26,7 @@ import { MyCoursesPage } from './pages/MyCoursesPage';
 import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
 import { ClassroomHostPage } from './pages/ClassroomHostPage';
 import { ClassroomStudentPage } from './pages/ClassroomStudentPage';
+import { ClassroomReplayPage } from './pages/ClassroomReplayPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -59,6 +60,7 @@ const router = createBrowserRouter([
   // olishi kerak, shuning uchun PrivateRoute bilan o'ralmaydi.
   { path: '/classroom/free/:id', element: <ClassroomStudentPage isFreeRoute /> },
   { path: '/classroom/:id', element: <PrivateRoute><ClassroomStudentPage /></PrivateRoute> },
+  { path: '/classroom-history/:sessionId/replay', element: <PrivateRoute><ClassroomReplayPage /></PrivateRoute> },
   { path: '/lessons', element: <TeacherRoute><CoursesPage /></TeacherRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
   { path: '/messenger', element: <PrivateRoute><PracticeMessengerPage /></PrivateRoute> },
