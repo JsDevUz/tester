@@ -21,6 +21,37 @@ export class ClassroomRecordingService {
 
   constructor(private readonly config: ConfigService) {}
 
+  private publicRecordingUrl(location: string, storage: StorageConfig): string {
+    if (/^https?:\/\//i.test(location)) return location;
+    let key = location.replace(/^\/+/, '');
+    if (/^s3:\/\//i.test(key)) {
+      const withoutScheme = key.replace(/^s3:\/\//i, '');
+      const slashIndex = withoutScheme.indexOf('/');
+      key = slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : '';
+    }
+    return storage.publicBaseUrl ? `${storage.publicBaseUrl}/${key}` : key;
+  }
+
+  private async persistEgressResult(sessionId: string, info: {
+    status: number;
+    error?: string;
+    fileResults?: Array<{ location?: string; filename?: string }>;
+  }): Promise<boolean> {
+    const failed = info.status >= 4 || !!info.error;
+    const result = info.fileResults?.[0];
+    const location = result?.location || result?.filename || null;
+    if (!failed && !location) return false;
+
+    const storage = this.storageConfig();
+    await db.update(classSessions)
+      .set({
+        recordingStatus: failed || !location ? 'failed' : 'ready',
+        recordingUrl: failed || !location || !storage ? null : this.publicRecordingUrl(location, storage),
+      })
+      .where(eq(classSessions.id, sessionId));
+    return true;
+  }
+
   private livekitConfig(): LiveKitConfig | null {
     const url = this.config.get<string>('LIVEKIT_URL');
     const apiKey = this.config.get<string>('LIVEKIT_API_KEY');
@@ -98,9 +129,40 @@ export class ClassroomRecordingService {
       if (!row?.egressId) return;
       const httpUrl = lk.url.replace(/^ws/, 'http');
       const egress = new EgressClient(httpUrl, lk.apiKey, lk.apiSecret);
-      await egress.stopEgress(row.egressId);
+      let info = await egress.stopEgress(row.egressId);
+      if (await this.persistEgressResult(sessionId, info)) return;
+
+      // StopEgress ko'pincha EGRESS_ENDING holatini qaytaradi. Webhook
+      // kechiksa yoki noto'g'ri sozlangan bo'lsa ham replay pending bo'lib
+      // qolmasligi uchun yakuniy natijani qisqa muddat poll qilamiz.
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        const items = await egress.listEgress({ egressId: row.egressId });
+        if (!items[0]) continue;
+        info = items[0];
+        if (await this.persistEgressResult(sessionId, info)) return;
+      }
+      console.error(`stopRecording: egress yakuniy natija bermadi (${sessionId}, ${row.egressId})`);
     } catch (e) {
       console.error(`stopRecording: failed for session ${sessionId}`, e);
+      await db.update(classSessions)
+        .set({ recordingStatus: 'failed' })
+        .where(eq(classSessions.id, sessionId));
+    }
+  }
+
+  async refreshRecording(sessionId: string): Promise<void> {
+    try {
+      const lk = this.livekitConfig();
+      if (!lk) return;
+      const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+      if (!row?.egressId || row.recordingStatus !== 'pending') return;
+
+      const egress = new EgressClient(lk.url.replace(/^ws/, 'http'), lk.apiKey, lk.apiSecret);
+      const items = await egress.listEgress({ egressId: row.egressId });
+      if (items[0]) await this.persistEgressResult(sessionId, items[0]);
+    } catch (e) {
+      console.error(`refreshRecording: failed for session ${sessionId}`, e);
     }
   }
 }

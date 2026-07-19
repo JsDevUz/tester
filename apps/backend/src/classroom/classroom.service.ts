@@ -639,14 +639,25 @@ export class ClassroomService implements OnModuleInit {
     }
     if (!isTeacher && !isEnrolledStudent) throw new ForbiddenException();
 
+    let recordingUrl = row.recordingUrl;
+    let recordingStatus = row.recordingStatus;
+    if (recordingStatus === 'pending') {
+      await this.recording.refreshRecording(sessionId);
+      const refreshed = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+      if (refreshed) {
+        recordingUrl = refreshed.recordingUrl;
+        recordingStatus = refreshed.recordingStatus;
+      }
+    }
+
     return {
       pdfName: row.pdfName,
       pdfPages: (row.pdfPages as string[]) ?? [],
       historyEvents: (row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? [],
       // Older webhook versions stored only the S3 key (or an s3:// URL).
       // Normalize on read as well so already-finished lessons become playable.
-      recordingUrl: row.recordingUrl ? this.storage.getPublicUrl(row.recordingUrl) : null,
-      recordingStatus: row.recordingStatus,
+      recordingUrl: recordingUrl ? this.storage.getPublicUrl(recordingUrl) : null,
+      recordingStatus,
       attendance: (row.attendance as unknown as Array<{
         enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
         status: string;

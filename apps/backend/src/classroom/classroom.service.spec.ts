@@ -63,7 +63,11 @@ function makeFakeMediaLibrary(overrides: Partial<{ pages: string[]; status: stri
 }
 
 function makeFakeRecordingService() {
-  return { startRecording: jest.fn().mockResolvedValue(undefined), stopRecording: jest.fn().mockResolvedValue(undefined) };
+  return {
+    startRecording: jest.fn().mockResolvedValue(undefined),
+    stopRecording: jest.fn().mockResolvedValue(undefined),
+    refreshRecording: jest.fn().mockResolvedValue(undefined),
+  };
 }
 
 async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = makeFakeRecordingService()) {
