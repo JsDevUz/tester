@@ -284,6 +284,55 @@ describe('sahifa va chizish', () => {
     const setCalls = mockedDb.update.mock.results.map((r: any) => r.value.set.mock.calls[0][0]);
     expect(setCalls.some((c: any) => Array.isArray(c.historyEvents) && c.historyEvents.length === 1)).toBe(true);
   });
+
+  it('getReplay tarix+recording+attendance qaytaradi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
+    const history = service.getHistoryEventsForTests(sessionId);
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: ['page1.png'],
+      historyEvents: history,
+      recordingUrl: null,
+      recordingStatus: 'pending',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [
+        {
+          status: 'present',
+          enrollment: { schoolMember: { studentId: 'stu-1', student: { displayName: 'Ali' } } },
+        },
+      ],
+    });
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+    expect(replay.historyEvents).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'stroke:add' })]),
+    );
+    expect(replay).toHaveProperty('attendance');
+    expect(replay).toHaveProperty('recordingStatus');
+  });
+
+  it('getReplay boshqa kursning ustoziga ForbiddenException otadi', async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      pdfName: 'dars.pdf',
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      course: { id: 'c-1', adminId: 'teacher-1' },
+      attendance: [],
+    });
+
+    await expect(service.getReplay(sessionId, 'some-other-teacher'))
+      .rejects.toThrow();
+  });
 });
 
 describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {

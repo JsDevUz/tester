@@ -620,6 +620,44 @@ export class ClassroomService implements OnModuleInit {
     };
   }
 
+  // Bitta darsning to'liq replay ma'lumoti — chizma tarixi + audio +
+  // davomat. Talaba (shu kursga yozilgan, attendance_records orqali) yoki
+  // o'qituvchi (shu kurs egasi) kira oladi.
+  async getReplay(sessionId: string, callerId: string) {
+    const row = await db.query.classSessions.findFirst({
+      where: eq(classSessions.id, sessionId),
+      with: {
+        course: true,
+        attendance: { with: { enrollment: { with: { schoolMember: { with: { student: true } } } } } },
+      },
+    });
+    if (!row) throw new NotFoundException('Dars topilmadi');
+    const course = row.course as unknown as { adminId: string; id: string };
+    const isTeacher = course.adminId === callerId;
+    let isEnrolledStudent = false;
+    if (!isTeacher) {
+      const attendanceRows = row.attendance as unknown as Array<{ enrollment: { schoolMember: { studentId: string } } }>;
+      isEnrolledStudent = attendanceRows.some((a) => a.enrollment.schoolMember.studentId === callerId);
+    }
+    if (!isTeacher && !isEnrolledStudent) throw new ForbiddenException();
+
+    return {
+      pdfName: row.pdfName,
+      pdfPages: (row.pdfPages as string[]) ?? [],
+      historyEvents: (row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? [],
+      recordingUrl: row.recordingUrl,
+      recordingStatus: row.recordingStatus,
+      attendance: (row.attendance as unknown as Array<{
+        enrollment: { schoolMember: { studentId: string; student: { displayName: string } } };
+        status: string;
+      }>).map((a) => ({
+        userId: a.enrollment.schoolMember.studentId,
+        name: a.enrollment.schoolMember.student.displayName,
+        status: a.status,
+      })),
+    };
+  }
+
   async courseHistory(courseId: string, callerId: string, role: string) {
     const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
     if (!course) throw new NotFoundException('Kurs topilmadi');

@@ -69,6 +69,12 @@ export class ClassroomController {
     return this.classroomService.getSessionWithAttendance(id, req.admin.id, req.admin.role);
   }
 
+  @Get('sessions/:id/replay')
+  @Roles('teacher', 'super', 'student', 'curator')
+  getReplay(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+    return this.classroomService.getReplay(id, req.admin.id);
+  }
+
   @Get('courses/:courseId/history')
   @Roles('teacher', 'super')
   courseHistory(@Param('courseId', ParseUUIDPipe) courseId: string, @Req() req: any) {
