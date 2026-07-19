@@ -116,6 +116,11 @@ export const contentBlocks = pgTable('content_blocks', {
   errorMessage: text('error_message'),
   processedAt: timestamp('processed_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+  // "Jonli dars" (type='live_class') bloklari uchun — qaysi yakunlangan
+  // darsga bog'langanini bildiradi. Bitta dars bir nechta blokka
+  // bog'lanishi mumkin (cheklov yo'q), shuning uchun class_sessions
+  // tarafida unique emas.
+  classSessionId: uuid('class_session_id').references(() => classSessions.id, { onDelete: 'set null' }),
 });
 
 export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({

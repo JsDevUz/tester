@@ -1,0 +1,2 @@
+ALTER TABLE "content_blocks" ADD COLUMN "class_session_id" uuid;--> statement-breakpoint
+ALTER TABLE "content_blocks" ADD CONSTRAINT "content_blocks_class_session_id_class_sessions_id_fk" FOREIGN KEY ("class_session_id") REFERENCES "public"."class_sessions"("id") ON DELETE set null ON UPDATE no action;
