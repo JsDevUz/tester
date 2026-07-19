@@ -219,6 +219,20 @@ describe('sahifa va chizish', () => {
     expect(events.at(-1)).toMatchObject({ event: 'stroke:add', payload: { page: 1, stroke } });
   });
 
+  it('stroke qoshilganda historyEvents ga type/payload/atMs bilan yoziladi (isFree=false)', async () => {
+    const { service, sessionId } = await withPdf();
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+    const history = service.getHistoryEventsForTests(sessionId);
+    expect(history).toHaveLength(1);
+    expect(history[0]).toMatchObject({
+      type: 'stroke:add',
+      payload: { page: 1, stroke },
+    });
+    expect(typeof history[0].atMs).toBe('number');
+    expect(history[0].atMs).toBeGreaterThanOrEqual(0);
+  });
+
   it('qisqa text stroke broadcast qilinadi va keyingi snapshotda saqlanadi', async () => {
     const { service, events, sessionId } = await withPdf();
     const stroke = {
@@ -369,6 +383,15 @@ describe('erkin (guruhsiz) dars', () => {
     expect(mockedDb.insert).not.toHaveBeenCalled();
     const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
     expect(snap.isFree).toBe(true);
+  });
+
+  it('erkin (isFree) sessiyada historyEvents umuman yozilmaydi', () => {
+    const { service } = makeFreeService();
+    const { id } = service.createFreeSession('teacher-1');
+    service.setBoardView(id, 'teacher-1', 'single', 'notebook', 'notebook');
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    service.stroke(id, 'teacher-1', 1, stroke, 'notebook', 'left');
+    expect(service.getHistoryEventsForTests(id)).toHaveLength(0);
   });
 
   it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', () => {

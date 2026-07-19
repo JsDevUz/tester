@@ -19,7 +19,7 @@ import {
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
-  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomNotebookStyle, ClassroomParticipant,
+  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookStyle, ClassroomParticipant,
   ClassroomSession, ClassroomSnapshot, ClassroomStroke,
 } from './classroom.types';
 
@@ -238,11 +238,13 @@ export class ClassroomService implements OnModuleInit {
     s.boardMode = leftMode;
     switchBoardMode(s, leftMode);
     const snapshot = buildSnapshot(s);
-    this.broadcaster.toRoom(sessionId, 'board:set', {
+    const payload = {
       mode: leftMode, layout: s.boardLayout, leftMode, rightMode,
       currentPage: snapshot.currentPage, strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
-    });
+    };
+    this.recordHistoryEvent(s, 'board:set', payload);
+    this.broadcaster.toRoom(sessionId, 'board:set', payload);
   }
 
   async endSession(sessionId: string, byUserId: string | null): Promise<void> {
@@ -385,7 +387,9 @@ export class ClassroomService implements OnModuleInit {
   setPage(sessionId: string, userId: string, page: number): void {
     const s = this.requireHost(sessionId, userId);
     if (!setSessionPage(s, page)) throw new Error('INVALID_PAGE');
-    this.broadcaster.toRoom(sessionId, 'page:set', { page });
+    const payload = { page };
+    this.recordHistoryEvent(s, 'page:set', payload);
+    this.broadcaster.toRoom(sessionId, 'page:set', payload);
   }
 
   setTheme(sessionId: string, userId: string, theme: 'light' | 'dark'): void {
@@ -409,7 +413,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:add', { page, stroke, pane, mode });
+    const payload = { page, stroke, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:add', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:add', payload);
   }
 
   moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -419,7 +425,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = updateStrokePosition(s, page, strokeId, x, y, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:update', { page, strokeId, x, y, pane, mode });
+    const payload = { page, strokeId, x, y, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:update', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:update', payload);
   }
 
   updateTextStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -429,7 +437,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = updateTextStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', { page, stroke, pane, mode });
+    const payload = { page, stroke, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:textUpdate', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload);
   }
 
   updateShapeStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -439,7 +449,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = updateShapeStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', { page, stroke, pane, mode });
+    const payload = { page, stroke, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:shapeUpdate', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
   }
 
   undo(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -448,7 +460,11 @@ export class ClassroomService implements OnModuleInit {
     s.boardMode = mode;
     const strokeId = undoStroke(s, page, strokeMapFor(s, mode));
     s.boardMode = previousMode;
-    if (strokeId) this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
+    if (strokeId) {
+      const payload = { page, strokeId, pane, mode };
+      this.recordHistoryEvent(s, 'stroke:undo', payload);
+      this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);
+    }
   }
 
   // Stroke-eraser asbobi: sichqoncha ustidan o'tgan chizmani ID bo'yicha
@@ -460,7 +476,9 @@ export class ClassroomService implements OnModuleInit {
     const erased = eraseStrokeById(s, page, strokeId, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (erased) {
-      this.broadcaster.toRoom(sessionId, 'stroke:undo', { page, strokeId, pane, mode });
+      const payload = { page, strokeId, pane, mode };
+      this.recordHistoryEvent(s, 'stroke:undo', payload);
+      this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);
     }
   }
 
@@ -477,7 +495,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = reorderStrokesInSession(s, page, strokeIds, op, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:reorder', { page, strokeIds, op, pane, mode });
+    const payload = { page, strokeIds, op, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:reorder', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:reorder', payload);
   }
 
   // Pixel-eraser: bitta chizmaning faqat teginilgan qismini "kesib"
@@ -492,7 +512,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = splitStrokeInSession(s, page, strokeId, replacements, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    this.broadcaster.toRoom(sessionId, 'stroke:split', { page, strokeId, replacements, pane, mode });
+    const payload = { page, strokeId, replacements, pane, mode };
+    this.recordHistoryEvent(s, 'stroke:split', payload);
+    this.broadcaster.toRoom(sessionId, 'stroke:split', payload);
   }
 
   clearPage(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -501,7 +523,9 @@ export class ClassroomService implements OnModuleInit {
     s.boardMode = mode;
     clearPageStrokes(s, page, strokeMapFor(s, mode));
     s.boardMode = previousMode;
-    this.broadcaster.toRoom(sessionId, 'page:clear', { page, pane, mode });
+    const payload = { page, pane, mode };
+    this.recordHistoryEvent(s, 'page:clear', payload);
+    this.broadcaster.toRoom(sessionId, 'page:clear', payload);
   }
 
   pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean, pane: 'left' | 'right' = 'left'): void {
@@ -699,6 +723,17 @@ export class ClassroomService implements OnModuleInit {
         await client.mutePublishedTrack(room, targetUserId, track.sid, true);
       }
     }
+  }
+
+  private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
+    if (s.isFree) return;
+    if (!s.historyEvents) s.historyEvents = [];
+    s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
+  }
+
+  // Faqat testlar uchun — xotiradagi tarix massivini to'g'ridan-to'g'ri o'qiydi.
+  getHistoryEventsForTests(sessionId: string): ClassroomHistoryEvent[] {
+    return this.sessions.get(sessionId)?.historyEvents ?? [];
   }
 
   // ---------- Yordamchilar ----------
