@@ -6,8 +6,18 @@ Guruhga bog'liq (erkin emas) jonli darslar tugagach, ustoz va o'quvchilar
 o'sha darsni keyinchalik to'liq qayta ko'ra olishi kerak: boshidan oxirigacha
 bo'lgan barcha chizma/sahifa/board o'zgarishlari video-player uslubida
 (play/pause + scrubber) qayta ijro etiladi, sinxron audio bilan birga.
-Talaba navbariga "Darslar tarixi" bo'limi qo'shiladi — amaliyotlar tarixiga
-o'xshab, kurs bo'yicha guruhlangan ro'yxat.
+
+Alohida "Darslar tarixi" nav bo'limi YO'Q — buning o'rniga ikkita mavjud
+joyga integratsiya qilinadi:
+
+1. Ustozning kurs **kontent (lesson) tahrirlagichi**da yangi blok turi —
+   "Jonli dars" — qo'shiladi. Ustoz uni tanlaganda o'sha kursning
+   yakunlangan jonli darslari ro'yxati chiqadi, birini tanlaydi, blok shu
+   darsga bog'lanadi. O'quvchi darsni o'qiyotganda bu blok fayl-blok kabi
+   ko'rinadi ("Jonli dars — 2026-07-18") va bosilganda replay ochiladi.
+2. Ustozning mavjud "Jonli darslar" sahifasida (`CourseClassesPage.tsx`,
+   kurs → Jonli darslar) har bir yakunlangan dars qatorini bosganda ochiladigan
+   davomat modaliga "Replay ko'rish" tugmasi qo'shiladi.
 
 ## Qamrov chegaralari
 
@@ -96,10 +106,14 @@ library'dagi asl fayllarga ishora qiladi.
 
 ### 3. Audio yozib olish (LiveKit Egress)
 
-`live.service.ts`ga yangi metod: `startRecording(sessionId, roomName)` — dars
-`hostJoin` bosqichida (birinchi ustoz ulanganda) chaqiriladi, LiveKit
-`RoomCompositeEgress` (faqat audio track, video kerak emas) boshlaydi va
-natijada olingan `egressId`ni sessiyaga saqlaydi (`recordingStatus: 'pending'`).
+Yangi, alohida `ClassroomRecordingService` (`classroom.service.ts`dagi
+mavjud `livekitConfig()`dan mustaqil, o'z nusxasi bilan) — `startRecording
+(sessionId)` dars yaratilganda (`createSession`, `class_sessions` qatori
+allaqachon mavjud bo'lgan paytda) chaqiriladi, LiveKit `RoomCompositeEgress`
+(faqat audio, `audioOnly: true`) boshlaydi va natijada olingan `egressId`ni
+sessiyaga saqlaydi (`recordingStatus: 'pending'`). Audio fayl mavjud
+S3-compatible object storage'ga (`OBJECT_STORAGE_*` env varlar, allaqachon
+boshqa fayllar uchun ishlatiladi) yoziladi — yangi storage hisob kerak emas.
 
 **Fail-safe qoida**: bu chaqiruv `try/catch` bilan o'raladi, xatolik bo'lsa
 faqat `logger.error(...)` — hech qanday exception yuqoriga otilmaydi, dars
@@ -118,17 +132,23 @@ bo'lsa `'failed'`) yangilanadi — `egressId` webhook payload'ida keladi,
 
 ### 4. Playback API
 
-- `GET /courses/:courseId/class-sessions` — o'sha kursning yakunlangan
-  darslari ro'yxati (sana, davomiylik, `recordingStatus`). Talaba/ustoz
-  ruxsati: so'rovchi shu kursga a'zo (enrollment) yoki o'sha kursning
-  ustozi ekanligi tekshiriladi.
-- `GET /class-sessions/:id/replay` — bitta darsning to'liq replay ma'lumoti:
-  `{ pdfName, pdfPages, historyEvents, recordingUrl, recordingStatus,
-  attendance: [...] }`. `attendance` — mavjud `attendance_records`
-  jadvalidan (join qilingan `enrollment`/`user` ism bilan).
+- `GET /classroom/my/courses/:courseId/replay-history` — o'sha kursning
+  yakunlangan darslari ro'yxati (sana, `recordingStatus`) — talaba (shu
+  kursga enrollment orqali) yoki ustoz (kurs egasi) chaqira oladi. Mavjud
+  `courseHistory` (teacher-only) dan farqli — yangi, talaba-ruxsatli metod.
+- `GET /classroom/sessions/:id/replay` — bitta darsning to'liq replay
+  ma'lumoti: `{ pdfName, pdfPages, historyEvents, recordingUrl,
+  recordingStatus, attendance: [...] }`. `attendance` — mavjud
+  `attendance_records` jadvalidan (join qilingan `enrollment`/`user` ism
+  bilan). Ruxsat: ustoz (kurs egasi) yoki shu darsda davomat yozuvi bor
+  talaba.
 
 Ikkalasi ham mavjud `classroom.controller.ts`ga qo'shiladi (yangi controller
-shart emas — resurs allaqachon shu domenga tegishli).
+shart emas — resurs allaqachon shu domenga tegishli). "Jonli dars" blok
+tanlash ro'yxati esa mavjud `GET /classroom/courses/:courseId/history`
+(teacher-only, ustoz allaqachon autentifikatsiya qilingan) orqali oladi —
+alohida endpoint kerak emas, faqat `status: 'ended'` bo'lganlar frontendda
+filtrlanadi.
 
 ### 5. Frontend: replay player
 
@@ -160,11 +180,58 @@ ishlatadi):
   `atMs`i yoki audio `duration`i, qaysi kattaroq bo'lsa) bo'yicha.
 - Yon panelda davomat ro'yxati (`attendance`) statik ko'rinishda.
 
-### 6. Navigatsiya
+### 6. "Jonli dars" lesson blok turi
 
-O'quvchi navbariga "Darslar tarixi" bandi qo'shiladi → kurslar ro'yxati →
-kursni tanlash → o'sha kursning yakunlangan darslari ro'yxati (sana +
-davomiylik) → bosilganda `ClassroomReplayPage`ga o'tadi.
+`content_blocks` jadvaliga yangi ustun: `classSessionId uuid references
+class_sessions.id (nullable, onDelete: set null)`. Yangi `type` qiymati:
+`'live_class'`. Bitta `class_sessions` qatori bir nechta `content_blocks`
+qatoriga bog'lanishi mumkin (cheklov yo'q) — shu sabab
+`content_blocks.classSessionId`da FK bor, lekin `class_sessions` tarafida
+unique emas.
+
+**Backend** (`content-blocks.service.ts`ga yangi metod):
+
+```ts
+async createLiveClassBlock(lessonId: string, adminId: string, classSessionId: string) {
+  await this.assertLessonOwnership(lessonId, adminId);
+  // classSessionId shu ustozning shu kursiga tegishli EKANI tekshiriladi
+  // (boshqa ustoz/kursning darsini bog'lab qo'ymaslik uchun).
+  ...
+  const [block] = await db.insert(contentBlocks).values({
+    lessonId, type: 'live_class', orderIndex: existing.length, classSessionId,
+  }).returning();
+  return block;
+}
+```
+
+Yangi endpoint: `POST /lessons/:lessonId/blocks/live-class { classSessionId }`.
+
+Jonli darslarni tanlash uchun ro'yxat — mavjud
+`GET /classroom/courses/:courseId/history` (`courseHistory`, allaqachon bor,
+teacher-only) qayta ishlatiladi, faqat `status: 'ended'` bo'lganlari
+filtrlanadi (frontendda yoki backendda — soddaligi uchun frontendda).
+
+**Frontend — ustoz tomoni**: `BlockPicker.tsx`ga yangi item:
+`{ key: 'live_class', label: 'Jonli dars', icon: Radio }` — bosilganda fayl
+input o'rniga yangi `LiveClassPickerModal` ochiladi (kursning yakunlangan
+darslari ro'yxati, `CourseClassesPage.tsx`dagi qator ko'rinishiga o'xshash:
+sana + davomiylik + davomat sonlari), tanlangach
+`createLiveClassBlock(lessonId, classSessionId)` chaqiriladi.
+
+**Frontend — o'quvchi tomoni**: `MyCoursesPage.tsx`ning `LessonBlock`
+funksiyasiga yangi shart — `block.type === "live_class"` — fayl-blokka
+o'xshash chiqindi (ikon + "Jonli dars — [sana]" label), bosilganda
+`navigate(\`/classroom-history/${block.classSessionId}/replay\`)`
+(`ClassroomReplayPage` — pastga, §5 ga qarang — endi bevosita URL orqali
+ochiladi, alohida ro'yxat sahifasisiz).
+
+### 7. Mavjud "Jonli darslar" sahifasiga replay tugmasi
+
+`CourseClassesPage.tsx`dagi davomat modaliga (hozir faqat davomat
+ko'rsatadi) "Replay ko'rish" tugmasi qo'shiladi — bosilganda
+`ClassroomReplayPage`ga o'tadi. Bu ustozga darsni tugatgandan keyin ham,
+lesson blok orqali biriktirmasdan ham to'g'ridan-to'g'ri qayta ko'rish
+imkonini beradi.
 
 ## Testlash
 
