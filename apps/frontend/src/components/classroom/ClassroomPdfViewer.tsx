@@ -151,6 +151,8 @@ interface Props {
   onShapeStyleChange?: (style: ShapeStyle) => void;
   onUpdateShapeStroke?: (page: number, stroke: CsStroke) => void;
   onPaneUpdateShapeStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, stroke: CsStroke) => void;
+  onReorderStroke?: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward") => void;
+  onPaneReorderStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward") => void;
   onStrokeComplete?: (page: number, stroke: CsStroke) => void;
   onMoveStroke?: (page: number, strokeId: string, x: number, y: number) => void;
   onPaneMoveStroke?: (pane: "left" | "right", mode: CsBoardMode, page: number, strokeId: string, x: number, y: number) => void;
@@ -189,7 +191,7 @@ interface Props {
 // strokeWidth kabi) — shunda ekran/qurilma o'lchamidan (mobil/desktop)
 // qat'i nazar sahifaga nisbatan bir xil ko'rinishda bo'ladi. Chiziq
 // qanchalik uzun bo'lmasin, uchi kattalashib ketmaydi.
-const ARROW_HEAD_LEN_REF = 22;
+const ARROW_HEAD_LEN_REF = 14;
 const ARROW_HEAD_ANGLE = Math.PI / 7;
 
 function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
@@ -202,17 +204,24 @@ function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
 
   const angle = Math.atan2(y1 - y0, x1 - x0);
-  // Chiziqni o'q boshi uzunligicha oldinroq to'xtatamiz — aks holda
-  // asosiy chiziqning uchi ochiq "V" bosh ichidan chiqib qolib, to'g'ri
-  // chiziq ko'rinishida bo'lib qoladi.
+  const dist = Math.hypot(x1 - x0, y1 - y0);
+  // O'q boshi REF_WIDTH'ga nisbiy sobit uzunlikda — Excalidraw'dagi kabi
+  // qalinlik oshsa juda sekin (chiziqli emas) kattalashadi va qattiq
+  // maksimal chegaraga ega, shuning uchun chiziq qanchalik qalin yoki
+  // uzun bo'lmasin, boshi hech qachon nomutanosib katta bo'lib ketmaydi.
+  // Qisqa chiziqlarda esa boshi butun chiziqdan uzun chiqmasin deb
+  // dist/3 bilan ham cheklanadi.
   const arrowHeadLen = ARROW_HEAD_LEN_REF * (w / REF_WIDTH);
-  const headLen = arrowHeadLen * Math.min(1, ctx.lineWidth / 3 + 0.6);
-  const lineEndX = x1 - headLen * 0.6 * Math.cos(angle);
-  const lineEndY = y1 - headLen * 0.6 * Math.sin(angle);
+  const headLen = Math.min(arrowHeadLen * Math.max(1, Math.sqrt(ctx.lineWidth)), arrowHeadLen * 1.4, dist / 3);
 
+  // Shaft to'g'ridan-to'g'ri o'q uchigacha (x1,y1) chiziladi — headLen
+  // masofasida oldinroq to'xtatilmaydi, aks holda shaft uchi va "V" boshining
+  // orqa uchlari turli burchakda bo'lgani uchun ular orasida bo'shliq
+  // (uzilish) hosil bo'lardi. Head endi shaft ustidan chiziladi va ikkovi
+  // doim x1,y1 nuqtasida ustma-ust tegib turadi.
   ctx.beginPath();
   ctx.moveTo(x0, y0);
-  ctx.lineTo(lineEndX, lineEndY);
+  ctx.lineTo(x1, y1);
   ctx.stroke();
 
   // Ochiq "V" (>) shaklidagi o'q boshi — closePath yo'q, ikkita alohida
@@ -1088,6 +1097,7 @@ interface PageProps {
   shapeStyle?: ShapeStyle;
   onShapeStyleChange?: (style: ShapeStyle) => void;
   onUpdateShapeStroke?: (page: number, stroke: CsStroke) => void;
+  onReorderStroke?: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward") => void;
   onStrokeComplete?: (page: number, stroke: CsStroke) => void;
   onMoveStroke?: (page: number, strokeId: string, x: number, y: number) => void;
   onUpdateTextStroke?: (page: number, stroke: CsStroke) => void;
@@ -1103,7 +1113,7 @@ interface PageProps {
 function ClassroomPdfPage({
   pageNumber, url, notebook = false, notebookStyle = "grid", strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
-  onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, registerEl,
+  onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, onReorderStroke, registerEl,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
@@ -1357,9 +1367,16 @@ function ClassroomPdfPage({
       if (original.tool === "text") {
         const [x, y] = remap(original.points[0], original.points[1]);
         stroke.points = [x, y];
-        stroke.textBoxWidth = (original.textBoxWidth ?? 320) * scaleX;
-        stroke.textBoxHeight = (original.textBoxHeight ?? 120) * scaleY;
-        stroke.fontSize = Math.round(Math.max(10, Math.min(96, (original.fontSize ?? 24) * fontScale)));
+        const originalFont = original.fontSize ?? 24;
+        const clampedFont = Math.round(Math.max(10, Math.min(96, originalFont * fontScale)));
+        stroke.fontSize = clampedFont;
+        // Qutini fontScale bilan emas, haqiqiy (klemplangan) shrift nisbati
+        // bilan kichraytiramiz — aks holda fontSize 10px'da to'xtab qolgach
+        // ham qutining o'zi kichrayishda davom etib, matn endi sig'maydigan
+        // torroq qutida qoladi va wrap bo'lib ko'rinadi.
+        const effectiveScale = clampedFont / originalFont;
+        stroke.textBoxWidth = (original.textBoxWidth ?? 320) * effectiveScale;
+        stroke.textBoxHeight = (original.textBoxHeight ?? 120) * effectiveScale;
       } else {
         const nextPoints: number[] = [];
         for (let i = 0; i < original.points.length; i += 2) {
@@ -1599,15 +1616,19 @@ function ClassroomPdfPage({
     const rawDy = top ? -dy : dy;
     const startDiagonal = Math.hypot(current.startWidth, current.startHeight) || 1;
     const projected = (current.startWidth * rawDx + current.startHeight * rawDy) / startDiagonal;
-    const requestedScale = Math.max(80 / current.startWidth, 40 / current.startHeight, 1 + projected / startDiagonal);
+    // Pastki chegara font 10px'ga yetguncha kichrayishga ruxsat beradi —
+    // avval 80x40 ref-piksel floor bo'lgani uchun fontSize 10px'ga hali
+    // yetmasdan box kichrayishi to'xtab qolardi.
+    const minScale = Math.max(10 / current.startFontSize, 20 / current.startWidth, 12 / current.startHeight);
+    const requestedScale = Math.max(minScale, 1 + projected / startDiagonal);
     // Font 96px ga yetgach faqat matn to'xtab qolmasin: frame ham shu
     // nuqtada to'xtaydi. Eni/bo'yi backend limitlari ham shu clamp'ga kiradi.
-    const maxScale = Math.max(1, Math.min(
+    const maxScale = Math.max(minScale, Math.min(
       1000 / current.startWidth,
       2000 / current.startHeight,
       96 / current.startFontSize,
     ));
-    const scale = Math.min(maxScale, requestedScale);
+    const scale = Math.min(maxScale, Math.max(minScale, requestedScale));
     const nextWidth = Math.min(1000, current.startWidth * scale);
     const nextHeight = Math.min(2000, current.startHeight * scale);
     current.stroke.textBoxWidth = nextWidth;
@@ -2249,7 +2270,7 @@ function ClassroomPdfPage({
 
 export function ClassroomPdfViewer({
   pageUrls, currentPage, strokesByPage, rightStrokesByPage = {}, pointer, editable, isHost, hostZoom, onZoomChange,
-  hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
+  hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onReorderStroke, onPaneReorderStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
   onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
@@ -2594,6 +2615,10 @@ export function ClassroomPdfViewer({
                     onUpdateShapeStroke={(page, stroke) => {
                       if (displayLayout === "split") onPaneUpdateShapeStroke?.(paneIndex === 1 ? "right" : "left", paneMode, page, stroke);
                       else onUpdateShapeStroke?.(page, stroke);
+                    }}
+                    onReorderStroke={(page, strokeIds, op) => {
+                      if (displayLayout === "split") onPaneReorderStroke?.(paneIndex === 1 ? "right" : "left", paneMode, page, strokeIds, op);
+                      else onReorderStroke?.(page, strokeIds, op);
                     }}
                     onStrokeComplete={(page, stroke) => {
                       if (displayLayout === "split" && paneIndex === 1) {
