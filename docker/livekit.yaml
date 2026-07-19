@@ -14,3 +14,12 @@ rtc:
   use_external_ip: true
 logging:
   level: info
+# Egress tugagach (yoki xato bo'lsa) LiveKit shu manzilga POST yuboradi —
+# ClassroomRecordingController shu orqali recordingUrl/recordingStatus'ni
+# to'ldiradi. api_key faqat imzo qaysi kalit bilan tekshirilishini
+# ko'rsatadi (bu — .env'dagi LIVEKIT_API_KEY bilan bir xil, maxfiy emas;
+# imzoning o'zi api_secret bilan hisoblanadi, u bu yerda yozilmaydi).
+webhook:
+  api_key: lk-mutolaa
+  urls:
+    - https://jamm.uz/api/v1/webhooks/livekit
