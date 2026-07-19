@@ -2,6 +2,7 @@ import { ClassroomService } from './classroom.service';
 import { ClassroomBroadcaster } from './classroom.types';
 import { HOST_GRACE_MS } from './classroom.logic';
 import { db } from '../db';
+import { classSessions, contentBlocks } from '../db/schema';
 
 // db ga tegmaslik uchun to'liq mock
 jest.mock('../db', () => ({
@@ -143,6 +144,9 @@ describe('deleteSession', () => {
 
     expect(storage.deleteFile).toHaveBeenCalledWith(`classroom-recordings/${sessionId}.ogg`);
     expect(mockedDb.delete).toHaveBeenCalledTimes(2);
+    // contentBlocks avval, so'ngra classSessions ochirilishi kerak (FK tartibi muhim)
+    expect(mockedDb.delete.mock.calls[0][0]).toBe(contentBlocks);
+    expect(mockedDb.delete.mock.calls[1][0]).toBe(classSessions);
   });
 
   it("recordingStatus 'ready' bolmasa deleteFile chaqirilmaydi", async () => {
