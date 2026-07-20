@@ -2999,6 +2999,7 @@ export function ClassroomPdfViewer({
             >
               {moveButton}
               {pageInfoPanel}
+              {displayLayout !== "split" && <span className="sm:hidden">{zoomPanel}</span>}
             </div>
             {displayLayout === "split" ? (
               <>
@@ -3018,7 +3019,10 @@ export function ClassroomPdfViewer({
                 <div
                   className="absolute bottom-3 left-3 z-20 flex items-center gap-1.5 transition-transform duration-300 ease-in-out"
                   style={{ transform: overlayVisible ? "translateY(0)" : "translateY(150%)" }}
-                >{zoomPanel}{splitButton}</div>
+                >
+                  <span className="hidden sm:flex sm:items-center sm:gap-1.5">{zoomPanel}</span>
+                  {splitButton}
+                </div>
                 <div className="absolute bottom-3 right-3 z-20 flex items-center gap-1.5 transition-transform duration-300 ease-in-out" style={{ transform: overlayVisible ? "translateY(0)" : "translateY(150%)" }}>
                   {modeMenuFor(displayMode)}
                 </div>

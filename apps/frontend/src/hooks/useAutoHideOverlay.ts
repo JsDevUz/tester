@@ -7,7 +7,14 @@ const AUTO_HIDE_MS = 3000;
 // bottom-panellar pastga sirg'alib chiqib ketadi), ekranga tegilganda yoki
 // sichqoncha harakatlanganda qayta ko'rinadi. Mobil ekranni ortiqcha
 // band qilmaslik uchun ishlatiladi.
-export function useAutoHideOverlay() {
+//
+// listenGlobally=false: window darajasidagi mousemove/touchstart'ga
+// obuna bo'lmaydi — PDF'ni scroll/pan/zoom qilish reveal()ni qayta
+// ishga tushirmaydi. reveal() faqat chaqiruvchi tomonidan aniq
+// elementlarga (masalan pastki audio panel, yuqori tugmalar) osilganda
+// chaqiriladi, shunda ular PDF bilan ishlashdan mustaqil ravishda
+// haqiqiy harakatsizlikdan keyin yashiriladi.
+export function useAutoHideOverlay(listenGlobally = true) {
   const [visible, setVisible] = useState(true);
   const timerRef = useRef<number | null>(null);
 
@@ -30,6 +37,7 @@ export function useAutoHideOverlay() {
   }, []);
 
   useEffect(() => {
+    if (!listenGlobally) return;
     function handlePointerMove() { reveal(); }
     function handleTouchStart() { reveal(); }
     window.addEventListener("mousemove", handlePointerMove);
@@ -39,7 +47,7 @@ export function useAutoHideOverlay() {
       window.removeEventListener("touchstart", handleTouchStart);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [listenGlobally]);
 
   return { visible, reveal };
 }

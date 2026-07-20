@@ -22,7 +22,11 @@ export function ClassroomReplayPage() {
   const [audioDurationMs, setAudioDurationMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
-  const { visible: controlsVisible, reveal: revealControls } = useAutoHideOverlay();
+  // listenGlobally=false: PDF'ni scroll/pan/zoom qilish bu panellarni qayta
+  // ko'rsatmasin — faqat panellarning o'ziga yoki video ustiga bosilganda
+  // (haqiqiy "controls" niyati bilan) qayta ko'rinsin, aks holda haqiqiy
+  // 3s harakatsizlikdan keyin yashirilsin.
+  const { visible: controlsVisible, reveal: revealControls } = useAutoHideOverlay(false);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -104,33 +108,15 @@ export function ClassroomReplayPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-gray-100">
-      <div className="relative flex flex-1 min-h-0">
-        <div className="absolute right-3 top-3 z-30 flex items-start gap-1.5">
-          <div className="relative">
-            <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`flex h-[29px] items-center gap-1 rounded-full border px-2 text-[11px] font-medium shadow-md backdrop-blur transition-colors ${attendanceOpen ? "border-indigo-200 bg-indigo-100 text-indigo-700" : "border-gray-100 bg-white/95 text-gray-600 hover:bg-white"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
-              <Users size={14} /> <span className="hidden sm:inline">Davomat</span>
-            </button>
-            {attendanceOpen && (
-              <div role="dialog" aria-label="Davomat" className="absolute right-0 top-full mt-2 w-[min(20rem,calc(100vw-1.5rem))] overflow-hidden rounded-2xl bg-white text-left shadow-2xl ring-1 ring-black/5">
-                <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                  <h3 className="text-sm font-semibold text-gray-800">Davomat</h3>
-                  <button type="button" onClick={() => setAttendanceOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100" aria-label="Yopish"><X size={16} /></button>
-                </div>
-                <div className="max-h-[min(60vh,24rem)] overflow-y-auto p-3">
-                  <div className="flex flex-col gap-1.5">
-                    {data.attendance.map((a) => (
-                      <div key={a.userId} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
-                        <span className="text-gray-700">{a.name}</span>
-                        <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
-                          {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-          </div>
+      <div className="relative flex flex-1 min-h-0" onClick={revealControls}>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="absolute right-3 top-3 z-30 flex items-start gap-1.5 transition-transform duration-300 ease-in-out"
+          style={{ transform: controlsVisible ? "translateY(0)" : "translateY(-150%)" }}
+        >
+          <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`flex h-[29px] items-center gap-1 rounded-full border px-2 text-[11px] font-medium shadow-md backdrop-blur transition-colors ${attendanceOpen ? "border-indigo-200 bg-indigo-100 text-indigo-700" : "border-gray-100 bg-white/95 text-gray-600 hover:bg-white"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
+            <Users size={14} /> <span className="hidden sm:inline">Davomat</span>
+          </button>
           <button type="button" onClick={() => navigate(-1)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Replay'dan chiqish" title="Chiqish">
             <X size={15} />
           </button>
@@ -197,6 +183,34 @@ export function ClassroomReplayPage() {
         )}
         </div>
       </div>
+
+      {attendanceOpen && (
+        <div
+          className="fixed inset-0 z-40 flex items-end justify-center bg-black/50 sm:items-center sm:p-5"
+          onClick={(event) => {
+            if (event.target === event.currentTarget) setAttendanceOpen(false);
+          }}
+        >
+          <div role="dialog" aria-label="Davomat" className="max-h-[80dvh] w-full overflow-hidden rounded-t-3xl bg-white text-left shadow-2xl sm:max-w-sm sm:rounded-3xl">
+            <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
+              <h3 className="text-sm font-semibold text-gray-800">Davomat</h3>
+              <button type="button" onClick={() => setAttendanceOpen(false)} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100" aria-label="Yopish"><X size={16} /></button>
+            </div>
+            <div className="max-h-[calc(80dvh-52px)] overflow-y-auto p-3">
+              <div className="flex flex-col gap-1.5">
+                {data.attendance.map((a) => (
+                  <div key={a.userId} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                    <span className="text-gray-700">{a.name}</span>
+                    <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
+                      {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

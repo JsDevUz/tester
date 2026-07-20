@@ -301,19 +301,19 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
-      if (wrapper?.requestFullscreen) {
+      // iOS Safari'ning div-level requestFullscreen'i (16.4+) xato chiqarmaydi,
+      // lekin ekranni to'liq egallamay, kichik letterbox holatda render qiladi
+      // va orqadagi sahifa ko'rinib qoladi. Shu sabab WebKit'da undan
+      // foydalanmaymiz va to'g'ridan-to'g'ri custom fixed fullscreen'ga o'tamiz —
+      // bu watermark overlay'ini ham ichida saqlab qoladi.
+      const isWebkit = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+      if (!isWebkit && wrapper?.requestFullscreen) {
         await wrapper.requestFullscreen();
         return;
       }
 
-      if (wrapper?.webkitRequestFullscreen) {
-        await wrapper.webkitRequestFullscreen();
-        return;
-      }
-
-      // iOS native video fullscreen faqat <video>'ni olib chiqadi va DOM
-      // watermark overlay'ini tashqarida qoldiradi. Wrapper'ni viewportga
-      // fixed qilib custom fullscreen qilamiz — watermark ichida qoladi.
       setIsFullscreen((current) => !current);
     } catch {
       setError('Fullscreen ochilmadi');
@@ -324,7 +324,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     <>
     <div
       ref={wrapperRef}
-      className={`relative overflow-hidden bg-black ${
+      className={`relative isolate bg-black ${
         isFullscreen
           ? 'fixed inset-0 z-[9999] flex h-[100dvh] w-[100dvw] items-center justify-center rounded-none'
           : 'rounded-2xl'
@@ -337,7 +337,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         controlsList="nodownload nofullscreen noremoteplayback"
         disablePictureInPicture
         playsInline
-        className={isFullscreen ? 'h-[100dvh] w-[100dvw] object-contain' : 'aspect-video w-full'}
+        className={isFullscreen ? 'h-[100dvh] w-[100dvw] object-contain' : 'aspect-video w-full rounded-2xl'}
       />
       {watermark && watermarkText && (
         <div
@@ -360,7 +360,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       <button
         type="button"
         onClick={toggleFullscreen}
-        className="absolute right-3 top-3 z-20 flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/80 backdrop-blur transition hover:bg-black/70 hover:text-white"
+        className="absolute right-3 top-3 z-[9999] flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/80 shadow-lg backdrop-blur transition hover:bg-black/70 hover:text-white"
         aria-label={isFullscreen ? 'Fullscreenni yopish' : 'Fullscreen ochish'}
       >
         {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
