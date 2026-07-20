@@ -53,7 +53,7 @@ export class TelegramService {
         }
 
         const code = await this.createLoginCode({ phone: link.phone, telegramChatId: chatId });
-        await this.sendMessage(chatId, `Kirish kodi: \`${code}\`\n\nYangi kod olish uchun /login bosing.`, { parse_mode: 'Markdown' });
+        await this.sendMessage(chatId, `Kirish kodi: \`${code}\`\n\nKod 5 daqiqa amal qiladi. Yangi kod olish uchun /login bosing.`, { parse_mode: 'Markdown' });
         if (link.telegramUserId) {
           void this.syncProfilePhoto(link.phone, link.telegramUserId);
         }
@@ -98,7 +98,7 @@ export class TelegramService {
         telegramChatId,
       });
 
-      await this.sendMessage(telegramChatId, `Kirish kodi: \`${code}\`\n\nYangi kod olish uchun /login bosing.`, {
+      await this.sendMessage(telegramChatId, `Kirish kodi: \`${code}\`\n\nKod 5 daqiqa amal qiladi. Yangi kod olish uchun /login bosing.`, {
         reply_markup: { remove_keyboard: true },
         parse_mode: 'Markdown',
       });
@@ -199,7 +199,7 @@ export class TelegramService {
       telegramChatId: input.telegramChatId,
       purpose: 'login',
       codeHash,
-      expiresAt: new Date(Date.now() + 60 * 1000),
+      expiresAt: new Date(Date.now() + 5 * 60 * 1000),
     });
 
     return code;

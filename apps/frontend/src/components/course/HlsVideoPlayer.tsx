@@ -93,22 +93,32 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     const syncFullscreen = () => {
       const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
       const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
-      const video = videoRef.current as (HTMLVideoElement & { webkitDisplayingFullscreen?: boolean }) | null;
-      setIsFullscreen(fullscreenElement === wrapperRef.current || Boolean(video?.webkitDisplayingFullscreen));
+      setIsFullscreen(fullscreenElement === wrapperRef.current);
     };
 
+    // Video native fullscreen'ga o'zi (masalan yashirilgan native fullscreen
+    // tugmasining hit-area'si hali ham bosiladigan bo'lib qolsa) kirib
+    // qolsa — buni qabul qilmasdan darhol chiqib, o'rniga bizning custom
+    // fixed-position fullscreen'ga o'tkazamiz, aks holda video OS darajasidagi
+    // native pleyerga chiqib ketadi va watermark tashqarida qoladi.
     const video = videoRef.current as (HTMLVideoElement & {
       addEventListener: HTMLVideoElement['addEventListener'];
+      webkitExitFullscreen?: () => void;
+      webkitDisplayingFullscreen?: boolean;
     }) | null;
-    video?.addEventListener('webkitbeginfullscreen', syncFullscreen);
-    video?.addEventListener('webkitendfullscreen', syncFullscreen);
+    const rejectNativeVideoFullscreen = () => {
+      if (video?.webkitDisplayingFullscreen) {
+        video.webkitExitFullscreen?.();
+        setIsFullscreen(true);
+      }
+    };
+    video?.addEventListener('webkitbeginfullscreen', rejectNativeVideoFullscreen);
 
     document.addEventListener('fullscreenchange', syncFullscreen);
     document.addEventListener('webkitfullscreenchange', syncFullscreen);
 
     return () => {
-      video?.removeEventListener('webkitbeginfullscreen', syncFullscreen);
-      video?.removeEventListener('webkitendfullscreen', syncFullscreen);
+      video?.removeEventListener('webkitbeginfullscreen', rejectNativeVideoFullscreen);
       document.removeEventListener('fullscreenchange', syncFullscreen);
       document.removeEventListener('webkitfullscreenchange', syncFullscreen);
     };
@@ -301,19 +311,13 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
-      // iOS Safari'ning div-level requestFullscreen'i (16.4+) xato chiqarmaydi,
-      // lekin ekranni to'liq egallamay, kichik letterbox holatda render qiladi
-      // va orqadagi sahifa ko'rinib qoladi. Shu sabab WebKit'da undan
-      // foydalanmaymiz va to'g'ridan-to'g'ri custom fixed fullscreen'ga o'tamiz —
+      // Element.requestFullscreen() ataylab ishlatilmaydi: iOS Safari'da
+      // div-level fullscreen ishonchsiz (kichik letterbox holatda render
+      // qiladi yoki videoni native fullscreen controls'ga almashtirib
+      // yuboradi), UA-detection orqali faqat WebKit'ni ajratish esa turli
+      // qurilmalarda barqaror ishlamadi. Shu sabab hamma joyda bir xil,
+      // bashorat qilinadigan custom fixed-position fullscreen ishlatiladi —
       // bu watermark overlay'ini ham ichida saqlab qoladi.
-      const isWebkit = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-        (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-
-      if (!isWebkit && wrapper?.requestFullscreen) {
-        await wrapper.requestFullscreen();
-        return;
-      }
-
       setIsFullscreen((current) => !current);
     } catch {
       setError('Fullscreen ochilmadi');

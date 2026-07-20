@@ -23,6 +23,7 @@ import {
   X,
   Zap,
 } from "lucide-react";
+import { toast } from "sonner";
 import { StudentShell } from "../components/student/StudentShell";
 import {
   apiGetMyCourseDetail,
@@ -34,6 +35,7 @@ import {
   type ApiMyCourseLeaderboard,
   type ApiMyLesson,
 } from "../api/groups";
+import { apiGetOrCreatePracticeChatForCourse } from "../api/practiceMessenger";
 import type { ApiContentBlock } from "../api/contentBlocks";
 import { HlsVideoPlayer } from "../components/course/HlsVideoPlayer";
 import { ImageLightbox } from "../components/student/ImageLightbox";
@@ -873,11 +875,14 @@ function StudentCourseReader({
                 selected.lesson.passThresholdEnabled &&
                 !isLessonPassing(selected.lesson)
               }
-              onOpenMessenger={
-                course.curatorName
-                  ? () => navigate(`/messenger?courseId=${courseId}`)
-                  : undefined
-              }
+              onOpenMessenger={async () => {
+                try {
+                  await apiGetOrCreatePracticeChatForCourse(courseId);
+                  navigate(`/messenger?courseId=${courseId}`);
+                } catch {
+                  toast.error("Suhbatni ochib bo'lmadi");
+                }
+              }}
               onOpenPractice={() => {
                 setShowPractice(true);
               }}
@@ -923,7 +928,7 @@ function LessonReader({
   totalLessons: number;
   hasPractice: boolean;
   blockedByThreshold: boolean;
-  onOpenMessenger?: () => void;
+  onOpenMessenger: () => void;
   onOpenPractice: () => void | Promise<void>;
   onPrev: () => void;
   onNext: () => void | Promise<void>;
@@ -951,8 +956,7 @@ function LessonReader({
       <button
         type="button"
         onClick={onOpenMessenger}
-        disabled={!onOpenMessenger}
-        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl enabled:hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-70"
+        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl hover:bg-gray-200"
       >
         <span className="flex min-w-0 items-center gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white sm:h-9 sm:w-9">
@@ -962,12 +966,12 @@ function LessonReader({
             <span className="block text-xs font-bold text-gray-900">
               {curatorName
                 ? `${curatorName} bilan suhbatlashish`
-                : "Kurator biriktirilmagan"}
+                : "Ustozga murojaat"}
             </span>
             <span className="block truncate text-[11px] font-semibold text-gray-500">
               {curatorName
                 ? "Kuratorga savolingizni berishingiz mumkin"
-                : "Bu kurs uchun hozircha kurator tanlanmagan"}
+                : "Kurator biriktirilmaguncha ustozingizga yozishingiz mumkin"}
             </span>
           </span>
         </span>

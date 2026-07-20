@@ -34,6 +34,11 @@ export class PracticeMessengerController {
     return this.practiceMessengerService.getUnreadChatIds(req.user.id, req.user.role);
   }
 
+  @Post('courses/:courseId/chat')
+  getOrCreateChatForCourse(@Param('courseId') courseId: string, @Req() req: any) {
+    return this.practiceMessengerService.getOrCreateChatForCourse(courseId, req.user.id);
+  }
+
   @Get(':id')
   getOne(
     @Param('id') id: string,

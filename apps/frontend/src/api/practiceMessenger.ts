@@ -67,6 +67,11 @@ export async function apiGetUnreadPracticeChatIds(): Promise<string[]> {
   return response.data;
 }
 
+export async function apiGetOrCreatePracticeChatForCourse(courseId: string): Promise<{ chatId: string }> {
+  const response = await client.post(`/practice-messenger/courses/${courseId}/chat`);
+  return response.data;
+}
+
 export interface ApiPracticeChatPage {
   chat: ApiPracticeChat;
   messages: ApiPracticeMessage[];

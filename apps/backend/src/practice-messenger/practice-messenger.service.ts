@@ -579,14 +579,12 @@ export class PracticeMessengerService {
     );
   }
 
-  private async resolvePracticeContext(block: typeof practiceBlocks.$inferSelect, studentId: string): Promise<PracticeContext | null> {
-    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
-    if (!lesson) return null;
-    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
-    if (!module) return null;
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
-    if (!course) return null;
-
+  // Guruh va kurator biriktirilishini kursga qarab aniqlaydi. Kurator hali
+  // tayinlanmagan bo'lsa course.adminId (ustoz)ga tushadi — shu bilan
+  // kurator keyinroq biriktirilganda ham chat qayta chaqirilganda (bu
+  // funksiya har safar curatorId'ni qayta hisoblab, upsert qiladi)
+  // avtomatik kuratorga o'tadi.
+  private async resolveGroupAndCurator(course: typeof courses.$inferSelect, studentId: string) {
     const studentMembers = await db.query.schoolMembers.findMany({
       where: and(eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
     });
@@ -611,17 +609,52 @@ export class PracticeMessengerService {
     const curator = (curatorEnrollments as unknown as CuratorMembership[])
       .find((enrollment) => enrollment.schoolMember?.role === 'curator');
     const curatorId = curator?.schoolMember?.studentId ?? course.adminId;
+    return { group, curatorId };
+  }
+
+  private async resolvePracticeContext(block: typeof practiceBlocks.$inferSelect, studentId: string): Promise<PracticeContext | null> {
+    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
+    if (!lesson) return null;
+    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
+    if (!module) return null;
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
+    if (!course) return null;
+
+    const resolved = await this.resolveGroupAndCurator(course, studentId);
+    if (!resolved) return null;
 
     const [chat] = await db.insert(practiceChats).values({
-      groupId: group.id,
+      groupId: resolved.group.id,
       courseId: course.id,
       studentId,
-      curatorId,
+      curatorId: resolved.curatorId,
     }).onConflictDoUpdate({
       target: [practiceChats.groupId, practiceChats.studentId],
-      set: { curatorId, updatedAt: new Date() },
+      set: { curatorId: resolved.curatorId, updatedAt: new Date() },
     }).returning();
     return { chat, block, lesson, course };
+  }
+
+  // Talaba amaliyot yubormasdan turib ham ("Kurator biriktirilmagan" ->
+  // ustozga murojaat) messenger'ni ochishi uchun: mavjud bo'lmasa chatni
+  // shu yerda yaratadi (kurator yo'q bo'lsa course.adminId'ga yo'naltirib).
+  async getOrCreateChatForCourse(courseId: string, studentId: string) {
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+
+    const resolved = await this.resolveGroupAndCurator(course, studentId);
+    if (!resolved) throw new ForbiddenException('Bu kursga yozilmagansiz');
+
+    const [chat] = await db.insert(practiceChats).values({
+      groupId: resolved.group.id,
+      courseId: course.id,
+      studentId,
+      curatorId: resolved.curatorId,
+    }).onConflictDoUpdate({
+      target: [practiceChats.groupId, practiceChats.studentId],
+      set: { curatorId: resolved.curatorId, updatedAt: new Date() },
+    }).returning();
+    return { chatId: chat.id };
   }
 
   // All groups where userId is currently an active curator (school-membership
