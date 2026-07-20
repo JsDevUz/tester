@@ -1029,7 +1029,7 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
     <button
       type="button"
       onClick={() => navigate(`/classroom-history/${classSessionId}/replay`)}
-      className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
+      className="flex w-full items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-200"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
         <Radio size={18} />

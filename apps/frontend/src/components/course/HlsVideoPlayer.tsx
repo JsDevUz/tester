@@ -48,6 +48,9 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const watchedSegmentsRef = useRef<WatchSegment[]>([]);
 
   const watermarkText = extractWatermarkPhone(admin?.phone);
+  const renderedMarkPosition = isFullscreen
+    ? { left: Math.max(18, Math.min(82, markPosition.left)), top: 62 + (markPosition.top / 100) * 18 }
+    : markPosition;
 
   useEffect(() => {
     if (!isFullscreen) return;
@@ -343,11 +346,11 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           }`}
           style={{
             left: videoContentBox
-              ? `${videoContentBox.left + (videoContentBox.width * markPosition.left) / 100}px`
-              : `${markPosition.left}%`,
+              ? `${videoContentBox.left + (videoContentBox.width * renderedMarkPosition.left) / 100}px`
+              : `${renderedMarkPosition.left}%`,
             top: videoContentBox
-              ? `${videoContentBox.top + (videoContentBox.height * markPosition.top) / 100}px`
-              : `${markPosition.top}%`,
+              ? `${videoContentBox.top + (videoContentBox.height * renderedMarkPosition.top) / 100}px`
+              : `${renderedMarkPosition.top}%`,
             transform: 'translate(-50%, -50%)',
           }}
         >
