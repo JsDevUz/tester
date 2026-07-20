@@ -830,6 +830,10 @@ select::-ms-expand {
   background-color: #252932;
 }
 
+.hls-video-player::-webkit-media-controls-fullscreen-button {
+  display: none !important;
+}
+
 .video-watch-progress-track {
   background-color: #e5e7eb;
 }

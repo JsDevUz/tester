@@ -326,7 +326,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       ref={wrapperRef}
       className={`relative isolate bg-black ${
         isFullscreen
-          ? 'fixed inset-0 z-[9999] flex h-[100dvh] w-[100dvw] items-center justify-center rounded-none'
+          ? 'fixed inset-0 z-[9999] flex items-center justify-center rounded-none'
           : 'rounded-2xl'
       }`}
       onContextMenu={(e) => e.preventDefault()}
@@ -337,7 +337,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         controlsList="nodownload nofullscreen noremoteplayback"
         disablePictureInPicture
         playsInline
-        className={isFullscreen ? 'h-[100dvh] w-[100dvw] object-contain' : 'aspect-video w-full rounded-2xl'}
+        className={`hls-video-player ${isFullscreen ? 'h-full w-full object-contain' : 'aspect-video w-full rounded-2xl'}`}
       />
       {watermark && watermarkText && (
         <div
