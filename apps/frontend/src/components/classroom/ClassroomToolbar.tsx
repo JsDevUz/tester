@@ -57,14 +57,24 @@ export function ClassroomToolbar({
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
+  const colorButtonRef = useRef<HTMLButtonElement>(null);
+  const colorPopupRef = useRef<HTMLDivElement>(null);
+  const [colorPopupPos, setColorPopupPos] = useState<{ top: number; left: number } | null>(null);
 
   useEffect(() => {
     if (!colorMenuOpen) return;
     const closeOnOutsidePointer = (event: PointerEvent) => {
-      if (!colorMenuRef.current?.contains(event.target as Node)) setColorMenuOpen(false);
+      const target = event.target as Node;
+      if (!colorMenuRef.current?.contains(target) && !colorPopupRef.current?.contains(target)) setColorMenuOpen(false);
     };
     document.addEventListener("pointerdown", closeOnOutsidePointer);
     return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
+  }, [colorMenuOpen]);
+
+  useEffect(() => {
+    if (!colorMenuOpen) { setColorPopupPos(null); return; }
+    const rect = colorButtonRef.current?.getBoundingClientRect();
+    if (rect) setColorPopupPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
   }, [colorMenuOpen]);
 
   useEffect(() => {
@@ -195,6 +205,7 @@ export function ClassroomToolbar({
 
       <div ref={colorMenuRef} className="relative px-0.5">
         <button
+          ref={colorButtonRef}
           type="button"
           onClick={() => setColorMenuOpen((open) => !open)}
           className={`block h-4 w-4 rounded-full border transition-transform ${colorMenuOpen ? "scale-125 border-gray-800" : "border-gray-300"}`}
@@ -202,8 +213,8 @@ export function ClassroomToolbar({
           title="Ranglar palitrasini ochish"
           aria-label="Ranglar palitrasini ochish"
         />
-        {colorMenuOpen && (
-          <div className="absolute left-1/2 top-full z-30 mt-3 flex -translate-x-1/2 items-center gap-1 rounded-full border border-gray-100 bg-white px-1.5 py-1 shadow-md whitespace-nowrap">
+        {colorMenuOpen && colorPopupPos && createPortal(
+          <div ref={colorPopupRef} className="fixed z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full border border-gray-100 bg-white px-1.5 py-1 shadow-xl whitespace-nowrap" style={{ top: colorPopupPos.top, left: colorPopupPos.left }}>
           {COLORS.map((c) => (
           <button
             key={c}
@@ -220,7 +231,7 @@ export function ClassroomToolbar({
           />
           ))}
           </div>
-        )}
+        , document.body)}
       </div>
 
       <div className="w-px h-5 bg-gray-200 mx-0.5" />
