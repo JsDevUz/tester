@@ -1,7 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  LayoutGrid, Film, MousePointer2, Paperclip, type LucideIcon,
-  // Radio, — jonli dars blok item'i bilan birga vaqtincha o'chirilgan
+  LayoutGrid, Film, MousePointer2, Paperclip, Radio, type LucideIcon,
 } from 'lucide-react';
 import { MediaLibraryModal } from '../MediaLibraryModal';
 
@@ -30,8 +29,7 @@ interface BlockItem {
 const BLOCK_ITEMS: BlockItem[] = [
   { key: 'editor', label: 'Tahrirchi', icon: LayoutGrid },
   { key: 'video', label: 'Video', icon: Film },
-  // Vaqtincha o'chirilgan — jonli dars blokini qo'shish qaytadan yoqilguncha.
-  // { key: 'live_class', label: 'Jonli dars', icon: Radio },
+  { key: 'live_class', label: 'Jonli dars', icon: Radio },
   { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
@@ -86,7 +84,7 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
       <p className="text-center text-xs text-gray-400 mb-3">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {BLOCK_ITEMS.map((item) => {
           const Icon = item.icon;
           const isDisabled = disabled || item.disabled;

@@ -135,7 +135,7 @@ export function ClassroomReplayPage() {
             <X size={15} />
           </button>
         </div>
-        <div className="relative flex-1 min-h-0 flex flex-col">
+        <div className="classroom-replay-viewer relative flex-1 min-h-0 flex flex-col">
           <ClassroomPdfViewer
             pageUrls={replay.state.pages}
             currentPage={replay.state.currentPage}

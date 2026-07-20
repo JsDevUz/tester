@@ -1502,3 +1502,10 @@ select::-ms-expand {
     background-color: #1c1d23 !important;
   }
 }
+@media (max-width: 639px) {
+  /* Replay player pastdagi viewer boshqaruvlarini yopib qo'ymasligi uchun
+     faqat mobile replay sahifasida zoom/mode panellarini tepaga ko'taramiz. */
+  .classroom-replay-viewer .bottom-3 {
+    bottom: 5.75rem;
+  }
+}
