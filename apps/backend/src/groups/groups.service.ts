@@ -517,6 +517,9 @@ export class GroupsService {
                 errorMessage: null,
                 processedAt: block.processedAt,
                 createdAt: block.createdAt,
+                // live_class blokini o'quvchi replay sahifasiga ochishi
+                // uchun session ID response'da bo'lishi shart.
+                classSessionId: block.classSessionId,
               })),
               practiceBlocks: studentPracticeBlocks,
               passThresholdEnabled: lesson.passThresholdEnabled,

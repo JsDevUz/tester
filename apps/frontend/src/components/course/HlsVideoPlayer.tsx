@@ -36,6 +36,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
+  const [videoContentBox, setVideoContentBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
   const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
   const [liveRange, setLiveRange] = useState<WatchSegment | null>(null);
   const [watchedPercent, setWatchedPercent] = useState<number | null>(null);
@@ -47,6 +48,43 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const watchedSegmentsRef = useRef<WatchSegment[]>([]);
 
   const watermarkText = extractWatermarkPhone(admin?.phone);
+
+  useEffect(() => {
+    if (!isFullscreen) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
+  }, [isFullscreen]);
+
+  useEffect(() => {
+    const wrapper = wrapperRef.current;
+    const video = videoRef.current;
+    if (!wrapper || !video) return;
+
+    const updateContentBox = () => {
+      const wrapperWidth = wrapper.clientWidth;
+      const wrapperHeight = wrapper.clientHeight;
+      if (!wrapperWidth || !wrapperHeight || !video.videoWidth || !video.videoHeight) return;
+      const scale = Math.min(wrapperWidth / video.videoWidth, wrapperHeight / video.videoHeight);
+      const width = video.videoWidth * scale;
+      const height = video.videoHeight * scale;
+      setVideoContentBox({
+        left: (wrapperWidth - width) / 2,
+        top: (wrapperHeight - height) / 2,
+        width,
+        height,
+      });
+    };
+
+    video.addEventListener('loadedmetadata', updateContentBox);
+    const observer = new ResizeObserver(updateContentBox);
+    observer.observe(wrapper);
+    updateContentBox();
+    return () => {
+      video.removeEventListener('loadedmetadata', updateContentBox);
+      observer.disconnect();
+    };
+  }, [blockId, isFullscreen]);
 
   useEffect(() => {
     const syncFullscreen = () => {
@@ -218,12 +256,15 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         setMarkVisible(false);
         moveTimer = setTimeout(() => {
           setMarkPosition(quietWatermarkPosition());
-          hiddenTimer = setTimeout(show, 9000 + Math.random() * 4000);
+          hiddenTimer = setTimeout(show, 5000 + Math.random() * 3000);
         }, 800);
-      }, 3000);
+      }, 6000);
     };
 
-    hiddenTimer = setTimeout(show, 2500);
+    // Video ochilishi bilan watermark darhol ko'rinsin. Avval 2.5s kutib,
+    // atigi 3s ko'rinib, 9-13s yashiringani uchun foydalanuvchi uni
+    // umuman ishlamayapti deb o'ylashi mumkin edi.
+    show();
 
     return () => {
       if (visibleTimer) clearTimeout(visibleTimer);
@@ -267,9 +308,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
-      // iOS Safari does not implement Element.requestFullscreen for normal
-      // elements; its supported path is the native video fullscreen API.
-      video?.webkitEnterFullscreen?.();
+      // iOS native video fullscreen faqat <video>'ni olib chiqadi va DOM
+      // watermark overlay'ini tashqarida qoldiradi. Wrapper'ni viewportga
+      // fixed qilib custom fullscreen qilamiz — watermark ichida qoladi.
+      setIsFullscreen((current) => !current);
     } catch {
       setError('Fullscreen ochilmadi');
     }
@@ -281,7 +323,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       ref={wrapperRef}
       className={`relative overflow-hidden bg-black ${
         isFullscreen
-          ? 'flex h-[100dvh] w-[100dvw] items-center justify-center rounded-none'
+          ? 'fixed inset-0 z-[9999] flex h-[100dvh] w-[100dvw] items-center justify-center rounded-none'
           : 'rounded-2xl'
       }`}
       onContextMenu={(e) => e.preventDefault()}
@@ -300,8 +342,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             markVisible ? 'opacity-100' : 'opacity-0'
           }`}
           style={{
-            left: `${markPosition.left}%`,
-            top: `${markPosition.top}%`,
+            left: videoContentBox
+              ? `${videoContentBox.left + (videoContentBox.width * markPosition.left) / 100}px`
+              : `${markPosition.left}%`,
+            top: videoContentBox
+              ? `${videoContentBox.top + (videoContentBox.height * markPosition.top) / 100}px`
+              : `${markPosition.top}%`,
             transform: 'translate(-50%, -50%)',
           }}
         >
