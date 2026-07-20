@@ -4,14 +4,15 @@ import { ChevronRight, Trophy, BookOpen, ThumbsUp } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { apiGetMySubmissions, type Submission } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
-import { PageSizeSelect } from "../components/PaginationControls";
+
+const PAGE_SIZE = 10;
 
 export function StudentHistoryPage() {
   const navigate = useNavigate();
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [pageSize, setPageSize] = useState(10);
+  const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
@@ -22,14 +23,18 @@ export function StudentHistoryPage() {
       setSubmissions([]);
       setHasMore(true);
       setLoading(true);
+      setError(null);
     } else {
       setLoadingMore(true);
     }
     try {
-      const rows = await apiGetMySubmissions(pageSize, offsetRef.current);
+      const rows = await apiGetMySubmissions(PAGE_SIZE, offsetRef.current);
       setSubmissions((prev) => (reset ? rows : [...prev, ...rows]));
       offsetRef.current += rows.length;
-      if (rows.length < pageSize) setHasMore(false);
+      if (rows.length < PAGE_SIZE) setHasMore(false);
+    } catch {
+      setError("Ma'lumotlarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
+      if (!reset) setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -38,7 +43,7 @@ export function StudentHistoryPage() {
 
   useEffect(() => {
     loadMore(true);
-  }, [pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -62,14 +67,18 @@ export function StudentHistoryPage() {
   return (
     <StudentShell>
       <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
-        <div className="mb-3 flex flex-wrap items-center justify-between gap-3 lg:mb-4">
+        <div className="mb-3 lg:mb-4">
           <h2 className="text-xl font-bold text-gray-900 lg:text-lg lg:text-gray-800">Amaliyotlar tarixi</h2>
-          <PageSizeSelect value={pageSize} onChange={setPageSize} />
         </div>
 
         {loading ? (
           <div className="flex justify-center py-12">
             <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+          </div>
+        ) : error && submissions.length === 0 ? (
+          <div className="py-16 text-center text-gray-400">
+            <p className="mx-auto max-w-xs text-sm leading-6">{error}</p>
+            <p className="mt-3 text-xs text-gray-300">Yangilash uchun yuqoridan pastga torting</p>
           </div>
         ) : submissions.length === 0 ? (
           <div className="text-center py-16 text-gray-400">

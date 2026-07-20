@@ -2,6 +2,7 @@ import { Logger } from '@nestjs/common';
 import { OnGatewayConnection, OnGatewayDisconnect, WebSocketGateway, WebSocketServer } from '@nestjs/websockets';
 import { JwtService } from '@nestjs/jwt';
 import { Namespace, Socket } from 'socket.io';
+import { getAllowedOrigins } from '../cors';
 
 interface JwtUser {
   sub: string;
@@ -13,7 +14,7 @@ function userRoom(userId: string) {
   return `user:${userId}`;
 }
 
-@WebSocketGateway({ namespace: '/practice-messenger', cors: { origin: process.env.FRONTEND_URL } })
+@WebSocketGateway({ namespace: '/practice-messenger', cors: { origin: getAllowedOrigins() } })
 export class PracticeMessengerGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @WebSocketServer() server!: Namespace;
 
@@ -43,5 +44,9 @@ export class PracticeMessengerGateway implements OnGatewayConnection, OnGatewayD
     for (const userId of new Set(recipientUserIds)) {
       this.server.to(userRoom(userId)).emit('new_message', payload);
     }
+  }
+
+  notifyMessageEvent(event: 'message_updated' | 'message_deleted', recipientUserIds: string[], payload: unknown) {
+    for (const userId of recipientUserIds) this.server.to(userRoom(userId)).emit(event, payload);
   }
 }

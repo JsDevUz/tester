@@ -1,0 +1,66 @@
+<h2>Mobil telefonda split-screen (2 panel) qanday ko'rsatilsin?</h2>
+<p class="subtitle">Ustoz "split" rejimini yoqsa (masalan chapda PDF, o'ngda bo'sh notebook) — telefon ekrani tor bo'lgani uchun ikkalasini bir vaqtda to'liq ko'rsatib bo'lmaydi.</p>
+
+<div class="cards">
+  <div class="card" data-choice="swipe-tabs" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <svg viewBox="0 0 220 380" width="100%" height="220" style="background:#0f172a;border-radius:12px">
+        <rect x="10" y="10" width="200" height="30" rx="8" fill="#1e293b"/>
+        <rect x="15" y="17" width="90" height="16" rx="6" fill="#6366f1"/>
+        <text x="60" y="29" fill="white" font-size="10" text-anchor="middle" font-family="sans-serif">Chap panel</text>
+        <rect x="115" y="17" width="90" height="16" rx="6" fill="#334155"/>
+        <text x="160" y="29" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">O'ng panel</text>
+        <rect x="15" y="50" width="190" height="300" rx="8" fill="white"/>
+        <rect x="30" y="70" width="160" height="90" rx="4" fill="#e2e8f0"/>
+        <line x1="40" y1="90" x2="150" y2="90" stroke="#ef4444" stroke-width="2"/>
+        <line x1="40" y1="105" x2="120" y2="105" stroke="#6366f1" stroke-width="2"/>
+        <circle cx="105" cy="330" r="4" fill="#6366f1"/>
+        <circle cx="120" cy="330" r="4" fill="#cbd5e1"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>A — Tab almashtirish</h3>
+      <p>Yuqorida 2 ta tugma (Chap / O'ng), bosilganda o'sha panel to'liq ekranga chiqadi. Har bir panel mustaqil scroll/zoom qiladi. Eng oddiy va tanish UX (masalan messenger ilovalaridagi tablar kabi).</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="swipe-gesture" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <svg viewBox="0 0 220 380" width="100%" height="220" style="background:#0f172a;border-radius:12px">
+        <rect x="15" y="20" width="190" height="300" rx="8" fill="white"/>
+        <rect x="30" y="40" width="160" height="90" rx="4" fill="#e2e8f0"/>
+        <line x1="40" y1="60" x2="150" y2="60" stroke="#ef4444" stroke-width="2"/>
+        <line x1="40" y1="75" x2="120" y2="75" stroke="#6366f1" stroke-width="2"/>
+        <path d="M 165 250 L 195 250 M 185 240 L 195 250 L 185 260" stroke="#6366f1" stroke-width="3" fill="none" stroke-linecap="round"/>
+        <circle cx="100" cy="335" r="4" fill="#6366f1"/>
+        <circle cx="115" cy="335" r="4" fill="#cbd5e1"/>
+        <text x="110" y="20" fill="#94a3b8" font-size="10" text-anchor="middle" font-family="sans-serif">← Surish orqali almashtirish →</text>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>B — Gorizontal surish (swipe)</h3>
+      <p>Bitta panel to'liq ekranda, chetiga chizilgan strelka/nuqta indikator bilan. Chapga/o'ngga suring — boshqa panelga o'tasiz (PDF reader'lardagi sahifa varaqlash kabi).</p>
+    </div>
+  </div>
+
+  <div class="card" data-choice="stacked-scroll" onclick="toggleSelect(this)">
+    <div class="card-image">
+      <svg viewBox="0 0 220 380" width="100%" height="220" style="background:#0f172a;border-radius:12px">
+        <rect x="15" y="15" width="190" height="8" rx="4" fill="#6366f1"/>
+        <text x="30" y="35" fill="#94a3b8" font-size="9" font-family="sans-serif">Chap panel</text>
+        <rect x="15" y="40" width="190" height="130" rx="8" fill="white"/>
+        <rect x="30" y="55" width="160" height="70" rx="4" fill="#e2e8f0"/>
+        <line x1="40" y1="70" x2="150" y2="70" stroke="#ef4444" stroke-width="2"/>
+        <text x="30" y="190" fill="#94a3b8" font-size="9" font-family="sans-serif">O'ng panel</text>
+        <rect x="15" y="195" width="190" height="130" rx="8" fill="white"/>
+        <rect x="30" y="210" width="160" height="70" rx="4" fill="#f1f5f9"/>
+      </svg>
+    </div>
+    <div class="card-body">
+      <h3>C — Vertikal stack (ikkalasi ustma-ust)</h3>
+      <p>Ikkala panel bir sahifada, biri tepada biri pastda, alohida-alohida kichikroq balandlikda ko'rinadi va ichida mustaqil scroll qiladi. Hech qachon almashtirish kerak emas, lekin har biri kichikroq ko'rinadi.</p>
+    </div>
+  </div>
+</div>
+
+<p class="subtitle" style="margin-top:24px">Eslatma: bu faqat ustoz "split" rejimini yoqqanda ko'rinadi — odatiy "single" rejimda talaba bitta panelni to'liq ekranda ko'radi, bu savol tegishli emas.</p>

@@ -260,7 +260,7 @@ Public start request includes bearer token if present. Backend links `userId` on
 TELEGRAM_BOT_TOKEN=
 TELEGRAM_BOT_USERNAME=
 TELEGRAM_WEBHOOK_SECRET=
-APP_URL=https://test.jamm.uz
+APP_URL=https://jamm.uz
 ```
 
 - [ ] **Step 2: Webhook endpoint**

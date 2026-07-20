@@ -53,10 +53,10 @@ Quyidagilarni albatta almashtiring:
 Domain bilan ishlatayotgan bo'lsangiz:
 
 ```env
-DOMAIN=test.jamm.uz
+DOMAIN=jamm.uz
 ACME_EMAIL=admin@example.com
-FRONTEND_URL=https://test.jamm.uz
-APP_URL=https://test.jamm.uz
+FRONTEND_URL=https://jamm.uz
+APP_URL=https://jamm.uz
 VITE_API_URL=
 VITE_TELEGRAM_BOT_USERNAME=YourBotUsername
 ```
@@ -86,7 +86,7 @@ Telegram webhookni bot token va secret bilan ulang:
 
 ```bash
 curl -X POST "https://api.telegram.org/bot$TELEGRAM_BOT_TOKEN/setWebhook" \
-  -d "url=https://test.jamm.uz/api/v1/telegram/webhook" \
+  -d "url=https://jamm.uz/api/v1/telegram/webhook" \
   -d "secret_token=$TELEGRAM_WEBHOOK_SECRET"
 ```
 

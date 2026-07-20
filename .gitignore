@@ -6,3 +6,11 @@ dist/
 
 # React Native mobile workspace is kept local and must not be pushed.
 apps/mobile/
+
+# Capacitor native projects and local build configuration are generated/local-only.
+# Keep apps/frontend/public/.well-known/assetlinks.json tracked for Android App Links.
+apps/frontend/android/
+apps/frontend/ios/
+apps/frontend/assets/
+apps/frontend/.env.capacitor
+apps/frontend/capacitor.config.ts

@@ -1,0 +1,12 @@
+[
+  {
+    "relation": ["delegate_permission/common.handle_all_urls"],
+    "target": {
+      "namespace": "android_app",
+      "package_name": "uz.jamm.app",
+      "sha256_cert_fingerprints": [
+        "63:7B:FF:1A:B9:1F:40:A4:8B:F4:B5:80:79:B7:76:4A:D2:84:CC:1F:8D:E0:77:80:41:A9:F6:7B:5D:8A:A8:93"
+      ]
+    }
+  }
+]

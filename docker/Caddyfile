@@ -2,7 +2,7 @@
     email {$ACME_EMAIL:admin@example.com}
 }
 
-{$DOMAIN:test.jamm.uz} {
+{$DOMAIN:jamm.uz} {
     encode gzip zstd
 
     header {
@@ -33,6 +33,11 @@
         reverse_proxy backend:3000
     }
 
+    # Android App Links verification must not fall through to SPA index.html.
+    handle /.well-known/assetlinks.json {
+        reverse_proxy web:80
+    }
+
     handle {
         reverse_proxy web:80
     }
@@ -42,6 +47,6 @@
 # ishlaydi, Caddy esa bridge tarmog'ida — shuning uchun container nomi
 # emas, host.docker.internal (docker-compose.yml'dagi extra_hosts) orqali.
 # Domen LIVEKIT_URL bilan mos kelishi shart (masalan wss://livekit.jamm.uz).
-{$LIVEKIT_DOMAIN:livekit.test.jamm.uz} {
+{$LIVEKIT_DOMAIN:livekit.jamm.uz} {
     reverse_proxy host.docker.internal:7880
 }

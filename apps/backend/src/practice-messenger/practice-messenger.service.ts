@@ -330,23 +330,31 @@ export class PracticeMessengerService {
   async updateText(chatId: string, messageId: string, userId: string, role: string, content: string) {
     const value = content.trim();
     if (!value) throw new BadRequestException('Xabar bo‘sh bo‘lmasligi kerak');
-    await this.requireChatAccess(chatId, userId, role);
+    const chat = await this.requireChatAccess(chatId, userId, role);
     const message = await this.requireOwnTextMessage(chatId, messageId, userId);
     const [updated] = await db.update(practiceChatMessages)
       .set({ content: value.slice(0, 2000), editedAt: new Date() })
       .where(eq(practiceChatMessages.id, message.id))
       .returning();
     await this.touchChat(chatId);
+    const recipients = await this.resolveChatRecipientIds({ ...chat, courseAdminId: (chat.course as unknown as ChatCourse).adminId });
+    this.gateway.notifyMessageEvent('message_updated', recipients.filter((id) => id !== userId), {
+      id: updated.id, chatId, senderId: userId, content: updated.content, editedAt: updated.editedAt!.toISOString(),
+    });
     return { id: updated.id, editedAt: updated.editedAt!.toISOString() };
   }
 
   async deleteText(chatId: string, messageId: string, userId: string, role: string) {
-    await this.requireChatAccess(chatId, userId, role);
+    const chat = await this.requireChatAccess(chatId, userId, role);
     const message = await this.requireOwnTextMessage(chatId, messageId, userId);
     await db.update(practiceChatMessages)
       .set({ content: '', deletedAt: new Date(), editedAt: null, replyToMessageId: null })
       .where(eq(practiceChatMessages.id, message.id));
     await this.touchChat(chatId);
+    const recipients = await this.resolveChatRecipientIds({ ...chat, courseAdminId: (chat.course as unknown as ChatCourse).adminId });
+    this.gateway.notifyMessageEvent('message_deleted', recipients.filter((id) => id !== userId), {
+      id: message.id, chatId, senderId: userId, deletedAt: new Date().toISOString(),
+    });
   }
 
   async createTestSubmissionMessage(submissionId: string) {

@@ -115,13 +115,19 @@ function useLessonAntiCapture(enabled: boolean) {
 export function MyCoursesPage() {
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [leaderboardCourse, setLeaderboardCourse] =
     useState<ApiMyCourse | null>(null);
 
   function loadCourses() {
+    setLoading(true);
+    setLoadError(null);
     return apiGetMyCourses()
       .then(setCourses)
+      .catch(() => {
+        setLoadError("Kurslarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
+      })
       .finally(() => setLoading(false));
   }
 
@@ -154,7 +160,14 @@ export function MyCoursesPage() {
 
         {loading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 
-        {!loading && courses.length === 0 && (
+        {!loading && loadError && courses.length === 0 && (
+          <div className="rounded-2xl bg-white py-16 text-center text-gray-400">
+            <p className="mx-auto max-w-xs text-sm leading-6">{loadError}</p>
+            <p className="mt-3 text-xs text-gray-300">Yangilash uchun yuqoridan pastga torting</p>
+          </div>
+        )}
+
+        {!loading && !loadError && courses.length === 0 && (
           <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
             <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">Hali hech qanday kursga qo'shilmagansiz</p>

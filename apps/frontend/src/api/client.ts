@@ -4,6 +4,8 @@ import { getApiBaseUrl } from "./baseUrl";
 
 const client = axios.create({
   baseURL: getApiBaseUrl(),
+  // Native WebViews can otherwise wait indefinitely when the connection drops.
+  timeout: 15_000,
 });
 
 client.interceptors.request.use((config) => {

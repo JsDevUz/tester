@@ -1,0 +1,7 @@
+{"type":"server-started","port":61413,"host":"127.0.0.1","url_host":"localhost","url":"http://localhost:61413/?key=a05868023470ae376fddc718974d39272349dd114ccc2a346d21385dd17724b3","screen_dir":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/content","state_dir":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/state","idle_timeout_ms":14400000}
+{"type":"screen-added","file":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/content/split-screen-layout.html"}
+{"type":"screen-added","file":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/content/split-screen-landscape.html"}
+{"source":"user-event","type":"click","text":"✓\n    \n      Ha, shunday bo'lsin\n      Landscape'da ikkala panel yonma-yon (web bilan bir xil xulq-atvor), portretda burilish taklifi","choice":"confirm","id":null,"timestamp":1784551075828}
+{"type":"screen-added","file":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/content/split-screen-confirmed.html"}
+{"type":"screen-added","file":"/Users/macbookpro/Documents/JsDev/portfolio/tester/.superpowers/brainstorm/83004-1784550954/content/waiting.html"}
+{"type":"server-stopped","reason":"owner process exited"}

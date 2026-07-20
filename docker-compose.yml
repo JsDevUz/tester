@@ -64,7 +64,7 @@ services:
       - "${HTTP_PORT:-80}:80"
       - "${HTTPS_PORT:-443}:443"
     environment:
-      DOMAIN: ${DOMAIN:-test.jamm.uz}
+      DOMAIN: ${DOMAIN:-jamm.uz}
       LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:-}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro

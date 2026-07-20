@@ -5,10 +5,11 @@ import {
 import { JwtService } from '@nestjs/jwt';
 import { Namespace, Socket } from 'socket.io';
 import { LiveService } from './live.service';
+import { getAllowedOrigins } from '../cors';
 
 interface JwtUser { sub: string; name: string; role: string }
 
-@WebSocketGateway({ namespace: '/live', cors: { origin: process.env.FRONTEND_URL } })
+@WebSocketGateway({ namespace: '/live', cors: { origin: getAllowedOrigins() } })
 export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer() server!: Namespace;
 

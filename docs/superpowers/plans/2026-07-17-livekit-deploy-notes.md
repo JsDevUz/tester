@@ -20,7 +20,7 @@ LiveKit serveri xato bilan to'xtardi: `secret is too short, should be at least 3
 - `docker-compose.yml`: `caddy` xizmatiga `extra_hosts: ["host.docker.internal:host-gateway"]` qo'shildi — bu Caddy konteyneri ichidan host makinaning o'ziga murojaat qilish imkonini beradi.
 - `docker/Caddyfile`: yangi server-blok qo'shildi:
   ```
-  {$LIVEKIT_DOMAIN:livekit.test.jamm.uz} {
+  {$LIVEKIT_DOMAIN:livekit.jamm.uz} {
       reverse_proxy host.docker.internal:7880
   }
   ```
@@ -28,7 +28,7 @@ LiveKit serveri xato bilan to'xtardi: `secret is too short, should be at least 3
 
 ### 3. Caddy "server block without any key is global configuration" xatosi bilan crash-loop bo'lib qoldi
 
-**Sabab:** `.env` faylida `LIVEKIT_DOMAIN` o'zgaruvchisi umuman yo'q edi. `${LIVEKIT_DOMAIN:-}` compose orqali Caddy konteyneriga **bo'sh qiymat bilan** uzatildi. Caddyfile'dagi `{$LIVEKIT_DOMAIN:livekit.test.jamm.uz}` — agar environment o'zgaruvchisi **butunlay mavjud bo'lmasa** fallback (`livekit.test.jamm.uz`) ishlatadi, lekin bo'sh satr sifatida mavjud bo'lsa, Caddy uni "kalitsiz global blok" deb noto'g'ri talqin qildi va konfiguratsiya butunlay buzildi.
+**Sabab:** `.env` faylida `LIVEKIT_DOMAIN` o'zgaruvchisi umuman yo'q edi. `${LIVEKIT_DOMAIN:-}` compose orqali Caddy konteyneriga **bo'sh qiymat bilan** uzatildi. Caddyfile'dagi `{$LIVEKIT_DOMAIN:livekit.jamm.uz}` — agar environment o'zgaruvchisi **butunlay mavjud bo'lmasa** fallback (`livekit.jamm.uz`) ishlatadi, lekin bo'sh satr sifatida mavjud bo'lsa, Caddy uni "kalitsiz global blok" deb noto'g'ri talqin qildi va konfiguratsiya butunlay buzildi.
 
 **Yechim:** `.env`ga aniq qiymat bilan qator qo'shildi:
 ```bash

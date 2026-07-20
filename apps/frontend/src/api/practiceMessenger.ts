@@ -96,11 +96,12 @@ export async function apiSendPracticeMessage(
   chatId: string,
   content: string,
   replyToMessageId?: string,
-): Promise<void> {
-  await client.post(`/practice-messenger/${chatId}/messages`, {
+): Promise<{ id: string; createdAt: string }> {
+  const response = await client.post(`/practice-messenger/${chatId}/messages`, {
     content,
     replyToMessageId,
   });
+  return response.data;
 }
 
 export async function apiUpdatePracticeMessage(

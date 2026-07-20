@@ -12,7 +12,10 @@
     "dev:frontend": "npm run dev --workspace=apps/frontend",
     "dev:mobile": "npm run start --workspace=apps/mobile",
     "ios": "npm run ios --workspace=apps/mobile",
-    "android": "npm run android --workspace=apps/mobile"
+    "android": "npm run android --workspace=apps/mobile",
+    "cap:sync": "npm run cap:sync --workspace=apps/frontend",
+    "cap:android": "npm run cap:android --workspace=apps/frontend",
+    "cap:ios": "npm run cap:ios --workspace=apps/frontend"
   },
   "devDependencies": {
     "@types/multer": "^2.1.0"

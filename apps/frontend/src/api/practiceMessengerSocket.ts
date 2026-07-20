@@ -11,6 +11,8 @@ export interface PracticeMessengerSocketPayload {
   type: string;
   content: string;
   createdAt: string;
+  editedAt?: string | null;
+  deletedAt?: string | null;
 }
 
 export function connectPracticeMessengerSocket(token: string): Socket {

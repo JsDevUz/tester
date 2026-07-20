@@ -6,12 +6,13 @@ import { JwtService } from '@nestjs/jwt';
 import { Namespace, Socket } from 'socket.io';
 import { ClassroomService } from './classroom.service';
 import { ClassroomStroke } from './classroom.types';
+import { getAllowedOrigins } from '../cors';
 
 interface JwtUser { sub: string; name: string; role: string }
 
 interface BaseBody { sessionId: string; token: string }
 
-@WebSocketGateway({ namespace: '/classroom', cors: { origin: process.env.FRONTEND_URL } })
+@WebSocketGateway({ namespace: '/classroom', cors: { origin: getAllowedOrigins() } })
 export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer() server!: Namespace;
 

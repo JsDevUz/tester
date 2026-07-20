@@ -250,13 +250,49 @@ function PracticeMessengerContent() {
     if (!token) return;
     const socket = connectPracticeMessengerSocket(token);
     function handleNewMessage(payload: PracticeMessengerSocketPayload) {
-      if (selectedIdRef.current === payload.chatId)
+      if (selectedIdRef.current !== payload.chatId) return;
+      if (payload.type !== "text") {
         void loadChat(payload.chatId);
-      void loadChats();
+        return;
+      }
+      setMessages((current) => {
+        if (current.some((message) => message.id === payload.id)) return current;
+        const sender = current.find((message) => message.sender.id === payload.senderId)?.sender
+          ?? { id: payload.senderId, name: "Foydalanuvchi", avatarUrl: null };
+        return [...current, {
+          id: payload.id,
+          sender,
+          type: "text",
+          content: payload.content,
+          createdAt: payload.createdAt,
+          editedAt: payload.editedAt ?? null,
+          deletedAt: payload.deletedAt ?? null,
+          replyTo: null,
+          metadata: {},
+          practice: null,
+          testSubmission: null,
+          imageSubmission: null,
+          imageSubmissions: [],
+        }];
+      });
     }
     socket.on("new_message", handleNewMessage);
+    socket.on("message_updated", (payload: PracticeMessengerSocketPayload) => {
+      if (selectedIdRef.current !== payload.chatId) return;
+      setMessages((current) => current.map((message) => message.id === payload.id
+        ? { ...message, content: payload.content, editedAt: payload.editedAt ?? new Date().toISOString() }
+        : message));
+    });
+    socket.on("message_deleted", (payload: PracticeMessengerSocketPayload) => {
+      if (selectedIdRef.current !== payload.chatId) return;
+      setMessages((current) => current.map((message) => message.id === payload.id
+        ? { ...message, content: "", deletedAt: payload.deletedAt ?? new Date().toISOString(), editedAt: null }
+        : message));
+    });
     return () => {
       socket.off("new_message", handleNewMessage);
+      socket.off("message_updated");
+      socket.off("message_deleted");
     };
   }, [token]);
   useEffect(() => {
@@ -349,6 +385,8 @@ function PracticeMessengerContent() {
   async function sendMessage() {
     if (!selectedChat || !draft.trim()) return;
     const sendingNewMessage = !editingMessage;
+    const messageContent = draft.trim();
+    let createdMessage: { id: string; createdAt: string } | null = null;
     setSending(true);
     try {
       if (editingMessage) {
@@ -357,16 +395,33 @@ function PracticeMessengerContent() {
           editingMessage.id,
           draft,
         );
+        setMessages((current) => current.map((item) => item.id === editingMessage.id
+          ? { ...item, content: messageContent, editedAt: new Date().toISOString() }
+          : item));
         toast.success("Xabar tahrirlandi");
       } else {
-        await apiSendPracticeMessage(selectedChat.id, draft, replyingTo?.id);
+        createdMessage = await apiSendPracticeMessage(selectedChat.id, messageContent, replyingTo?.id);
       }
       setDraft("");
       setReplyingTo(null);
       setEditingMessage(null);
       draftRef.current?.blur();
       if (sendingNewMessage) scrollToBottomAfterRenderRef.current = true;
-      await Promise.all([loadChat(selectedChat.id), loadChats()]);
+      if (sendingNewMessage) {
+        const currentAdmin = admin;
+        setMessages((current) => [...current, {
+          id: createdMessage?.id ?? crypto.randomUUID(),
+          sender: { id: currentAdmin?.id ?? "", name: currentAdmin?.name ?? "Siz", avatarUrl: currentAdmin?.avatarUrl ?? null },
+          type: "text",
+          content: messageContent,
+          createdAt: createdMessage?.createdAt ?? new Date().toISOString(),
+          editedAt: null,
+          deletedAt: null,
+          replyTo: null,
+          metadata: {}, practice: null, testSubmission: null,
+          imageSubmission: null, imageSubmissions: [],
+        }]);
+      }
       const refreshLayout = () => {
         window.scrollTo(0, 0);
         document.documentElement.scrollTop = 0;
@@ -414,7 +469,7 @@ function PracticeMessengerContent() {
       toast.success("Xabar o‘chirildi");
       setMessagePendingDelete(null);
       if (editingMessage?.id === message.id) cancelMessageAction();
-      await Promise.all([loadChat(selectedChat.id), loadChats()]);
+      setMessages((current) => current.filter((item) => item.id !== message.id));
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ?? "Xabarni o‘chirib bo‘lmadi",

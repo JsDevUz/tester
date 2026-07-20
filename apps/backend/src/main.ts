@@ -6,6 +6,7 @@ import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
 import 'dotenv/config';
 import { validateEnv } from './validate-env';
+import { getAllowedOrigins } from './cors';
 
 validateEnv();
 
@@ -16,7 +17,7 @@ async function bootstrap() {
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });
   app.setGlobalPrefix('api/v1', { exclude: ['public/(.*)', 'uploads/(.*)'] });
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.enableCors({ origin: process.env.FRONTEND_URL });
+  app.enableCors({ origin: getAllowedOrigins() });
   await app.listen(process.env.PORT ?? 3001);
 }
 bootstrap();

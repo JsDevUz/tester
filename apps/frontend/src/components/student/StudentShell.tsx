@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { BookOpen, ClipboardList, MessageCircle, Radio, Settings, UserRound } from "lucide-react";
+import { BookOpen, ClipboardList, MessageCircle, Radio, RefreshCw, Settings, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
@@ -30,8 +30,58 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);
+  const [pullDistance, setPullDistance] = useState(0);
+  const [refreshing, setRefreshing] = useState(false);
+  const pullStartYRef = useRef<number | null>(null);
+  const pullDistanceRef = useRef(0);
   const [liveClassSessions, setLiveClassSessions] = useState<ActiveClassSession[]>([]);
   const profileContact = admin?.phone ? formatPhone(admin.phone) : "Profil";
+
+  useEffect(() => {
+    const threshold = 64;
+    const onTouchStart = (event: TouchEvent) => {
+      if (window.scrollY <= 0 && event.touches.length === 1) {
+        pullStartYRef.current = event.touches[0].clientY;
+      }
+    };
+    const onTouchMove = (event: TouchEvent) => {
+      const startY = pullStartYRef.current;
+      if (startY === null || window.scrollY > 0 || event.touches.length !== 1) return;
+      const delta = event.touches[0].clientY - startY;
+      if (delta <= 0) {
+        pullDistanceRef.current = 0;
+        setPullDistance(0);
+        return;
+      }
+      event.preventDefault();
+      const nextDistance = Math.min(delta * 0.45, 88);
+      pullDistanceRef.current = nextDistance;
+      setPullDistance(nextDistance);
+    };
+    const finishPull = () => {
+      if (pullDistanceRef.current >= threshold && !refreshing) {
+        setRefreshing(true);
+        pullDistanceRef.current = threshold;
+        setPullDistance(threshold);
+        window.location.reload();
+        return;
+      }
+      pullStartYRef.current = null;
+      pullDistanceRef.current = 0;
+      setPullDistance(0);
+    };
+
+    window.addEventListener("touchstart", onTouchStart, { passive: true });
+    window.addEventListener("touchmove", onTouchMove, { passive: false });
+    window.addEventListener("touchend", finishPull);
+    window.addEventListener("touchcancel", finishPull);
+    return () => {
+      window.removeEventListener("touchstart", onTouchStart);
+      window.removeEventListener("touchmove", onTouchMove);
+      window.removeEventListener("touchend", finishPull);
+      window.removeEventListener("touchcancel", finishPull);
+    };
+  }, [refreshing]);
 
   // Aktiv jonli dars bor-yo'qligini davriy tekshiramiz (banner uchun)
   useEffect(() => {
@@ -108,6 +158,20 @@ export function StudentShell({ children }: { children: ReactNode }) {
       style={messengerViewportStyle}
       className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
     >
+      <div
+        aria-hidden="true"
+        className="pointer-events-none fixed left-1/2 top-[max(10px,env(safe-area-inset-top))] z-[100] grid h-10 w-10 -translate-x-1/2 place-items-center rounded-full bg-white text-gray-700 shadow-lg transition-opacity"
+        style={{
+          opacity: pullDistance > 8 ? 1 : 0,
+          transform: `translate(-50%, ${Math.max(-48, pullDistance - 48)}px)`,
+        }}
+      >
+        <RefreshCw
+          size={18}
+          className={refreshing ? "animate-spin" : ""}
+          style={{ transform: `rotate(${pullDistance * 4}deg)` }}
+        />
+      </div>
       <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
         <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
           <button
