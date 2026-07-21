@@ -1,6 +1,6 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { courses, modules, lessons, contentBlocks, classSessions } from '../db/schema';
+import { courses, modules, lessons, contentBlocks, classSessions, messageBlockLines } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
 import { StorageService } from '../storage/storage.service';
 import { extname } from 'path';
@@ -134,12 +134,118 @@ export class ContentBlocksService {
     return block;
   }
 
-  async update(id: string, adminId: string, data: { html?: string; label?: string; embedUrl?: string }) {
+  async createButtonBlock(lessonId: string, adminId: string) {
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({
+        lessonId,
+        type: 'button',
+        orderIndex: existing.length,
+        label: "O'tish",
+        openInNewTab: true,
+      })
+      .returning();
+    return block;
+  }
+
+  async createMessageBlock(lessonId: string, adminId: string) {
+    await this.assertLessonOwnership(lessonId, adminId);
+    const existing = await db.query.contentBlocks.findMany({ where: eq(contentBlocks.lessonId, lessonId) });
+    if (existing.length >= CONTENT_BLOCK_LIMIT) {
+      throw new BadRequestException(`A lesson can have at most ${CONTENT_BLOCK_LIMIT} blocks`);
+    }
+    const [block] = await db
+      .insert(contentBlocks)
+      .values({ lessonId, type: 'message', orderIndex: existing.length })
+      .returning();
+    await db.insert(messageBlockLines).values({ contentBlockId: block.id, orderIndex: 0, text: '' });
+    const lines = await db.query.messageBlockLines.findMany({
+      where: eq(messageBlockLines.contentBlockId, block.id),
+      orderBy: (l, { asc }) => [asc(l.orderIndex)],
+    });
+    return { ...block, messageLines: lines };
+  }
+
+  async update(
+    id: string,
+    adminId: string,
+    data: {
+      html?: string;
+      label?: string;
+      embedUrl?: string;
+      buttonUrl?: string;
+      buttonColor?: string;
+      buttonTextColor?: string;
+      openInNewTab?: boolean;
+    },
+  ) {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, id) });
     if (!block) throw new NotFoundException('Block not found');
     await this.assertLessonOwnership(block.lessonId, adminId);
     const [updated] = await db.update(contentBlocks).set(data).where(eq(contentBlocks.id, id)).returning();
     return updated;
+  }
+
+  private async assertMessageLineOwnership(lineId: string, adminId: string) {
+    const line = await db.query.messageBlockLines.findFirst({ where: eq(messageBlockLines.id, lineId) });
+    if (!line) throw new NotFoundException('Message line not found');
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, line.contentBlockId) });
+    if (!block) throw new NotFoundException('Message line not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    return line;
+  }
+
+  async addMessageLine(blockId: string, adminId: string) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'message') throw new NotFoundException('Message block not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    const existing = await db.query.messageBlockLines.findMany({ where: eq(messageBlockLines.contentBlockId, blockId) });
+    const [line] = await db
+      .insert(messageBlockLines)
+      .values({ contentBlockId: blockId, orderIndex: existing.length, text: '' })
+      .returning();
+    return line;
+  }
+
+  async updateMessageLine(lineId: string, adminId: string, text: string) {
+    await this.assertMessageLineOwnership(lineId, adminId);
+    const [updated] = await db
+      .update(messageBlockLines)
+      .set({ text })
+      .where(eq(messageBlockLines.id, lineId))
+      .returning();
+    return updated;
+  }
+
+  async removeMessageLine(lineId: string, adminId: string) {
+    const line = await this.assertMessageLineOwnership(lineId, adminId);
+    const siblingCount = await db.query.messageBlockLines.findMany({
+      where: eq(messageBlockLines.contentBlockId, line.contentBlockId),
+    });
+    if (siblingCount.length <= 1) {
+      throw new BadRequestException("Xabar blokida kamida bitta qator bo'lishi kerak");
+    }
+    await db.delete(messageBlockLines).where(eq(messageBlockLines.id, lineId));
+  }
+
+  async reorderMessageLines(blockId: string, adminId: string, lineIds: string[]) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'message') throw new NotFoundException('Message block not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+    const existing = await db.query.messageBlockLines.findMany({
+      where: and(eq(messageBlockLines.contentBlockId, blockId), inArray(messageBlockLines.id, lineIds)),
+    });
+    if (existing.length !== lineIds.length) {
+      throw new BadRequestException("lineIds must match the block's existing lines");
+    }
+    for (let i = 0; i < lineIds.length; i++) {
+      await db.update(messageBlockLines).set({ orderIndex: i }).where(eq(messageBlockLines.id, lineIds[i]));
+    }
   }
 
   async remove(id: string, adminId: string) {

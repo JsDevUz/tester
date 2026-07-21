@@ -17,7 +17,7 @@ import { ContentBlocksService } from './content-blocks.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { ArrayNotEmpty, IsArray, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsBoolean, IsIn, IsOptional, IsString, MinLength } from 'class-validator';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { extname } from 'path';
@@ -32,6 +32,18 @@ class UpdateBlockDto {
   @IsOptional() @IsString() html?: string;
   @IsOptional() @IsString() @MinLength(0) label?: string;
   @IsOptional() @IsString() embedUrl?: string;
+  @IsOptional() @IsString() buttonUrl?: string;
+  @IsOptional() @IsString() buttonColor?: string;
+  @IsOptional() @IsString() buttonTextColor?: string;
+  @IsOptional() @IsBoolean() openInNewTab?: boolean;
+}
+
+class UpdateMessageLineDto {
+  @IsString() @MinLength(0) text: string;
+}
+
+class ReorderMessageLinesDto {
+  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) lineIds: string[];
 }
 
 class ReorderBlocksDto {
@@ -100,6 +112,38 @@ export class ContentBlocksController {
     @Body() dto: CreateLiveClassBlockDto,
   ) {
     return this.contentBlocksService.createLiveClassBlock(lessonId, req.admin.id, dto.classSessionId);
+  }
+
+  @Post('lessons/:lessonId/blocks/button')
+  createButtonBlock(@Param('lessonId') lessonId: string, @Req() req: any) {
+    return this.contentBlocksService.createButtonBlock(lessonId, req.admin.id);
+  }
+
+  @Post('lessons/:lessonId/blocks/message')
+  createMessageBlock(@Param('lessonId') lessonId: string, @Req() req: any) {
+    return this.contentBlocksService.createMessageBlock(lessonId, req.admin.id);
+  }
+
+  @Post('blocks/:blockId/message-lines')
+  addMessageLine(@Param('blockId') blockId: string, @Req() req: any) {
+    return this.contentBlocksService.addMessageLine(blockId, req.admin.id);
+  }
+
+  @Patch('message-lines/:id')
+  updateMessageLine(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateMessageLineDto) {
+    return this.contentBlocksService.updateMessageLine(id, req.admin.id, dto.text);
+  }
+
+  @Delete('message-lines/:id')
+  @HttpCode(204)
+  removeMessageLine(@Param('id') id: string, @Req() req: any) {
+    return this.contentBlocksService.removeMessageLine(id, req.admin.id);
+  }
+
+  @Post('blocks/:blockId/message-lines/reorder')
+  @HttpCode(204)
+  reorderMessageLines(@Param('blockId') blockId: string, @Req() req: any, @Body() dto: ReorderMessageLinesDto) {
+    return this.contentBlocksService.reorderMessageLines(blockId, req.admin.id, dto.lineIds);
   }
 
   @Patch('blocks/:id')
