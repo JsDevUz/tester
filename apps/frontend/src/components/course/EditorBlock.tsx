@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type ClipboardEvent } from 'react';
-import { BlockNoteSchema, defaultBlockSpecs } from '@blocknote/core';
+import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, createInlineContentSpec } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import {
   SuggestionMenuController,
@@ -7,13 +7,14 @@ import {
   useCreateBlockNote,
 } from '@blocknote/react';
 import { FolderOpen } from 'lucide-react';
+import katex from 'katex';
 // @blocknote/mantine/style.css'ni to'liq (o'zgartirmasdan) ishlatamiz — undagi
 // bare-specifier `@import url("@mantine/core/...")` importlarni vite.config.ts
 // dagi bareCssImportsPlugin haqiqiy nisbiy yo'llarga aylantirib beradi.
 import '@blocknote/mantine/style.css';
 import { apiUploadMedia } from '../../api/questions';
 import { MediaLibraryModal } from '../MediaLibraryModal';
-import { containsLatex, convertLatexToHtml } from '../../utils/latexPaste';
+import { containsLatex, splitLatexSegments } from '../../utils/latexPaste';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 
@@ -22,10 +23,48 @@ interface EditorBlockProps {
   onChange: (html: string) => void;
 }
 
+function renderFormulaSpan(latex: string, display: boolean) {
+  const span = document.createElement('span');
+  span.setAttribute('data-latex', latex);
+  if (display) span.setAttribute('data-display', 'true');
+  span.innerHTML = katex.renderToString(latex, { throwOnError: false, displayMode: display });
+  return span;
+}
+
+// Paste orqali kiritilgan $...$/$$...$$ LaTeX formulalarini KaTeX bilan
+// render qiladigan inline content turi. Tashqi HTML eksportida ham xuddi
+// shu KaTeX HTML saqlanadi (toExternalHTML), shu HTML qayta yuklanganda
+// data-latex atributi orqali formula sifatida tanib olinadi (parse).
+const formula = createInlineContentSpec(
+  {
+    type: 'formula',
+    content: 'none',
+    propSchema: {
+      latex: { default: '' },
+      display: { default: false },
+    },
+  },
+  {
+    parse: (el) => {
+      const latex = el.getAttribute('data-latex');
+      if (latex === null) return undefined;
+      return { latex, display: el.getAttribute('data-display') === 'true' };
+    },
+    render: (ic) => ({ dom: renderFormulaSpan(ic.props.latex, ic.props.display) }),
+    toExternalHTML: (ic) => ({ dom: renderFormulaSpan(ic.props.latex, ic.props.display) }),
+  },
+);
+
 // Media sifatida faqat Image qoldiramiz — Video/Audio/File alohida dars
 // bloklari orqali qo'shiladi, tahrirchi ichida ularni ikki marta ko'rsatmaslik uchun.
 const { video: _video, audio: _audio, file: _file, ...restBlockSpecs } = defaultBlockSpecs;
-const schema = BlockNoteSchema.create({ blockSpecs: restBlockSpecs });
+const schema = BlockNoteSchema.create({
+  blockSpecs: restBlockSpecs,
+  inlineContentSpecs: {
+    ...defaultInlineContentSpecs,
+    formula,
+  },
+});
 
 function toAbsoluteUrl(url: string) {
   return url.startsWith('http') ? url : `${BACKEND}${url}`;
@@ -117,17 +156,25 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     return true;
   }
 
-  async function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
     const text = event.clipboardData.getData('text/plain');
     if (!text) return;
 
     if (containsLatex(text)) {
-      const html = convertLatexToHtml(text);
-      const blocks = await editor.tryParseHTMLToBlocks(html);
-      if (insertParsedBlocks(blocks)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
+      // $...$/$$...$$ formulalarni alohida "formula" inline content sifatida
+      // kursor pozitsiyasiga qo'shamiz — BlockNote'ning HTML parseri
+      // KaTeX'ning ichma-ich <span> strukturasini tanimagan teg sifatida
+      // matn ichiga "flatten" qilib yuborgani uchun, HTML orqali emas,
+      // to'g'ridan-to'g'ri content massivi orqali kiritish shart.
+      const content = splitLatexSegments(text).map((segment) =>
+        segment.type === 'text'
+          ? segment.value
+          : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
+      );
+      editor.insertInlineContent(content as never);
+      void handleChange();
+      event.preventDefault();
+      event.stopPropagation();
       return;
     }
 
@@ -158,7 +205,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   return (
     <div
       className="course-editor rounded-2xl bg-white py-2"
-      onPasteCapture={(event) => void handlePaste(event)}
+      onPasteCapture={handlePaste}
     >
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" slashMenu={false}>
         <SuggestionMenuController

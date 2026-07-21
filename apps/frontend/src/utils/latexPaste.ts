@@ -1,5 +1,3 @@
-import katex from 'katex';
-
 const DISPLAY_PATTERN = /\$\$([\s\S]+?)\$\$/g;
 // Requires the captured content to start and end with a non-whitespace
 // character (a single non-whitespace char is also valid). This prevents a
@@ -8,26 +6,17 @@ const DISPLAY_PATTERN = /\$\$([\s\S]+?)\$\$/g;
 // next literal $ — the regex backtracks past it to find the real formula.
 const INLINE_PATTERN = /\$(\S(?:[^\n$]*\S)?)\$/g;
 
-const HTML_ESCAPE_MAP: Record<string, string> = {
-  '&': '&amp;',
-  '<': '&lt;',
-  '>': '&gt;',
-  '"': '&quot;',
-  "'": '&#39;',
-};
+export type LatexSegment =
+  | { type: 'text'; value: string }
+  | { type: 'formula'; latex: string; display: boolean };
 
-function escapeHtml(text: string): string {
-  return text.replace(/[&<>"']/g, (char) => HTML_ESCAPE_MAP[char]);
-}
-
-function renderFormula(latex: string, displayMode: boolean): string {
-  return katex.renderToString(latex, { throwOnError: false, displayMode });
-}
-
-type Segment = { type: 'text'; value: string } | { type: 'formula'; latex: string; display: boolean };
-
-function splitIntoSegments(text: string): Segment[] {
-  const segments: Segment[] = [];
+/**
+ * Splits plain text into ordered text/formula segments. Display ($$...$$)
+ * formulas may span multiple lines; inline ($...$) formulas never match
+ * across a newline (enforced by INLINE_PATTERN excluding '\n').
+ */
+export function splitLatexSegments(text: string): LatexSegment[] {
+  const segments: LatexSegment[] = [];
   let cursor = 0;
 
   DISPLAY_PATTERN.lastIndex = 0;
@@ -63,7 +52,7 @@ function splitIntoSegments(text: string): Segment[] {
       INLINE_PATTERN.lastIndex = 0;
       let inlineMatch: RegExpExecArray | null;
       let gapCursor = 0;
-      const gapSegments: Segment[] = [];
+      const gapSegments: LatexSegment[] = [];
       while ((inlineMatch = INLINE_PATTERN.exec(gap)) !== null) {
         if (inlineMatch.index > gapCursor) {
           gapSegments.push({ type: 'text', value: gap.slice(gapCursor, inlineMatch.index) });
@@ -106,30 +95,4 @@ export function containsLatex(text: string): boolean {
   if (DISPLAY_PATTERN.test(text)) return true;
   INLINE_PATTERN.lastIndex = 0;
   return INLINE_PATTERN.test(text);
-}
-
-/**
- * Converts plain text containing $...$/$$...$$ LaTeX markers into an HTML
- * string: plain-text runs are HTML-escaped and wrapped per line in <p>,
- * formula runs are rendered to KaTeX HTML inline within their line's <p>.
- */
-export function convertLatexToHtml(text: string): string {
-  const lines = text.split('\n');
-  const htmlLines: string[] = [];
-
-  for (const line of lines) {
-    const segments = splitIntoSegments(line);
-    if (segments.length === 0) {
-      htmlLines.push(`<p>${escapeHtml(line)}</p>`);
-      continue;
-    }
-    const lineHtml = segments
-      .map((segment) =>
-        segment.type === 'text' ? escapeHtml(segment.value) : renderFormula(segment.latex, segment.display),
-      )
-      .join('');
-    htmlLines.push(`<p>${lineHtml}</p>`);
-  }
-
-  return htmlLines.join('');
 }

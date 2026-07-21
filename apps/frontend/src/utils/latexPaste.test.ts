@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { containsLatex, convertLatexToHtml } from './latexPaste';
+import { containsLatex, splitLatexSegments } from './latexPaste';
 
 describe('containsLatex', () => {
   it('returns false for plain text with no $ signs', () => {
@@ -19,58 +19,48 @@ describe('containsLatex', () => {
   });
 });
 
-describe('convertLatexToHtml', () => {
-  it('renders plain text with no formula as an escaped paragraph', () => {
-    const html = convertLatexToHtml('Hello & <world>');
-    expect(html).toBe('<p>Hello &amp; &lt;world&gt;</p>');
+describe('splitLatexSegments', () => {
+  it('returns a single text segment for plain text with no formula', () => {
+    const segments = splitLatexSegments('Hello & <world>');
+    expect(segments).toEqual([{ type: 'text', value: 'Hello & <world>' }]);
   });
 
-  it('renders an inline formula inside surrounding text on one line', () => {
-    const html = convertLatexToHtml('asalan: $\\text{a}$ (misol).');
-    expect(html).toContain('<p>asalan: ');
-    expect(html).toContain('(misol).</p>');
-    expect(html).toContain('class="katex"');
+  it('splits an inline formula from surrounding text on one line', () => {
+    const segments = splitLatexSegments('asalan: $\\text{a}$ (misol).');
+    expect(segments).toEqual([
+      { type: 'text', value: 'asalan: ' },
+      { type: 'formula', latex: '\\text{a}', display: false },
+      { type: 'text', value: ' (misol).' },
+    ]);
   });
 
-  it('renders a display formula without inline surrounding text collapsing it', () => {
-    const html = convertLatexToHtml('$$\\text{a} \\rightarrow \\text{b}$$');
-    expect(html).toContain('class="katex-display"');
-  });
-
-  it('produces an inline katex-error span for malformed LaTeX instead of throwing', () => {
-    expect(() => convertLatexToHtml('$\\frac{1$')).not.toThrow();
-    const html = convertLatexToHtml('$\\frac{1$');
-    expect(html).toContain('katex-error');
+  it('splits a display formula as its own segment', () => {
+    const segments = splitLatexSegments('$$\\text{a} \\rightarrow \\text{b}$$');
+    expect(segments).toEqual([
+      { type: 'formula', latex: '\\text{a} \\rightarrow \\text{b}', display: true },
+    ]);
   });
 
   it('does not treat a newline-spanning $...$ as one inline formula', () => {
-    const html = convertLatexToHtml('$a\nb$');
-    // No closing $ on the same line as the opening $, so both $ are treated as literal text.
-    expect(html).not.toContain('class="katex"');
-    expect(html).toContain('$a');
-    expect(html).toContain('b$');
+    const segments = splitLatexSegments('$a\nb$');
+    // No closing $ on the same line as the opening $, so the whole string stays literal text.
+    expect(segments).toEqual([{ type: 'text', value: '$a\nb$' }]);
   });
 
-  it('renders multiple lines as separate paragraphs, preserving order', () => {
-    const html = convertLatexToHtml('first line\nsecond line with $\\text{x}$ formula');
-    const firstIdx = html.indexOf('first line');
-    const secondIdx = html.indexOf('second line');
-    expect(firstIdx).toBeGreaterThanOrEqual(0);
-    expect(secondIdx).toBeGreaterThan(firstIdx);
-    expect(html).toContain('class="katex"');
-  });
-
-  it('escapes HTML special characters in the plain-text portions around a formula', () => {
-    const html = convertLatexToHtml('<b>bold?</b> $\\text{x}$ & more');
-    expect(html).toContain('&lt;b&gt;bold?&lt;/b&gt;');
-    expect(html).toContain('&amp; more');
+  it('splits multiple lines with a formula on the second line, preserving order', () => {
+    const segments = splitLatexSegments('first line\nsecond line with $\\text{x}$ formula');
+    expect(segments).toEqual([
+      { type: 'text', value: 'first line\nsecond line with ' },
+      { type: 'formula', latex: '\\text{x}', display: false },
+      { type: 'text', value: ' formula' },
+    ]);
   });
 
   it('does not mistake a price marker for the start of an inline formula', () => {
-    const html = convertLatexToHtml('Cost is $5 but formula is $x$');
-    // The $5 price mention must remain literal text; only the real $x$ formula renders.
-    expect(html).toContain('Cost is $5 but formula is');
-    expect(html).toContain('class="katex"');
-    expect(html).not.toContain('$x$');
+    const segments = splitLatexSegments('Cost is $5 but formula is $x$');
+    expect(segments).toEqual([
+      { type: 'text', value: 'Cost is $5 but formula is ' },
+      { type: 'formula', latex: 'x', display: false },
+    ]);
   });
 });
