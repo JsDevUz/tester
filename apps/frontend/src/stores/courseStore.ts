@@ -16,6 +16,12 @@ import {
   apiUploadFileBlock,
   apiCreateFileBlockFromLibrary,
   apiCreateLiveClassBlock,
+  apiCreateButtonBlock,
+  apiCreateMessageBlock,
+  apiAddMessageLine,
+  apiUpdateMessageLine,
+  apiRemoveMessageLine,
+  apiReorderMessageLines,
   apiRetryVideoBlock,
   type ApiContentBlock,
 } from '../api/contentBlocks';
@@ -31,9 +37,15 @@ import {
 import { apiListGroupPayments, apiRecordPayment, type ApiMonthlyPayment } from '../api/payments';
 import { hasPendingPersistence, persistLatest } from '../utils/latestPersistence';
 
-export type ContentBlockType = 'editor' | 'video' | 'image' | 'file' | 'live_class';
+export type ContentBlockType = 'editor' | 'video' | 'image' | 'file' | 'live_class' | 'button' | 'message';
 export const CONTENT_BLOCK_LIMIT = 7;
 export const PRACTICE_BLOCK_LIMIT = 4;
+
+export interface MessageLine {
+  id: string;
+  text: string;
+  orderIndex: number;
+}
 
 export interface ContentBlock {
   id: string;
@@ -45,6 +57,7 @@ export interface ContentBlock {
   // video: YouTube (yoki boshqa) tashqi havola, fayl yuklash o'rniga/bilan birga
   embedUrl?: string;
   // video/image/file: o'qituvchi kiritgan ko'rinadigan nom (fileName'dan mustaqil, u asl fayl nomini saqlaydi)
+  // button: tugma matni
   label?: string;
   processingStatus?: 'uploading' | 'pending' | 'processing' | 'ready' | 'failed';
   sourceKey?: string;
@@ -56,6 +69,11 @@ export interface ContentBlock {
   processedAt?: string;
   uploadProgress?: number;
   classSessionId?: string;
+  buttonUrl?: string;
+  buttonColor?: string;
+  buttonTextColor?: string;
+  openInNewTab?: boolean;
+  messageLines?: MessageLine[];
 }
 
 export type PracticeBlockType = 'test' | 'image' | 'oral';
@@ -159,6 +177,12 @@ interface CourseState {
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock, file?: File) => Promise<void>;
   addFileBlockFromLibrary: (courseId: string, moduleId: string, lessonId: string, url: string, fileName: string) => Promise<void>;
   addLiveClassBlock: (courseId: string, moduleId: string, lessonId: string, classSessionId: string) => Promise<void>;
+  addButtonBlock: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  addMessageBlock: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  addMessageLine: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
+  updateMessageLine: (courseId: string, moduleId: string, lessonId: string, blockId: string, lineId: string, text: string) => Promise<void>;
+  removeMessageLine: (courseId: string, moduleId: string, lessonId: string, blockId: string, lineId: string) => Promise<void>;
+  moveMessageLine: (courseId: string, moduleId: string, lessonId: string, blockId: string, lineId: string, direction: 'up' | 'down') => Promise<void>;
   updateBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, data: Partial<ContentBlock>) => Promise<void>;
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
@@ -221,6 +245,11 @@ function toFrontendBlock(b: ApiContentBlock): ContentBlock {
     errorMessage: b.errorMessage ?? undefined,
     processedAt: b.processedAt ?? undefined,
     classSessionId: b.classSessionId ?? undefined,
+    buttonUrl: b.buttonUrl ?? undefined,
+    buttonColor: b.buttonColor ?? undefined,
+    buttonTextColor: b.buttonTextColor ?? undefined,
+    openInNewTab: b.openInNewTab,
+    messageLines: b.messageLines,
   };
 }
 
@@ -716,6 +745,211 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                         l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
                           ? l
                           : { ...l, blocks: [...l.blocks, newBlock] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addButtonBlock: async (courseId, moduleId, lessonId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
+
+    const row = await apiCreateButtonBlock(lessonId);
+    const newBlock = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
+                          ? l
+                          : { ...l, blocks: [...l.blocks, newBlock] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addMessageBlock: async (courseId, moduleId, lessonId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    if (!lesson || lesson.blocks.length >= CONTENT_BLOCK_LIMIT) return;
+
+    const row = await apiCreateMessageBlock(lessonId);
+    const newBlock = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId || l.blocks.length >= CONTENT_BLOCK_LIMIT
+                          ? l
+                          : { ...l, blocks: [...l.blocks, newBlock] },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  addMessageLine: async (courseId, moduleId, lessonId, blockId) => {
+    const line = await apiAddMessageLine(blockId);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              blocks: l.blocks.map((b) =>
+                                b.id !== blockId
+                                  ? b
+                                  : { ...b, messageLines: [...(b.messageLines ?? []), line] },
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  updateMessageLine: async (courseId, moduleId, lessonId, blockId, lineId, text) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              blocks: l.blocks.map((b) =>
+                                b.id !== blockId
+                                  ? b
+                                  : {
+                                      ...b,
+                                      messageLines: (b.messageLines ?? []).map((line) =>
+                                        line.id === lineId ? { ...line, text } : line,
+                                      ),
+                                    },
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+    persistLatest(`message-line:${lineId}:text`, () => apiUpdateMessageLine(lineId, text));
+  },
+  removeMessageLine: async (courseId, moduleId, lessonId, blockId, lineId) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    const block = lesson?.blocks.find((b) => b.id === blockId);
+    if ((block?.messageLines?.length ?? 0) <= 1) return;
+
+    await apiRemoveMessageLine(lineId);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              blocks: l.blocks.map((b) =>
+                                b.id !== blockId
+                                  ? b
+                                  : { ...b, messageLines: (b.messageLines ?? []).filter((line) => line.id !== lineId) },
+                              ),
+                            },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  moveMessageLine: async (courseId, moduleId, lessonId, blockId, lineId, direction) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    const lesson = module?.lessons.find((l) => l.id === lessonId);
+    const block = lesson?.blocks.find((b) => b.id === blockId);
+    const lines = block?.messageLines ?? [];
+    const index = lines.findIndex((line) => line.id === lineId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= lines.length) return;
+
+    const reordered = [...lines];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+    await apiReorderMessageLines(blockId, reordered.map((line) => line.id));
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : {
+                              ...l,
+                              blocks: l.blocks.map((b) =>
+                                b.id !== blockId ? b : { ...b, messageLines: reordered },
+                              ),
+                            },
                       ),
                     },
               ),

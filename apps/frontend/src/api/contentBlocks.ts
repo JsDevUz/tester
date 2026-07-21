@@ -1,9 +1,15 @@
 import client from './client';
 
+export interface ApiMessageLine {
+  id: string;
+  text: string;
+  orderIndex: number;
+}
+
 export interface ApiContentBlock {
   id: string;
   lessonId: string;
-  type: 'editor' | 'video' | 'image' | 'file' | 'live_class';
+  type: 'editor' | 'video' | 'image' | 'file' | 'live_class' | 'button' | 'message';
   orderIndex: number;
   html: string | null;
   fileName: string | null;
@@ -20,6 +26,12 @@ export interface ApiContentBlock {
   processedAt: string | null;
   createdAt: string;
   classSessionId: string | null;
+  buttonUrl: string | null;
+  buttonColor: string | null;
+  buttonTextColor: string | null;
+  openInNewTab: boolean;
+  messageLines?: ApiMessageLine[];
+  messageSender?: { name: string; avatarUrl: string | null };
 }
 
 export async function apiListBlocks(lessonId: string): Promise<ApiContentBlock[]> {
@@ -34,7 +46,15 @@ export async function apiCreateBlock(lessonId: string, type: 'editor'): Promise<
 
 export async function apiUpdateBlock(
   id: string,
-  data: { html?: string; label?: string; embedUrl?: string },
+  data: {
+    html?: string;
+    label?: string;
+    embedUrl?: string;
+    buttonUrl?: string;
+    buttonColor?: string;
+    buttonTextColor?: string;
+    openInNewTab?: boolean;
+  },
 ): Promise<ApiContentBlock> {
   const res = await client.patch(`/blocks/${id}`, data);
   return res.data;
@@ -118,6 +138,34 @@ export async function apiCreateFileBlockFromLibrary(
 export async function apiCreateLiveClassBlock(lessonId: string, classSessionId: string): Promise<ApiContentBlock> {
   const res = await client.post(`/lessons/${lessonId}/blocks/live-class`, { classSessionId });
   return res.data;
+}
+
+export async function apiCreateButtonBlock(lessonId: string): Promise<ApiContentBlock> {
+  const res = await client.post(`/lessons/${lessonId}/blocks/button`);
+  return res.data;
+}
+
+export async function apiCreateMessageBlock(lessonId: string): Promise<ApiContentBlock> {
+  const res = await client.post(`/lessons/${lessonId}/blocks/message`);
+  return res.data;
+}
+
+export async function apiAddMessageLine(blockId: string): Promise<ApiMessageLine> {
+  const res = await client.post(`/blocks/${blockId}/message-lines`);
+  return res.data;
+}
+
+export async function apiUpdateMessageLine(lineId: string, text: string): Promise<ApiMessageLine> {
+  const res = await client.patch(`/message-lines/${lineId}`, { text });
+  return res.data;
+}
+
+export async function apiRemoveMessageLine(lineId: string): Promise<void> {
+  await client.delete(`/message-lines/${lineId}`);
+}
+
+export async function apiReorderMessageLines(blockId: string, lineIds: string[]): Promise<void> {
+  await client.post(`/blocks/${blockId}/message-lines/reorder`, { lineIds });
 }
 
 export async function apiRetryVideoBlock(blockId: string): Promise<ApiContentBlock> {
