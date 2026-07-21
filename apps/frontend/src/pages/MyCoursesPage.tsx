@@ -1177,6 +1177,50 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
     return <LiveClassBlockTile classSessionId={block.classSessionId} />;
   }
 
+  if (block.type === "button") {
+    if (!block.buttonUrl) return null;
+    return (
+      <div className="flex justify-center py-2">
+        <a
+          href={block.buttonUrl}
+          target={block.openInNewTab ? "_blank" : undefined}
+          rel={block.openInNewTab ? "noreferrer" : undefined}
+          className="rounded-xl px-5 py-2.5 text-sm font-bold"
+          style={{
+            backgroundColor: block.buttonColor || "#4F46E5",
+            color: block.buttonTextColor || "#FFFFFF",
+          }}
+        >
+          {block.label || "O'tish"}
+        </a>
+      </div>
+    );
+  }
+
+  if (block.type === "message") {
+    const lines = block.messageLines ?? [];
+    if (lines.length === 0 || !block.messageSender) return null;
+    return (
+      <div className="flex flex-col gap-2 py-2">
+        <div className="flex items-center gap-2">
+          <UserAvatar
+            name={block.messageSender.name}
+            avatarUrl={block.messageSender.avatarUrl}
+            className="h-8 w-8 rounded-full text-xs font-bold"
+          />
+          <span className="text-xs font-bold text-gray-600">{block.messageSender.name}</span>
+        </div>
+        <div className="flex flex-col gap-1.5">
+          {[...lines].sort((a, b) => a.orderIndex - b.orderIndex).map((line) => (
+            <div key={line.id} className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-sm text-gray-800">
+              {line.text}
+            </div>
+          ))}
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
       {block.type === "image" ? (
