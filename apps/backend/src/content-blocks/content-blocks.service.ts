@@ -26,10 +26,23 @@ export class ContentBlocksService {
 
   async findAll(lessonId: string, adminId: string) {
     await this.assertLessonOwnership(lessonId, adminId);
-    return db.query.contentBlocks.findMany({
+    const blocks = await db.query.contentBlocks.findMany({
       where: eq(contentBlocks.lessonId, lessonId),
       orderBy: (b, { asc }) => [asc(b.orderIndex)],
     });
+
+    const messageBlockIds = blocks.filter((b) => b.type === 'message').map((b) => b.id);
+    if (messageBlockIds.length === 0) return blocks;
+
+    const lines = await db.query.messageBlockLines.findMany({
+      where: inArray(messageBlockLines.contentBlockId, messageBlockIds),
+      orderBy: (l, { asc }) => [asc(l.orderIndex)],
+    });
+    return blocks.map((block) =>
+      block.type === 'message'
+        ? { ...block, messageLines: lines.filter((line) => line.contentBlockId === block.id) }
+        : block,
+    );
   }
 
   async create(lessonId: string, adminId: string, type: string) {
