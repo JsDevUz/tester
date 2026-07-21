@@ -1,7 +1,12 @@
 import katex from 'katex';
 
 const DISPLAY_PATTERN = /\$\$([\s\S]+?)\$\$/g;
-const INLINE_PATTERN = /\$([^\n$]+?)\$/g;
+// Requires the captured content to start and end with a non-whitespace
+// character (a single non-whitespace char is also valid). This prevents a
+// price mention like "$5 but formula is $" from being mistaken for a
+// formula boundary, since its content ends in whitespace right before the
+// next literal $ — the regex backtracks past it to find the real formula.
+const INLINE_PATTERN = /\$(\S(?:[^\n$]*\S)?)\$/g;
 
 const HTML_ESCAPE_MAP: Record<string, string> = {
   '&': '&amp;',

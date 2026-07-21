@@ -65,4 +65,12 @@ describe('convertLatexToHtml', () => {
     expect(html).toContain('&lt;b&gt;bold?&lt;/b&gt;');
     expect(html).toContain('&amp; more');
   });
+
+  it('does not mistake a price marker for the start of an inline formula', () => {
+    const html = convertLatexToHtml('Cost is $5 but formula is $x$');
+    // The $5 price mention must remain literal text; only the real $x$ formula renders.
+    expect(html).toContain('Cost is $5 but formula is');
+    expect(html).toContain('class="katex"');
+    expect(html).not.toContain('$x$');
+  });
 });
