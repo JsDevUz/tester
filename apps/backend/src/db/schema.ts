@@ -86,6 +86,7 @@ export const lessons = pgTable('lessons', {
   title: text('title').notNull(),
   orderIndex: integer('order_index').notNull().default(0),
   status: text('status').notNull().default('draft'),
+  practiceEnabled: boolean('practice_enabled').notNull().default(true),
   passThresholdEnabled: boolean('pass_threshold_enabled').notNull().default(false),
   passThresholdPercent: integer('pass_threshold_percent'),
   completionScore: integer('completion_score'),
@@ -121,10 +122,30 @@ export const contentBlocks = pgTable('content_blocks', {
   // bog'lanishi mumkin (cheklov yo'q), shuning uchun class_sessions
   // tarafida unique emas.
   classSessionId: uuid('class_session_id').references(() => classSessions.id, { onDelete: 'set null' }),
+  // "Tugma" (type='button') bloklari uchun — havola va ko'rinish sozlamalari.
+  // Tugma matni mavjud `label` ustunidan foydalanadi.
+  buttonUrl: text('button_url'),
+  buttonColor: text('button_color'),
+  buttonTextColor: text('button_text_color'),
+  openInNewTab: boolean('open_in_new_tab').notNull().default(true),
 });
 
 export const contentBlocksRelations = relations(contentBlocks, ({ one }) => ({
   lesson: one(lessons, { fields: [contentBlocks.lessonId], references: [lessons.id] }),
+}));
+
+// "Xabar" (type='message') bloklarining chat-bubble matn qatorlari —
+// bitta blok bir nechta qatorga ega bo'lishi mumkin (tartiblangan ro'yxat).
+export const messageBlockLines = pgTable('message_block_lines', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  contentBlockId: uuid('content_block_id').notNull().references(() => contentBlocks.id, { onDelete: 'cascade' }),
+  orderIndex: integer('order_index').notNull().default(0),
+  text: text('text').notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const messageBlockLinesRelations = relations(messageBlockLines, ({ one }) => ({
+  contentBlock: one(contentBlocks, { fields: [messageBlockLines.contentBlockId], references: [contentBlocks.id] }),
 }));
 
 export const videoWatchSegments = pgTable('video_watch_segments', {
