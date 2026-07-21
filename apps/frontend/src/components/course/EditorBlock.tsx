@@ -14,7 +14,7 @@ import katex from 'katex';
 import '@blocknote/mantine/style.css';
 import { apiUploadMedia } from '../../api/questions';
 import { MediaLibraryModal } from '../MediaLibraryModal';
-import { containsLatex, textToLineBlocks, type LatexSegment } from '../../utils/latexPaste';
+import { containsLatex, textToLineBlocks, htmlToLineBlocks, type LineBlock, type LatexSegment } from '../../utils/latexPaste';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 
@@ -116,12 +116,14 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
         return defaultPasteHandler();
       }
 
-      // Matn $...$/$$...$$ formula(lar)ni o'z ichiga olganda, butun matnni
-      // (sarlavha/ro'yxat qatorlari bo'lsa ham) qator-qator o'tib, har bir
-      // qatorni o'z blok turiga (heading/list/paragraph) va formula bilan
-      // aralash inline contentga aylantiramiz — shu bilan bitta paste ham
-      // markdown strukturasini, ham formulalarni birga saqlab qoladi.
-      const lineBlocks = textToLineBlocks(text);
+      // Ko'p manbalar (Google Docs, Notion va h.k.) o'zining text/plain
+      // yukida paragraflar orasida umuman '\n' qo'ymaydi — sarlavha/ro'yxat
+      // strukturasi faqat text/html'da (haqiqiy <h1>/<p>/<li> teglar
+      // sifatida) mavjud bo'ladi. Shuning uchun HTML mavjud bo'lsa, undan
+      // strukturani tiklaymiz; aks holda (masalan oddiy matn muharriridan
+      // paste qilinganda) qator-qator ('\n' bo'yicha) ajratishga tushamiz.
+      const html = event.clipboardData?.getData('text/html');
+      const lineBlocks: LineBlock[] = html ? htmlToLineBlocks(html) : textToLineBlocks(text);
       if (lineBlocks.length === 0) return defaultPasteHandler();
 
       const toInlineContent = (segments: LatexSegment[]) =>

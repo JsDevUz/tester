@@ -1,5 +1,6 @@
+// @vitest-environment jsdom
 import { describe, expect, it } from 'vitest';
-import { containsLatex, splitLatexSegments, textToLineBlocks } from './latexPaste';
+import { containsLatex, splitLatexSegments, textToLineBlocks, htmlToLineBlocks } from './latexPaste';
 
 describe('containsLatex', () => {
   it('returns false for plain text with no $ signs', () => {
@@ -138,5 +139,89 @@ describe('textToLineBlocks', () => {
     expect(blocks[2]).toMatchObject({ blockType: 'numberedListItem' });
     expect((blocks[2] as { segments: unknown[] }).segments).toContainEqual({ type: 'formula', latex: '\\text{a}', display: false });
     expect(blocks[3]).toMatchObject({ blockType: 'heading', level: 2 });
+  });
+});
+
+describe('htmlToLineBlocks', () => {
+  it('extracts a heading and a paragraph as separate blocks', () => {
+    const html = '<h1>Title</h1><p>Body text</p>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      { blockType: 'heading', level: 1, segments: [{ type: 'text', value: 'Title' }] },
+      { blockType: 'paragraph', segments: [{ type: 'text', value: 'Body text' }] },
+    ]);
+  });
+
+  it('extracts a level-2 heading', () => {
+    const blocks = htmlToLineBlocks('<h2>Sub heading</h2>');
+    expect(blocks).toEqual([
+      { blockType: 'heading', level: 2, segments: [{ type: 'text', value: 'Sub heading' }] },
+    ]);
+  });
+
+  it('classifies <ol><li> as numberedListItem', () => {
+    const html = '<ol><li>first</li><li>second</li></ol>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      { blockType: 'numberedListItem', segments: [{ type: 'text', value: 'first' }] },
+      { blockType: 'numberedListItem', segments: [{ type: 'text', value: 'second' }] },
+    ]);
+  });
+
+  it('classifies <ul><li> as bulletListItem', () => {
+    const html = '<ul><li>one</li></ul>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      { blockType: 'bulletListItem', segments: [{ type: 'text', value: 'one' }] },
+    ]);
+  });
+
+  it('does not duplicate text when a Google-Docs-style <li><p> nesting is present', () => {
+    const html = '<ol><li dir="ltr"><p dir="ltr">nested paragraph text</p></li></ol>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      { blockType: 'numberedListItem', segments: [{ type: 'text', value: 'nested paragraph text' }] },
+    ]);
+  });
+
+  it('preserves a formula inside a paragraph extracted from HTML', () => {
+    const html = '<p>asalan: $\\text{a}$ (misol).</p>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      {
+        blockType: 'paragraph',
+        segments: [
+          { type: 'text', value: 'asalan: ' },
+          { type: 'formula', latex: '\\text{a}', display: false },
+          { type: 'text', value: ' (misol).' },
+        ],
+      },
+    ]);
+  });
+
+  it('drops empty block elements (no text content)', () => {
+    const html = '<p></p><p>real content</p>';
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toEqual([
+      { blockType: 'paragraph', segments: [{ type: 'text', value: 'real content' }] },
+    ]);
+  });
+
+  it('handles the exact reported Google-Docs-style excerpt (heading + paragraph + numbered list with formulas)', () => {
+    const html = `<meta charset='utf-8'><b id="docs-internal-guid-x" style="font-weight:normal;">
+<p dir="ltr"><span style="font-weight:700;font-size:20pt;">7-dars: Buyruq fe'li</span></p>
+<p dir="ltr"><span>Kitobimizning 14-sahifasida.</span></p>
+<ol style="margin-top:0;margin-bottom:0;">
+  <li dir="ltr"><p dir="ltr"><span style="font-weight:700;">1-bosqich:</span><span> Muxotab shaklini olamiz: $\\text{a}$.</span></p></li>
+  <li dir="ltr"><p dir="ltr"><span>2-bosqich: Boshidagi harfini olib tashlaymiz.</span></p></li>
+</ol>
+</b>`;
+    const blocks = htmlToLineBlocks(html);
+    expect(blocks).toHaveLength(4);
+    expect(blocks[0]).toMatchObject({ blockType: 'paragraph' });
+    expect(blocks[1]).toMatchObject({ blockType: 'paragraph' });
+    expect(blocks[2]).toMatchObject({ blockType: 'numberedListItem' });
+    expect((blocks[2] as { segments: unknown[] }).segments).toContainEqual({ type: 'formula', latex: '\\text{a}', display: false });
+    expect(blocks[3]).toMatchObject({ blockType: 'numberedListItem' });
   });
 });

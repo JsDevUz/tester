@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { BlockNoteSchema, BlockNoteEditor, defaultBlockSpecs, defaultInlineContentSpecs, createInlineContentSpec } from '@blocknote/core';
 import katex from 'katex';
-import { textToLineBlocks, type LatexSegment } from './latexPaste';
+import { textToLineBlocks, htmlToLineBlocks, type LineBlock, type LatexSegment } from './latexPaste';
 
 // Mirrors the formula inline-content spec defined in EditorBlock.tsx, so this
 // test exercises the exact same paste -> insert -> export -> re-parse path
@@ -67,6 +67,37 @@ function pasteText(editor: BlockNoteEditor<any, any, any>, text: string) {
     return { type: 'paragraph', content: toInlineContent(line.segments) };
   }) as never;
 
+  const currentBlock = editor.document[0];
+  editor.replaceBlocks([currentBlock.id], blocks);
+}
+
+// Mirrors EditorBlock.tsx's handlePaste when a text/html clipboard payload
+// is present (the common case for real paste sources like Google Docs,
+// which put NO newlines in their text/plain payload — only text/html
+// carries real <h1>/<p>/<li> structure).
+function pasteHtml(editor: BlockNoteEditor<any, any, any>, html: string) {
+  const toInlineContent = (segments: LatexSegment[]) =>
+    segments.map((segment) =>
+      segment.type === 'text'
+        ? segment.value
+        : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
+    );
+
+  const lineBlocksToBlocks = (lineBlocks: LineBlock[]) =>
+    lineBlocks.map((line) => {
+      if (line.blockType === 'heading') {
+        return { type: 'heading', props: { level: line.level }, content: toInlineContent(line.segments) };
+      }
+      if (line.blockType === 'bulletListItem') {
+        return { type: 'bulletListItem', content: toInlineContent(line.segments) };
+      }
+      if (line.blockType === 'numberedListItem') {
+        return { type: 'numberedListItem', content: toInlineContent(line.segments) };
+      }
+      return { type: 'paragraph', content: toInlineContent(line.segments) };
+    }) as never;
+
+  const blocks = lineBlocksToBlocks(htmlToLineBlocks(html));
   const currentBlock = editor.document[0];
   editor.replaceBlocks([currentBlock.id], blocks);
 }
@@ -161,6 +192,38 @@ describe('LaTeX paste survives the full BlockNote round-trip', () => {
     // \text{}/\rightarrow source text sitting outside any katex markup.
     expect(html).toContain('class="katex"');
     expect(html).toContain('<span class="mord">تَنْصُرُ</span>');
+  });
+
+  it('regression: pasting via text/html (the real-world path, since text/plain has no newlines from sources like Google Docs) preserves structure AND formulas', async () => {
+    // This reproduces the ACTUAL root cause behind the original bug report:
+    // the reported clipboard's text/plain payload had ZERO newlines between
+    // paragraphs (confirmed via the user's own browser console dump), so
+    // textToLineBlocks always produced one giant paragraph regardless of
+    // how the LaTeX/markdown branching worked. The real structure only
+    // exists in text/html, which is why EditorBlock.tsx now prefers
+    // htmlToLineBlocks(html) over textToLineBlocks(text) whenever a
+    // text/html clipboard entry is present.
+    const editor = BlockNoteEditor.create({ schema });
+    const html = `<meta charset='utf-8'><b id="docs-internal-guid-x" style="font-weight:normal;">
+<p dir="ltr"><span style="font-weight:700;font-size:20pt;">7-dars: Buyruq fe'li (الأمر — Amr) qanday yasaladi?</span></p>
+<p dir="ltr"><span>Kitobimizning 14-sahifasida buyruq fe'li haqida juda chiroyli va sodda qoida berilgan:</span></p>
+<p dir="ltr"><span>Keling, buni $\\text{تَنْصُرُ}$ (Tansuru — sen yordam berasan) fe'lida bosqichma-bosqich ko'rib chiqamiz:</span></p>
+<ol style="margin-top:0;margin-bottom:0;">
+  <li dir="ltr"><p dir="ltr"><span style="font-weight:700;">1-bosqich:</span><span> Muxotab shaklini olamiz: $\\text{تَنْصُرُ}$ (Tansuru).</span></p></li>
+  <li dir="ltr"><p dir="ltr"><span style="font-weight:700;">2-bosqich:</span><span> Boshidagi ت harfini olib tashlaymiz: $\\text{نْصُرُ}$ qoladi.</span></p></li>
+</ol>
+<p dir="ltr"><span>Masalan: $\\text{تَنْصُرُ} \\rightarrow \\text{أُنْصُرْ}$ (Unsur).</span></p>
+</b>`;
+
+    pasteHtml(editor, html);
+    const exportedHtml = await editor.blocksToFullHTML(editor.document);
+
+    // 6 distinct top-level blocks: 3 paragraphs + 2 list items + 1 closing paragraph.
+    const blockCount = (exportedHtml.match(/data-node-type="blockOuter"/g) || []).length;
+    expect(blockCount).toBe(6);
+    expect(exportedHtml).toContain('data-content-type="numberedListItem"');
+    expect(exportedHtml).toContain('class="katex"');
+    expect(exportedHtml).toContain('<span class="mord">تَنْصُرُ</span>');
   });
 
   it('regression: pasting rich external HTML (headings/lists/bold) still parses into distinct blocks, not one flattened paragraph', async () => {

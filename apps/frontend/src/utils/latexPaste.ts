@@ -137,3 +137,56 @@ export function textToLineBlocks(text: string): LineBlock[] {
       return { blockType: 'paragraph', segments: splitLatexSegments(line) };
     });
 }
+
+const HEADING_TAGS = new Set(['H1', 'H2', 'H3', 'H4', 'H5', 'H6']);
+const BLOCK_SELECTOR = 'h1, h2, h3, h4, h5, h6, p, li';
+
+/**
+ * Splits pasted `text/html` (not `text/plain`) into one LineBlock per
+ * "leaf" block-level element (heading/paragraph/list item), each carrying
+ * its own text/formula segments from its text content.
+ *
+ * This exists because real clipboard sources (Google Docs, Notion, etc.)
+ * commonly put NO newlines between paragraphs in their `text/plain`
+ * payload — the paragraph/heading structure only exists in `text/html`
+ * (as actual <h1>/<p>/<li> elements). Splitting `text/plain` on '\n' in
+ * that case yields a single giant line, losing all block structure even
+ * though the source visually had headings and lists. Parsing the HTML
+ * instead recovers the real structure.
+ *
+ * "Leaf" elements: an element matching BLOCK_SELECTOR is skipped if it
+ * itself contains another BLOCK_SELECTOR match — this avoids double-
+ * counting Google Docs' <li><p>...</p></li> nesting (both the <li> and
+ * its inner <p> would otherwise match and yield duplicate text).
+ */
+export function htmlToLineBlocks(html: string): LineBlock[] {
+  const doc = new DOMParser().parseFromString(html, 'text/html');
+  const elements = Array.from(doc.body.querySelectorAll<HTMLElement>(BLOCK_SELECTOR)).filter(
+    (el) => !el.querySelector(BLOCK_SELECTOR),
+  );
+
+  return elements
+    .map((el): LineBlock | null => {
+      const text = (el.textContent ?? '').trim();
+      if (!text) return null;
+
+      if (HEADING_TAGS.has(el.tagName)) {
+        const level = Number(el.tagName[1]);
+        return { blockType: 'heading', level, segments: splitLatexSegments(text) };
+      }
+      // Check for an enclosing <li> BEFORE the plain-tag check below — the
+      // leaf element itself may be a <p> nested inside a <li> (Google Docs'
+      // <li><p>...</p></li> pattern), in which case el.tagName is "P", not
+      // "LI", but it should still be classified as a list item.
+      const li = el.closest('li');
+      if (li) {
+        const isOrdered = li.parentElement?.tagName === 'OL';
+        return {
+          blockType: isOrdered ? 'numberedListItem' : 'bulletListItem',
+          segments: splitLatexSegments(text),
+        };
+      }
+      return { blockType: 'paragraph', segments: splitLatexSegments(text) };
+    })
+    .filter((block): block is LineBlock => block !== null);
+}
