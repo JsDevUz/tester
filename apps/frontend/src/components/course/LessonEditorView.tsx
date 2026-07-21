@@ -68,6 +68,12 @@ export function LessonEditorView({
     addBlock,
     addFileBlockFromLibrary,
     addLiveClassBlock,
+    addButtonBlock,
+    addMessageBlock,
+    addMessageLine,
+    updateMessageLine,
+    removeMessageLine,
+    moveMessageLine,
     updateBlock,
     removeBlock,
     moveBlock,
@@ -155,6 +161,18 @@ export function LessonEditorView({
     collapseAllExisting();
     setLiveClassPickerOpen(false);
     void addLiveClassBlock(courseId, moduleId, lessonId, classSessionId);
+  }
+
+  function handlePickButton() {
+    if (contentLimitReached) return;
+    collapseAllExisting();
+    void addButtonBlock(courseId, moduleId, lessonId);
+  }
+
+  function handlePickMessage() {
+    if (contentLimitReached) return;
+    collapseAllExisting();
+    void addMessageBlock(courseId, moduleId, lessonId);
   }
 
   function toggleCollapse(blockId: string) {
@@ -275,6 +293,19 @@ export function LessonEditorView({
                       onChangeLabel={(label) =>
                         handleChangeBlockLabel(block.id, label)
                       }
+                      onChangeButtonProps={(data) =>
+                        void updateBlock(courseId, moduleId, lessonId, block.id, data)
+                      }
+                      onAddMessageLine={() => void addMessageLine(courseId, moduleId, lessonId, block.id)}
+                      onChangeMessageLine={(lineId, text) =>
+                        void updateMessageLine(courseId, moduleId, lessonId, block.id, lineId, text)
+                      }
+                      onRemoveMessageLine={(lineId) =>
+                        void removeMessageLine(courseId, moduleId, lessonId, block.id, lineId)
+                      }
+                      onMoveMessageLine={(lineId, direction) =>
+                        void moveMessageLine(courseId, moduleId, lessonId, block.id, lineId, direction)
+                      }
                       onPickFile={(file) => handleBlockPickFile(block.id, file)}
                       onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
                       onRemove={() =>
@@ -296,6 +327,8 @@ export function LessonEditorView({
                 onPickFile={handlePickFile}
                 onPickFileFromLibrary={handlePickFileFromLibrary}
                 onPickLiveClass={handlePickLiveClass}
+                onPickButton={handlePickButton}
+                onPickMessage={handlePickMessage}
                 disabled={contentLimitReached}
                 limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
               />

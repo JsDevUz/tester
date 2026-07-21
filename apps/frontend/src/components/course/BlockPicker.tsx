@@ -1,6 +1,6 @@
 import { useRef, useState } from 'react';
 import {
-  LayoutGrid, Film, MousePointer2, Paperclip, Radio, type LucideIcon,
+  LayoutGrid, Film, MousePointer2, Paperclip, Radio, MessageSquareText, type LucideIcon,
 } from 'lucide-react';
 import { MediaLibraryModal } from '../MediaLibraryModal';
 
@@ -9,6 +9,8 @@ interface BlockPickerProps {
   onPickFile: (type: 'video' | 'image' | 'file', file: File) => void;
   onPickFileFromLibrary: (url: string, fileName: string) => void;
   onPickLiveClass: () => void;
+  onPickButton: () => void;
+  onPickMessage: () => void;
   disabled?: boolean;
   limitText?: string;
 }
@@ -30,11 +32,12 @@ const BLOCK_ITEMS: BlockItem[] = [
   { key: 'editor', label: 'Tahrirchi', icon: LayoutGrid },
   { key: 'video', label: 'Video', icon: Film },
   { key: 'live_class', label: 'Jonli dars', icon: Radio },
-  { key: 'button', label: 'Tugma', icon: MousePointer2, disabled: true },
+  { key: 'button', label: 'Tugma', icon: MousePointer2 },
+  { key: 'message', label: 'Xabar', icon: MessageSquareText },
   { key: 'file', label: 'Fayl qo\'shish', icon: Paperclip },
 ];
 
-export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, onPickLiveClass, disabled = false, limitText }: BlockPickerProps) {
+export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, onPickLiveClass, onPickButton, onPickMessage, disabled = false, limitText }: BlockPickerProps) {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
   const pendingTypeRef = useRef<'video' | 'image' | 'file'>('file');
   const [libraryOpen, setLibraryOpen] = useState(false);
@@ -64,6 +67,8 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
     else if (item.key === 'video') openFilePicker(item.key);
     else if (item.key === 'file') setLibraryOpen(true);
     else if (item.key === 'live_class') onPickLiveClass();
+    else if (item.key === 'button') onPickButton();
+    else if (item.key === 'message') onPickMessage();
   }
 
   return (
