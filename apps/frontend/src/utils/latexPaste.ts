@@ -96,3 +96,44 @@ export function containsLatex(text: string): boolean {
   INLINE_PATTERN.lastIndex = 0;
   return INLINE_PATTERN.test(text);
 }
+
+const HEADING_PATTERN = /^(#{1,6})\s+(.*)$/;
+const BULLET_PATTERN = /^[-*+]\s+(.*)$/;
+const NUMBERED_PATTERN = /^\d+\.\s+(.*)$/;
+
+export type LineBlock =
+  | { blockType: 'heading'; level: number; segments: LatexSegment[] }
+  | { blockType: 'bulletListItem'; segments: LatexSegment[] }
+  | { blockType: 'numberedListItem'; segments: LatexSegment[] }
+  | { blockType: 'paragraph'; segments: LatexSegment[] };
+
+/**
+ * Splits multi-line text (that may mix markdown structure — headings,
+ * bullet/numbered lists — with $...$/$$...$$ LaTeX formulas on any line)
+ * into one LineBlock per non-empty line, each carrying its own text/formula
+ * segments. Unlike routing the whole paste through either a pure-markdown
+ * parser or a pure-LaTeX inserter, this lets a single paste correctly
+ * preserve BOTH markdown block structure AND inline formulas together —
+ * the two are not mutually exclusive in real pasted content (e.g. a lesson
+ * with headings, lists, and a formula-bearing paragraph in the same paste).
+ */
+export function textToLineBlocks(text: string): LineBlock[] {
+  return text
+    .split('\n')
+    .filter((line) => line.length > 0)
+    .map((line): LineBlock => {
+      const headingMatch = HEADING_PATTERN.exec(line);
+      if (headingMatch) {
+        return { blockType: 'heading', level: headingMatch[1].length, segments: splitLatexSegments(headingMatch[2]) };
+      }
+      const bulletMatch = BULLET_PATTERN.exec(line);
+      if (bulletMatch) {
+        return { blockType: 'bulletListItem', segments: splitLatexSegments(bulletMatch[1]) };
+      }
+      const numberedMatch = NUMBERED_PATTERN.exec(line);
+      if (numberedMatch) {
+        return { blockType: 'numberedListItem', segments: splitLatexSegments(numberedMatch[1]) };
+      }
+      return { blockType: 'paragraph', segments: splitLatexSegments(line) };
+    });
+}

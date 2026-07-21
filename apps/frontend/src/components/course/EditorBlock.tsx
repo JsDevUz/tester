@@ -14,7 +14,7 @@ import katex from 'katex';
 import '@blocknote/mantine/style.css';
 import { apiUploadMedia } from '../../api/questions';
 import { MediaLibraryModal } from '../MediaLibraryModal';
-import { containsLatex, splitLatexSegments } from '../../utils/latexPaste';
+import { containsLatex, textToLineBlocks, type LatexSegment } from '../../utils/latexPaste';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 
@@ -165,21 +165,44 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     const text = event.clipboardData.getData('text/plain');
     if (!text) return;
 
-    if (containsLatex(text)) {
-      // $...$/$$...$$ formulalarni alohida "formula" inline content sifatida
-      // kursor pozitsiyasiga qo'shamiz — BlockNote'ning HTML parseri
-      // KaTeX'ning ichma-ich <span> strukturasini tanimagan teg sifatida
-      // matn ichiga "flatten" qilib yuborgani uchun, HTML orqali emas,
-      // to'g'ridan-to'g'ri content massivi orqali kiritish shart.
-      const content = splitLatexSegments(text).map((segment) =>
-        segment.type === 'text'
-          ? segment.value
-          : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
-      );
-      editor.insertInlineContent(content as never);
-      void handleChange();
-      event.preventDefault();
-      event.stopPropagation();
+    const hasLatex = containsLatex(text);
+    if (hasLatex) {
+      // Matn $...$/$$...$$ formula(lar)ni o'z ichiga olganda, butun matnni
+      // (sarlavha/ro'yxat qatorlari bo'lsa ham) qator-qator o'tib, har bir
+      // qatorni o'z blok turiga (heading/list/paragraph) va formula bilan
+      // aralash inline contentga aylantiramiz — shu bilan bitta paste ham
+      // markdown strukturasini, ham formulalarni birga saqlab qoladi.
+      // (Faqat tryParseMarkdownToBlocks'ga yuborilsa, $...$ ichidagi LaTeX
+      // buyruqlari xom matn bo'lib qolar edi; faqat formula sifatida
+      // kiritilsa esa sarlavha/ro'yxat strukturasi butunlay yo'qolar edi —
+      // ikkalasi ham real dars matnlarida birga uchraydi.)
+      const lineBlocks = textToLineBlocks(text);
+      if (lineBlocks.length === 0) return;
+
+      const toInlineContent = (segments: LatexSegment[]) =>
+        segments.map((segment) =>
+          segment.type === 'text'
+            ? segment.value
+            : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
+        );
+
+      const blocks = lineBlocks.map((line) => {
+        if (line.blockType === 'heading') {
+          return { type: 'heading', props: { level: line.level }, content: toInlineContent(line.segments) };
+        }
+        if (line.blockType === 'bulletListItem') {
+          return { type: 'bulletListItem', content: toInlineContent(line.segments) };
+        }
+        if (line.blockType === 'numberedListItem') {
+          return { type: 'numberedListItem', content: toInlineContent(line.segments) };
+        }
+        return { type: 'paragraph', content: toInlineContent(line.segments) };
+      }) as never;
+
+      if (insertParsedBlocks(blocks)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
       return;
     }
 

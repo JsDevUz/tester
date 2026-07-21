@@ -2,7 +2,7 @@
 import { describe, expect, it } from 'vitest';
 import { BlockNoteSchema, BlockNoteEditor, defaultBlockSpecs, defaultInlineContentSpecs, createInlineContentSpec } from '@blocknote/core';
 import katex from 'katex';
-import { splitLatexSegments } from './latexPaste';
+import { textToLineBlocks, type LatexSegment } from './latexPaste';
 
 // Mirrors the formula inline-content spec defined in EditorBlock.tsx, so this
 // test exercises the exact same paste -> insert -> export -> re-parse path
@@ -41,13 +41,34 @@ const schema = BlockNoteSchema.create({
   inlineContentSpecs: { ...defaultInlineContentSpecs, formula },
 });
 
+// Mirrors EditorBlock.tsx's handlePaste LaTeX branch exactly: splits the
+// pasted text line by line, classifies each line's block type (heading /
+// list / paragraph), and converts each line's text/formula segments into
+// BlockNote inline content — so a single paste can carry both markdown
+// structure and inline formulas together.
 function pasteText(editor: BlockNoteEditor<any, any, any>, text: string) {
-  const content = splitLatexSegments(text).map((segment) =>
-    segment.type === 'text'
-      ? segment.value
-      : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
-  );
-  editor.insertInlineContent(content as never);
+  const toInlineContent = (segments: LatexSegment[]) =>
+    segments.map((segment) =>
+      segment.type === 'text'
+        ? segment.value
+        : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
+    );
+
+  const blocks = textToLineBlocks(text).map((line) => {
+    if (line.blockType === 'heading') {
+      return { type: 'heading', props: { level: line.level }, content: toInlineContent(line.segments) };
+    }
+    if (line.blockType === 'bulletListItem') {
+      return { type: 'bulletListItem', content: toInlineContent(line.segments) };
+    }
+    if (line.blockType === 'numberedListItem') {
+      return { type: 'numberedListItem', content: toInlineContent(line.segments) };
+    }
+    return { type: 'paragraph', content: toInlineContent(line.segments) };
+  }) as never;
+
+  const currentBlock = editor.document[0];
+  editor.replaceBlocks([currentBlock.id], blocks);
 }
 
 describe('LaTeX paste survives the full BlockNote round-trip', () => {
@@ -106,6 +127,40 @@ describe('LaTeX paste survives the full BlockNote round-trip', () => {
     expect(() => pasteText(editor, 'broken: $\\frac{1$ end')).not.toThrow();
     const html = await editor.blocksToFullHTML(editor.document);
     expect(html).toContain('katex-error');
+  });
+
+  it('regression: the exact reported lesson excerpt (headings + numbered list + formulas mixed) preserves all block structure', async () => {
+    // This is the exact bug report: a multi-line lesson excerpt with
+    // headings, a numbered list, and several inline $...$ formulas pasted
+    // as plain text collapsed into ONE flat paragraph — because the old
+    // code routed the ENTIRE paste through the LaTeX-only branch the
+    // moment any $ formula was found anywhere in the text, ignoring all
+    // markdown structure. textToLineBlocks must classify each line
+    // independently so headings/lists survive alongside the formulas.
+    const editor = BlockNoteEditor.create({ schema });
+    const reported = [
+      "7-dars: Buyruq fe'li (الأمر — Amr) qanday yasaladi?",
+      "Kitobimizning 14-sahifasida buyruq fe'li haqida juda chiroyli va sodda qoida berilgan:",
+      "Keling, buni $\\text{تَنْصُرُ}$ (Tansuru — sen yordam berasan) fe'lida bosqichma-bosqich ko'rib chiqamiz:",
+      "1. 1-bosqich: Muxotab shaklini olamiz: $\\text{تَنْصُرُ}$ (Tansuru).",
+      "2. 2-bosqich: Boshidagi ت harfini olib tashlaymiz: $\\text{نْصُرُ}$ qoladi.",
+      "Hamzai vaslning harakati qanday aniqlanadi?",
+      "Masalan: $\\text{تَنْصُرُ} \\rightarrow \\text{أُنْصُرْ}$ (Unsur).",
+    ].join('\n');
+
+    pasteText(editor, reported);
+    const html = await editor.blocksToFullHTML(editor.document);
+
+    // Structure must survive: at least the two numbered-list lines stay
+    // numberedListItem blocks, not collapsed into the surrounding text.
+    expect(html).toContain('data-content-type="numberedListItem"');
+    // At least two separate top-level blocks (not one merged paragraph).
+    const blockCount = (html.match(/data-node-type="blockOuter"/g) || []).length;
+    expect(blockCount).toBe(7);
+    // Formulas render as KaTeX glyphs (visible output), not left as raw
+    // \text{}/\rightarrow source text sitting outside any katex markup.
+    expect(html).toContain('class="katex"');
+    expect(html).toContain('<span class="mord">تَنْصُرُ</span>');
   });
 
   it('regression: pasting rich external HTML (headings/lists/bold) still parses into distinct blocks, not one flattened paragraph', async () => {

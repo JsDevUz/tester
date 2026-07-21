@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { containsLatex, splitLatexSegments } from './latexPaste';
+import { containsLatex, splitLatexSegments, textToLineBlocks } from './latexPaste';
 
 describe('containsLatex', () => {
   it('returns false for plain text with no $ signs', () => {
@@ -62,5 +62,81 @@ describe('splitLatexSegments', () => {
       { type: 'text', value: 'Cost is $5 but formula is ' },
       { type: 'formula', latex: 'x', display: false },
     ]);
+  });
+});
+
+describe('textToLineBlocks', () => {
+  it('classifies a heading line and strips the # prefix', () => {
+    const blocks = textToLineBlocks('# Heading text');
+    expect(blocks).toEqual([
+      { blockType: 'heading', level: 1, segments: [{ type: 'text', value: 'Heading text' }] },
+    ]);
+  });
+
+  it('classifies a level-2 heading', () => {
+    const blocks = textToLineBlocks('## Sub heading');
+    expect(blocks).toEqual([
+      { blockType: 'heading', level: 2, segments: [{ type: 'text', value: 'Sub heading' }] },
+    ]);
+  });
+
+  it('classifies a bullet list line and strips the marker', () => {
+    const blocks = textToLineBlocks('- bullet item');
+    expect(blocks).toEqual([
+      { blockType: 'bulletListItem', segments: [{ type: 'text', value: 'bullet item' }] },
+    ]);
+  });
+
+  it('classifies a numbered list line and strips the marker', () => {
+    const blocks = textToLineBlocks('1. first step');
+    expect(blocks).toEqual([
+      { blockType: 'numberedListItem', segments: [{ type: 'text', value: 'first step' }] },
+    ]);
+  });
+
+  it('classifies a plain line as a paragraph', () => {
+    const blocks = textToLineBlocks('just plain text');
+    expect(blocks).toEqual([
+      { blockType: 'paragraph', segments: [{ type: 'text', value: 'just plain text' }] },
+    ]);
+  });
+
+  it('drops empty lines', () => {
+    const blocks = textToLineBlocks('first\n\nsecond');
+    expect(blocks).toEqual([
+      { blockType: 'paragraph', segments: [{ type: 'text', value: 'first' }] },
+      { blockType: 'paragraph', segments: [{ type: 'text', value: 'second' }] },
+    ]);
+  });
+
+  it('preserves a formula inside a heading line', () => {
+    const blocks = textToLineBlocks('# Title with $\\text{a}$ formula');
+    expect(blocks).toEqual([
+      {
+        blockType: 'heading',
+        level: 1,
+        segments: [
+          { type: 'text', value: 'Title with ' },
+          { type: 'formula', latex: '\\text{a}', display: false },
+          { type: 'text', value: ' formula' },
+        ],
+      },
+    ]);
+  });
+
+  it('handles the realistic mixed lesson excerpt end to end (headings + list + formulas)', () => {
+    const sample = [
+      "# 7-dars: Buyruq fe'li qanday yasaladi?",
+      "Kitobimizning 14-sahifasida buyruq fe'li haqida.",
+      "1. 1-bosqich: Muxotab shaklini olamiz: $\\text{a}$.",
+      "## Ikkinchi savol",
+    ].join('\n');
+    const blocks = textToLineBlocks(sample);
+    expect(blocks).toHaveLength(4);
+    expect(blocks[0]).toMatchObject({ blockType: 'heading', level: 1 });
+    expect(blocks[1]).toMatchObject({ blockType: 'paragraph' });
+    expect(blocks[2]).toMatchObject({ blockType: 'numberedListItem' });
+    expect((blocks[2] as { segments: unknown[] }).segments).toContainEqual({ type: 'formula', latex: '\\text{a}', display: false });
+    expect(blocks[3]).toMatchObject({ blockType: 'heading', level: 2 });
   });
 });
