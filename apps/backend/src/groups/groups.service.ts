@@ -1,6 +1,6 @@
 import { BadRequestException, ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, modules, monthlyPayments, pricingPlans, schoolMembers, schools, users } from '../db/schema';
+import { contentBlocks, courses, groups, groupEnrollments, lessonCompletions, lessons, messageBlockLines, modules, monthlyPayments, pricingPlans, schoolMembers, schools, users } from '../db/schema';
 import { and, asc, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { randomUUID } from 'crypto';
 import { StudentAccessService } from '../payments/student-access.service';
@@ -349,7 +349,9 @@ export class GroupsService {
             starsMax += lesson.completionScore;
             if (completion) starsEarned += lesson.completionScore;
           }
-          const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, studentId);
+          const studentPracticeBlocks = lesson.practiceEnabled
+            ? await this.practiceBlocksService.findForStudent(lesson.id, studentId)
+            : [];
           for (const block of studentPracticeBlocks) {
             starsMax += block.maxScore ?? 0;
             starsEarned += block.earnedScore ?? 0;
@@ -419,7 +421,9 @@ export class GroupsService {
         });
         if (completion) lessonsCompleted += 1;
         if (lesson.completionScore !== null && completion) starsEarned += lesson.completionScore;
-        const practice = await this.practiceBlocksService.findForStudent(lesson.id, memberStudentId);
+        const practice = lesson.practiceEnabled
+          ? await this.practiceBlocksService.findForStudent(lesson.id, memberStudentId)
+          : [];
         starsEarned += practice.reduce((total, block) => total + (block.earnedScore ?? 0), 0);
       }
       const member = members.get(memberStudentId)!;
@@ -467,6 +471,22 @@ export class GroupsService {
     const curatorName =
       curatorEnrollment?.schoolMember.student.displayName ?? null;
 
+    // "Xabar" (message) bloklarining yuboruvchisi: kurator biriktirilgan
+    // bo'lsa kurator, aks holda kursning ustozi (course.adminId) —
+    // practice-messenger.service.ts'dagi resolveGroupAndCurator bilan bir
+    // xil qoida (curator?.schoolMember?.studentId ?? course.adminId), bu
+    // yerda mustaqil hisoblanadi chunki bu o'qish yo'li amaliyot-chat
+    // ma'lumot modeliga bog'liq emas.
+    const messageSender = curatorEnrollment
+      ? {
+          name: curatorEnrollment.schoolMember.student.displayName,
+          avatarUrl: curatorEnrollment.schoolMember.student.displayAvatarUrl,
+        }
+      : await (async () => {
+          const teacher = await db.query.users.findFirst({ where: eq(users.id, course.adminId) });
+          return { name: teacher?.displayName ?? 'Ustoz', avatarUrl: teacher?.displayAvatarUrl ?? null };
+        })();
+
     const courseModules = await db.query.modules.findMany({
       where: eq(modules.courseId, courseId),
       orderBy: [asc(modules.orderIndex), asc(modules.createdAt)],
@@ -485,7 +505,16 @@ export class GroupsService {
               where: eq(contentBlocks.lessonId, lesson.id),
               orderBy: [asc(contentBlocks.orderIndex), asc(contentBlocks.createdAt)],
             });
-            const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, studentId);
+            const messageBlockIds = blocks.filter((b) => b.type === 'message').map((b) => b.id);
+            const allMessageLines = messageBlockIds.length
+              ? await db.query.messageBlockLines.findMany({
+                  where: inArray(messageBlockLines.contentBlockId, messageBlockIds),
+                  orderBy: [asc(messageBlockLines.orderIndex)],
+                })
+              : [];
+            const studentPracticeBlocks = lesson.practiceEnabled
+              ? await this.practiceBlocksService.findForStudent(lesson.id, studentId)
+              : [];
             const combinedPracticePercent = computeTestPracticePercent(studentPracticeBlocks);
             const completion = await db.query.lessonCompletions.findFirst({
               where: and(eq(lessonCompletions.lessonId, lesson.id), eq(lessonCompletions.studentId, studentId)),
@@ -520,6 +549,18 @@ export class GroupsService {
                 // live_class blokini o'quvchi replay sahifasiga ochishi
                 // uchun session ID response'da bo'lishi shart.
                 classSessionId: block.classSessionId,
+                buttonUrl: block.buttonUrl,
+                buttonColor: block.buttonColor,
+                buttonTextColor: block.buttonTextColor,
+                openInNewTab: block.openInNewTab,
+                ...(block.type === 'message'
+                  ? {
+                      messageLines: allMessageLines
+                        .filter((line) => line.contentBlockId === block.id)
+                        .map((line) => ({ id: line.id, text: line.text, orderIndex: line.orderIndex })),
+                      messageSender,
+                    }
+                  : {}),
               })),
               practiceBlocks: studentPracticeBlocks,
               passThresholdEnabled: lesson.passThresholdEnabled,
