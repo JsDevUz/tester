@@ -271,6 +271,15 @@ function isPersistedFileBlock(block: ContentBlock | undefined): boolean {
   return block?.type === 'file' && block.processingStatus !== 'uploading' && Boolean(block.previewUrl);
 }
 
+function isAlwaysPersistedBlock(block: ContentBlock | undefined): boolean {
+  return (
+    block?.type === 'editor' ||
+    block?.type === 'live_class' ||
+    block?.type === 'image' ||
+    block?.type === 'button'
+  );
+}
+
 export const useCourseStore = create<CourseState>((set, get) => ({
   courses: [],
   coursesLoading: false,
@@ -305,7 +314,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                   orderIndex: l.orderIndex,
                   status: l.status,
                   blocks,
-                  practiceEnabled: practiceBlockRows.length > 0,
+                  practiceEnabled: l.practiceEnabled,
                   practiceBlocks,
                   passThresholdEnabled: l.passThresholdEnabled,
                   passThresholdPercent: l.passThresholdPercent,
@@ -444,7 +453,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       orderIndex: row.orderIndex,
       status: row.status,
       blocks: [],
-      practiceEnabled: false,
+      practiceEnabled: row.practiceEnabled,
       practiceBlocks: [],
       passThresholdEnabled: false,
       passThresholdPercent: null,
@@ -988,11 +997,15 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
 
-    if (block?.type === 'editor' || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
+    if (isAlwaysPersistedBlock(block) || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
       const editableData = {
         html: data.html,
         label: data.label,
         embedUrl: data.embedUrl,
+        buttonUrl: data.buttonUrl,
+        buttonColor: data.buttonColor,
+        buttonTextColor: data.buttonTextColor,
+        openInNewTab: data.openInNewTab,
       };
       const fields = Object.entries(editableData)
         .filter(([, value]) => value !== undefined)
@@ -1012,7 +1025,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     const lesson = module?.lessons.find((l) => l.id === lessonId);
     const block = lesson?.blocks.find((b) => b.id === blockId);
 
-    if (block?.type === 'editor' || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
+    if (isAlwaysPersistedBlock(block) || isPersistedVideoBlock(block) || isPersistedFileBlock(block)) {
       await apiDeleteBlock(blockId);
     }
 
@@ -1052,7 +1065,7 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
 
     const persistedBlockIds = reordered
-      .filter((b) => b.type === 'editor' || isPersistedVideoBlock(b) || isPersistedFileBlock(b))
+      .filter((b) => isAlwaysPersistedBlock(b) || isPersistedVideoBlock(b) || isPersistedFileBlock(b))
       .map((b) => b.id);
     if (persistedBlockIds.length > 0) {
       await apiReorderBlocks(lessonId, persistedBlockIds);
@@ -1160,6 +1173,9 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+    persistLatest(`lesson:${lessonId}:practiceEnabled`, () =>
+      apiUpdateLesson(lessonId, { practiceEnabled: enabled }),
+    );
   },
   addPracticeBlock: async (courseId, moduleId, lessonId, type = 'test') => {
     const course = get().courses.find((c) => c.id === courseId);
