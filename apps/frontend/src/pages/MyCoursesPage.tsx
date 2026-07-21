@@ -437,8 +437,14 @@ function StudentCourseReader({
     apiGetMyCourseDetail(courseId)
       .then((data) => {
         setCourse(data);
-        const firstLesson = data.modules.flatMap((m) => m.lessons)[0];
-        setSelectedLessonId(firstLesson?.id ?? null);
+        const allLessons = data.modules.flatMap((m) => m.lessons);
+        let resumeIndex = 0;
+        for (let i = 0; i < allLessons.length - 1; i++) {
+          if (!allLessons[i].completed) break;
+          resumeIndex = i + 1;
+        }
+        const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
+        setSelectedLessonId(resumeLesson?.id ?? null);
       })
       .catch((err) => {
         setCourse(null);
@@ -954,7 +960,7 @@ function LessonReader({
   );
 
   return (
-    <article className="mx-auto w-full max-w-3xl overflow-hidden pb-12 text-gray-900">
+    <article className="mx-auto w-full max-w-full overflow-hidden pb-12 text-gray-900">
       <div className="-mx-4 mb-4 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:-mx-6 sm:mb-6 sm:px-6 lg:sticky lg:top-0 lg:z-10 lg:-mx-10 lg:px-10">
         <div className="min-w-0">
           <p className="truncate text-[11px] font-semibold text-gray-400 sm:text-xs">
@@ -1022,7 +1028,11 @@ function LessonReader({
             else void onNext();
           }}
           disabled={!hasPractice && blockedByThreshold}
-          className="rounded-xl bg-[var(--color-indigo-500)] px-3.5 py-2.5 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200 sm:px-4"
+          className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${
+            !hasPractice && blockedByThreshold
+              ? 'cursor-not-allowed bg-gray-200 text-gray-400'
+              : 'bg-[var(--color-indigo-500)]'
+          }`}
         >
           {hasPractice
             ? "Amaliyot"
