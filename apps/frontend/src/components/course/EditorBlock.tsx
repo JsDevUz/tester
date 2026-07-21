@@ -13,6 +13,7 @@ import { FolderOpen } from 'lucide-react';
 import '@blocknote/mantine/style.css';
 import { apiUploadMedia } from '../../api/questions';
 import { MediaLibraryModal } from '../MediaLibraryModal';
+import { containsLatex, convertLatexToHtml } from '../../utils/latexPaste';
 
 const BACKEND = import.meta.env.VITE_API_URL?.replace('/api/v1', '') ?? 'http://localhost:3001';
 
@@ -95,15 +96,8 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     }, DEBOUNCE_MS);
   }
 
-  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
-    const markdown = event.clipboardData.getData('text/plain');
-    if (!markdown || !looksLikeMarkdown(markdown)) return;
-
-    const blocks = editor.tryParseMarkdownToBlocks(markdown);
-    if (blocks.length === 0) return;
-
-    event.preventDefault();
-    event.stopPropagation();
+  function insertParsedBlocks(blocks: Awaited<ReturnType<typeof editor.tryParseMarkdownToBlocks>>) {
+    if (blocks.length === 0) return false;
 
     const currentBlock = editor.getTextCursorPosition().block;
     const isEmptyParagraph =
@@ -120,6 +114,30 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
     }
 
     void handleChange();
+    return true;
+  }
+
+  async function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
+    const text = event.clipboardData.getData('text/plain');
+    if (!text) return;
+
+    if (containsLatex(text)) {
+      const html = convertLatexToHtml(text);
+      const blocks = await editor.tryParseHTMLToBlocks(html);
+      if (insertParsedBlocks(blocks)) {
+        event.preventDefault();
+        event.stopPropagation();
+      }
+      return;
+    }
+
+    if (!looksLikeMarkdown(text)) return;
+
+    const blocks = editor.tryParseMarkdownToBlocks(text);
+    if (insertParsedBlocks(blocks)) {
+      event.preventDefault();
+      event.stopPropagation();
+    }
   }
 
   function handleLibrarySelect(url: string) {
@@ -140,7 +158,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   return (
     <div
       className="course-editor rounded-2xl bg-white py-2"
-      onPasteCapture={handlePaste}
+      onPasteCapture={(event) => void handlePaste(event)}
     >
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" slashMenu={false}>
         <SuggestionMenuController
