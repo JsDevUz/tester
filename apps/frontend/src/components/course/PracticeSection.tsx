@@ -151,7 +151,13 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
             </div>
             <button
               type="button"
-              onClick={() => setPassThreshold(courseId, moduleId, lessonId, { enabled: !lesson.passThresholdEnabled })}
+              onClick={() => {
+                const nextEnabled = !lesson.passThresholdEnabled;
+                setPassThreshold(courseId, moduleId, lessonId, {
+                  enabled: nextEnabled,
+                  percent: nextEnabled && lesson.passThresholdPercent == null ? 70 : lesson.passThresholdPercent,
+                });
+              }}
               className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
                 lesson.passThresholdEnabled ? 'bg-gray-900' : 'bg-gray-200'
               }`}

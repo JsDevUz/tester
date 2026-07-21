@@ -12,6 +12,7 @@ class CreateLessonDto {
 class UpdateLessonDto {
   @IsOptional() @IsString() @MinLength(1) title?: string;
   @IsOptional() @IsIn(['draft', 'published']) status?: string;
+  @IsOptional() @IsBoolean() practiceEnabled?: boolean;
   @IsOptional() @IsBoolean() passThresholdEnabled?: boolean;
   @IsOptional() @IsInt() @Min(0) @Max(100) passThresholdPercent?: number | null;
   @IsOptional() @IsInt() @Min(0) completionScore?: number | null;

@@ -41,6 +41,7 @@ export class LessonsService {
     data: {
       title?: string;
       status?: string;
+      practiceEnabled?: boolean;
       passThresholdEnabled?: boolean;
       passThresholdPercent?: number | null;
       completionScore?: number | null;

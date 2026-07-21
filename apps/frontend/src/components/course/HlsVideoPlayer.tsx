@@ -287,7 +287,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   }, [watermark, watermarkText]);
 
   const toggleFullscreen = async () => {
-    const wrapper = wrapperRef.current as (HTMLDivElement & { webkitRequestFullscreen?: () => Promise<void> | void }) | null;
+    const wrapper = wrapperRef.current as (HTMLDivElement & {
+      requestFullscreen?: () => Promise<void>;
+      webkitRequestFullscreen?: () => Promise<void> | void;
+    }) | null;
     const video = videoRef.current as (HTMLVideoElement & {
       webkitEnterFullscreen?: () => void;
       webkitExitFullscreen?: () => void;
@@ -311,6 +314,14 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
+      // Android WebView supports element fullscreen. Because the watermark is
+      // a child of the wrapper, it remains visible in the native fullscreen
+      // surface instead of being trapped in the page flow.
+      if (wrapper?.requestFullscreen) {
+        await wrapper.requestFullscreen();
+        return;
+      }
+
       // Element.requestFullscreen() ataylab ishlatilmaydi: iOS Safari'da
       // div-level fullscreen ishonchsiz (kichik letterbox holatda render
       // qiladi yoki videoni native fullscreen controls'ga almashtirib
@@ -324,13 +335,18 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     }
   };
 
+  useEffect(() => {
+    document.body.style.overflow = isFullscreen ? 'hidden' : '';
+    return () => { document.body.style.overflow = ''; };
+  }, [isFullscreen]);
+
   return (
     <>
     <div
       ref={wrapperRef}
       className={`relative isolate bg-black ${
         isFullscreen
-          ? 'fixed inset-0 z-[9999] flex items-center justify-center rounded-none'
+          ? 'fixed inset-0 z-[99999] flex h-[100dvh] w-screen items-center justify-center rounded-none'
           : 'rounded-2xl'
       }`}
       onContextMenu={(e) => e.preventDefault()}

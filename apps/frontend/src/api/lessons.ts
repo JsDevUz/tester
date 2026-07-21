@@ -6,6 +6,7 @@ export interface ApiLesson {
   title: string;
   orderIndex: number;
   status: 'draft' | 'published';
+  practiceEnabled: boolean;
   passThresholdEnabled: boolean;
   passThresholdPercent: number | null;
   completionScore: number | null;
@@ -27,6 +28,7 @@ export async function apiUpdateLesson(
   data: {
     title?: string;
     status?: string;
+    practiceEnabled?: boolean;
     passThresholdEnabled?: boolean;
     passThresholdPercent?: number | null;
     completionScore?: number | null;

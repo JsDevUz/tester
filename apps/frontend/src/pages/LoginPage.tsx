@@ -78,8 +78,9 @@ export function LoginPage() {
     try {
       await login(phone, password);
       navigate(redirectTo);
-    } catch {
-      toast.error("Telefon yoki parol noto'g'ri");
+    } catch (err: any) {
+      const serverMessage = err?.response?.data?.message;
+      toast.error(serverMessage ?? "Telefon yoki parol noto'g'ri");
     } finally {
       setLoading(false);
     }

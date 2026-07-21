@@ -228,7 +228,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
                           onClick={() => onStartPractice(block)}
                           className="w-full rounded-xl bg-[var(--color-indigo-500)] py-2.5 text-xs font-bold text-white"
                         >
-                          Qayta o'tish
+                          {block.submissions.length > 0 ? "Qayta o'tish" : "Amaliyotni boshlash"}
                         </button>
                         {block.attemptsRemaining !== null && (
                           <p className="mt-1.5 text-center text-[11px] text-gray-400">
@@ -267,8 +267,12 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
           <button
             type="button"
             onClick={onNext}
-              disabled={!canComplete}
-            className="rounded-lg bg-[var(--color-indigo-500)] px-3 py-2 text-xs font-bold text-white disabled:cursor-not-allowed disabled:bg-gray-200"
+            disabled={!canComplete}
+            className={`rounded-lg px-3 py-2 text-xs font-bold text-white ${
+              canComplete
+                ? 'bg-[var(--color-indigo-500)]'
+                : 'cursor-not-allowed bg-gray-200 text-gray-400'
+            }`}
           >
             Keyingi darsga o'tish
           </button>

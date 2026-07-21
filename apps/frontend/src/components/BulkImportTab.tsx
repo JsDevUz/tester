@@ -5,47 +5,75 @@ interface Props {
   onImport: (text: string) => Promise<number>;
   bulkText?: string;
 }
+//fix this
+const SAMPLE_BULK_TEXT = `FORMAT:
 
-const SAMPLE_BULK_TEXT = `# Yagona tanlov savoli
+1. Oddiy test (Single Choice)
+# Savol matni
 + To'g'ri javob
-- Noto'g'ri variant
-- Noto'g'ri variant
+- Noto'g'ri javob
+- Noto'g'ri javob
+- Noto'g'ri javob
 
-# Ko'p tanlov (bir nechta + bo'lsa multi bo'ladi)
-+ To'g'ri variant 1
-+ To'g'ri variant 2
-- Noto'g'ri variant
+2. Ko'p javobli test (Multiple Choice)
+# Savol matni
++ To'g'ri javob
++ To'g'ri javob
+- Noto'g'ri javob
+- Noto'g'ri javob
 
-# Ochiq javob — faqat AI tekshiradi
-@ O'zbekiston poytaxti
+3. Ochiq savol
+# Savol matni
 
-#~ Ochiq javob — aniq variantlar + AI fallback
-+ toshkent
-+ Toshkent shahri
-@ O'zbekiston poytaxti
+4. AI tekshiradigan ochiq savol
+#~ Savol matni
++ To'g'ri javobning varianti
++ Yana bir variant
+@ AI uchun qisqa baholash yo'riqnomasi (30 belgigacha)
 
-#? To'g'ri/Noto'g'ri — to'g'ri javob "To'g'ri":
+5. True / False (javob To'g'ri)
+#? Savol matni
 
-#?f To'g'ri/Noto'g'ri — to'g'ri javob "Noto'g'ri":
+6. True / False (javob Noto'g'ri)
+#?f Savol matni
 
-# Gap tuzish (> to'g'ri tartib, ~ chalg'ituvchi):
-> Men
-> maktabga
-> boraman
-~ emas
+7. Tartiblash (Arrange)
+# Savol matni
+> 1-qadam
+> 2-qadam
+> 3-qadam
+> 4-qadam
 
-#> Tartibga solish (> elementlar, aralashtiriladi):
+8. Reorder
+#> Savol matni
 > Birinchi
 > Ikkinchi
 > Uchinchi
 
-#= Bo'sh joy to'ldirish:
-= to'g'ri javob
+9. Matching
+#| Savol matni
+| Chap :: O'ng
+| HTML :: Web
+| CSS :: Style
+| JS :: Logic
 
-#| Moslashtirish (| chap :: o'ng):
-| Ingliz tili :: English
-| Rus tili :: Russian
-| Fransuz tili :: French`;
+10. Fill Blank
+#= Savol matni
+= To'g'ri javob
+
+QOIDALAR
+
+- Har bir savol bo'sh qator bilan ajratiladi.
+- '+' faqat to'g'ri javob.
+- '-' noto'g'ri javob.
+- Single testda faqat 1 ta '+'.
+- Multi testda 2 yoki undan ko'p '+'.
+- Arrange va Reorder faqat '>' ishlatadi.
+- Matching faqat '| chap :: o'ng'.
+- FillBlank '= javob'.
+- AI Open '#~' ishlatadi.
+- Hech qanday markdown (\`\`\`) ishlatma.
+- Faqat Bulk Import matnini qaytar.`;
 
 export function BulkImportTab({ onImport, bulkText = "" }: Props) {
   const [text, setText] = useState("");

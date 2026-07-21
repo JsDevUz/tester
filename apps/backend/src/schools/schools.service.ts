@@ -352,7 +352,9 @@ export class SchoolsService {
             starsMax += lesson.completionScore;
             if (completion) starsEarned += lesson.completionScore;
           }
-          const studentPracticeBlocks = await this.practiceBlocksService.findForStudent(lesson.id, m.studentId);
+          const studentPracticeBlocks = lesson.practiceEnabled
+            ? await this.practiceBlocksService.findForStudent(lesson.id, m.studentId)
+            : [];
           for (const block of studentPracticeBlocks) {
             starsMax += block.maxScore ?? 0;
             starsEarned += block.earnedScore ?? 0;
