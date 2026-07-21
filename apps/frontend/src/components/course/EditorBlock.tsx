@@ -34,7 +34,8 @@ function renderFormulaSpan(latex: string, display: boolean) {
 // Paste orqali kiritilgan $...$/$$...$$ LaTeX formulalarini KaTeX bilan
 // render qiladigan inline content turi. Tashqi HTML eksportida ham xuddi
 // shu KaTeX HTML saqlanadi (toExternalHTML), shu HTML qayta yuklanganda
-// data-latex atributi orqali formula sifatida tanib olinadi (parse).
+// esa rasmiy data-inline-content-type="formula" atributi orqali formula
+// sifatida avtomatik tanib olinadi (pastdagi izohga qarang).
 const formula = createInlineContentSpec(
   {
     type: 'formula',
@@ -45,11 +46,15 @@ const formula = createInlineContentSpec(
     },
   },
   {
-    parse: (el) => {
-      const latex = el.getAttribute('data-latex');
-      if (latex === null) return undefined;
-      return { latex, display: el.getAttribute('data-display') === 'true' };
-    },
+    // "parse" ataylab berilmagan: BlockNote bu funksiya mavjud bo'lganda
+    // ProseMirror'ga tag: "*" (HAR BIR HTML elementi) qoidasini qo'shadi
+    // (getInlineContentParseRules, @blocknote/core), bu esa paste
+    // qilinayotgan har qanday HTML'ning (sarlavha, ro'yxat, bold va h.k.)
+    // umumiy parslanishiga xalaqit berib, hammasini bitta tekis
+    // paragrafga aylantirib qo'yadi. Formula HTML'i faqat rasmiy
+    // data-inline-content-type="formula" selektori orqali (parse
+    // berilmasa ham avtomatik qo'shiladigan qoida) tanilishi yetarli —
+    // buni EditorBlock yuklanganda tryParseHTMLToBlocks orqali o'qiladi.
     render: (ic) => ({ dom: renderFormulaSpan(ic.props.latex, ic.props.display) }),
     toExternalHTML: (ic) => ({ dom: renderFormulaSpan(ic.props.latex, ic.props.display) }),
   },
