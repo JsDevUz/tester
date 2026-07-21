@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type ClipboardEvent } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { BlockNoteSchema, defaultBlockSpecs, defaultInlineContentSpecs, createInlineContentSpec } from '@blocknote/core';
 import { BlockNoteView } from '@blocknote/mantine';
 import {
@@ -82,14 +82,9 @@ async function uploadFile(file: File) {
 
 const DEBOUNCE_MS = 1500;
 
-function looksLikeMarkdown(text: string) {
-  return /(^|\n)\s*(#{1,6}\s|[-*+]\s|\d+\.\s|>\s|```|\|.+\|\s*$|---\s*$)/m.test(text);
-}
-
 // Notion-uslubidagi block editor: "/" bilan komanda menyusi, drag-drop,
 // formatlash toolbar, jadval/ro'yxat/kod va h.k. — BlockNote orqali.
 export function EditorBlock({ html, onChange }: EditorBlockProps) {
-  const editor = useCreateBlockNote({ schema, uploadFile });
   const [ready, setReady] = useState(false);
   const [libraryOpen, setLibraryOpen] = useState(false);
   const initialHtmlRef = useRef(html);
@@ -97,6 +92,76 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   onChangeRef.current = onChange;
   const debounceTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pendingHtmlRef = useRef<string | null>(null);
+  // handleChange'ni pasteHandler yopilishi (closure) ichidan chaqirish
+  // uchun ref orqali beramiz — useCreateBlockNote chaqirilganda handleChange
+  // hali e'lon qilinmagan bo'ladi, lekin pasteHandler faqat keyinroq,
+  // haqiqiy paste vaqtida ishga tushadi.
+  const handleChangeRef = useRef<() => void>(() => {});
+
+  const editor = useCreateBlockNote({
+    schema,
+    uploadFile,
+    // ProseMirror darajasidagi rasmiy paste hook'i — React'ning
+    // onPasteCapture'idan farqli, bu BlockNote'ning o'z ichki
+    // handleDOMEvents.paste bilan BIR XIL yo'lda, bitta manbadan
+    // ishlaydi, shuning uchun ikkovi orasida musobaqa (race) bo'lmaydi.
+    // (onPasteCapture — React sintetik event, alohida DOM darajasida
+    // ishlaganda BlockNote'ning o'z native paste listeneri undan
+    // qat'i nazar ishga tushishi mumkin edi — aynan shu sabab
+    // formatlash/LaTeX paste ba'zan e'tiborsiz qolib, standart
+    // BlockNote paste yo'liga (pasteMarkdown) tushib ketgan.)
+    pasteHandler: ({ event, editor: pasteEditor, defaultPasteHandler }) => {
+      const text = event.clipboardData?.getData('text/plain');
+      if (!text || !containsLatex(text)) {
+        return defaultPasteHandler();
+      }
+
+      // Matn $...$/$$...$$ formula(lar)ni o'z ichiga olganda, butun matnni
+      // (sarlavha/ro'yxat qatorlari bo'lsa ham) qator-qator o'tib, har bir
+      // qatorni o'z blok turiga (heading/list/paragraph) va formula bilan
+      // aralash inline contentga aylantiramiz — shu bilan bitta paste ham
+      // markdown strukturasini, ham formulalarni birga saqlab qoladi.
+      const lineBlocks = textToLineBlocks(text);
+      if (lineBlocks.length === 0) return defaultPasteHandler();
+
+      const toInlineContent = (segments: LatexSegment[]) =>
+        segments.map((segment) =>
+          segment.type === 'text'
+            ? segment.value
+            : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
+        );
+
+      const blocks = lineBlocks.map((line) => {
+        if (line.blockType === 'heading') {
+          return { type: 'heading', props: { level: line.level }, content: toInlineContent(line.segments) };
+        }
+        if (line.blockType === 'bulletListItem') {
+          return { type: 'bulletListItem', content: toInlineContent(line.segments) };
+        }
+        if (line.blockType === 'numberedListItem') {
+          return { type: 'numberedListItem', content: toInlineContent(line.segments) };
+        }
+        return { type: 'paragraph', content: toInlineContent(line.segments) };
+      }) as never;
+
+      const currentBlock = pasteEditor.getTextCursorPosition().block;
+      const isEmptyParagraph =
+        currentBlock.type === 'paragraph' &&
+        Array.isArray(currentBlock.content) &&
+        currentBlock.content.length === 0;
+
+      if (pasteEditor.document.length === 1 && isEmptyParagraph) {
+        pasteEditor.replaceBlocks(pasteEditor.document, blocks);
+      } else if (isEmptyParagraph) {
+        pasteEditor.replaceBlocks([currentBlock.id], blocks);
+      } else {
+        pasteEditor.insertBlocks(blocks, currentBlock.id, 'after');
+      }
+
+      handleChangeRef.current();
+      return true;
+    },
+  });
 
   // Boshlang'ich HTML'ni bir marta BlockNote bloklariga aylantiramiz.
   useEffect(() => {
@@ -139,81 +204,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
       debounceTimerRef.current = null;
     }, DEBOUNCE_MS);
   }
-
-  function insertParsedBlocks(blocks: Awaited<ReturnType<typeof editor.tryParseMarkdownToBlocks>>) {
-    if (blocks.length === 0) return false;
-
-    const currentBlock = editor.getTextCursorPosition().block;
-    const isEmptyParagraph =
-      currentBlock.type === 'paragraph' &&
-      Array.isArray(currentBlock.content) &&
-      currentBlock.content.length === 0;
-
-    if (editor.document.length === 1 && isEmptyParagraph) {
-      editor.replaceBlocks(editor.document, blocks);
-    } else if (isEmptyParagraph) {
-      editor.replaceBlocks([currentBlock.id], blocks);
-    } else {
-      editor.insertBlocks(blocks, currentBlock.id, 'after');
-    }
-
-    void handleChange();
-    return true;
-  }
-
-  function handlePaste(event: ClipboardEvent<HTMLDivElement>) {
-    const text = event.clipboardData.getData('text/plain');
-    if (!text) return;
-
-    const hasLatex = containsLatex(text);
-    if (hasLatex) {
-      // Matn $...$/$$...$$ formula(lar)ni o'z ichiga olganda, butun matnni
-      // (sarlavha/ro'yxat qatorlari bo'lsa ham) qator-qator o'tib, har bir
-      // qatorni o'z blok turiga (heading/list/paragraph) va formula bilan
-      // aralash inline contentga aylantiramiz — shu bilan bitta paste ham
-      // markdown strukturasini, ham formulalarni birga saqlab qoladi.
-      // (Faqat tryParseMarkdownToBlocks'ga yuborilsa, $...$ ichidagi LaTeX
-      // buyruqlari xom matn bo'lib qolar edi; faqat formula sifatida
-      // kiritilsa esa sarlavha/ro'yxat strukturasi butunlay yo'qolar edi —
-      // ikkalasi ham real dars matnlarida birga uchraydi.)
-      const lineBlocks = textToLineBlocks(text);
-      if (lineBlocks.length === 0) return;
-
-      const toInlineContent = (segments: LatexSegment[]) =>
-        segments.map((segment) =>
-          segment.type === 'text'
-            ? segment.value
-            : ({ type: 'formula', props: { latex: segment.latex, display: segment.display } } as const),
-        );
-
-      const blocks = lineBlocks.map((line) => {
-        if (line.blockType === 'heading') {
-          return { type: 'heading', props: { level: line.level }, content: toInlineContent(line.segments) };
-        }
-        if (line.blockType === 'bulletListItem') {
-          return { type: 'bulletListItem', content: toInlineContent(line.segments) };
-        }
-        if (line.blockType === 'numberedListItem') {
-          return { type: 'numberedListItem', content: toInlineContent(line.segments) };
-        }
-        return { type: 'paragraph', content: toInlineContent(line.segments) };
-      }) as never;
-
-      if (insertParsedBlocks(blocks)) {
-        event.preventDefault();
-        event.stopPropagation();
-      }
-      return;
-    }
-
-    if (!looksLikeMarkdown(text)) return;
-
-    const blocks = editor.tryParseMarkdownToBlocks(text);
-    if (insertParsedBlocks(blocks)) {
-      event.preventDefault();
-      event.stopPropagation();
-    }
-  }
+  handleChangeRef.current = () => void handleChange();
 
   function handleLibrarySelect(url: string) {
     const currentBlock = editor.getTextCursorPosition().block;
@@ -231,10 +222,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   }
 
   return (
-    <div
-      className="course-editor rounded-2xl bg-white py-2"
-      onPasteCapture={handlePaste}
-    >
+    <div className="course-editor rounded-2xl bg-white py-2">
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" slashMenu={false}>
         <SuggestionMenuController
           triggerCharacter="/"
