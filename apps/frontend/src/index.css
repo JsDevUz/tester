@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "katex/dist/katex.min.css";
 
 /* Classroom shape opacity — Excalidraw kabi ingichka track va ixcham thumb. */
 .classroom-opacity-slider {
