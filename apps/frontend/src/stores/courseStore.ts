@@ -276,7 +276,8 @@ function isAlwaysPersistedBlock(block: ContentBlock | undefined): boolean {
     block?.type === 'editor' ||
     block?.type === 'live_class' ||
     block?.type === 'image' ||
-    block?.type === 'button'
+    block?.type === 'button' ||
+    block?.type === 'message'
   );
 }
 
