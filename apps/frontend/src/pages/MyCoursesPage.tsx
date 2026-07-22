@@ -477,26 +477,27 @@ function StudentCourseReader({
   const selectedIndex = selected
     ? lessons.findIndex((item) => item.lesson.id === selected.lesson.id)
     : -1;
-  const maxUnlockedIndex = useMemo(() => {
-    let idx = 0;
-    for (let i = 0; i < lessons.length - 1; i++) {
-      if (!lessons[i].lesson.completed) break;
-      idx = i + 1;
+  // Har bir bo'lim o'zining MUSTAQIL ketma-ket unlock zanjiriga ega —
+  // bo'limning birinchi darsi har doim ochiq (oldingi bo'lim tugallanmagan
+  // bo'lsa ham), shu bo'lim ichida esa navbatdagi dars faqat oldingisi
+  // tugallangach ochiladi. Bitta bo'limdagi progress boshqa bo'limlarni
+  // ochib yubormaydi — global (butun kurs bo'ylab) indeks emas, har bir
+  // bo'lim o'z ichida alohida hisoblanadi.
+  const unlockedLessonIds = useMemo(() => {
+    const unlocked = new Set<string>();
+    for (const module of course?.modules ?? []) {
+      for (let i = 0; i < module.lessons.length; i++) {
+        const lesson = module.lessons[i];
+        if (i === 0) {
+          unlocked.add(lesson.id);
+          continue;
+        }
+        if (module.lessons[i - 1].completed) unlocked.add(lesson.id);
+        else break;
+      }
     }
-    return lessons.length > 0 ? idx : -1;
-  }, [lessons]);
-  // Har bir bo'limning birinchi darsi, oldingi bo'lim tugallanmagan bo'lsa
-  // ham, har doim ochiq bo'lishi kerak — shu bilan o'quvchi xohlasa
-  // navbatdagi bo'limdan boshlab o'qishni davom ettira oladi.
-  const firstLessonIdsPerModule = useMemo(
-    () =>
-      new Set(
-        (course?.modules ?? [])
-          .map((module) => module.lessons[0]?.id)
-          .filter((id): id is string => Boolean(id)),
-      ),
-    [course],
-  );
+    return unlocked;
+  }, [course]);
   const progressCount = lessons.filter((item) => item.lesson.completed).length;
   const progressPercent =
     lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
@@ -559,15 +560,11 @@ function StudentCourseReader({
     lesson: ApiMyLesson,
     mobile = false,
   ) => {
-    const globalIndex = lessons.findIndex(
-      (item) => item.lesson.id === lesson.id,
-    );
     const active = lesson.id === selected?.lesson.id;
     const videoBlock = lesson.blocks.find((block) => block.type === "video");
     const hasVideo = Boolean(videoBlock);
     const isDone = lesson.completed;
-    const locked =
-      globalIndex > maxUnlockedIndex && !firstLessonIdsPerModule.has(lesson.id);
+    const locked = !unlockedLessonIds.has(lesson.id);
     const totalStars =
       lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
       (lesson.completionScore ?? 0);
