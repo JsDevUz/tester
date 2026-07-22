@@ -30,7 +30,7 @@ export class LessonsService {
     }
     const [lesson] = await db
       .insert(lessons)
-      .values({ moduleId, title, orderIndex: existing.length })
+      .values({ moduleId, title, orderIndex: existing.length, practiceEnabled: false })
       .returning();
     return lesson;
   }
