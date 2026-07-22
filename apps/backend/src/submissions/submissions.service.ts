@@ -300,11 +300,16 @@ export class SubmissionsService {
 
     // Eng ko'p to'g'ri va eng ko'p xato qilingan savollarni ajratib
     // ko'rsatish uchun — kamida bitta talaba javob bergan savollar orasidan.
+    // Solishtirish uchun kamida 2 ta har xil natijali savol bo'lishi shart —
+    // aks holda (masalan bitta savol, yoki barchasi 100% to'g'ri) "eng ko'p
+    // xato" belgisi noto'g'ri (chalg'ituvchi) chiqib qolardi.
     const answeredQuestions = questionStats.filter((q) => q.answeredCount > 0 && q.correctRate !== null);
-    const hardestQuestionId = answeredQuestions.length > 0
+    const rates = new Set(answeredQuestions.map((q) => q.correctRate));
+    const hasSpread = rates.size > 1;
+    const hardestQuestionId = hasSpread
       ? answeredQuestions.reduce((worst, q) => (q.correctRate! < worst.correctRate! ? q : worst)).questionId
       : null;
-    const easiestQuestionId = answeredQuestions.length > 0
+    const easiestQuestionId = hasSpread
       ? answeredQuestions.reduce((best, q) => (q.correctRate! > best.correctRate! ? q : best)).questionId
       : null;
 
