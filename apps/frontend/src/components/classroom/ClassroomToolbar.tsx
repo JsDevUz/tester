@@ -5,6 +5,7 @@ import {
   Circle,
   CircleDashed,
   Eraser,
+  Info,
   Lasso,
   Minus,
   Pen,
@@ -14,6 +15,7 @@ import {
   Type,
   MousePointer2,
   Upload,
+  X,
 } from "lucide-react";
 import { type DrawTool } from "./ClassroomPdfViewer";
 
@@ -31,6 +33,48 @@ const COLORS = [
 ];
 
 const WIDTHS = [2, 4, 7];
+
+const SHORTCUT_GROUPS: { title: string; items: { key: string; label: string }[] }[] = [
+  {
+    title: "Vositalar",
+    items: [
+      { key: "1", label: "Sichqoncha — tanlash" },
+      { key: "2", label: "Qalam" },
+      { key: "3", label: "Matn" },
+      { key: "4", label: "Marker" },
+      { key: "5", label: "Strelka" },
+      { key: "-", label: "Chiziq" },
+      { key: "6", label: "To'rtburchak" },
+      { key: "7", label: "Doira" },
+      { key: "8", label: "Nuqtaviy o'chirg'ich" },
+      { key: "9", label: "Chizma o'chirg'ich" },
+      { key: "0", label: "Lasso — guruh tanlash" },
+    ],
+  },
+  {
+    title: "Chiziq qalinligi",
+    items: [
+      { key: "S", label: "Ingichka" },
+      { key: "M", label: "O'rta" },
+      { key: "L", label: "Qalin" },
+    ],
+  },
+  {
+    title: "Chizish paytida",
+    items: [
+      { key: "Shift", label: "Chiziq vositasida bosib turilsa, chiziq 45° karrali burchaklarga (0/45/90/135/180/225/270/315) qulflanadi" },
+    ],
+  },
+  {
+    title: "Lasso bilan tanlangan guruh",
+    items: [
+      { key: "⤢", label: "Burchakdagi tugmalar — guruh o'lchamini o'zgartirish" },
+      { key: "⤾", label: "Pastdagi doira tugma — guruhni markazi atrofida aylantirish" },
+      { key: "⧉", label: "Nusxalash — tanlangan guruhni bir oz siljigan holda klonlaydi" },
+      { key: "🗑", label: "O'chirish — tanlangan guruhni butunlay o'chiradi" },
+    ],
+  },
+];
 
 interface Props {
   tool: DrawTool;
@@ -57,6 +101,7 @@ export function ClassroomToolbar({
 }: Props) {
   const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+  const [infoOpen, setInfoOpen] = useState(false);
   const colorMenuRef = useRef<HTMLDivElement>(null);
   const colorButtonRef = useRef<HTMLButtonElement>(null);
   const colorPopupRef = useRef<HTMLDivElement>(null);
@@ -79,13 +124,15 @@ export function ClassroomToolbar({
   }, [colorMenuOpen]);
 
   useEffect(() => {
-    if (!confirmClearOpen) return;
+    if (!confirmClearOpen && !infoOpen) return;
     const closeOnEscape = (event: KeyboardEvent) => {
-      if (event.key === "Escape") setConfirmClearOpen(false);
+      if (event.key !== "Escape") return;
+      setConfirmClearOpen(false);
+      setInfoOpen(false);
     };
     window.addEventListener("keydown", closeOnEscape);
     return () => window.removeEventListener("keydown", closeOnEscape);
-  }, [confirmClearOpen]);
+  }, [confirmClearOpen, infoOpen]);
 
   // "-" — chiziq vositasiga o'tish. Matn kiritish maydonlari (masalan
   // tахтадаги matn bloki tahrirlanayotganda) uchun ishlamasin — aks holda
@@ -343,6 +390,63 @@ export function ClassroomToolbar({
       >
         <Upload size={15} />
       </button>
+
+      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+
+      <button
+        type="button"
+        className={iconBtn(infoOpen)}
+        title="Yordam va shortcutlar"
+        onClick={() => setInfoOpen(true)}
+      >
+        <Info size={15} />
+      </button>
+      {infoOpen && createPortal(
+        <div
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onPointerDown={(event) => {
+            if (event.target === event.currentTarget) setInfoOpen(false);
+          }}
+        >
+          <div
+            className="flex max-h-[80vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Yordam va shortcutlar"
+          >
+            <div className="flex items-center justify-between gap-3">
+              <h2 className="text-base font-semibold text-gray-900">Yordam va shortcutlar</h2>
+              <button
+                type="button"
+                onClick={() => setInfoOpen(false)}
+                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                aria-label="Yopish"
+              >
+                <X size={16} />
+              </button>
+            </div>
+            <div className="flex flex-col gap-4">
+              {SHORTCUT_GROUPS.map((group) => (
+                <div key={group.title} className="flex flex-col gap-1.5">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{group.title}</p>
+                  <div className="flex flex-col gap-1">
+                    {group.items.map((item) => (
+                      <div key={item.key + item.label} className="flex items-start gap-2.5 text-sm text-gray-700">
+                        <kbd className="mt-0.5 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-semibold text-gray-600">
+                          {item.key}
+                        </kbd>
+                        <span className="min-w-0">{item.label}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>,
+        document.body,
+      )}
     </div>
   );
 }
