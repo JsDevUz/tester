@@ -2162,8 +2162,27 @@ function ClassroomPdfPage({
     if (tool === "arrow" || tool === "line" || tool === "rectangle" || tool === "ellipse") {
       // Strelka/chiziq/shape uchun faqat boshlanish + hozirgi nuqta
       // (bounding box burchaklari) saqlanadi — freehand emas.
-      draft[2] = p[0];
-      draft[3] = p[1];
+      let nextX = p[0];
+      let nextY = p[1];
+      // Chiziq chizilayotganda Shift bosib turilsa, burchak 45 gradusning
+      // karraliga (0/45/90/135/180/225/270/315) qulflanadi — Excalidraw'dagi
+      // odatiy xatti-harakat. Burchak piksel (aspect-corrected) koordinatada
+      // hisoblanadi, aks holda tахта kvadrat bo'lmaganda (masalan A4) burchak
+      // buzilib ko'rinadi.
+      if (tool === "line" && e.shiftKey && size.w > 0 && size.h > 0) {
+        const dxPx = (nextX - draft[0]) * size.w;
+        const dyPx = (nextY - draft[1]) * size.h;
+        const distPx = Math.hypot(dxPx, dyPx);
+        if (distPx > 0) {
+          const angle = Math.atan2(dyPx, dxPx);
+          const snapStep = Math.PI / 4;
+          const snappedAngle = Math.round(angle / snapStep) * snapStep;
+          nextX = draft[0] + (Math.cos(snappedAngle) * distPx) / size.w;
+          nextY = draft[1] + (Math.sin(snappedAngle) * distPx) / size.h;
+        }
+      }
+      draft[2] = nextX;
+      draft[3] = nextY;
       forceRedraw((n) => n + 1);
       return;
     }
