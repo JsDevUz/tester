@@ -13,6 +13,7 @@ export interface Test {
   oneByOne: boolean;
   requireAuth: boolean;
   autoCompleteOnLeave: boolean;
+  onceOnly: boolean;
   deadline: string | null;
   createdAt: string;
   slug: string | null;
@@ -33,6 +34,7 @@ export type CreateTestData = {
   oneByOne?: boolean;
   requireAuth?: boolean;
   autoCompleteOnLeave?: boolean;
+  onceOnly?: boolean;
   deadline?: string;
 };
 

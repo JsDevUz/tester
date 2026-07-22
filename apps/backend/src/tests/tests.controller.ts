@@ -16,6 +16,7 @@ class CreateTestDto {
   @IsOptional() @IsBoolean() oneByOne?: boolean;
   @IsOptional() @IsBoolean() requireAuth?: boolean;
   @IsOptional() @IsBoolean() autoCompleteOnLeave?: boolean;
+  @IsOptional() @IsBoolean() onceOnly?: boolean;
   @IsOptional() @IsDateString() deadline?: string;
 }
 
@@ -29,6 +30,7 @@ class UpdateTestDto {
   @IsOptional() @IsBoolean() oneByOne?: boolean;
   @IsOptional() @IsBoolean() requireAuth?: boolean;
   @IsOptional() @IsBoolean() autoCompleteOnLeave?: boolean;
+  @IsOptional() @IsBoolean() onceOnly?: boolean;
   @IsOptional() @IsDateString() deadline?: string;
 }
 

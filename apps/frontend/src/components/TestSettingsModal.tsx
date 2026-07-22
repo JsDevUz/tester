@@ -35,6 +35,7 @@ export function TestSettingsModal({
   const [autoCompleteOnLeave, setAutoCompleteOnLeave] = useState(
     initial?.autoCompleteOnLeave ?? true,
   );
+  const [onceOnly, setOnceOnly] = useState(initial?.onceOnly ?? false);
   const [hasDeadline, setHasDeadline] = useState(!!initial?.deadline);
   const [deadline, setDeadline] = useState(
     initial?.deadline?.slice(0, 16) ?? "",
@@ -52,8 +53,9 @@ export function TestSettingsModal({
       shuffleQuestions,
       shuffleOptions,
       oneByOne,
-      requireAuth,
+      requireAuth: onceOnly ? true : requireAuth,
       autoCompleteOnLeave,
+      onceOnly,
       deadline:
         hasDeadline && deadline ? new Date(deadline).toISOString() : undefined,
     });
@@ -163,14 +165,15 @@ export function TestSettingsModal({
               />
               Javob variantlarini aralashtirish
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className={`flex items-center gap-3 text-sm cursor-pointer ${onceOnly ? "text-gray-400" : "text-gray-700"}`}>
               <input
                 type="checkbox"
-                checked={requireAuth}
+                checked={onceOnly ? true : requireAuth}
+                disabled={onceOnly}
                 onChange={(e) => setRequireAuth(e.target.checked)}
                 className="w-4 h-4"
               />
-              Faqat ro'yxatdan o'tganlar uchun
+              Faqat ro'yxatdan o'tganlar uchun{onceOnly && " (avtomatik)"}
             </label>
             <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
               <input
@@ -184,6 +187,22 @@ export function TestSettingsModal({
                 <span className="block mt-0.5 text-xs leading-5 text-gray-400">
                   Boshqa ilova yoki brauzer oynasiga o'tilsa, test avtomatik
                   topshiriladi.
+                </span>
+              </span>
+            </label>
+            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={onceOnly}
+                onChange={(e) => setOnceOnly(e.target.checked)}
+                className="w-4 h-4 mt-0.5 shrink-0"
+              />
+              <span>
+                Har bir odamga bir marta ruxsat berish
+                <span className="block mt-0.5 text-xs leading-5 text-gray-400">
+                  Talaba testni bir marta topshirgach, qayta ishlay olmaydi —
+                  natijasi (X/X) ko'rsatiladi. "Faqat ro'yxatdan o'tganlar
+                  uchun" avtomatik yoqiladi.
                 </span>
               </span>
             </label>

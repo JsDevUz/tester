@@ -134,6 +134,13 @@
       "when": 1784704160621,
       "tag": "0018_confused_cobalt_man",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1784706809532,
+      "tag": "0019_shiny_moira_mactaggert",
+      "breakpoints": true
     }
   ]
 }

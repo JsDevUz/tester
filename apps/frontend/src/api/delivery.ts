@@ -45,6 +45,11 @@ export interface PublicTest {
   oneByOne: boolean;
   requireAuth: boolean;
   autoCompleteOnLeave: boolean;
+  onceOnly: boolean;
+  // "Bir martta" rejimida talaba avval shu testni topshirgan bo'lsa —
+  // oldingi natijasi (login qilgan bo'lsa, userId orqali topilgan). null
+  // bo'lsa hali topshirmagan (yoki onceOnly o'chirilgan / login qilmagan).
+  previousSubmission: { score: number | null; total: number | null } | null;
   deadline: string | null;
   questions: PublicQuestion[];
 }

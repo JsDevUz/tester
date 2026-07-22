@@ -1,0 +1,1 @@
+ALTER TABLE "tests" ADD COLUMN "once_only" boolean DEFAULT false NOT NULL;

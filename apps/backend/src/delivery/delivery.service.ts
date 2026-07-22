@@ -64,7 +64,7 @@ export class DeliveryService {
     private readonly practiceMessengerService: PracticeMessengerService,
   ) {}
 
-  async getTestBySlug(slug: string, practiceMode = false) {
+  async getTestBySlug(slug: string, practiceMode = false, userId?: string) {
     const test = await db.query.tests.findFirst({
       where: eq(tests.slug, slug),
       with: {
@@ -86,6 +86,17 @@ export class DeliveryService {
       practiceMode,
     );
 
+    // "Bir martta" rejimida talaba avval shu testni topshirgan bo'lsa —
+    // qayta boshlashga ruxsat berilmaydi, tugma o'rniga oldingi natija
+    // (X/X) ko'rsatilishi uchun frontend'ga shu ma'lumot beriladi.
+    let previousSubmission: { score: number | null; total: number | null } | null = null;
+    if (test.onceOnly && !practiceMode && userId) {
+      const prior = await db.query.submissions.findFirst({
+        where: and(eq(submissions.testId, test.id), eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
+      });
+      if (prior) previousSubmission = { score: prior.score, total: prior.total };
+    }
+
     return {
       id: test.id,
       name: test.name,
@@ -97,6 +108,8 @@ export class DeliveryService {
       oneByOne: overridden.oneByOne,
       requireAuth: overridden.requireAuth,
       autoCompleteOnLeave: test.autoCompleteOnLeave,
+      onceOnly: test.onceOnly,
+      previousSubmission,
       deadline: overridden.deadline,
       questions: test.questions.map((q) => ({
         id: q.id,
@@ -123,6 +136,13 @@ export class DeliveryService {
       if (priorAttempts.length >= PRACTICE_ATTEMPT_LIMIT) {
         throw new BadRequestException('ATTEMPT_LIMIT_REACHED');
       }
+    }
+
+    if (test.onceOnly && !practiceMode && userId) {
+      const prior = await db.query.submissions.findFirst({
+        where: and(eq(submissions.testId, test.id), eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
+      });
+      if (prior) throw new BadRequestException('ALREADY_SUBMITTED');
     }
 
     const [submission] = await db.insert(submissions).values({

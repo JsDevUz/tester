@@ -44,9 +44,10 @@ export class TestsService {
   async create(adminId: string, data: {
     folderId: string; name: string; description?: string; timeLimit?: number;
     showResults?: string; shuffleQuestions?: boolean; shuffleOptions?: boolean;
-    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; deadline?: string;
+    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; onceOnly?: boolean; deadline?: string;
   }) {
     const slug = await uniqueSlug();
+    const onceOnly = data.onceOnly ?? false;
     const [test] = await db.insert(tests).values({
       adminId, folderId: data.folderId, name: data.name,
       description: data.description, timeLimit: data.timeLimit,
@@ -54,8 +55,12 @@ export class TestsService {
       shuffleQuestions: data.shuffleQuestions ?? false,
       shuffleOptions: data.shuffleOptions ?? false,
       oneByOne: data.oneByOne ?? false,
-      requireAuth: data.requireAuth ?? false,
+      // "Bir martta" rejimida talabani userId orqali aniqlash kerak —
+      // shuning uchun requireAuth majburiy yoqiladi, aks holda anonim
+      // talabalarni bir-biridan ajratib bo'lmaydi.
+      requireAuth: onceOnly ? true : (data.requireAuth ?? false),
       autoCompleteOnLeave: data.autoCompleteOnLeave ?? true,
+      onceOnly,
       deadline: data.deadline ? new Date(data.deadline) : undefined,
       slug,
     }).returning();
@@ -65,11 +70,14 @@ export class TestsService {
   async update(id: string, adminId: string, data: {
     name?: string; description?: string; timeLimit?: number | null;
     showResults?: string; shuffleQuestions?: boolean; shuffleOptions?: boolean;
-    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; deadline?: string | null;
+    oneByOne?: boolean; requireAuth?: boolean; autoCompleteOnLeave?: boolean; onceOnly?: boolean; deadline?: string | null;
   }) {
     const updateData: any = { ...data };
     if ('deadline' in data) {
       updateData.deadline = data.deadline ? new Date(data.deadline) : null;
+    }
+    if (data.onceOnly) {
+      updateData.requireAuth = true;
     }
     const [test] = await db.update(tests)
       .set(updateData)

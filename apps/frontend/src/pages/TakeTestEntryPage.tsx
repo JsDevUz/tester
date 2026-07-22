@@ -8,6 +8,7 @@ import {
   FileText,
   LogIn,
   Moon,
+  ShieldCheck,
   Sun,
   UserRoundCheck,
 } from "lucide-react";
@@ -103,6 +104,8 @@ export function TakeTestEntryPage() {
         navigate(
           `/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`,
         );
+      } else if (msg === "ALREADY_SUBMITTED") {
+        setError("Siz bu testni allaqachon ishlagansiz.");
       } else {
         setError("Xato yuz berdi. Qayta urinib ko'ring.");
       }
@@ -122,6 +125,36 @@ export function TakeTestEntryPage() {
     return (
       <div className="flex items-center justify-center min-h-screen bg-white p-6">
         <p className="text-red-400 text-center">{error ?? "Test topilmadi."}</p>
+      </div>
+    );
+
+  if (test.previousSubmission)
+    return (
+      <div
+        className="flex flex-col bg-white"
+        style={{
+          height: "100dvh",
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "max(24px, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+          <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-5">
+            <ShieldCheck size={28} className="text-gray-500" />
+          </div>
+          <p className="text-xl font-bold text-gray-900 mb-2">
+            Siz bu testni allaqachon ishlagansiz
+          </p>
+          <p className="text-sm text-gray-400 mb-6">
+            Bu test har bir foydalanuvchiga faqat bir marta ishlash imkonini beradi.
+          </p>
+          <div className="rounded-2xl bg-gray-50 border border-border px-8 py-4">
+            <p className="text-3xl font-bold text-gray-900 tabular-nums">
+              {test.previousSubmission.score ?? 0}/{test.previousSubmission.total ?? 0}
+            </p>
+            <p className="text-xs text-gray-400 mt-1">Sizning natijangiz</p>
+          </div>
+        </div>
       </div>
     );
 

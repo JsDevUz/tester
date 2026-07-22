@@ -21,8 +21,12 @@ export class DeliveryController {
   ) {}
 
   @Get('tests/:slug')
-  getTest(@Param('slug') slug: string, @Query('practice') practice?: string) {
-    return this.deliveryService.getTestBySlug(slug, isPracticeMode(practice));
+  getTest(
+    @Param('slug') slug: string,
+    @Query('practice') practice?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.deliveryService.getTestBySlug(slug, isPracticeMode(practice), this.getOptionalUserId(authorization));
   }
 
   @Post('submissions')

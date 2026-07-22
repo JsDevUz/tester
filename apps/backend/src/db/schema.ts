@@ -444,6 +444,10 @@ export const tests = pgTable('tests', {
   oneByOne: boolean('one_by_one').notNull().default(false),
   requireAuth: boolean('require_auth').notNull().default(false),
   autoCompleteOnLeave: boolean('auto_complete_on_leave').notNull().default(true),
+  // Har bir foydalanuvchi testni faqat bir marta topshira oladi — yoqilganda
+  // requireAuth ham majburiy true bo'lib qoladi, chunki anonim talabalarni
+  // bir-biridan ajratib bo'lmaydi (userId orqali tekshiriladi).
+  onceOnly: boolean('once_only').notNull().default(false),
   deadline: timestamp('deadline', { withTimezone: true }),
   slug: varchar('slug', { length: 8 }).unique(),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
