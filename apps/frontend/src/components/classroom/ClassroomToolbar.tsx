@@ -4,18 +4,22 @@ import {
   ArrowUpRight,
   Circle,
   CircleDashed,
+  Copy,
   Eraser,
   Info,
   Lasso,
+  Maximize2,
   Minus,
   Pen,
   Redo2,
+  RotateCw,
   Square,
   Trash2,
   Type,
   MousePointer2,
   Upload,
   X,
+  type LucideIcon,
 } from "lucide-react";
 import { type DrawTool } from "./ClassroomPdfViewer";
 
@@ -34,7 +38,9 @@ const COLORS = [
 
 const WIDTHS = [2, 4, 7];
 
-const SHORTCUT_GROUPS: { title: string; items: { key: string; label: string }[] }[] = [
+type ShortcutItem = { key: string; label: string; icon?: never } | { icon: LucideIcon; label: string; key?: never };
+
+const SHORTCUT_GROUPS: { title: string; items: ShortcutItem[] }[] = [
   {
     title: "Vositalar",
     items: [
@@ -68,10 +74,10 @@ const SHORTCUT_GROUPS: { title: string; items: { key: string; label: string }[] 
   {
     title: "Lasso bilan tanlangan guruh",
     items: [
-      { key: "⤢", label: "Burchakdagi tugmalar — guruh o'lchamini o'zgartirish" },
-      { key: "⤾", label: "Pastdagi doira tugma — guruhni markazi atrofida aylantirish" },
-      { key: "⧉", label: "Nusxalash — tanlangan guruhni bir oz siljigan holda klonlaydi" },
-      { key: "🗑", label: "O'chirish — tanlangan guruhni butunlay o'chiradi" },
+      { icon: Maximize2, label: "Burchakdagi tugmalar — guruh o'lchamini o'zgartirish" },
+      { icon: RotateCw, label: "Pastdagi doira tugma — guruhni markazi atrofida aylantirish" },
+      { icon: Copy, label: "Nusxalash — tanlangan guruhni bir oz siljigan holda klonlaydi" },
+      { icon: Trash2, label: "O'chirish — tanlangan guruhni butunlay o'chiradi" },
     ],
   },
 ];
@@ -432,10 +438,16 @@ export function ClassroomToolbar({
                   <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{group.title}</p>
                   <div className="flex flex-col gap-1">
                     {group.items.map((item) => (
-                      <div key={item.key + item.label} className="flex items-start gap-2.5 text-sm text-gray-700">
-                        <kbd className="mt-0.5 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-semibold text-gray-600">
-                          {item.key}
-                        </kbd>
+                      <div key={item.label} className="flex items-start gap-2.5 text-sm text-gray-700">
+                        {item.icon ? (
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600">
+                            <item.icon size={12} />
+                          </span>
+                        ) : (
+                          <kbd className="mt-0.5 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-semibold text-gray-600">
+                            {item.key}
+                          </kbd>
+                        )}
                         <span className="min-w-0">{item.label}</span>
                       </div>
                     ))}
