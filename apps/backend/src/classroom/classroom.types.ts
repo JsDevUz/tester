@@ -1,4 +1,4 @@
-export type ClassroomTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
+export type ClassroomTool = 'pen' | 'highlighter' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
 export type ClassroomBoardMode = 'pdf' | 'notebook';
 export type ClassroomBoardLayout = 'single' | 'split';
 export type ClassroomTheme = 'light' | 'dark';

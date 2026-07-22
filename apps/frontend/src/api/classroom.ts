@@ -190,7 +190,7 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 
 // ---------- WS payload tiplari ----------
 
-export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'text' | 'rectangle' | 'ellipse';
+export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
 export type CsNotebookStyle = 'grid' | 'lined' | 'plain';

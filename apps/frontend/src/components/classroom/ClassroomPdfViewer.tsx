@@ -246,6 +246,23 @@ function drawArrow(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   ctx.restore();
 }
 
+// Oddiy to'g'ri chiziq — arrow bilan bir xil bounding-box draft/hit-test
+// yo'lini ishlatadi, faqat o'q boshi chizilmaydi.
+function drawLine(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
+  const [x0, y0, x1, y1] = [s.points[0] * w, s.points[1] * h, s.points[2] * w, s.points[3] * h];
+  ctx.save();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = s.color;
+  ctx.globalAlpha = dimmed ? 0.25 : 1;
+  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  ctx.lineTo(x1, y1);
+  ctx.stroke();
+  ctx.restore();
+}
+
 function drawRoundRectPath(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number) {
   ctx.beginPath();
   if (radius <= 0) {
@@ -401,6 +418,10 @@ function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: nu
     if (s.points.length >= 4) drawArrow(ctx, s, w, h, dimmed);
     return;
   }
+  if (s.tool === "line") {
+    if (s.points.length >= 4) drawLine(ctx, s, w, h, dimmed);
+    return;
+  }
   if (s.tool === "rectangle" || s.tool === "ellipse") {
     if (s.points.length >= 4) drawShape(ctx, s, w, h, dimmed);
     return;
@@ -536,7 +557,7 @@ function findStrokeAt(strokes: CsStroke[], x: number, y: number, hitRadius: numb
 // chizmalar sifatida qaytariladi (kamida 2 nuqtali bo'laklar saqlanadi).
 function eraseNearPoint(stroke: CsStroke, x: number, y: number, hitRadius: number): CsStroke[] | null {
   const pts = stroke.points;
-  if (pts.length < 4 || stroke.tool === "arrow" || stroke.tool === "rectangle" || stroke.tool === "ellipse") return null;
+  if (pts.length < 4 || stroke.tool === "arrow" || stroke.tool === "line" || stroke.tool === "rectangle" || stroke.tool === "ellipse") return null;
 
   const keptRuns: number[][] = [[pts[0], pts[1]]];
   let hitAny = false;
@@ -1905,9 +1926,9 @@ function ClassroomPdfPage({
     const hit = findStrokeAt(strokes, x, y, hitRadius);
     if (!hit || erasedThisDragRef.current.has(hit.id)) return;
     erasedThisDragRef.current.add(hit.id);
-    // Strelka va shape (rectangle/ellipse) segmentlarga bo'linmaydi —
+    // Strelka, chiziq va shape (rectangle/ellipse) segmentlarga bo'linmaydi —
     // teginilsa butunlay o'chadi.
-    if (hit.tool === "arrow" || hit.tool === "rectangle" || hit.tool === "ellipse") {
+    if (hit.tool === "arrow" || hit.tool === "line" || hit.tool === "rectangle" || hit.tool === "ellipse") {
       onEraseStroke?.(pageNumber, hit.id);
       return;
     }
@@ -2029,7 +2050,7 @@ function ClassroomPdfPage({
       }
       return;
     }
-    draftRef.current = (tool === "arrow" || tool === "rectangle" || tool === "ellipse") ? [p[0], p[1], p[0], p[1]] : [...p];
+    draftRef.current = (tool === "arrow" || tool === "line" || tool === "rectangle" || tool === "ellipse") ? [p[0], p[1], p[0], p[1]] : [...p];
     forceRedraw((n) => n + 1);
   };
 
@@ -2138,9 +2159,9 @@ function ClassroomPdfPage({
     }
     const draft = draftRef.current;
     if (!draft) return;
-    if (tool === "arrow" || tool === "rectangle" || tool === "ellipse") {
-      // Strelka/shape uchun faqat boshlanish + hozirgi nuqta (bounding box
-      // burchaklari) saqlanadi — freehand emas.
+    if (tool === "arrow" || tool === "line" || tool === "rectangle" || tool === "ellipse") {
+      // Strelka/chiziq/shape uchun faqat boshlanish + hozirgi nuqta
+      // (bounding box burchaklari) saqlanadi — freehand emas.
       draft[2] = p[0];
       draft[3] = p[1];
       forceRedraw((n) => n + 1);

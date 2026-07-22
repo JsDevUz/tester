@@ -6,6 +6,7 @@ import {
   CircleDashed,
   Eraser,
   Lasso,
+  Minus,
   Pen,
   Redo2,
   Square,
@@ -86,6 +87,23 @@ export function ClassroomToolbar({
     return () => window.removeEventListener("keydown", closeOnEscape);
   }, [confirmClearOpen]);
 
+  // "-" — chiziq vositasiga o'tish. Matn kiritish maydonlari (masalan
+  // tахтадаги matn bloki tahrirlanayotganda) uchun ishlamasin — aks holda
+  // foydalanuvchi "-" belgisini matn sifatida yoza olmay qoladi.
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "-") return;
+      const target = event.target as HTMLElement | null;
+      const isTypingTarget =
+        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+      if (isTypingTarget) return;
+      event.preventDefault();
+      onToolChange("line");
+    };
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onToolChange]);
+
   const iconBtn = (active: boolean) =>
     `relative p-1.5 rounded-xl transition-colors ${active ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"}`;
 
@@ -153,6 +171,15 @@ export function ClassroomToolbar({
       >
         <ArrowUpRight size={15} />
         {shortcut("5")}
+      </button>
+      <button
+        type="button"
+        className={iconBtn(tool === "line")}
+        title="Chiziq (-)"
+        onClick={() => onToolChange("line")}
+      >
+        <Minus size={15} />
+        {shortcut("-")}
       </button>
       <button
         type="button"
