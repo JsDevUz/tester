@@ -72,8 +72,12 @@ QOIDALAR
 - Matching faqat '| chap :: o'ng'.
 - FillBlank '= javob'.
 - AI Open '#~' ishlatadi.
-- Hech qanday markdown (\`\`\`) ishlatma.
-- Faqat Bulk Import matnini qaytar.`;
+- Faqat Bulk Import matnini qaytar.
+- Natijani faqat bitta plain text code block ichida qaytar.
+- Code block tashqarisida hech narsa yozma.
+- Code block ichida faqat men bergan formatdan foydalan.
+- Uni markdown sifatida emas, oddiy matn sifatida yoz.
+- Natija copy-paste qilish uchun tayyor bo'lsin.`;
 
 export function BulkImportTab({ onImport, bulkText = "" }: Props) {
   const [text, setText] = useState("");
@@ -81,6 +85,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+  const [samplecopied, setSampleCopied] = useState(false);
 
   function copyBulk() {
     if (!bulkText) return;
@@ -90,10 +95,11 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
     });
   }
 
-  function insertSample() {
-    setText(SAMPLE_BULK_TEXT);
-    setPreview(null);
-    setResult(null);
+  function copySamplePrompt() {
+    navigator.clipboard.writeText(SAMPLE_BULK_TEXT).then(() => {
+      setSampleCopied(true);
+      setTimeout(() => setSampleCopied(false), 1500);
+    });
   }
 
   function handlePreview() {
@@ -136,11 +142,15 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           </div>
           <button
             type="button"
-            onClick={insertSample}
+            onClick={copySamplePrompt}
             className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-colors bg-white"
           >
-            <Clipboard size={12} />
-            Namunani qo'yish
+            {samplecopied ? (
+              <Check size={12} className="text-green-500" />
+            ) : (
+              <Clipboard size={12} />
+            )}
+            {samplecopied ? "Nusxalandi" : "Promptni nusxalash"}
           </button>
         </div>
         <pre className="max-h-44 overflow-auto rounded-lg bg-slate-900 px-3 py-2 text-xs leading-5 text-slate-100 whitespace-pre-wrap">
