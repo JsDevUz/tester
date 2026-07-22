@@ -370,7 +370,7 @@ function drawShape(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: num
   ctx.restore();
 }
 
-function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
+export function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number, h: number, dimmed?: boolean) {
   if (s.points.length < 2) return;
   if (s.tool === "text") {
     if (!s.text) return;

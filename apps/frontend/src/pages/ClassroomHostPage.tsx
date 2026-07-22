@@ -1,7 +1,7 @@
 import { useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
+import { Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -21,6 +21,8 @@ import { NotebookStyleToggle } from "../components/classroom/NotebookStyleToggle
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
+import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
+import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import {
   apiAttachClassPdf,
   apiMuteParticipant,
@@ -56,6 +58,8 @@ export function ClassroomHostPage() {
   const [pageSelectAsset, setPageSelectAsset] =
     useState<PdfLibraryAsset | null>(null);
   const [attaching, setAttaching] = useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
 
   // Classroom toolbar shortcuts. `mod` maps to Ctrl on Windows/Linux and
   // Command on macOS. Form fields are intentionally excluded by the hook.
@@ -114,6 +118,33 @@ export function ClassroomHostPage() {
       () => toast.success("Havola nusxalandi"),
       () => toast.error("Havolani nusxalab bo'lmadi"),
     );
+  };
+
+  const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
+    const isSplitRight = state.boardLayout === "split" && activePane === "right";
+    const pageUrls = mode === "pdf" ? state.pages : [];
+    const strokesByPage = isSplitRight ? state.rightStrokesByPage : state.strokesByPage;
+    const pageCount = mode === "notebook" ? 4 : state.pages.length;
+    if (pageCount === 0) {
+      toast.error("Yuklab olish uchun sahifa topilmadi");
+      return;
+    }
+    setDownloading(true);
+    try {
+      await exportBoardToPdf({
+        mode,
+        notebookStyle: state.notebookStyle,
+        pageUrls,
+        strokesByPage: strokesByPage ?? {},
+        pageCount,
+        fileName: `${mode === "notebook" ? "daftar" : "pdf"}-${Date.now()}.pdf`,
+      });
+      setDownloadModalOpen(false);
+    } catch {
+      toast.error("Yuklab bo'lmadi, qayta urinib ko'ring");
+    } finally {
+      setDownloading(false);
+    }
   };
 
   if (state.error) {
@@ -226,6 +257,14 @@ export function ClassroomHostPage() {
                   <span className="hidden sm:inline">Havola</span>
                 </button>
               )}
+              <button
+                type="button"
+                onClick={() => setDownloadModalOpen(true)}
+                title="Yuklab olish"
+                className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+              >
+                <Download size={14} />
+              </button>
               {fullscreen.supported && (
                 <button
                   type="button"
@@ -271,6 +310,14 @@ export function ClassroomHostPage() {
           endCallTitle="Darsni yakunlash"
         />
       </div>
+
+      {downloadModalOpen && (
+        <DownloadBoardModal
+          submitting={downloading}
+          onSelect={(mode) => void handleDownloadBoard(mode)}
+          onClose={() => setDownloadModalOpen(false)}
+        />
+      )}
 
       {pdfLibraryOpen && (
         <ClassroomPdfLibraryModal
