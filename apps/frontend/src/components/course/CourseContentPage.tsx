@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
@@ -30,18 +30,29 @@ type DeleteTarget =
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectClasses }: CourseContentPageProps) {
   const { courses, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
-  const [collapsedModules, setCollapsedModules] = useState<Set<string>>(new Set());
+  const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
 
+  // Sahifa birinchi ochilganda hamma modul yopiq (collapsed) holatda
+  // boshlansin — modullar ro'yxati store'dan asinxron kelgani uchun
+  // useState'ning boshlang'ich qiymatida emas, shu yerda seedlanadi.
+  useEffect(() => {
+    if (collapsedModules === null && course) {
+      setCollapsedModules(new Set(course.modules.map((m) => m.id)));
+    }
+  }, [collapsedModules, course]);
+
   if (!course) return null;
+
+  const collapsedModuleIds = collapsedModules ?? new Set(course.modules.map((m) => m.id));
 
   const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
   const moduleLimitReached = course.modules.length >= 30;
 
   function toggleModule(moduleId: string) {
     setCollapsedModules((prev) => {
-      const next = new Set(prev);
+      const next = new Set(prev ?? collapsedModuleIds);
       if (next.has(moduleId)) next.delete(moduleId);
       else next.add(moduleId);
       return next;
@@ -82,8 +93,8 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
-      <div className="min-w-0 flex-1">
+    <div className="flex h-full min-h-0 flex-col gap-3 p-6 sm:flex-row">
+      <div className="min-w-0 flex-1 overflow-y-auto sm:h-full">
         <Breadcrumb
           items={[
             { label: 'Kurslar', onClick: onBackToList },
@@ -127,7 +138,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
         ) : (
           <div className="flex flex-col gap-2">
             {course.modules.map((module) => {
-              const collapsed = collapsedModules.has(module.id);
+              const collapsed = collapsedModuleIds.has(module.id);
               return (
                 <div key={module.id} className="rounded-2xl bg-white">
                   <div className="group flex items-center gap-2 px-4 py-3">
@@ -204,15 +215,17 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
         )}
       </div>
 
-      <CourseSidePanel
-        onBackToList={onBackToList}
-        activeFullTab="content"
-        onSelectContent={() => {}}
-        onSelectSettings={onSelectSettings}
-        onSelectLaunch={onSelectLaunch}
-        onSelectGroups={onSelectGroups}
-        onSelectClasses={onSelectClasses}
-      />
+      <div className="shrink-0 sm:sticky sm:top-0 sm:self-start">
+        <CourseSidePanel
+          onBackToList={onBackToList}
+          activeFullTab="content"
+          onSelectContent={() => {}}
+          onSelectSettings={onSelectSettings}
+          onSelectLaunch={onSelectLaunch}
+          onSelectGroups={onSelectGroups}
+          onSelectClasses={onSelectClasses}
+        />
+      </div>
 
       {modal?.type === 'newModule' && (
         <PromptModal
