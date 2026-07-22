@@ -485,6 +485,18 @@ function StudentCourseReader({
     }
     return lessons.length > 0 ? idx : -1;
   }, [lessons]);
+  // Har bir bo'limning birinchi darsi, oldingi bo'lim tugallanmagan bo'lsa
+  // ham, har doim ochiq bo'lishi kerak — shu bilan o'quvchi xohlasa
+  // navbatdagi bo'limdan boshlab o'qishni davom ettira oladi.
+  const firstLessonIdsPerModule = useMemo(
+    () =>
+      new Set(
+        (course?.modules ?? [])
+          .map((module) => module.lessons[0]?.id)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    [course],
+  );
   const progressCount = lessons.filter((item) => item.lesson.completed).length;
   const progressPercent =
     lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
@@ -554,7 +566,8 @@ function StudentCourseReader({
     const videoBlock = lesson.blocks.find((block) => block.type === "video");
     const hasVideo = Boolean(videoBlock);
     const isDone = lesson.completed;
-    const locked = globalIndex > maxUnlockedIndex;
+    const locked =
+      globalIndex > maxUnlockedIndex && !firstLessonIdsPerModule.has(lesson.id);
     const totalStars =
       lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
       (lesson.completionScore ?? 0);
