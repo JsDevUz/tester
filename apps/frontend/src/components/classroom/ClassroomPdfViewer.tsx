@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, SendToBack, Trash2 } from "lucide-react";
+import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Copy, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, RotateCw, SendToBack, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
   CsStroke, CsStrokeStyle, CsTool,
@@ -1411,11 +1411,34 @@ function ClassroomPdfPage({
     setSelectedGroupIds(new Set());
   };
 
+  // Tanlangan guruhni asl nusxadan bir oz pastroq/o'ngroq siljigan holda
+  // klonlaydi (Figma/Miro'dagi odatiy paste-offset xatti-harakati), so'ng
+  // yangi nusxalarni tanlangan holatga o'tkazadi — asl obyektlar
+  // tanlanmagan qoladi. Yangi socket event kerak emas: onStrokeComplete
+  // allaqachon istalgan yangi strokeni yaratish uchun ishlatiladi (2106-qator).
+  const DUPLICATE_OFFSET = 0.02;
+  const duplicateSelectedGroup = () => {
+    if (selectedGroupStrokes.length === 0) return;
+    const newIds = new Set<string>();
+    for (const stroke of selectedGroupStrokes) {
+      const newId = crypto.randomUUID();
+      const offsetPoints = stroke.points.map((value) => value + DUPLICATE_OFFSET);
+      onStrokeComplete?.(pageNumber, { ...stroke, id: newId, points: offsetPoints });
+      newIds.add(newId);
+    }
+    setSelectedGroupIds(newIds);
+  };
+
   const draggingGroupRef = useRef<{ ids: Set<string>; startX: number; startY: number } | null>(null);
   const resizingGroupRef = useRef<{
     corner: "nw" | "ne" | "sw" | "se";
     startBounds: { left: number; top: number; right: number; bottom: number };
     startClientX: number; startClientY: number;
+    startStrokes: Map<string, CsStroke>;
+  } | null>(null);
+  const rotatingGroupRef = useRef<{
+    centerX: number; centerY: number; // normalized (0..1), aspect-corrected
+    startAngle: number;
     startStrokes: Map<string, CsStroke>;
   } | null>(null);
 
@@ -1501,6 +1524,92 @@ function ClassroomPdfPage({
         stroke.textBoxWidth = measured.width + 8;
         stroke.textBoxHeight = measured.height;
       }
+      commitGroupStroke({ ...stroke, points: [...stroke.points] });
+    }
+  };
+
+  const beginGroupRotate = (event: React.PointerEvent<HTMLButtonElement>) => {
+    if (!selectedGroupBounds || !surfaceRef.current || size.w <= 0) return;
+    event.preventDefault(); event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    const centerX = (selectedGroupBounds.left + selectedGroupBounds.right) / 2;
+    const centerY = (selectedGroupBounds.top + selectedGroupBounds.bottom) / 2;
+    const rect = surfaceRef.current.getBoundingClientRect();
+    const centerClientX = rect.left + centerX * size.w;
+    const centerClientY = rect.top + centerY * size.h;
+    rotatingGroupRef.current = {
+      centerX, centerY,
+      startAngle: Math.atan2(event.clientY - centerClientY, event.clientX - centerClientX),
+      startStrokes: new Map(selectedGroupStrokes.map((s) => [s.id, { ...s, points: [...s.points] }])),
+    };
+  };
+
+  const transformGroupRotate = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = rotatingGroupRef.current;
+    if (!current || !surfaceRef.current || size.w <= 0) return;
+    event.preventDefault(); event.stopPropagation();
+    const rect = surfaceRef.current.getBoundingClientRect();
+    const centerClientX = rect.left + current.centerX * size.w;
+    const centerClientY = rect.top + current.centerY * size.h;
+    const angle = Math.atan2(event.clientY - centerClientY, event.clientX - centerClientX);
+    const deltaRad = angle - current.startAngle;
+    const deltaDeg = deltaRad * 180 / Math.PI;
+    const cos = Math.cos(deltaRad);
+    const sin = Math.sin(deltaRad);
+    // Nuqtalarni piksel koordinatasida aylantiramiz (normalized 0..1
+    // koordinatada to'g'ridan-to'g'ri aylantirish, canvas kvadrat
+    // bo'lmaganda — masalan A4 varaq — burchakni buzib qo'yardi), so'ng
+    // qaytadan normalize qilamiz.
+    const rotatePoint = (nx: number, ny: number): [number, number] => {
+      const px = nx * size.w;
+      const py = ny * size.h;
+      const cx = current.centerX * size.w;
+      const cy = current.centerY * size.h;
+      const dx = px - cx;
+      const dy = py - cy;
+      const rx = cx + dx * cos - dy * sin;
+      const ry = cy + dx * sin + dy * cos;
+      return [rx / size.w, ry / size.h];
+    };
+    for (const stroke of selectedGroupStrokes) {
+      const original = current.startStrokes.get(stroke.id);
+      if (!original) continue;
+      if (original.tool === "text" || original.tool === "rectangle" || original.tool === "ellipse") {
+        // Bounding-box asosli obyektlar: markazini guruh markazi atrofida
+        // aylantiramiz, o'lchamini saqlaymiz, va o'zining rotation
+        // maydonini ham guruh burchagiga oshiramiz (chizish kodi shu
+        // maydon orqali o'z markazi atrofida qo'shimcha aylanadi).
+        const box = strokeBoundingBox(original);
+        const [newCx, newCy] = rotatePoint((box.left + box.right) / 2, (box.top + box.bottom) / 2);
+        const boxW = box.right - box.left;
+        const boxH = box.bottom - box.top;
+        stroke.rotation = Math.round(((original.rotation ?? 0) + deltaDeg) * 10) / 10;
+        if (original.tool === "text") {
+          stroke.points = [newCx - boxW / 2, newCy - boxH / 2];
+        } else {
+          stroke.points = [newCx - boxW / 2, newCy - boxH / 2, newCx + boxW / 2, newCy + boxH / 2];
+        }
+      } else {
+        // Erkin chizilgan strokelar (pen/highlighter/arrow) — alohida
+        // rotation maydoni yo'q, shakli to'g'ridan-to'g'ri nuqtalar bilan
+        // belgilanadi, shuning uchun har bir nuqtani aylantiramiz.
+        const nextPoints: number[] = [];
+        for (let i = 0; i < original.points.length; i += 2) {
+          const [x, y] = rotatePoint(original.points[i], original.points[i + 1]);
+          nextPoints.push(x, y);
+        }
+        stroke.points = nextPoints;
+      }
+    }
+    forceRedraw((v) => v + 1);
+  };
+
+  const finishGroupRotate = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const current = rotatingGroupRef.current;
+    if (!current) return;
+    event.preventDefault(); event.stopPropagation();
+    rotatingGroupRef.current = null;
+    for (const stroke of selectedGroupStrokes) {
       commitGroupStroke({ ...stroke, points: [...stroke.points] });
     }
   };
@@ -2448,6 +2557,15 @@ function ClassroomPdfPage({
                 ))}
                 <button
                   type="button"
+                  aria-label="Tanlangan guruhni nusxalash"
+                  title="Nusxalash"
+                  onClick={duplicateSelectedGroup}
+                  className="rounded-full bg-white p-1.5 text-gray-600 shadow-md hover:bg-gray-100"
+                >
+                  <Copy size={13} />
+                </button>
+                <button
+                  type="button"
                   aria-label="Tanlangan guruhni o'chirish"
                   onClick={deleteSelectedGroup}
                   className="rounded-full bg-red-500 p-1.5 text-white shadow-md hover:bg-red-600"
@@ -2455,6 +2573,19 @@ function ClassroomPdfPage({
                   <Trash2 size={13} />
                 </button>
               </div>
+              <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500" />
+              <button
+                type="button"
+                aria-label="Tanlangan guruhni aylantirish"
+                title="Aylantirish"
+                className="pointer-events-auto absolute left-1/2 -bottom-10 flex h-5 w-5 -translate-x-1/2 items-center justify-center rounded-full border-2 border-indigo-500 bg-white text-indigo-500 shadow-md cursor-grab active:cursor-grabbing"
+                onPointerDown={beginGroupRotate}
+                onPointerMove={transformGroupRotate}
+                onPointerUp={finishGroupRotate}
+                onPointerCancel={finishGroupRotate}
+              >
+                <RotateCw size={11} />
+              </button>
             </div>
           )}
         </div>
