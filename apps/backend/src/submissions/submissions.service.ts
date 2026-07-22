@@ -4,9 +4,19 @@ import { groupEnrollments, practiceChatMessages, schoolMembers, submissions, tes
 import { and, eq, isNotNull, isNull } from 'drizzle-orm';
 import { normalizeViolationReason, orderSubmissionAnswersForDisplay, seededShuffle } from '../delivery/delivery.service';
 
+export type SubmissionSortField = 'submittedAt' | 'score';
+export type SubmissionSortDir = 'asc' | 'desc';
+
 @Injectable()
 export class SubmissionsService {
-  async findByTest(testId: string, adminId: string, limit = 10, offset = 0) {
+  async findByTest(
+    testId: string,
+    adminId: string,
+    limit = 10,
+    offset = 0,
+    sort: SubmissionSortField = 'submittedAt',
+    dir: SubmissionSortDir = 'desc',
+  ) {
     const test = await db.query.tests.findFirst({
       where: and(eq(tests.id, testId), eq(tests.adminId, adminId)),
     });
@@ -14,7 +24,10 @@ export class SubmissionsService {
 
     return db.query.submissions.findMany({
       where: and(eq(submissions.testId, testId), isNotNull(submissions.submittedAt)),
-      orderBy: (s, { desc }) => [desc(s.submittedAt)],
+      orderBy: (s, { asc, desc }) => {
+        const column = sort === 'score' ? s.score : s.submittedAt;
+        return [dir === 'asc' ? asc(column) : desc(column)];
+      },
       limit,
       offset,
     });

@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AlertTriangle, Trash2, ChevronLeft, Inbox } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Trash2, ChevronLeft, Inbox } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { useTestStore } from "../stores/testStore";
 import { apiGetTest, type TestDetail } from "../api/tests";
@@ -8,9 +8,41 @@ import {
   apiGetSubmissions,
   apiDeleteSubmission,
   type Submission,
+  type SubmissionSortDir,
+  type SubmissionSortField,
 } from "../api/submissions";
-import { formatDateTime } from "../utils/date";
-import { PageSizeSelect } from "../components/PaginationControls";
+import { formatDateTime, formatElapsedDuration } from "../utils/date";
+
+const PAGE_SIZE = 20;
+
+function elapsedLabel(sub: Submission): string {
+  if (!sub.submittedAt) return "—";
+  return formatElapsedDuration(sub.startedAt, sub.submittedAt);
+}
+
+interface SortButtonProps {
+  field: SubmissionSortField;
+  label: string;
+  sort: SubmissionSortField;
+  dir: SubmissionSortDir;
+  onChange: (field: SubmissionSortField) => void;
+  align?: "left" | "right";
+}
+
+function SortButton({ field, label, sort, dir, onChange, align = "left" }: SortButtonProps) {
+  const active = sort === field;
+  const Icon = active ? (dir === "asc" ? ArrowUp : ArrowDown) : ArrowUpDown;
+  return (
+    <button
+      type="button"
+      onClick={() => onChange(field)}
+      className={`inline-flex items-center gap-1 transition-colors hover:text-gray-900 ${active ? "text-gray-900" : "text-gray-500"} ${align === "right" ? "flex-row-reverse" : ""}`}
+    >
+      {label}
+      <Icon size={13} className={active ? "opacity-100" : "opacity-40"} />
+    </button>
+  );
+}
 
 export function SubmissionsPage() {
   const { id: testId } = useParams<{ id: string }>();
@@ -23,9 +55,10 @@ export function SubmissionsPage() {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadingMore, setLoadingMore] = useState(false);
-  const [pageSize, setPageSize] = useState(10);
   const [hasMore, setHasMore] = useState(true);
   const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
+  const [sort, setSort] = useState<SubmissionSortField>("submittedAt");
+  const [dir, setDir] = useState<SubmissionSortDir>("desc");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
 
@@ -40,10 +73,10 @@ export function SubmissionsPage() {
       setLoadingMore(true);
     }
     try {
-      const rows = await apiGetSubmissions(testId, pageSize, offsetRef.current);
+      const rows = await apiGetSubmissions(testId, PAGE_SIZE, offsetRef.current, sort, dir);
       setSubmissions((prev) => (reset ? rows : [...prev, ...rows]));
       offsetRef.current += rows.length;
-      if (rows.length < pageSize) setHasMore(false);
+      if (rows.length < PAGE_SIZE) setHasMore(false);
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -57,7 +90,16 @@ export function SubmissionsPage() {
       apiGetTest(testId)
         .then(setFetchedTest)
         .catch(() => {});
-  }, [testId, pageSize]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [testId, sort, dir]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  function handleSortChange(field: SubmissionSortField) {
+    if (field === sort) {
+      setDir((prev) => (prev === "asc" ? "desc" : "asc"));
+    } else {
+      setSort(field);
+      setDir("desc");
+    }
+  }
 
   const observerCallback = useCallback(
     (entries: IntersectionObserverEntry[]) => {
@@ -98,7 +140,6 @@ export function SubmissionsPage() {
           </button>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base sm:text-lg font-bold text-gray-800 leading-snug">{test?.name ?? "Test"} — Natijalar</h2>
-            <PageSizeSelect value={pageSize} onChange={(value) => { setPageSize(value); setSubmissions([]); }} />
           </div>
 
           {loading ? (
@@ -112,6 +153,12 @@ export function SubmissionsPage() {
             </div>
           ) : (
             <div>
+              {/* Mobile sort controls */}
+              <div className="md:hidden flex items-center gap-3 mb-3 text-xs">
+                <SortButton field="submittedAt" label="Vaqt" sort={sort} dir={dir} onChange={handleSortChange} />
+                <SortButton field="score" label="Ball" sort={sort} dir={dir} onChange={handleSortChange} />
+              </div>
+
               <div className="md:hidden flex flex-col gap-2">
                 {submissions.map((sub) => {
                   const pct = sub.total
@@ -143,6 +190,9 @@ export function SubmissionsPage() {
                             ? formatDateTime(sub.submittedAt)
                             : "Topshirilmagan"}
                         </p>
+                        <p className="text-xs text-gray-400 mt-0.5">
+                          Ishlash vaqti: {elapsedLabel(sub)}
+                        </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p
@@ -170,18 +220,23 @@ export function SubmissionsPage() {
               </div>
 
               <div className="hidden md:block overflow-x-auto">
-                <table className="w-full min-w-[720px] text-left">
+                <table className="w-full min-w-[820px] text-left">
                   <thead className="text-sm font-medium text-gray-700">
                     <tr>
                       <th className="px-5 py-4">O'quvchi</th>
-                      <th className="px-5 py-4">Topshirgan vaqti</th>
+                      <th className="px-5 py-4">
+                        <SortButton field="submittedAt" label="Topshirgan vaqti" sort={sort} dir={dir} onChange={handleSortChange} />
+                      </th>
+                      <th className="px-5 py-4">Ishlash vaqti</th>
                       <th className="px-5 py-4 text-right">Foiz</th>
-                      <th className="px-5 py-4 text-right">Ball</th>
+                      <th className="px-5 py-4 text-right">
+                        <SortButton field="score" label="Ball" sort={sort} dir={dir} onChange={handleSortChange} align="right" />
+                      </th>
                       <th className="w-16 px-4 py-4 text-right">Amal</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {submissions.map((sub) => {
+                    {submissions.map((sub, index) => {
                       const pct = sub.total
                         ? Math.round(((sub.score ?? 0) / sub.total) * 100)
                         : 0;
@@ -192,7 +247,7 @@ export function SubmissionsPage() {
                         <tr
                           key={sub.id}
                           onClick={() => navigate(`/submissions/${sub.id}`)}
-                          className="group cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl"
+                          className={`group cursor-pointer transition-colors hover:bg-gray-50 ${index % 2 === 1 ? "bg-gray-50/60" : ""}`}
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-2">
@@ -211,6 +266,9 @@ export function SubmissionsPage() {
                             {sub.submittedAt
                               ? formatDateTime(sub.submittedAt)
                               : "Topshirilmagan"}
+                          </td>
+                          <td className="px-5 py-4 text-sm text-gray-500 tabular-nums">
+                            {elapsedLabel(sub)}
                           </td>
                           <td className="px-5 py-4 text-right">
                             <span

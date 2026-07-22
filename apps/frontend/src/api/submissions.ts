@@ -31,8 +31,17 @@ export interface SubmissionDetail extends Submission {
   answers: AnswerDetail[];
 }
 
-export async function apiGetSubmissions(testId: string, limit = 10, offset = 0): Promise<Submission[]> {
-  const res = await client.get(`/tests/${testId}/submissions`, { params: { limit, offset } });
+export type SubmissionSortField = 'submittedAt' | 'score';
+export type SubmissionSortDir = 'asc' | 'desc';
+
+export async function apiGetSubmissions(
+  testId: string,
+  limit = 10,
+  offset = 0,
+  sort: SubmissionSortField = 'submittedAt',
+  dir: SubmissionSortDir = 'desc',
+): Promise<Submission[]> {
+  const res = await client.get(`/tests/${testId}/submissions`, { params: { limit, offset, sort, dir } });
   return res.data;
 }
 
