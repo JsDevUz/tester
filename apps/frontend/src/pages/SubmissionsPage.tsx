@@ -39,7 +39,7 @@ function SortButton({ field, label, sort, dir, onChange, align = "left" }: SortB
     <button
       type="button"
       onClick={() => onChange(field)}
-      className={`inline-flex items-center gap-1 transition-colors hover:text-gray-900 ${active ? "text-gray-900" : "text-gray-500"} ${align === "right" ? "flex-row-reverse" : ""}`}
+      className={`inline-flex items-center gap-1 transition-colors hover:text-gray-900 ${align === "right" ? "flex-row-reverse" : ""}`}
     >
       {label}
       <Icon size={13} className={active ? "opacity-100" : "opacity-40"} />

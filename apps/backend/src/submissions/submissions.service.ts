@@ -236,9 +236,10 @@ export class SubmissionsService {
     const questionIds = test.questions.map((q) => q.id);
     const submittedSubmissions = await db.query.submissions.findMany({
       where: and(eq(submissions.testId, testId), isNotNull(submissions.submittedAt)),
-      columns: { id: true },
+      columns: { id: true, studentName: true },
     });
     const submissionIds = submittedSubmissions.map((s) => s.id);
+    const studentNameBySubmissionId = new Map(submittedSubmissions.map((s) => [s.id, s.studentName]));
 
     const answerRows = submissionIds.length === 0 ? [] : await db.query.answers.findMany({
       where: and(inArray(answers.questionId, questionIds), inArray(answers.submissionId, submissionIds)),
@@ -257,22 +258,29 @@ export class SubmissionsService {
       const correctCount = qAnswers.filter((a) => a.isCorrect === true).length;
       const correctRate = answeredCount > 0 ? correctCount / answeredCount : null;
 
-      let optionCounts: Array<{ id: string; text: string; isCorrectOption: boolean; count: number }> | null = null;
+      let optionCounts: Array<{ id: string; text: string; isCorrectOption: boolean; count: number; students: string[] }> | null = null;
       let textAnswerCounts: Array<{ text: string; count: number }> | null = null;
 
       if (OPTION_BASED_TYPES.has(q.type)) {
-        const counts = new Map<string, number>();
+        const studentsByOption = new Map<string, string[]>();
         for (const a of qAnswers) {
+          const studentName = studentNameBySubmissionId.get(a.submissionId) ?? '—';
           for (const optionId of a.selectedOptionIds) {
-            counts.set(optionId, (counts.get(optionId) ?? 0) + 1);
+            const list = studentsByOption.get(optionId) ?? [];
+            list.push(studentName);
+            studentsByOption.set(optionId, list);
           }
         }
-        optionCounts = q.options.map((o) => ({
-          id: o.id,
-          text: o.text,
-          isCorrectOption: o.isCorrect,
-          count: counts.get(o.id) ?? 0,
-        }));
+        optionCounts = q.options.map((o) => {
+          const students = studentsByOption.get(o.id) ?? [];
+          return {
+            id: o.id,
+            text: o.text,
+            isCorrectOption: o.isCorrect,
+            count: students.length,
+            students,
+          };
+        });
       } else if (q.type === 'open' || q.type === 'fillblank') {
         const counts = new Map<string, number>();
         for (const a of qAnswers) {

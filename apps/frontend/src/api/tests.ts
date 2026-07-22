@@ -67,6 +67,7 @@ export interface TestStatsOptionCount {
   text: string;
   isCorrectOption: boolean;
   count: number;
+  students: string[];
 }
 
 export interface TestStatsTextAnswerCount {

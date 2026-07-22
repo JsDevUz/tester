@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
-import { TrendingDown, TrendingUp, X } from "lucide-react";
-import { apiGetTestStats, type TestStats, type TestStatsQuestion } from "../api/tests";
+import { TrendingDown, TrendingUp, Users, X } from "lucide-react";
+import { apiGetTestStats, type TestStats, type TestStatsOptionCount, type TestStatsQuestion } from "../api/tests";
 
 interface Props {
   testId: string;
@@ -8,16 +8,58 @@ interface Props {
   onClose: () => void;
 }
 
+interface SelectedOption {
+  questionText: string;
+  option: TestStatsOptionCount;
+}
+
+function OptionStudentsModal({ selected, onClose }: { selected: SelectedOption; onClose: () => void }) {
+  return (
+    <div
+      className="fixed inset-0 z-60 flex items-center justify-center bg-black/30 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="flex max-h-[70vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+          <div className="min-w-0">
+            <p className="text-xs text-gray-400 truncate">{selected.questionText}</p>
+            <h3 className="text-sm font-semibold text-gray-800 truncate">{selected.option.text}</h3>
+          </div>
+          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" aria-label="Yopish">
+            <X size={16} />
+          </button>
+        </div>
+        <div className="flex-1 overflow-y-auto px-5 py-3">
+          {selected.option.students.length === 0 ? (
+            <p className="py-6 text-center text-sm text-gray-400">Hech kim tanlamagan.</p>
+          ) : (
+            <div className="flex flex-col divide-y divide-gray-50">
+              {selected.option.students.map((name, i) => (
+                <div key={i} className="flex items-center gap-2 py-2">
+                  <Users size={13} className="shrink-0 text-gray-300" />
+                  <span className="text-sm text-gray-700">{name}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function QuestionCard({
   q,
   index,
   isHardest,
   isEasiest,
+  onSelectOption,
 }: {
   q: TestStatsQuestion;
   index: number;
   isHardest: boolean;
   isEasiest: boolean;
+  onSelectOption: (option: TestStatsOptionCount) => void;
 }) {
   const pct = q.correctRate !== null ? Math.round(q.correctRate * 100) : null;
   const maxOptionCount = q.optionCounts ? Math.max(1, ...q.optionCounts.map((o) => o.count)) : 1;
@@ -60,13 +102,19 @@ function QuestionCard({
           {q.optionCounts.map((opt) => {
             const barPct = Math.round((opt.count / maxOptionCount) * 100);
             return (
-              <div key={opt.id} className="flex items-center gap-2">
+              <button
+                key={opt.id}
+                type="button"
+                onClick={() => onSelectOption(opt)}
+                disabled={opt.count === 0}
+                className="flex items-center gap-2 rounded-lg -mx-1 px-1 py-0.5 text-left transition-colors hover:bg-gray-50 disabled:cursor-default disabled:hover:bg-transparent"
+              >
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center justify-between gap-2 mb-1">
                     <span className={`truncate text-xs ${opt.isCorrectOption ? "font-medium text-green-600" : "text-gray-600"}`}>
                       {opt.text}
                     </span>
-                    <span className="shrink-0 text-xs text-gray-400">{opt.count} ta</span>
+                    <span className="shrink-0 text-xs text-gray-400 underline decoration-dotted">{opt.count} ta</span>
                   </div>
                   <div className="h-1.5 rounded-full bg-gray-100">
                     <div
@@ -75,7 +123,7 @@ function QuestionCard({
                     />
                   </div>
                 </div>
-              </div>
+              </button>
             );
           })}
         </div>
@@ -102,6 +150,7 @@ function QuestionCard({
 export function TestStatsModal({ testId, testName, onClose }: Props) {
   const [stats, setStats] = useState<TestStats | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [selectedOption, setSelectedOption] = useState<SelectedOption | null>(null);
 
   useEffect(() => {
     apiGetTestStats(testId)
@@ -143,12 +192,17 @@ export function TestStatsModal({ testId, testName, onClose }: Props) {
                   index={index}
                   isHardest={stats.hardestQuestionId === q.questionId}
                   isEasiest={stats.easiestQuestionId === q.questionId && stats.easiestQuestionId !== stats.hardestQuestionId}
+                  onSelectOption={(option) => setSelectedOption({ questionText: q.questionText, option })}
                 />
               ))}
             </div>
           )}
         </div>
       </div>
+
+      {selectedOption && (
+        <OptionStudentsModal selected={selectedOption} onClose={() => setSelectedOption(null)} />
+      )}
     </div>
   );
 }
