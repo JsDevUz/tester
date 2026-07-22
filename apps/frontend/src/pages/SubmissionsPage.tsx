@@ -158,7 +158,7 @@ export function SubmissionsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen flex flex-col">
+      <div className="h-full min-h-0 flex flex-col">
         <div className="flex-1 w-full px-4 py-4 sm:px-6 sm:py-5 bg-white rounded-2xl">
           {/* Header */}
           <button
@@ -267,9 +267,9 @@ export function SubmissionsPage() {
                 })}
               </div>
 
-              <div className="hidden md:block overflow-x-auto">
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 shadow-sm">
                 <table className="w-full min-w-[820px] text-left">
-                  <thead className="text-sm font-medium text-gray-700">
+                  <thead className="border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-700">
                     <tr>
                       <th className="px-5 py-4">O'quvchi</th>
                       <th className="px-5 py-4">
@@ -295,7 +295,7 @@ export function SubmissionsPage() {
                         <tr
                           key={sub.id}
                           onClick={() => navigate(`/submissions/${sub.id}`)}
-                          className={`group cursor-pointer transition-colors hover:bg-gray-50 ${index % 2 === 1 ? "bg-gray-50/60" : ""}`}
+                          className={`group cursor-pointer border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50 ${index % 2 === 1 ? "bg-gray-50/70" : "bg-white"}`}
                         >
                           <td className="px-5 py-4">
                             <div className="flex items-center gap-2">
