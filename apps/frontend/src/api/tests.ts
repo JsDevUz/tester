@@ -62,6 +62,41 @@ export async function apiDeleteTest(id: string): Promise<void> {
   await client.delete(`/tests/${id}`);
 }
 
+export interface TestStatsOptionCount {
+  id: string;
+  text: string;
+  isCorrectOption: boolean;
+  count: number;
+}
+
+export interface TestStatsTextAnswerCount {
+  text: string;
+  count: number;
+}
+
+export interface TestStatsQuestion {
+  questionId: string;
+  questionText: string;
+  questionType: string;
+  answeredCount: number;
+  correctCount: number;
+  correctRate: number | null;
+  optionCounts: TestStatsOptionCount[] | null;
+  textAnswerCounts: TestStatsTextAnswerCount[] | null;
+}
+
+export interface TestStats {
+  totalSubmissions: number;
+  hardestQuestionId: string | null;
+  easiestQuestionId: string | null;
+  questions: TestStatsQuestion[];
+}
+
+export async function apiGetTestStats(testId: string): Promise<TestStats> {
+  const res = await client.get(`/tests/${testId}/stats`);
+  return res.data;
+}
+
 export interface AllTestsItem {
   id: string;
   name: string;

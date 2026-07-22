@@ -44,6 +44,12 @@ export class SubmissionsController {
     return this.submissionsService.findOne(id, req.admin.id, req.admin.role);
   }
 
+  @Get('tests/:testId/stats')
+  @Roles('teacher', 'super')
+  getStats(@Param('testId') testId: string, @Req() req: any) {
+    return this.submissionsService.getStats(testId, req.admin.id);
+  }
+
   @Delete('submissions/:id')
   @Roles('teacher', 'super')
   @HttpCode(204)

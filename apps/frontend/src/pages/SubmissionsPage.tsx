@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, Trash2, ChevronLeft, Inbox } from "lucide-react";
+import { AlertTriangle, ArrowDown, ArrowUp, ArrowUpDown, BarChart3, Download, Trash2, ChevronLeft, Inbox, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import { AppShell } from "../components/AppShell";
 import { useTestStore } from "../stores/testStore";
 import { apiGetTest, type TestDetail } from "../api/tests";
@@ -12,6 +13,8 @@ import {
   type SubmissionSortField,
 } from "../api/submissions";
 import { formatDateTime, formatElapsedDuration } from "../utils/date";
+import { exportSubmissionsToPdf } from "../utils/submissionsPdf";
+import { TestStatsModal } from "../components/TestStatsModal";
 
 const PAGE_SIZE = 20;
 
@@ -59,8 +62,34 @@ export function SubmissionsPage() {
   const [confirmDelete, setConfirmDelete] = useState<Submission | null>(null);
   const [sort, setSort] = useState<SubmissionSortField>("submittedAt");
   const [dir, setDir] = useState<SubmissionSortDir>("desc");
+  const [exporting, setExporting] = useState(false);
+  const [statsOpen, setStatsOpen] = useState(false);
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
+
+  async function handleExportPdf() {
+    if (!testId) return;
+    setExporting(true);
+    try {
+      const all: Submission[] = [];
+      let offset = 0;
+      for (;;) {
+        const rows = await apiGetSubmissions(testId, 200, offset, sort, dir);
+        all.push(...rows);
+        if (rows.length < 200) break;
+        offset += rows.length;
+      }
+      if (all.length === 0) {
+        toast.error("Yuklab olish uchun natija topilmadi");
+        return;
+      }
+      exportSubmissionsToPdf(test?.name ?? "Test", all);
+    } catch {
+      toast.error("PDF yaratib bo'lmadi");
+    } finally {
+      setExporting(false);
+    }
+  }
 
   async function loadMore(reset = false) {
     if (!testId) return;
@@ -140,6 +169,25 @@ export function SubmissionsPage() {
           </button>
           <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
             <h2 className="text-base sm:text-lg font-bold text-gray-800 leading-snug">{test?.name ?? "Test"} — Natijalar</h2>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setStatsOpen(true)}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
+              >
+                <BarChart3 size={15} />
+                <span className="hidden sm:inline">Statistika</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleExportPdf()}
+                disabled={exporting || submissions.length === 0}
+                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                <span className="hidden sm:inline">{exporting ? "Tayyorlanmoqda..." : "Yuklab olish"}</span>
+              </button>
+            </div>
           </div>
 
           {loading ? (
@@ -311,6 +359,10 @@ export function SubmissionsPage() {
             </div>
           )}
         </div>
+
+        {statsOpen && testId && (
+          <TestStatsModal testId={testId} testName={test?.name ?? "Test"} onClose={() => setStatsOpen(false)} />
+        )}
 
         {confirmDelete && (
           <>
