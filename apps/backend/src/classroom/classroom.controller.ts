@@ -20,6 +20,10 @@ class AttachPdfDto {
   @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
 }
 
+class StartRecordingDto {
+  @IsIn(['full', 'boardAudio', 'boardSilent']) mode!: 'full' | 'boardAudio' | 'boardSilent';
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('classroom')
 export class ClassroomController {
@@ -106,8 +110,12 @@ export class ClassroomController {
 
   @Post('sessions/:id/recording/start')
   @Roles('teacher', 'super')
-  async startRecording(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    await this.classroomService.startSessionRecording(id, req.admin.id);
+  async startRecording(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: StartRecordingDto,
+    @Req() req: any,
+  ) {
+    await this.classroomService.startSessionRecording(id, req.admin.id, dto.mode);
     return { ok: true };
   }
 

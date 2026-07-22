@@ -119,6 +119,8 @@ export interface ClassSessionDetail {
   startedAt: string | null;
   endedAt: string | null;
   attendance: ClassAttendanceEntry[];
+  recordingMode: ClassRecordingMode | null;
+  hasBoardSnapshot: boolean;
 }
 
 export async function apiClassSession(sessionId: string): Promise<ClassSessionDetail> {
@@ -149,6 +151,21 @@ export interface ClassReplayEvent {
   atMs: number;
 }
 
+// "Faqat chizma" rejimida saqlangan doskaning yakuniy (harakatsiz) holati —
+// vektor darajasida saqlangani uchun istalgan zoom darajasida sifat
+// yo'qolmasdan ko'rsatiladi.
+export interface ClassBoardSnapshotData {
+  pdfName: string | null;
+  pages: string[];
+  strokesByPage: Record<number, CsStroke[]>;
+  rightStrokesByPage: Record<number, CsStroke[]>;
+  boardMode: CsBoardMode;
+  boardLayout: CsBoardLayout;
+  leftBoardMode: CsBoardMode;
+  rightBoardMode: CsBoardMode;
+  notebookStyle: CsNotebookStyle;
+}
+
 export interface ClassReplayData {
   pdfName: string | null;
   pdfPages: string[];
@@ -160,6 +177,12 @@ export interface ClassReplayData {
   // replay'da mos kelishi uchun shu siljish audio elementiga qo'llanadi.
   recordingStartedAtMs: number | null;
   attendance: Array<{ userId: string; name: string; status: 'absent' | 'present' | 'late' }>;
+  // Ustoz "Yozib olish"da tanlagan rejim — null bo'lsa hech narsa
+  // yozilmagan. 'full' bo'lsa historyEvents to'liq, replay bosqichma-bosqich
+  // ijro etiladi. 'boardAudio'/'boardSilent' bo'lsa boardSnapshot to'ldiriladi
+  // (statik, harakatsiz ko'rinish), historyEvents bo'sh qoladi.
+  recordingMode: ClassRecordingMode | null;
+  boardSnapshot: ClassBoardSnapshotData | null;
 }
 
 export async function apiClassReplay(sessionId: string): Promise<ClassReplayData> {
@@ -180,8 +203,10 @@ export async function apiVoiceToken(sessionId: string): Promise<{ token: string;
   return res.data;
 }
 
-export async function apiStartClassRecording(sessionId: string): Promise<void> {
-  await client.post(`/classroom/sessions/${sessionId}/recording/start`);
+export type ClassRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
+
+export async function apiStartClassRecording(sessionId: string, mode: ClassRecordingMode): Promise<void> {
+  await client.post(`/classroom/sessions/${sessionId}/recording/start`, { mode });
 }
 
 export async function apiMuteParticipant(sessionId: string, userId: string): Promise<void> {

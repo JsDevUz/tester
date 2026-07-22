@@ -1,7 +1,7 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
+import { Circle, Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -22,12 +22,22 @@ import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
+import { RecordSessionModal } from "../components/classroom/RecordSessionModal";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import {
   apiAttachClassPdf,
   apiMuteParticipant,
+  apiStartClassRecording,
+  type ClassRecordingMode,
   type PdfLibraryAsset,
 } from "../api/classroom";
+
+function formatElapsed(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const min = Math.floor(totalSec / 60);
+  const sec = totalSec % 60;
+  return `${min}:${sec.toString().padStart(2, "0")}`;
+}
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -41,7 +51,7 @@ export function ClassroomHostPage() {
   const admin = useAuthStore((s) => s.admin);
   const { state, hostActions } = useClassroomSession(id, "host");
   useClassroomTheme(state.classroomTheme);
-  const voice = useClassroomVoice(state.joined ? id : undefined, true, true);
+  const voice = useClassroomVoice(state.joined ? id : undefined, true);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");
@@ -50,6 +60,18 @@ export function ClassroomHostPage() {
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
+  const [recordModalOpen, setRecordModalOpen] = useState(false);
+  const [recordingMode, setRecordingMode] = useState<ClassRecordingMode | null>(null);
+  const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
+  const [elapsedMs, setElapsedMs] = useState(0);
+
+  useEffect(() => {
+    if (recordingStartedAt === null) return;
+    const tick = () => setElapsedMs(Date.now() - recordingStartedAt);
+    tick();
+    const interval = window.setInterval(tick, 1000);
+    return () => window.clearInterval(interval);
+  }, [recordingStartedAt]);
   // Split rejimda foydalanuvchi oxirgi marta qaysi panelda (chap/o'ng)
   // faol bo'lganini kuzatadi — Undo/Clear tugmalari shu panelga
   // qo'llanishi kerak, aks holda "sahifani tozalash" har doim chap
@@ -118,6 +140,18 @@ export function ClassroomHostPage() {
       () => toast.success("Havola nusxalandi"),
       () => toast.error("Havolani nusxalab bo'lmadi"),
     );
+  };
+
+  const handleStartRecording = async (mode: ClassRecordingMode) => {
+    if (!id) return;
+    try {
+      await apiStartClassRecording(id, mode);
+      setRecordingMode(mode);
+      setRecordingStartedAt(Date.now());
+      setRecordModalOpen(false);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? "Yozib olishni boshlab bo'lmadi");
+    }
   };
 
   const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
@@ -246,6 +280,22 @@ export function ClassroomHostPage() {
           }
           toolbarActions={
             <div className="flex items-center gap-1.5">
+              {recordingMode ? (
+                <div className="flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white shadow-md">
+                  <Circle size={8} className="animate-pulse fill-white" />
+                  <span className="tabular-nums">{formatElapsed(elapsedMs)}</span>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setRecordModalOpen(true)}
+                  title="Yozib olish"
+                  className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-red-500 shadow-md border border-gray-100 hover:bg-red-50"
+                >
+                  <Circle size={12} className="fill-red-500" />
+                  <span className="hidden sm:inline">Yozib olish</span>
+                </button>
+              )}
               {state.isFree && (
                 <button
                   type="button"
@@ -310,6 +360,13 @@ export function ClassroomHostPage() {
           endCallTitle="Darsni yakunlash"
         />
       </div>
+
+      {recordModalOpen && (
+        <RecordSessionModal
+          onSelect={(mode) => void handleStartRecording(mode)}
+          onClose={() => setRecordModalOpen(false)}
+        />
+      )}
 
       {downloadModalOpen && (
         <DownloadBoardModal

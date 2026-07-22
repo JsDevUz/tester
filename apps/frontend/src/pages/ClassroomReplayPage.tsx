@@ -35,17 +35,43 @@ export function ClassroomReplayPage() {
       .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
   }, [sessionId]);
 
-  const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl;
+  // "Faqat chizma" rejimida (boardAudio/boardSilent) faqat sessiya
+  // tugagandagi YAKUNIY holat saqlangan — bosqichma-bosqich qayta ijro
+  // (play/timeline) va audio pleer umuman ko'rsatilmaydi, faqat statik
+  // chizma ko'rinadi.
+  const isBoardOnly = data?.recordingMode === "boardAudio" || data?.recordingMode === "boardSilent";
+  const hasRecording = !isBoardOnly && data?.recordingStatus === "ready" && !!data?.recordingUrl;
   // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
   // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
   // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
   // uni bilmasdan audio va chizma tarixi replay'da mos kelmaydi.
   const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
   const replay = useClassroomReplay(
-    data?.historyEvents ?? [], data?.pdfName ?? null, data?.pdfPages ?? [],
+    !isBoardOnly ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
     hasRecording ? recordingOffsetMs + audioDurationMs : 0,
   );
-  useClassroomTheme(replay.state.classroomTheme);
+  const boardSnapshot = data?.boardSnapshot ?? null;
+  // "Faqat chizma" rejimida board o'zgarmas — boardSnapshot'dagi statik
+  // holat ko'rsatiladi, replay hook (bo'sh events bilan) ishlatilmaydi.
+  const viewState = isBoardOnly && boardSnapshot
+    ? {
+        pages: boardSnapshot.pages,
+        currentPage: 1,
+        strokesByPage: boardSnapshot.strokesByPage,
+        rightStrokesByPage: boardSnapshot.rightStrokesByPage,
+        zoom: 1,
+        rightZoom: 1,
+        scroll: null,
+        rightScroll: null,
+        boardMode: boardSnapshot.boardMode,
+        boardLayout: boardSnapshot.boardLayout,
+        leftBoardMode: boardSnapshot.leftBoardMode,
+        rightBoardMode: boardSnapshot.rightBoardMode,
+        notebookStyle: boardSnapshot.notebookStyle,
+        classroomTheme: replay.state.classroomTheme,
+      }
+    : replay.state;
+  useClassroomTheme(viewState.classroomTheme);
   // Scrub joriy vaqti audio boshlanishidan oldin bo'lsa (masalan o'qituvchi
   // ovoz ulanishidan oldin chiza boshlagan bo'lsa), audio hali "mavjud
   // emas" — uni ijro etib bo'lmaydi, pauzada qoldiramiz.
@@ -123,66 +149,68 @@ export function ClassroomReplayPage() {
         </div>
         <div className="classroom-replay-viewer relative flex-1 min-h-0 flex flex-col">
           <ClassroomPdfViewer
-            pageUrls={replay.state.pages}
-            currentPage={replay.state.currentPage}
-            strokesByPage={replay.state.strokesByPage}
-            rightStrokesByPage={replay.state.rightStrokesByPage}
+            pageUrls={viewState.pages}
+            currentPage={viewState.currentPage}
+            strokesByPage={viewState.strokesByPage}
+            rightStrokesByPage={viewState.rightStrokesByPage}
             pointer={null}
             editable={false}
             isHost={false}
-            hostZoom={replay.state.zoom}
-            rightHostZoom={replay.state.rightZoom}
-            hostScroll={replay.state.scroll}
-            rightHostScroll={replay.state.rightScroll}
+            hostZoom={viewState.zoom}
+            rightHostZoom={viewState.rightZoom}
+            hostScroll={viewState.scroll}
+            rightHostScroll={viewState.rightScroll}
             tool="pen"
             color="#000000"
             strokeWidth={2}
-            boardMode={replay.state.boardMode}
-            boardLayout={replay.state.boardLayout}
-            leftBoardMode={replay.state.leftBoardMode}
-            rightBoardMode={replay.state.rightBoardMode}
-            notebookStyle={replay.state.notebookStyle}
+            boardMode={viewState.boardMode}
+            boardLayout={viewState.boardLayout}
+            leftBoardMode={viewState.leftBoardMode}
+            rightBoardMode={viewState.rightBoardMode}
+            notebookStyle={viewState.notebookStyle}
           />
         </div>
       </div>
 
-      <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
-        <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-xl border border-indigo-300/20 bg-indigo-950/90 px-2.5 py-1.5 text-white shadow-2xl backdrop-blur-md sm:gap-3 sm:px-3">
-        <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
-        <button
-          type="button"
-          onClick={handlePlayPause}
-          className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white hover:bg-indigo-800/70 sm:h-9 sm:w-9"
-        >
-          {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
-        </button>
-        <span className="hidden w-10 shrink-0 text-right text-xs tabular-nums text-white/80 sm:block">{formatMs(replay.currentTimeMs)}</span>
-        <input
-          type="range"
-          min={0}
-          max={replay.durationMs}
-          value={replay.currentTimeMs}
-          onChange={(e) => handleSeek(Number(e.target.value))}
-          onClick={revealControls}
-          className="h-1 flex-1 cursor-pointer accent-indigo-400"
-        />
-        <span className="w-10 shrink-0 text-xs tabular-nums text-white/80">{formatMs(replay.durationMs)}</span>
-        {data.recordingStatus === "pending" && (
-          <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
-        )}
-        {data.recordingStatus === "failed" && (
-          <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
-        )}
-        {hasRecording && (
-          <audio
-            ref={audioRef}
-            src={data.recordingUrl ?? undefined}
-            onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
-            className="h-0 w-0 opacity-0"
+      {!isBoardOnly && (
+        <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
+          <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-xl border border-indigo-300/20 bg-indigo-950/90 px-2.5 py-1.5 text-white shadow-2xl backdrop-blur-md sm:gap-3 sm:px-3">
+          <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
+          <button
+            type="button"
+            onClick={handlePlayPause}
+            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white hover:bg-indigo-800/70 sm:h-9 sm:w-9"
+          >
+            {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
+          </button>
+          <span className="hidden w-10 shrink-0 text-right text-xs tabular-nums text-white/80 sm:block">{formatMs(replay.currentTimeMs)}</span>
+          <input
+            type="range"
+            min={0}
+            max={replay.durationMs}
+            value={replay.currentTimeMs}
+            onChange={(e) => handleSeek(Number(e.target.value))}
+            onClick={revealControls}
+            className="h-1 flex-1 cursor-pointer accent-indigo-400"
           />
-        )}
+          <span className="w-10 shrink-0 text-xs tabular-nums text-white/80">{formatMs(replay.durationMs)}</span>
+          {data.recordingStatus === "pending" && (
+            <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
+          )}
+          {data.recordingStatus === "failed" && (
+            <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
+          )}
+          {hasRecording && (
+            <audio
+              ref={audioRef}
+              src={data.recordingUrl ?? undefined}
+              onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
+              className="h-0 w-0 opacity-0"
+            />
+          )}
+          </div>
         </div>
-      </div>
+      )}
 
       {attendanceOpen && (
         <div

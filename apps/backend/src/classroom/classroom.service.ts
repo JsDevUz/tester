@@ -20,8 +20,8 @@ import {
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
-  AttendanceStatus, ClassroomBoardMode, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookStyle, ClassroomParticipant,
-  ClassroomSession, ClassroomSnapshot, ClassroomStroke,
+  AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookStyle,
+  ClassroomParticipant, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -272,10 +272,20 @@ export class ClassroomService implements OnModuleInit {
           await this.persistAttendance(s.id, p);
         }
       }
+      const isBoardOnly = s.recordingMode === 'boardAudio' || s.recordingMode === 'boardSilent';
+      const boardSnapshot = isBoardOnly ? this.buildBoardSnapshot(s) : null;
       await db.update(classSessions)
-        .set({ status: 'ended', endedAt: new Date(), historyEvents: s.historyEvents ?? [] })
+        .set({
+          status: 'ended',
+          endedAt: new Date(),
+          historyEvents: s.historyEvents ?? [],
+          recordingMode: s.recordingMode ?? null,
+          boardSnapshot,
+        })
         .where(eq(classSessions.id, sessionId));
-      void this.recording.stopRecording(s.id);
+      if (s.recordingMode === 'full' || s.recordingMode === 'boardAudio') {
+        void this.recording.stopRecording(s.id);
+      }
     }
     this.broadcaster.toRoom(sessionId, 'session:ended', {});
     this.sessions.delete(sessionId);
@@ -615,6 +625,8 @@ export class ClassroomService implements OnModuleInit {
       pdfName: row.pdfName,
       startedAt: row.startedAt?.toISOString() ?? null,
       endedAt: row.endedAt?.toISOString() ?? null,
+      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
+      hasBoardSnapshot: row.boardSnapshot !== null,
       attendance: (row.attendance as unknown as Array<{
         id: string; status: string; firstJoinedAt: Date | null; lastLeftAt: Date | null;
         totalSeconds: number; overriddenByAdminId: string | null;
@@ -682,6 +694,10 @@ export class ClassroomService implements OnModuleInit {
       // sessiya boshlanishidan necha ms keyin ishga tushgani, replay
       // sahifasi audio elementiga shu siljishni qo'llash uchun.
       recordingStartedAtMs: row.recordingStartedAtMs,
+      // Ustoz "faqat chizma" rejimini tanlagan bo'lsa — to'liq harakat
+      // tarixi o'rniga faqat yakuniy doska holati (statik ko'rinish uchun).
+      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
+      boardSnapshot: (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null) ?? null,
       attendance: (row.attendance as unknown as Array<{
         enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
         status: string;
@@ -782,11 +798,37 @@ export class ClassroomService implements OnModuleInit {
 
   // ---------- Ovoz (LiveKit) ----------
 
-  async startSessionRecording(sessionId: string, userId: string): Promise<void> {
+  async startSessionRecording(sessionId: string, userId: string, mode: ClassroomRecordingMode): Promise<void> {
     const session = this.requireSessionHttp(sessionId);
     if (session.isFree || session.hostUserId !== userId) throw new ForbiddenException();
-    await this.recording.startRecording(sessionId, session.startedAtMs);
+    session.recordingMode = mode;
+    // 'boardSilent' rejimida ovoz umuman yozilmaydi — LiveKit egress
+    // ishga tushirilmaydi, sessiya tugaganda faqat board_snapshot yoziladi.
+    if (mode === 'full' || mode === 'boardAudio') {
+      await this.recording.startRecording(sessionId, session.startedAtMs);
+    }
   }
+
+  // Sessiya tugagan ondagi doskaning yakuniy holatini "faqat chizma"
+  // rejimlari uchun jsonb'ga saqlanadigan shaklga keltiradi — buildSnapshot
+  // bilan bir xil manba (jonli sinxronizatsiyada ham ishlatiladi), faqat
+  // participants/zoom/scroll kabi replay uchun keraksiz maydonlar olib
+  // tashlanadi.
+  private buildBoardSnapshot(s: ClassroomSession) {
+    const full = buildSnapshot(s);
+    return {
+      pdfName: full.pdfName,
+      pages: full.pages,
+      strokesByPage: full.strokesByPage,
+      rightStrokesByPage: full.rightStrokesByPage,
+      boardMode: full.boardMode,
+      boardLayout: full.boardLayout,
+      leftBoardMode: full.leftBoardMode,
+      rightBoardMode: full.rightBoardMode,
+      notebookStyle: full.notebookStyle,
+    };
+  }
+
 
   private livekitConfig(): { url: string; apiKey: string; apiSecret: string } | null {
     const url = this.config.get<string>('LIVEKIT_URL');

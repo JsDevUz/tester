@@ -108,6 +108,30 @@ export interface ClassroomSession {
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
   historyEvents?: ClassroomHistoryEvent[];
+  // Ustoz "Yozib olish" tugmasi orqali tanlagan rejim — null bo'lsa hech
+  // narsa yozilmaydi (avval avtomatik boshlanardi, endi faqat shu tugma
+  // orqali). 'full' — to'liq (ovoz + harakat tarixi, to'liq replay).
+  // 'boardAudio'/'boardSilent' — faqat sessiya tugagandagi doskaning
+  // yakuniy holati saqlanadi (JSON snapshot), ovoz bilan yoki ovozsiz.
+  recordingMode?: ClassroomRecordingMode | null;
+}
+
+export type ClassroomRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
+
+// Sessiya tugagan ondagi doskaning yakuniy holati — "faqat chizma"
+// rejimlarida class_sessions.board_snapshot'ga saqlanadi. Vektor
+// (stroke) darajasida saqlangani uchun istalgan zoom darajasida sifat
+// yo'qolmasdan qayta chiziladi (rasm/PDF emas).
+export interface ClassroomBoardSnapshot {
+  pdfName: string | null;
+  pages: string[];
+  strokesByPage: Record<number, ClassroomStroke[]>;
+  rightStrokesByPage: Record<number, ClassroomStroke[]>;
+  boardMode: ClassroomBoardMode;
+  boardLayout: ClassroomBoardLayout;
+  leftBoardMode: ClassroomBoardMode;
+  rightBoardMode: ClassroomBoardMode;
+  notebookStyle: ClassroomNotebookStyle;
 }
 
 export interface ClassroomSnapshot {

@@ -104,8 +104,14 @@ describe('createSession', () => {
   it('host LiveKit roomga ulangandan keyin recording boshlanadi', async () => {
     const { service, sessionId, recordingService } = await setup();
     expect(recordingService.startRecording).not.toHaveBeenCalled();
-    await service.startSessionRecording(sessionId, 'teacher-1');
+    await service.startSessionRecording(sessionId, 'teacher-1', 'full');
     expect(recordingService.startRecording).toHaveBeenCalledWith(sessionId, expect.any(Number));
+  });
+
+  it("'boardSilent' rejimida LiveKit egress ishga tushmaydi", async () => {
+    const { service, sessionId, recordingService } = await setup();
+    await service.startSessionRecording(sessionId, 'teacher-1', 'boardSilent');
+    expect(recordingService.startRecording).not.toHaveBeenCalled();
   });
 
   it('begona ustoz uchun taqiqlanadi', async () => {

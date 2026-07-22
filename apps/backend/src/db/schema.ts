@@ -610,6 +610,16 @@ export const classSessions = pgTable('class_sessions', {
   // keyin (odatda bir necha soniya kech) boshlanadi — shu siljishni
   // bilmasdan audio va chizma replay'da bir-biriga mos kelmaydi.
   recordingStartedAtMs: integer('recording_started_at_ms'),
+  // Ustoz "faqat chizma holatini saqlash" rejimini tanlaganda — sessiya
+  // tugagan ondagi doskaning yakuniy holati (strokesByPage, boardMode,
+  // notebookStyle, pdfPages va h.k.), to'liq harakat tarixisiz (historyEvents
+  // bo'sh qoladi). Statik (harakatsiz) ko'rinishda ko'rsatiladi.
+  boardSnapshot: jsonb('board_snapshot'),
+  // Ustoz "Yozib olish" tugmasida tanlagan rejim — null bo'lsa hech narsa
+  // yozilmagan (tugma bosilmagan). 'full' — to'liq replay (historyEvents +
+  // audio). 'boardAudio'/'boardSilent' — faqat board_snapshot, ovoz bilan
+  // yoki ovozsiz.
+  recordingMode: text('recording_mode'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));

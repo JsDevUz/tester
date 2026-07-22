@@ -190,7 +190,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
                 <h2 className="font-semibold text-gray-800">Davomat</h2>
                 <p className="text-xs text-gray-400">{fmtDate(detail.startedAt)}{detail.pdfName ? ` — ${detail.pdfName}` : ''}</p>
               </div>
-              {detail.status === 'ended' && (
+              {detail.status === 'ended' && (detail.recordingMode === 'full' || detail.hasBoardSnapshot) && (
                 <button
                   type="button"
                   onClick={() => navigate(`/classroom-history/${detail.id}/replay`)}
