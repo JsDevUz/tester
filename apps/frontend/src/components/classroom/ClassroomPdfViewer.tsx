@@ -1478,10 +1478,21 @@ function ClassroomPdfPage({
     const current = resizingGroupRef.current;
     if (!current || size.w <= 0) return;
     event.preventDefault(); event.stopPropagation();
-    const dx = (event.clientX - current.startClientX) / size.w;
-    const dy = (event.clientY - current.startClientY) / size.h;
+    let dx = (event.clientX - current.startClientX) / size.w;
+    let dy = (event.clientY - current.startClientY) / size.h;
     const left = current.corner.includes("w");
     const top = current.corner.includes("n");
+    // Shift bosib turilsa, guruhning umumiy bounding-box'i kvadrat
+    // (eni=bo'yi) bo'lib qoladi — piksel (aspect-corrected) o'lchamda
+    // kattaroq tomonga moslashtiriladi, guruh ichidagi barcha strokelar
+    // shu umumiy scale bilan proporsional o'zgaradi.
+    if (event.shiftKey && size.w > 0 && size.h > 0) {
+      const dxPx = dx * size.w;
+      const dyPx = dy * size.h;
+      const side = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+      dx = ((Math.sign(dxPx) || 1) * side) / size.w;
+      dy = ((Math.sign(dyPx) || 1) * side) / size.h;
+    }
     const { startBounds } = current;
     const nextLeft = left ? Math.max(0, Math.min(startBounds.right - 0.01, startBounds.left + dx)) : startBounds.left;
     const nextTop = top ? Math.max(0, Math.min(startBounds.bottom - 0.01, startBounds.top + dy)) : startBounds.top;
@@ -1770,10 +1781,21 @@ function ClassroomPdfPage({
       forceRedraw((value) => value + 1);
       return;
     }
-    const dx = (event.clientX - current.startClientX) / size.w;
-    const dy = (event.clientY - current.startClientY) / size.h;
+    let dx = (event.clientX - current.startClientX) / size.w;
+    let dy = (event.clientY - current.startClientY) / size.h;
     const left = current.corner?.includes("w") ?? false;
     const top = current.corner?.includes("n") ?? false;
+    // Shift bosib turilsa, shakl kvadrat (eni=bo'yi) bo'lib qoladi —
+    // piksel (aspect-corrected) o'lchamda kattaroq tomonga moslashtiriladi,
+    // ikkala o'q ham shu umumiy o'lchamga tenglanadi, faqat siljish
+    // yo'nalishi (ishora) saqlanadi.
+    if (event.shiftKey && size.w > 0 && size.h > 0) {
+      const dxPx = dx * size.w;
+      const dyPx = dy * size.h;
+      const side = Math.max(Math.abs(dxPx), Math.abs(dyPx));
+      dx = ((Math.sign(dxPx) || 1) * side) / size.w;
+      dy = ((Math.sign(dyPx) || 1) * side) / size.h;
+    }
     // Chapdan/tepadan tortilsa mos burchak (x0/y0), o'ngdan/pastdan
     // tortilsa qarama-qarshi burchak (x1/y1) siljiydi — oddiy bounding-box
     // resize, aspekt-nisbat qulflanmaydi (Excalidraw'da ham shift bosilmasa
@@ -2180,6 +2202,19 @@ function ClassroomPdfPage({
           nextX = draft[0] + (Math.cos(snappedAngle) * distPx) / size.w;
           nextY = draft[1] + (Math.sin(snappedAngle) * distPx) / size.h;
         }
+      }
+      // To'rtburchak/doira chizilayotganda Shift bosib turilsa, eni-bo'yi
+      // teng (kvadrat/doira) bo'lib qoladi — piksel (aspect-corrected)
+      // o'lchamlarda kattaroq tomonga moslashtiriladi, kichikroq tomon
+      // shunga teng qilib qo'yiladi, yo'nalish (belgi) saqlanadi.
+      if ((tool === "rectangle" || tool === "ellipse") && e.shiftKey && size.w > 0 && size.h > 0) {
+        const widthPx = (nextX - draft[0]) * size.w;
+        const heightPx = (nextY - draft[1]) * size.h;
+        const side = Math.max(Math.abs(widthPx), Math.abs(heightPx));
+        const signedWidthPx = Math.sign(widthPx) * side || side;
+        const signedHeightPx = Math.sign(heightPx) * side || side;
+        nextX = draft[0] + signedWidthPx / size.w;
+        nextY = draft[1] + signedHeightPx / size.h;
       }
       draft[2] = nextX;
       draft[3] = nextY;
