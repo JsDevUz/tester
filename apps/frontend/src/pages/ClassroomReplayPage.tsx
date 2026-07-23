@@ -35,19 +35,20 @@ export function ClassroomReplayPage() {
       .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
   }, [sessionId]);
 
-  // "Faqat chizma" rejimida (boardAudio/boardSilent) faqat sessiya
-  // tugagandagi YAKUNIY holat saqlangan — bosqichma-bosqich qayta ijro
-  // (play/timeline) va audio pleer umuman ko'rsatilmaydi, faqat statik
-  // chizma ko'rinadi.
+  // boardAudio'da chizmalar yakuniy holatda turadi, lekin audio va
+  // pointer/scroll/zoom timeline qayta ijro etiladi. boardSilent esa
+  // butunlay statik qoladi.
   const isBoardOnly = data?.recordingMode === "boardAudio" || data?.recordingMode === "boardSilent";
-  const hasRecording = !isBoardOnly && data?.recordingStatus === "ready" && !!data?.recordingUrl;
+  const isBoardAudio = data?.recordingMode === "boardAudio";
+  const showTimeline = !isBoardOnly || isBoardAudio;
+  const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl && data?.recordingMode !== "boardSilent";
   // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
   // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
   // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
   // uni bilmasdan audio va chizma tarixi replay'da mos kelmaydi.
   const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
   const replay = useClassroomReplay(
-    !isBoardOnly ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
+    showTimeline ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
     hasRecording ? recordingOffsetMs + audioDurationMs : 0,
   );
   const boardSnapshot = data?.boardSnapshot ?? null;
@@ -56,13 +57,14 @@ export function ClassroomReplayPage() {
   const viewState = isBoardOnly && boardSnapshot
     ? {
         pages: boardSnapshot.pages,
-        currentPage: 1,
+        currentPage: isBoardAudio ? replay.state.currentPage : 1,
         strokesByPage: boardSnapshot.strokesByPage,
         rightStrokesByPage: boardSnapshot.rightStrokesByPage,
-        zoom: 1,
-        rightZoom: 1,
-        scroll: null,
-        rightScroll: null,
+        zoom: isBoardAudio ? replay.state.zoom : 1,
+        rightZoom: isBoardAudio ? replay.state.rightZoom : 1,
+        scroll: isBoardAudio ? replay.state.scroll : null,
+        rightScroll: isBoardAudio ? replay.state.rightScroll : null,
+        pointer: isBoardAudio ? replay.state.pointer : null,
         boardMode: boardSnapshot.boardMode,
         boardLayout: boardSnapshot.boardLayout,
         leftBoardMode: boardSnapshot.leftBoardMode,
@@ -153,7 +155,7 @@ export function ClassroomReplayPage() {
             currentPage={viewState.currentPage}
             strokesByPage={viewState.strokesByPage}
             rightStrokesByPage={viewState.rightStrokesByPage}
-            pointer={null}
+            pointer={viewState.pointer}
             editable={false}
             isHost={false}
             hostZoom={viewState.zoom}
@@ -172,7 +174,7 @@ export function ClassroomReplayPage() {
         </div>
       </div>
 
-      {!isBoardOnly && (
+      {showTimeline && (
         <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
           <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-xl border border-indigo-300/20 bg-indigo-950/90 px-2.5 py-1.5 text-white shadow-2xl backdrop-blur-md sm:gap-3 sm:px-3">
           <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>

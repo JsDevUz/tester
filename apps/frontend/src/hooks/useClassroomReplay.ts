@@ -25,6 +25,7 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
   "page:clear": applyPageClear,
   "zoom:set": (s, p: { zoom: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightZoom: p.zoom } : { ...s, zoom: p.zoom },
   "scroll:set": (s, p: { page: number; yRatio: number; xRatio?: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightScroll: p } : { ...s, scroll: p },
+  "pointer:move": (s, p) => ({ ...s, pointer: p }),
   "theme:set": (s, p: { theme: "light" | "dark" }) => ({ ...s, classroomTheme: p.theme }),
   "notebookStyle:set": (s, p: { style: "grid" | "lined" | "plain" }) => ({ ...s, notebookStyle: p.style }),
 };

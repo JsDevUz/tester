@@ -178,9 +178,9 @@ export interface ClassReplayData {
   recordingStartedAtMs: number | null;
   attendance: Array<{ userId: string; name: string; status: 'absent' | 'present' | 'late' }>;
   // Ustoz "Yozib olish"da tanlagan rejim — null bo'lsa hech narsa
-  // yozilmagan. 'full' bo'lsa historyEvents to'liq, replay bosqichma-bosqich
-  // ijro etiladi. 'boardAudio'/'boardSilent' bo'lsa boardSnapshot to'ldiriladi
-  // (statik, harakatsiz ko'rinish), historyEvents bo'sh qoladi.
+  // yozilmagan. 'full' bo'lsa historyEvents to'liq. 'boardAudio'da final
+  // boardSnapshot bilan birga faqat pointer/scroll/zoom timeline saqlanadi.
+  // 'boardSilent' faqat statik boardSnapshot saqlaydi.
   recordingMode: ClassRecordingMode | null;
   boardSnapshot: ClassBoardSnapshotData | null;
 }

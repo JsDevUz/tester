@@ -274,11 +274,23 @@ export class ClassroomService implements OnModuleInit {
       }
       const isBoardOnly = s.recordingMode === 'boardAudio' || s.recordingMode === 'boardSilent';
       const boardSnapshot = isBoardOnly ? this.buildBoardSnapshot(s) : null;
+      // boardAudio'da chizmalarning bosqichma-bosqich tarixi kerak emas:
+      // yakuniy vektor holati boardSnapshot'da saqlanadi. Faqat o'qituvchi
+      // navigatsiyasi va kursori audio timeline bilan birga qayta ijro etiladi.
+      const historyEvents = s.recordingMode === 'boardAudio'
+        ? (s.historyEvents ?? []).filter((event) =>
+            event.type === 'pointer:move' ||
+            event.type === 'scroll:set' ||
+            event.type === 'zoom:set' ||
+            event.type === 'page:set')
+        : s.recordingMode === 'boardSilent'
+          ? []
+          : (s.historyEvents ?? []);
       await db.update(classSessions)
         .set({
           status: 'ended',
           endedAt: new Date(),
-          historyEvents: s.historyEvents ?? [],
+          historyEvents,
           recordingMode: s.recordingMode ?? null,
           boardSnapshot,
         })
@@ -556,7 +568,9 @@ export class ClassroomService implements OnModuleInit {
 
   pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    this.broadcaster.toRoom(s.id, 'pointer:move', { page, x, y, active, pane });
+    const payload = { page, x, y, active, pane };
+    this.recordHistoryEvent(s, 'pointer:move', payload);
+    this.broadcaster.toRoom(s.id, 'pointer:move', payload);
   }
 
   // Ustozning zoom darajasi — kech kirgan o'quvchiga snapshot orqali,
