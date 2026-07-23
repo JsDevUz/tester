@@ -7,6 +7,7 @@ import type {
 import { useAutoHideOverlay } from "../../hooks/useAutoHideOverlay";
 import { useClassroomScrollSync } from "../../hooks/useClassroomScrollSync";
 import { useClassroomZoom, MIN_ZOOM, MAX_ZOOM, ZOOM_STEP } from "../../hooks/useClassroomZoom";
+import { getStroke } from "perfect-freehand";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
@@ -424,6 +425,47 @@ export function drawStroke(ctx: CanvasRenderingContext2D, s: CsStroke, w: number
   }
   if (s.tool === "rectangle" || s.tool === "ellipse") {
     if (s.points.length >= 4) drawShape(ctx, s, w, h, dimmed);
+    return;
+  }
+  if (s.tool === "pen") {
+    const pointCount = Math.floor(s.points.length / 2);
+    const hasRealPressure = s.pressures?.length === pointCount;
+    const input: number[][] = Array.from({ length: pointCount }, (_, index) =>
+      hasRealPressure
+        ? [s.points[index * 2] * w, s.points[index * 2 + 1] * h, s.pressures![index]]
+        : [s.points[index * 2] * w, s.points[index * 2 + 1] * h],
+    );
+    const size = Math.max(1, s.width * (w / REF_WIDTH));
+    const outline = getStroke(input, {
+      size,
+      thinning: 0.58,
+      smoothing: 0.62,
+      streamline: 0.48,
+      simulatePressure: !hasRealPressure,
+      easing: (pressure) => pressure,
+      start: { taper: size * 0.65, cap: true },
+      end: { taper: size * 1.8, cap: true },
+    });
+    if (outline.length > 0) {
+      ctx.save();
+      ctx.fillStyle = s.color;
+      ctx.globalAlpha = dimmed ? 0.25 : 1;
+      ctx.beginPath();
+      ctx.moveTo(outline[0][0], outline[0][1]);
+      for (let index = 1; index < outline.length; index += 1) {
+        const current = outline[index];
+        const next = outline[(index + 1) % outline.length];
+        ctx.quadraticCurveTo(
+          current[0],
+          current[1],
+          (current[0] + next[0]) / 2,
+          (current[1] + next[1]) / 2,
+        );
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
     return;
   }
   ctx.save();
@@ -1210,6 +1252,7 @@ function ClassroomPdfPage({
   const erasedThisDragRef = useRef<Set<string>>(new Set());
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const draftRef = useRef<number[] | null>(null);
+  const draftPressuresRef = useRef<number[] | null>(null);
   const textInputRef = useRef<HTMLTextAreaElement>(null);
   const lastTextStyleRef = useRef<{ fontFamily: CsFontFamily; fontSize: number; fontWeight: 400 | 500 | 600 | 700; textAlign: "left" | "center" | "right" }>({
     fontFamily: "Inter", fontSize: 24, fontWeight: 600, textAlign: "left",
@@ -1673,6 +1716,7 @@ function ClassroomPdfPage({
       const isShape = tool === "rectangle" || tool === "ellipse";
       drawStroke(ctx, {
         id: "__draft__", tool: tool === "laser" ? "pen" : tool, color, width: strokeWidth, points: draftRef.current,
+        ...(tool === "pen" && draftPressuresRef.current ? { pressures: draftPressuresRef.current } : {}),
         ...(isShape ? { ...shapeStyle } : {}),
       }, size.w, size.h);
     }
@@ -2073,6 +2117,9 @@ function ClassroomPdfPage({
       return;
     }
     draftRef.current = (tool === "arrow" || tool === "line" || tool === "rectangle" || tool === "ellipse") ? [p[0], p[1], p[0], p[1]] : [...p];
+    draftPressuresRef.current = tool === "pen" && e.pointerType === "pen"
+      ? [Math.max(0.01, Math.min(1, e.pressure || 0.5))]
+      : null;
     forceRedraw((n) => n + 1);
   };
 
@@ -2228,6 +2275,9 @@ function ClassroomPdfPage({
     // chiziqqa olib keladi, chunki tez harakatda nuqtalar allaqachon siyrak.
     if (Math.abs(p[0] - lastX) + Math.abs(p[1] - lastY) < 0.0005) return;
     draft.push(p[0], p[1]);
+    if (tool === "pen" && draftPressuresRef.current) {
+      draftPressuresRef.current.push(Math.max(0.01, Math.min(1, e.pressure || 0.5)));
+    }
     forceRedraw((n) => n + 1);
   };
 
@@ -2281,6 +2331,8 @@ function ClassroomPdfPage({
     }
     const draft = draftRef.current;
     draftRef.current = null;
+    const draftPressures = draftPressuresRef.current;
+    draftPressuresRef.current = null;
     if (draft && draft.length >= 2) {
       const isShape = tool === "rectangle" || tool === "ellipse";
       // Nuqta kabi bosilib qo'yilgan (drag qilinmagan) shape saqlanmaydi —
@@ -2289,6 +2341,7 @@ function ClassroomPdfPage({
         const strokeId = crypto.randomUUID();
         onStrokeComplete?.(pageNumber, {
           id: strokeId, tool: tool as CsTool, color, width: strokeWidth, points: draft,
+          ...(tool === "pen" && draftPressures?.length === draft.length / 2 ? { pressures: draftPressures } : {}),
           ...(isShape ? { ...shapeStyle } : {}),
         });
         if (isShape) {

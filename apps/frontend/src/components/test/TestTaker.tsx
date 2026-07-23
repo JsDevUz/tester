@@ -744,16 +744,21 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   }, [phase]); // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(() => {
+    // Aralashtirish seed'i submissionId'ga bog'liq. Dars ichidagi amaliyot
+    // submission'ni avtomatik yaratadi, shu sabab ID kelmasidan testni bo'sh
+    // seed bilan aralashtirsak natija sahifasidagi tartib bilan mos kelmaydi.
+    // ID tayyor bo'lgach aynan backend ishlatadigan seed bilan bir marta tuzamiz.
+    if (!resolvedSubmissionId) return;
     apiGetPublicTest(slug, practiceMode).then((t) => {
       setTest(t);
       const qs = t.shuffleQuestions
-        ? seededShuffle(t.questions, resolvedSubmissionId ?? "")
+        ? seededShuffle(t.questions, resolvedSubmissionId)
         : [...t.questions];
       const qsWithOpts = qs.map((q) => ({
         ...q,
         options:
           t.shuffleOptions && q.type !== "matching"
-            ? seededShuffle(q.options, (resolvedSubmissionId ?? "") + q.id)
+            ? seededShuffle(q.options, resolvedSubmissionId + q.id)
             : q.options,
       }));
       setOrderedQuestions(qsWithOpts);
@@ -801,7 +806,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       }
       if (t.timeLimit) setTimeLeft(t.timeLimit * 60);
     });
-  }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [slug, resolvedSubmissionId, practiceMode]);
 
   useEffect(() => {
     if (!resolvedSubmissionId || orderedQuestions.length === 0 || submittingRef.current)

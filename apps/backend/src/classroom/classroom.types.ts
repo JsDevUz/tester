@@ -34,6 +34,8 @@ export interface ClassroomStroke {
   // Normalizatsiyalangan (0..1) koordinatalar, flat: [x0, y0, x1, y1, ...].
   // Shape uchun bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];
+  // Freehand chiziq nuqtalariga mos 0..1 stylus bosimi.
+  pressures?: number[];
 }
 
 export type AttendanceStatus = 'absent' | 'present' | 'late';

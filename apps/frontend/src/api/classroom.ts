@@ -251,6 +251,9 @@ export interface CsStroke {
   // Normalizatsiyalangan (0..1), flat: [x0, y0, x1, y1, ...]. Shape uchun
   // bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];
+  // Freehand qalam uchun har bir x/y nuqtaga mos 0..1 stylus bosimi.
+  // Eski chizmalarda bo'lmasa tezlik asosida pressure simulyatsiya qilinadi.
+  pressures?: number[];
 }
 
 export interface CsParticipant {
