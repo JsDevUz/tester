@@ -75,6 +75,14 @@ export interface TestStatsTextAnswerCount {
   count: number;
 }
 
+export interface TestStatsMatchingPair {
+  leftId: string;
+  leftText: string;
+  correctRightText: string;
+  answeredCount: number;
+  correctCount: number;
+}
+
 export interface TestStatsQuestion {
   questionId: string;
   questionText: string;
@@ -84,6 +92,7 @@ export interface TestStatsQuestion {
   correctRate: number | null;
   optionCounts: TestStatsOptionCount[] | null;
   textAnswerCounts: TestStatsTextAnswerCount[] | null;
+  matchingPairStats: TestStatsMatchingPair[] | null;
 }
 
 export interface TestStats {

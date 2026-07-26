@@ -1,6 +1,11 @@
 import { useEffect, useState } from "react";
 import { TrendingDown, TrendingUp, Users, X } from "lucide-react";
-import { apiGetTestStats, type TestStats, type TestStatsOptionCount, type TestStatsQuestion } from "../api/tests";
+import {
+  apiGetTestStats,
+  type TestStats,
+  type TestStatsOptionCount,
+  type TestStatsQuestion,
+} from "../api/tests";
 
 interface Props {
   testId: string;
@@ -110,8 +115,8 @@ function QuestionCard({
                 className="flex items-center gap-2 rounded-lg -mx-1 px-1 py-0.5 text-left transition-colors hover:bg-gray-50 disabled:cursor-default disabled:hover:bg-transparent"
               >
                 <div className="min-w-0 flex-1">
-                  <div className="flex items-center justify-between gap-2 mb-1">
-                    <span className={`truncate text-xs ${opt.isCorrectOption ? "font-medium text-green-600" : "text-gray-600"}`}>
+                  <div className="flex items-start justify-between gap-2 mb-1">
+                    <span className={`line-clamp-3 text-xs ${opt.isCorrectOption ? "font-medium text-green-600" : "text-gray-600"}`}>
                       {opt.text}
                     </span>
                     <span className="shrink-0 text-xs text-gray-400 underline decoration-dotted">{opt.count} ta</span>
@@ -132,17 +137,43 @@ function QuestionCard({
       {q.textAnswerCounts && q.textAnswerCounts.length > 0 && (
         <div className="flex flex-col gap-1.5">
           {q.textAnswerCounts.map((t, i) => (
-            <div key={i} className="flex items-center justify-between gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
-              <span className="truncate text-xs text-gray-600">{t.text}</span>
+            <div key={i} className="flex items-start justify-between gap-2 rounded-lg bg-gray-50 px-3 py-1.5">
+              <span className="line-clamp-3 text-xs text-gray-600">{t.text}</span>
               <span className="shrink-0 text-xs text-gray-400">{t.count} ta</span>
             </div>
           ))}
         </div>
       )}
 
-      {!q.optionCounts && (!q.textAnswerCounts || q.textAnswerCounts.length === 0) && (
-        <p className="text-xs text-gray-300">Bu savol turi uchun batafsil statistika mavjud emas.</p>
+      {q.matchingPairStats && q.matchingPairStats.length > 0 && (
+        <div className="flex flex-col gap-2">
+          {q.matchingPairStats.map((pair) => {
+            const pairPct = pair.answeredCount > 0 ? Math.round((pair.correctCount / pair.answeredCount) * 100) : null;
+            return (
+              <div key={pair.leftId} className="min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <span className="line-clamp-3 text-xs text-gray-600">
+                    {pair.leftText} <span className="text-gray-300">→</span>{" "}
+                    <span className="font-medium text-green-600">{pair.correctRightText}</span>
+                  </span>
+                  <span className="shrink-0 text-xs text-gray-400">
+                    {pairPct !== null ? `${pairPct}%` : "—"}
+                  </span>
+                </div>
+                <div className="h-1.5 rounded-full bg-gray-100">
+                  <div className="h-1.5 rounded-full bg-green-400" style={{ width: `${pairPct ?? 0}%` }} />
+                </div>
+              </div>
+            );
+          })}
+        </div>
       )}
+
+      {!q.optionCounts &&
+        (!q.textAnswerCounts || q.textAnswerCounts.length === 0) &&
+        (!q.matchingPairStats || q.matchingPairStats.length === 0) && (
+          <p className="text-xs text-gray-300">Bu savol turi uchun batafsil statistika mavjud emas.</p>
+        )}
     </div>
   );
 }

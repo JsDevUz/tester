@@ -167,12 +167,18 @@ export function AnswerResultCard({
             return (
               <div
                 key={opt.id}
-                className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${
+                className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl border-2 ${
                   opt.isCorrectOption
                     ? "bg-green-100/70 text-green-700 font-medium"
                     : selected
                       ? "bg-red-100/70 text-red-600"
                       : "text-gray-400"
+                } ${
+                  selected
+                    ? opt.isCorrectOption
+                      ? "border-green-500"
+                      : "border-red-500"
+                    : "border-transparent"
                 }`}
               >
                 <Circle

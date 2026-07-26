@@ -260,8 +260,46 @@ export class SubmissionsService {
 
       let optionCounts: Array<{ id: string; text: string; isCorrectOption: boolean; count: number; students: string[] }> | null = null;
       let textAnswerCounts: Array<{ text: string; count: number }> | null = null;
+      let matchingPairStats: Array<{
+        leftId: string;
+        leftText: string;
+        correctRightText: string;
+        answeredCount: number;
+        correctCount: number;
+      }> | null = null;
 
-      if (OPTION_BASED_TYPES.has(q.type)) {
+      if (q.type === 'matching') {
+        // matching uchun options qatorlari juftlik sifatida saqlanadi: isCorrect=true
+        // bo'lganlar chap ustun, isCorrect=false bo'lganlar o'ng ustun, ikkisi ham
+        // orderIndex bo'yicha saralangach bir xil indeksdagilar to'g'ri juftlik
+        // hisoblanadi (correctOptionIds/correctAnswerText'dagi mantiq bilan bir xil).
+        const lefts = q.options.filter((o) => o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const rights = q.options.filter((o) => !o.isCorrect).sort((a, b) => a.orderIndex - b.orderIndex);
+        const rightTextById = new Map(q.options.map((o) => [o.id, o.text]));
+        const correctRightIdByLeftId = new Map(lefts.map((left, index) => [left.id, rights[index]?.id]));
+
+        const answeredByLeftId = new Map<string, number>();
+        const correctByLeftId = new Map<string, number>();
+        for (const a of qAnswers) {
+          for (let i = 0; i < a.selectedOptionIds.length; i += 2) {
+            const leftId = a.selectedOptionIds[i];
+            const rightId = a.selectedOptionIds[i + 1];
+            if (!leftId || !rightId) continue;
+            answeredByLeftId.set(leftId, (answeredByLeftId.get(leftId) ?? 0) + 1);
+            if (correctRightIdByLeftId.get(leftId) === rightId) {
+              correctByLeftId.set(leftId, (correctByLeftId.get(leftId) ?? 0) + 1);
+            }
+          }
+        }
+
+        matchingPairStats = lefts.map((left, index) => ({
+          leftId: left.id,
+          leftText: left.text,
+          correctRightText: rights[index] ? rightTextById.get(rights[index].id)! : '—',
+          answeredCount: answeredByLeftId.get(left.id) ?? 0,
+          correctCount: correctByLeftId.get(left.id) ?? 0,
+        }));
+      } else if (OPTION_BASED_TYPES.has(q.type)) {
         const studentsByOption = new Map<string, string[]>();
         for (const a of qAnswers) {
           const studentName = studentNameBySubmissionId.get(a.submissionId) ?? '—';
@@ -303,6 +341,7 @@ export class SubmissionsService {
         correctRate,
         optionCounts,
         textAnswerCounts,
+        matchingPairStats,
       };
     });
 
