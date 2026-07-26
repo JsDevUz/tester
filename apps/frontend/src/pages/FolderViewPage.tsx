@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { AppShell } from "../components/AppShell";
@@ -21,6 +21,7 @@ export function FolderViewPage() {
   const [confirmDelete, setConfirmDelete] = useState<Test | null>(null);
   const [pinTest, setPinTest] = useState<Test | null>(null);
   const [pinnedTestIds, setPinnedTestIds] = useState<Set<string>>(new Set());
+  const pinStatusGeneration = useRef(0);
 
   const folder = folders.find((f) => f.id === folderId);
 
@@ -38,10 +39,11 @@ export function FolderViewPage() {
       return;
     }
     let cancelled = false;
+    const generation = pinStatusGeneration.current;
     const currentTestIds = new Set(tests.map((test) => test.id));
 
     void Promise.allSettled(tests.map((test) => apiGetTestPin(test.id))).then((results) => {
-      if (cancelled) return;
+      if (cancelled || generation !== pinStatusGeneration.current) return;
 
       setPinnedTestIds((previous) => {
         const next = new Set([...previous].filter((id) => currentTestIds.has(id)));
@@ -172,10 +174,12 @@ export function FolderViewPage() {
             testName={pinTest.name}
             onClose={() => setPinTest(null)}
             onSaved={() => {
+              pinStatusGeneration.current += 1;
               setPinnedTestIds((prev) => new Set(prev).add(pinTest.id));
               setPinTest(null);
             }}
             onRemoved={() => {
+              pinStatusGeneration.current += 1;
               setPinnedTestIds((prev) => {
                 const next = new Set(prev);
                 next.delete(pinTest.id);
