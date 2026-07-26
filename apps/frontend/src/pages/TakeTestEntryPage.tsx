@@ -74,14 +74,28 @@ export function TakeTestEntryPage() {
         .catch(() => {
           apiGetPublicTest(slug, isPractice)
             .then(setTest)
-            .catch(() => setError("Test topilmadi."))
+            .catch((err: any) => {
+              const msg = err?.response?.data?.message;
+              setError(
+                msg === "NOT_ASSIGNED"
+                  ? "Bu test sizga tayinlanmagan."
+                  : "Test topilmadi.",
+              );
+            })
             .finally(() => setLoading(false));
         });
       return;
     }
     apiGetPublicTest(slug, isPractice)
       .then(setTest)
-      .catch(() => setError("Test topilmadi."))
+      .catch((err: any) => {
+        const msg = err?.response?.data?.message;
+        setError(
+          msg === "NOT_ASSIGNED"
+            ? "Bu test sizga tayinlanmagan."
+            : "Test topilmadi.",
+        );
+      })
       .finally(() => setLoading(false));
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -106,6 +120,8 @@ export function TakeTestEntryPage() {
         );
       } else if (msg === "ALREADY_SUBMITTED") {
         setError("Siz bu testni allaqachon ishlagansiz.");
+      } else if (msg === "NOT_ASSIGNED") {
+        setError("Bu test sizga tayinlanmagan.");
       } else {
         setError("Xato yuz berdi. Qayta urinib ko'ring.");
       }
