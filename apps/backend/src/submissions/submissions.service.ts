@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { answers, groupEnrollments, practiceChatMessages, schoolMembers, submissions, tests } from '../db/schema';
-import { and, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { answers, groupEnrollments, practiceChatMessages, schoolMembers, submissions, testPins, tests } from '../db/schema';
+import { and, eq, gte, inArray, isNotNull, isNull, lte } from 'drizzle-orm';
 import { normalizeViolationReason, orderSubmissionAnswersForDisplay, seededShuffle } from '../delivery/delivery.service';
 
 export type SubmissionSortField = 'submittedAt' | 'score';
@@ -60,6 +60,37 @@ export class SubmissionsService {
       mode: submission.mode,
       violationReason: normalizeViolationReason(submission.violationReason),
     }));
+  }
+
+  async listActivePinsForStudent(studentId: string) {
+    const now = new Date();
+    const activePins = await db.query.testPins.findMany({
+      where: and(lte(testPins.startsAt, now), gte(testPins.endsAt, now)),
+      with: { test: true },
+    });
+    if (activePins.length === 0) return [];
+
+    const memberships = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, studentId) });
+    const schoolMemberIds = memberships.map((m) => m.id);
+    if (schoolMemberIds.length === 0) return [];
+
+    const enrollments = await db.query.groupEnrollments.findMany({
+      where: (e, { inArray, isNull }) => and(inArray(e.schoolMemberId, schoolMemberIds), isNull(e.removedAt)),
+      with: { group: true },
+    });
+
+    const result: Array<{ testId: string; testName: string; slug: string }> = [];
+    for (const pin of activePins) {
+      const matchingEnrollment = enrollments.find((e) => {
+        if (e.group.courseId !== pin.courseId) return false;
+        if (pin.groupIds.length === 0) return true;
+        return pin.groupIds.includes(e.groupId);
+      });
+      if (matchingEnrollment && pin.test.slug) {
+        result.push({ testId: pin.testId, testName: pin.test.name, slug: pin.test.slug });
+      }
+    }
+    return result;
   }
 
   async deleteOne(submissionId: string, adminId: string) {

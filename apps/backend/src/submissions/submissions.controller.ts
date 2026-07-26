@@ -21,6 +21,11 @@ export class SubmissionsController {
     return this.submissionsService.findMineOne(id, req.user.id);
   }
 
+  @Get('me/active-pins')
+  findMyActivePins(@Req() req: any) {
+    return this.submissionsService.listActivePinsForStudent(req.user.id);
+  }
+
   @Get('tests/:testId/submissions')
   @Roles('teacher', 'super')
   findByTest(
