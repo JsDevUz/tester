@@ -63,3 +63,14 @@ export async function apiGetSubmission(id: string): Promise<SubmissionDetail> {
 export async function apiDeleteSubmission(id: string): Promise<void> {
   await client.delete(`/submissions/${id}`);
 }
+
+export interface ActiveTestPin {
+  testId: string;
+  testName: string;
+  slug: string;
+}
+
+export async function apiActiveTestPins(): Promise<ActiveTestPin[]> {
+  const res = await client.get('/me/active-pins');
+  return res.data;
+}

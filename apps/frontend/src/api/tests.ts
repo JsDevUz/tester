@@ -121,3 +121,29 @@ export async function apiListAllTests(): Promise<AllTestsItem[]> {
     questionCount: t.questionCount ?? t.liveQuestionCount,
   }));
 }
+
+export interface TestPin {
+  id: string;
+  testId: string;
+  courseId: string;
+  groupIds: string[];
+  startsAt: string;
+  endsAt: string;
+}
+
+export async function apiGetTestPin(testId: string): Promise<TestPin | null> {
+  const res = await client.get(`/tests/${testId}/pin`);
+  return res.data;
+}
+
+export async function apiUpsertTestPin(
+  testId: string,
+  data: { courseId: string; groupIds: string[]; startsAt: string; endsAt: string },
+): Promise<TestPin> {
+  const res = await client.put(`/tests/${testId}/pin`, data);
+  return res.data;
+}
+
+export async function apiRemoveTestPin(testId: string): Promise<void> {
+  await client.delete(`/tests/${testId}/pin`);
+}
