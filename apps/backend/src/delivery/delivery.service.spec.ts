@@ -1,10 +1,26 @@
+import { BadRequestException } from '@nestjs/common';
 import {
   applyPracticeOverride,
+  DeliveryService,
   evaluateObjectiveAnswer,
   normalizeSubmissionMode,
   orderSubmissionAnswersForDisplay,
   seededShuffle,
 } from './delivery.service';
+import { db } from '../db';
+
+jest.mock('../db', () => ({
+  db: {
+    query: {
+      tests: { findFirst: jest.fn() },
+      submissions: { findFirst: jest.fn(), findMany: jest.fn() },
+      testPins: { findFirst: jest.fn() },
+      schoolMembers: { findMany: jest.fn() },
+      groupEnrollments: { findMany: jest.fn() },
+    },
+    insert: jest.fn(),
+  },
+}));
 
 describe('evaluateObjectiveAnswer', () => {
   it('does not mark unanswered single-choice questions as correct when no correct option is configured', () => {
@@ -86,5 +102,133 @@ describe('applyPracticeOverride', () => {
     const original = { ...config };
     applyPracticeOverride(config, true);
     expect(config).toEqual(original);
+  });
+});
+
+describe('DeliveryService pin access control', () => {
+  const service = new DeliveryService({} as any, {} as any);
+
+  const baseTest = {
+    id: 'test-1',
+    slug: 'abc123',
+    name: 'Test',
+    description: null,
+    timeLimit: null,
+    showResults: 'immediately',
+    shuffleQuestions: false,
+    shuffleOptions: false,
+    oneByOne: false,
+    requireAuth: false,
+    autoCompleteOnLeave: true,
+    onceOnly: false,
+    deadline: null,
+    questions: [],
+  };
+
+  const activePin = {
+    id: 'pin-1',
+    testId: 'test-1',
+    courseId: 'course-1',
+    groupIds: [] as string[],
+    startsAt: new Date(Date.now() - 60_000),
+    endsAt: new Date(Date.now() + 60_000),
+  };
+
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue(baseTest);
+    (db.query.submissions.findFirst as jest.Mock).mockResolvedValue(undefined);
+    (db.query.submissions.findMany as jest.Mock).mockResolvedValue([]);
+  });
+
+  describe('getTestBySlug', () => {
+    it('throws AUTH_REQUIRED when a pin is active and no userId is provided', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+
+      await expect(service.getTestBySlug('abc123')).rejects.toMatchObject({
+        message: 'AUTH_REQUIRED',
+      });
+      await expect(service.getTestBySlug('abc123')).rejects.toBeInstanceOf(BadRequestException);
+    });
+
+    it('throws NOT_ASSIGNED when a pin is active, a userId is provided, but there is no matching enrollment', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { schoolMemberId: 'member-1', groupId: 'group-x', group: { courseId: 'course-other' } },
+      ]);
+
+      await expect(service.getTestBySlug('abc123', false, 'user-1')).rejects.toMatchObject({
+        message: 'NOT_ASSIGNED',
+      });
+    });
+
+    it('succeeds when a pin is active and the caller has a matching enrollment', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { schoolMemberId: 'member-1', groupId: 'group-x', group: { courseId: 'course-1' } },
+      ]);
+
+      const result = await service.getTestBySlug('abc123', false, 'user-1');
+
+      expect(result.id).toBe('test-1');
+    });
+
+    it('behaves exactly as before when there is no pin at all', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      const result = await service.getTestBySlug('abc123');
+
+      expect(result.id).toBe('test-1');
+      expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+      expect(db.query.groupEnrollments.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('startSubmission', () => {
+    beforeEach(() => {
+      const returning = jest.fn().mockResolvedValue([{ id: 'submission-1' }]);
+      const values = jest.fn(() => ({ returning }));
+      (db.insert as jest.Mock).mockReturnValue({ values });
+    });
+
+    it('throws AUTH_REQUIRED when a pin is active and no userId is provided', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+
+      await expect(service.startSubmission('abc123', 'Student')).rejects.toMatchObject({
+        message: 'AUTH_REQUIRED',
+      });
+    });
+
+    it('throws NOT_ASSIGNED when a pin is active, a userId is provided, but there is no matching enrollment', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([]);
+
+      await expect(service.startSubmission('abc123', 'Student', 'user-1')).rejects.toMatchObject({
+        message: 'NOT_ASSIGNED',
+      });
+    });
+
+    it('succeeds when a pin is active and the caller has a matching enrollment', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { schoolMemberId: 'member-1', groupId: 'group-x', group: { courseId: 'course-1' } },
+      ]);
+
+      const result = await service.startSubmission('abc123', 'Student', 'user-1');
+
+      expect(result.submissionId).toBe('submission-1');
+    });
+
+    it('behaves exactly as before when there is no pin at all', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      const result = await service.startSubmission('abc123', 'Student');
+
+      expect(result.submissionId).toBe('submission-1');
+      expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+    });
   });
 });

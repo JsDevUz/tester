@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests, submissions, answers, questions, options } from '../db/schema';
-import { and, eq, isNull, isNotNull } from 'drizzle-orm';
+import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments } from '../db/schema';
+import { and, eq, isNull, isNotNull, gte, lte } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
 import { PRACTICE_ATTEMPT_LIMIT } from '../practice-blocks/practice-blocks.service';
 import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
@@ -64,6 +64,32 @@ export class DeliveryService {
     private readonly practiceMessengerService: PracticeMessengerService,
   ) {}
 
+  private async assertPinAccess(testId: string, userId?: string) {
+    const now = new Date();
+    const pin = await db.query.testPins.findFirst({
+      where: and(eq(testPins.testId, testId), lte(testPins.startsAt, now), gte(testPins.endsAt, now)),
+    });
+    if (!pin) return;
+
+    if (!userId) throw new BadRequestException('AUTH_REQUIRED');
+
+    const memberships = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, userId) });
+    const schoolMemberIds = memberships.map((m) => m.id);
+    if (schoolMemberIds.length === 0) throw new BadRequestException('NOT_ASSIGNED');
+
+    const enrollments = await db.query.groupEnrollments.findMany({
+      where: (e, { inArray, isNull }) => and(inArray(e.schoolMemberId, schoolMemberIds), isNull(e.removedAt)),
+      with: { group: true },
+    });
+
+    const matches = enrollments.some((e) => {
+      if (e.group.courseId !== pin.courseId) return false;
+      if (pin.groupIds.length === 0) return true;
+      return pin.groupIds.includes(e.groupId);
+    });
+    if (!matches) throw new BadRequestException('NOT_ASSIGNED');
+  }
+
   async getTestBySlug(slug: string, practiceMode = false, userId?: string) {
     const test = await db.query.tests.findFirst({
       where: eq(tests.slug, slug),
@@ -75,6 +101,8 @@ export class DeliveryService {
       },
     });
     if (!test) throw new NotFoundException('Test not found');
+
+    await this.assertPinAccess(test.id, userId);
 
     const overridden = applyPracticeOverride(
       {
@@ -126,6 +154,7 @@ export class DeliveryService {
   async startSubmission(slug: string, studentName: string, userId?: string, practiceMode = false) {
     const test = await db.query.tests.findFirst({ where: eq(tests.slug, slug) });
     if (!test) throw new NotFoundException('Test not found');
+    await this.assertPinAccess(test.id, userId);
     const requireAuth = practiceMode ? true : test.requireAuth;
     if (requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
 
