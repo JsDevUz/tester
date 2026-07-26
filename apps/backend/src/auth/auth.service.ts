@@ -270,7 +270,7 @@ export class AuthService {
       telegramChatId,
       purpose: input.purpose,
       codeHash,
-      expiresAt: new Date(Date.now() + 60 * 1000),
+      expiresAt: new Date(Date.now() + 10 * 60 * 1000),
     });
   }
 
