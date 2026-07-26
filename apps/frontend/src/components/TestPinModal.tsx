@@ -13,8 +13,31 @@ interface Props {
   onRemoved: () => void;
 }
 
+function toLocalDateTimeValue(value: string) {
+  const date = new Date(value);
+  if (!Number.isFinite(date.getTime())) return "";
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60_000)
+    .toISOString()
+    .slice(0, 16);
+}
+
+function getErrorMessage(error: unknown, fallback: string) {
+  if (
+    typeof error === "object"
+    && error !== null
+    && "response" in error
+  ) {
+    const response = (error as { response?: { data?: { message?: unknown } } }).response;
+    if (typeof response?.data?.message === "string") return response.data.message;
+  }
+  return fallback;
+}
+
 export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: Props) {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [loadAttempt, setLoadAttempt] = useState(0);
+  const [groupsLoading, setGroupsLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [hasExistingPin, setHasExistingPin] = useState(false);
   const [courses, setCourses] = useState<ApiCourse[]>([]);
@@ -26,28 +49,73 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
   const [endsAt, setEndsAt] = useState("");
 
   useEffect(() => {
-    apiListCourses().then(setCourses).catch(() => toast.error("Kurslarni yuklab bo'lmadi"));
-    apiGetTestPin(testId)
-      .then((pin) => {
+    let active = true;
+    setLoading(true);
+    setLoadError(false);
+
+    Promise.all([apiListCourses(), apiGetTestPin(testId)])
+      .then(([courseRows, pin]) => {
+        if (!active) return;
+        setCourses(courseRows);
+        setHasExistingPin(!!pin);
         if (pin) {
-          setHasExistingPin(true);
           setCourseId(pin.courseId);
           setAllGroups(pin.groupIds.length === 0);
           setSelectedGroupIds(pin.groupIds);
-          setStartsAt(pin.startsAt.slice(0, 16));
-          setEndsAt(pin.endsAt.slice(0, 16));
+          setStartsAt(toLocalDateTimeValue(pin.startsAt));
+          setEndsAt(toLocalDateTimeValue(pin.endsAt));
+        } else {
+          setCourseId("");
+          setAllGroups(true);
+          setSelectedGroupIds([]);
+          setStartsAt("");
+          setEndsAt("");
         }
       })
-      .finally(() => setLoading(false));
-  }, [testId]);
+      .catch(() => {
+        if (active) setLoadError(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [testId, loadAttempt]);
 
   useEffect(() => {
     if (!courseId) {
       setGroups([]);
+      setGroupsLoading(false);
       return;
     }
-    apiListGroups(courseId).then(setGroups).catch(() => toast.error("Guruhlarni yuklab bo'lmadi"));
+    let active = true;
+    setGroups([]);
+    setGroupsLoading(true);
+    apiListGroups(courseId)
+      .then((rows) => {
+        if (active) setGroups(rows);
+      })
+      .catch(() => {
+        if (active) toast.error("Guruhlarni yuklab bo'lmadi");
+      })
+      .finally(() => {
+        if (active) setGroupsLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [courseId]);
+
+  useEffect(() => {
+    function handleKeyDown(event: KeyboardEvent) {
+      if (event.key === "Escape") onClose();
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [onClose]);
 
   function toggleGroup(groupId: string) {
     setSelectedGroupIds((prev) =>
@@ -64,18 +132,28 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
       toast.error("Kamida bitta guruh tanlang yoki \"Barchasi\"ni belgilang");
       return;
     }
+    const startDate = new Date(startsAt);
+    const endDate = new Date(endsAt);
+    if (!Number.isFinite(startDate.getTime()) || !Number.isFinite(endDate.getTime())) {
+      toast.error("Sana va vaqtni to'g'ri kiriting");
+      return;
+    }
+    if (endDate <= startDate) {
+      toast.error("Tugash vaqti boshlanish vaqtidan keyin bo'lishi kerak");
+      return;
+    }
     setSaving(true);
     try {
       await apiUpsertTestPin(testId, {
         courseId,
         groupIds: allGroups ? [] : selectedGroupIds,
-        startsAt: new Date(startsAt).toISOString(),
-        endsAt: new Date(endsAt).toISOString(),
+        startsAt: startDate.toISOString(),
+        endsAt: endDate.toISOString(),
       });
       toast.success("Test tayinlandi");
       onSaved();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message ?? "Saqlab bo'lmadi");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Saqlab bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -87,8 +165,8 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
       await apiRemoveTestPin(testId);
       toast.success("Tayinlash olib tashlandi");
       onRemoved();
-    } catch (err: any) {
-      toast.error(err.response?.data?.message ?? "Olib tashlab bo'lmadi");
+    } catch (err: unknown) {
+      toast.error(getErrorMessage(err, "Olib tashlab bo'lmadi"));
     } finally {
       setSaving(false);
     }
@@ -99,9 +177,14 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
       className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="test-pin-modal-title"
+        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+      >
         <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
-          <h2 className="text-sm font-semibold text-gray-800 truncate">{testName} — Guruhga tayinlash</h2>
+          <h2 id="test-pin-modal-title" className="text-sm font-semibold text-gray-800 truncate">{testName} — Guruhga tayinlash</h2>
           <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" aria-label="Yopish">
             <X size={18} />
           </button>
@@ -109,14 +192,27 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
 
         <div className="flex-1 overflow-y-auto px-6 py-4">
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+            <div role="status" className="flex justify-center py-12">
+              <div aria-hidden="true" className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+              <span className="sr-only">Yuklanmoqda</span>
+            </div>
+          ) : loadError ? (
+            <div role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
+              <p className="text-sm text-gray-600">Tayinlash ma'lumotlarini yuklab bo'lmadi.</p>
+              <button
+                type="button"
+                onClick={() => setLoadAttempt((attempt) => attempt + 1)}
+                className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600"
+              >
+                Qayta urinish
+              </button>
             </div>
           ) : (
             <div className="flex flex-col gap-4">
               <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">Kurs</label>
+                <label htmlFor="test-pin-course" className="mb-1 block text-xs font-semibold text-gray-600">Kurs</label>
                 <select
+                  id="test-pin-course"
                   value={courseId}
                   onChange={(e) => { setCourseId(e.target.value); setSelectedGroupIds([]); }}
                   className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
@@ -130,19 +226,31 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
 
               {courseId && (
                 <div>
-                  <label className="mb-1 block text-xs font-semibold text-gray-600">Guruhlar</label>
-                  <label className="mb-2 flex items-center gap-2 text-sm text-gray-700">
-                    <input type="checkbox" checked={allGroups} onChange={(e) => setAllGroups(e.target.checked)} />
+                  <span className="mb-1 block text-xs font-semibold text-gray-600">Guruhlar</span>
+                  <label htmlFor="test-pin-all-groups" className="mb-2 flex items-center gap-2 text-sm text-gray-700">
+                    <input
+                      id="test-pin-all-groups"
+                      type="checkbox"
+                      checked={allGroups}
+                      disabled={groupsLoading}
+                      onChange={(e) => setAllGroups(e.target.checked)}
+                    />
                     Barchasi
                   </label>
                   {!allGroups && (
-                    <div className="flex flex-col gap-1.5 rounded-lg border border-border p-2">
-                      {groups.length === 0 && <p className="text-xs text-gray-400 px-1 py-1">Guruhlar topilmadi</p>}
+                    <div aria-busy={groupsLoading} className="flex flex-col gap-1.5 rounded-lg border border-border p-2">
+                      {groupsLoading ? (
+                        <p role="status" className="text-xs text-gray-400 px-1 py-1">Guruhlar yuklanmoqda...</p>
+                      ) : groups.length === 0 ? (
+                        <p className="text-xs text-gray-400 px-1 py-1">Guruhlar topilmadi</p>
+                      ) : null}
                       {groups.map((g) => (
-                        <label key={g.id} className="flex items-center gap-2 text-sm text-gray-700">
+                        <label key={g.id} htmlFor={`test-pin-group-${g.id}`} className="flex items-center gap-2 text-sm text-gray-700">
                           <input
+                            id={`test-pin-group-${g.id}`}
                             type="checkbox"
                             checked={selectedGroupIds.includes(g.id)}
+                            disabled={groupsLoading}
                             onChange={() => toggleGroup(g.id)}
                           />
                           {g.name}
@@ -154,8 +262,9 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
               )}
 
               <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">Boshlanish vaqti</label>
+                <label htmlFor="test-pin-starts-at" className="mb-1 block text-xs font-semibold text-gray-600">Boshlanish vaqti</label>
                 <input
+                  id="test-pin-starts-at"
                   type="datetime-local"
                   value={startsAt}
                   onChange={(e) => setStartsAt(e.target.value)}
@@ -163,8 +272,9 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
                 />
               </div>
               <div>
-                <label className="mb-1 block text-xs font-semibold text-gray-600">Tugash vaqti</label>
+                <label htmlFor="test-pin-ends-at" className="mb-1 block text-xs font-semibold text-gray-600">Tugash vaqti</label>
                 <input
+                  id="test-pin-ends-at"
                   type="datetime-local"
                   value={endsAt}
                   onChange={(e) => setEndsAt(e.target.value)}
@@ -175,7 +285,7 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
           )}
         </div>
 
-        {!loading && (
+        {!loading && !loadError && (
           <div className="flex gap-2 border-t border-gray-100 px-6 py-4">
             {hasExistingPin && (
               <button
@@ -190,7 +300,7 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
+              disabled={saving || groupsLoading}
               className="flex-1 rounded-lg bg-indigo-500 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
             >
               {hasExistingPin ? "Saqlash" : "Tayinlash"}
