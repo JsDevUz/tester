@@ -21,6 +21,7 @@ export function FolderViewPage() {
   const [confirmDelete, setConfirmDelete] = useState<Test | null>(null);
   const [pinTest, setPinTest] = useState<Test | null>(null);
   const [pinnedTestIds, setPinnedTestIds] = useState<Set<string>>(new Set());
+  const [pinStatusReload, setPinStatusReload] = useState(0);
   const pinStatusGeneration = useRef(0);
 
   const folder = folders.find((f) => f.id === folderId);
@@ -64,7 +65,7 @@ export function FolderViewPage() {
     return () => {
       cancelled = true;
     };
-  }, [tests]);
+  }, [tests, pinStatusReload]);
 
   async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
@@ -176,6 +177,7 @@ export function FolderViewPage() {
             onSaved={() => {
               pinStatusGeneration.current += 1;
               setPinnedTestIds((prev) => new Set(prev).add(pinTest.id));
+              setPinStatusReload((value) => value + 1);
               setPinTest(null);
             }}
             onRemoved={() => {
@@ -185,6 +187,7 @@ export function FolderViewPage() {
                 next.delete(pinTest.id);
                 return next;
               });
+              setPinStatusReload((value) => value + 1);
               setPinTest(null);
             }}
           />
