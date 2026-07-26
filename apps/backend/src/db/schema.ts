@@ -456,6 +456,21 @@ export const tests = pgTable('tests', {
   adminIdIdx: index('tests_admin_id_idx').on(table.adminId),
 }));
 
+export const testPins = pgTable('test_pins', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  testId: uuid('test_id').notNull().unique().references(() => tests.id, { onDelete: 'cascade' }),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  groupIds: uuid('group_ids').array().notNull().default(sql`'{}'::uuid[]`),
+  startsAt: timestamp('starts_at', { withTimezone: true }).notNull(),
+  endsAt: timestamp('ends_at', { withTimezone: true }).notNull(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const testPinsRelations = relations(testPins, ({ one }) => ({
+  test: one(tests, { fields: [testPins.testId], references: [tests.id] }),
+  course: one(courses, { fields: [testPins.courseId], references: [courses.id] }),
+}));
+
 export const questions = pgTable('questions', {
   id: uuid('id').primaryKey().defaultRandom(),
   testId: uuid('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
