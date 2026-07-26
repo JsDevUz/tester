@@ -259,22 +259,16 @@ export function TakeTestEntryPage() {
 
             {/* Name field */}
             <p className="text-sm font-semibold text-gray-700 mb-2">Ismingiz</p>
-            {loggedInName ? (
-              <div className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base text-gray-700 mb-2">
-                {loggedInName}
-              </div>
-            ) : (
-              <input
-                autoFocus
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && name.trim()) handleStart(e as any);
-                }}
-                placeholder="Ismingizni kiriting"
-                className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base outline-none focus:border-gray-400 focus:bg-white transition-colors mb-2"
-              />
-            )}
+            <input
+              autoFocus={!loggedInName}
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && name.trim()) handleStart(e as any);
+              }}
+              placeholder="Ismingizni kiriting"
+              className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 text-base outline-none focus:border-gray-400 focus:bg-white transition-colors mb-2"
+            />
 
             {error && <p className="text-sm text-red-400 mt-1">{error}</p>}
           </div>
