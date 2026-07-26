@@ -38,6 +38,10 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const [liveClassSessions, setLiveClassSessions] = useState<ActiveClassSession[]>([]);
   const [activeTestPins, setActiveTestPins] = useState<ActiveTestPin[]>([]);
   const profileContact = admin?.phone ? formatPhone(admin.phone) : "Profil";
+  const isInnerPage =
+    location.pathname.startsWith("/history/") ||
+    location.pathname.startsWith("/live/play/");
+  const isMessenger = location.pathname === "/messenger";
 
   useEffect(() => {
     const threshold = 64;
@@ -98,20 +102,42 @@ export function StudentShell({ children }: { children: ReactNode }) {
   }, []);
 
   useEffect(() => {
-    const load = () => {
-      apiActiveTestPins()
-        .then(setActiveTestPins)
-        .catch(() => {});
-    };
-    load();
-    const timer = window.setInterval(load, 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
+    if (isMessenger) {
+      setActiveTestPins([]);
+      return;
+    }
 
-  const isInnerPage =
-    location.pathname.startsWith("/history/") ||
-    location.pathname.startsWith("/live/play/");
-  const isMessenger = location.pathname === "/messenger";
+    let mounted = true;
+    let loading = false;
+    let generation = 0;
+    const load = async () => {
+      if (loading) return;
+      loading = true;
+      const requestGeneration = ++generation;
+      try {
+        const pins = await apiActiveTestPins();
+        if (mounted && requestGeneration === generation) {
+          setActiveTestPins(pins);
+        }
+      } catch {
+        if (mounted && requestGeneration === generation) {
+          setActiveTestPins([]);
+        }
+      } finally {
+        if (requestGeneration === generation) {
+          loading = false;
+        }
+      }
+    };
+    void load();
+    const timer = window.setInterval(load, 60_000);
+    return () => {
+      mounted = false;
+      generation += 1;
+      window.clearInterval(timer);
+    };
+  }, [isMessenger]);
+
   const viewportBaselineRef = useRef(0);
   const [messengerViewport, setMessengerViewport] = useState<{
     height: number;
@@ -256,7 +282,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
               onClick={() => navigate(`/classroom/${s.id}`)}
               className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
             >
-              <Radio size={20} className="shrink-0 animate-pulse text-red-500" />
+              <Radio size={20} className="shrink-0 text-red-500 motion-safe:animate-pulse" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-gray-900">Jonli dars ketmoqda — {s.courseName}</span>
                 <span className="block text-xs text-gray-500">Darsga kirish uchun bosing</span>
@@ -271,7 +297,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
               onClick={() => navigate(`/t/${pin.slug}`)}
               className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
             >
-              <Radio size={20} className="shrink-0 animate-pulse text-red-500" />
+              <Radio size={20} className="shrink-0 text-red-500 motion-safe:animate-pulse" />
               <span className="min-w-0 flex-1">
                 <span className="block truncate text-sm font-semibold text-gray-900">Imtihon boshlandi — {pin.testName}</span>
                 <span className="block text-xs text-gray-500">Kirish uchun bosing</span>
