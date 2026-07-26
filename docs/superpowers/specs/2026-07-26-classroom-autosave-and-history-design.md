@@ -1,8 +1,8 @@
-# Classroom autosave, simplified recording, va "Jonli darslar" tarixi — dizayn
+# Classroom autosave, simplified recording, "Jonli darslar" tarixi va mobil call bar — dizayn
 
 ## Maqsad
 
-Uchta bog'liq muammoni hal qilish:
+To'rtta bog'liq muammoni hal qilish:
 
 1. **Theme bug**: jonli darsga kirganda board har doim light bilan boshlanadi,
    saytning umumiy (global) dark/light tanlovidan qat'i nazar.
@@ -15,6 +15,10 @@ Uchta bog'liq muammoni hal qilish:
    "Qamrov chegaralari" — bu spec o'sha qarorni ataylab bekor qiladi).
    Natijada na ustoz, na o'quvchi tugagan erkin darsning oxirgi chizma
    holatini qayta topa olmaydi.
+4. **Mobil call bar noqulay**: mikrofon/qo'ng'iroqni tugatish tugmalari
+   ekran markazida (pastki qatordan yuqorida) turadi va ularni vaqtincha
+   yashiradigan chevron-pastga/chevron-yuqoriga tugmalar bor — bular
+   ortiqcha va tugmalar eng pastda turishi kerak.
 
 Bu spec quyidagilarni kiritadi:
 - Har qanday jonli dars (erkin yoki guruhli, yozib olingan yoki yo'q)
@@ -26,6 +30,8 @@ Bu spec quyidagilarni kiritadi:
   birlashtirilgan "Jonli darslar" ro'yxati qo'shiladi.
 - Davomat/tarix modallarida ikkita mustaqil ko'rish tugmasi: "To'liq
   ko'rish" (agar audio/replay bo'lsa) va "Chizmani ko'rish" (har doim, statik).
+- Mobil call bar (`ClassroomCallBar.tsx`) eng pastga tushiriladi, chevron
+  yashirish/ko'rsatish mexanizmi butunlay olib tashlanadi.
 
 ## Qamrov chegaralari
 
@@ -43,6 +49,8 @@ Bu spec quyidagilarni kiritadi:
   komponentga chiqarish.
 - Ikkita ko'rish tugmasi (`CourseClassesPage.tsx` davomat modali +
   yangi "Mening darslarim" modali).
+- `ClassroomCallBar.tsx` — collapse/chevron state va tugmalarni olib
+  tashlash, joylashuvni eng pastga (`bottom`) tushirish.
 
 **Tashqarida:**
 - Erkin sessiyalarni o'chirish oqimi (`deleteSession`) — mavjud holicha
@@ -418,6 +426,35 @@ juftligi bor bo'lsa ham ruxsat beriladi.
   "guruhli" belgisi (badge), bosilganda `BoardSnapshotViewer` modalini
   ochadi (§4).
 
+## Bo'lim 7 — Mobil call bar: chevron olib tashlash, eng pastga tushirish
+
+`ClassroomCallBar.tsx` hozir mikrofon+qo'ng'iroqni tugatish tugmalarini
+mobil ekranda pastdan yuqoriroq (`bottom-16`) joylashtiradi va ularning
+tagida kichik chevron-pastga tugma qo'yadi — bosilsa panel butunlay
+pastga sirg'alib yashiriladi, keyin xuddi shu joyda chevron-yuqoriga
+tugma chiqadi (qayta ko'rsatish uchun). Bu ortiqcha bosqich — talab
+bo'yicha ikkalasi ham olib tashlanadi, panel doim eng pastda ko'rinadi.
+
+**O'zgarish** (`ClassroomCallBar.tsx`):
+- `collapsed` state, `ChevronDown`/`ChevronUp` import va ikkala chevron
+  tugma butunlay o'chiriladi.
+- Tashqi `<div>` endi faqat mikrofon + qo'ng'iroqni tugatish tugmalarini
+  o'z ichiga oladi (avvalgi `flex-col` + ichki `flex` guruhlash o'rniga
+  bitta tekis `flex items-center gap-2` qator).
+- Joylashuv `bottom-16` o'rniga eng pastga (`bottom-2` yoki shunga yaqin,
+  xavfsiz zonani hisobga olib) tushiriladi — mobil pastki
+  sahifa/zoom/split qatori bilan **to'qnashmasligini** qo'lda tekshirish
+  kerak (ilgari aynan shu to'qnashuv sababli `bottom-16` + chevron
+  yashirish mexanizmi qo'shilgan edi, komment bo'yicha). Agar to'qnashuv
+  chiqsa, pastki qatorga nisbatan `z-index`/joylashuv orqali ustma-ust
+  tushmaydigan tarzda moslashtiriladi (masalan pastki qatorning o'zi
+  yon tomonga siljiydi yoki call bar undan biroz yuqoriroq, lekin
+  avvalgidan pastroq turadi) — bu implementatsiya bosqichida ko'rish
+  orqali hal qilinadi, chunki aniq piksel qiymati faqat real ekranda
+  ko'rinadi.
+- `hidden` prop (auto-hide overlay uchun, o'quvchi ekranida) o'zgarishsiz
+  qoladi — bu boshqa mexanizm (chevron emas, tashqi holatdan boshqariladi).
+
 ## Xulosa jadvali — kim nima ko'radi
 
 | Joy | Ko'rinadigan tugmalar |
@@ -455,3 +492,7 @@ juftligi bor bo'lsa ham ruxsat beriladi.
      talaba ro'yxatida paydo bo'lmasligi (chunki hisobga ulanmagan).
   5. Theme: sayt dark rejimda, jonli darsga (ustoz va talaba sifatida)
      kirilganda darhol dark bilan ochilishi, light flash bo'lmasligi.
+  6. Mobil call bar: telefon o'lchamidagi ekranda (yoki brauzer devtools
+     mobil emulyatsiyasida) mikrofon/qo'ng'iroqni tugatish tugmalari eng
+     pastda ko'rinishi, hech qanday chevron tugma chiqmasligi, va pastki
+     sahifa/zoom/split boshqaruv qatori bilan ustma-ust tushmasligi.
