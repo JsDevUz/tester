@@ -29,7 +29,7 @@ interface Props {
 }
 
 const actionButtonClass =
-  "group relative h-9 w-full inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:outline-none focus-visible:ring-0";
+  "group relative h-9 w-full inline-flex items-center justify-center rounded-xl text-gray-400 hover:bg-white/10 hover:text-white transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-gray-900";
 const actionIconSize = 17;
 
 function ActionButton({

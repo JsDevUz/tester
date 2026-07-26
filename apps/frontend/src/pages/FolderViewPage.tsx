@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 import { AppShell } from "../components/AppShell";
 import { TestCard } from "../components/TestCard";
 import { TestSettingsModal } from "../components/TestSettingsModal";
@@ -36,9 +37,31 @@ export function FolderViewPage() {
       setPinnedTestIds(new Set());
       return;
     }
-    Promise.all(
-      tests.map((t) => apiGetTestPin(t.id).then((pin) => (pin ? t.id : null)).catch(() => null)),
-    ).then((ids) => setPinnedTestIds(new Set(ids.filter((id): id is string => id !== null))));
+    let cancelled = false;
+    const currentTestIds = new Set(tests.map((test) => test.id));
+
+    void Promise.allSettled(tests.map((test) => apiGetTestPin(test.id))).then((results) => {
+      if (cancelled) return;
+
+      setPinnedTestIds((previous) => {
+        const next = new Set([...previous].filter((id) => currentTestIds.has(id)));
+        results.forEach((result, index) => {
+          if (result.status === "rejected") return;
+          const testId = tests[index].id;
+          if (result.value) next.add(testId);
+          else next.delete(testId);
+        });
+        return next;
+      });
+
+      if (results.some((result) => result.status === "rejected")) {
+        toast.error("Ayrim testlarning tayinlanish holatini yuklab bo'lmadi");
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
   }, [tests]);
 
   async function handleCreate(data: CreateTestData) {
