@@ -11,6 +11,7 @@ import {
   Pencil,
   Radio,
   History,
+  Pin,
   type LucideIcon,
 } from "lucide-react";
 import type { Test } from "../api/tests";
@@ -23,6 +24,8 @@ interface Props {
   onDelete: () => void;
   onResults: () => void;
   onLive: () => void;
+  onPin: () => void;
+  hasPin: boolean;
 }
 
 const actionButtonClass =
@@ -34,18 +37,20 @@ function ActionButton({
   icon: Icon,
   onClick,
   danger,
+  className,
 }: {
   label: string;
   icon: LucideIcon;
   onClick: () => void;
   danger?: boolean;
+  className?: string;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-label={label}
-      className={`${actionButtonClass} ${danger ? "hover:text-red-400" : ""}`}
+      className={`${actionButtonClass} ${danger ? "hover:text-red-400" : ""} ${className ?? ""}`}
     >
       <Icon size={actionIconSize} />
       <span className="test-card-action-tooltip pointer-events-none absolute left-1/2 top-full z-50 mt-2 -translate-x-1/2 translate-y-1 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-[11px] font-semibold opacity-0 shadow-lg shadow-gray-900/20 transition-all duration-150 group-hover:translate-y-0 group-hover:opacity-100">
@@ -62,6 +67,8 @@ export function TestCard({
   onDelete,
   onResults,
   onLive,
+  onPin,
+  hasPin,
 }: Props) {
   const [copied, setCopied] = useState(false);
 
@@ -91,8 +98,14 @@ export function TestCard({
       </div>
 
       {/* Dark action bar */}
-      <div className="h-[52px] bg-gray-900 px-4 grid grid-cols-5 items-center gap-2 shrink-0">
+      <div className="h-[52px] bg-gray-900 px-4 grid grid-cols-6 items-center gap-2 shrink-0">
         <ActionButton label="Jonli musobaqa" icon={Radio} onClick={onLive} />
+        <ActionButton
+          label={hasPin ? "Tayinlangan (tahrirlash)" : "Guruhga tayinlash"}
+          icon={Pin}
+          onClick={onPin}
+          className={hasPin ? "text-amber-400 hover:text-amber-300" : undefined}
+        />
         <ActionButton label="Natijalar" icon={BarChart2} onClick={onResults} />
         <ActionButton label="Savollar" icon={Pencil} onClick={onEdit} />
         <ActionButton

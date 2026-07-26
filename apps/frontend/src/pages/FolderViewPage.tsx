@@ -3,9 +3,10 @@ import { useParams, useNavigate } from "react-router-dom";
 import { AppShell } from "../components/AppShell";
 import { TestCard } from "../components/TestCard";
 import { TestSettingsModal } from "../components/TestSettingsModal";
+import { TestPinModal } from "../components/TestPinModal";
 import { useTestStore } from "../stores/testStore";
 import { useFolderStore } from "../stores/folderStore";
-import type { Test, CreateTestData } from "../api/tests";
+import { apiGetTestPin, type Test, type CreateTestData } from "../api/tests";
 import { DataLoadingState } from "../components/DataLoadingState";
 
 export function FolderViewPage() {
@@ -17,6 +18,8 @@ export function FolderViewPage() {
   const [showModal, setShowModal] = useState(false);
   const [editTest, setEditTest] = useState<Test | null>(null);
   const [confirmDelete, setConfirmDelete] = useState<Test | null>(null);
+  const [pinTest, setPinTest] = useState<Test | null>(null);
+  const [pinnedTestIds, setPinnedTestIds] = useState<Set<string>>(new Set());
 
   const folder = folders.find((f) => f.id === folderId);
 
@@ -27,6 +30,16 @@ export function FolderViewPage() {
   useEffect(() => {
     if (!foldersLoaded) void fetchFolders().catch(() => undefined);
   }, [foldersLoaded, fetchFolders]);
+
+  useEffect(() => {
+    if (tests.length === 0) {
+      setPinnedTestIds(new Set());
+      return;
+    }
+    Promise.all(
+      tests.map((t) => apiGetTestPin(t.id).then((pin) => (pin ? t.id : null)).catch(() => null)),
+    ).then((ids) => setPinnedTestIds(new Set(ids.filter((id): id is string => id !== null))));
+  }, [tests]);
 
   async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
@@ -88,6 +101,8 @@ export function FolderViewPage() {
                 onDelete={() => setConfirmDelete(test)}
                 onResults={() => navigate(`/tests/${test.id}/submissions`)}
                 onLive={() => navigate(`/live?testId=${test.id}`)}
+                onPin={() => setPinTest(test)}
+                hasPin={pinnedTestIds.has(test.id)}
               />
             ))}
             {testsLoaded && tests.length === 0 && (
@@ -126,6 +141,25 @@ export function FolderViewPage() {
             }}
             onSubmit={handleUpdate}
             onClose={() => setEditTest(null)}
+          />
+        )}
+        {pinTest && (
+          <TestPinModal
+            testId={pinTest.id}
+            testName={pinTest.name}
+            onClose={() => setPinTest(null)}
+            onSaved={() => {
+              setPinnedTestIds((prev) => new Set(prev).add(pinTest.id));
+              setPinTest(null);
+            }}
+            onRemoved={() => {
+              setPinnedTestIds((prev) => {
+                const next = new Set(prev);
+                next.delete(pinTest.id);
+                return next;
+              });
+              setPinTest(null);
+            }}
           />
         )}
         {confirmDelete && (
