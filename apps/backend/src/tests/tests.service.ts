@@ -1,6 +1,6 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests } from '../db/schema';
+import { tests, testPins } from '../db/schema';
 import { and, eq } from 'drizzle-orm';
 
 const SLUG_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
@@ -92,5 +92,46 @@ export class TestsService {
       .where(and(eq(tests.id, id), eq(tests.adminId, adminId)))
       .returning({ id: tests.id });
     if (!result.length) throw new NotFoundException('Test not found');
+  }
+
+  async getPin(testId: string, adminId: string) {
+    const test = await db.query.tests.findFirst({ where: and(eq(tests.id, testId), eq(tests.adminId, adminId)) });
+    if (!test) throw new NotFoundException('Test not found');
+    const pin = await db.query.testPins.findFirst({ where: eq(testPins.testId, testId) });
+    return pin ?? null;
+  }
+
+  async upsertPin(testId: string, adminId: string, data: {
+    courseId: string; groupIds: string[]; startsAt: string; endsAt: string;
+  }) {
+    const test = await db.query.tests.findFirst({ where: and(eq(tests.id, testId), eq(tests.adminId, adminId)) });
+    if (!test) throw new NotFoundException('Test not found');
+
+    const [pin] = await db
+      .insert(testPins)
+      .values({
+        testId,
+        courseId: data.courseId,
+        groupIds: data.groupIds,
+        startsAt: new Date(data.startsAt),
+        endsAt: new Date(data.endsAt),
+      })
+      .onConflictDoUpdate({
+        target: testPins.testId,
+        set: {
+          courseId: data.courseId,
+          groupIds: data.groupIds,
+          startsAt: new Date(data.startsAt),
+          endsAt: new Date(data.endsAt),
+        },
+      })
+      .returning();
+    return pin;
+  }
+
+  async removePin(testId: string, adminId: string) {
+    const test = await db.query.tests.findFirst({ where: and(eq(tests.id, testId), eq(tests.adminId, adminId)) });
+    if (!test) throw new NotFoundException('Test not found');
+    await db.delete(testPins).where(eq(testPins.testId, testId));
   }
 }

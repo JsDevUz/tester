@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, Query, UseGuards, Req, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Put, Patch, Delete, Param, Body, Query, UseGuards, Req, HttpCode } from '@nestjs/common';
 import { TestsService } from './tests.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -34,6 +34,13 @@ class UpdateTestDto {
   @IsOptional() @IsDateString() deadline?: string;
 }
 
+class UpsertPinDto {
+  @IsString() courseId: string;
+  @IsString({ each: true }) groupIds: string[];
+  @IsDateString() startsAt: string;
+  @IsDateString() endsAt: string;
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Roles('teacher', 'super')
 @Controller('tests')
@@ -64,5 +71,21 @@ export class TestsController {
   @HttpCode(204)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.testsService.remove(id, req.admin.id);
+  }
+
+  @Get(':id/pin')
+  getPin(@Param('id') id: string, @Req() req: any) {
+    return this.testsService.getPin(id, req.admin.id);
+  }
+
+  @Put(':id/pin')
+  upsertPin(@Param('id') id: string, @Body() dto: UpsertPinDto, @Req() req: any) {
+    return this.testsService.upsertPin(id, req.admin.id, dto);
+  }
+
+  @Delete(':id/pin')
+  @HttpCode(204)
+  removePin(@Param('id') id: string, @Req() req: any) {
+    return this.testsService.removePin(id, req.admin.id);
   }
 }
