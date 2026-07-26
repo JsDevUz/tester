@@ -4,6 +4,11 @@ dist/
 **/.env
 *.local
 
+# Generated credential/import scratch files — never track plaintext passwords.
+apps/backend/test-accounts-credentials.csv
+apps/backend/test-accounts-insert.sql
+apps/backend/school-members-insert.sql
+
 # React Native mobile workspace is kept local and must not be pushed.
 apps/mobile/
 
