@@ -28,7 +28,7 @@ export function LoginPage() {
   const [phone, setPhone] = useState("+998 ");
   const [password, setPassword] = useState("");
   const [code, setCode] = useState("");
-  const [showPasswordLogin, setShowPasswordLogin] = useState(true);
+  const [showPasswordLogin, setShowPasswordLogin] = useState(false);
   const [forgotMode, setForgotMode] = useState(false);
   const [forgotStep, setForgotStep] = useState<"code" | "password">("code");
   const [resetCode, setResetCode] = useState("");
