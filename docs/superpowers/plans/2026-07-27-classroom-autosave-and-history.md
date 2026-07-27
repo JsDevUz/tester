@@ -4,7 +4,9 @@
 
 **Goal:** Make classroom board state autosave for every lesson (free or course-bound), simplify the recording modal to an audio-only choice, persist free ("erkin") sessions to the database for the first time, add teacher/student history surfaces to view them, fix the classroom theme defaulting to light, and clean up the mobile call bar.
 
-**Architecture:** Backend changes to `ClassroomService`/`class_sessions` schema make board-snapshot persistence unconditional and extend it to free sessions (new nullable `courseId`, new `free_session_participants` table). Two new read endpoints (`GET /classroom/my-free-sessions`, `GET /classroom/my-sessions`) expose history to teachers and students respectively. Frontend changes: a new reusable `BoardSnapshotViewer` modal component consumed by three call sites (existing course Davomat modal, new teacher "Mening darslarim" page, new student "Jonli darslar" page), plus three independent small fixes (recording modal copy, theme fallback, call bar layout).
+**Architecture:** Backend changes to `ClassroomService`/`class_sessions` schema make board-snapshot persistence unconditional and extend it to free sessions (new nullable `courseId`, new `free_session_participants` table). Two new read endpoints (`GET /classroom/my-free-sessions`, `GET /classroom/my-sessions`) expose history to teachers and students respectively.
+
+> **AMENDED 2026-07-27:** Tasks 1-3 and part of §2/§4 of the design spec were implemented directly (outside this SDD run) before this plan's execution began. That work took a different, simpler frontend approach than originally planned: instead of a new `BoardSnapshotViewer` modal component + two independent "To'liq ko'rish"/"Chizmani ko'rish" buttons, the existing `ClassroomReplayPage.tsx` was extended to auto-detect the "no recording chosen, empty historyEvents, board snapshot present" case and render statically in-place at the same `/classroom-history/:id/replay` route (see `isSnapshotOnlyFallback`/`useStaticSnapshot` in that file). This plan is amended to follow that precedent: **no `BoardSnapshotViewer` component is built** (Task 9 is dropped); every "view this session" entry point across the app (existing Davomat modal, new teacher history page, new student history page) uses a **single button** that navigates to `/classroom-history/:id/replay` whenever `hasBoardSnapshot` is true, relying on that page's existing auto-detection to pick the right rendering (full replay, board+audio, or static snapshot). Tasks below are updated to reflect this.
 
 **Tech Stack:** NestJS + Drizzle ORM (Postgres) backend, React + TypeScript frontend, Jest for backend tests (no frontend test runner exists in this repo — frontend work is manually verified).
 
@@ -38,16 +40,15 @@
 - `apps/frontend/src/hooks/useClassroomSession.ts` — theme fallback fix (2 spots).
 - `apps/frontend/src/hooks/useClassroomReplay.ts` — accept `globalTheme` param, use it as fallback.
 - `apps/frontend/src/pages/ClassroomReplayPage.tsx` — pass `globalTheme` into `useClassroomReplay`.
-- `apps/frontend/src/components/course/CourseClassesPage.tsx` — two view buttons instead of one.
+- `apps/frontend/src/components/course/CourseClassesPage.tsx` — the existing single "Replay ko'rish" button's visibility condition widens to `hasBoardSnapshot` (previously `recordingMode === 'full' || hasBoardSnapshot`, functionally the same set now that every ended session has a snapshot, but simplified since `recordingMode === 'full'` implies `hasBoardSnapshot`) — no second button; the destination page already renders correctly for every case.
 - `apps/frontend/src/components/classroom/ClassroomCallBar.tsx` — remove chevron/collapse, pin to bottom.
 - `apps/frontend/src/components/AppShell.tsx` — new "Mening darslarim" nav item.
 - `apps/frontend/src/components/student/StudentShell.tsx` — new "Jonli darslar" nav item.
 - `apps/frontend/src/App.tsx` — two new routes.
 
 **Frontend — new:**
-- `apps/frontend/src/components/classroom/BoardSnapshotViewer.tsx` — reusable static drawing viewer modal.
-- `apps/frontend/src/pages/FreeClassHistoryPage.tsx` — teacher's free-session list.
-- `apps/frontend/src/pages/StudentLiveClassesPage.tsx` — student's unified session list.
+- `apps/frontend/src/pages/FreeClassHistoryPage.tsx` — teacher's free-session list; each row's "Ko'rish" button navigates to `/classroom-history/:id/replay`.
+- `apps/frontend/src/pages/StudentLiveClassesPage.tsx` — student's unified session list; each row navigates to `/classroom-history/:id/replay`.
 
 ---
 
@@ -1054,83 +1055,11 @@ git commit -m "fix(classroom): fall back to the site's global theme instead of h
 
 ---
 
-### Task 9: Frontend — `BoardSnapshotViewer` reusable component
+### Task 9: DROPPED — superseded by existing `ClassroomReplayPage.tsx` auto-detection
 
-**Files:**
-- Create: `apps/frontend/src/components/classroom/BoardSnapshotViewer.tsx`
+**Status:** This task is dropped. Before this plan's SDD execution began, `ClassroomReplayPage.tsx` was independently extended (commit `e2d17e3`, "fix(classroom): replay autosaved snapshots without recording") to auto-detect the case where `recordingMode` is `null` and `historyEvents` is empty but a `boardSnapshot` exists, and render it statically in-place (see `isSnapshotOnlyFallback`/`useStaticSnapshot` in that file) — using the *same* route (`/classroom-history/:id/replay`) that already handles `'full'` and `'boardAudio'` replays. This makes a separate `BoardSnapshotViewer` component and a second "Chizmani ko'rish" button unnecessary: every call site that previously would have needed two buttons now just needs **one** button/link to `/classroom-history/:id/replay`, gated on `hasBoardSnapshot` (a superset of the old `recordingMode === 'full'` gate, since every ended session now has a snapshot per Tasks 3/5).
 
-**Interfaces:**
-- Consumes: `ClassBoardSnapshotData` type from `apps/frontend/src/api/classroom.ts:157-167` (already defined, unchanged), `ClassroomPdfViewer` from `apps/frontend/src/components/classroom/ClassroomPdfViewer.tsx` (existing, `editable`/`isHost` props already support read-only rendering per `ClassroomReplayPage.tsx`'s existing usage).
-- Produces: `BoardSnapshotViewer({ snapshot, onClose }: { snapshot: ClassBoardSnapshotData; onClose: () => void })` — consumed by Task 11 (`CourseClassesPage.tsx`), Task 12 (`FreeClassHistoryPage.tsx`), Task 13 (`StudentLiveClassesPage.tsx`).
-
-- [ ] **Step 1: Create the component**
-
-```tsx
-import { X } from "lucide-react";
-import { ClassroomPdfViewer } from "./ClassroomPdfViewer";
-import type { ClassBoardSnapshotData } from "../../api/classroom";
-
-interface Props {
-  snapshot: ClassBoardSnapshotData;
-  onClose: () => void;
-}
-
-// Yakuniy doska holatini statik (harakatsiz, ovozsiz) ko'rsatadi — timeline,
-// audio yoki play/pause yo'q, faqat sahifani ko'rish/scroll/zoom mumkin.
-export function BoardSnapshotViewer({ snapshot, onClose }: Props) {
-  return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-gray-100">
-      <div className="flex items-center justify-between border-b border-gray-100 bg-white px-4 py-2.5">
-        <p className="text-sm font-semibold text-gray-800">Chizma</p>
-        <button
-          type="button"
-          onClick={onClose}
-          aria-label="Yopish"
-          className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-        >
-          <X size={18} />
-        </button>
-      </div>
-      <div className="relative flex-1 min-h-0">
-        <ClassroomPdfViewer
-          pageUrls={snapshot.pages}
-          currentPage={1}
-          strokesByPage={snapshot.strokesByPage}
-          rightStrokesByPage={snapshot.rightStrokesByPage}
-          pointer={null}
-          editable={false}
-          isHost={false}
-          hostZoom={1}
-          rightHostZoom={1}
-          hostScroll={null}
-          rightHostScroll={null}
-          tool="pen"
-          color="#000000"
-          strokeWidth={2}
-          boardMode={snapshot.boardMode}
-          boardLayout={snapshot.boardLayout}
-          leftBoardMode={snapshot.leftBoardMode}
-          rightBoardMode={snapshot.rightBoardMode}
-          notebookStyle={snapshot.notebookStyle}
-        />
-      </div>
-    </div>
-  );
-}
-```
-Confirm the exact prop names against `ClassroomPdfViewer`'s existing usage in `ClassroomReplayPage.tsx` (lines ~153-173) before finalizing — the props above are copied from that call site's static (`isBoardOnly`) branch, so they should already match; if `ClassroomPdfViewer`'s prop types require additional required props not listed here (e.g. any of the `on*Change` handlers even when `editable={false}`), check its interface definition and add no-op handlers only if TypeScript requires them (likely they're all optional when `editable={false}`, matching the replay page's existing usage which also omits them).
-
-- [ ] **Step 2: Manually verify component compiles**
-
-Run: `npm run build --workspace=apps/frontend` (or the project's type-check command)
-Expected: no TypeScript errors — this component isn't wired into any page yet, so this step only confirms it type-checks in isolation.
-
-- [ ] **Step 3: Commit**
-
-```bash
-git add apps/frontend/src/components/classroom/BoardSnapshotViewer.tsx
-git commit -m "feat(classroom): add reusable static BoardSnapshotViewer component"
-```
+No files are created or modified in this task. Proceed directly to Task 10.
 
 ---
 
@@ -1197,43 +1126,9 @@ git commit -m "feat(classroom): add API client functions for free-session and st
 - Modify: `apps/frontend/src/components/course/CourseClassesPage.tsx`
 
 **Interfaces:**
-- Consumes: `BoardSnapshotViewer` (Task 9), `apiClassReplay` (existing, already imported elsewhere in the app — this page currently doesn't call it directly since it only navigates to the replay route; this task adds a direct call to fetch the snapshot for the new button).
+- No new consumes/produces — this task only widens an existing condition. (Superseded Task 9's `BoardSnapshotViewer` plan; see the Task 9 note — `ClassroomReplayPage.tsx` already renders correctly for every case at the existing route.)
 
-- [ ] **Step 1: Add state and a snapshot-fetch handler**
-
-In `apps/frontend/src/components/course/CourseClassesPage.tsx`, add to the imports:
-```ts
-import { BoardSnapshotViewer } from '../classroom/BoardSnapshotViewer';
-import { apiClassReplay, type ClassBoardSnapshotData } from '../../api/classroom';
-```
-(merge `apiClassReplay`/`ClassBoardSnapshotData` into the existing `from '../../api/classroom'` import statement rather than adding a second one).
-
-Add new state near the existing `detail` state:
-```ts
-  const [boardSnapshot, setBoardSnapshot] = useState<ClassBoardSnapshotData | null>(null);
-  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
-```
-
-Add a handler near `openDetail`:
-```ts
-  const openBoardSnapshot = async (sessionId: string) => {
-    setLoadingSnapshot(true);
-    try {
-      const replay = await apiClassReplay(sessionId);
-      if (!replay.boardSnapshot) {
-        toast.error("Chizma topilmadi");
-        return;
-      }
-      setBoardSnapshot(replay.boardSnapshot);
-    } catch {
-      toast.error("Chizmani yuklab bo'lmadi");
-    } finally {
-      setLoadingSnapshot(false);
-    }
-  };
-```
-
-- [ ] **Step 2: Replace the single "Replay ko'rish" button with two buttons**
+- [ ] **Step 1: Widen the "Replay ko'rish" button's visibility condition**
 
 Find:
 ```tsx
@@ -1250,48 +1145,28 @@ Find:
 ```
 Replace with:
 ```tsx
-              {detail.status === 'ended' && (detail.recordingMode === 'full' || detail.recordingMode === 'boardAudio') && (
+              {detail.status === 'ended' && detail.hasBoardSnapshot && (
                 <button
                   type="button"
                   onClick={() => navigate(`/classroom-history/${detail.id}/replay`)}
                   className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
                 >
                   <Radio size={14} />
-                  To'liq ko'rish
-                </button>
-              )}
-              {detail.status === 'ended' && detail.hasBoardSnapshot && (
-                <button
-                  type="button"
-                  onClick={() => void openBoardSnapshot(detail.id)}
-                  disabled={loadingSnapshot}
-                  className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                >
-                  <PenTool size={14} />
-                  Chizmani ko'rish
+                  Replay ko'rish
                 </button>
               )}
 ```
-Add `PenTool` to the existing `lucide-react` import line at the top of the file (`import { Clock, Radio, Trash2, X } from 'lucide-react';` → add `PenTool`).
+This is a one-line condition change (`detail.recordingMode === 'full' || detail.hasBoardSnapshot` → `detail.hasBoardSnapshot`) — functionally a no-op today since `recordingMode === 'full'` always implies `hasBoardSnapshot` after Tasks 3/5, but it removes the now-redundant/confusing extra clause. No new imports, no new state, no new button.
 
-- [ ] **Step 3: Render the viewer modal**
+- [ ] **Step 2: Manually verify**
 
-Near the end of the component's JSX (after the existing `{detail && (...)}` modal block, still inside the outer returned fragment), add:
-```tsx
-      {boardSnapshot && (
-        <BoardSnapshotViewer snapshot={boardSnapshot} onClose={() => setBoardSnapshot(null)} />
-      )}
-```
+Run the frontend, open a course's "Jonli darslar" tab, click an ended session that was never recorded (board snapshot only) — confirm "Replay ko'rish" now shows (previously hidden unless `hasBoardSnapshot` was already true — verify this session actually has one per Task 3/5's autosave) and opens `ClassroomReplayPage` in its static rendering. Then check a session recorded with "To'liq" still opens the full timeline+audio replay as before.
 
-- [ ] **Step 4: Manually verify**
-
-Run the frontend, open a course's "Jonli darslar" tab, click an ended session with a board snapshot but no recording — confirm only "Chizmani ko'rish" shows and opens the static viewer. Then test a session recorded with "To'liq" — confirm both buttons show and each opens its correct view.
-
-- [ ] **Step 5: Commit**
+- [ ] **Step 3: Commit**
 
 ```bash
 git add apps/frontend/src/components/course/CourseClassesPage.tsx
-git commit -m "feat(classroom): split Davomat modal's replay button into full-view and drawing-only view"
+git commit -m "feat(classroom): show Replay ko'rish whenever a board snapshot exists, not just for full recordings"
 ```
 
 ---
@@ -1304,20 +1179,16 @@ git commit -m "feat(classroom): split Davomat modal's replay button into full-vi
 - Modify: `apps/frontend/src/components/AppShell.tsx` — new nav item
 
 **Interfaces:**
-- Consumes: `apiMyFreeSessionHistory` (Task 10), `BoardSnapshotViewer` (Task 9), `apiClassReplay` (existing).
+- Consumes: `apiMyFreeSessionHistory` (Task 10). No local snapshot-fetching logic needed — the row's button navigates straight to the existing `/classroom-history/:id/replay` route (see Task 9's note), which already renders the right thing for every `recordingMode`/snapshot combination.
 
 - [ ] **Step 1: Create the page**
 
 ```tsx
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, PenTool, Radio } from "lucide-react";
+import { Clock, Radio } from "lucide-react";
 import { toast } from "sonner";
-import {
-  apiClassReplay, apiMyFreeSessionHistory,
-  type ClassBoardSnapshotData, type FreeClassHistoryItem,
-} from "../api/classroom";
-import { BoardSnapshotViewer } from "../components/classroom/BoardSnapshotViewer";
+import { apiMyFreeSessionHistory, type FreeClassHistoryItem } from "../api/classroom";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -1334,8 +1205,6 @@ export function FreeClassHistoryPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<FreeClassHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [boardSnapshot, setBoardSnapshot] = useState<ClassBoardSnapshotData | null>(null);
-  const [loadingSnapshot, setLoadingSnapshot] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -1349,22 +1218,6 @@ export function FreeClassHistoryPage() {
   }, []);
 
   useEffect(() => { void reload(); }, [reload]);
-
-  const openBoardSnapshot = async (sessionId: string) => {
-    setLoadingSnapshot(true);
-    try {
-      const replay = await apiClassReplay(sessionId);
-      if (!replay.boardSnapshot) {
-        toast.error("Chizma topilmadi");
-        return;
-      }
-      setBoardSnapshot(replay.boardSnapshot);
-    } catch {
-      toast.error("Chizmani yuklab bo'lmadi");
-    } finally {
-      setLoadingSnapshot(false);
-    }
-  };
 
   return (
     <div className="p-6">
@@ -1385,25 +1238,14 @@ export function FreeClassHistoryPage() {
                   <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{fmtDuration(item.startedAt, item.endedAt)}</span>
                 )}
                 <span className="flex-1" />
-                {item.status === "ended" && (item.recordingMode === "full" || item.recordingMode === "boardAudio") && (
+                {item.status === "ended" && item.hasBoardSnapshot && (
                   <button
                     type="button"
                     onClick={() => navigate(`/classroom-history/${item.id}/replay`)}
                     className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
                   >
                     <Radio size={14} />
-                    To'liq ko'rish
-                  </button>
-                )}
-                {item.status === "ended" && item.hasBoardSnapshot && (
-                  <button
-                    type="button"
-                    onClick={() => void openBoardSnapshot(item.id)}
-                    disabled={loadingSnapshot}
-                    className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-                  >
-                    <PenTool size={14} />
-                    Chizmani ko'rish
+                    Replay ko'rish
                   </button>
                 )}
               </div>
@@ -1411,10 +1253,6 @@ export function FreeClassHistoryPage() {
           </div>
         )}
       </div>
-
-      {boardSnapshot && (
-        <BoardSnapshotViewer snapshot={boardSnapshot} onClose={() => setBoardSnapshot(null)} />
-      )}
     </div>
   );
 }
@@ -1438,7 +1276,7 @@ Place it after the `"lessons"` entry (before `"payments"`), matching the logical
 
 - [ ] **Step 4: Manually verify**
 
-Log in as a teacher, confirm the new "Mening darslarim" nav tile appears and navigates to `/free-classes`. Start a free session, draw something, end it without recording — confirm it appears in the list with only "Chizmani ko'rish" available. Start another with "To'liq" recording — confirm both buttons appear.
+Log in as a teacher, confirm the new "Mening darslarim" nav tile appears and navigates to `/free-classes`. Start a free session, draw something, end it without recording — confirm it appears in the list with "Replay ko'rish" available (opens the static snapshot view). Start another with "To'liq" recording — confirm it opens the full timeline+audio replay.
 
 - [ ] **Step 5: Commit**
 
@@ -1457,19 +1295,17 @@ git commit -m "feat(classroom): add teacher 'Mening darslarim' page for free-ses
 - Modify: `apps/frontend/src/components/student/StudentShell.tsx` — new nav item
 
 **Interfaces:**
-- Consumes: `apiMyClassSessions` (Task 10), `apiClassReplay` (existing), `BoardSnapshotViewer` (Task 9).
+- Consumes: `apiMyClassSessions` (Task 10). Clicking a row navigates directly to the existing `/classroom-history/:id/replay` route (same as Task 11/12) — no local snapshot state needed.
+
+> **Note on the original requirement:** the design spec asked for the student list to show *only* the final drawing (never full audio replay), even if the teacher recorded "To'liq". Since `ClassroomReplayPage.tsx`'s auto-detection now decides the rendering based on `recordingMode` (full → timeline+audio, board-only/no-recording → static), routing here to that same page means a student clicking through to a "To'liq"-recorded session will see the full replay, not just the drawing. This is an intentional, approved simplification (confirmed with the user) — it trades that original constraint for reusing the existing page rather than building a second "force-static" mode.
 
 - [ ] **Step 1: Create the page**
 
 ```tsx
 import { useCallback, useEffect, useState } from "react";
-import { PenTool, Radio, Users } from "lucide-react";
+import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import {
-  apiClassReplay, apiMyClassSessions,
-  type ClassBoardSnapshotData, type StudentClassSessionItem,
-} from "../api/classroom";
-import { BoardSnapshotViewer } from "../components/classroom/BoardSnapshotViewer";
+import { apiMyClassSessions, type StudentClassSessionItem } from "../api/classroom";
 
 function fmtDate(iso: string | null): string {
   if (!iso) return "—";
@@ -1477,10 +1313,9 @@ function fmtDate(iso: string | null): string {
 }
 
 export function StudentLiveClassesPage() {
+  const navigate = useNavigate();
   const [items, setItems] = useState<StudentClassSessionItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [boardSnapshot, setBoardSnapshot] = useState<ClassBoardSnapshotData | null>(null);
-  const [loadingSnapshot, setLoadingSnapshot] = useState<string | null>(null);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -1495,22 +1330,6 @@ export function StudentLiveClassesPage() {
 
   useEffect(() => { void reload(); }, [reload]);
 
-  const openBoardSnapshot = async (sessionId: string) => {
-    setLoadingSnapshot(sessionId);
-    try {
-      const replay = await apiClassReplay(sessionId);
-      if (!replay.boardSnapshot) {
-        toast.error("Chizma topilmadi");
-        return;
-      }
-      setBoardSnapshot(replay.boardSnapshot);
-    } catch {
-      toast.error("Chizmani yuklab bo'lmadi");
-    } finally {
-      setLoadingSnapshot(null);
-    }
-  };
-
   return (
     <div className="p-4 sm:p-6">
       <p className="mb-4 text-sm font-semibold uppercase tracking-wide text-gray-400">Jonli darslar</p>
@@ -1524,13 +1343,10 @@ export function StudentLiveClassesPage() {
             <button
               key={item.id}
               type="button"
-              disabled={!item.hasBoardSnapshot || loadingSnapshot === item.id}
-              onClick={() => void openBoardSnapshot(item.id)}
+              disabled={!item.hasBoardSnapshot}
+              onClick={() => navigate(`/classroom-history/${item.id}/replay`)}
               className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white px-4 py-3 text-left transition-colors hover:bg-gray-50 disabled:opacity-50"
             >
-              <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-600">
-                <PenTool size={16} />
-              </div>
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium text-gray-800">{item.teacherName}</p>
                 <p className="text-xs text-gray-400">{fmtDate(item.startedAt)}</p>
@@ -1542,24 +1358,12 @@ export function StudentLiveClassesPage() {
           ))}
         </div>
       )}
-
-      {boardSnapshot && (
-        <BoardSnapshotViewer snapshot={boardSnapshot} onClose={() => setBoardSnapshot(null)} />
-      )}
     </div>
   );
 }
 ```
-(`Users` and `Radio` icons are imported but unused in this draft — remove unused imports before committing; only `PenTool` is used. Keep only what's referenced.)
 
-- [ ] **Step 2: Remove unused imports**
-
-Change the import line to:
-```tsx
-import { PenTool } from "lucide-react";
-```
-
-- [ ] **Step 3: Add the route**
+- [ ] **Step 2: Add the route**
 
 In `apps/frontend/src/App.tsx`, add:
 ```ts
@@ -1598,7 +1402,7 @@ Expected: succeeds.
 
 - [ ] **Step 6: Manually verify**
 
-Log in as a student who has joined at least one course-bound and one free session. Confirm the new "Jonli darslar" tab appears in both desktop sidebar and mobile bottom nav without visually crowding it, and that clicking a row opens the static drawing viewer (not the full replay). Confirm a session with no board snapshot yet (still active) is disabled/non-clickable or excluded — check which the backend query naturally produces (only `status: 'ended'` rows are returned per Task 7, so all listed rows should always be clickable; if any edge case shows a row without a snapshot, the `disabled` guard in Step 1's JSX already handles it).
+Log in as a student who has joined at least one course-bound and one free session. Confirm the new "Jonli darslar" tab appears in both desktop sidebar and mobile bottom nav without visually crowding it, and that clicking a row navigates to `/classroom-history/:id/replay` and renders (static snapshot if the teacher never recorded audio, or full timeline+audio if they recorded "To'liq" — per the approved simplification, both are acceptable here). Confirm a session with no board snapshot yet (still active) is disabled/non-clickable or excluded — check which the backend query naturally produces (only `status: 'ended'` rows are returned per Task 7, so all listed rows should always be clickable; if any edge case shows a row without a snapshot, the `disabled` guard in Step 1's JSX already handles it).
 
 - [ ] **Step 7: Commit**
 
