@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { BookOpen, ClipboardList, MessageCircle, Radio, RefreshCw, Settings, UserRound } from "lucide-react";
+import { BookOpen, ClipboardList, MessageCircle, MonitorPlay, Radio, RefreshCw, Settings, UserRound } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
@@ -15,6 +15,7 @@ const NAV_ITEMS = [
   { label: "Amaliyotlar tarixi", shortLabel: "Tarix", path: "/", icon: ClipboardList },
   { label: "Messenger", shortLabel: "Xabarlar", path: "/messenger", icon: MessageCircle },
   { label: "Jonli musobaqalar", shortLabel: "Jonli", path: "/live/join", icon: Radio },
+  { label: "Jonli darslar", shortLabel: "Darslar", path: "/live-classes", icon: MonitorPlay },
 ];
 
 function isNavActive(pathname: string, path: string) {
@@ -289,7 +290,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);

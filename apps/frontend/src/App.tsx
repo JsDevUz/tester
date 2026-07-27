@@ -28,6 +28,7 @@ import { ClassroomHostPage } from './pages/ClassroomHostPage';
 import { ClassroomStudentPage } from './pages/ClassroomStudentPage';
 import { ClassroomReplayPage } from './pages/ClassroomReplayPage';
 import { FreeClassHistoryPage } from './pages/FreeClassHistoryPage';
+import { StudentLiveClassesPage } from './pages/StudentLiveClassesPage';
 import { PrivateRoute } from './components/PrivateRoute';
 import { TeacherRoute } from './components/TeacherRoute';
 import { TopProgressBar } from './components/TopProgressBar';
@@ -62,6 +63,7 @@ const router = createBrowserRouter([
   { path: '/classroom/free/:id', element: <ClassroomStudentPage isFreeRoute /> },
   { path: '/classroom/:id', element: <PrivateRoute><ClassroomStudentPage /></PrivateRoute> },
   { path: '/classroom-history/:sessionId/replay', element: <PrivateRoute><ClassroomReplayPage /></PrivateRoute> },
+  { path: '/live-classes', element: <PrivateRoute><StudentLiveClassesPage /></PrivateRoute> },
   { path: '/lessons', element: <TeacherRoute><CoursesPage /></TeacherRoute> },
   { path: '/free-classes', element: <TeacherRoute><FreeClassHistoryPage /></TeacherRoute> },
   { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
