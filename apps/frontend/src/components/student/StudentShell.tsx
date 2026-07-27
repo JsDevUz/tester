@@ -107,35 +107,14 @@ export function StudentShell({ children }: { children: ReactNode }) {
       return;
     }
 
-    let mounted = true;
-    let loading = false;
-    let generation = 0;
-    const load = async () => {
-      if (loading) return;
-      loading = true;
-      const requestGeneration = ++generation;
-      try {
-        const pins = await apiActiveTestPins();
-        if (mounted && requestGeneration === generation) {
-          setActiveTestPins(pins);
-        }
-      } catch {
-        if (mounted && requestGeneration === generation) {
-          setActiveTestPins([]);
-        }
-      } finally {
-        if (requestGeneration === generation) {
-          loading = false;
-        }
-      }
+    const load = () => {
+      apiActiveTestPins()
+        .then(setActiveTestPins)
+        .catch(() => setActiveTestPins([]));
     };
-    void load();
+    load();
     const timer = window.setInterval(load, 60_000);
-    return () => {
-      mounted = false;
-      generation += 1;
-      window.clearInterval(timer);
-    };
+    return () => window.clearInterval(timer);
   }, [isMessenger]);
 
   const viewportBaselineRef = useRef(0);

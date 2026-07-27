@@ -48,19 +48,15 @@ export function FolderViewPage() {
 
       setPinnedTestIds((previous) => {
         const next = new Set([...previous].filter((id) => currentTestIds.has(id)));
-        const now = Date.now();
         results.forEach((result, index) => {
           if (result.status === "rejected") return;
           const testId = tests[index].id;
-          const startsAt = result.value ? Date.parse(result.value.startsAt) : Number.NaN;
-          const endsAt = result.value ? Date.parse(result.value.endsAt) : Number.NaN;
-          const isActive =
-            Number.isFinite(startsAt) &&
-            Number.isFinite(endsAt) &&
-            startsAt <= now &&
-            now <= endsAt;
-
-          if (isActive) next.add(testId);
+          // "Has a pin" means a pin row exists for this test, regardless of
+          // whether its scheduled window is currently active — this must
+          // match TestPinModal's hasExistingPin semantics (apiGetTestPin
+          // returning non-null), so the card highlight never disagrees with
+          // what the pin modal itself shows when reopened.
+          if (result.value) next.add(testId);
           else next.delete(testId);
         });
         return next;
@@ -75,6 +71,18 @@ export function FolderViewPage() {
       cancelled = true;
     };
   }, [tests, pinStatusReload]);
+
+  // Periodically re-check pin status so the highlight self-corrects if a
+  // pin is added/removed elsewhere, without requiring navigation away and
+  // back. Matches the 60s polling cadence used for other "is this thing
+  // currently active" checks (e.g. StudentShell's live-session polling).
+  useEffect(() => {
+    if (tests.length === 0) return;
+    const timer = window.setInterval(() => {
+      setPinStatusReload((value) => value + 1);
+    }, 60_000);
+    return () => window.clearInterval(timer);
+  }, [tests.length]);
 
   async function handleCreate(data: CreateTestData) {
     const test = await createTest(data);
