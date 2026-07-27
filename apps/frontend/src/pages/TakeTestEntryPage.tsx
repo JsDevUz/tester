@@ -23,6 +23,28 @@ import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { formatDateTime } from "../utils/date";
 
+function getApiErrorCode(error: unknown): string | undefined {
+  if (typeof error !== "object" || error === null || !("response" in error)) {
+    return undefined;
+  }
+
+  const response = error.response;
+  if (
+    typeof response !== "object" ||
+    response === null ||
+    !("data" in response)
+  ) {
+    return undefined;
+  }
+
+  const data = response.data;
+  if (typeof data !== "object" || data === null || !("message" in data)) {
+    return undefined;
+  }
+
+  return typeof data.message === "string" ? data.message : undefined;
+}
+
 export function TakeTestEntryPage() {
   const { slug } = useParams<{ slug: string }>();
   const [searchParams] = useSearchParams();
@@ -37,6 +59,19 @@ export function TakeTestEntryPage() {
   const token = useAuthStore((s) => s.token);
   const { theme, toggleTheme } = useThemeStore();
   const [loggedInName, setLoggedInName] = useState<string | null>(null);
+
+  function handlePublicTestError(error: unknown) {
+    const code = getApiErrorCode(error);
+    if (code === "AUTH_REQUIRED") {
+      navigate(
+        `/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`,
+      );
+    } else if (code === "NOT_ASSIGNED") {
+      setError("Bu test sizga tayinlanmagan.");
+    } else {
+      setError("Test topilmadi.");
+    }
+  }
 
   useEffect(() => {
     if (adminName) {
@@ -74,28 +109,14 @@ export function TakeTestEntryPage() {
         .catch(() => {
           apiGetPublicTest(slug, isPractice)
             .then(setTest)
-            .catch((err: any) => {
-              const msg = err?.response?.data?.message;
-              setError(
-                msg === "NOT_ASSIGNED"
-                  ? "Bu test sizga tayinlanmagan."
-                  : "Test topilmadi.",
-              );
-            })
+            .catch(handlePublicTestError)
             .finally(() => setLoading(false));
         });
       return;
     }
     apiGetPublicTest(slug, isPractice)
       .then(setTest)
-      .catch((err: any) => {
-        const msg = err?.response?.data?.message;
-        setError(
-          msg === "NOT_ASSIGNED"
-            ? "Bu test sizga tayinlanmagan."
-            : "Test topilmadi.",
-        );
-      })
+      .catch(handlePublicTestError)
       .finally(() => setLoading(false));
   }, [slug]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -112,8 +133,8 @@ export function TakeTestEntryPage() {
       navigate(
         `/t/${slug}/take?sid=${submissionId}${isPractice ? "&practice=1" : ""}`,
       );
-    } catch (err: any) {
-      const msg = err?.response?.data?.message;
+    } catch (err: unknown) {
+      const msg = getApiErrorCode(err);
       if (msg === "AUTH_REQUIRED") {
         navigate(
           `/login?redirect=${encodeURIComponent(`/t/${slug}${isPractice ? "?practice=1" : ""}`)}`,
