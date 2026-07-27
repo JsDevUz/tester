@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Play, Pause, Users, X } from "lucide-react";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
 import { useClassroomReplay } from "../hooks/useClassroomReplay";
@@ -18,6 +18,7 @@ function formatMs(ms: number): string {
 export function ClassroomReplayPage() {
   const { sessionId } = useParams<{ sessionId: string }>();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const [data, setData] = useState<ClassReplayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [audioDurationMs, setAudioDurationMs] = useState(0);
@@ -37,18 +38,27 @@ export function ClassroomReplayPage() {
       .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
   }, [sessionId]);
 
+  // Ustoz tomonida (Davomat/"Mening darslarim") ikkita mustaqil kirish
+  // nuqtasi bor — ustoz ?view=board bilan aniq "faqat chizma"ni tanlashi
+  // mumkin. O'quvchi uchun esa BU YERGA qat'i nazar (recordingMode'dan
+  // qat'iy nazar) har doim statik ko'rinish majburlanadi — backend
+  // isTeacher=false qaytarsa, o'quvchi hech qachon to'liq audio replay'ni
+  // ko'rmasligi kerak (hatto to'g'ridan-to'g'ri URL orqali kirsa ham).
+  const forceBoardView = searchParams.get("view") === "board" || data?.isTeacher === false;
+
   // boardAudio'da chizmalar yakuniy holatda turadi, lekin audio va
   // pointer/scroll/zoom timeline qayta ijro etiladi. boardSilent esa
   // butunlay statik qoladi.
   const boardSnapshot = data?.boardSnapshot ?? null;
-  const isBoardOnly = data?.recordingMode === "boardAudio" || data?.recordingMode === "boardSilent";
-  const isBoardAudio = data?.recordingMode === "boardAudio";
+  const isBoardOnly = forceBoardView || data?.recordingMode === "boardAudio" || data?.recordingMode === "boardSilent";
+  const isBoardAudio = !forceBoardView && data?.recordingMode === "boardAudio";
   const isSnapshotOnlyFallback = !!boardSnapshot
     && data?.recordingMode == null
     && (data?.historyEvents.length ?? 0) === 0;
   const useStaticSnapshot = !!boardSnapshot && (isBoardOnly || isSnapshotOnlyFallback);
   const showTimeline = (!isBoardOnly || isBoardAudio) && !isSnapshotOnlyFallback;
   const hasRecording = !isSnapshotOnlyFallback
+    && !forceBoardView
     && data?.recordingStatus === "ready"
     && !!data?.recordingUrl
     && data?.recordingMode !== "boardSilent";
@@ -181,6 +191,7 @@ export function ClassroomReplayPage() {
             leftBoardMode={viewState.leftBoardMode}
             rightBoardMode={viewState.rightBoardMode}
             notebookStyle={viewState.notebookStyle}
+            noSync
           />
         </div>
       </div>

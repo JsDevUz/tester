@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import {
+  ArrowLeft,
   Clock,
   Calendar,
   ChevronRight,
@@ -191,6 +192,13 @@ export function TakeTestEntryPage() {
             </p>
             <p className="text-xs text-gray-400 mt-1">Sizning natijangiz</p>
           </div>
+          <button
+            type="button"
+            onClick={() => navigate("/")}
+            className="mt-8 w-full max-w-xs py-4 bg-gray-900 text-white rounded-2xl font-semibold text-base hover:bg-gray-700 transition-colors"
+          >
+            Bosh sahifaga qaytish
+          </button>
         </div>
       </div>
     );
@@ -244,11 +252,17 @@ export function TakeTestEntryPage() {
 
           {/* Scrollable content */}
           <div className="px-6 lg:px-10 pt-10 pb-4 lg:py-10">
-            <div className="flex items-start justify-between gap-4 mb-6">
-              {/* Icon */}
-              <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center">
-                <FileText size={28} className="text-gray-500" />
-              </div>
+            <div className="flex items-center justify-between gap-4 mb-4">
+              <button
+                type="button"
+                onClick={() => navigate("/")}
+                aria-label="Bosh sahifaga qaytish"
+                title="Bosh sahifaga qaytish"
+                className="h-11 px-3.5 rounded-2xl bg-gray-100 text-gray-600 flex items-center gap-2 text-sm font-semibold hover:bg-gray-200 transition-colors"
+              >
+                <ArrowLeft size={18} />
+                <span className="hidden sm:inline">Bosh sahifa</span>
+              </button>
 
               {/* Test boshlanishidan oldingi rang rejimi */}
               <button
@@ -263,6 +277,10 @@ export function TakeTestEntryPage() {
                   {theme === "dark" ? "Yorug'" : "Tungi"}
                 </span>
               </button>
+            </div>
+
+            <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
+              <FileText size={28} className="text-gray-500" />
             </div>
 
             {/* Title & description */}

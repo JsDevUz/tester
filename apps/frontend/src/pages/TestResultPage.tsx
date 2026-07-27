@@ -446,7 +446,7 @@ export function TestResultView({
                 onClick={onBack}
                 className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white"
               >
-                Orqaga qaytish
+                Bosh sahifaga qaytish
               </button>
             )}
           </div>
@@ -463,7 +463,7 @@ export function TestResultPage() {
     <TestResultView
       submissionId={searchParams.get("sid")}
       practiceMode={searchParams.get("practice") === "1"}
-      onBack={() => navigate(-1)}
+      onBack={() => navigate("/")}
     />
   );
 }

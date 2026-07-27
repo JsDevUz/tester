@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { BookOpen, GraduationCap, Inbox, Layers, Play, Plus, Radio, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, GraduationCap, Inbox, Layers, PenTool, Play, Plus, Radio, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { PromptModal } from './PromptModal';
 import { DataLoadingState } from '../DataLoadingState';
@@ -11,6 +12,7 @@ interface CourseGridProps {
 }
 
 export function CourseGrid({ onOpenCourse }: CourseGridProps) {
+  const navigate = useNavigate();
   const { courses, coursesLoading, coursesLoaded, coursesError, loadCourses, addCourse } = useCourseStore();
   const [showModal, setShowModal] = useState(false);
   const [showStartClass, setShowStartClass] = useState(false);
@@ -34,6 +36,13 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
             className="flex items-center gap-1.5 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-100 transition-colors hover:bg-red-600"
           >
             <Radio size={16} /> Jonli dars
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate('/free-classes')}
+            className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 shadow-sm transition-colors hover:bg-gray-50"
+          >
+            <PenTool size={16} /> Erkin darslar
           </button>
           <button
             type="button"

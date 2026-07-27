@@ -1,5 +1,20 @@
-import { useEffect, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { BookOpen, ClipboardList, MessageCircle, MonitorPlay, Radio, RefreshCw, Settings, UserRound } from "lucide-react";
+import {
+  useEffect,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from "react";
+import {
+  BookOpen,
+  ClipboardList,
+  MessageCircle,
+  Presentation,
+  Radio,
+  RefreshCw,
+  Settings,
+  UserRound,
+} from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
@@ -7,15 +22,43 @@ import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessen
 import { UserAvatar } from "../UserAvatar";
 import { SettingsModal } from "../SettingsModal";
 import { formatPhone } from "../../utils/phone";
-import { apiActiveClassSessions, type ActiveClassSession } from "../../api/classroom";
+import {
+  apiActiveClassSessions,
+  type ActiveClassSession,
+} from "../../api/classroom";
 import { apiActiveTestPins, type ActiveTestPin } from "../../api/submissions";
 
 const NAV_ITEMS = [
-  { label: "Mening kurslarim", shortLabel: "Kurslar", path: "/my-courses", icon: BookOpen },
-  { label: "Amaliyotlar tarixi", shortLabel: "Tarix", path: "/", icon: ClipboardList },
-  { label: "Messenger", shortLabel: "Xabarlar", path: "/messenger", icon: MessageCircle },
-  { label: "Jonli musobaqalar", shortLabel: "Jonli", path: "/live/join", icon: Radio },
-  { label: "Jonli darslar", shortLabel: "Darslar", path: "/live-classes", icon: MonitorPlay },
+  {
+    label: "Mening kurslarim",
+    shortLabel: "Kurslar",
+    path: "/my-courses",
+    icon: BookOpen,
+  },
+  {
+    label: "Amaliyotlar tarixi",
+    shortLabel: "Tarix",
+    path: "/",
+    icon: ClipboardList,
+  },
+  {
+    label: "Messenger",
+    shortLabel: "Xabarlar",
+    path: "/messenger",
+    icon: MessageCircle,
+  },
+  {
+    label: "Jonli musobaqalar",
+    shortLabel: "Jonli",
+    path: "/live/join",
+    icon: Radio,
+  },
+  {
+    label: "Jonli darslar",
+    shortLabel: "Darslar",
+    path: "/live-classes",
+    icon: Presentation,
+  },
 ];
 
 function isNavActive(pathname: string, path: string) {
@@ -27,7 +70,9 @@ function isNavActive(pathname: string, path: string) {
 export function StudentShell({ children }: { children: ReactNode }) {
   const admin = useAuthStore((s) => s.admin);
   const logout = useAuthStore((s) => s.logout);
-  const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
+  const hasUnreadMessages = usePracticeMessengerStore(
+    (s) => s.unreadChatIds.size > 0,
+  );
   usePracticeMessengerNotifications();
   const location = useLocation();
   const navigate = useNavigate();
@@ -36,7 +81,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
   const pullStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
-  const [liveClassSessions, setLiveClassSessions] = useState<ActiveClassSession[]>([]);
+  const [liveClassSessions, setLiveClassSessions] = useState<
+    ActiveClassSession[]
+  >([]);
   const [activeTestPins, setActiveTestPins] = useState<ActiveTestPin[]>([]);
   const profileContact = admin?.phone ? formatPhone(admin.phone) : "Profil";
   const isInnerPage =
@@ -53,7 +100,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
     };
     const onTouchMove = (event: TouchEvent) => {
       const startY = pullStartYRef.current;
-      if (startY === null || window.scrollY > 0 || event.touches.length !== 1) return;
+      if (startY === null || window.scrollY > 0 || event.touches.length !== 1)
+        return;
       const delta = event.touches[0].clientY - startY;
       if (delta <= 0) {
         pullDistanceRef.current = 0;
@@ -192,15 +240,23 @@ export function StudentShell({ children }: { children: ReactNode }) {
           style={{ transform: `rotate(${pullDistance * 4}deg)` }}
         />
       </div>
-      <div className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}>
-        <aside className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}>
+      <div
+        className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}
+      >
+        <aside
+          className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}
+        >
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
             className="rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
           >
             <div className="flex items-center gap-3">
-              <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-12 w-12 rounded-full bg-yellow-300 text-base font-bold text-white" />
+              <UserAvatar
+                name={admin?.name}
+                avatarUrl={admin?.avatarUrl}
+                className="h-12 w-12 rounded-full bg-yellow-300 text-base font-bold text-white"
+              />
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-gray-900">
                   {admin?.name ?? "O'quvchi"}
@@ -254,37 +310,59 @@ export function StudentShell({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}>
-          {!isMessenger && liveClassSessions.map((s) => (
-            <button
-              key={s.id}
-              type="button"
-              onClick={() => navigate(`/classroom/${s.id}`)}
-              className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
-            >
-              <Radio size={20} className="shrink-0 text-red-500 motion-safe:animate-pulse" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-gray-900">Jonli dars ketmoqda — {s.courseName}</span>
-                <span className="block text-xs text-gray-500">Darsga kirish uchun bosing</span>
-              </span>
-              <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">Kirish</span>
-            </button>
-          ))}
-          {!isMessenger && activeTestPins.map((pin) => (
-            <button
-              key={pin.testId}
-              type="button"
-              onClick={() => navigate(`/t/${pin.slug}`)}
-              className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
-            >
-              <Radio size={20} className="shrink-0 text-red-500 motion-safe:animate-pulse" />
-              <span className="min-w-0 flex-1">
-                <span className="block truncate text-sm font-semibold text-gray-900">Imtihon boshlandi — {pin.testName}</span>
-                <span className="block text-xs text-gray-500">Kirish uchun bosing</span>
-              </span>
-              <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">Kirish</span>
-            </button>
-          ))}
+        <main
+          className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}
+        >
+          {!isMessenger &&
+            liveClassSessions.map((s) => (
+              <button
+                key={s.id}
+                type="button"
+                onClick={() => navigate(`/classroom/${s.id}`)}
+                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
+              >
+                <Radio
+                  size={20}
+                  className="shrink-0 text-red-500 motion-safe:animate-pulse"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-gray-900">
+                    Jonli dars ketmoqda — {s.courseName}
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Darsga kirish uchun bosing
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">
+                  Kirish
+                </span>
+              </button>
+            ))}
+          {!isMessenger &&
+            activeTestPins.map((pin) => (
+              <button
+                key={pin.testId}
+                type="button"
+                onClick={() => navigate(`/t/${pin.slug}`)}
+                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
+              >
+                <Radio
+                  size={20}
+                  className="shrink-0 text-red-500 motion-safe:animate-pulse"
+                />
+                <span className="min-w-0 flex-1">
+                  <span className="block truncate text-sm font-semibold text-gray-900">
+                    Imtihon boshlandi — {pin.testName}
+                  </span>
+                  <span className="block text-xs text-gray-500">
+                    Kirish uchun bosing
+                  </span>
+                </span>
+                <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">
+                  Kirish
+                </span>
+              </button>
+            ))}
           {children}
         </main>
       </div>
@@ -303,9 +381,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   navigate(item.path);
                 }}
                 className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
-                  active
-                    ? "bg-gray-100 text-gray-900"
-                    : "text-gray-500"
+                  active ? "bg-gray-100 text-gray-900" : "text-gray-500"
                 }`}
               >
                 <span className="relative">

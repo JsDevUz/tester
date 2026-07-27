@@ -192,6 +192,11 @@ interface Props {
   onBoardViewChange?: (layout: CsBoardLayout, left: CsBoardMode, right: CsBoardMode) => void;
   // Daftar foni: katakli, yo'l-yo'l yoki naqshsiz (bo'sh oq varaq).
   notebookStyle?: CsNotebookStyle;
+  // Statik replay/snapshot ko'rinishi uchun — hech qanday jonli host yo'q,
+  // shuning uchun "ustoz bilan sinxronlash" tugmasi ma'nosiz (sinxronlanadigan
+  // harakat umuman saqlanmagan). Bunday holatda foydalanuvchi har doim
+  // erkin scroll/zoom qila oladi, tugma esa butunlay yashiriladi.
+  noSync?: boolean;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -2738,6 +2743,7 @@ export function ClassroomPdfViewer({
   onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke, onActivePaneChange,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
+  noSync = false,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -2761,7 +2767,7 @@ export function ClassroomPdfViewer({
   // O'quvchi uchun: yoqilgan = sinxron (ustoz bilan birga, hech narsa
   // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
   // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
-  const [synced, setSynced] = useState(true);
+  const [synced, setSynced] = useState(!noSync);
   const [displayMode, setDisplayMode] = useState<CsBoardMode>(boardMode);
   const [displayLayout, setDisplayLayout] = useState<CsBoardLayout>(boardLayout);
   const [leftMode, setLeftMode] = useState<CsBoardMode>(leftBoardMode);
@@ -2904,7 +2910,14 @@ export function ClassroomPdfViewer({
   // yorliq yonma-yon ko'rinadi, faol variant indigo fon bilan ajratiladi
   // (iOS-uslubidagi sirpanuvchi doira emas).
   const modeMenuFor = (selectedMode: CsBoardMode, pane?: "left" | "right") => {
-    if (!isHost) return null;
+    // Ustoz uchun har doim ko'rinadi. O'quvchi uchun faqat statik
+    // replay/snapshot ko'rinishida (noSync) — jonli darsda o'quvchi
+    // ustoz belgilagan rejimga bog'liq (sinxron), lekin replay'da hech
+    // qanday jonli host yo'q, shuning uchun o'zi PDF/Daftar orasida
+    // erkin almashtira oladi. Faqat PDF sahifalari mavjud bo'lsagina
+    // ko'rsatiladi — aks holda "PDF" tugmasi bosilganda ko'rsatadigan
+    // hech narsa yo'q.
+    if (!isHost && !(noSync && pageUrls.length > 0)) return null;
     const disabled = !isHost && synced;
     const isNotebook = selectedMode === "notebook";
     return (
@@ -3224,7 +3237,7 @@ export function ClassroomPdfViewer({
           </div>
         );
 
-        const moveButton = !isHost && (
+        const moveButton = !isHost && !noSync && (
           <button
             type="button"
             onClick={toggleSynced}

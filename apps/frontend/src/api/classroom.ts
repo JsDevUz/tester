@@ -167,6 +167,10 @@ export interface ClassBoardSnapshotData {
 }
 
 export interface ClassReplayData {
+  // Ustoz (kurs egasi yoki erkin darsning host'i) bo'lsa true — faqat shu
+  // holatda to'liq audio replay ko'rsatiladi. O'quvchi uchun har doim
+  // faqat yakuniy chizma holati (statik) ko'rinishi kerak.
+  isTeacher: boolean;
   pdfName: string | null;
   pdfPages: string[];
   historyEvents: ClassReplayEvent[];

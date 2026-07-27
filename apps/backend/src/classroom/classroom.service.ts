@@ -718,6 +718,10 @@ export class ClassroomService implements OnModuleInit {
     }
 
     return {
+      // O'quvchi (isTeacher=false) — hatto 'full' yozib olingan bo'lsa ham
+      // faqat statik oxirgi chizma holatini ko'rishi kerak, to'liq audio
+      // replay emas. Frontend shu bayroqqa qarab ko'rinishni majburlaydi.
+      isTeacher,
       pdfName: row.pdfName,
       pdfPages: (row.pdfPages as string[]) ?? [],
       historyEvents: (row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? [],
