@@ -429,12 +429,14 @@ describe('sahifa va chizish', () => {
 
   it('endSession recordingMode null bo‘lsa boardSnapshot va bo‘sh historyEvents saqlaydi', async () => {
     const { service, sessionId } = await withPdf();
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
     mockedDb.update.mockClear();
 
     await service.endSession(sessionId, 'teacher-1');
 
     const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
-    expect(saved.boardSnapshot).not.toBeNull();
+    expect(saved.boardSnapshot.strokesByPage[1]).toContainEqual(stroke);
     expect(saved.historyEvents).toEqual([]);
   });
 

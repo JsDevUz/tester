@@ -38,10 +38,18 @@ export function ClassroomReplayPage() {
   // boardAudio'da chizmalar yakuniy holatda turadi, lekin audio va
   // pointer/scroll/zoom timeline qayta ijro etiladi. boardSilent esa
   // butunlay statik qoladi.
+  const boardSnapshot = data?.boardSnapshot ?? null;
   const isBoardOnly = data?.recordingMode === "boardAudio" || data?.recordingMode === "boardSilent";
   const isBoardAudio = data?.recordingMode === "boardAudio";
-  const showTimeline = !isBoardOnly || isBoardAudio;
-  const hasRecording = data?.recordingStatus === "ready" && !!data?.recordingUrl && data?.recordingMode !== "boardSilent";
+  const isSnapshotOnlyFallback = !!boardSnapshot
+    && data?.recordingMode == null
+    && (data?.historyEvents.length ?? 0) === 0;
+  const useStaticSnapshot = !!boardSnapshot && (isBoardOnly || isSnapshotOnlyFallback);
+  const showTimeline = (!isBoardOnly || isBoardAudio) && !isSnapshotOnlyFallback;
+  const hasRecording = !isSnapshotOnlyFallback
+    && data?.recordingStatus === "ready"
+    && !!data?.recordingUrl
+    && data?.recordingMode !== "boardSilent";
   // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
   // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
   // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
@@ -51,10 +59,10 @@ export function ClassroomReplayPage() {
     showTimeline ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
     hasRecording ? recordingOffsetMs + audioDurationMs : 0,
   );
-  const boardSnapshot = data?.boardSnapshot ?? null;
-  // "Faqat chizma" rejimida board o'zgarmas — boardSnapshot'dagi statik
-  // holat ko'rsatiladi, replay hook (bo'sh events bilan) ishlatilmaydi.
-  const viewState = isBoardOnly && boardSnapshot
+  // "Faqat chizma" va yangi null-mode fallback'da boardSnapshot'dagi
+  // statik holat ko'rsatiladi. Null-mode + tarixli eski replaylar esa
+  // timeline orqali ishlashda davom etadi.
+  const viewState = useStaticSnapshot && boardSnapshot
     ? {
         pages: boardSnapshot.pages,
         currentPage: isBoardAudio ? replay.state.currentPage : 1,
