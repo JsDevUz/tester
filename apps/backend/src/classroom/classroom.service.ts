@@ -262,7 +262,9 @@ export class ClassroomService implements OnModuleInit {
     if (byUserId !== null && s.hostUserId !== byUserId) throw new ForbiddenException('Faqat dars ustozi yakunlay oladi');
 
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
-    // Erkin darsda hech qanday davomat/DB yozuvi yo'q — shunchaki xotiradan o'chiriladi.
+
+    // Davomat (attendance) faqat guruhga bog'liq darslarda ma'noli — erkin
+    // darsda enrollment tushunchasi yo'q, shu qism o'tkazib yuboriladi.
     if (!s.isFree) {
       const now = Date.now();
       for (const p of s.participants.values()) {
@@ -271,32 +273,37 @@ export class ClassroomService implements OnModuleInit {
           await this.persistAttendance(s.id, p);
         }
       }
-      const boardSnapshot = this.buildBoardSnapshot(s);
-      // boardAudio'da chizmalarning bosqichma-bosqich tarixi kerak emas:
-      // yakuniy vektor holati boardSnapshot'da saqlanadi. Faqat o'qituvchi
-      // navigatsiyasi va kursori audio timeline bilan birga qayta ijro etiladi.
-      const historyEvents = s.recordingMode === 'full'
-        ? (s.historyEvents ?? [])
-        : s.recordingMode === 'boardAudio'
-          ? (s.historyEvents ?? []).filter((event) =>
-            event.type === 'pointer:move' ||
-            event.type === 'scroll:set' ||
-            event.type === 'zoom:set' ||
-            event.type === 'page:set')
-          : [];
-      await db.update(classSessions)
-        .set({
-          status: 'ended',
-          endedAt: new Date(),
-          historyEvents,
-          recordingMode: s.recordingMode ?? null,
-          boardSnapshot,
-        })
-        .where(eq(classSessions.id, sessionId));
-      if (s.recordingMode === 'full' || s.recordingMode === 'boardAudio') {
-        void this.recording.stopRecording(s.id);
-      }
     }
+
+    // Board snapshot va yozib olish holati endi HAR IKKALA turdagi
+    // sessiya uchun ham saqlanadi (erkin sessiyalar endi createFreeSession
+    // orqali class_sessions qatoriga ega).
+    const boardSnapshot = this.buildBoardSnapshot(s);
+    // boardAudio'da chizmalarning bosqichma-bosqich tarixi kerak emas:
+    // yakuniy vektor holati boardSnapshot'da saqlanadi. Faqat o'qituvchi
+    // navigatsiyasi va kursori audio timeline bilan birga qayta ijro etiladi.
+    const historyEvents = s.recordingMode === 'full'
+      ? (s.historyEvents ?? [])
+      : s.recordingMode === 'boardAudio'
+        ? (s.historyEvents ?? []).filter((event) =>
+          event.type === 'pointer:move' ||
+          event.type === 'scroll:set' ||
+          event.type === 'zoom:set' ||
+          event.type === 'page:set')
+        : [];
+    await db.update(classSessions)
+      .set({
+        status: 'ended',
+        endedAt: new Date(),
+        historyEvents,
+        recordingMode: s.recordingMode ?? null,
+        boardSnapshot,
+      })
+      .where(eq(classSessions.id, sessionId));
+    if (s.recordingMode === 'full' || s.recordingMode === 'boardAudio') {
+      void this.recording.stopRecording(s.id);
+    }
+
     this.broadcaster.toRoom(sessionId, 'session:ended', {});
     this.sessions.delete(sessionId);
   }
@@ -812,7 +819,7 @@ export class ClassroomService implements OnModuleInit {
 
   async startSessionRecording(sessionId: string, userId: string, mode: ClassroomRecordingMode): Promise<void> {
     const session = this.requireSessionHttp(sessionId);
-    if (session.isFree || session.hostUserId !== userId) throw new ForbiddenException();
+    if (session.hostUserId !== userId) throw new ForbiddenException();
     session.recordingMode = mode;
     // 'boardSilent' rejimida ovoz umuman yozilmaydi — LiveKit egress
     // ishga tushirilmaydi, sessiya tugaganda faqat board_snapshot yoziladi.

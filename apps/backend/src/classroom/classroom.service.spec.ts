@@ -735,14 +735,26 @@ describe('erkin (guruhsiz) dars', () => {
     expect(mockedDb.update).not.toHaveBeenCalled();
   });
 
-  it('endSession chaqirilganda ham classSessions jadvaliga yozilmaydi va xotiradan ochiriladi', async () => {
+  it('erkin sessiya tugaganda ham boardSnapshot DB\'ga yoziladi, davomat yozilmaydi', async () => {
     const { service, events } = makeFreeService();
     const { id } = await service.createFreeSession('teacher-1');
-    jest.clearAllMocks(); // Clear mocks after createFreeSession to check endSession doesn't update
+    jest.clearAllMocks(); // Clear mocks after createFreeSession to check endSession's own DB calls
     await service.endSession(id, 'teacher-1');
-    expect(mockedDb.update).not.toHaveBeenCalled();
+    expect(mockedDb.update).toHaveBeenCalledWith(classSessions);
+    const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
+    expect(saved).toHaveProperty('boardSnapshot');
+    expect(saved.status).toBe('ended');
+    // davomat (attendance) uchun hech qanday insert chaqirilmagan
+    expect(mockedDb.insert).not.toHaveBeenCalled();
     expect(events.some((e) => e.event === 'session:ended')).toBe(true);
     expect(() => service.hostJoin(id, 'teacher-1', 'sock-h')).toThrow();
+  });
+
+  it('erkin sessiyada startSessionRecording endi ForbiddenException otmaydi', async () => {
+    const { service, recordingService } = makeFreeService();
+    const { id } = await service.createFreeSession('teacher-1');
+    await expect(service.startSessionRecording(id, 'teacher-1', 'boardAudio')).resolves.not.toThrow();
+    expect(recordingService.startRecording).toHaveBeenCalledWith(id, expect.any(Number));
   });
 
   it("erkin bolmagan (oddiy) sessiyada guestId bilan kirish NOT_ENROLLED bilan rad etiladi", async () => {
