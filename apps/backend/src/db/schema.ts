@@ -606,7 +606,8 @@ export const mediaAssetsRelations = relations(mediaAssets, ({ one }) => ({
 
 export const classSessions = pgTable('class_sessions', {
   id: uuid('id').primaryKey().defaultRandom(),
-  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  // Erkin (guruhsiz) sessiyalarda null — kursga umuman bog'liq emas.
+  courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }),
   teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
   status: text('status').notNull().default('active'),
   pdfName: text('pdf_name'),
@@ -641,6 +642,26 @@ export const classSessions = pgTable('class_sessions', {
   recordingMode: text('recording_mode'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
+}));
+
+// Erkin (guruhsiz) sessiyada LOGIN QILGAN ishtirokchilarni kuzatish uchun
+// — mehmonlar (guest:*) bu jadvalga yozilmaydi, chunki ular hech qanday
+// hisobga bog'lanmagan. attendanceRecords'dan farqli — kelish/kechikish
+// holati emas, faqat "kim qatnashdi" kifoya.
+export const freeSessionParticipants = pgTable('free_session_participants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  sessionId: uuid('session_id').notNull().references(() => classSessions.id, { onDelete: 'cascade' }),
+  userId: uuid('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  sessionIdIdx: index('free_session_participants_session_id_idx').on(table.sessionId),
+  userIdIdx: index('free_session_participants_user_id_idx').on(table.userId),
+  uniqSessionUser: uniqueIndex('free_session_participants_session_user_uniq').on(table.sessionId, table.userId),
+}));
+
+export const freeSessionParticipantsRelations = relations(freeSessionParticipants, ({ one }) => ({
+  session: one(classSessions, { fields: [freeSessionParticipants.sessionId], references: [classSessions.id] }),
+  user: one(users, { fields: [freeSessionParticipants.userId], references: [users.id] }),
 }));
 
 export const attendanceRecords = pgTable('attendance_records', {
