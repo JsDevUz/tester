@@ -4,6 +4,7 @@ import { Play, Pause, Users, X } from "lucide-react";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
 import { useClassroomReplay } from "../hooks/useClassroomReplay";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
+import { useThemeStore } from "../stores/themeStore";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 
@@ -22,6 +23,7 @@ export function ClassroomReplayPage() {
   const [audioDurationMs, setAudioDurationMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const globalTheme = useThemeStore((s) => s.theme);
   // listenGlobally=false: PDF'ni scroll/pan/zoom qilish bu panellarni qayta
   // ko'rsatmasin — faqat panellarning o'ziga yoki video ustiga bosilganda
   // (haqiqiy "controls" niyati bilan) qayta ko'rinsin, aks holda haqiqiy
@@ -58,6 +60,7 @@ export function ClassroomReplayPage() {
   const replay = useClassroomReplay(
     showTimeline ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
     hasRecording ? recordingOffsetMs + audioDurationMs : 0,
+    globalTheme,
   );
   // "Faqat chizma" va yangi null-mode fallback'da boardSnapshot'dagi
   // statik holat ko'rsatiladi. Null-mode + tarixli eski replaylar esa

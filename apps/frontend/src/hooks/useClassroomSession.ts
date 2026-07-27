@@ -75,7 +75,7 @@ export function useClassroomSession(
   const globalTheme = useThemeStore((s) => s.theme);
   const [state, setState] = useState<ClassroomState>(() => ({
     ...INITIAL,
-    classroomTheme: role === "host" ? globalTheme : INITIAL.classroomTheme,
+    classroomTheme: globalTheme,
   }));
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
@@ -114,7 +114,7 @@ export function useClassroomSession(
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
-            classroomTheme: snap.classroomTheme ?? "light",
+            classroomTheme: snap.classroomTheme ?? globalTheme,
             notebookStyle: snap.notebookStyle ?? "grid",
           });
           // Yangi classroom'ni ustozning asosiy theme'i bilan boshlaymiz.

@@ -30,26 +30,26 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
   "notebookStyle:set": (s, p: { style: "grid" | "lined" | "plain" }) => ({ ...s, notebookStyle: p.style }),
 };
 
-function baseState(pdfName: string | null, pdfPages: string[]): ClassroomState {
+function baseState(pdfName: string | null, pdfPages: string[], globalTheme: "light" | "dark"): ClassroomState {
   return {
     joined: true, error: null, ended: true,
     pdfName, pages: pdfPages, currentPage: 1,
     strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null,
     zoom: 1, rightZoom: 1, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
-    classroomTheme: "light", notebookStyle: "grid",
+    classroomTheme: globalTheme, notebookStyle: "grid",
   };
 }
 
 // Berilgan vaqtgacha (inclusive) bo'lgan barcha eventlarni boshidan qayta
 // qo'llab, o'sha lahzadagi holatni hisoblaydi — playback "scrub" qilinganda
 // har safar noldan qayta hisoblanadi (event soni kichik, bu arzon).
-function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: string | null, pdfPages: string[]): ClassroomState {
+function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: string | null, pdfPages: string[], globalTheme: "light" | "dark"): ClassroomState {
   // Yangi yozuvlarda PDF biriktirilishi ham event sifatida keladi. Unda
   // final PDF'ni t=0 da ko'rsatmaymiz; eski yozuvlar bilan moslik uchun
   // pdf:set bo'lmasa API'dagi yakuniy PDF boshlang'ich holat bo'lib qoladi.
   const hasPdfEvent = events.some((event) => event.type === "pdf:set");
-  let state = baseState(hasPdfEvent ? null : pdfName, hasPdfEvent ? [] : pdfPages);
+  let state = baseState(hasPdfEvent ? null : pdfName, hasPdfEvent ? [] : pdfPages, globalTheme);
   for (const event of events) {
     if (event.atMs > timeMs) break;
     const reducer = REDUCERS[event.type];
@@ -58,7 +58,7 @@ function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: s
   return state;
 }
 
-export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName: string | null, pdfPages: string[], mediaDurationMs = 0) {
+export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName: string | null, pdfPages: string[], mediaDurationMs = 0, globalTheme: "light" | "dark" = "light") {
   const sorted = useMemo(() => [...historyEvents].sort((a, b) => a.atMs - b.atMs), [historyEvents]);
   const eventDurationMs = sorted.length > 0 ? sorted[sorted.length - 1].atMs : 0;
   const durationMs = Math.max(eventDurationMs, mediaDurationMs);
@@ -107,8 +107,8 @@ export function useClassroomReplay(historyEvents: ReplayHistoryEvent[], pdfName:
   }, [durationMs, isPlaying]);
 
   const state = useMemo(
-    () => computeStateAt(sorted, currentTimeMs, pdfName, pdfPages),
-    [sorted, currentTimeMs, pdfName, pdfPages],
+    () => computeStateAt(sorted, currentTimeMs, pdfName, pdfPages, globalTheme),
+    [sorted, currentTimeMs, pdfName, pdfPages, globalTheme],
   );
 
   return { state, currentTimeMs, isPlaying, durationMs, play, pause, seek };
