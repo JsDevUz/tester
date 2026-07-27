@@ -272,20 +272,19 @@ export class ClassroomService implements OnModuleInit {
           await this.persistAttendance(s.id, p);
         }
       }
-      const isBoardOnly = s.recordingMode === 'boardAudio' || s.recordingMode === 'boardSilent';
-      const boardSnapshot = isBoardOnly ? this.buildBoardSnapshot(s) : null;
+      const boardSnapshot = this.buildBoardSnapshot(s);
       // boardAudio'da chizmalarning bosqichma-bosqich tarixi kerak emas:
       // yakuniy vektor holati boardSnapshot'da saqlanadi. Faqat o'qituvchi
       // navigatsiyasi va kursori audio timeline bilan birga qayta ijro etiladi.
-      const historyEvents = s.recordingMode === 'boardAudio'
-        ? (s.historyEvents ?? []).filter((event) =>
+      const historyEvents = s.recordingMode === 'full'
+        ? (s.historyEvents ?? [])
+        : s.recordingMode === 'boardAudio'
+          ? (s.historyEvents ?? []).filter((event) =>
             event.type === 'pointer:move' ||
             event.type === 'scroll:set' ||
             event.type === 'zoom:set' ||
             event.type === 'page:set')
-        : s.recordingMode === 'boardSilent'
-          ? []
-          : (s.historyEvents ?? []);
+          : [];
       await db.update(classSessions)
         .set({
           status: 'ended',

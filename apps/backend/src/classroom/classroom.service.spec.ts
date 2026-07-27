@@ -418,12 +418,24 @@ describe('sahifa va chizish', () => {
 
   it('endSession da historyEvents DB ga saqlanadi', async () => {
     const { service, sessionId } = await withPdf();
+    await service.startSessionRecording(sessionId, 'teacher-1', 'full');
     service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
     mockedDb.update.mockClear();
     await service.endSession(sessionId, 'teacher-1');
     expect(mockedDb.update).toHaveBeenCalled();
     const setCalls = mockedDb.update.mock.results.map((r: any) => r.value.set.mock.calls[0][0]);
     expect(setCalls.some((c: any) => Array.isArray(c.historyEvents) && c.historyEvents.length === 1)).toBe(true);
+  });
+
+  it('endSession recordingMode null bo‘lsa boardSnapshot va bo‘sh historyEvents saqlaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    mockedDb.update.mockClear();
+
+    await service.endSession(sessionId, 'teacher-1');
+
+    const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
+    expect(saved.boardSnapshot).not.toBeNull();
+    expect(saved.historyEvents).toEqual([]);
   });
 
   it('getReplay tarix+recording+attendance qaytaradi', async () => {
