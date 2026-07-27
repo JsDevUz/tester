@@ -2,7 +2,7 @@ import { ClassroomService } from './classroom.service';
 import { ClassroomBroadcaster } from './classroom.types';
 import { HOST_GRACE_MS } from './classroom.logic';
 import { db } from '../db';
-import { classSessions, contentBlocks } from '../db/schema';
+import { classSessions, contentBlocks, freeSessionParticipants } from '../db/schema';
 
 // db ga tegmaslik uchun to'liq mock
 jest.mock('../db', () => ({
@@ -760,5 +760,23 @@ describe('erkin (guruhsiz) dars', () => {
   it("erkin bolmagan (oddiy) sessiyada guestId bilan kirish NOT_ENROLLED bilan rad etiladi", async () => {
     const { service, sessionId } = await setup();
     await expect(service.studentJoin(sessionId, 'guest:xyz', 'sock-1', 'Notanish')).rejects.toThrow('NOT_ENROLLED');
+  });
+
+  it('erkin sessiyaga login qilgan foydalanuvchi kirsa freeSessionParticipants\'ga yoziladi', async () => {
+    const { service } = makeFreeService();
+    const { id } = await service.createFreeSession('teacher-1');
+    jest.clearAllMocks();
+    await service.studentJoin(id, 'stu-1', 'sock-1', undefined, 'Ali');
+    const insertCalls = mockedDb.insert.mock.calls.filter((call: any[]) => call[0] === freeSessionParticipants);
+    expect(insertCalls.length).toBe(1);
+  });
+
+  it('erkin sessiyaga mehmon (guest:) kirsa freeSessionParticipants\'ga yozilmaydi', async () => {
+    const { service } = makeFreeService();
+    const { id } = await service.createFreeSession('teacher-1');
+    jest.clearAllMocks();
+    await service.studentJoin(id, 'guest:abc-123', 'sock-1', 'Mehmon Ismi', undefined);
+    const insertCalls = mockedDb.insert.mock.calls.filter((call: any[]) => call[0] === freeSessionParticipants);
+    expect(insertCalls.length).toBe(0);
   });
 });

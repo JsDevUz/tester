@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
-import { attendanceRecords, classSessions, contentBlocks, courses, groupEnrollments, groups, mediaAssets } from '../db/schema';
+import { attendanceRecords, classSessions, contentBlocks, courses, freeSessionParticipants, groupEnrollments, groups, mediaAssets } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
@@ -329,8 +329,11 @@ export class ClassroomService implements OnModuleInit {
     let p = s.participants.get(userId);
     if (!p) {
       if (s.isFree) {
-        // Erkin dars: guruh/enrollment tekshiruvi yo'q, DB'ga hech narsa
-        // yozilmaydi — istalgan kishi (anonim yoki login qilgan) kira oladi.
+        // Erkin dars: guruh/enrollment tekshiruvi yo'q — istalgan kishi
+        // (anonim yoki login qilgan) kira oladi. Faqat login qilgan
+        // (guest: prefiksisiz) foydalanuvchilar free_session_participants'ga
+        // yoziladi — bu orqali keyinroq o'quvchining "Jonli darslar"
+        // ro'yxatida shu darsni topish mumkin bo'ladi.
         p = {
           userId,
           name: displayName ?? guestName ?? 'Mehmon',
@@ -341,6 +344,11 @@ export class ClassroomService implements OnModuleInit {
           status: 'absent',
         };
         s.participants.set(userId, p);
+        if (!userId.startsWith('guest:')) {
+          await db.insert(freeSessionParticipants)
+            .values({ sessionId: s.id, userId })
+            .onConflictDoNothing();
+        }
       } else {
         // Sessiya ochilganidan keyin kursning biror guruhiga qo'shilgan bo'lishi mumkin
         const rows = await this.loadCourseEnrollments(s.courseId!);
