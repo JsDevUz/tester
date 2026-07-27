@@ -7,6 +7,7 @@ import {
   Users,
   School,
   MessageCircle,
+  Radio,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
@@ -24,6 +25,7 @@ interface NavSection {
 
 const SECTIONS: NavSection[] = [
   { key: "lessons", label: "Darslar", icon: BookOpen, path: "/lessons" },
+  { key: "free-classes", label: "Mening darslarim", icon: Radio, path: "/free-classes" },
   { key: "payments", label: "To'lovlar", icon: CreditCard, path: "/payments" },
   { key: "practice", label: "Amaliyotlar", icon: ClipboardList, path: "/" },
   { key: "messenger", label: "Messenger", icon: MessageCircle, path: "/messenger" },
