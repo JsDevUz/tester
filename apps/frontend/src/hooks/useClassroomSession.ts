@@ -121,7 +121,7 @@ export function useClassroomSession(
           // Bu faqat farq bo'lsa yuboriladi; keyingi studentlar snapshot'dan
           // shu qiymatni oladi.
           if (role === "host" && snap.classroomTheme !== globalTheme) {
-            socket.emit("host:setTheme", { sessionId, theme: globalTheme });
+            socket.emit("host:setTheme", { sessionId, token, theme: globalTheme });
           }
         },
       );

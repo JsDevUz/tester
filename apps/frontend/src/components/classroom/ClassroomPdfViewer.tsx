@@ -3034,7 +3034,7 @@ export function ClassroomPdfViewer({
         onScroll={handleScroll}
       >
         <div
-          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start" : "flex-col"} gap-1 sm:gap-3 py-3`}
+          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3"} py-3`}
           style={{
             width: "100%", minWidth: "100%",
             // "items-center" bola (PDF/daftar paneli) zoom bilan konteynerdan
