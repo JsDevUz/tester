@@ -48,10 +48,19 @@ export function FolderViewPage() {
 
       setPinnedTestIds((previous) => {
         const next = new Set([...previous].filter((id) => currentTestIds.has(id)));
+        const now = Date.now();
         results.forEach((result, index) => {
           if (result.status === "rejected") return;
           const testId = tests[index].id;
-          if (result.value) next.add(testId);
+          const startsAt = result.value ? Date.parse(result.value.startsAt) : Number.NaN;
+          const endsAt = result.value ? Date.parse(result.value.endsAt) : Number.NaN;
+          const isActive =
+            Number.isFinite(startsAt) &&
+            Number.isFinite(endsAt) &&
+            startsAt <= now &&
+            now <= endsAt;
+
+          if (isActive) next.add(testId);
           else next.delete(testId);
         });
         return next;
@@ -176,7 +185,6 @@ export function FolderViewPage() {
             onClose={() => setPinTest(null)}
             onSaved={() => {
               pinStatusGeneration.current += 1;
-              setPinnedTestIds((prev) => new Set(prev).add(pinTest.id));
               setPinStatusReload((value) => value + 1);
               setPinTest(null);
             }}
