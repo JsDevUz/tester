@@ -205,6 +205,35 @@ export async function apiVoiceToken(sessionId: string): Promise<{ token: string;
 
 export type ClassRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
 
+export interface FreeClassHistoryItem {
+  id: string;
+  status: 'active' | 'ended';
+  pdfName: string | null;
+  startedAt: string | null;
+  endedAt: string | null;
+  recordingMode: ClassRecordingMode | null;
+  hasBoardSnapshot: boolean;
+}
+
+export async function apiMyFreeSessionHistory(): Promise<FreeClassHistoryItem[]> {
+  const res = await client.get('/classroom/my-free-sessions');
+  return res.data;
+}
+
+export interface StudentClassSessionItem {
+  id: string;
+  startedAt: string | null;
+  teacherName: string;
+  pdfName: string | null;
+  hasBoardSnapshot: boolean;
+  isFree: boolean;
+}
+
+export async function apiMyClassSessions(): Promise<StudentClassSessionItem[]> {
+  const res = await client.get('/classroom/my-sessions');
+  return res.data;
+}
+
 export async function apiStartClassRecording(sessionId: string, mode: ClassRecordingMode): Promise<void> {
   await client.post(`/classroom/sessions/${sessionId}/recording/start`, { mode });
 }
