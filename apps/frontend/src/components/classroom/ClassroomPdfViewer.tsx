@@ -2783,7 +2783,7 @@ export function ClassroomPdfViewer({
   const splitContainerRef = useRef<HTMLDivElement>(null);
   const [isDraggingSplit, setIsDraggingSplit] = useState(false);
 
-  const canDragSplit = isHost || !synced;
+  const canDragSplit = !noSync && (isHost || !synced);
 
   const handleSplitPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
     if (!canDragSplit) return;
@@ -3078,7 +3078,7 @@ export function ClassroomPdfViewer({
         onScroll={handleScroll}
       >
         <div
-          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3"} py-3`}
+          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3"} pt-[50px] pb-[150px]`}
           style={{
             width: "100%", minWidth: "100%",
             // "items-center" bola (PDF/daftar paneli) zoom bilan konteynerdan
@@ -3113,7 +3113,7 @@ export function ClassroomPdfViewer({
               }}
               onScroll={displayLayout === "split" ? (paneIndex === 0 ? handleScroll : handleRightScroll) : undefined}
               className={displayLayout === "split"
-                ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col gap-1 sm:gap-3 border-r border-gray-200/70 last:border-r-0 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
+                ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col gap-1 sm:gap-3 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
                 : "flex w-full flex-col gap-1 sm:gap-3"}
               style={displayLayout === "split"
                 ? {
@@ -3236,7 +3236,8 @@ export function ClassroomPdfViewer({
                 onPointerDown={handleSplitPointerDown}
                 onPointerMove={handleSplitPointerMove}
                 onPointerUp={handleSplitPointerUp}
-                className={`h-full shrink-0 transition-all ${canDragSplit ? "w-1.5 cursor-col-resize bg-gray-200/70 hover:w-2 hover:bg-indigo-300" : "w-px cursor-default bg-gray-200/70"}`}
+                onPointerCancel={handleSplitPointerUp}
+                className={`h-full shrink-0 w-1.5 bg-gray-200/70 ${canDragSplit ? "cursor-col-resize" : "cursor-default"}`}
               />
             )}
             </Fragment>

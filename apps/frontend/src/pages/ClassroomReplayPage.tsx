@@ -88,6 +88,7 @@ export function ClassroomReplayPage() {
         rightStrokesByPage: boardSnapshot.rightStrokesByPage,
         zoom: isBoardAudio ? replay.state.zoom : 1,
         rightZoom: isBoardAudio ? replay.state.rightZoom : 1,
+        splitRatio: isBoardAudio ? replay.state.splitRatio : 0.5,
         scroll: isBoardAudio ? replay.state.scroll : null,
         rightScroll: isBoardAudio ? replay.state.rightScroll : null,
         pointer: isBoardAudio ? replay.state.pointer : null,
@@ -213,6 +214,7 @@ export function ClassroomReplayPage() {
             editable={false}
             isHost={false}
             hostZoom={viewState.zoom}
+            hostSplitRatio={viewState.splitRatio}
             rightHostZoom={viewState.rightZoom}
             hostScroll={viewState.scroll}
             rightHostScroll={viewState.rightScroll}
