@@ -1,4 +1,3 @@
-import { randomUUID } from 'crypto';
 import {
   ConflictException, ForbiddenException, Injectable, NotFoundException,
   OnModuleInit, ServiceUnavailableException,
@@ -139,10 +138,10 @@ export class ClassroomService implements OnModuleInit {
   // emas. DB'ga hech qanday yozuv qilinmaydi — session faqat xotirada
   // yashaydi, server qayta ishga tushsa yoki dars tugasa butunlay yo'qoladi.
   // Istalgan kishi (login qilgan yoki anonim mehmon) havola orqali kira oladi.
-  createFreeSession(teacherId: string): { id: string } {
-    const id = randomUUID();
-    this.sessions.set(id, {
-      id,
+  async createFreeSession(teacherId: string): Promise<{ id: string }> {
+    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId }).returning();
+    this.sessions.set(row.id, {
+      id: row.id,
       courseId: null,
       courseName: null,
       isFree: true,
@@ -165,7 +164,7 @@ export class ClassroomService implements OnModuleInit {
       scroll: null,
       rightScroll: null,
     });
-    return { id };
+    return { id: row.id };
   }
 
   // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan

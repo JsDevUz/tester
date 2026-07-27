@@ -655,36 +655,43 @@ describe('erkin (guruhsiz) dars', () => {
     return { service, events, recordingService };
   }
 
-  it('kurs/DB yozuvisiz sessiya yaratadi', () => {
+  it('class_sessions qatorini courseId: null bilan yaratadi', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const result = await service.createFreeSession('teacher-1');
+    expect(result.id).toBe('cs-row-1');
+    expect(mockedDb.insert).toHaveBeenCalledWith(classSessions);
+  });
+
+  it('kurs/DB yozuvisiz sessiya yaratadi', async () => {
+    const { service } = makeFreeService();
+    const { id } = await service.createFreeSession('teacher-1');
     expect(id).toBeTruthy();
-    expect(mockedDb.insert).not.toHaveBeenCalled();
+    expect(mockedDb.insert).toHaveBeenCalledWith(classSessions);
     const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
     expect(snap.isFree).toBe(true);
   });
 
-  it('erkin (isFree) sessiyada historyEvents umuman yozilmaydi', () => {
+  it('erkin (isFree) sessiyada historyEvents umuman yozilmaydi', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
     service.setBoardView(id, 'teacher-1', 'single', 'notebook', 'notebook');
     const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
     service.stroke(id, 'teacher-1', 1, stroke, 'notebook', 'left');
     expect(service.getHistoryEventsForTests(id)).toHaveLength(0);
   });
 
-  it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', () => {
+  it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
     expect(() => service.setBoardView(id, 'teacher-1', 'split', 'pdf', 'pdf'))
       .toThrow('DUPLICATE_SPLIT_MODE');
     expect(() => service.setBoardView(id, 'teacher-1', 'split', 'notebook', 'notebook'))
       .toThrow('DUPLICATE_SPLIT_MODE');
   });
 
-  it('panellarni almashtirganda (swap) chizmalar mode bilan birga qoladi, pane bilan emas', () => {
+  it('panellarni almashtirganda (swap) chizmalar mode bilan birga qoladi, pane bilan emas', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
     service.setBoardView(id, 'teacher-1', 'split', 'notebook', 'pdf');
     const noteStroke = { id: 'n1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
     // Daftar hozir CHAPDA (leftMode='notebook') — shu tarafga chiziladi.
@@ -701,7 +708,8 @@ describe('erkin (guruhsiz) dars', () => {
 
   it('anonim mehmon enrollmentsiz, guestName bilan kira oladi va DB ga yozilmaydi', async () => {
     const { service, events } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
+    jest.clearAllMocks(); // Clear mocks after createFreeSession to check studentJoin doesn't insert
     const snap = await service.studentJoin(id, 'guest:abc123', 'sock-1', 'Anvar');
     expect(snap.participants).toEqual([
       { userId: 'guest:abc123', name: 'Anvar', online: true, status: expect.any(String) },
@@ -713,14 +721,15 @@ describe('erkin (guruhsiz) dars', () => {
 
   it('login qilgan foydalanuvchi ozining haqiqiy ismi bilan koradi, guestName etiborsiz qoldiriladi', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
     const snap = await service.studentJoin(id, 'stu-1', 'sock-1', 'Boshqa ism', 'Haqiqiy Ism');
     expect(snap.participants[0]).toMatchObject({ userId: 'stu-1', name: 'Haqiqiy Ism' });
   });
 
   it('uzilganda ham davomat DB ga yozilmaydi', async () => {
     const { service } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
+    jest.clearAllMocks(); // Clear mocks after createFreeSession to check subsequent operations don't update
     await service.studentJoin(id, 'guest:abc', 'sock-1', 'Mehmon');
     await service.handleDisconnect('sock-1');
     expect(mockedDb.update).not.toHaveBeenCalled();
@@ -728,7 +737,8 @@ describe('erkin (guruhsiz) dars', () => {
 
   it('endSession chaqirilganda ham classSessions jadvaliga yozilmaydi va xotiradan ochiriladi', async () => {
     const { service, events } = makeFreeService();
-    const { id } = service.createFreeSession('teacher-1');
+    const { id } = await service.createFreeSession('teacher-1');
+    jest.clearAllMocks(); // Clear mocks after createFreeSession to check endSession doesn't update
     await service.endSession(id, 'teacher-1');
     expect(mockedDb.update).not.toHaveBeenCalled();
     expect(events.some((e) => e.event === 'session:ended')).toBe(true);
