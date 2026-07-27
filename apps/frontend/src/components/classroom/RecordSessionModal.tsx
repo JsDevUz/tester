@@ -1,4 +1,4 @@
-import { Mic, MicOff, Video } from "lucide-react";
+import { Mic, Video } from "lucide-react";
 import type { ClassRecordingMode } from "../../api/classroom";
 
 interface Option {
@@ -23,13 +23,6 @@ const OPTIONS: Option[] = [
     description:
       "Dars ovozi yoziladi, lekin faqat sahifaning ENG OXIRGI holati saqlanadi — bosqichma-bosqich qayta ijro bo'lmaydi, faqat yakuniy chizma + ovoz saqlanadi.",
   },
-  {
-    mode: "boardSilent",
-    icon: MicOff,
-    label: "Faqat chizma (ovozsiz)",
-    description:
-      "Ovoz umuman yozilmaydi — faqat sahifaning eng oxirgi holati (chizmalar) saqlanadi.",
-  },
 ];
 
 interface Props {
@@ -48,7 +41,7 @@ export function RecordSessionModal({ onSelect, onClose }: Props) {
       <div className="w-96 rounded-3xl bg-white p-6">
         <p className="mb-1 text-sm font-semibold text-gray-800">Yozib olish</p>
         <p className="mb-5 text-sm text-gray-400">
-          Darsni qanday saqlab olmoqchisiz?
+          Chizma holati har doim avtomatik saqlanadi. Ovoz yozish uchun tanlang:
         </p>
         <div className="flex flex-col gap-2">
           {OPTIONS.map(({ mode, icon: Icon, label, description }) => (
