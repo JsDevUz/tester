@@ -598,6 +598,18 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(s.id, 'zoom:set', payload);
   }
 
+  // Split panel kengligi — ustozning belgilagan nisbati (chap panel
+  // ulushi). Kech kirganlarga snapshot orqali, hozir ulanganlarga
+  // broadcast orqali yetkaziladi.
+  setSplitRatio(sessionId: string, userId: string, ratio: number): void {
+    const s = this.requireHost(sessionId, userId);
+    const clamped = Math.min(0.8, Math.max(0.2, ratio));
+    s.splitRatio = clamped;
+    const payload = { ratio: clamped };
+    this.recordHistoryEvent(s, 'splitRatio:set', payload);
+    this.broadcaster.toRoom(s.id, 'splitRatio:set', payload);
+  }
+
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
   // ichidagi nisbiy joy (0..1). Session holatiga saqlanadi (kech kirgan
   // o'quvchi snapshot orqali darhol to'g'ri joyni oladi), va hozir

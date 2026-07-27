@@ -201,6 +201,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:setSplitRatio')
+  setSplitRatio(@MessageBody() body: BaseBody & { ratio: number }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.setSplitRatio(body.sessionId, user.sub, body.ratio);
+    });
+  }
+
   @SubscribeMessage('host:setBoardMode')
   setBoardMode(@MessageBody() body: BaseBody & { mode: 'pdf' | 'notebook' }) {
     return this.run(() => {

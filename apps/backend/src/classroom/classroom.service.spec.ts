@@ -413,6 +413,33 @@ describe('sahifa va chizish', () => {
     expect(snapshot.rightScroll).toEqual({ page: 1, yRatio: 0.4, xRatio: 0.2 });
   });
 
+  it('host split kenglikni ozgartirsa splitRatio:set broadcast va tarixga yoziladi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.setSplitRatio(sessionId, 'teacher-1', 0.65);
+    expect(events.at(-1)).toMatchObject({ event: 'splitRatio:set', payload: { ratio: 0.65 } });
+    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toContain('splitRatio:set');
+  });
+
+  it('splitRatio 0.2 dan 0.8 gacha chegaralanadi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setSplitRatio(sessionId, 'teacher-1', 0.05);
+    expect(service.getHistoryEventsForTests(sessionId).at(-1)).toMatchObject({ payload: { ratio: 0.2 } });
+    service.setSplitRatio(sessionId, 'teacher-1', 0.95);
+    expect(service.getHistoryEventsForTests(sessionId).at(-1)).toMatchObject({ payload: { ratio: 0.8 } });
+  });
+
+  it('host bolmagan foydalanuvchi splitRatio ozgartira olmaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.setSplitRatio(sessionId, 'stu-1', 0.65)).toThrow();
+  });
+
+  it('kech kirgan ustoz snapshot orqali saqlangan splitRatio ni oladi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setSplitRatio(sessionId, 'teacher-1', 0.7);
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.splitRatio).toBe(0.7);
+  });
+
   it('single rejimda daftarga o\'tish va chizish replay tarixida ketma-ket saqlanadi', async () => {
     const { service, sessionId } = await withPdf();
     service.setBoardMode(sessionId, 'teacher-1', 'notebook');
