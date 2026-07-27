@@ -3,7 +3,7 @@ import { TestsService } from './tests.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsString, IsOptional, IsInt, IsBoolean, IsIn, Min, IsDateString, MinLength } from 'class-validator';
+import { IsString, IsOptional, IsInt, IsBoolean, IsIn, Min, IsDateString, MinLength, IsArray, IsUUID } from 'class-validator';
 
 class CreateTestDto {
   @IsString() folderId: string;
@@ -35,8 +35,8 @@ class UpdateTestDto {
 }
 
 class UpsertPinDto {
-  @IsString() courseId: string;
-  @IsString({ each: true }) groupIds: string[];
+  @IsUUID() courseId: string;
+  @IsArray() @IsUUID(undefined, { each: true }) groupIds: string[];
   @IsDateString() startsAt: string;
   @IsDateString() endsAt: string;
 }

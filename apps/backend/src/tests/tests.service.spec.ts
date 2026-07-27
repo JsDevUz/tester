@@ -1,4 +1,4 @@
-import { NotFoundException } from '@nestjs/common';
+import { BadRequestException, NotFoundException } from '@nestjs/common';
 import { TestsService } from './tests.service';
 import { db } from '../db';
 
@@ -7,6 +7,8 @@ jest.mock('../db', () => {
     query: {
       tests: { findFirst: jest.fn() },
       testPins: { findFirst: jest.fn() },
+      courses: { findFirst: jest.fn() },
+      groups: { findMany: jest.fn() },
     },
     insert: jest.fn(),
     update: jest.fn(),
@@ -20,6 +22,8 @@ describe('TestsService pin management', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    (db.query.courses.findFirst as jest.Mock).mockResolvedValue({ id: 'course-1', adminId: 'admin-1' });
+    (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
   });
 
   function mockInsertOnConflict(value: unknown) {
@@ -49,7 +53,7 @@ describe('TestsService pin management', () => {
 
   it('upserts a pin for an owned test', async () => {
     (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', adminId: 'admin-1' });
-    mockInsertOnConflict({
+    const insert = mockInsertOnConflict({
       id: 'pin-1',
       testId: 'test-1',
       courseId: 'course-1',
@@ -66,7 +70,68 @@ describe('TestsService pin management', () => {
     });
 
     expect(result.testId).toBe('test-1');
+    expect(db.query.courses.findFirst).toHaveBeenCalled();
+    expect(db.query.groups.findMany).toHaveBeenCalled();
     expect(db.insert).toHaveBeenCalled();
+    expect(insert.values).toHaveBeenCalledWith(expect.objectContaining({
+      groupIds: ['group-1'],
+      startsAt: new Date('2026-08-01T09:00:00Z'),
+      endsAt: new Date('2026-08-01T11:00:00Z'),
+    }));
+  });
+
+  it('does not query groups for an all-groups pin', async () => {
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', adminId: 'admin-1' });
+    mockInsertOnConflict({ id: 'pin-1', testId: 'test-1' });
+
+    await service.upsertPin('test-1', 'admin-1', {
+      courseId: 'course-1',
+      groupIds: [],
+      startsAt: '2026-08-01T09:00:00Z',
+      endsAt: '2026-08-01T11:00:00Z',
+    });
+
+    expect(db.query.groups.findMany).not.toHaveBeenCalled();
+  });
+
+  it('rejects a course the admin does not own', async () => {
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', adminId: 'admin-1' });
+    (db.query.courses.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+    await expect(service.upsertPin('test-1', 'admin-1', {
+      courseId: 'course-2',
+      groupIds: [],
+      startsAt: '2026-08-01T09:00:00Z',
+      endsAt: '2026-08-01T11:00:00Z',
+    })).rejects.toBeInstanceOf(NotFoundException);
+  });
+
+  it('rejects group IDs when any group does not belong to the selected course', async () => {
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', adminId: 'admin-1' });
+    (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
+
+    await expect(service.upsertPin('test-1', 'admin-1', {
+      courseId: 'course-1',
+      groupIds: ['group-1', 'group-from-another-course'],
+      startsAt: '2026-08-01T09:00:00Z',
+      endsAt: '2026-08-01T11:00:00Z',
+    })).rejects.toBeInstanceOf(BadRequestException);
+  });
+
+  it.each([
+    ['an invalid start date', 'not-a-date', '2026-08-01T11:00:00Z'],
+    ['an invalid end date', '2026-08-01T09:00:00Z', 'not-a-date'],
+    ['equal dates', '2026-08-01T09:00:00Z', '2026-08-01T09:00:00Z'],
+    ['an end before the start', '2026-08-01T11:00:00Z', '2026-08-01T09:00:00Z'],
+  ])('rejects %s', async (_case, startsAt, endsAt) => {
+    (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', adminId: 'admin-1' });
+
+    await expect(service.upsertPin('test-1', 'admin-1', {
+      courseId: 'course-1',
+      groupIds: [],
+      startsAt,
+      endsAt,
+    })).rejects.toBeInstanceOf(BadRequestException);
   });
 
   it('throws NotFoundException when removing a pin for a test the admin does not own', async () => {

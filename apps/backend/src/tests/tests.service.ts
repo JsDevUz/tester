@@ -1,7 +1,7 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests, testPins } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { courses, groups, tests, testPins } from '../db/schema';
+import { and, eq, inArray } from 'drizzle-orm';
 
 const SLUG_CHARS = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789';
 
@@ -107,22 +107,43 @@ export class TestsService {
     const test = await db.query.tests.findFirst({ where: and(eq(tests.id, testId), eq(tests.adminId, adminId)) });
     if (!test) throw new NotFoundException('Test not found');
 
+    const course = await db.query.courses.findFirst({
+      where: and(eq(courses.id, data.courseId), eq(courses.adminId, adminId)),
+    });
+    if (!course) throw new NotFoundException('Course not found');
+
+    const groupIds = [...new Set(data.groupIds)];
+    if (groupIds.length > 0) {
+      const ownedGroups = await db.query.groups.findMany({
+        where: and(eq(groups.courseId, data.courseId), inArray(groups.id, groupIds)),
+      });
+      if (ownedGroups.length !== groupIds.length) {
+        throw new BadRequestException('One or more groups do not belong to the selected course');
+      }
+    }
+
+    const startsAt = new Date(data.startsAt);
+    const endsAt = new Date(data.endsAt);
+    if (!Number.isFinite(startsAt.getTime()) || !Number.isFinite(endsAt.getTime()) || endsAt <= startsAt) {
+      throw new BadRequestException('The PIN end time must be after its start time');
+    }
+
     const [pin] = await db
       .insert(testPins)
       .values({
         testId,
         courseId: data.courseId,
-        groupIds: data.groupIds,
-        startsAt: new Date(data.startsAt),
-        endsAt: new Date(data.endsAt),
+        groupIds,
+        startsAt,
+        endsAt,
       })
       .onConflictDoUpdate({
         target: testPins.testId,
         set: {
           courseId: data.courseId,
-          groupIds: data.groupIds,
-          startsAt: new Date(data.startsAt),
-          endsAt: new Date(data.endsAt),
+          groupIds,
+          startsAt,
+          endsAt,
         },
       })
       .returning();
