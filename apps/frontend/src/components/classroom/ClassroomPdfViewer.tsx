@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
+import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
 import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Copy, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, RotateCw, SendToBack, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
@@ -125,6 +125,11 @@ interface Props {
   // boshqariladi (onZoomChange orqali serverga yuboriladi).
   hostZoom: number;
   rightHostZoom?: number;
+  // Split panel chap qismining umumiy kenglikka nisbati (0.2-0.8). Ustoz
+  // uchun boshlang'ich qiymat, keyin local boshqariladi (onSetSplitRatio
+  // orqali serverga yuboriladi). Berilmasa 0.5 (teng) ishlatiladi.
+  hostSplitRatio?: number;
+  onSetSplitRatio?: (ratio: number) => void;
   onZoomChange?: (zoom: number) => void;
   onPaneZoomChange?: (pane: "left" | "right", zoom: number) => void;
   // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
@@ -2739,7 +2744,7 @@ function ClassroomPdfPage({
 
 export function ClassroomPdfViewer({
   pageUrls, currentPage, strokesByPage, rightStrokesByPage = {}, pointer, editable, isHost, hostZoom, onZoomChange,
-  hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onReorderStroke, onPaneReorderStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove,
+  hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onReorderStroke, onPaneReorderStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove, hostSplitRatio = 0.5, onSetSplitRatio,
   onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke, onActivePaneChange,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
@@ -2768,6 +2773,40 @@ export function ClassroomPdfViewer({
   // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
   // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
   const [synced, setSynced] = useState(!noSync);
+  // Split panel kengligi: ustoz uchun hostSplitRatio to'g'ridan-to'g'ri
+  // serverdan boshqariladi (onSetSplitRatio orqali). O'quvchi sinxron
+  // (synced) bo'lsa ham hostSplitRatio'ga qarab ko'radi. O'quvchi erkin
+  // harakatlanish (move) rejimida bo'lsa, localSplitRatio'ni mustaqil
+  // sudraydi — bu qiymat serverga hech qachon yuborilmaydi.
+  const [localSplitRatio, setLocalSplitRatio] = useState(hostSplitRatio);
+  const effectiveSplitRatio = isHost || synced ? hostSplitRatio : localSplitRatio;
+  const splitContainerRef = useRef<HTMLDivElement>(null);
+  const [isDraggingSplit, setIsDraggingSplit] = useState(false);
+
+  const canDragSplit = isHost || !synced;
+
+  const handleSplitPointerDown = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!canDragSplit) return;
+    event.preventDefault();
+    (event.target as HTMLElement).setPointerCapture(event.pointerId);
+    setIsDraggingSplit(true);
+  };
+
+  const handleSplitPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSplit || !splitContainerRef.current) return;
+    const rect = splitContainerRef.current.getBoundingClientRect();
+    if (rect.width <= 0) return;
+    const raw = (event.clientX - rect.left) / rect.width;
+    const clamped = Math.min(0.8, Math.max(0.2, raw));
+    if (isHost) onSetSplitRatio?.(clamped);
+    else setLocalSplitRatio(clamped);
+  };
+
+  const handleSplitPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (!isDraggingSplit) return;
+    (event.target as HTMLElement).releasePointerCapture(event.pointerId);
+    setIsDraggingSplit(false);
+  };
   const [displayMode, setDisplayMode] = useState<CsBoardMode>(boardMode);
   const [displayLayout, setDisplayLayout] = useState<CsBoardLayout>(boardLayout);
   const [leftMode, setLeftMode] = useState<CsBoardMode>(leftBoardMode);
@@ -2797,6 +2836,10 @@ export function ClassroomPdfViewer({
       setLeftMode(leftBoardMode); setRightMode(rightBoardMode);
     }
   }, [boardMode, boardLayout, leftBoardMode, rightBoardMode, isHost, synced]);
+
+  useEffect(() => {
+    if (isHost || synced) setLocalSplitRatio(hostSplitRatio);
+  }, [isHost, synced, hostSplitRatio]);
 
   useEffect(() => {
     if (isHost || displayLayout !== "split" || !synced || !rightHostScroll) return;
@@ -3005,6 +3048,7 @@ export function ClassroomPdfViewer({
       {toolbarRow}
             <div
               ref={(element) => {
+          splitContainerRef.current = element;
           // Splitdan monolitga qaytganda scrollRef eski chap pane'da
           // qolmasin: sync hook monolitdagi asosiy viewportni kuzatishi kerak.
           if (displayLayout !== "split") {
@@ -3050,8 +3094,8 @@ export function ClassroomPdfViewer({
           }}
         >
           {(displayLayout === "split" ? [leftMode, rightMode] : [displayMode]).map((paneMode, paneIndex) => (
+            <Fragment key={`${paneMode}-${paneIndex}`}>
             <div
-              key={`${paneMode}-${paneIndex}`}
               ref={(element) => {
                 if (displayLayout === "split" && element) {
                   paneScrollRefs.current.set(paneIndex, element);
@@ -3073,10 +3117,11 @@ export function ClassroomPdfViewer({
                 : "flex w-full flex-col gap-1 sm:gap-3"}
               style={displayLayout === "split"
                 ? {
-                    // Split panelning o'zi doim 50/50 qoladi. Zoom faqat
-                    // ichki kontentga beriladi, aks holda chap panel zoomida
-                    // butun split layout kengayib ketadi.
-                    flex: "1 1 0%",
+                    // Split panellar hostSplitRatio (yoki move rejimida
+                    // localSplitRatio)ga mos ravishda kenglashadi/torayadi —
+                    // grow/shrink 0 qilib, faqat flex-basis orqali aniq
+                    // nisbatni belgilaymiz.
+                    flex: `0 0 ${(paneIndex === 0 ? effectiveSplitRatio : 1 - effectiveSplitRatio) * 100}%`,
                     touchAction: freeToMove ? "pan-x pan-y" : "none",
                     // items-center bola (PDF/daftar paneli) zoomda
                     // konteynerdan kengroq bo'lib qolganda flexbox
@@ -3183,6 +3228,18 @@ export function ClassroomPdfViewer({
               })}
               </div>
             </div>
+            {displayLayout === "split" && paneIndex === 0 && (
+              <div
+                role="separator"
+                aria-orientation="vertical"
+                aria-label="Split panellarni o'lchamini o'zgartirish"
+                onPointerDown={handleSplitPointerDown}
+                onPointerMove={handleSplitPointerMove}
+                onPointerUp={handleSplitPointerUp}
+                className={`h-full shrink-0 transition-all ${canDragSplit ? "w-1.5 cursor-col-resize bg-gray-200/70 hover:w-2 hover:bg-indigo-300" : "w-px cursor-default bg-gray-200/70"}`}
+              />
+            )}
+            </Fragment>
           ))}
         </div>
       </div>
