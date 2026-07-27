@@ -222,6 +222,8 @@ export function ClassroomHostPage() {
           isHost
           hostZoom={state.zoom}
           rightHostZoom={state.rightZoom}
+          hostSplitRatio={state.splitRatio}
+          onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
           hostScroll={state.scroll}
           onScrollChange={(page, yRatio, xRatio) => hostActions.setScroll(page, yRatio, "left", xRatio)}

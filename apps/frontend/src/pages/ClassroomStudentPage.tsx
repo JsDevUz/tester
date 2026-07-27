@@ -164,6 +164,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           isHost={false}
           hostZoom={state.zoom}
           rightHostZoom={state.rightZoom}
+          hostSplitRatio={state.splitRatio}
           hostScroll={state.scroll}
           rightHostScroll={state.rightScroll}
           boardMode={state.boardMode}
