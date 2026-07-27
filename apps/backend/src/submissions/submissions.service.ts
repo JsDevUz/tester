@@ -63,13 +63,6 @@ export class SubmissionsService {
   }
 
   async listActivePinsForStudent(studentId: string) {
-    const now = new Date();
-    const activePins = await db.query.testPins.findMany({
-      where: and(lte(testPins.startsAt, now), gte(testPins.endsAt, now)),
-      with: { test: true },
-    });
-    if (activePins.length === 0) return [];
-
     const memberships = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, studentId) });
     const schoolMemberIds = memberships.map((m) => m.id);
     if (schoolMemberIds.length === 0) return [];
@@ -78,15 +71,30 @@ export class SubmissionsService {
       where: (e, { inArray, isNull }) => and(inArray(e.schoolMemberId, schoolMemberIds), isNull(e.removedAt)),
       with: { group: true },
     });
+    const courseIds = [...new Set(enrollments.map((e) => e.group.courseId))];
+    if (courseIds.length === 0) return [];
+
+    const now = new Date();
+    const activePins = await db.query.testPins.findMany({
+      where: and(
+        lte(testPins.startsAt, now),
+        gte(testPins.endsAt, now),
+        inArray(testPins.courseId, courseIds),
+      ),
+      with: { test: true },
+    });
+    if (activePins.length === 0) return [];
 
     const result: Array<{ testId: string; testName: string; slug: string }> = [];
+    const seenTestIds = new Set<string>();
     for (const pin of activePins) {
       const matchingEnrollment = enrollments.find((e) => {
         if (e.group.courseId !== pin.courseId) return false;
         if (pin.groupIds.length === 0) return true;
         return pin.groupIds.includes(e.groupId);
       });
-      if (matchingEnrollment && pin.test.slug) {
+      if (matchingEnrollment && pin.test.slug && !seenTestIds.has(pin.testId)) {
+        seenTestIds.add(pin.testId);
         result.push({ testId: pin.testId, testName: pin.test.name, slug: pin.test.slug });
       }
     }
