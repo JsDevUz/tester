@@ -275,4 +275,17 @@ describe('buildSnapshot', () => {
     const s = makeSession({ hostSocketId: null });
     expect(buildSnapshot(s).hostOnline).toBe(false);
   });
+
+  it('snapshot defaults splitRatio to 0.5 when not set on the session', () => {
+    const s = makeSession();
+    const snap = buildSnapshot(s);
+    expect(snap.splitRatio).toBe(0.5);
+  });
+
+  it('snapshot reflects a custom splitRatio set on the session', () => {
+    const s = makeSession();
+    s.splitRatio = 0.65;
+    const snap = buildSnapshot(s);
+    expect(snap.splitRatio).toBe(0.65);
+  });
 });

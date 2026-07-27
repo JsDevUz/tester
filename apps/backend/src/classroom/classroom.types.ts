@@ -93,6 +93,10 @@ export interface ClassroomSession {
   // qiymatga moslashadi. Kech kirganlarga snapshot orqali yetkaziladi.
   zoom: number;
   rightZoom?: number;
+  // Split panelning chap qismi umumiy kenglikka nisbatan ulushi (0.2-0.8
+  // oralig'ida cheklangan). Kech kirgan o'quvchiga snapshot orqali,
+  // hozir ulanganlarga broadcast orqali yetkaziladi — xuddi zoom kabi.
+  splitRatio?: number;
   // Ustozning oxirgi scroll pozitsiyasi — kech kirgan o'quvchiga snapshot
   // orqali, hozir ulanganlarga broadcast orqali yetkaziladi.
   scroll: ClassroomScrollPosition | null;
@@ -148,6 +152,7 @@ export interface ClassroomSnapshot {
   hostOnline: boolean;
   zoom: number;
   rightZoom: number;
+  splitRatio: number;
   scroll: ClassroomScrollPosition | null;
   rightScroll: ClassroomScrollPosition | null;
   isFree: boolean;

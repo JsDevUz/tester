@@ -287,6 +287,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     hostOnline: session.hostSocketId !== null,
     zoom: session.zoom,
     rightZoom: session.rightZoom ?? session.zoom,
+    splitRatio: session.splitRatio ?? 0.5,
     scroll: session.scroll,
     rightScroll: session.rightScroll ?? null,
     isFree: session.isFree,
