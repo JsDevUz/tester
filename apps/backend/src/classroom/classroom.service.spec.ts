@@ -433,6 +433,16 @@ describe('sahifa va chizish', () => {
     expect(() => service.setSplitRatio(sessionId, 'stu-1', 0.65)).toThrow();
   });
 
+  it('splitRatio uchun notogri (NaN/raqam emas) qiymat 0.5 ga tushadi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setSplitRatio(sessionId, 'teacher-1', NaN);
+    expect(service.getHistoryEventsForTests(sessionId).at(-1)).toMatchObject({ payload: { ratio: 0.5 } });
+    service.setSplitRatio(sessionId, 'teacher-1', 'not-a-number' as any);
+    expect(service.getHistoryEventsForTests(sessionId).at(-1)).toMatchObject({ payload: { ratio: 0.5 } });
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.splitRatio).toBe(0.5);
+  });
+
   it('kech kirgan ustoz snapshot orqali saqlangan splitRatio ni oladi', async () => {
     const { service, sessionId } = await withPdf();
     service.setSplitRatio(sessionId, 'teacher-1', 0.7);

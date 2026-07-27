@@ -289,6 +289,7 @@ export class ClassroomService implements OnModuleInit {
           event.type === 'pointer:move' ||
           event.type === 'scroll:set' ||
           event.type === 'zoom:set' ||
+          event.type === 'splitRatio:set' ||
           event.type === 'page:set')
         : [];
     await db.update(classSessions)
@@ -603,7 +604,7 @@ export class ClassroomService implements OnModuleInit {
   // broadcast orqali yetkaziladi.
   setSplitRatio(sessionId: string, userId: string, ratio: number): void {
     const s = this.requireHost(sessionId, userId);
-    const clamped = Math.min(0.8, Math.max(0.2, ratio));
+    const clamped = Number.isFinite(ratio) ? Math.min(0.8, Math.max(0.2, ratio)) : 0.5;
     s.splitRatio = clamped;
     const payload = { ratio: clamped };
     this.recordHistoryEvent(s, 'splitRatio:set', payload);
