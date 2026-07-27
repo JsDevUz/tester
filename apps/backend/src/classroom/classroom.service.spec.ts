@@ -17,6 +17,30 @@ function makeChainableJoin(rows: any[]): any {
   };
 }
 
+// Drizzle'ning SQL fragment obyektlari (and/eq/isNotNull natijasi) doiraviy
+// (circular) struktura bo'lgani uchun JSON.stringify qila olmaydi — bu
+// funksiya ularning ichidagi ustun nomlari va operator matnlarini
+// (StringChunk/Column) tekis satr ro'yxatiga yig'ib chiqaradi, shunda
+// testlarda haqiqiy where sharti qanday ustun/operatorlardan tuzilganini
+// (mock qatlamiga tegmasdan) tekshirish mumkin.
+function flattenSqlChunks(node: any, out: string[] = []): string[] {
+  if (node == null) return out;
+  if (typeof node === 'string') { out.push(node); return out; }
+  if (node.constructor?.name === 'StringChunk' && Array.isArray(node.value)) {
+    out.push(node.value.join(''));
+    return out;
+  }
+  if (typeof node.name === 'string') { out.push(node.name); return out; }
+  if (Array.isArray(node.queryChunks)) {
+    for (const c of node.queryChunks) flattenSqlChunks(c, out);
+    return out;
+  }
+  if (Array.isArray(node.value)) {
+    for (const v of node.value) flattenSqlChunks(v, out);
+  }
+  return out;
+}
+
 // db ga tegmaslik uchun to'liq mock
 jest.mock('../db', () => ({
   db: {
@@ -869,7 +893,12 @@ describe('myFreeSessionHistory', () => {
     expect(result[0].id).toBe('s-1');
   });
 
-  it('boardSnapshot null bolsa hasBoardSnapshot false qaytaradi', async () => {
+  it('boardSnapshot null bolsa hasBoardSnapshot false qaytaradi (agar qandaydir yo\'l bilan qaytsa)', async () => {
+    // Eslatma: haqiqiy so'rov endi boardSnapshot IS NOT NULL va status='ended'
+    // filtri bilan bunday qatorni umuman qaytarmaydi (pastdagi test buni
+    // tekshiradi) — bu test faqat xaritalash (mapping) mantiqi hali ham
+    // to'g'ri ishlashini ko'rsatadi, agar mock qatlami haqiqiy SQL filtrini
+    // aks ettirmasa ham.
     mockedDb.query.classSessions.findMany.mockResolvedValueOnce([
       {
         id: 's-2', status: 'active', pdfName: 'dars.pdf', startedAt: new Date(), endedAt: null,
@@ -881,6 +910,17 @@ describe('myFreeSessionHistory', () => {
     expect(result[0].hasBoardSnapshot).toBe(false);
     expect(result[0].endedAt).toBeNull();
     expect(result[0].recordingMode).toBe('full');
+  });
+
+  it('faqat tugagan VA boardSnapshot mavjud sessiyalarni so\'raydi (status=ended, boardSnapshot IS NOT NULL)', async () => {
+    mockedDb.query.classSessions.findMany.mockResolvedValueOnce([]);
+    const service = makePlainService();
+    await service.myFreeSessionHistory('teacher-1');
+    const whereArg = mockedDb.query.classSessions.findMany.mock.calls[0][0].where;
+    const whereText = flattenSqlChunks(whereArg).join('|');
+    expect(whereText).toContain('board_snapshot');
+    expect(whereText).toContain('is not null');
+    expect(whereText).toContain('status');
   });
 });
 
@@ -905,7 +945,7 @@ describe('myClassSessions', () => {
     id: 'fs-1',
     startedAt: new Date('2026-07-10T10:00:00Z'),
     pdfName: null,
-    boardSnapshot: null,
+    boardSnapshot: { pages: [] },
     teacherId: 'teacher-2',
   };
 
@@ -926,8 +966,29 @@ describe('myClassSessions', () => {
 
     expect(result).toHaveLength(2);
     // Yangiroq boshlangan (fs-1, erkin) birinchi kelishi kerak
-    expect(result[0]).toMatchObject({ id: 'fs-1', isFree: true, teacherName: 'Ustoz Vali', hasBoardSnapshot: false });
+    expect(result[0]).toMatchObject({ id: 'fs-1', isFree: true, teacherName: 'Ustoz Vali', hasBoardSnapshot: true });
     expect(result[1]).toMatchObject({ id: 'gs-1', isFree: false, teacherName: 'Ustoz Ali', hasBoardSnapshot: true, pdfName: 'guruh.pdf' });
+  });
+
+  it('ikkala so\'rov ham boardSnapshot IS NOT NULL va status=ended shartlarini qo\'shadi', async () => {
+    mockedDb.select
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([])) })
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([])) });
+
+    const service = makePlainService();
+    await service.myClassSessions('stu-1');
+
+    const fromCalls = mockedDb.select.mock.results.map((r: any) => r.value.from.mock.results[0].value);
+    const groupWhereArg = fromCalls[0].innerJoin.mock.results[0].value.innerJoin.mock.results[0].value.innerJoin.mock.results[0].value.where.mock.calls[0][0];
+    const freeWhereArg = fromCalls[1].innerJoin.mock.results[0].value.where.mock.calls[0][0];
+
+    const groupWhereText = flattenSqlChunks(groupWhereArg).join('|');
+    const freeWhereText = flattenSqlChunks(freeWhereArg).join('|');
+    for (const whereText of [groupWhereText, freeWhereText]) {
+      expect(whereText).toContain('board_snapshot');
+      expect(whereText).toContain('is not null');
+      expect(whereText).toContain('status');
+    }
   });
 
   it('bir xil id ikkala royxatda ham kelsa (nazariy holat) dublikat qilmaydi', async () => {

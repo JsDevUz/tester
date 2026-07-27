@@ -3,7 +3,7 @@ import {
   OnModuleInit, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
 import { attendanceRecords, classSessions, contentBlocks, courses, freeSessionParticipants, groupEnrollments, groups, mediaAssets, schoolMembers, users } from '../db/schema';
@@ -801,9 +801,20 @@ export class ClassroomService implements OnModuleInit {
   }
 
   // Ustozning barcha (kursga bog'liq bo'lmagan) erkin darslari tarixi.
+  // Faqat tugagan va boardSnapshot mavjud sessiyalar qaytariladi — chunki
+  // hech qanday amal (masalan, replay tugmasi) hozircha faqat shu holat uchun
+  // ko'rsatiladi (frontend: FreeClassHistoryPage.tsx). Bu, jumladan, server
+  // qayta ishga tushganda onModuleInit orqali boardSnapshot'siz majburan
+  // yopilgan "phantom" qatorlarni ham chiqarib tashlaydi (myClassSessions
+  // bilan bir xil status filtri uchun izchillik).
   async myFreeSessionHistory(teacherId: string) {
     const rows = await db.query.classSessions.findMany({
-      where: and(isNull(classSessions.courseId), eq(classSessions.teacherId, teacherId)),
+      where: and(
+        isNull(classSessions.courseId),
+        eq(classSessions.teacherId, teacherId),
+        eq(classSessions.status, 'ended'),
+        isNotNull(classSessions.boardSnapshot),
+      ),
       orderBy: desc(classSessions.startedAt),
     });
     return rows.map((row) => ({
@@ -833,7 +844,11 @@ export class ClassroomService implements OnModuleInit {
       .innerJoin(groupEnrollments, eq(attendanceRecords.enrollmentId, groupEnrollments.id))
       .innerJoin(schoolMembers, eq(groupEnrollments.schoolMemberId, schoolMembers.id))
       .innerJoin(classSessions, eq(attendanceRecords.sessionId, classSessions.id))
-      .where(and(eq(schoolMembers.studentId, studentId), eq(classSessions.status, 'ended')));
+      .where(and(
+        eq(schoolMembers.studentId, studentId),
+        eq(classSessions.status, 'ended'),
+        isNotNull(classSessions.boardSnapshot),
+      ));
 
     const freeRows = await db
       .select({
@@ -845,7 +860,11 @@ export class ClassroomService implements OnModuleInit {
       })
       .from(freeSessionParticipants)
       .innerJoin(classSessions, eq(freeSessionParticipants.sessionId, classSessions.id))
-      .where(and(eq(freeSessionParticipants.userId, studentId), eq(classSessions.status, 'ended')));
+      .where(and(
+        eq(freeSessionParticipants.userId, studentId),
+        eq(classSessions.status, 'ended'),
+        isNotNull(classSessions.boardSnapshot),
+      ));
 
     const combined = [
       ...groupRows.map((r) => ({ ...r, isFree: false })),
