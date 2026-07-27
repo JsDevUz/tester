@@ -319,6 +319,7 @@ export interface CsSnapshot {
   hostOnline: boolean;
   zoom: number;
   rightZoom?: number;
+  splitRatio: number;
   scroll: CsScrollPosition | null;
   rightScroll?: CsScrollPosition | null;
   isFree: boolean;

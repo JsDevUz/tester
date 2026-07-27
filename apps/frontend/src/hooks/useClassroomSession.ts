@@ -23,6 +23,7 @@ export interface ClassroomState {
   // Ustozning zoom darajasi — o'quvchi sinxron rejimda bo'lsa shunga qarab kattalashtiradi.
   zoom: number;
   rightZoom: number;
+  splitRatio: number;
   // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
   // balandligi ichidagi nisbiy joy. O'quvchi sinxron rejimda shu sahifaning
   // aynan shu foiziga scroll qiladi (device/ekrandan mustaqil, piksel-aniq).
@@ -43,7 +44,7 @@ const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, classroomTheme: "light",
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, classroomTheme: "light",
   notebookStyle: "grid",
 };
 
@@ -112,6 +113,7 @@ export function useClassroomSession(
             participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
+            splitRatio: snap.splitRatio ?? 0.5,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? globalTheme,
@@ -170,6 +172,7 @@ export function useClassroomSession(
       setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
     });
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
+    socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("notebookStyle:set", (p: { style: CsNotebookStyle }) => setState((s) => ({ ...s, notebookStyle: p.style })));
@@ -193,6 +196,7 @@ export function useClassroomSession(
       socket.off("pointer:move");
       socket.off("presence:update");
       socket.off("zoom:set");
+      socket.off("splitRatio:set");
       socket.off("scroll:set");
       socket.off("theme:set");
       socket.off("notebookStyle:set");
@@ -318,6 +322,7 @@ export function useClassroomSession(
       }
     },
     setZoom: (zoom: number, pane: "left" | "right" = "left") => emitHost("host:setZoom", { zoom, pane }),
+    setSplitRatio: (ratio: number) => emitHost("host:setSplitRatio", { ratio }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
