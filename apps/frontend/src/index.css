@@ -1507,9 +1507,12 @@ select::-ms-expand {
     background-color: #1c1d23 !important;
   }
 }
-@media (max-width: 639px) {
+@media (max-width: 639px) and (orientation: portrait) {
   /* Replay player pastdagi viewer boshqaruvlarini yopib qo'ymasligi uchun
-     faqat mobile replay sahifasida zoom/mode panellarini tepaga ko'taramiz. */
+     faqat portret mobile replay sahifasida zoom/mode panellarini tepaga
+     ko'taramiz. Landshaftda pastki media-player boshqaruvlari yo'q,
+     shuning uchun bu qoida qo'llanmasligi kerak — aks holda tugma sahifa
+     o'rtasiga (ikkinchi varaq chegarasiga) surilib qolar edi. */
   .classroom-replay-viewer .bottom-3 {
     bottom: 5.75rem;
   }

@@ -1,11 +1,14 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Play, Pause, Users, X } from "lucide-react";
+import { Download, Play, Pause, Users, X } from "lucide-react";
+import { toast } from "sonner";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
 import { useClassroomReplay } from "../hooks/useClassroomReplay";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useThemeStore } from "../stores/themeStore";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
+import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
+import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 
 function formatMs(ms: number): string {
@@ -24,6 +27,8 @@ export function ClassroomReplayPage() {
   const [audioDurationMs, setAudioDurationMs] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const globalTheme = useThemeStore((s) => s.theme);
   // listenGlobally=false: PDF'ni scroll/pan/zoom qilish bu panellarni qayta
   // ko'rsatmasin — faqat panellarning o'ziga yoki video ustiga bosilganda
@@ -140,6 +145,31 @@ export function ClassroomReplayPage() {
     replay.play();
   };
 
+  const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
+    const pageUrls = mode === "pdf" ? viewState.pages : [];
+    const pageCount = mode === "notebook" ? 4 : viewState.pages.length;
+    if (pageCount === 0) {
+      toast.error("Yuklab olish uchun sahifa topilmadi");
+      return;
+    }
+    setDownloading(true);
+    try {
+      await exportBoardToPdf({
+        mode,
+        notebookStyle: viewState.notebookStyle,
+        pageUrls,
+        strokesByPage: viewState.strokesByPage ?? {},
+        pageCount,
+        fileName: `${mode === "notebook" ? "daftar" : "pdf"}-${Date.now()}.pdf`,
+      });
+      setDownloadModalOpen(false);
+    } catch {
+      toast.error("Yuklab bo'lmadi, qayta urinib ko'ring");
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (error) {
     return (
       <div className="flex h-screen items-center justify-center text-gray-500">
@@ -165,6 +195,9 @@ export function ClassroomReplayPage() {
         >
           <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`flex h-[29px] items-center gap-1 rounded-full border px-2 text-[11px] font-medium shadow-md backdrop-blur transition-colors ${attendanceOpen ? "border-indigo-200 bg-indigo-100 text-indigo-700" : "border-gray-100 bg-white/95 text-gray-600 hover:bg-white"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
             <Users size={14} /> <span className="hidden sm:inline">Davomat</span>
+          </button>
+          <button type="button" onClick={() => setDownloadModalOpen(true)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Yuklab olish" title="Yuklab olish">
+            <Download size={14} />
           </button>
           <button type="button" onClick={() => navigate(-1)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Replay'dan chiqish" title="Chiqish">
             <X size={15} />
@@ -262,6 +295,14 @@ export function ClassroomReplayPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {downloadModalOpen && (
+        <DownloadBoardModal
+          submitting={downloading}
+          onSelect={(mode) => void handleDownloadBoard(mode)}
+          onClose={() => setDownloadModalOpen(false)}
+        />
       )}
     </div>
   );
