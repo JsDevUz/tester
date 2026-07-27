@@ -1,4 +1,6 @@
 import { BadRequestException } from '@nestjs/common';
+import { PgDialect } from 'drizzle-orm/pg-core';
+import { and, inArray, isNull } from 'drizzle-orm';
 import {
   applyPracticeOverride,
   DeliveryService,
@@ -8,6 +10,7 @@ import {
   seededShuffle,
 } from './delivery.service';
 import { db } from '../db';
+import { groupEnrollments } from '../db/schema';
 
 jest.mock('../db', () => ({
   db: {
@@ -184,6 +187,31 @@ describe('DeliveryService pin access control', () => {
       expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
       expect(db.query.groupEnrollments.findMany).not.toHaveBeenCalled();
     });
+
+    it('throws NOT_ASSIGNED for a student who was removed from the matching group (removedAt set on their enrollment row)', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      // The production query filters out removed enrollments in its where-clause
+      // (isNull(e.removedAt)), so the DB itself never hands back a removed row here —
+      // a faithful stub of that query resolves to []. This is exactly the student the
+      // reviewer flagged: enrolled in the pin's course/group, but removedAt is set.
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([]);
+
+      await expect(service.getTestBySlug('abc123', false, 'user-1')).rejects.toMatchObject({
+        message: 'NOT_ASSIGNED',
+      });
+
+      // Precisely pin down *why* the removed student gets excluded: the compiled
+      // where-clause must actually contain `removed_at is null`. This is the reviewer's
+      // own repro in assertion form — delete isNull(e.removedAt) from assertPinAccess
+      // and this expectation fails even though the behavioral assertion above could
+      // still pass by accident.
+      const enrollmentConfig = (db.query.groupEnrollments.findMany as jest.Mock).mock.calls[0][0];
+      const dialect = new PgDialect();
+      const enrollmentWhere = enrollmentConfig.where(groupEnrollments, { and, inArray, isNull });
+      const enrollmentQuery = dialect.sqlToQuery(enrollmentWhere);
+      expect(enrollmentQuery.sql).toContain('"group_enrollments"."removed_at" is null');
+    });
   });
 
   describe('startSubmission', () => {
@@ -229,6 +257,45 @@ describe('DeliveryService pin access control', () => {
 
       expect(result.submissionId).toBe('submission-1');
       expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('practice mode bypasses the pin gate', () => {
+    it('getTestBySlug succeeds in practice mode for a student outside the pin target group, and never queries the pin', async () => {
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      // Student is NOT in the pin's course/group at all — under a non-practice call
+      // this would be rejected with NOT_ASSIGNED. In practice mode it must be allowed.
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { schoolMemberId: 'member-1', groupId: 'group-y', group: { courseId: 'course-other' } },
+      ]);
+
+      const result = await service.getTestBySlug('abc123', true, 'user-1');
+
+      expect(result.id).toBe('test-1');
+      // Pin gate must be skipped entirely before any lookup — zero extra query cost.
+      expect(db.query.testPins.findFirst).not.toHaveBeenCalled();
+      expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+      expect(db.query.groupEnrollments.findMany).not.toHaveBeenCalled();
+    });
+
+    it('startSubmission succeeds in practice mode for a student outside the pin target group, and never queries the pin', async () => {
+      const returning = jest.fn().mockResolvedValue([{ id: 'submission-1' }]);
+      const values = jest.fn(() => ({ returning }));
+      (db.insert as jest.Mock).mockReturnValue({ values });
+
+      (db.query.testPins.findFirst as jest.Mock).mockResolvedValue(activePin);
+      (db.query.schoolMembers.findMany as jest.Mock).mockResolvedValue([{ id: 'member-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { schoolMemberId: 'member-1', groupId: 'group-y', group: { courseId: 'course-other' } },
+      ]);
+
+      const result = await service.startSubmission('abc123', 'Student', 'user-1', true);
+
+      expect(result.submissionId).toBe('submission-1');
+      expect(db.query.testPins.findFirst).not.toHaveBeenCalled();
+      expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+      expect(db.query.groupEnrollments.findMany).not.toHaveBeenCalled();
     });
   });
 });

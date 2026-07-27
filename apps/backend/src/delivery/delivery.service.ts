@@ -64,7 +64,11 @@ export class DeliveryService {
     private readonly practiceMessengerService: PracticeMessengerService,
   ) {}
 
-  private async assertPinAccess(testId: string, userId?: string) {
+  private async assertPinAccess(testId: string, practiceMode: boolean, userId?: string) {
+    // A pin is an exam-scheduling concept: it must never gate practice access. Bail out
+    // before any lookup so practice-mode calls pay zero extra query cost from this check.
+    if (practiceMode) return;
+
     const now = new Date();
     const pin = await db.query.testPins.findFirst({
       where: and(eq(testPins.testId, testId), lte(testPins.startsAt, now), gte(testPins.endsAt, now)),
@@ -102,7 +106,7 @@ export class DeliveryService {
     });
     if (!test) throw new NotFoundException('Test not found');
 
-    await this.assertPinAccess(test.id, userId);
+    await this.assertPinAccess(test.id, practiceMode, userId);
 
     const overridden = applyPracticeOverride(
       {
@@ -154,7 +158,7 @@ export class DeliveryService {
   async startSubmission(slug: string, studentName: string, userId?: string, practiceMode = false) {
     const test = await db.query.tests.findFirst({ where: eq(tests.slug, slug) });
     if (!test) throw new NotFoundException('Test not found');
-    await this.assertPinAccess(test.id, userId);
+    await this.assertPinAccess(test.id, practiceMode, userId);
     const requireAuth = practiceMode ? true : test.requireAuth;
     if (requireAuth && !userId) throw new BadRequestException('AUTH_REQUIRED');
 
