@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
 import { db } from '../db';
-import { attendanceRecords, classSessions, contentBlocks, courses, freeSessionParticipants, groupEnrollments, groups, mediaAssets } from '../db/schema';
+import { attendanceRecords, classSessions, contentBlocks, courses, freeSessionParticipants, groupEnrollments, groups, mediaAssets, schoolMembers, users } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
@@ -689,14 +689,22 @@ export class ClassroomService implements OnModuleInit {
       },
     });
     if (!row) throw new NotFoundException('Dars topilmadi');
-    const course = row.course as unknown as { adminId: string; id: string };
-    const isTeacher = course.adminId === callerId;
-    let isEnrolledStudent = false;
-    if (!isTeacher) {
+    // Erkin sessiyada course null bo'ladi — egalik tekshiruvi teacherId
+    // orqali, guruhli sessiyada esa course.adminId orqali.
+    const course = row.course as unknown as { adminId: string; id: string } | null;
+    const isTeacher = course ? course.adminId === callerId : row.teacherId === callerId;
+    let hasAccess = isTeacher;
+    if (!hasAccess && course) {
       const attendanceRows = row.attendance as unknown as Array<{ enrollment?: { schoolMember?: { studentId?: string } } }>;
-      isEnrolledStudent = attendanceRows.some((a) => a.enrollment?.schoolMember?.studentId === callerId);
+      hasAccess = attendanceRows.some((a) => a.enrollment?.schoolMember?.studentId === callerId);
     }
-    if (!isTeacher && !isEnrolledStudent) throw new ForbiddenException();
+    if (!hasAccess && !course) {
+      const participation = await db.query.freeSessionParticipants.findFirst({
+        where: and(eq(freeSessionParticipants.sessionId, sessionId), eq(freeSessionParticipants.userId, callerId)),
+      });
+      hasAccess = !!participation;
+    }
+    if (!hasAccess) throw new ForbiddenException();
 
     let recordingUrl = row.recordingUrl;
     let recordingStatus = row.recordingStatus;
@@ -790,6 +798,79 @@ export class ClassroomService implements OnModuleInit {
         absentCount: attendance.filter((a) => a.status === 'absent').length,
       };
     });
+  }
+
+  // Ustozning barcha (kursga bog'liq bo'lmagan) erkin darslari tarixi.
+  async myFreeSessionHistory(teacherId: string) {
+    const rows = await db.query.classSessions.findMany({
+      where: and(isNull(classSessions.courseId), eq(classSessions.teacherId, teacherId)),
+      orderBy: desc(classSessions.startedAt),
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      status: row.status as 'active' | 'ended',
+      pdfName: row.pdfName,
+      startedAt: row.startedAt?.toISOString() ?? null,
+      endedAt: row.endedAt?.toISOString() ?? null,
+      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
+      hasBoardSnapshot: row.boardSnapshot !== null,
+    }));
+  }
+
+  // O'quvchining barcha jonli darslar tarixi — guruhli (attendanceRecords
+  // orqali) va erkin (freeSessionParticipants orqali) bitta ro'yxatga
+  // birlashtirilib qaytariladi, sana bo'yicha kamayish tartibida.
+  async myClassSessions(studentId: string) {
+    const groupRows = await db
+      .select({
+        id: classSessions.id,
+        startedAt: classSessions.startedAt,
+        pdfName: classSessions.pdfName,
+        boardSnapshot: classSessions.boardSnapshot,
+        teacherId: classSessions.teacherId,
+      })
+      .from(attendanceRecords)
+      .innerJoin(groupEnrollments, eq(attendanceRecords.enrollmentId, groupEnrollments.id))
+      .innerJoin(schoolMembers, eq(groupEnrollments.schoolMemberId, schoolMembers.id))
+      .innerJoin(classSessions, eq(attendanceRecords.sessionId, classSessions.id))
+      .where(and(eq(schoolMembers.studentId, studentId), eq(classSessions.status, 'ended')));
+
+    const freeRows = await db
+      .select({
+        id: classSessions.id,
+        startedAt: classSessions.startedAt,
+        pdfName: classSessions.pdfName,
+        boardSnapshot: classSessions.boardSnapshot,
+        teacherId: classSessions.teacherId,
+      })
+      .from(freeSessionParticipants)
+      .innerJoin(classSessions, eq(freeSessionParticipants.sessionId, classSessions.id))
+      .where(and(eq(freeSessionParticipants.userId, studentId), eq(classSessions.status, 'ended')));
+
+    const combined = [
+      ...groupRows.map((r) => ({ ...r, isFree: false })),
+      ...freeRows.map((r) => ({ ...r, isFree: true })),
+    ];
+    // Dublikatni olib tashlash (nazariy jihatdan bir xil sessionId ikkala
+    // yo'ldan ham kelmasligi kerak, chunki bitta sessiya yoki erkin yoki
+    // guruhli bo'ladi — lekin xavfsizlik uchun id bo'yicha unique qilinadi).
+    const uniqueById = new Map(combined.map((r) => [r.id, r]));
+    const teacherIds = [...new Set([...uniqueById.values()].map((r) => r.teacherId).filter((id): id is string => !!id))];
+    const teachers = teacherIds.length > 0
+      ? await db.query.users.findMany({ where: inArray(users.id, teacherIds) })
+      : [];
+    const teacherNameById = new Map(teachers.map((t) => [t.id, t.displayName]));
+
+    return [...uniqueById.values()]
+      .sort((a, b) => (b.startedAt?.getTime() ?? 0) - (a.startedAt?.getTime() ?? 0))
+      .map((r) => ({
+        id: r.id,
+        startedAt: r.startedAt?.toISOString() ?? null,
+        teacherName: (r.teacherId && teacherNameById.get(r.teacherId)) ?? "O'qituvchi",
+        pdfName: r.pdfName,
+        hasBoardSnapshot: r.boardSnapshot !== null,
+        isFree: r.isFree,
+      }));
   }
 
   async overrideAttendance(recordId: string, adminId: string, role: string, status: string) {

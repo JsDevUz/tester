@@ -4,6 +4,19 @@ import { HOST_GRACE_MS } from './classroom.logic';
 import { db } from '../db';
 import { classSessions, contentBlocks, freeSessionParticipants } from '../db/schema';
 
+// myClassSessions ikkita zanjirni chaqiradi: guruhli so'rov
+// (.from().innerJoin().innerJoin().innerJoin().where()) va erkin so'rov
+// (.from().innerJoin().where()). Har bir innerJoin() qaytargan obyekt ham
+// innerJoin, ham where metodiga ega — shu bilan ikkala zanjir uzunligi ham
+// bitta mock shakli bilan qo'llab-quvvatlanadi (tashqi funksiya jest.mock
+// factory ichida ishlatiladi, shuning uchun shu yerda e'lon qilinadi).
+function makeChainableJoin(rows: any[]): any {
+  return {
+    innerJoin: jest.fn(() => makeChainableJoin(rows)),
+    where: jest.fn(async () => rows),
+  };
+}
+
 // db ga tegmaslik uchun to'liq mock
 jest.mock('../db', () => ({
   db: {
@@ -15,13 +28,16 @@ jest.mock('../db', () => ({
     })),
     update: jest.fn(() => ({ set: jest.fn(() => ({ where: async () => {} })) })),
     delete: jest.fn(() => ({ where: jest.fn(async () => {}) })),
+    select: jest.fn(() => ({ from: jest.fn(() => makeChainableJoin([])) })),
     query: {
       courses: { findFirst: jest.fn() },
       groups: { findFirst: jest.fn(), findMany: jest.fn() },
       classSessions: { findFirst: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn(), findFirst: jest.fn() },
       attendanceRecords: { findFirst: jest.fn() },
+      freeSessionParticipants: { findFirst: jest.fn() },
       mediaAssets: { findFirst: jest.fn() },
+      users: { findMany: jest.fn().mockResolvedValue([]) },
     },
   },
 }));
@@ -540,6 +556,54 @@ describe('sahifa va chizish', () => {
     const replay = await service.getReplay(sessionId, 'teacher-1');
     expect(replay.attendance).toEqual([{ userId: 'stu-1', name: 'Ali', status: 'present' }]);
   });
+
+  it("getReplay: erkin sessiya ishtirokchisi (freeSessionParticipants'da bor) ruxsat oladi", async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      courseId: null,
+      course: null,
+      teacherId: 'teacher-1',
+      pdfName: null,
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      recordingStartedAtMs: null,
+      recordingMode: null,
+      boardSnapshot: { pages: [] },
+      attendance: [],
+    });
+    mockedDb.query.freeSessionParticipants.findFirst.mockResolvedValueOnce({ id: 'fp-1' });
+
+    await expect(service.getReplay(sessionId, 'stu-1')).resolves.toBeDefined();
+  });
+
+  it("getReplay: erkin sessiyaga aloqasi yo'q foydalanuvchi rad etiladi", async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      courseId: null,
+      course: null,
+      teacherId: 'teacher-1',
+      pdfName: null,
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      recordingStartedAtMs: null,
+      recordingMode: null,
+      boardSnapshot: { pages: [] },
+      attendance: [],
+    });
+    mockedDb.query.freeSessionParticipants.findFirst.mockResolvedValueOnce(undefined);
+
+    await expect(service.getReplay(sessionId, 'stranger-1')).rejects.toThrow();
+  });
 });
 
 describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
@@ -778,5 +842,120 @@ describe('erkin (guruhsiz) dars', () => {
     await service.studentJoin(id, 'guest:abc-123', 'sock-1', 'Mehmon Ismi', undefined);
     const insertCalls = mockedDb.insert.mock.calls.filter((call: any[]) => call[0] === freeSessionParticipants);
     expect(insertCalls.length).toBe(0);
+  });
+});
+
+describe('myFreeSessionHistory', () => {
+  function makePlainService() {
+    return new ClassroomService(
+      { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
+      { get: () => undefined } as any,
+      makeFakeMediaLibrary() as any,
+      makeFakeRecordingService() as any,
+    );
+  }
+
+  it('faqat shu ustozning courseId=null qatorlarini qaytaradi', async () => {
+    mockedDb.query.classSessions.findMany.mockResolvedValueOnce([
+      {
+        id: 's-1', status: 'ended', pdfName: null, startedAt: new Date(), endedAt: new Date(),
+        recordingMode: null, boardSnapshot: { pages: [] },
+      },
+    ]);
+    const service = makePlainService();
+    const result = await service.myFreeSessionHistory('teacher-1');
+    expect(result).toHaveLength(1);
+    expect(result[0].hasBoardSnapshot).toBe(true);
+    expect(result[0].id).toBe('s-1');
+  });
+
+  it('boardSnapshot null bolsa hasBoardSnapshot false qaytaradi', async () => {
+    mockedDb.query.classSessions.findMany.mockResolvedValueOnce([
+      {
+        id: 's-2', status: 'active', pdfName: 'dars.pdf', startedAt: new Date(), endedAt: null,
+        recordingMode: 'full', boardSnapshot: null,
+      },
+    ]);
+    const service = makePlainService();
+    const result = await service.myFreeSessionHistory('teacher-1');
+    expect(result[0].hasBoardSnapshot).toBe(false);
+    expect(result[0].endedAt).toBeNull();
+    expect(result[0].recordingMode).toBe('full');
+  });
+});
+
+describe('myClassSessions', () => {
+  function makePlainService() {
+    return new ClassroomService(
+      { uploadBuffer: jest.fn(), getPublicUrl: (k: string) => `https://cdn/${k}` } as any,
+      { get: () => undefined } as any,
+      makeFakeMediaLibrary() as any,
+      makeFakeRecordingService() as any,
+    );
+  }
+
+  const groupSession = {
+    id: 'gs-1',
+    startedAt: new Date('2026-07-01T10:00:00Z'),
+    pdfName: 'guruh.pdf',
+    boardSnapshot: { pages: [] },
+    teacherId: 'teacher-1',
+  };
+  const freeSession = {
+    id: 'fs-1',
+    startedAt: new Date('2026-07-10T10:00:00Z'),
+    pdfName: null,
+    boardSnapshot: null,
+    teacherId: 'teacher-2',
+  };
+
+  it('guruhli va erkin natijalarni birlashtirib, sana boyicha kamayish tartibida qaytaradi', async () => {
+    // myClassSessions ichida db.select() ketma-ket ikki marta chaqiriladi:
+    // birinchisi guruhli (.from().innerJoin().innerJoin().innerJoin().where()),
+    // ikkinchisi erkin (.from().innerJoin().where()) so'rov uchun.
+    mockedDb.select
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([groupSession])) })
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([freeSession])) });
+    mockedDb.query.users.findMany.mockResolvedValueOnce([
+      { id: 'teacher-1', displayName: 'Ustoz Ali' },
+      { id: 'teacher-2', displayName: 'Ustoz Vali' },
+    ]);
+
+    const service = makePlainService();
+    const result = await service.myClassSessions('stu-1');
+
+    expect(result).toHaveLength(2);
+    // Yangiroq boshlangan (fs-1, erkin) birinchi kelishi kerak
+    expect(result[0]).toMatchObject({ id: 'fs-1', isFree: true, teacherName: 'Ustoz Vali', hasBoardSnapshot: false });
+    expect(result[1]).toMatchObject({ id: 'gs-1', isFree: false, teacherName: 'Ustoz Ali', hasBoardSnapshot: true, pdfName: 'guruh.pdf' });
+  });
+
+  it('bir xil id ikkala royxatda ham kelsa (nazariy holat) dublikat qilmaydi', async () => {
+    // Xavfsizlik uchun qo'shilgan unique-by-id mantig'ini tekshiradi: bitta
+    // sessiya SQL darajasida ham erkin, ham guruhli bo'lolmaydi, lekin
+    // servis xato holatda ham dublikat qaytarmasligi kerak.
+    const sameIdRow = { ...groupSession, id: 'dup-1' };
+    mockedDb.select
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([sameIdRow])) })
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([{ ...sameIdRow, teacherId: 'teacher-1' }])) });
+    mockedDb.query.users.findMany.mockResolvedValueOnce([{ id: 'teacher-1', displayName: 'Ustoz Ali' }]);
+
+    const service = makePlainService();
+    const result = await service.myClassSessions('stu-1');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].id).toBe('dup-1');
+  });
+
+  it('hech qanday sessiya topilmasa bosh royxat qaytaradi va users.findMany chaqirilmaydi', async () => {
+    mockedDb.select
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([])) })
+      .mockReturnValueOnce({ from: jest.fn(() => makeChainableJoin([])) });
+
+    const service = makePlainService();
+    const result = await service.myClassSessions('stu-1');
+
+    expect(result).toEqual([]);
+    expect(mockedDb.query.users.findMany).not.toHaveBeenCalled();
   });
 });

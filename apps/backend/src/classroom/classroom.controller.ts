@@ -91,6 +91,18 @@ export class ClassroomController {
     return this.classroomService.courseHistory(courseId, req.admin.id, req.admin.role);
   }
 
+  @Get('my-free-sessions')
+  @Roles('teacher', 'super')
+  myFreeSessionHistory(@Req() req: any) {
+    return this.classroomService.myFreeSessionHistory(req.admin.id);
+  }
+
+  @Get('my-sessions')
+  @Roles('student')
+  myClassSessions(@Req() req: any) {
+    return this.classroomService.myClassSessions(req.admin.id);
+  }
+
   @Patch('attendance/:recordId')
   @Roles('teacher', 'super')
   async overrideAttendance(
