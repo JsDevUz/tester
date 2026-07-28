@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Check, Circle, Download, Grid3x3, AlignJustify, Square, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
+import { Circle, Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -26,6 +26,7 @@ import { RecordSessionModal } from "../components/classroom/RecordSessionModal";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import {
   apiAttachClassPdf,
+  apiInsertClassPdfPages,
   apiMuteParticipant,
   apiStartClassRecording,
   type ClassRecordingMode,
@@ -80,6 +81,7 @@ export function ClassroomHostPage() {
   const [pageSelectAsset, setPageSelectAsset] =
     useState<PdfLibraryAsset | null>(null);
   const [attaching, setAttaching] = useState(false);
+  const [insertAfterPageIndex, setInsertAfterPageIndex] = useState<number | null>(null);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
 
@@ -106,14 +108,27 @@ export function ClassroomHostPage() {
     if (!id || !pageSelectAsset) return;
     setAttaching(true);
     try {
-      await apiAttachClassPdf(id, pageSelectAsset.id, pageNumbers);
-      toast.success("PDF qo'shildi");
+      if (insertAfterPageIndex !== null) {
+        await apiInsertClassPdfPages(id, pageSelectAsset.id, pageNumbers, insertAfterPageIndex);
+        toast.success("Sahifa qo'shildi");
+      } else {
+        await apiAttachClassPdf(id, pageSelectAsset.id, pageNumbers);
+        toast.success("PDF qo'shildi");
+      }
       setPageSelectAsset(null);
+      setInsertAfterPageIndex(null);
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "PDF qo'shishda xatolik");
     } finally {
       setAttaching(false);
     }
+  };
+
+  // "+" tugmasi bosilganda: kutubxona tanlash oqimini INSERT rejimida ochadi
+  // (attachPdfFromLibrary'dagi "butun sessiyani almashtirish" rejimidan farqli).
+  const handleInsertPdfPage = (afterPageIndex: number) => {
+    setInsertAfterPageIndex(afterPageIndex);
+    setPdfLibraryOpen(true);
   };
 
   const handleMute = async (userId: string) => {
@@ -224,6 +239,9 @@ export function ClassroomHostPage() {
           rightHostZoom={state.rightZoom}
           hostSplitRatio={state.splitRatio}
           notebookPageCount={state.notebookPageCount}
+          notebookPageStyles={state.notebookPageStyles}
+          onInsertPdfPage={(afterPageIndex) => handleInsertPdfPage(afterPageIndex)}
+          onInsertNotebookPage={(afterPageIndex, style, pane) => hostActions.insertNotebookPage(afterPageIndex, style, pane)}
           onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
           onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
@@ -266,7 +284,6 @@ export function ClassroomHostPage() {
           leftBoardMode={state.leftBoardMode}
           rightBoardMode={state.rightBoardMode}
           onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
-          notebookStyle={state.notebookStyle}
           onPageChange={(page) => hostActions.setPage(page)}
           onActivePaneChange={setActivePane}
           toolbar={
@@ -348,24 +365,6 @@ export function ClassroomHostPage() {
                   icon: <Download size={16} />,
                   onSelect: () => setDownloadModalOpen(true),
                 },
-                {
-                  key: "notebook-grid",
-                  label: "Daftar: Katakli",
-                  icon: state.notebookStyle === "grid" ? <Check size={16} /> : <Grid3x3 size={16} />,
-                  onSelect: () => hostActions.setNotebookStyle("grid"),
-                },
-                {
-                  key: "notebook-lined",
-                  label: "Daftar: Yo'l-yo'l",
-                  icon: state.notebookStyle === "lined" ? <Check size={16} /> : <AlignJustify size={16} />,
-                  onSelect: () => hostActions.setNotebookStyle("lined"),
-                },
-                {
-                  key: "notebook-plain",
-                  label: "Daftar: Naqshsiz",
-                  icon: state.notebookStyle === "plain" ? <Check size={16} /> : <Square size={16} />,
-                  onSelect: () => hostActions.setNotebookStyle("plain"),
-                },
               ]}
             />
           }
@@ -389,7 +388,7 @@ export function ClassroomHostPage() {
 
       {pdfLibraryOpen && (
         <ClassroomPdfLibraryModal
-          onClose={() => setPdfLibraryOpen(false)}
+          onClose={() => { setPdfLibraryOpen(false); setInsertAfterPageIndex(null); }}
           onSelect={(asset) => {
             setPdfLibraryOpen(false);
             setPageSelectAsset(asset);
@@ -406,7 +405,7 @@ export function ClassroomHostPage() {
             setPageSelectAsset(null);
             setPdfLibraryOpen(true);
           }}
-          onClose={() => setPageSelectAsset(null)}
+          onClose={() => { setPageSelectAsset(null); setInsertAfterPageIndex(null); }}
         />
       )}
 
