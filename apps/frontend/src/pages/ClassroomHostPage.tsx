@@ -158,7 +158,7 @@ export function ClassroomHostPage() {
     const isSplitRight = state.boardLayout === "split" && activePane === "right";
     const pageUrls = mode === "pdf" ? state.pages : [];
     const strokesByPage = isSplitRight ? state.rightStrokesByPage : state.strokesByPage;
-    const pageCount = mode === "notebook" ? 4 : state.pages.length;
+    const pageCount = mode === "notebook" ? state.notebookPageCount : state.pages.length;
     if (pageCount === 0) {
       toast.error("Yuklab olish uchun sahifa topilmadi");
       return;

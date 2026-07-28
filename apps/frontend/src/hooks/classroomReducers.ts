@@ -143,6 +143,17 @@ export function applyPageRemove(
 ): ClassroomState {
   const right = p.pane === "right";
   if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+
+  // Backend'dagi removePageFromSession bilan bir xil himoya: mode uchun
+  // joriy sahifalar soni <= 1 bo'lsa, o'chirish rad etiladi (holat
+  // o'zgarishsiz qaytadi). Jonli socket yo'lida bu deyarli erishib
+  // bo'lmaydi (backend broadcast qilishdan oldin tashlaydi), lekin
+  // useClassroomReplay saqlangan historyEvents'ni backend qayta
+  // tekshiruvisiz to'g'ridan-to'g'ri shu reducer orqali qayta ijro etadi.
+  const isPdf = p.mode === "pdf";
+  const currentCount = isPdf ? s.pages.length : s.notebookPageCount;
+  if (currentCount <= 1) return s;
+
   const key = right ? "rightStrokesByPage" : "strokesByPage";
   const source = s[key];
   const rebuilt: Record<number, CsStroke[]> = {};
@@ -153,7 +164,6 @@ export function applyPageRemove(
     // pageNum === p.pageIndex: dropped
   }
 
-  const isPdf = p.mode === "pdf";
   const pages = isPdf ? s.pages.filter((_, idx) => idx !== p.pageIndex - 1) : s.pages;
   const notebookPageCount = isPdf ? s.notebookPageCount : Math.max(1, s.notebookPageCount - 1);
 

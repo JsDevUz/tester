@@ -164,6 +164,7 @@ export interface ClassBoardSnapshotData {
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   notebookStyle: CsNotebookStyle;
+  notebookPageCount: number;
 }
 
 export interface ClassReplayData {

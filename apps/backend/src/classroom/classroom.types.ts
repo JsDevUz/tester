@@ -142,6 +142,7 @@ export interface ClassroomBoardSnapshot {
   leftBoardMode: ClassroomBoardMode;
   rightBoardMode: ClassroomBoardMode;
   notebookStyle: ClassroomNotebookStyle;
+  notebookPageCount: number;
 }
 
 export interface ClassroomSnapshot {

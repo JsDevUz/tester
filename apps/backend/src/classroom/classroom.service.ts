@@ -982,6 +982,7 @@ export class ClassroomService implements OnModuleInit {
       leftBoardMode: full.leftBoardMode,
       rightBoardMode: full.rightBoardMode,
       notebookStyle: full.notebookStyle,
+      notebookPageCount: full.notebookPageCount ?? 4,
     };
   }
 
