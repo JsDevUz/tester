@@ -2751,7 +2751,7 @@ function ClassroomPdfPage({
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
       )}
       {isHost && (
-        <div className="absolute bottom-1 left-1/2 z-20 -translate-x-1/2">
+        <div className="absolute bottom-1 right-1 z-20">
           <button
             type="button"
             onClick={() => setConfirmRemove(true)}
@@ -3288,6 +3288,7 @@ export function ClassroomPdfViewer({
                   />
                 );
               })}
+              <div className="shrink-0 h-[50px]" aria-hidden />
               </div>
             </div>
             {displayLayout === "split" && paneIndex === 0 && (
