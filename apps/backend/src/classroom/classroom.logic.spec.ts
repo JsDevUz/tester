@@ -385,4 +385,40 @@ describe('removePageFromSession', () => {
 
     expect(session.currentPage).toBe(1);
   });
+
+  it('removePageFromSession clamps currentPage when the active last page is removed', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+    session.boardMode = 'pdf';
+    session.currentPage = 3;
+
+    const ok = removePageFromSession(session, 'pdf', 3);
+
+    expect(ok).toBe(true);
+    expect(session.pdfPages).toEqual(['a.png', 'b.png']);
+    expect(session.currentPage).toBe(2); // was on the removed (last) page, clamps to new last page
+  });
+
+  it('removePageFromSession only touches the specified mode, leaving the other mode untouched', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+    session.notebookPageCount = 4;
+    session.boardMode = 'pdf';
+
+    const pdfMap = strokeMapFor(session, 'pdf');
+    pdfMap.set(1, [{ id: 'pdf-s1', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    const notebookMap = strokeMapFor(session, 'notebook');
+    notebookMap.set(1, [{ id: 'nb-s1', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    notebookMap.set(2, [{ id: 'nb-s2', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    session.boardMode = 'pdf';
+
+    const ok = removePageFromSession(session, 'pdf', 1);
+
+    expect(ok).toBe(true);
+    expect(session.pdfPages).toEqual(['b.png', 'c.png']);
+    expect(session.notebookPageCount).toBe(4); // untouched
+    const notebookMapAfter = strokeMapFor(session, 'notebook');
+    expect(notebookMapAfter.get(1)?.[0]?.id).toBe('nb-s1'); // untouched, not reindexed
+    expect(notebookMapAfter.get(2)?.[0]?.id).toBe('nb-s2'); // untouched, not reindexed
+  });
 });

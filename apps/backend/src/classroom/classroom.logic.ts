@@ -95,7 +95,7 @@ export function removePageFromSession(
     // key === pageIndex: dropped (that page's strokes are gone)
   }
   session.strokesByMode?.set(mode, rebuilt);
-  if (session.boardMode === mode) session.strokesByPage = rebuilt;
+  if (previousMode === mode) session.strokesByPage = rebuilt;
 
   if (session.currentPage > pageIndex) {
     session.currentPage -= 1;
