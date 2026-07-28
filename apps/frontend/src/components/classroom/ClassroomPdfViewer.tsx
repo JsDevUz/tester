@@ -3130,7 +3130,7 @@ export function ClassroomPdfViewer({
     </div>
   );
   const splitButton = (
-    isHost && pageUrls.length > 0 ?
+    (isHost || !synced) && pageUrls.length > 0 ?
     <button type="button" onClick={toggleSplit} disabled={!isHost && synced} title="Ekranni ikkiga bo‘lish"
       className={`rounded-full p-1.5 shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${displayLayout === "split" ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-white/90 text-indigo-600 backdrop-blur-sm hover:bg-indigo-50"}`}>
       <Columns2 size={15} />
