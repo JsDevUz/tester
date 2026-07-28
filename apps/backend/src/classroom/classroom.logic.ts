@@ -12,7 +12,6 @@ export const MAX_STROKE_POINTS = 2000;
 // qarshi yakuniy chegara (juda ko'p sahifali PDF serverni band qilmasin).
 export const MAX_PDF_PAGES = 300;
 export const PDF_RENDER_WIDTH = 1600;
-export const NOTEBOOK_PAGE_COUNT = 4;
 
 export function activeStrokeMap(session: ClassroomSession): Map<number, ClassroomStroke[]> {
   const mode = session.boardMode ?? 'pdf';
@@ -56,7 +55,7 @@ export function switchBoardMode(session: ClassroomSession, mode: ClassroomBoardM
 
 export function isValidPage(session: ClassroomSession, page: number): boolean {
   const pageCount = (session.boardMode ?? 'pdf') === 'notebook'
-    ? NOTEBOOK_PAGE_COUNT
+    ? (session.notebookPageCount ?? 4)
     : session.pdfPages.length;
   return Number.isInteger(page) && page >= 1 && page <= pageCount;
 }
@@ -288,6 +287,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     zoom: session.zoom,
     rightZoom: session.rightZoom ?? session.zoom,
     splitRatio: session.splitRatio ?? 0.5,
+    notebookPageCount: session.notebookPageCount ?? 4,
     scroll: session.scroll,
     rightScroll: session.rightScroll ?? null,
     isFree: session.isFree,

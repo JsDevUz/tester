@@ -84,6 +84,10 @@ export interface ClassroomSession {
   hostSocketId: string | null;
   pdfName: string | null;
   pdfPages: string[];
+  // Daftar (notebook) sahifalari soni — PDF'dan farqli, bular fayldan
+  // kelmaydi (faqat bo'sh shablon), shuning uchun massiv emas, oddiy son.
+  // Standart 4, sahifa o'chirilganda kamayadi (removePage orqali).
+  notebookPageCount?: number;
   currentPage: number; // 1-indexed
   strokesByPage: Map<number, ClassroomStroke[]>;
   participants: Map<string, ClassroomParticipant>; // userId → participant
@@ -153,6 +157,7 @@ export interface ClassroomSnapshot {
   zoom: number;
   rightZoom: number;
   splitRatio: number;
+  notebookPageCount: number;
   scroll: ClassroomScrollPosition | null;
   rightScroll: ClassroomScrollPosition | null;
   isFree: boolean;

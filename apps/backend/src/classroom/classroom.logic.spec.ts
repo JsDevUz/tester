@@ -1,7 +1,7 @@
 import {
   addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
-  LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke,
+  LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -287,5 +287,28 @@ describe('buildSnapshot', () => {
     s.splitRatio = 0.65;
     const snap = buildSnapshot(s);
     expect(snap.splitRatio).toBe(0.65);
+  });
+
+  it('snapshot defaults notebookPageCount to 4 when not set on the session', () => {
+    const session = makeSession();
+    const snap = buildSnapshot(session);
+    expect(snap.notebookPageCount).toBe(4);
+  });
+
+  it('snapshot reflects a custom notebookPageCount set on the session', () => {
+    const session = makeSession();
+    session.notebookPageCount = 6;
+    const snap = buildSnapshot(session);
+    expect(snap.notebookPageCount).toBe(6);
+  });
+});
+
+describe('isValidPage', () => {
+  it('isValidPage uses session.notebookPageCount for notebook mode', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 2;
+    expect(isValidPage(session, 2)).toBe(true);
+    expect(isValidPage(session, 3)).toBe(false);
   });
 });
