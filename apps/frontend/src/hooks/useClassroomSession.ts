@@ -3,7 +3,7 @@ import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket
 import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
-  applyBoardSet, applyPageClear, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
+  applyBoardSet, applyPageClear, applyPageRemove, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
   applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo, applyStrokeUpdate,
   moveStrokePoints,
 } from "./classroomReducers";
@@ -24,6 +24,7 @@ export interface ClassroomState {
   zoom: number;
   rightZoom: number;
   splitRatio: number;
+  notebookPageCount: number;
   // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
   // balandligi ichidagi nisbiy joy. O'quvchi sinxron rejimda shu sahifaning
   // aynan shu foiziga scroll qiladi (device/ekrandan mustaqil, piksel-aniq).
@@ -44,7 +45,7 @@ const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, classroomTheme: "light",
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, classroomTheme: "light",
   notebookStyle: "grid",
 };
 
@@ -114,6 +115,7 @@ export function useClassroomSession(
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             splitRatio: snap.splitRatio ?? 0.5,
+            notebookPageCount: snap.notebookPageCount ?? 4,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? globalTheme,
@@ -173,6 +175,7 @@ export function useClassroomSession(
     });
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
     socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
+    socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("notebookStyle:set", (p: { style: CsNotebookStyle }) => setState((s) => ({ ...s, notebookStyle: p.style })));
@@ -197,6 +200,7 @@ export function useClassroomSession(
       socket.off("presence:update");
       socket.off("zoom:set");
       socket.off("splitRatio:set");
+      socket.off("page:remove");
       socket.off("scroll:set");
       socket.off("theme:set");
       socket.off("notebookStyle:set");
@@ -323,6 +327,8 @@ export function useClassroomSession(
     },
     setZoom: (zoom: number, pane: "left" | "right" = "left") => emitHost("host:setZoom", { zoom, pane }),
     setSplitRatio: (ratio: number) => emitHost("host:setSplitRatio", { ratio }),
+    removePage: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right" = "left") =>
+      emitHost("host:removePage", { mode, pageIndex, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),

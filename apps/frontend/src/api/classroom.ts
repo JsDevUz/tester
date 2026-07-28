@@ -320,6 +320,7 @@ export interface CsSnapshot {
   zoom: number;
   rightZoom?: number;
   splitRatio: number;
+  notebookPageCount: number;
   scroll: CsScrollPosition | null;
   rightScroll?: CsScrollPosition | null;
   isFree: boolean;

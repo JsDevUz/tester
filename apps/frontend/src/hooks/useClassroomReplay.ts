@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ClassroomState } from "./useClassroomSession";
 import {
-  applyBoardSet, applyPageClear, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
+  applyBoardSet, applyPageClear, applyPageRemove, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
   applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo, applyStrokeUpdate,
 } from "./classroomReducers";
 
@@ -25,6 +25,7 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
   "page:clear": applyPageClear,
   "zoom:set": (s, p: { zoom: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightZoom: p.zoom } : { ...s, zoom: p.zoom },
   "splitRatio:set": (s, p: { ratio: number }) => ({ ...s, splitRatio: p.ratio }),
+  "page:remove": applyPageRemove,
   "scroll:set": (s, p: { page: number; yRatio: number; xRatio?: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightScroll: p } : { ...s, scroll: p },
   "pointer:move": (s, p) => ({ ...s, pointer: p }),
   "theme:set": (s, p: { theme: "light" | "dark" }) => ({ ...s, classroomTheme: p.theme }),
@@ -36,7 +37,7 @@ function baseState(pdfName: string | null, pdfPages: string[], globalTheme: "lig
     joined: true, error: null, ended: true,
     pdfName, pages: pdfPages, currentPage: 1,
     strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null,
-    zoom: 1, rightZoom: 1, splitRatio: 0.5, scroll: null, rightScroll: null,
+    zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
     classroomTheme: globalTheme, notebookStyle: "grid",
   };

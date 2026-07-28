@@ -131,3 +131,37 @@ export function applyPageClear(s: ClassroomState, p: { page: number; pane?: "lef
   const key = right ? "rightStrokesByPage" : "strokesByPage";
   return { ...s, [key]: { ...s[key], [p.page]: [] } };
 }
+
+// Sahifa o'chirilganda undan keyingi barcha sahifalarning chizmalari
+// (shu pane uchun) bittaga siljiydi — backend'dagi removePageFromSession
+// bilan bir xil mantiq, lekin frontend strokesByPage/rightStrokesByPage
+// PANE bo'yicha (mode bo'yicha emas) saqlangani uchun shu obyektni
+// qayta quradi.
+export function applyPageRemove(
+  s: ClassroomState,
+  p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" },
+): ClassroomState {
+  const right = p.pane === "right";
+  const key = right ? "rightStrokesByPage" : "strokesByPage";
+  const source = s[key];
+  const rebuilt: Record<number, CsStroke[]> = {};
+  for (const [pageStr, strokes] of Object.entries(source)) {
+    const pageNum = Number(pageStr);
+    if (pageNum < p.pageIndex) rebuilt[pageNum] = strokes;
+    else if (pageNum > p.pageIndex) rebuilt[pageNum - 1] = strokes;
+    // pageNum === p.pageIndex: dropped
+  }
+
+  const isPdf = p.mode === "pdf";
+  const pages = isPdf ? s.pages.filter((_, idx) => idx !== p.pageIndex - 1) : s.pages;
+  const notebookPageCount = isPdf ? s.notebookPageCount : Math.max(1, s.notebookPageCount - 1);
+
+  let currentPage = s.currentPage;
+  if (currentPage > p.pageIndex) currentPage -= 1;
+  else if (currentPage === p.pageIndex) {
+    const newCount = isPdf ? pages.length : notebookPageCount;
+    if (currentPage > newCount) currentPage = newCount;
+  }
+
+  return { ...s, [key]: rebuilt, pages, notebookPageCount, currentPage };
+}
