@@ -1,5 +1,5 @@
 import {
-  ClassroomBoardMode, ClassroomFontFamily, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
+  ClassroomBoardMode, ClassroomFontFamily, ClassroomNotebookStyle, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
 } from './classroom.types';
 
 const FONT_FAMILIES: ClassroomFontFamily[] = ['Inter', 'Arial', 'Georgia', 'Comic Sans MS', 'Nunito'];
@@ -58,6 +58,13 @@ export function isValidPage(session: ClassroomSession, page: number): boolean {
     ? (session.notebookPageCount ?? 4)
     : session.pdfPages.length;
   return Number.isInteger(page) && page >= 1 && page <= pageCount;
+}
+
+// Bitta daftar sahifasining amaldagi naqshini aniqlaydi: avval shu
+// sahifaga tegishli alohida qiymat, bo'lmasa eski umumiy notebookStyle,
+// u ham bo'lmasa 'grid'.
+export function resolveNotebookPageStyle(session: ClassroomSession, page: number): ClassroomNotebookStyle {
+  return session.notebookPageStyles?.[page] ?? session.notebookStyle ?? 'grid';
 }
 
 // Bitta sahifani (PDF yoki daftar) olib tashlaydi va undan keyingi barcha
@@ -336,6 +343,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     rightZoom: session.rightZoom ?? session.zoom,
     splitRatio: session.splitRatio ?? 0.5,
     notebookPageCount: session.notebookPageCount ?? 4,
+    notebookPageStyles: session.notebookPageStyles ?? {},
     scroll: session.scroll,
     rightScroll: session.rightScroll ?? null,
     isFree: session.isFree,

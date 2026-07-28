@@ -2,7 +2,7 @@ import {
   addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
   LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
-  removePageFromSession, strokeMapFor,
+  removePageFromSession, strokeMapFor, resolveNotebookPageStyle,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -302,6 +302,19 @@ describe('buildSnapshot', () => {
     const snap = buildSnapshot(session);
     expect(snap.notebookPageCount).toBe(6);
   });
+
+  it('snapshot defaults notebookPageStyles to an empty object when not set', () => {
+    const session = makeSession();
+    const snap = buildSnapshot(session);
+    expect(snap.notebookPageStyles).toEqual({});
+  });
+
+  it('snapshot reflects custom notebookPageStyles set on the session', () => {
+    const session = makeSession();
+    session.notebookPageStyles = { 2: 'lined' };
+    const snap = buildSnapshot(session);
+    expect(snap.notebookPageStyles).toEqual({ 2: 'lined' });
+  });
 });
 
 describe('isValidPage', () => {
@@ -311,6 +324,27 @@ describe('isValidPage', () => {
     session.notebookPageCount = 2;
     expect(isValidPage(session, 2)).toBe(true);
     expect(isValidPage(session, 3)).toBe(false);
+  });
+});
+
+describe('resolveNotebookPageStyle', () => {
+  it('resolveNotebookPageStyle falls back to session.notebookStyle when the page has no entry', () => {
+    const session = makeSession();
+    session.notebookStyle = 'plain';
+    expect(resolveNotebookPageStyle(session, 3)).toBe('plain');
+  });
+
+  it('resolveNotebookPageStyle falls back to grid when neither is set', () => {
+    const session = makeSession();
+    expect(resolveNotebookPageStyle(session, 1)).toBe('grid');
+  });
+
+  it('resolveNotebookPageStyle prefers the per-page entry over the session-wide fallback', () => {
+    const session = makeSession();
+    session.notebookStyle = 'plain';
+    session.notebookPageStyles = { 1: 'lined' };
+    expect(resolveNotebookPageStyle(session, 1)).toBe('lined');
+    expect(resolveNotebookPageStyle(session, 2)).toBe('plain');
   });
 });
 

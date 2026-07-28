@@ -115,6 +115,10 @@ export interface ClassroomSession {
   rightBoardMode?: ClassroomBoardMode;
   classroomTheme?: ClassroomTheme;
   notebookStyle?: ClassroomNotebookStyle;
+  // Har bir daftar sahifasining o'z naqshi — sahifa raqami -> naqsh.
+  // Kalit yo'q sahifalar eski umumiy notebookStyle'ni meros qiladi
+  // (page-add funksiyasidan oldin yaratilgan barcha sahifalar uchun).
+  notebookPageStyles?: Record<number, ClassroomNotebookStyle>;
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
   historyEvents?: ClassroomHistoryEvent[];
@@ -143,6 +147,7 @@ export interface ClassroomBoardSnapshot {
   rightBoardMode: ClassroomBoardMode;
   notebookStyle: ClassroomNotebookStyle;
   notebookPageCount: number;
+  notebookPageStyles: Record<number, ClassroomNotebookStyle>;
 }
 
 export interface ClassroomSnapshot {
@@ -168,6 +173,7 @@ export interface ClassroomSnapshot {
   rightBoardMode: ClassroomBoardMode;
   classroomTheme: ClassroomTheme;
   notebookStyle: ClassroomNotebookStyle;
+  notebookPageStyles: Record<number, ClassroomNotebookStyle>;
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi
