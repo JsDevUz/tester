@@ -142,6 +142,7 @@ export function applyPageRemove(
   p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" },
 ): ClassroomState {
   const right = p.pane === "right";
+  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
   const key = right ? "rightStrokesByPage" : "strokesByPage";
   const source = s[key];
   const rebuilt: Record<number, CsStroke[]> = {};
