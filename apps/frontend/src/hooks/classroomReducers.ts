@@ -1,4 +1,4 @@
-import type { CsBoardLayout, CsBoardMode, CsStroke } from "../api/classroom";
+import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsStroke } from "../api/classroom";
 import type { ClassroomState } from "./useClassroomSession";
 
 export function moveStrokePoints(stroke: CsStroke, x: number, y: number): number[] {
@@ -175,4 +175,61 @@ export function applyPageRemove(
   }
 
   return { ...s, [key]: rebuilt, pages, notebookPageCount, currentPage };
+}
+
+// PDF'ga qo'shilgan yangi sahifa(lar) — afterPageIndex'dan keyingi barcha
+// sahifalarning chizmalari (chap panel, chunki PDF qo'shish hozircha
+// faqat asosiy/chap panelga tegishli) qo'shilgan son bo'yicha yuqoriga
+// siljiydi.
+export function applyPdfInsert(
+  s: ClassroomState,
+  p: { pages: string[]; afterPageIndex: number },
+): ClassroomState {
+  const shiftBy = p.pages.length;
+  const pages = [...s.pages];
+  pages.splice(p.afterPageIndex, 0, ...p.pages);
+
+  const rebuilt: Record<number, CsStroke[]> = {};
+  for (const [pageStr, strokes] of Object.entries(s.strokesByPage)) {
+    const pageNum = Number(pageStr);
+    if (pageNum <= p.afterPageIndex) rebuilt[pageNum] = strokes;
+    else rebuilt[pageNum + shiftBy] = strokes;
+  }
+
+  const currentPage = s.currentPage > p.afterPageIndex ? s.currentPage + shiftBy : s.currentPage;
+
+  return { ...s, pages, strokesByPage: rebuilt, currentPage };
+}
+
+// Daftarga qo'shilgan yangi sahifa — afterPageIndex'dan keyingi barcha
+// sahifalarning naqshi/chizmalari (shu pane uchun) bittaga yuqoriga
+// siljiydi, yangi sahifaning o'zi tanlangan naqshni oladi.
+export function applyNotebookPageInsert(
+  s: ClassroomState,
+  p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" },
+): ClassroomState {
+  const right = p.pane === "right";
+  if (p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+
+  const key = right ? "rightStrokesByPage" : "strokesByPage";
+  const source = s[key];
+  const rebuilt: Record<number, CsStroke[]> = {};
+  for (const [pageStr, strokes] of Object.entries(source)) {
+    const pageNum = Number(pageStr);
+    if (pageNum <= p.afterPageIndex) rebuilt[pageNum] = strokes;
+    else rebuilt[pageNum + 1] = strokes;
+  }
+
+  const rebuiltStyles: Record<number, CsNotebookStyle> = {};
+  for (const [pageStr, style] of Object.entries(s.notebookPageStyles)) {
+    const pageNum = Number(pageStr);
+    if (pageNum <= p.afterPageIndex) rebuiltStyles[pageNum] = style;
+    else rebuiltStyles[pageNum + 1] = style;
+  }
+  rebuiltStyles[p.afterPageIndex + 1] = p.style;
+
+  const notebookPageCount = s.notebookPageCount + 1;
+  const currentPage = s.currentPage > p.afterPageIndex ? s.currentPage + 1 : s.currentPage;
+
+  return { ...s, [key]: rebuilt, notebookPageStyles: rebuiltStyles, notebookPageCount, currentPage };
 }

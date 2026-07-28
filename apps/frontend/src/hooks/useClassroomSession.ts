@@ -3,9 +3,9 @@ import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket
 import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
-  applyBoardSet, applyPageClear, applyPageRemove, applyPageSet, applyPdfSet, applyStrokeAdd, applyStrokeReorder,
-  applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo, applyStrokeUpdate,
-  moveStrokePoints,
+  applyBoardSet, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
+  applyStrokeUpdate, moveStrokePoints,
 } from "./classroomReducers";
 
 export interface ClassroomState {
@@ -38,7 +38,10 @@ export interface ClassroomState {
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   classroomTheme: "light" | "dark";
-  notebookStyle: CsNotebookStyle;
+  // Har bir daftar sahifasining o'z naqshi (sahifa raqami -> naqsh).
+  // Eski umumiy notebookStyle sozlamasi endi yo'q — har bir yangi sahifa
+  // "+" bilan qo'shilganda o'z naqshini oladi.
+  notebookPageStyles: Record<number, CsNotebookStyle>;
 }
 
 const INITIAL: ClassroomState = {
@@ -46,7 +49,7 @@ const INITIAL: ClassroomState = {
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
   isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, classroomTheme: "light",
-  notebookStyle: "grid",
+  notebookPageStyles: {},
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -119,7 +122,7 @@ export function useClassroomSession(
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? globalTheme,
-            notebookStyle: snap.notebookStyle ?? "grid",
+            notebookPageStyles: snap.notebookPageStyles ?? {},
           });
           // Yangi classroom'ni ustozning asosiy theme'i bilan boshlaymiz.
           // Bu faqat farq bo'lsa yuboriladi; keyingi studentlar snapshot'dan
@@ -176,9 +179,10 @@ export function useClassroomSession(
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
     socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
+    socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
+    socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
-    socket.on("notebookStyle:set", (p: { style: CsNotebookStyle }) => setState((s) => ({ ...s, notebookStyle: p.style })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
@@ -201,9 +205,10 @@ export function useClassroomSession(
       socket.off("zoom:set");
       socket.off("splitRatio:set");
       socket.off("page:remove");
+      socket.off("pdf:insert");
+      socket.off("page:insert");
       socket.off("scroll:set");
       socket.off("theme:set");
-      socket.off("notebookStyle:set");
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
@@ -329,16 +334,14 @@ export function useClassroomSession(
     setSplitRatio: (ratio: number) => emitHost("host:setSplitRatio", { ratio }),
     removePage: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right" = "left") =>
       emitHost("host:removePage", { mode, pageIndex, pane }),
+    insertNotebookPage: (afterPageIndex: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
+      emitHost("host:insertNotebookPage", { afterPageIndex, style, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
     setTheme: (theme: "light" | "dark") => {
       setState((s) => ({ ...s, classroomTheme: theme }));
       emitHost("host:setTheme", { theme });
-    },
-    setNotebookStyle: (style: CsNotebookStyle) => {
-      setState((s) => ({ ...s, notebookStyle: style }));
-      emitHost("host:setNotebookStyle", { style });
     },
     endLesson: () => emitHost("host:end"),
   };

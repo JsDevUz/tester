@@ -30,6 +30,15 @@ export async function apiAttachClassPdf(
   return res.data;
 }
 
+// Kutubxonadan tanlangan (istalgan fayldan) sahifalarni mavjud darsga
+// QO'SHADI — apiAttachClassPdf'dan farqli, eski sahifalarni almashtirmaydi.
+export async function apiInsertClassPdfPages(
+  sessionId: string, mediaAssetId: string, pageNumbers: number[], afterPageIndex: number,
+): Promise<{ pages: string[] }> {
+  const res = await client.post(`/classroom/sessions/${sessionId}/pdf/insert`, { mediaAssetId, pageNumbers, afterPageIndex });
+  return res.data;
+}
+
 // ---------- PDF kutubxonasi (jonli dars uchun alohida — umumiy fayl
 // kutubxonasidan farqli, bu yerda PDF avtomatik sahifalarga aylantiriladi) ----------
 
@@ -164,6 +173,7 @@ export interface ClassBoardSnapshotData {
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   notebookStyle: CsNotebookStyle;
+  notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageCount: number;
 }
 
@@ -331,6 +341,7 @@ export interface CsSnapshot {
   rightBoardMode: CsBoardMode;
   classroomTheme: "light" | "dark";
   notebookStyle: CsNotebookStyle;
+  notebookPageStyles: Record<number, CsNotebookStyle>;
 }
 
 export interface CsPresenceUpdate {
