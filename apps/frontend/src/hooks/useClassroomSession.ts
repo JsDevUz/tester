@@ -3,7 +3,7 @@ import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket
 import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
-  applyBoardSet, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
 } from "./classroomReducers";
@@ -181,6 +181,8 @@ export function useClassroomSession(
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
+    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown }) => setState((s) => applyBoardUndo(s, p)));
+    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
@@ -207,6 +209,8 @@ export function useClassroomSession(
       socket.off("page:remove");
       socket.off("pdf:insert");
       socket.off("page:insert");
+      socket.off("board:undo");
+      socket.off("board:redo");
       socket.off("scroll:set");
       socket.off("theme:set");
       socket.off("host:online");
@@ -278,7 +282,8 @@ export function useClassroomSession(
     reorderStroke: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward", pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
       emitHost("host:reorderStroke", { page, strokeIds, op, pane, mode });
     },
-    undo: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:undo", { page, pane, mode }),
+    undo: () => emitHost("host:undo"),
+    redo: () => emitHost("host:redo"),
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
     // darhol o'chiradi, keyin serverga ID bilan yuboradi.
     eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
