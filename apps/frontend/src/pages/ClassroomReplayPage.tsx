@@ -96,7 +96,7 @@ export function ClassroomReplayPage() {
         boardLayout: boardSnapshot.boardLayout,
         leftBoardMode: boardSnapshot.leftBoardMode,
         rightBoardMode: boardSnapshot.rightBoardMode,
-        notebookStyle: boardSnapshot.notebookStyle,
+        notebookPageStyles: boardSnapshot.notebookPageStyles ?? {},
         notebookPageCount: boardSnapshot.notebookPageCount ?? 4,
         classroomTheme: replay.state.classroomTheme,
       }
@@ -158,7 +158,7 @@ export function ClassroomReplayPage() {
     try {
       await exportBoardToPdf({
         mode,
-        notebookStyle: viewState.notebookStyle,
+        notebookPageStyles: viewState.notebookPageStyles,
         pageUrls,
         strokesByPage: viewState.strokesByPage ?? {},
         pageCount,
@@ -226,7 +226,7 @@ export function ClassroomReplayPage() {
             boardLayout={viewState.boardLayout}
             leftBoardMode={viewState.leftBoardMode}
             rightBoardMode={viewState.rightBoardMode}
-            notebookStyle={viewState.notebookStyle}
+            notebookPageStyles={viewState.notebookPageStyles}
             notebookPageCount={viewState.notebookPageCount}
             noSync
           />

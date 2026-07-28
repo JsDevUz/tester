@@ -98,7 +98,7 @@ async function renderPageToCanvas(params: {
 
 export interface ExportBoardParams {
   mode: CsBoardMode;
-  notebookStyle: CsNotebookStyle;
+  notebookPageStyles: Record<number, CsNotebookStyle>;
   pageUrls: string[];
   strokesByPage: Record<number, CsStroke[]>;
   pageCount: number;
@@ -108,7 +108,7 @@ export interface ExportBoardParams {
 // Daftar yoki PDF taxtasining barcha sahifalarini bitta ko'p sahifali PDF
 // faylga yig'ib, brauzerda yuklab olishni ishga tushiradi.
 export async function exportBoardToPdf(params: ExportBoardParams): Promise<void> {
-  const { mode, notebookStyle, pageUrls, strokesByPage, pageCount, fileName } = params;
+  const { mode, notebookPageStyles, pageUrls, strokesByPage, pageCount, fileName } = params;
   const width = EXPORT_WIDTH;
   const fallbackHeight = Math.round(EXPORT_WIDTH * A4_RATIO);
 
@@ -117,7 +117,7 @@ export async function exportBoardToPdf(params: ExportBoardParams): Promise<void>
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
     const canvas = await renderPageToCanvas({
       mode,
-      notebookStyle,
+      notebookStyle: notebookPageStyles[pageNumber] ?? "grid",
       pageUrl: pageUrls[pageNumber - 1],
       strokes: strokesByPage[pageNumber] ?? [],
       width,
