@@ -20,9 +20,13 @@ function loadImage(src: string): Promise<HTMLImageElement> {
 // Daftar foni (katak/yo'l-yo'l) — ClassroomPdfPage'dagi CSS backgroundImage
 // bilan bir xil proporsiyada (A4 kengligiga nisbiy), lekin canvas chiziqlari
 // sifatida — CSS orqa fon eksport rasmida umuman ko'rinmagani uchun kerak.
-function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: number, style: CsNotebookStyle) {
+// Fon rangi jonli darsdagi ".bg-white" klassining dark-mode override'iga
+// mos (index.css: :root[data-theme="dark"] .bg-white { #1c1f26 }) — grid
+// chiziqlari esa ekranda ham har ikkala temada bir xil ko'k rangda
+// qolgani uchun bu yerda ham o'zgartirilmaydi.
+function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: number, style: CsNotebookStyle, theme: "light" | "dark" = "light") {
   ctx.save();
-  ctx.fillStyle = "#ffffff";
+  ctx.fillStyle = theme === "dark" ? "#1c1f26" : "#ffffff";
   ctx.fillRect(0, 0, w, h);
   if (style === "plain") {
     ctx.restore();
@@ -60,12 +64,13 @@ function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: num
 async function renderPageToCanvas(params: {
   mode: CsBoardMode;
   notebookStyle: CsNotebookStyle;
+  theme: "light" | "dark";
   pageUrl?: string;
   strokes: CsStroke[];
   width: number;
   fallbackHeight: number;
 }): Promise<HTMLCanvasElement> {
-  const { mode, notebookStyle, pageUrl, strokes, width, fallbackHeight } = params;
+  const { mode, notebookStyle, theme, pageUrl, strokes, width, fallbackHeight } = params;
   const canvas = document.createElement("canvas");
 
   let height = fallbackHeight;
@@ -80,7 +85,7 @@ async function renderPageToCanvas(params: {
   const ctx = canvas.getContext("2d")!;
 
   if (mode === "notebook") {
-    drawNotebookBackground(ctx, width, height, notebookStyle);
+    drawNotebookBackground(ctx, width, height, notebookStyle, theme);
   } else if (img) {
     ctx.drawImage(img, 0, 0, width, height);
   }
@@ -99,6 +104,10 @@ async function renderPageToCanvas(params: {
 export interface ExportBoardParams {
   mode: CsBoardMode;
   notebookPageStyles: Record<number, CsNotebookStyle>;
+  // Daftar fonini jonli darsdagi joriy UI temasiga moslashtirish uchun —
+  // PDF sahifalari (rasm) temadan mustaqil, faqat "notebook" mode uchun
+  // ishlatiladi. Berilmasa "light" (avvalgi xatti-harakat).
+  theme?: "light" | "dark";
   pageUrls: string[];
   strokesByPage: Record<number, CsStroke[]>;
   pageCount: number;
@@ -108,7 +117,7 @@ export interface ExportBoardParams {
 // Daftar yoki PDF taxtasining barcha sahifalarini bitta ko'p sahifali PDF
 // faylga yig'ib, brauzerda yuklab olishni ishga tushiradi.
 export async function exportBoardToPdf(params: ExportBoardParams): Promise<void> {
-  const { mode, notebookPageStyles, pageUrls, strokesByPage, pageCount, fileName } = params;
+  const { mode, notebookPageStyles, theme = "light", pageUrls, strokesByPage, pageCount, fileName } = params;
   const width = EXPORT_WIDTH;
   const fallbackHeight = Math.round(EXPORT_WIDTH * A4_RATIO);
 
@@ -118,6 +127,7 @@ export async function exportBoardToPdf(params: ExportBoardParams): Promise<void>
     const canvas = await renderPageToCanvas({
       mode,
       notebookStyle: notebookPageStyles[pageNumber] ?? "grid",
+      theme,
       pageUrl: pageUrls[pageNumber - 1],
       strokes: strokesByPage[pageNumber] ?? [],
       width,

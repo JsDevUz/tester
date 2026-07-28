@@ -159,6 +159,7 @@ export function ClassroomReplayPage() {
       await exportBoardToPdf({
         mode,
         notebookPageStyles: viewState.notebookPageStyles,
+        theme: viewState.classroomTheme,
         pageUrls,
         strokesByPage: viewState.strokesByPage ?? {},
         pageCount,

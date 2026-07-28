@@ -183,6 +183,7 @@ export function ClassroomHostPage() {
       await exportBoardToPdf({
         mode,
         notebookPageStyles: state.notebookPageStyles,
+        theme: state.classroomTheme,
         pageUrls,
         strokesByPage: strokesByPage ?? {},
         pageCount,
