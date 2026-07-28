@@ -115,6 +115,51 @@ export function removePageFromSession(
   return true;
 }
 
+// Daftarga yangi (bo'sh) sahifa qo'shadi — afterPageIndex'dan keyingi
+// barcha sahifalar (naqsh + chizmalar) bittaga yuqoriga siljiydi.
+// afterPageIndex 0-indexed qo'yish nuqtasi: 0 = birinchi sahifadan oldin,
+// N = N-sahifadan keyin (removePageFromSession'ning 1-indexed pageIndex'idan farqli).
+export function insertNotebookPageIntoSession(
+  session: ClassroomSession,
+  afterPageIndex: number,
+  style: ClassroomNotebookStyle,
+): boolean {
+  if (!['grid', 'lined', 'plain'].includes(style)) return false;
+  const previousMode = session.boardMode;
+  session.boardMode = 'notebook';
+  const currentCount = session.notebookPageCount ?? 4;
+  if (!Number.isInteger(afterPageIndex) || afterPageIndex < 0 || afterPageIndex > currentCount) {
+    session.boardMode = previousMode;
+    return false;
+  }
+
+  session.notebookPageCount = currentCount + 1;
+
+  const previousStyles = session.notebookPageStyles ?? {};
+  const rebuiltStyles: Record<number, ClassroomNotebookStyle> = {};
+  for (const [key, value] of Object.entries(previousStyles)) {
+    const pageNum = Number(key);
+    if (pageNum <= afterPageIndex) rebuiltStyles[pageNum] = value;
+    else rebuiltStyles[pageNum + 1] = value;
+  }
+  rebuiltStyles[afterPageIndex + 1] = style;
+  session.notebookPageStyles = rebuiltStyles;
+
+  const map = strokeMapFor(session, 'notebook');
+  const rebuiltStrokes = new Map<number, ClassroomStroke[]>();
+  for (const [key, strokes] of map) {
+    if (key <= afterPageIndex) rebuiltStrokes.set(key, strokes);
+    else rebuiltStrokes.set(key + 1, strokes);
+  }
+  session.strokesByMode?.set('notebook', rebuiltStrokes);
+  if (previousMode === 'notebook') session.strokesByPage = rebuiltStrokes;
+
+  if (session.currentPage > afterPageIndex) session.currentPage += 1;
+
+  session.boardMode = previousMode;
+  return true;
+}
+
 function validateShapeFields(stroke: ClassroomStroke): boolean {
   if (stroke.backgroundColor !== undefined && (typeof stroke.backgroundColor !== 'string' || stroke.backgroundColor.length > 32)) return false;
   if (stroke.fillStyle !== undefined && !['hachure', 'cross-hatch', 'solid'].includes(stroke.fillStyle)) return false;

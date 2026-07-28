@@ -12,7 +12,7 @@ import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
-  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
+  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, isValidPage,
   removePageFromSession,
   reorderStrokes as reorderStrokesInSession,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
@@ -450,15 +450,6 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'theme:set', payload);
   }
 
-  setNotebookStyle(sessionId: string, userId: string, style: ClassroomNotebookStyle): void {
-    const s = this.requireHost(sessionId, userId);
-    if (!['grid', 'lined', 'plain'].includes(style)) throw new Error('INVALID_NOTEBOOK_STYLE');
-    s.notebookStyle = style;
-    const payload = { style };
-    this.recordHistoryEvent(s, 'notebookStyle:set', payload);
-    this.broadcaster.toRoom(sessionId, 'notebookStyle:set', payload);
-  }
-
   stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
@@ -621,6 +612,17 @@ export class ClassroomService implements OnModuleInit {
     const payload = { mode, pageIndex, pane };
     this.recordHistoryEvent(s, 'page:remove', payload);
     this.broadcaster.toRoom(s.id, 'page:remove', payload);
+  }
+
+  // Daftarga yangi (bo'sh) sahifa qo'shadi — afterPageIndex'dan keyingi
+  // sahifalar va ularning chizmalari/naqshlari bittaga yuqoriga siljiydi.
+  insertNotebookPage(sessionId: string, userId: string, afterPageIndex: number, style: ClassroomNotebookStyle, pane: 'left' | 'right' = 'left'): void {
+    const s = this.requireHost(sessionId, userId);
+    const ok = insertNotebookPageIntoSession(s, afterPageIndex, style);
+    if (!ok) throw new Error('INVALID_PAGE_INSERT');
+    const payload = { mode: 'notebook' as const, afterPageIndex, style, pane };
+    this.recordHistoryEvent(s, 'page:insert', payload);
+    this.broadcaster.toRoom(s.id, 'page:insert', payload);
   }
 
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi

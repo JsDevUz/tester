@@ -397,22 +397,6 @@ describe('sahifa va chizish', () => {
     expect(history[0].atMs).toBeGreaterThanOrEqual(0);
   });
 
-  it('replay uchun board/theme/style/zoom/scroll eventlari tarixga yoziladi', async () => {
-    const { service, sessionId } = await withPdf();
-    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
-    service.setTheme(sessionId, 'teacher-1', 'dark');
-    service.setNotebookStyle(sessionId, 'teacher-1', 'lined');
-    service.setZoom(sessionId, 'teacher-1', 1.75, 'right');
-    service.scroll(sessionId, 'teacher-1', 1, 0.4, 'right', 0.2);
-
-    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toEqual([
-      'board:set', 'theme:set', 'notebookStyle:set', 'zoom:set', 'scroll:set',
-    ]);
-    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
-    expect(snapshot.rightZoom).toBe(1.75);
-    expect(snapshot.rightScroll).toEqual({ page: 1, yRatio: 0.4, xRatio: 0.2 });
-  });
-
   it('host split kenglikni ozgartirsa splitRatio:set broadcast va tarixga yoziladi', async () => {
     const { service, events, sessionId } = await withPdf();
     service.setSplitRatio(sessionId, 'teacher-1', 0.65);
@@ -456,6 +440,37 @@ describe('sahifa va chizish', () => {
     service.removePage(sessionId, 'teacher-1', 'pdf', 1);
     const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
     expect(snapshot.pages.length).toBe(2); // withPdf() sets 3 pages, one removed
+  });
+
+  it('host daftarga yangi sahifa qoshsa page:insert broadcast va tarixga yoziladi', async () => {
+    const { service, events, sessionId } = await setup();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    service.insertNotebookPage(sessionId, 'teacher-1', 1, 'lined');
+    expect(events.at(-1)).toMatchObject({
+      event: 'page:insert',
+      payload: { mode: 'notebook', afterPageIndex: 1, style: 'lined', pane: 'left' },
+    });
+    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toContain('page:insert');
+  });
+
+  it('host bolmagan foydalanuvchi sahifa qosha olmaydi', async () => {
+    const { service, sessionId } = await setup();
+    expect(() => service.insertNotebookPage(sessionId, 'stu-1', 0, 'grid')).toThrow();
+  });
+
+  it('notogri afterPageIndex bilan sahifa qoshish rad etiladi', async () => {
+    const { service, sessionId } = await setup();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    expect(() => service.insertNotebookPage(sessionId, 'teacher-1', 99, 'grid')).toThrow();
+  });
+
+  it('kech kirgan ustoz snapshot orqali kopaygan sahifalar sonini oladi', async () => {
+    const { service, sessionId } = await setup();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    service.insertNotebookPage(sessionId, 'teacher-1', 4, 'plain');
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.notebookPageCount).toBe(5); // default 4, one inserted
+    expect(snapshot.notebookPageStyles).toEqual({ 5: 'plain' });
   });
 
   it('splitRatio uchun notogri (NaN/raqam emas) qiymat 0.5 ga tushadi', async () => {

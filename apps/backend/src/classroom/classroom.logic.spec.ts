@@ -3,6 +3,7 @@ import {
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
   LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
   removePageFromSession, strokeMapFor, resolveNotebookPageStyle,
+  insertNotebookPageIntoSession,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -454,5 +455,84 @@ describe('removePageFromSession', () => {
     const notebookMapAfter = strokeMapFor(session, 'notebook');
     expect(notebookMapAfter.get(1)?.[0]?.id).toBe('nb-s1'); // untouched, not reindexed
     expect(notebookMapAfter.get(2)?.[0]?.id).toBe('nb-s2'); // untouched, not reindexed
+  });
+});
+
+describe('insertNotebookPageIntoSession', () => {
+  it('insertNotebookPageIntoSession increments notebookPageCount and sets the new page style', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+
+    const ok = insertNotebookPageIntoSession(session, 1, 'lined');
+
+    expect(ok).toBe(true);
+    expect(session.notebookPageCount).toBe(4);
+    expect(session.notebookPageStyles?.[2]).toBe('lined');
+  });
+
+  it('insertNotebookPageIntoSession shifts later page styles up by one', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    session.notebookPageStyles = { 2: 'plain', 3: 'lined' };
+
+    insertNotebookPageIntoSession(session, 1, 'grid');
+
+    expect(session.notebookPageStyles).toEqual({ 2: 'grid', 3: 'plain', 4: 'lined' });
+  });
+
+  it('insertNotebookPageIntoSession shifts strokes at and after the insertion point up by one', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    const map = strokeMapFor(session, 'notebook');
+    map.set(1, [{ id: 's1', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    map.set(2, [{ id: 's2', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+
+    insertNotebookPageIntoSession(session, 1, 'grid');
+
+    const reindexed = strokeMapFor(session, 'notebook');
+    expect(reindexed.get(1)?.[0]?.id).toBe('s1'); // unaffected, before insertion point
+    expect(reindexed.has(2)).toBe(false); // new page's slot starts empty
+    expect(reindexed.get(3)?.[0]?.id).toBe('s2'); // was page 2, now page 3
+  });
+
+  it('insertNotebookPageIntoSession increments currentPage when inserting before or at it', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    session.currentPage = 2;
+
+    insertNotebookPageIntoSession(session, 1, 'grid');
+
+    expect(session.currentPage).toBe(3);
+  });
+
+  it('insertNotebookPageIntoSession leaves currentPage unchanged when inserting after it', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    session.currentPage = 1;
+
+    insertNotebookPageIntoSession(session, 2, 'grid');
+
+    expect(session.currentPage).toBe(1);
+  });
+
+  it('insertNotebookPageIntoSession refuses an out-of-range afterPageIndex', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+
+    expect(insertNotebookPageIntoSession(session, -1, 'grid')).toBe(false);
+    expect(insertNotebookPageIntoSession(session, 4, 'grid')).toBe(false);
+  });
+
+  it('insertNotebookPageIntoSession refuses an invalid style', () => {
+    const session = makeSession();
+    session.notebookPageCount = 3;
+
+    expect(insertNotebookPageIntoSession(session, 1, 'bogus' as any)).toBe(false);
   });
 });
