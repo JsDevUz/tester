@@ -17,6 +17,7 @@ import {
   Trash2,
   Type,
   MousePointer2,
+  Undo2,
   Upload,
   X,
   type LucideIcon,
@@ -90,6 +91,7 @@ interface Props {
   onColorChange: (color: string) => void;
   onStrokeWidthChange: (width: number) => void;
   onUndo: () => void;
+  onRedo: () => void;
   onClear: () => void;
   onOpenPdfLibrary: () => void;
 }
@@ -102,6 +104,7 @@ export function ClassroomToolbar({
   onColorChange,
   onStrokeWidthChange,
   onUndo,
+  onRedo,
   onClear,
   onOpenPdfLibrary,
 }: Props) {
@@ -339,10 +342,18 @@ export function ClassroomToolbar({
       <button
         type="button"
         className={iconBtn(false)}
-        title="Bekor qilish (undo)"
+        title="Bekor qilish (Ctrl+Z)"
         onClick={onUndo}
       >
-        <Redo2 size={15} className="scale-x-[-1]" />
+        <Undo2 size={15} />
+      </button>
+      <button
+        type="button"
+        className={iconBtn(false)}
+        title="Qaytarish (Ctrl+Shift+Z)"
+        onClick={onRedo}
+      >
+        <Redo2 size={15} />
       </button>
       <button
         type="button"

@@ -100,7 +100,10 @@ export function ClassroomHostPage() {
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
   useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
-  useHotkeys("mod+z", () => hostActions.undo(state.currentPage, "left", state.boardMode), {
+  useHotkeys("mod+z", () => hostActions.undo(), {
+    preventDefault: true,
+  });
+  useHotkeys("mod+shift+z", () => hostActions.redo(), {
     preventDefault: true,
   });
 
@@ -295,7 +298,8 @@ export function ClassroomHostPage() {
               onToolChange={setTool}
               onColorChange={setColor}
               onStrokeWidthChange={setStrokeWidth}
-              onUndo={() => hostActions.undo(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
+              onUndo={() => hostActions.undo()}
+              onRedo={() => hostActions.redo()}
               onClear={() => hostActions.clearPage(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
               onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
             />
