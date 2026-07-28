@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ClassroomState } from "./useClassroomSession";
 import {
-  applyBoardSet, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyBoardRedo, applyBoardSet, applyBoardUndo, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate,
 } from "./classroomReducers";
@@ -29,6 +29,8 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
   "page:remove": applyPageRemove,
   "pdf:insert": applyPdfInsert,
   "page:insert": applyNotebookPageInsert,
+  "board:undo": applyBoardUndo,
+  "board:redo": applyBoardRedo,
   "scroll:set": (s, p: { page: number; yRatio: number; xRatio?: number; pane?: "left" | "right" }) => p.pane === "right" ? { ...s, rightScroll: p } : { ...s, scroll: p },
   "pointer:move": (s, p) => ({ ...s, pointer: p }),
   "theme:set": (s, p: { theme: "light" | "dark" }) => ({ ...s, classroomTheme: p.theme }),

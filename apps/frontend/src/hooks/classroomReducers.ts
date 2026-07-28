@@ -233,3 +233,182 @@ export function applyNotebookPageInsert(
 
   return { ...s, [key]: rebuilt, notebookPageStyles: rebuiltStyles, notebookPageCount, currentPage };
 }
+
+// entry.mode qaysi pane'da ko'rsatilayotganini aniqlaydi — split
+// rejimida DUPLICATE_SPLIT_MODE tufayli ikkala pane bir xil mode'da
+// bo'la olmaydi, shuning uchun bu har doim aynan bitta pane'ni tanlaydi
+// (yoki yakka rejimda "left"ni, chunki notSplit holatida faqat
+// strokesByPage ishlatiladi).
+function paneKeyForMode(s: ClassroomState, mode: CsBoardMode): "strokesByPage" | "rightStrokesByPage" {
+  return s.rightBoardMode === mode && s.leftBoardMode !== mode ? "rightStrokesByPage" : "strokesByPage";
+}
+
+function applyStrokeAddInverseClient(source: Record<number, CsStroke[]>, page: number, data: { stroke: CsStroke }, direction: "undo" | "redo"): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  return {
+    ...source,
+    [page]: direction === "undo" ? list.filter((s) => s.id !== data.stroke.id) : [...list, data.stroke],
+  };
+}
+
+function applyStrokeEraseInverseClient(source: Record<number, CsStroke[]>, page: number, data: { stroke: CsStroke; index: number }, direction: "undo" | "redo"): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  if (direction === "undo") {
+    const next = [...list];
+    next.splice(data.index, 0, data.stroke);
+    return { ...source, [page]: next };
+  }
+  return { ...source, [page]: list.filter((s) => s.id !== data.stroke.id) };
+}
+
+function applyStrokeTransformInverseClient(
+  source: Record<number, CsStroke[]>, page: number,
+  data: { strokeId: string; before: Partial<CsStroke>; after: Partial<CsStroke> },
+  direction: "undo" | "redo",
+): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  const target = direction === "undo" ? data.before : data.after;
+  return { ...source, [page]: list.map((s) => s.id === data.strokeId ? { ...s, ...target } : s) };
+}
+
+function applyStrokeReorderInverseClient(
+  source: Record<number, CsStroke[]>, page: number,
+  data: { before: { order: string[] }; after: { order: string[] } },
+  direction: "undo" | "redo",
+): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  const targetOrder = direction === "undo" ? data.before.order : data.after.order;
+  const byId = new Map(list.map((s) => [s.id, s]));
+  return { ...source, [page]: targetOrder.map((id) => byId.get(id)).filter((s): s is CsStroke => s !== undefined) };
+}
+
+function applyStrokeTextInverseClient(
+  source: Record<number, CsStroke[]>, page: number,
+  data: { strokeId: string; before: CsStroke | null; after: CsStroke },
+  direction: "undo" | "redo",
+): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  if (direction === "undo") {
+    return data.before === null
+      ? { ...source, [page]: list.filter((s) => s.id !== data.strokeId) }
+      : { ...source, [page]: list.map((s) => s.id === data.strokeId ? data.before! : s) };
+  }
+  const exists = list.some((s) => s.id === data.strokeId);
+  return { ...source, [page]: exists ? list.map((s) => s.id === data.strokeId ? data.after : s) : [...list, data.after] };
+}
+
+function applyBoardUndoRedo(
+  s: ClassroomState,
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after?: unknown },
+  direction: "undo" | "redo",
+): ClassroomState {
+  const key = paneKeyForMode(s, p.mode);
+  const source = s[key];
+
+  let nextSource: Record<number, CsStroke[]> | null = null;
+  switch (p.entryType) {
+    case "stroke:add":
+      nextSource = applyStrokeAddInverseClient(source, p.page, (direction === "undo" ? p.before : p.after) as { stroke: CsStroke }, direction);
+      break;
+    case "stroke:erase":
+      nextSource = applyStrokeEraseInverseClient(source, p.page, p.before as { stroke: CsStroke; index: number }, direction);
+      break;
+    case "stroke:transform":
+    case "stroke:style":
+      nextSource = applyStrokeTransformInverseClient(source, p.page, {
+        strokeId: p.strokeId!,
+        before: p.before as Partial<CsStroke>,
+        after: p.after as Partial<CsStroke>,
+      }, direction);
+      break;
+    case "stroke:text":
+      nextSource = applyStrokeTextInverseClient(source, p.page, {
+        strokeId: p.strokeId!,
+        before: p.before as CsStroke | null,
+        after: p.after as CsStroke,
+      }, direction);
+      break;
+    case "stroke:reorder":
+      nextSource = applyStrokeReorderInverseClient(source, p.page, { before: p.before as { order: string[] }, after: p.after as { order: string[] } }, direction);
+      break;
+    default:
+      // page:remove / page:insert: bu ikkalasi sahifalar ro'yxati va
+      // notebookPageCount/Styles'ni ham o'zgartiradi — bu funksiya faqat
+      // stroke-darajasidagi turlarni qamrab oladi. Sahifa-darajasidagi
+      // undo/redo alohida (quyida applyBoardUndo/applyBoardRedo ichida
+      // to'liq) ishlanadi.
+      return s;
+  }
+
+  return { ...s, [key]: nextSource ?? source, currentPage: p.page, boardMode: p.mode };
+}
+
+// page:remove/page:insert'ning teskarisi — bular sahifalar ro'yxati va
+// notebookPageCount/Styles'ni ham o'zgartirgani uchun applyBoardUndoRedo'dan
+// alohida, sahifa-darajasidagi mavjud reducer'larni (applyPageRemove/
+// applyPdfInsert/applyNotebookPageInsert) qayta ishlatadi. Backend'dagi
+// applyPageRemoveInverse/applyPageInsertInverse (Task 2) bilan bir xil
+// naqsh: direction'ga qarab TO'RTTA holat (remove+undo, remove+redo,
+// insert+undo, insert+redo), before/after ikkalasi ham har doim to'liq
+// beriladi (faqat bittasi emas).
+function applyPageUndoRedo(
+  s: ClassroomState,
+  p: {
+    mode: CsBoardMode; entryType: string;
+    before: { pageIndex: number; page: { url?: string; notebookStyle?: CsNotebookStyle; strokes: CsStroke[] } } | null;
+    after: { afterPageIndex: number; pages?: string[]; style?: CsNotebookStyle } | null;
+  },
+  direction: "undo" | "redo",
+): ClassroomState {
+  const pane: "left" | "right" = paneKeyForMode(s, p.mode) === "rightStrokesByPage" ? "right" : "left";
+
+  if (p.entryType === "page:remove") {
+    if (direction === "redo") {
+      // redo: sahifani yana olib tashlaymiz.
+      return applyPageRemove(s, { mode: p.mode, pageIndex: p.before!.pageIndex, pane });
+    }
+    // undo: sahifani o'zining oldingi joyiga (afterPageIndex = pageIndex - 1,
+    // 0-indexed) qayta qo'yamiz, keyin qo'yilgan (bo'sh) sahifaga
+    // o'chirishdan oldingi chizmalarini (va agar daftar bo'lsa naqshini)
+    // qaytaramiz.
+    const { pageIndex, page } = p.before!;
+    const afterPageIndex = pageIndex - 1;
+    const inserted = p.mode === "pdf"
+      ? applyPdfInsert(s, { pages: [page.url!], afterPageIndex })
+      : applyNotebookPageInsert(s, { mode: p.mode, afterPageIndex, style: page.notebookStyle ?? "grid", pane });
+    const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+    return { ...inserted, [key]: { ...inserted[key], [pageIndex]: page.strokes } };
+  }
+
+  // entryType === "page:insert"
+  if (direction === "redo") {
+    // redo: sahifani aynan o'sha joyga, o'sha manba bilan qayta qo'shamiz.
+    const { afterPageIndex, pages, style } = p.after!;
+    return p.mode === "pdf"
+      ? applyPdfInsert(s, { pages: pages ?? [], afterPageIndex })
+      : applyNotebookPageInsert(s, { mode: p.mode, afterPageIndex, style: style ?? "grid", pane });
+  }
+  // undo: qo'shilgan sahifani olib tashlaymiz (uning yangi 1-indexed
+  // raqami afterPageIndex + 1).
+  return applyPageRemove(s, { mode: p.mode, pageIndex: p.after!.afterPageIndex + 1, pane });
+}
+
+export function applyBoardUndo(
+  s: ClassroomState,
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown },
+): ClassroomState {
+  if (p.entryType === "page:remove" || p.entryType === "page:insert") {
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: p.before as any, after: null }, "undo");
+  }
+  return applyBoardUndoRedo(s, p, "undo");
+}
+
+export function applyBoardRedo(
+  s: ClassroomState,
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; after: unknown },
+): ClassroomState {
+  if (p.entryType === "page:remove" || p.entryType === "page:insert") {
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: null, after: p.after as any }, "redo");
+  }
+  return applyBoardUndoRedo(s, p, "redo");
+}
