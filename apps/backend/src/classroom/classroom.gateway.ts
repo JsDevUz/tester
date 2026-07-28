@@ -138,10 +138,18 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:undo')
-  undo(@MessageBody() body: BaseBody & { page: number; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  undo(@MessageBody() body: BaseBody) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.undo(body.sessionId, user.sub, body.page, body.mode, body.pane);
+      this.classroomService.undo(body.sessionId, user.sub);
+    });
+  }
+
+  @SubscribeMessage('host:redo')
+  redo(@MessageBody() body: BaseBody) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.redo(body.sessionId, user.sub);
     });
   }
 

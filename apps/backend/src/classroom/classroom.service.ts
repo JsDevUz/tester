@@ -11,11 +11,13 @@ import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
 import {
-  addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
+  addStroke, applyPageInsertInverse, applyPageRemoveInverse, applyStrokeAddInverse, applyStrokeEraseInverse,
+  applyStrokeReorderInverse, applyStrokeStyleInverse, applyStrokeTextInverse, applyStrokeTransformInverse,
+  attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, insertPdfPagesIntoSession, isValidPage,
   pushUndoEntry, removePageFromSession,
   reorderStrokes as reorderStrokesInSession, resolveNotebookPageStyle,
-  setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
+  setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode,
   updateShapeStroke as updateShapeStrokeInSession,
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
@@ -555,16 +557,78 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
   }
 
-  undo(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  // Undo/redo: yagona, ikkala board mode uchun UMUMIY tarixdan eng
+  // oxirgi (yoki keyingi) harakatni oladi va uning teskarisini (yoki
+  // o'ziniki) qo'llaydi — sahifa/panel qaysi bo'lishidan qat'i nazar.
+  undo(sessionId: string, userId: string): void {
     const s = this.requireHost(sessionId, userId);
-    const previousMode = s.boardMode;
-    s.boardMode = mode;
-    const strokeId = undoStroke(s, page, strokeMapFor(s, mode));
-    s.boardMode = previousMode;
-    if (strokeId) {
-      const payload = { page, strokeId, pane, mode };
-      this.recordHistoryEvent(s, 'stroke:undo', payload);
-      this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);
+    const entry = s.undoStack?.pop();
+    if (!entry) return;
+    this.applyUndoEntry(s, entry, 'undo');
+    if (!s.redoStack) s.redoStack = [];
+    s.redoStack.push(entry);
+    s.currentPage = entry.page;
+    s.boardMode = entry.mode;
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before };
+    this.recordHistoryEvent(s, 'board:undo', payload);
+    this.broadcaster.toRoom(s.id, 'board:undo', payload);
+  }
+
+  redo(sessionId: string, userId: string): void {
+    const s = this.requireHost(sessionId, userId);
+    const entry = s.redoStack?.pop();
+    if (!entry) return;
+    this.applyUndoEntry(s, entry, 'redo');
+    if (!s.undoStack) s.undoStack = [];
+    s.undoStack.push(entry);
+    s.currentPage = entry.page;
+    s.boardMode = entry.mode;
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, after: entry.after };
+    this.recordHistoryEvent(s, 'board:redo', payload);
+    this.broadcaster.toRoom(s.id, 'board:redo', payload);
+  }
+
+  private applyUndoEntry(s: ClassroomSession, entry: ClassroomUndoEntry, direction: 'undo' | 'redo'): void {
+    switch (entry.type) {
+      case 'stroke:add':
+        applyStrokeAddInverse(s, entry.mode, entry.page, entry.after as { stroke: ClassroomStroke }, direction);
+        break;
+      case 'stroke:erase':
+        applyStrokeEraseInverse(s, entry.mode, entry.page, entry.before as { stroke: ClassroomStroke; index: number }, direction);
+        break;
+      case 'stroke:transform':
+        applyStrokeTransformInverse(s, entry.mode, entry.page, {
+          strokeId: entry.strokeId!,
+          before: entry.before as { points: number[]; rotation?: number; textBoxWidth?: number; textBoxHeight?: number },
+          after: entry.after as { points: number[]; rotation?: number; textBoxWidth?: number; textBoxHeight?: number },
+        }, direction);
+        break;
+      case 'stroke:style':
+        applyStrokeStyleInverse(s, entry.mode, entry.page, {
+          strokeId: entry.strokeId!,
+          before: entry.before as Partial<ClassroomStroke>,
+          after: entry.after as Partial<ClassroomStroke>,
+        }, direction);
+        break;
+      case 'stroke:text':
+        applyStrokeTextInverse(s, entry.mode, entry.page, {
+          strokeId: entry.strokeId!,
+          before: entry.before as ClassroomStroke | null,
+          after: entry.after as ClassroomStroke,
+        }, direction);
+        break;
+      case 'stroke:reorder':
+        applyStrokeReorderInverse(s, entry.mode, entry.page, {
+          before: entry.before as { order: string[] },
+          after: entry.after as { order: string[] },
+        }, direction);
+        break;
+      case 'page:remove':
+        applyPageRemoveInverse(s, entry.mode, entry.before as { pageIndex: number; page: ClassroomPageSnapshot }, direction);
+        break;
+      case 'page:insert':
+        applyPageInsertInverse(s, entry.mode, entry.after as { afterPageIndex: number; pages?: string[]; style?: ClassroomNotebookStyle }, direction);
+        break;
     }
   }
 

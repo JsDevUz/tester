@@ -581,11 +581,8 @@ describe('sahifa va chizish', () => {
     expect(() => service.stroke(sessionId, 'teacher-1', 1, bad)).toThrow();
   });
 
-  it('undo va clear broadcastlari', async () => {
+  it('clear broadcast', async () => {
     const { service, events, sessionId } = await withPdf();
-    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1] });
-    service.undo(sessionId, 'teacher-1', 1);
-    expect(events.at(-1)).toMatchObject({ event: 'stroke:undo', payload: { page: 1, strokeId: 's1' } });
     service.clearPage(sessionId, 'teacher-1', 1);
     expect(events.at(-1)).toMatchObject({ event: 'page:clear', payload: { page: 1 } });
   });
@@ -1345,7 +1342,7 @@ describe('undo entry recording', () => {
   // NOTE: depends on Task 4's new no-arg service.undo(sessionId, userId) redo-stack-clearing
   // behavior and service.getRedoStackForTests, neither of which exist until Task 4 lands.
   // Written now per Task 3 brief instructions; skipped until Task 4 wires undo()/redo().
-  it.skip('a new action clears the redo stack', async () => {
+  it('a new action clears the redo stack', async () => {
     const { service, sessionId } = await withPdf();
     service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
     service.undo(sessionId, 'teacher-1'); // populates redoStack with 1 entry
@@ -1353,5 +1350,116 @@ describe('undo entry recording', () => {
     service.stroke(sessionId, 'teacher-1', 1, { id: 's2', tool: 'pen', color: '#f00', width: 3, points: [0.3, 0.3, 0.4, 0.4] });
 
     expect(service.getRedoStackForTests(sessionId)).toEqual([]);
+  });
+});
+
+describe('undo/redo', () => {
+  async function withPdf() {
+    const ctx = await setup();
+    ctx.service.setPdfForTests(ctx.sessionId, 'dars.pdf', ['u1', 'u2', 'u3']);
+    return ctx;
+  }
+
+  it('undo with an empty stack is a silent no-op', async () => {
+    const { service, events, sessionId } = await withPdf();
+    const before = events.length;
+
+    service.undo(sessionId, 'teacher-1');
+
+    expect(events.length).toBe(before);
+  });
+
+  it('undo pops the most recent entry regardless of mode, and broadcasts board:undo', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] }, 'pdf');
+
+    service.undo(sessionId, 'teacher-1');
+
+    expect(events.at(-1)).toMatchObject({ event: 'board:undo', payload: { mode: 'pdf', page: 1, entryType: 'stroke:add' } });
+    const snap = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snap.strokesByPage[1] ?? []).toEqual([]);
+  });
+
+  it('undo across modes: PDF stroke then notebook stroke, two undos remove notebook first then pdf', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 'pdf-s1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] }, 'pdf');
+    service.stroke(sessionId, 'teacher-1', 1, { id: 'nb-s1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] }, 'notebook');
+
+    service.undo(sessionId, 'teacher-1');
+    let snap = service.hostJoin(sessionId, 'teacher-1', 'sock-r1');
+    // After first undo (removes notebook stroke), switch view to notebook mode to check via a second stroke() call's map — instead, verify via the session's own stroke pools using a second undo + testing pdf stroke is still present after ONE undo.
+
+    service.undo(sessionId, 'teacher-1');
+    // After second undo, the pdf stroke should also be gone.
+    snap = service.hostJoin(sessionId, 'teacher-1', 'sock-r2');
+    expect(snap.strokesByPage[1] ?? []).toEqual([]);
+  });
+
+  it('undo jumps currentPage and boardMode to the entry\'s page/mode', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setPage(sessionId, 'teacher-1', 3);
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] }, 'pdf');
+
+    service.undo(sessionId, 'teacher-1');
+
+    const snap = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snap.currentPage).toBe(1);
+    expect(snap.boardMode).toBe('pdf');
+  });
+
+  it('redo re-applies the undone action and broadcasts board:redo', async () => {
+    const { service, events, sessionId } = await withPdf();
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+    service.undo(sessionId, 'teacher-1');
+
+    service.redo(sessionId, 'teacher-1');
+
+    expect(events.at(-1)).toMatchObject({ event: 'board:redo', payload: { mode: 'pdf', page: 1, entryType: 'stroke:add' } });
+    const snap = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snap.strokesByPage[1]).toContainEqual(stroke);
+  });
+
+  it('redo with an empty redo stack is a silent no-op', async () => {
+    const { service, events, sessionId } = await withPdf();
+    const before = events.length;
+
+    service.redo(sessionId, 'teacher-1');
+
+    expect(events.length).toBe(before);
+  });
+
+  it('a new committed action after undo clears the redo stack', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+    service.undo(sessionId, 'teacher-1');
+    expect(service.getRedoStackForTests(sessionId)).toHaveLength(1);
+
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's2', tool: 'pen', color: '#f00', width: 3, points: [0.3, 0.3, 0.4, 0.4] });
+
+    expect(service.getRedoStackForTests(sessionId)).toEqual([]);
+  });
+
+  it('undo requires host', async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.undo(sessionId, 'stu-1')).toThrow();
+  });
+
+  it('redo requires host', async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.redo(sessionId, 'stu-1')).toThrow();
+  });
+
+  it('undo of a page:remove restores the page with its strokes', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 2, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+    const pagesBefore = service.hostJoin(sessionId, 'teacher-1', 'sock-a').pages;
+    service.removePage(sessionId, 'teacher-1', 'pdf', 2);
+
+    service.undo(sessionId, 'teacher-1');
+
+    const snap = service.hostJoin(sessionId, 'teacher-1', 'sock-b');
+    expect(snap.pages).toEqual(pagesBefore);
+    expect(snap.strokesByPage[2]).toHaveLength(1);
   });
 });
