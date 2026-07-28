@@ -1,5 +1,5 @@
 import { Fragment, useCallback, useEffect, useLayoutEffect, useRef, useState, type ReactNode } from "react";
-import { AlignCenter, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Copy, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, RotateCw, SendToBack, Trash2 } from "lucide-react";
+import { AlignCenter, AlignJustify, AlignLeft, AlignRight, BringToFront, ChevronsDown, ChevronsUp, Columns2, Copy, Grid3x3, Minus, Move, Plus, Repeat2, RotateCcw as ResetZoom, RotateCw, SendToBack, Square, Trash2 } from "lucide-react";
 import type {
   CsBoardLayout, CsBoardMode, CsEdges, CsFillStyle, CsFontFamily, CsNotebookStyle, CsPointer, CsScrollPosition,
   CsStroke, CsStrokeStyle, CsTool,
@@ -195,8 +195,8 @@ interface Props {
   leftBoardMode?: CsBoardMode;
   rightBoardMode?: CsBoardMode;
   onBoardViewChange?: (layout: CsBoardLayout, left: CsBoardMode, right: CsBoardMode) => void;
-  // Daftar foni: katakli, yo'l-yo'l yoki naqshsiz (bo'sh oq varaq).
-  notebookStyle?: CsNotebookStyle;
+  // Har bir daftar sahifasining o'z naqshi (sahifa raqami -> naqsh).
+  notebookPageStyles?: Record<number, CsNotebookStyle>;
   // Statik replay/snapshot ko'rinishi uchun — hech qanday jonli host yo'q,
   // shuning uchun "ustoz bilan sinxronlash" tugmasi ma'nosiz (sinxronlanadigan
   // harakat umuman saqlanmagan). Bunday holatda foydalanuvchi har doim
@@ -206,6 +206,11 @@ interface Props {
   // qattiq 4 emas, session.notebookPageCount'dan keladi.
   notebookPageCount?: number;
   onRemovePage?: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right") => void;
+  // Faqat ustoz uchun: "+" bosilganda PDF rejimida chaqiriladi (kutubxona
+  // tanlash oqimini ochish uchun) — afterPageIndex shu sahifadan keyin
+  // qo'yish nuqtasi (0-indexed).
+  onInsertPdfPage?: (afterPageIndex: number, pane: "left" | "right") => void;
+  onInsertNotebookPage?: (afterPageIndex: number, style: CsNotebookStyle, pane: "left" | "right") => void;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -1245,6 +1250,10 @@ interface PageProps {
   isHost?: boolean;
   canRemove?: boolean;
   onRemovePage?: (pageNumber: number) => void;
+  // style bo'lsa (daftar rejimida naqsh tanlanganda) — style bilan birga
+  // yuboriladi. PDF rejimida style yo'q (undefined) — bosilganda darhol
+  // kutubxona tanlash oqimi ochiladi, popup ko'rsatilmaydi.
+  onInsertPage?: (pageNumber: number, style?: CsNotebookStyle) => void;
 }
 
 // Bitta sahifa: rasm + chizish canvas. Ko'rinish oynasiga yaqinlashguncha
@@ -1254,13 +1263,14 @@ function ClassroomPdfPage({
   pageNumber, url, notebook = false, notebookStyle = "grid", strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
   onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, onReorderStroke, registerEl, zoomVersion,
-  isHost = false, canRemove = true, onRemovePage,
+  isHost = false, canRemove = true, onRemovePage, onInsertPage,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visible, setVisible] = useState(pageNumber <= 2);
   const [confirmRemove, setConfirmRemove] = useState(false);
+  const [showStylePopup, setShowStylePopup] = useState(false);
   // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
   // xiralashtirib ko'rsatiladi (o'chirilmasdan oldin preview).
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
@@ -2751,6 +2761,46 @@ function ClassroomPdfPage({
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
       )}
       {isHost && (
+        <div className="absolute bottom-1 right-9 z-20">
+          <button
+            type="button"
+            onClick={() => notebook ? setShowStylePopup((v) => !v) : onInsertPage?.(pageNumber)}
+            title="Sahifa qo'shish"
+            className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+          >
+            <Plus size={12} />
+          </button>
+          {showStylePopup && notebook && (
+            <div className="absolute bottom-8 right-0 flex flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+              <button
+                type="button"
+                onClick={() => { setShowStylePopup(false); onInsertPage?.(pageNumber, "grid"); }}
+                title="Katakli"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+              >
+                <Grid3x3 size={14} /> Katakli
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowStylePopup(false); onInsertPage?.(pageNumber, "lined"); }}
+                title="Yo'l-yo'l"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+              >
+                <AlignJustify size={14} /> Yo'l-yo'l
+              </button>
+              <button
+                type="button"
+                onClick={() => { setShowStylePopup(false); onInsertPage?.(pageNumber, "plain"); }}
+                title="Naqshsiz"
+                className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+              >
+                <Square size={14} /> Naqshsiz
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+      {isHost && (
         <div className="absolute bottom-1 right-1 z-20">
           <button
             type="button"
@@ -2804,10 +2854,11 @@ export function ClassroomPdfViewer({
   hostScroll, rightHostScroll = null, onScrollChange, onPaneScrollChange, rightHostZoom = hostZoom, onPaneZoomChange, tool, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange, shapeStyle, onShapeStyleChange, onUpdateShapeStroke, onPaneUpdateShapeStroke, onReorderStroke, onPaneReorderStroke, onStrokeComplete, onMoveStroke, onPaneMoveStroke, onPaneStrokeComplete, onPointerMove, hostSplitRatio = 0.5, onSetSplitRatio,
   onEraseStroke, onPaneEraseStroke, onSplitStroke, onPaneSplitStroke, onPageChange, toolbar, toolbarActions, boardMode, onBoardModeChange, onUpdateTextStroke, onPaneUpdateTextStroke, onActivePaneChange,
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
-  notebookStyle = "grid",
+  notebookPageStyles = {},
   noSync = false,
   notebookPageCount = 4,
   onRemovePage,
+  onInsertPdfPage, onInsertNotebookPage,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -3230,9 +3281,14 @@ export function ClassroomPdfViewer({
                     isHost={isHost}
                     canRemove={visiblePageCount(paneMode) > 1}
                     onRemovePage={(pageNumber) => onRemovePage?.(paneMode, pageNumber, paneIndex === 1 ? "right" : "left")}
+                    onInsertPage={(pageNumber, style) => {
+                      const pane = paneIndex === 1 ? "right" : "left";
+                      if (style) onInsertNotebookPage?.(pageNumber, style, pane);
+                      else onInsertPdfPage?.(pageNumber, pane);
+                    }}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
-                    notebookStyle={notebookStyle}
+                    notebookStyle={notebookPageStyles[pageNumber] ?? "grid"}
                     strokes={displayLayout === "split" && paneIndex === 1 ? (rightStrokesByPage[pageNumber] ?? []) : (strokesByPage[pageNumber] ?? [])}
                     pointer={pointer}
                     showPointer={pointer?.page === pageNumber && (pointer?.pane ?? "left") === (paneIndex === 1 ? "right" : "left")}
