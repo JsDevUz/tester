@@ -2941,7 +2941,7 @@ export function ClassroomPdfViewer({
 
   const toolbarRow = (toolbar || toolbarActions) && (
     <div
-      className="absolute top-3 left-3 right-3 z-10 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out"
+      className="absolute top-[5px] left-[5px] right-3 z-10 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out"
       style={{ transform: overlayVisible ? "translateY(0)" : "translateY(-150%)" }}
     >
       <div className="min-w-0 flex-1">{toolbar}</div>
@@ -3078,7 +3078,7 @@ export function ClassroomPdfViewer({
         onScroll={handleScroll}
       >
         <div
-          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3"} pt-[50px] pb-[150px]`}
+          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3"} py-[50px]`}
           style={{
             width: "100%", minWidth: "100%",
             // "items-center" bola (PDF/daftar paneli) zoom bilan konteynerdan

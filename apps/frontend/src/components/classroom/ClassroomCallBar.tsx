@@ -13,6 +13,10 @@ interface Props {
   // Auto-hide overlay bilan pastga sirg'alib yashirinishi kerak bo'lsa
   // (o'quvchi ekrani) — ustoz uchun bermasdan har doim ko'rinadigan qoladi.
   hidden?: boolean;
+  // Mikrofon va qo'ng'iroqni tugatish orasidagi "⋮" menyu — faqat ustoz
+  // uchun beriladi (yozib olish/havola/yuklab olish/daftar foni kabi
+  // kamdan-kam ishlatiladigan boshqaruvlar). O'quvchida berilmaydi.
+  menu?: React.ReactNode;
 }
 
 // Mikrofon + qo'ng'iroqni tugatish (Darsni yakunlash / Darsdan chiqish)
@@ -20,11 +24,11 @@ interface Props {
 // ko'rinishda ishlatiladi.
 export function ClassroomCallBar({
   micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput,
-  micDisabled, onEndCall, endCallTitle, hidden,
+  micDisabled, onEndCall, endCallTitle, hidden, menu,
 }: Props) {
   return (
     <div
-      className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 transition-transform duration-300 ease-in-out sm:bottom-6 sm:translate-y-0!"
+      className="absolute bottom-[10px] left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 transition-transform duration-300 ease-in-out sm:translate-y-0!"
       style={{ transform: hidden ? "translateY(200px)" : "translateY(0)" }}
     >
       <MicControl
@@ -35,6 +39,7 @@ export function ClassroomCallBar({
         onSwitchAudioInput={onSwitchAudioInput}
         disabled={micDisabled}
       />
+      {menu}
       <button
         type="button"
         onClick={onEndCall}

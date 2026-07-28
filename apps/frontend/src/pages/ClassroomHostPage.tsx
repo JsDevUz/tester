@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Circle, Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
+import { Check, Circle, Download, Grid3x3, AlignJustify, Square, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -17,8 +17,8 @@ import {
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
-import { NotebookStyleToggle } from "../components/classroom/NotebookStyleToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
+import { ClassroomCallBarMenu } from "../components/classroom/ClassroomCallBarMenu";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
@@ -282,41 +282,12 @@ export function ClassroomHostPage() {
           }
           toolbarActions={
             <div className="flex items-center gap-1.5">
-              {recordingMode ? (
+              {recordingMode && (
                 <div className="flex items-center gap-1.5 rounded-full bg-red-500 px-3 py-1.5 text-xs font-semibold text-white shadow-md">
                   <Circle size={8} className="animate-pulse fill-white" />
                   <span className="tabular-nums">{formatElapsed(elapsedMs)}</span>
                 </div>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => setRecordModalOpen(true)}
-                  title="Yozib olish"
-                  className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-red-500 shadow-md border border-gray-100 hover:bg-red-50"
-                >
-                  <Circle size={12} className="fill-red-500" />
-                  <span className="hidden sm:inline">Yozib olish</span>
-                </button>
               )}
-              {state.isFree && (
-                <button
-                  type="button"
-                  onClick={handleCopyLink}
-                  title="Havolani nusxalash"
-                  className="flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-xs font-medium text-gray-900 shadow-md border border-gray-100 hover:bg-indigo-50"
-                >
-                  <Link2 size={14} />
-                  <span className="hidden sm:inline">Havola</span>
-                </button>
-              )}
-              <button
-                type="button"
-                onClick={() => setDownloadModalOpen(true)}
-                title="Yuklab olish"
-                className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
-              >
-                <Download size={14} />
-              </button>
               {fullscreen.supported && (
                 <button
                   type="button"
@@ -326,12 +297,6 @@ export function ClassroomHostPage() {
                 >
                   {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
-              )}
-              {(state.boardMode === "notebook" || state.boardLayout === "split") && (
-                <NotebookStyleToggle
-                  style={state.notebookStyle}
-                  onChange={(style) => hostActions.setNotebookStyle(style)}
-                />
               )}
               <ClassroomThemeToggle
                 theme={state.classroomTheme}
@@ -360,6 +325,48 @@ export function ClassroomHostPage() {
           micDisabled={!voice.voiceAvailable}
           onEndCall={() => setConfirmEnd(true)}
           endCallTitle="Darsni yakunlash"
+          menu={
+            <ClassroomCallBarMenu
+              items={[
+                ...(!recordingMode ? [{
+                  key: "record",
+                  label: "Yozib olish",
+                  icon: <Circle size={16} className="fill-red-500 text-red-500" />,
+                  onSelect: () => setRecordModalOpen(true),
+                }] : []),
+                ...(state.isFree ? [{
+                  key: "link",
+                  label: "Havola",
+                  icon: <Link2 size={16} />,
+                  onSelect: handleCopyLink,
+                }] : []),
+                {
+                  key: "download",
+                  label: "Yuklab olish",
+                  icon: <Download size={16} />,
+                  onSelect: () => setDownloadModalOpen(true),
+                },
+                {
+                  key: "notebook-grid",
+                  label: "Daftar: Katakli",
+                  icon: state.notebookStyle === "grid" ? <Check size={16} /> : <Grid3x3 size={16} />,
+                  onSelect: () => hostActions.setNotebookStyle("grid"),
+                },
+                {
+                  key: "notebook-lined",
+                  label: "Daftar: Yo'l-yo'l",
+                  icon: state.notebookStyle === "lined" ? <Check size={16} /> : <AlignJustify size={16} />,
+                  onSelect: () => hostActions.setNotebookStyle("lined"),
+                },
+                {
+                  key: "notebook-plain",
+                  label: "Daftar: Naqshsiz",
+                  icon: state.notebookStyle === "plain" ? <Check size={16} /> : <Square size={16} />,
+                  onSelect: () => hostActions.setNotebookStyle("plain"),
+                },
+              ]}
+            />
+          }
         />
       </div>
 
