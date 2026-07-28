@@ -308,7 +308,11 @@ function applyBoardUndoRedo(
   let nextSource: Record<number, CsStroke[]> | null = null;
   switch (p.entryType) {
     case "stroke:add":
-      nextSource = applyStrokeAddInverseClient(source, p.page, (direction === "undo" ? p.before : p.after) as { stroke: CsStroke }, direction);
+      // stroke:add yozuvida before har doim null (yangi chizma qo'shilishidan
+      // oldin "avvalgi holat" yo'q) — haqiqiy stroke ma'lumoti faqat afterda,
+      // shuning uchun ikkala yo'nalishda ham afterdan olinadi (direction'ning
+      // o'zi funksiya ichida o'chirish/qo'shishni hal qiladi).
+      nextSource = applyStrokeAddInverseClient(source, p.page, p.after as { stroke: CsStroke }, direction);
       break;
     case "stroke:erase":
       nextSource = applyStrokeEraseInverseClient(source, p.page, p.before as { stroke: CsStroke; index: number }, direction);
