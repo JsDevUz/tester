@@ -60,6 +60,54 @@ export function isValidPage(session: ClassroomSession, page: number): boolean {
   return Number.isInteger(page) && page >= 1 && page <= pageCount;
 }
 
+// Bitta sahifani (PDF yoki daftar) olib tashlaydi va undan keyingi barcha
+// sahifalar (hamda ularning chizmalari) raqamini bittaga kamaytiradi.
+// Kamida 1 ta sahifa doim qolishi shart — false qaytarilsa hech narsa
+// o'zgarmagan bo'ladi.
+export function removePageFromSession(
+  session: ClassroomSession,
+  mode: 'pdf' | 'notebook',
+  pageIndex: number,
+): boolean {
+  const previousMode = session.boardMode;
+  session.boardMode = mode;
+  const currentCount = mode === 'notebook' ? (session.notebookPageCount ?? 4) : session.pdfPages.length;
+  if (!Number.isInteger(pageIndex) || pageIndex < 1 || pageIndex > currentCount) {
+    session.boardMode = previousMode;
+    return false;
+  }
+  if (currentCount <= 1) {
+    session.boardMode = previousMode;
+    return false;
+  }
+
+  if (mode === 'pdf') {
+    session.pdfPages.splice(pageIndex - 1, 1);
+  } else {
+    session.notebookPageCount = currentCount - 1;
+  }
+
+  const map = strokeMapFor(session, mode);
+  const rebuilt = new Map<number, ClassroomStroke[]>();
+  for (const [key, strokes] of map) {
+    if (key < pageIndex) rebuilt.set(key, strokes);
+    else if (key > pageIndex) rebuilt.set(key - 1, strokes);
+    // key === pageIndex: dropped (that page's strokes are gone)
+  }
+  session.strokesByMode?.set(mode, rebuilt);
+  if (session.boardMode === mode) session.strokesByPage = rebuilt;
+
+  if (session.currentPage > pageIndex) {
+    session.currentPage -= 1;
+  } else if (session.currentPage === pageIndex) {
+    const newCount = currentCount - 1;
+    if (session.currentPage > newCount) session.currentPage = newCount;
+  }
+
+  session.boardMode = previousMode;
+  return true;
+}
+
 function validateShapeFields(stroke: ClassroomStroke): boolean {
   if (stroke.backgroundColor !== undefined && (typeof stroke.backgroundColor !== 'string' || stroke.backgroundColor.length > 32)) return false;
   if (stroke.fillStyle !== undefined && !['hachure', 'cross-hatch', 'solid'].includes(stroke.fillStyle)) return false;

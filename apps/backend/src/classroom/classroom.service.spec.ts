@@ -433,6 +433,31 @@ describe('sahifa va chizish', () => {
     expect(() => service.setSplitRatio(sessionId, 'stu-1', 0.65)).toThrow();
   });
 
+  it('host sahifani ochirsa page:remove broadcast va tarixga yoziladi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.removePage(sessionId, 'teacher-1', 'pdf', 2);
+    expect(events.at(-1)).toMatchObject({ event: 'page:remove', payload: { mode: 'pdf', pageIndex: 2, pane: 'left' } });
+    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toContain('page:remove');
+  });
+
+  it('host bolmagan foydalanuvchi sahifani ochira olmaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    expect(() => service.removePage(sessionId, 'stu-1', 'pdf', 1)).toThrow();
+  });
+
+  it('oxirgi sahifani ochirishga urinilsa xato tashlanadi', async () => {
+    const ctx = await setup();
+    ctx.service.setPdfForTests(ctx.sessionId, 'dars.pdf', ['only.png']);
+    expect(() => ctx.service.removePage(ctx.sessionId, 'teacher-1', 'pdf', 1)).toThrow();
+  });
+
+  it('kech kirgan ustoz snapshot orqali kamaygan sahifalar sonini oladi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.removePage(sessionId, 'teacher-1', 'pdf', 1);
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.pages.length).toBe(2); // withPdf() sets 3 pages, one removed
+  });
+
   it('splitRatio uchun notogri (NaN/raqam emas) qiymat 0.5 ga tushadi', async () => {
     const { service, sessionId } = await withPdf();
     service.setSplitRatio(sessionId, 'teacher-1', NaN);

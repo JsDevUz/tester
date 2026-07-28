@@ -2,6 +2,7 @@ import {
   addStroke, undoStroke, clearPage, setPage, updateStrokePosition,
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
   LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
+  removePageFromSession, strokeMapFor,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -310,5 +311,78 @@ describe('isValidPage', () => {
     session.notebookPageCount = 2;
     expect(isValidPage(session, 2)).toBe(true);
     expect(isValidPage(session, 3)).toBe(false);
+  });
+});
+
+describe('removePageFromSession', () => {
+  it('removePageFromSession removes a pdf page and reindexes strokes', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+    session.boardMode = 'pdf';
+    session.currentPage = 3;
+    const map = strokeMapFor(session, 'pdf');
+    map.set(1, [{ id: 's1', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    map.set(2, [{ id: 's2', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    map.set(3, [{ id: 's3', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+
+    const ok = removePageFromSession(session, 'pdf', 2);
+
+    expect(ok).toBe(true);
+    expect(session.pdfPages).toEqual(['a.png', 'c.png']);
+    const reindexed = strokeMapFor(session, 'pdf');
+    expect(reindexed.get(1)?.[0]?.id).toBe('s1');
+    expect(reindexed.get(2)?.[0]?.id).toBe('s3'); // was page 3, now page 2
+    expect(reindexed.has(3)).toBe(false);
+    expect(session.currentPage).toBe(2); // was 3 (last page), clamped to new last page
+  });
+
+  it('removePageFromSession removes a notebook page and decrements notebookPageCount', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 4;
+    session.currentPage = 1;
+
+    const ok = removePageFromSession(session, 'notebook', 2);
+
+    expect(ok).toBe(true);
+    expect(session.notebookPageCount).toBe(3);
+  });
+
+  it('removePageFromSession refuses to remove the last remaining page', () => {
+    const session = makeSession();
+    session.pdfPages = ['only.png'];
+
+    const ok = removePageFromSession(session, 'pdf', 1);
+
+    expect(ok).toBe(false);
+    expect(session.pdfPages).toEqual(['only.png']);
+  });
+
+  it('removePageFromSession refuses an out-of-range pageIndex', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+
+    expect(removePageFromSession(session, 'pdf', 5)).toBe(false);
+    expect(removePageFromSession(session, 'pdf', 0)).toBe(false);
+  });
+
+  it('removePageFromSession decrements currentPage when a page before it is removed', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+    session.currentPage = 3;
+
+    removePageFromSession(session, 'pdf', 1);
+
+    expect(session.currentPage).toBe(2);
+  });
+
+  it('removePageFromSession leaves currentPage unchanged when a later page is removed', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+    session.currentPage = 1;
+
+    removePageFromSession(session, 'pdf', 3);
+
+    expect(session.currentPage).toBe(1);
   });
 });

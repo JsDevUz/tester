@@ -13,6 +13,7 @@ import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, isValidPage,
+  removePageFromSession,
   reorderStrokes as reorderStrokesInSession,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
   updateShapeStroke as updateShapeStrokeInSession,
@@ -609,6 +610,17 @@ export class ClassroomService implements OnModuleInit {
     const payload = { ratio: clamped };
     this.recordHistoryEvent(s, 'splitRatio:set', payload);
     this.broadcaster.toRoom(s.id, 'splitRatio:set', payload);
+  }
+
+  // Bitta sahifani (PDF yoki daftar) darsdan olib tashlaydi — undan
+  // keyingi sahifalar va ularning chizmalari bittaga siljiydi.
+  removePage(sessionId: string, userId: string, mode: 'pdf' | 'notebook', pageIndex: number, pane: 'left' | 'right' = 'left'): void {
+    const s = this.requireHost(sessionId, userId);
+    const ok = removePageFromSession(s, mode, pageIndex);
+    if (!ok) throw new Error('INVALID_PAGE_REMOVAL');
+    const payload = { mode, pageIndex, pane };
+    this.recordHistoryEvent(s, 'page:remove', payload);
+    this.broadcaster.toRoom(s.id, 'page:remove', payload);
   }
 
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
