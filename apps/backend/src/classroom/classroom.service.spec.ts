@@ -356,6 +356,50 @@ describe('attachPdfFromLibrary', () => {
       service.attachPdfFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [5]),
     ).rejects.toThrow();
   });
+
+  it('kutubxonadan tanlangan sahifalarni mavjud PDFga qoshadi va pdf:insert broadcast qiladi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1', 'p2', 'p3'], status: 'ready' });
+    const { service, events, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['a.png', 'b.png']);
+
+    const result = await service.insertPdfPagesFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [2], 1);
+
+    expect(result).toEqual({ pages: ['p2'] });
+    expect(events.at(-1)).toMatchObject({
+      event: 'pdf:insert',
+      payload: { pages: ['p2'], afterPageIndex: 1 },
+    });
+  });
+
+  it('boshqa kitobdan olingan sahifalar mavjud PDFga aralashtiriladi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['other-1', 'other-2'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['a.png', 'b.png']);
+
+    const result = await service.insertPdfPagesFromLibrary(sessionId, 'teacher-1', 'teacher', 'boshqa-asset', [1], 2);
+
+    expect(result.pages).toEqual(['other-1']);
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.pages).toEqual(['a.png', 'b.png', 'other-1']);
+  });
+
+  it('begona ustoz uchun taqiqlanadi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['a.png']);
+    await expect(
+      service.insertPdfPagesFromLibrary(sessionId, 'boshqa-teacher', 'teacher', 'asset-1', [1], 0),
+    ).rejects.toThrow();
+  });
+
+  it('notogri afterPageIndex bilan qoshish rad etiladi', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['a.png']);
+    await expect(
+      service.insertPdfPagesFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [1], 99),
+    ).rejects.toThrow();
+  });
 });
 
 describe('sahifa va chizish', () => {

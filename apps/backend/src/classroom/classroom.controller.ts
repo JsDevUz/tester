@@ -20,6 +20,12 @@ class AttachPdfDto {
   @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
 }
 
+class InsertPdfPagesDto {
+  @IsString() mediaAssetId!: string;
+  @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
+  @IsInt() @Min(0) afterPageIndex!: number;
+}
+
 class StartRecordingDto {
   @IsIn(['full', 'boardAudio', 'boardSilent']) mode!: 'full' | 'boardAudio' | 'boardSilent';
 }
@@ -52,6 +58,16 @@ export class ClassroomController {
     @Req() req: any,
   ) {
     return this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers);
+  }
+
+  @Post('sessions/:id/pdf/insert')
+  @Roles('teacher', 'super')
+  async insertPdfPages(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: InsertPdfPagesDto,
+    @Req() req: any,
+  ) {
+    return this.classroomService.insertPdfPagesFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers, dto.afterPageIndex);
   }
 
   @Post('sessions/:id/end')

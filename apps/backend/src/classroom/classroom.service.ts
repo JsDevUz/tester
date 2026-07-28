@@ -12,7 +12,7 @@ import { MediaLibraryService } from '../upload/media-library.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
-  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, isValidPage,
+  closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, insertPdfPagesIntoSession, isValidPage,
   removePageFromSession,
   reorderStrokes as reorderStrokesInSession,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
@@ -203,6 +203,45 @@ export class ClassroomService implements OnModuleInit {
     this.recordHistoryEvent(s, 'pdf:set', payload);
     this.broadcaster.toRoom(sessionId, 'pdf:set', payload);
     return { pdfName, pages: selectedPages };
+  }
+
+  // Kutubxonadagi (istalgan, hozirgi darsga biriktirilganidan farqli
+  // bo'lishi ham mumkin) PDF'dan tanlangan sahifalarni mavjud darsga
+  // QO'SHADI (attachPdfFromLibrary'dan farqli — u butun sessiyani
+  // almashtiradi, bu faqat append/insert qiladi, eski sahifa/chizmalarga
+  // tegmaydi). pdfName o'zgarmaydi — endi faqat ko'rgazmali (advisory)
+  // yorliq, chunki sahifalar turli fayllardan aralash bo'lishi mumkin.
+  async insertPdfPagesFromLibrary(
+    sessionId: string, teacherId: string, teacherRole: string, mediaAssetId: string, pageNumbers: number[], afterPageIndex: number,
+  ): Promise<{ pages: string[] }> {
+    const s = this.requireSession(sessionId);
+    if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi sahifa qo\'sha oladi');
+
+    const { pages: allPages, status } = await this.mediaLibrary.getPdfPages(mediaAssetId, teacherId, teacherRole);
+    if (status !== 'ready') {
+      throw new ConflictException("PDF hali tayyor emas — konvertatsiya tugashini kuting");
+    }
+    if (allPages.length === 0) {
+      throw new ConflictException('PDF sahifalari topilmadi');
+    }
+
+    const uniqueSorted = [...new Set(pageNumbers)].sort((a, b) => a - b);
+    if (uniqueSorted.some((n) => !Number.isInteger(n) || n < 1 || n > allPages.length)) {
+      throw new ConflictException("Noto'g'ri sahifa raqami tanlangan");
+    }
+    const newPages = uniqueSorted.map((n) => allPages[n - 1]);
+
+    const ok = insertPdfPagesIntoSession(s, newPages, afterPageIndex);
+    if (!ok) throw new ConflictException("Noto'g'ri qo'yish joyi");
+
+    await db.update(classSessions)
+      .set({ pdfPages: s.pdfPages })
+      .where(eq(classSessions.id, sessionId));
+
+    const payload = { pages: newPages, afterPageIndex };
+    this.recordHistoryEvent(s, 'pdf:insert', payload);
+    this.broadcaster.toRoom(sessionId, 'pdf:insert', payload);
+    return { pages: newPages };
   }
 
   private applyPdf(s: ClassroomSession, pdfName: string, pages: string[]) {

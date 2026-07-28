@@ -3,7 +3,7 @@ import {
   attendanceStatusOnJoin, closeInterval, buildSnapshot, reorderStrokes,
   LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
   removePageFromSession, strokeMapFor, resolveNotebookPageStyle,
-  insertNotebookPageIntoSession,
+  insertNotebookPageIntoSession, insertPdfPagesIntoSession,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -455,6 +455,69 @@ describe('removePageFromSession', () => {
     const notebookMapAfter = strokeMapFor(session, 'notebook');
     expect(notebookMapAfter.get(1)?.[0]?.id).toBe('nb-s1'); // untouched, not reindexed
     expect(notebookMapAfter.get(2)?.[0]?.id).toBe('nb-s2'); // untouched, not reindexed
+  });
+});
+
+describe('insertPdfPagesIntoSession', () => {
+  it('insertPdfPagesIntoSession splices new pages after the given index', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+
+    const ok = insertPdfPagesIntoSession(session, ['x.png', 'y.png'], 1);
+
+    expect(ok).toBe(true);
+    expect(session.pdfPages).toEqual(['a.png', 'x.png', 'y.png', 'b.png', 'c.png']);
+  });
+
+  it('insertPdfPagesIntoSession shifts strokes at and after the insertion point up by the inserted count', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+    session.boardMode = 'pdf';
+    const map = strokeMapFor(session, 'pdf');
+    map.set(1, [{ id: 's1', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+    map.set(2, [{ id: 's2', tool: 'pen', color: '#000', width: 2, points: [0, 0, 1, 1] }]);
+
+    insertPdfPagesIntoSession(session, ['new.png'], 1);
+
+    const reindexed = strokeMapFor(session, 'pdf');
+    expect(reindexed.get(1)?.[0]?.id).toBe('s1');
+    expect(reindexed.has(2)).toBe(false);
+    expect(reindexed.get(3)?.[0]?.id).toBe('s2');
+  });
+
+  it('insertPdfPagesIntoSession increments currentPage when inserting before or at it', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+    session.currentPage = 2;
+
+    insertPdfPagesIntoSession(session, ['x.png'], 1);
+
+    expect(session.currentPage).toBe(3);
+  });
+
+  it('insertPdfPagesIntoSession leaves currentPage unchanged when inserting after it', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+    session.currentPage = 1;
+
+    insertPdfPagesIntoSession(session, ['x.png'], 2);
+
+    expect(session.currentPage).toBe(1);
+  });
+
+  it('insertPdfPagesIntoSession refuses an out-of-range afterPageIndex', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+
+    expect(insertPdfPagesIntoSession(session, ['x.png'], -1)).toBe(false);
+    expect(insertPdfPagesIntoSession(session, ['x.png'], 3)).toBe(false);
+  });
+
+  it('insertPdfPagesIntoSession refuses an empty newPages array', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png'];
+
+    expect(insertPdfPagesIntoSession(session, [], 0)).toBe(false);
   });
 });
 

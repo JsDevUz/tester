@@ -160,6 +160,35 @@ export function insertNotebookPageIntoSession(
   return true;
 }
 
+// PDF'ga bir yoki bir nechta yangi sahifa qo'shadi (kutubxonaning istalgan
+// faylidan bo'lishi mumkin) — afterPageIndex'dan keyingi barcha sahifalar
+// (va ularning chizmalari) qo'shilgan sahifalar soniga qarab yuqoriga
+// siljiydi. afterPageIndex 0-indexed (Array.splice semantikasi bilan bir xil).
+export function insertPdfPagesIntoSession(
+  session: ClassroomSession,
+  newPages: string[],
+  afterPageIndex: number,
+): boolean {
+  if (newPages.length === 0) return false;
+  if (!Number.isInteger(afterPageIndex) || afterPageIndex < 0 || afterPageIndex > session.pdfPages.length) return false;
+
+  session.pdfPages.splice(afterPageIndex, 0, ...newPages);
+
+  const shiftBy = newPages.length;
+  const map = strokeMapFor(session, 'pdf');
+  const rebuilt = new Map<number, ClassroomStroke[]>();
+  for (const [key, strokes] of map) {
+    if (key <= afterPageIndex) rebuilt.set(key, strokes);
+    else rebuilt.set(key + shiftBy, strokes);
+  }
+  session.strokesByMode?.set('pdf', rebuilt);
+  if ((session.boardMode ?? 'pdf') === 'pdf') session.strokesByPage = rebuilt;
+
+  if (session.currentPage > afterPageIndex) session.currentPage += shiftBy;
+
+  return true;
+}
+
 function validateShapeFields(stroke: ClassroomStroke): boolean {
   if (stroke.backgroundColor !== undefined && (typeof stroke.backgroundColor !== 'string' || stroke.backgroundColor.length > 32)) return false;
   if (stroke.fillStyle !== undefined && !['hachure', 'cross-hatch', 'solid'].includes(stroke.fillStyle)) return false;
