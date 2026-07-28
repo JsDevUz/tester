@@ -1198,3 +1198,160 @@ describe('myClassSessions', () => {
     expect(mockedDb.query.users.findMany).not.toHaveBeenCalled();
   });
 });
+
+describe('undo entry recording', () => {
+  async function withPdf() {
+    const ctx = await setup();
+    ctx.service.setPdfForTests(ctx.sessionId, 'dars.pdf', ['u1', 'u2', 'u3']);
+    return ctx;
+  }
+
+  it('stroke() pushes a stroke:add entry', async () => {
+    const { service, sessionId } = await withPdf();
+    const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
+
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+
+    const stack = service.getUndoStackForTests(sessionId);
+    expect(stack.at(-1)).toMatchObject({ type: 'stroke:add', mode: 'pdf', page: 1, after: { stroke } });
+  });
+
+  it('moveStroke() pushes a stroke:transform entry with correct before/after points', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+
+    service.moveStroke(sessionId, 'teacher-1', 1, 's1', 0.5, 0.5);
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('stroke:transform');
+    expect((entry.before as any).points).toEqual([0.1, 0.1, 0.2, 0.2]);
+    expect((entry.after as any).points[0]).toBeCloseTo(0.5);
+  });
+
+  // NOTE: updateTextStrokeInSession (classroom.logic.ts) rejects any stroke
+  // whose id isn't already present in the page's stroke list (index === -1
+  // => returns false => service throws INVALID_STROKE before pushUndoEntry
+  // is ever reached). A brand-new text stroke is created via stroke(), not
+  // updateTextStroke() — per the Task 3 brief's own Step 6 note, this
+  // before=null branch is structurally unreachable through this call site,
+  // and the brief explicitly forbids changing updateTextStrokeInSession's
+  // validation to force it reachable. Skipped rather than asserting
+  // dead code; the before=null case is still exercised at the type/logic
+  // level by Task 1's applyStrokeTextInverse tests.
+  it.skip('updateTextStroke() pushes a stroke:text entry with before=null for a brand-new text stroke', async () => {
+    const { service, sessionId } = await withPdf();
+    const stroke = { id: 't1', tool: 'text' as const, color: '#000', width: 2, points: [0.2, 0.2], text: 'Salom', textBoxWidth: 100, textBoxHeight: 40 };
+
+    service.updateTextStroke(sessionId, 'teacher-1', 1, stroke);
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('stroke:text');
+    expect(entry.before).toBeNull();
+    expect((entry.after as any).text).toBe('Salom');
+  });
+
+  it('updateTextStroke() pushes before= the prior stroke when editing existing text', async () => {
+    const { service, sessionId } = await withPdf();
+    const original = { id: 't1', tool: 'text' as const, color: '#000', width: 2, points: [0.2, 0.2], text: 'Salom', textBoxWidth: 100, textBoxHeight: 40 };
+    // updateTextStrokeInSession requires the stroke to already exist (see
+    // NOTE above), so seed it via stroke() first — matching how a text
+    // stroke is actually created in production (stroke:add path).
+    service.stroke(sessionId, 'teacher-1', 1, original);
+    service.updateTextStroke(sessionId, 'teacher-1', 1, original);
+
+    const edited = { ...original, text: 'Salom dunyo' };
+    service.updateTextStroke(sessionId, 'teacher-1', 1, edited);
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect((entry.before as any).text).toBe('Salom');
+    expect((entry.after as any).text).toBe('Salom dunyo');
+  });
+
+  it('updateShapeStroke() pushes a stroke:style entry', async () => {
+    const { service, sessionId } = await withPdf();
+    const shape = { id: 'r1', tool: 'rectangle' as const, color: '#000', width: 2, points: [0.1, 0.1, 0.3, 0.3] };
+    service.stroke(sessionId, 'teacher-1', 1, shape);
+
+    service.updateShapeStroke(sessionId, 'teacher-1', 1, { ...shape, color: '#f00' });
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('stroke:style');
+    expect((entry.before as any).color).toBe('#000');
+    expect((entry.after as any).color).toBe('#f00');
+  });
+
+  it('eraseStroke() pushes a stroke:erase entry with the stroke and its original index', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's2', tool: 'pen', color: '#f00', width: 3, points: [0.3, 0.3, 0.4, 0.4] });
+
+    service.eraseStroke(sessionId, 'teacher-1', 1, 's2');
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('stroke:erase');
+    expect((entry.before as any).index).toBe(1);
+    expect((entry.before as any).stroke.id).toBe('s2');
+  });
+
+  it('reorderStroke() pushes a stroke:reorder entry with full before/after order', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's2', tool: 'pen', color: '#f00', width: 3, points: [0.3, 0.3, 0.4, 0.4] });
+
+    service.reorderStroke(sessionId, 'teacher-1', 1, ['s1'], 'front');
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('stroke:reorder');
+    expect((entry.before as any).order).toEqual(['s1', 's2']);
+    expect((entry.after as any).order).toEqual(['s2', 's1']);
+  });
+
+  it('removePage() pushes a page:remove entry carrying the removed page\'s strokes', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 2, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+
+    service.removePage(sessionId, 'teacher-1', 'pdf', 2);
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('page:remove');
+    expect((entry.before as any).pageIndex).toBe(2);
+    expect((entry.before as any).page.strokes).toHaveLength(1);
+  });
+
+  it('insertNotebookPage() pushes a page:insert entry', async () => {
+    const { service, sessionId } = await setup();
+
+    service.insertNotebookPage(sessionId, 'teacher-1', 1, 'lined');
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('page:insert');
+    expect(entry.mode).toBe('notebook');
+    expect((entry.after as any).style).toBe('lined');
+  });
+
+  it('insertPdfPagesFromLibrary() pushes a page:insert entry carrying the resolved page URLs', async () => {
+    const mediaLibrary = makeFakeMediaLibrary({ pages: ['p1.webp', 'p2.webp'], status: 'ready' });
+    const { service, sessionId } = await setup(mediaLibrary);
+    service.setPdfForTests(sessionId, 'dars.pdf', ['a.webp']);
+
+    await service.insertPdfPagesFromLibrary(sessionId, 'teacher-1', 'teacher', 'asset-1', [1], 1);
+
+    const entry = service.getUndoStackForTests(sessionId).at(-1)!;
+    expect(entry.type).toBe('page:insert');
+    expect(entry.mode).toBe('pdf');
+    expect((entry.after as any).pages).toEqual(['p1.webp']);
+  });
+
+  // NOTE: depends on Task 4's new no-arg service.undo(sessionId, userId) redo-stack-clearing
+  // behavior and service.getRedoStackForTests, neither of which exist until Task 4 lands.
+  // Written now per Task 3 brief instructions; skipped until Task 4 wires undo()/redo().
+  it.skip('a new action clears the redo stack', async () => {
+    const { service, sessionId } = await withPdf();
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] });
+    service.undo(sessionId, 'teacher-1'); // populates redoStack with 1 entry
+
+    service.stroke(sessionId, 'teacher-1', 1, { id: 's2', tool: 'pen', color: '#f00', width: 3, points: [0.3, 0.3, 0.4, 0.4] });
+
+    expect(service.getRedoStackForTests(sessionId)).toEqual([]);
+  });
+});

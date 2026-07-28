@@ -13,15 +13,15 @@ import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, insertPdfPagesIntoSession, isValidPage,
-  removePageFromSession,
-  reorderStrokes as reorderStrokesInSession,
+  pushUndoEntry, removePageFromSession,
+  reorderStrokes as reorderStrokesInSession, resolveNotebookPageStyle,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode, undoStroke,
   updateShapeStroke as updateShapeStrokeInSession,
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookStyle,
-  ClassroomParticipant, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
+  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -233,6 +233,7 @@ export class ClassroomService implements OnModuleInit {
 
     const ok = insertPdfPagesIntoSession(s, newPages, afterPageIndex);
     if (!ok) throw new ConflictException("Noto'g'ri qo'yish joyi");
+    pushUndoEntry(s, { type: 'page:insert', mode: 'pdf', page: afterPageIndex + 1, pane: 'left', before: null, after: { afterPageIndex, pages: newPages } });
 
     await db.update(classSessions)
       .set({ pdfPages: s.pdfPages })
@@ -496,6 +497,7 @@ export class ClassroomService implements OnModuleInit {
     const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    pushUndoEntry(s, { type: 'stroke:add', mode, page, pane, before: null, after: { stroke } });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:add', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:add', payload);
@@ -505,9 +507,17 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateStrokePosition(s, page, strokeId, x, y, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const priorStroke = map.get(page)?.find((item) => item.id === strokeId);
+    const before = priorStroke ? { points: [...priorStroke.points], rotation: priorStroke.rotation, textBoxWidth: priorStroke.textBoxWidth, textBoxHeight: priorStroke.textBoxHeight } : null;
+    const accepted = updateStrokePosition(s, page, strokeId, x, y, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    if (before) {
+      const updated = map.get(page)!.find((item) => item.id === strokeId)!;
+      const after = { points: [...updated.points], rotation: updated.rotation, textBoxWidth: updated.textBoxWidth, textBoxHeight: updated.textBoxHeight };
+      pushUndoEntry(s, { type: 'stroke:transform', mode, page, pane, strokeId, before, after });
+    }
     const payload = { page, strokeId, x, y, pane, mode };
     this.recordHistoryEvent(s, 'stroke:update', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:update', payload);
@@ -517,9 +527,13 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateTextStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const priorStroke = map.get(page)?.find((item) => item.id === stroke.id);
+    const before = priorStroke ? { ...priorStroke, points: [...priorStroke.points] } : null;
+    const accepted = updateTextStrokeInSession(s, page, stroke, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    pushUndoEntry(s, { type: 'stroke:text', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] } });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:textUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload);
@@ -529,9 +543,13 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = updateShapeStrokeInSession(s, page, stroke, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const priorStroke = map.get(page)?.find((item) => item.id === stroke.id);
+    const before = priorStroke ? { ...priorStroke, points: [...priorStroke.points] } : {};
+    const accepted = updateShapeStrokeInSession(s, page, stroke, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    pushUndoEntry(s, { type: 'stroke:style', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] } });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:shapeUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
@@ -556,9 +574,14 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const erased = eraseStrokeById(s, page, strokeId, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const list = map.get(page) ?? [];
+    const index = list.findIndex((item) => item.id === strokeId);
+    const strokeBeforeErase = index !== -1 ? list[index] : undefined;
+    const erased = eraseStrokeById(s, page, strokeId, map);
     s.boardMode = previousMode;
     if (erased) {
+      if (index !== -1) pushUndoEntry(s, { type: 'stroke:erase', mode, page, pane, before: { stroke: strokeBeforeErase, index }, after: null });
       const payload = { page, strokeId, pane, mode };
       this.recordHistoryEvent(s, 'stroke:undo', payload);
       this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);
@@ -575,9 +598,13 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = reorderStrokesInSession(s, page, strokeIds, op, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const beforeOrder = (map.get(page) ?? []).map((item) => item.id);
+    const accepted = reorderStrokesInSession(s, page, strokeIds, op, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    const afterOrder = (map.get(page) ?? []).map((item) => item.id);
+    pushUndoEntry(s, { type: 'stroke:reorder', mode, page, pane, before: { order: beforeOrder }, after: { order: afterOrder } });
     const payload = { page, strokeIds, op, pane, mode };
     this.recordHistoryEvent(s, 'stroke:reorder', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:reorder', payload);
@@ -646,8 +673,15 @@ export class ClassroomService implements OnModuleInit {
   // keyingi sahifalar va ularning chizmalari bittaga siljiydi.
   removePage(sessionId: string, userId: string, mode: 'pdf' | 'notebook', pageIndex: number, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
+    const map = strokeMapFor(s, mode);
+    const pageSnapshot: ClassroomPageSnapshot = {
+      url: mode === 'pdf' ? s.pdfPages[pageIndex - 1] : undefined,
+      notebookStyle: mode === 'notebook' ? resolveNotebookPageStyle(s, pageIndex) : undefined,
+      strokes: map.get(pageIndex) ?? [],
+    };
     const ok = removePageFromSession(s, mode, pageIndex);
     if (!ok) throw new Error('INVALID_PAGE_REMOVAL');
+    pushUndoEntry(s, { type: 'page:remove', mode, page: pageIndex, pane, before: { pageIndex, page: pageSnapshot }, after: null });
     const payload = { mode, pageIndex, pane };
     this.recordHistoryEvent(s, 'page:remove', payload);
     this.broadcaster.toRoom(s.id, 'page:remove', payload);
@@ -659,6 +693,7 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const ok = insertNotebookPageIntoSession(s, afterPageIndex, style);
     if (!ok) throw new Error('INVALID_PAGE_INSERT');
+    pushUndoEntry(s, { type: 'page:insert', mode: 'notebook', page: afterPageIndex + 1, pane, before: null, after: { afterPageIndex, style } });
     const payload = { mode: 'notebook' as const, afterPageIndex, style, pane };
     this.recordHistoryEvent(s, 'page:insert', payload);
     this.broadcaster.toRoom(s.id, 'page:insert', payload);
@@ -1104,6 +1139,15 @@ export class ClassroomService implements OnModuleInit {
   // Faqat testlar uchun — xotiradagi tarix massivini to'g'ridan-to'g'ri o'qiydi.
   getHistoryEventsForTests(sessionId: string): ClassroomHistoryEvent[] {
     return this.sessions.get(sessionId)?.historyEvents ?? [];
+  }
+
+  // Faqat testlar uchun — xotiradagi undo/redo steklarini to'g'ridan-to'g'ri o'qiydi.
+  getUndoStackForTests(sessionId: string): ClassroomUndoEntry[] {
+    return this.sessions.get(sessionId)?.undoStack ?? [];
+  }
+
+  getRedoStackForTests(sessionId: string): ClassroomUndoEntry[] {
+    return this.sessions.get(sessionId)?.redoStack ?? [];
   }
 
   // ---------- Yordamchilar ----------
