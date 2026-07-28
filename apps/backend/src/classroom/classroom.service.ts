@@ -622,7 +622,7 @@ export class ClassroomService implements OnModuleInit {
   // hozir ulangan o'quvchilarga esa broadcast orqali yetkaziladi.
   setZoom(sessionId: string, userId: string, zoom: number, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
-    const clamped = Math.min(4, Math.max(1, zoom));
+    const clamped = Math.min(4, Math.max(0.5, zoom));
     if (pane === 'left') s.zoom = clamped;
     else s.rightZoom = clamped;
     const payload = { zoom: clamped, pane };

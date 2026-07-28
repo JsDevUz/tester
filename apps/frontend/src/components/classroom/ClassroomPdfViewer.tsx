@@ -11,10 +11,6 @@ import { getStroke } from "perfect-freehand";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
-// PDF 100% holatda daftar bilan bir xilroq masofada ko'rinishi uchun
-// viewport kengligining biroz kichikroq qismi ishlatiladi. Toolbar'dagi
-// ko'rsatiladigan zoom foizi esa foydalanuvchi uchun baribir 100% bo'lib qoladi.
-const PDF_BASE_SCALE = 0.78;
 const MAX_DPR = 2;
 
 // To'rtburchak/doira asboblari uchun joriy uslub — Excalidraw'dagi
@@ -3249,10 +3245,7 @@ export function ClassroomPdfViewer({
                     // yuborardi. Grid/stroke o'lchami baribir REF_WIDTH
                     // asosida hisoblanadi (canvas render'da), shuning uchun
                     // teacher/student o'rtasida nisbiy ko'rinish bir xil qoladi.
-                    // PDF_BASE_SCALE daftarga ham qo'llaniladi — aks holda
-                    // 100% zoom'da daftar butun viewport kengligini butunlay
-                    // egallab, PDF'dan farqli, "chekkasiz" ko'rinardi.
-                    width: `${zoom * PDF_BASE_SCALE * 100}%`,
+                    width: `${zoom * 100}%`,
                     alignItems: "safe center",
                   }}
             >
