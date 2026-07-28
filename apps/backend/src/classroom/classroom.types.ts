@@ -69,6 +69,15 @@ export interface ClassroomUndoEntry {
   after: unknown;
 }
 
+// page:remove undo-yozuvi uchun — o'chirilgan sahifani TO'LIQ tiklash
+// (undo bosilganda) uchun yetarli ma'lumot: uning barcha chizmalari va
+// (agar PDF bo'lsa) URL'i yoki (agar daftar bo'lsa) naqshi.
+export interface ClassroomPageSnapshot {
+  url?: string; // faqat pdf uchun
+  notebookStyle?: ClassroomNotebookStyle; // faqat notebook uchun
+  strokes: ClassroomStroke[];
+}
+
 export type AttendanceStatus = 'absent' | 'present' | 'late';
 
 export interface ClassroomParticipant {

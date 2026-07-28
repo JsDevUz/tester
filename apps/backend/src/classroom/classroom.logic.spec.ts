@@ -6,7 +6,7 @@ import {
   insertNotebookPageIntoSession, insertPdfPagesIntoSession,
   pushUndoEntry, applyStrokeAddInverse, applyStrokeEraseInverse,
   applyStrokeTransformInverse, applyStrokeStyleInverse, applyStrokeTextInverse,
-  applyStrokeReorderInverse,
+  applyStrokeReorderInverse, applyPageRemoveInverse, applyPageInsertInverse,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -771,5 +771,89 @@ describe('applyStrokeReorderInverse', () => {
     applyStrokeReorderInverse(session, 'pdf', 1, { before: { order: ['s1', 's2'] }, after: { order: ['s2', 's1'] } }, 'undo');
 
     expect(strokeMapFor(session, 'pdf').get(1)!.map((s) => s.id)).toEqual(['s1', 's2']);
+  });
+});
+
+describe('applyPageRemoveInverse', () => {
+  it('undo re-inserts a removed pdf page with its strokes at the original index', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'c.png']; // b.png was removed from index 1 (0-indexed)
+    const map = strokeMapFor(session, 'pdf');
+    map.set(2, [makeStroke({ id: 's-on-c' })]); // was page 2 (c.png) after removal
+
+    applyPageRemoveInverse(session, 'pdf', {
+      pageIndex: 2, // 1-indexed pageIndex that was removed
+      page: { url: 'b.png', strokes: [makeStroke({ id: 's-on-b' })] },
+    }, 'undo');
+
+    expect(session.pdfPages).toEqual(['a.png', 'b.png', 'c.png']);
+    const reindexed = strokeMapFor(session, 'pdf');
+    expect(reindexed.get(2)).toEqual([makeStroke({ id: 's-on-b' })]);
+    expect(reindexed.get(3)).toEqual([makeStroke({ id: 's-on-c' })]);
+  });
+
+  it('redo removes the page again via removePageFromSession', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+
+    applyPageRemoveInverse(session, 'pdf', {
+      pageIndex: 2,
+      page: { url: 'b.png', strokes: [] },
+    }, 'redo');
+
+    expect(session.pdfPages).toEqual(['a.png', 'c.png']);
+  });
+
+  it('undo re-inserts a removed notebook page with its style', () => {
+    const session = makeSession();
+    session.notebookPageCount = 3;
+    session.notebookPageStyles = { 1: 'grid', 2: 'plain' }; // page 2 (lined) was removed
+
+    applyPageRemoveInverse(session, 'notebook', {
+      pageIndex: 2,
+      page: { strokes: [], notebookStyle: 'lined' },
+    }, 'undo');
+
+    expect(session.notebookPageCount).toBe(4);
+    expect(session.notebookPageStyles).toEqual({ 1: 'grid', 2: 'lined', 3: 'plain' });
+  });
+});
+
+describe('applyPageInsertInverse', () => {
+  it('undo removes an inserted pdf page via removePageFromSession', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'x.png', 'b.png']; // x.png inserted after index 1 (0-indexed)
+
+    applyPageInsertInverse(session, 'pdf', { afterPageIndex: 1, pages: ['x.png'] }, 'undo');
+
+    expect(session.pdfPages).toEqual(['a.png', 'b.png']);
+  });
+
+  it('redo re-inserts the same pdf page(s) at the same position', () => {
+    const session = makeSession();
+    session.pdfPages = ['a.png', 'b.png'];
+
+    applyPageInsertInverse(session, 'pdf', { afterPageIndex: 1, pages: ['x.png'] }, 'redo');
+
+    expect(session.pdfPages).toEqual(['a.png', 'x.png', 'b.png']);
+  });
+
+  it('undo removes an inserted notebook page', () => {
+    const session = makeSession();
+    session.notebookPageCount = 4;
+
+    applyPageInsertInverse(session, 'notebook', { afterPageIndex: 2, style: 'lined' }, 'undo');
+
+    expect(session.notebookPageCount).toBe(3);
+  });
+
+  it('redo re-inserts the same notebook page with the same style', () => {
+    const session = makeSession();
+    session.notebookPageCount = 3;
+
+    applyPageInsertInverse(session, 'notebook', { afterPageIndex: 2, style: 'lined' }, 'redo');
+
+    expect(session.notebookPageCount).toBe(4);
+    expect(session.notebookPageStyles?.[3]).toBe('lined');
   });
 });

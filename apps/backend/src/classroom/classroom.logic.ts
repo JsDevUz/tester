@@ -1,6 +1,6 @@
 import {
   ClassroomBoardMode, ClassroomFontFamily, ClassroomNotebookStyle, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
-  ClassroomUndoEntry,
+  ClassroomUndoEntry, ClassroomPageSnapshot,
 } from './classroom.types';
 
 const FONT_FAMILIES: ClassroomFontFamily[] = ['Inter', 'Arial', 'Georgia', 'Comic Sans MS', 'Nunito'];
@@ -311,6 +311,55 @@ export function insertPdfPagesIntoSession(
   if (session.currentPage > afterPageIndex) session.currentPage += shiftBy;
 
   return true;
+}
+
+// page:remove'ning teskarisi. undo — o'chirilgan sahifani (URL/naqsh +
+// chizmalari bilan) removePageFromSession'ning teskari yo'nalishida
+// aynan o'sha 1-indexed pageIndex'ga qayta qo'yadi (keyingi sahifalar
+// yuqoriga siljiydi, insertPdfPagesIntoSession/
+// insertNotebookPageIntoSession bilan bir xil reindex mantiqi). redo —
+// sahifani removePageFromSession orqali yana olib tashlaydi.
+export function applyPageRemoveInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode,
+  data: { pageIndex: number; page: ClassroomPageSnapshot }, direction: 'undo' | 'redo',
+): void {
+  if (direction === 'redo') {
+    removePageFromSession(session, mode, data.pageIndex);
+    return;
+  }
+  // undo: pageIndex (1-indexed) o'rniga qo'yish — insert funksiyalari
+  // 0-indexed afterPageIndex kutadi, shuning uchun pageIndex - 1 = "shu
+  // sahifadan OLDIN qo'yish nuqtasi" (Array.splice semantikasi bilan bir xil).
+  const afterPageIndex = data.pageIndex - 1;
+  if (mode === 'pdf') {
+    insertPdfPagesIntoSession(session, [data.page.url!], afterPageIndex);
+  } else {
+    insertNotebookPageIntoSession(session, afterPageIndex, data.page.notebookStyle ?? 'grid');
+  }
+  // Qo'yilgan (bo'sh) sahifaga o'chirishdan oldingi chizmalarni qaytaramiz.
+  const map = strokeMapFor(session, mode);
+  map.set(data.pageIndex, data.page.strokes);
+}
+
+// page:insert'ning teskarisi. undo — qo'shilgan sahifani
+// removePageFromSession orqali olib tashlaydi. redo — sahifani xuddi
+// o'sha joyga (afterPageIndex) qayta qo'yadi — pdf uchun aynan o'sha
+// URL(lar), notebook uchun aynan o'sha naqsh bilan (yangidan
+// kutubxonadan olib bo'lmaydi, shuning uchun URL'lar entry'ning o'zida
+// saqlanadi).
+export function applyPageInsertInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode,
+  data: { afterPageIndex: number; pages?: string[]; style?: ClassroomNotebookStyle }, direction: 'undo' | 'redo',
+): void {
+  if (direction === 'undo') {
+    removePageFromSession(session, mode, data.afterPageIndex + 1);
+    return;
+  }
+  if (mode === 'pdf') {
+    insertPdfPagesIntoSession(session, data.pages ?? [], data.afterPageIndex);
+  } else {
+    insertNotebookPageIntoSession(session, data.afterPageIndex, data.style ?? 'grid');
+  }
 }
 
 function validateShapeFields(stroke: ClassroomStroke): boolean {
