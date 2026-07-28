@@ -1011,7 +1011,7 @@ export class ClassroomService implements OnModuleInit {
   // bilan bir xil manba (jonli sinxronizatsiyada ham ishlatiladi), faqat
   // participants/zoom/scroll kabi replay uchun keraksiz maydonlar olib
   // tashlanadi.
-  private buildBoardSnapshot(s: ClassroomSession) {
+  private buildBoardSnapshot(s: ClassroomSession): ClassroomBoardSnapshot {
     const full = buildSnapshot(s);
     return {
       pdfName: full.pdfName,
@@ -1024,6 +1024,7 @@ export class ClassroomService implements OnModuleInit {
       rightBoardMode: full.rightBoardMode,
       notebookStyle: full.notebookStyle,
       notebookPageCount: full.notebookPageCount ?? 4,
+      notebookPageStyles: full.notebookPageStyles,
     };
   }
 

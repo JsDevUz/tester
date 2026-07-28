@@ -614,6 +614,18 @@ describe('sahifa va chizish', () => {
     expect(saved.historyEvents).toEqual([]);
   });
 
+  it('endSession board-only rejimda notebookPageStyles ni boardSnapshot ichida saqlaydi', async () => {
+    const { service, sessionId } = await setup();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    service.insertNotebookPage(sessionId, 'teacher-1', 4, 'plain');
+    mockedDb.update.mockClear();
+
+    await service.endSession(sessionId, 'teacher-1');
+
+    const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
+    expect(saved.boardSnapshot.notebookPageStyles).toEqual({ 5: 'plain' });
+  });
+
   it('getReplay tarix+recording+attendance qaytaradi', async () => {
     const { service, sessionId } = await withPdf();
     service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });

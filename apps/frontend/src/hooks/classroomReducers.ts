@@ -206,10 +206,10 @@ export function applyPdfInsert(
 // siljiydi, yangi sahifaning o'zi tanlangan naqshni oladi.
 export function applyNotebookPageInsert(
   s: ClassroomState,
-  p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" },
+  p: { mode?: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" },
 ): ClassroomState {
   const right = p.pane === "right";
-  if (p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
+  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
 
   const key = right ? "rightStrokesByPage" : "strokesByPage";
   const source = s[key];
