@@ -473,6 +473,19 @@ describe('sahifa va chizish', () => {
     expect(snapshot.notebookPageStyles).toEqual({ 5: 'plain' });
   });
 
+  it('host zoom ozgartirsa zoom:set broadcast, tarixga yoziladi va kech kirgan snapshotda saqlanadi', async () => {
+    const { service, events, sessionId } = await withPdf();
+    service.setZoom(sessionId, 'teacher-1', 1.75, 'right');
+    expect(events.at(-1)).toMatchObject({ event: 'zoom:set', payload: { zoom: 1.75, pane: 'right' } });
+    expect(service.getHistoryEventsForTests(sessionId).map((event) => event.type)).toContain('zoom:set');
+
+    // Kech kirgan ustoz snapshot orqali right pane zoom'ini darhol oladi,
+    // chap pane zoom esa ozgartirilmagani uchun defaultda (1) qoladi.
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
+    expect(snapshot.rightZoom).toBe(1.75);
+    expect(snapshot.zoom).toBe(1);
+  });
+
   it('splitRatio uchun notogri (NaN/raqam emas) qiymat 0.5 ga tushadi', async () => {
     const { service, sessionId } = await withPdf();
     service.setSplitRatio(sessionId, 'teacher-1', NaN);
