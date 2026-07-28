@@ -202,6 +202,10 @@ interface Props {
   // harakat umuman saqlanmagan). Bunday holatda foydalanuvchi har doim
   // erkin scroll/zoom qila oladi, tugma esa butunlay yashiriladi.
   noSync?: boolean;
+  // Daftar sahifalari soni (server-boshqaruvli, o'zgaruvchan) — endi
+  // qattiq 4 emas, session.notebookPageCount'dan keladi.
+  notebookPageCount?: number;
+  onRemovePage?: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right") => void;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -1235,6 +1239,12 @@ interface PageProps {
   // qisqa vaqt oralig'ida canvas eski o'lchamda qolib, ustidagi chizmalar
   // PDF/daftar sahifasidan orqada qolib ketganday (siljib) ko'rinardi.
   zoomVersion: number;
+  // Faqat ustoz uchun: sahifani darsdan o'chirish. canRemove false bo'lsa
+  // (masalan shu mode'da faqat 1 ta sahifa qolgan bo'lsa) trash tugmasi
+  // ko'rsatilmaydi.
+  isHost?: boolean;
+  canRemove?: boolean;
+  onRemovePage?: (pageNumber: number) => void;
 }
 
 // Bitta sahifa: rasm + chizish canvas. Ko'rinish oynasiga yaqinlashguncha
@@ -1244,11 +1254,13 @@ function ClassroomPdfPage({
   pageNumber, url, notebook = false, notebookStyle = "grid", strokes, pointer, showPointer, editable, tool, showStylePanel, onActivate, onToolChange, color, onColorChange, strokeWidth, onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE, onShapeStyleChange, onUpdateShapeStroke,
   onStrokeComplete, onMoveStroke, onUpdateTextStroke, onPointerMove, onEraseStroke, onSplitStroke, onReorderStroke, registerEl, zoomVersion,
+  isHost = false, canRemove = true, onRemovePage,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [visible, setVisible] = useState(pageNumber <= 2);
+  const [confirmRemove, setConfirmRemove] = useState(false);
   // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
   // xiralashtirib ko'rsatiladi (o'chirilmasdan oldin preview).
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
@@ -2738,6 +2750,51 @@ function ClassroomPdfPage({
       ) : (
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
       )}
+      {isHost && (
+        <div className="absolute bottom-1 left-1/2 z-20 -translate-x-1/2">
+          <button
+            type="button"
+            onClick={() => setConfirmRemove(true)}
+            disabled={!canRemove}
+            title={canRemove ? "Sahifani o'chirish" : "Kamida bitta sahifa qolishi kerak"}
+            className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/90 disabled:hover:text-gray-400"
+          >
+            <Trash2 size={12} />
+          </button>
+        </div>
+      )}
+      {confirmRemove && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/20"
+            onClick={() => setConfirmRemove(false)}
+          />
+          <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
+            <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
+              <p className="text-sm text-gray-700 mb-1 font-medium">
+                Sahifani o'chirish
+              </p>
+              <p className="text-sm text-gray-400 mb-5">
+                {pageNumber}-sahifani darsdan o'chirasizmi? Bu amalni qaytarib bo'lmaydi.
+              </p>
+              <div className="flex gap-2 justify-end">
+                <button
+                  onClick={() => setConfirmRemove(false)}
+                  className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  onClick={() => { setConfirmRemove(false); onRemovePage?.(pageNumber); }}
+                  className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
+                >
+                  O'chirish
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
+      )}
     </div>
   );
 }
@@ -2749,6 +2806,8 @@ export function ClassroomPdfViewer({
   boardLayout = "single", leftBoardMode = boardMode, rightBoardMode = boardMode, onBoardViewChange,
   notebookStyle = "grid",
   noSync = false,
+  notebookPageCount = 4,
+  onRemovePage,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -2937,7 +2996,7 @@ export function ClassroomPdfViewer({
     else if (!synced) { setLeftMode(rightMode); setRightMode(leftMode); }
   };
 
-  const visiblePageCount = (mode: CsBoardMode) => mode === "notebook" ? 4 : pageUrls.length;
+  const visiblePageCount = (mode: CsBoardMode) => mode === "notebook" ? notebookPageCount : pageUrls.length;
 
   const toolbarRow = (toolbar || toolbarActions) && (
     <div
@@ -3168,6 +3227,9 @@ export function ClassroomPdfViewer({
                     key={`${paneIndex}-${pageNumber}`}
                     pageNumber={pageNumber}
                     zoomVersion={paneIndex === 1 ? rightZoom : zoom}
+                    isHost={isHost}
+                    canRemove={visiblePageCount(paneMode) > 1}
+                    onRemovePage={(pageNumber) => onRemovePage?.(paneMode, pageNumber, paneIndex === 1 ? "right" : "left")}
                     url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                     notebook={paneMode === "notebook"}
                     notebookStyle={notebookStyle}
