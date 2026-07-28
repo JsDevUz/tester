@@ -3256,6 +3256,7 @@ export function ClassroomPdfViewer({
                   // NISBATAN (%) o'lchanadi — REF_WIDTH'ga bog'langan mutlaq
                   // piksel (masalan 1000px) yarim ekranga sig'may, 100%
                   // zoom'da ham gorizontal scroll chiqarib yuborardi.
+                  paddingTop: displayLayout === "split" ? 50 : undefined,
                   width: displayLayout === "split"
                     ? `${(paneIndex === 1 ? rightZoom : zoom) * 100}%`
                     : "100%",
