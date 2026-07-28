@@ -223,6 +223,8 @@ export function ClassroomHostPage() {
           hostZoom={state.zoom}
           rightHostZoom={state.rightZoom}
           hostSplitRatio={state.splitRatio}
+          notebookPageCount={state.notebookPageCount}
+          onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
           onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
           hostScroll={state.scroll}
