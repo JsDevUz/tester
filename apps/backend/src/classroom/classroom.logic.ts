@@ -1,5 +1,6 @@
 import {
   ClassroomBoardMode, ClassroomFontFamily, ClassroomNotebookStyle, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
+  ClassroomUndoEntry,
 } from './classroom.types';
 
 const FONT_FAMILIES: ClassroomFontFamily[] = ['Inter', 'Arial', 'Georgia', 'Comic Sans MS', 'Nunito'];
@@ -12,6 +13,129 @@ export const MAX_STROKE_POINTS = 2000;
 // qarshi yakuniy chegara (juda ko'p sahifali PDF serverni band qilmasin).
 export const MAX_PDF_PAGES = 300;
 export const PDF_RENDER_WIDTH = 1600;
+
+const MAX_UNDO_STACK = 100;
+
+// Har bir tugallangan harakatni umumiy undoStack'ga qo'shadi va
+// redoStack'ni to'liq tozalaydi (yangi harakat butun redo tarixini
+// bekor qiladi — standart tahrirchi xatti-harakati). Stack 100 yozuvdan
+// oshsa eng eskisi tashlanadi.
+export function pushUndoEntry(session: ClassroomSession, entry: ClassroomUndoEntry): void {
+  if (!session.undoStack) session.undoStack = [];
+  session.undoStack.push(entry);
+  if (session.undoStack.length > MAX_UNDO_STACK) session.undoStack.shift();
+  session.redoStack = [];
+}
+
+// stroke:add'ning teskarisi — undo qo'shilgan chizmani ID bo'yicha
+// o'chiradi, redo uni qayta qo'shadi.
+export function applyStrokeAddInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { stroke: ClassroomStroke }, direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page) ?? [];
+  if (direction === 'undo') {
+    map.set(page, list.filter((s) => s.id !== data.stroke.id));
+  } else {
+    map.set(page, [...list, data.stroke]);
+  }
+}
+
+// stroke:erase'ning teskarisi — undo o'chirilgan chizmani ASL joyiga
+// (index) qaytaradi (qatlam tartibi saqlanishi uchun), redo uni yana
+// o'chiradi.
+export function applyStrokeEraseInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { stroke: ClassroomStroke; index: number }, direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page) ?? [];
+  if (direction === 'undo') {
+    const next = [...list];
+    next.splice(data.index, 0, data.stroke);
+    map.set(page, next);
+  } else {
+    map.set(page, list.filter((s) => s.id !== data.stroke.id));
+  }
+}
+
+// stroke:transform'ning teskarisi — bitta sudrab-ko'chirish/resize/
+// aylantirish gesture'ining oldingi/keyingi points+rotation+textBox
+// o'lchamlarini ID bo'yicha qayta o'rnatadi.
+export function applyStrokeTransformInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: {
+    strokeId: string;
+    before: { points: number[]; rotation?: number; textBoxWidth?: number; textBoxHeight?: number };
+    after: { points: number[]; rotation?: number; textBoxWidth?: number; textBoxHeight?: number };
+  },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page);
+  if (!list) return;
+  const idx = list.findIndex((s) => s.id === data.strokeId);
+  if (idx === -1) return;
+  const target = direction === 'undo' ? data.before : data.after;
+  list[idx] = { ...list[idx], points: [...target.points], rotation: target.rotation, textBoxWidth: target.textBoxWidth, textBoxHeight: target.textBoxHeight };
+}
+
+// stroke:style'ning teskarisi — faqat o'zgargan maydonlarni (rang,
+// shrift, shape uslubi va h.k.) qisman qo'llaydi, qolganlariga tegmaydi.
+export function applyStrokeStyleInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { strokeId: string; before: Partial<ClassroomStroke>; after: Partial<ClassroomStroke> },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page);
+  if (!list) return;
+  const idx = list.findIndex((s) => s.id === data.strokeId);
+  if (idx === -1) return;
+  const patch = direction === 'undo' ? data.before : data.after;
+  list[idx] = { ...list[idx], ...patch };
+}
+
+// stroke:text'ning teskarisi — bitta matn-tahrirlash seansining
+// (ochilib-yopilishi) to'liq oldingi/keyingi holatini qo'llaydi. before
+// null bo'lsa (yangi matn yaratilgan edi), undo shu chizmani butunlay
+// o'chiradi.
+export function applyStrokeTextInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { strokeId: string; before: ClassroomStroke | null; after: ClassroomStroke },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page) ?? [];
+  if (direction === 'undo') {
+    if (data.before === null) {
+      map.set(page, list.filter((s) => s.id !== data.strokeId));
+    } else {
+      map.set(page, list.map((s) => s.id === data.strokeId ? data.before! : s));
+    }
+  } else {
+    const exists = list.some((s) => s.id === data.strokeId);
+    map.set(page, exists ? list.map((s) => s.id === data.strokeId ? data.after : s) : [...list, data.after]);
+  }
+}
+
+// stroke:reorder'ning teskarisi — sahifadagi chizmalar massivini
+// belgilangan ID tartibiga qayta quradi (front/back/forward/backward
+// amalining oldingi/keyingi to'liq tartibi saqlangan).
+export function applyStrokeReorderInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { before: { order: string[] }; after: { order: string[] } },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page);
+  if (!list) return;
+  const targetOrder = direction === 'undo' ? data.before.order : data.after.order;
+  const byId = new Map(list.map((s) => [s.id, s]));
+  const reordered = targetOrder.map((id) => byId.get(id)).filter((s): s is ClassroomStroke => s !== undefined);
+  map.set(page, reordered);
+}
 
 export function activeStrokeMap(session: ClassroomSession): Map<number, ClassroomStroke[]> {
   const mode = session.boardMode ?? 'pdf';

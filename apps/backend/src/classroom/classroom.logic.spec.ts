@@ -4,6 +4,9 @@ import {
   LATE_AFTER_MS, MAX_STROKE_POINTS, updateShapeStroke, isValidPage,
   removePageFromSession, strokeMapFor, resolveNotebookPageStyle,
   insertNotebookPageIntoSession, insertPdfPagesIntoSession,
+  pushUndoEntry, applyStrokeAddInverse, applyStrokeEraseInverse,
+  applyStrokeTransformInverse, applyStrokeStyleInverse, applyStrokeTextInverse,
+  applyStrokeReorderInverse,
 } from './classroom.logic';
 import { ClassroomSession, ClassroomStroke, ClassroomParticipant } from './classroom.types';
 
@@ -597,5 +600,176 @@ describe('insertNotebookPageIntoSession', () => {
     session.notebookPageCount = 3;
 
     expect(insertNotebookPageIntoSession(session, 1, 'bogus' as any)).toBe(false);
+  });
+});
+
+describe('pushUndoEntry', () => {
+  it('pushes an entry onto session.undoStack and clears redoStack', () => {
+    const session = makeSession();
+    session.redoStack = [{ type: 'stroke:add', mode: 'pdf', page: 1, pane: 'left', before: null, after: { stroke: makeStroke() } }];
+
+    pushUndoEntry(session, { type: 'stroke:add', mode: 'pdf', page: 1, pane: 'left', before: null, after: { stroke: makeStroke() } });
+
+    expect(session.undoStack).toHaveLength(1);
+    expect(session.redoStack).toEqual([]);
+  });
+
+  it('drops the oldest entry once the stack exceeds 100 entries', () => {
+    const session = makeSession();
+    session.undoStack = Array.from({ length: 100 }, (_, i) => ({
+      type: 'stroke:add' as const, mode: 'pdf' as const, page: 1, pane: 'left' as const,
+      before: null, after: { stroke: makeStroke({ id: `s-${i}` }) },
+    }));
+
+    pushUndoEntry(session, { type: 'stroke:add', mode: 'pdf', page: 1, pane: 'left', before: null, after: { stroke: makeStroke({ id: 's-new' }) } });
+
+    expect(session.undoStack).toHaveLength(100);
+    expect(session.undoStack[0].after).toMatchObject({ stroke: { id: 's-1' } }); // s-0 dropped
+    expect(session.undoStack[99].after).toMatchObject({ stroke: { id: 's-new' } });
+  });
+});
+
+describe('applyStrokeAddInverse', () => {
+  it('undo removes the added stroke by id', () => {
+    const session = makeSession();
+    const stroke = makeStroke({ id: 's1' });
+    strokeMapFor(session, 'pdf').set(1, [stroke]);
+
+    applyStrokeAddInverse(session, 'pdf', 1, { stroke }, 'undo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)).toEqual([]);
+  });
+
+  it('redo re-adds the stroke', () => {
+    const session = makeSession();
+    strokeMapFor(session, 'pdf').set(1, []);
+    const stroke = makeStroke({ id: 's1' });
+
+    applyStrokeAddInverse(session, 'pdf', 1, { stroke }, 'redo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)).toEqual([stroke]);
+  });
+});
+
+describe('applyStrokeEraseInverse', () => {
+  it('undo re-inserts the erased stroke at its original index', () => {
+    const session = makeSession();
+    const s1 = makeStroke({ id: 's1' });
+    const s2 = makeStroke({ id: 's2' });
+    strokeMapFor(session, 'pdf').set(1, [s1]); // s2 already erased, was at index 1
+
+    applyStrokeEraseInverse(session, 'pdf', 1, { stroke: s2, index: 1 }, 'undo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)).toEqual([s1, s2]);
+  });
+
+  it('redo erases the stroke again by id', () => {
+    const session = makeSession();
+    const s1 = makeStroke({ id: 's1' });
+    const s2 = makeStroke({ id: 's2' });
+    strokeMapFor(session, 'pdf').set(1, [s1, s2]);
+
+    applyStrokeEraseInverse(session, 'pdf', 1, { stroke: s2, index: 1 }, 'redo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)).toEqual([s1]);
+  });
+});
+
+describe('applyStrokeTransformInverse', () => {
+  it('undo restores the stroke\'s prior points/rotation', () => {
+    const session = makeSession();
+    const stroke = makeStroke({ id: 's1', points: [0.5, 0.5, 0.6, 0.6], rotation: 45 });
+    strokeMapFor(session, 'pdf').set(1, [stroke]);
+
+    applyStrokeTransformInverse(session, 'pdf', 1, {
+      strokeId: 's1',
+      before: { points: [0.1, 0.1, 0.2, 0.2], rotation: 0 },
+      after: { points: [0.5, 0.5, 0.6, 0.6], rotation: 45 },
+    }, 'undo');
+
+    const result = strokeMapFor(session, 'pdf').get(1)!.find((x) => x.id === 's1')!;
+    expect(result.points).toEqual([0.1, 0.1, 0.2, 0.2]);
+    expect(result.rotation).toBe(0);
+  });
+
+  it('redo re-applies the post-gesture points/rotation', () => {
+    const session = makeSession();
+    const stroke = makeStroke({ id: 's1', points: [0.1, 0.1, 0.2, 0.2], rotation: 0 });
+    strokeMapFor(session, 'pdf').set(1, [stroke]);
+
+    applyStrokeTransformInverse(session, 'pdf', 1, {
+      strokeId: 's1',
+      before: { points: [0.1, 0.1, 0.2, 0.2], rotation: 0 },
+      after: { points: [0.5, 0.5, 0.6, 0.6], rotation: 45 },
+    }, 'redo');
+
+    const result = strokeMapFor(session, 'pdf').get(1)!.find((x) => x.id === 's1')!;
+    expect(result.points).toEqual([0.5, 0.5, 0.6, 0.6]);
+    expect(result.rotation).toBe(45);
+  });
+});
+
+describe('applyStrokeStyleInverse', () => {
+  it('undo restores the stroke\'s prior style fields, leaving unrelated fields untouched', () => {
+    const session = makeSession();
+    const stroke = makeStroke({ id: 's1', color: '#ff0000', width: 4 });
+    strokeMapFor(session, 'pdf').set(1, [stroke]);
+
+    applyStrokeStyleInverse(session, 'pdf', 1, {
+      strokeId: 's1',
+      before: { color: '#0000ff' },
+      after: { color: '#ff0000' },
+    }, 'undo');
+
+    const result = strokeMapFor(session, 'pdf').get(1)!.find((x) => x.id === 's1')!;
+    expect(result.color).toBe('#0000ff');
+    expect(result.width).toBe(4); // untouched
+  });
+});
+
+describe('applyStrokeTextInverse', () => {
+  it('undo removes a newly-created text stroke when before is null', () => {
+    const session = makeSession();
+    const stroke = makeStroke({ id: 't1', tool: 'text', text: 'Salom' });
+    strokeMapFor(session, 'pdf').set(1, [stroke]);
+
+    applyStrokeTextInverse(session, 'pdf', 1, { strokeId: 't1', before: null, after: stroke }, 'undo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)).toEqual([]);
+  });
+
+  it('undo restores the full prior stroke when editing existing text', () => {
+    const session = makeSession();
+    const before = makeStroke({ id: 't1', tool: 'text', text: 'Salom' });
+    const after = makeStroke({ id: 't1', tool: 'text', text: 'Salom dunyo' });
+    strokeMapFor(session, 'pdf').set(1, [after]);
+
+    applyStrokeTextInverse(session, 'pdf', 1, { strokeId: 't1', before, after }, 'undo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)![0].text).toBe('Salom');
+  });
+
+  it('redo re-applies the committed text stroke', () => {
+    const session = makeSession();
+    const before = makeStroke({ id: 't1', tool: 'text', text: 'Salom' });
+    const after = makeStroke({ id: 't1', tool: 'text', text: 'Salom dunyo' });
+    strokeMapFor(session, 'pdf').set(1, [before]);
+
+    applyStrokeTextInverse(session, 'pdf', 1, { strokeId: 't1', before, after }, 'redo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)![0].text).toBe('Salom dunyo');
+  });
+});
+
+describe('applyStrokeReorderInverse', () => {
+  it('undo restores the prior stroke order', () => {
+    const session = makeSession();
+    const s1 = makeStroke({ id: 's1' });
+    const s2 = makeStroke({ id: 's2' });
+    strokeMapFor(session, 'pdf').set(1, [s2, s1]); // reordered state
+
+    applyStrokeReorderInverse(session, 'pdf', 1, { before: { order: ['s1', 's2'] }, after: { order: ['s2', 's1'] } }, 'undo');
+
+    expect(strokeMapFor(session, 'pdf').get(1)!.map((s) => s.id)).toEqual(['s1', 's2']);
   });
 });

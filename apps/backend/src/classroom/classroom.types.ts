@@ -38,6 +38,37 @@ export interface ClassroomStroke {
   pressures?: number[];
 }
 
+export type ClassroomUndoActionType =
+  | 'stroke:add' | 'stroke:erase'
+  | 'stroke:transform'
+  | 'stroke:style'
+  | 'stroke:text'
+  | 'stroke:reorder'
+  | 'page:remove' | 'page:insert';
+
+// Har bir tugallangan (commit qilingan) harakat — bekor qilish/qaytarish
+// uchun yetarli "before"/"after" ma'lumot bilan. mode har bir yozuvda
+// alohida saqlanadi, chunki tarix ikkala board mode (pdf/notebook) uchun
+// UMUMIY — undo joriy ko'rinayotgan moddan mustaqil ravishda eng oxirgi
+// harakatni bekor qiladi, u qaysi mode'ga tegishli bo'lishidan qat'i nazar.
+export interface ClassroomUndoEntry {
+  type: ClassroomUndoActionType;
+  mode: ClassroomBoardMode;
+  page: number;
+  pane: 'left' | 'right';
+  // Faqat stroke-darajasidagi turlar (stroke:add/erase/transform/style/
+  // text/reorder emas — reorder butun sahifa tartibiga tegishli, alohida
+  // strokeId kerak emas) uchun to'ldiriladi. page:remove/page:insert
+  // uchun undefined qoladi. Bu maydon dispatch vaqtida "qaysi chizmaga
+  // tegish kerak" degan savolni before/after payload shaklidan mustaqil
+  // ravishda javob beradi — har bir turning before/after shakli har xil
+  // (ba'zilarida to'liq stroke, ba'zilarida faqat patch), shuning uchun
+  // strokeId'ni alohida, barqaror joyda saqlash ancha soddaroq.
+  strokeId?: string;
+  before: unknown;
+  after: unknown;
+}
+
 export type AttendanceStatus = 'absent' | 'present' | 'late';
 
 export interface ClassroomParticipant {
@@ -119,6 +150,14 @@ export interface ClassroomSession {
   // Kalit yo'q sahifalar eski umumiy notebookStyle'ni meros qiladi
   // (page-add funksiyasidan oldin yaratilgan barcha sahifalar uchun).
   notebookPageStyles?: Record<number, ClassroomNotebookStyle>;
+  // Yagona, ikkala board mode (pdf/notebook) uchun UMUMIY, vaqt bo'yicha
+  // tartiblangan undo/redo tarixi — har bir yozuv o'zining mode'ini olib
+  // yuradi (ClassroomUndoEntry.mode), shuning uchun undo joriy
+  // ko'rinayotgan mode'dan mustaqil ravishda har doim eng oxirgi
+  // harakatni (u qaysi mode'ga tegishli bo'lishidan qat'i nazar) bekor
+  // qiladi. In-memory only — snapshot/DB'ga hech qachon yozilmaydi.
+  undoStack?: ClassroomUndoEntry[];
+  redoStack?: ClassroomUndoEntry[];
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
   historyEvents?: ClassroomHistoryEvent[];
