@@ -772,6 +772,16 @@ export class ClassroomService implements OnModuleInit {
     }
     if (!hasAccess) throw new ForbiddenException();
 
+    // Erkin darsda guruh/enrollment yo'q — attendanceRecords bo'sh qoladi.
+    // Kim qatnashgani free_session_participants'dan olinadi (faqat login
+    // qilgan foydalanuvchilar; anonim mehmonlar hech qayerda saqlanmaydi).
+    const freeParticipants = !course
+      ? await db.query.freeSessionParticipants.findMany({
+          where: eq(freeSessionParticipants.sessionId, sessionId),
+          with: { user: true },
+        })
+      : [];
+
     let recordingUrl = row.recordingUrl;
     let recordingStatus = row.recordingStatus;
     if (recordingStatus === 'pending') {
@@ -803,16 +813,22 @@ export class ClassroomService implements OnModuleInit {
       // tarixi o'rniga faqat yakuniy doska holati (statik ko'rinish uchun).
       recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
       boardSnapshot: (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null) ?? null,
-      attendance: (row.attendance as unknown as Array<{
-        enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
-        status: string;
-      }>)
-        .filter((a) => a.enrollment?.schoolMember?.studentId)
-        .map((a) => ({
-          userId: a.enrollment!.schoolMember!.studentId as string,
-          name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
-          status: a.status,
-        })),
+      attendance: course
+        ? (row.attendance as unknown as Array<{
+            enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
+            status: string;
+          }>)
+            .filter((a) => a.enrollment?.schoolMember?.studentId)
+            .map((a) => ({
+              userId: a.enrollment!.schoolMember!.studentId as string,
+              name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
+              status: a.status,
+            }))
+        : freeParticipants.map((p) => ({
+            userId: p.userId,
+            name: p.user.displayName,
+            status: 'present' as const,
+          })),
     };
   }
 

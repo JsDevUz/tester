@@ -59,7 +59,7 @@ jest.mock('../db', () => ({
       classSessions: { findFirst: jest.fn().mockResolvedValue(undefined), findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn(), findFirst: jest.fn() },
       attendanceRecords: { findFirst: jest.fn() },
-      freeSessionParticipants: { findFirst: jest.fn() },
+      freeSessionParticipants: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       mediaAssets: { findFirst: jest.fn() },
       users: { findMany: jest.fn().mockResolvedValue([]) },
     },
@@ -749,6 +749,38 @@ describe('sahifa va chizish', () => {
     mockedDb.query.freeSessionParticipants.findFirst.mockResolvedValueOnce({ id: 'fp-1' });
 
     await expect(service.getReplay(sessionId, 'stu-1')).resolves.toBeDefined();
+  });
+
+  it("getReplay: erkin sessiyada qatnashganlar attendance ro'yxatida chiqadi", async () => {
+    const { service, sessionId } = await withPdf();
+    await service.endSession(sessionId, 'teacher-1');
+
+    mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+      id: sessionId,
+      courseId: null,
+      course: null,
+      teacherId: 'teacher-1',
+      pdfName: null,
+      pdfPages: [],
+      historyEvents: [],
+      recordingUrl: null,
+      recordingStatus: 'none',
+      recordingStartedAtMs: null,
+      recordingMode: null,
+      boardSnapshot: { pages: [] },
+      attendance: [],
+    });
+    mockedDb.query.freeSessionParticipants.findMany.mockResolvedValueOnce([
+      { userId: 'stu-1', user: { displayName: 'Ali' } },
+      { userId: 'stu-2', user: { displayName: 'Vali' } },
+    ]);
+
+    const replay = await service.getReplay(sessionId, 'teacher-1');
+
+    expect(replay.attendance).toEqual([
+      { userId: 'stu-1', name: 'Ali', status: 'present' },
+      { userId: 'stu-2', name: 'Vali', status: 'present' },
+    ]);
   });
 
   it("getReplay: erkin sessiyaga aloqasi yo'q foydalanuvchi rad etiladi", async () => {
