@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, PenTool, Radio, SkipForward } from "lucide-react";
+import { Clock, MonitorPlay, PenTool, SkipForward } from "lucide-react";
 import { toast } from "sonner";
 import { apiCreateFreeClassSessionFromSnapshot, apiMyFreeSessionHistory, type FreeClassHistoryItem } from "../api/classroom";
 import { AppShell } from "../components/AppShell";
@@ -74,10 +74,9 @@ export function FreeClassHistoryPage() {
                         type="button"
                         onClick={() => setResumeTarget(item)}
                         title="Davom ettirish"
-                        className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-700 hover:bg-gray-50"
                       >
                         <SkipForward size={14} />
-                        <span className="hidden sm:inline">Davom ettirish</span>
                       </button>
                     )}
                     {item.status === "ended" && item.hasBoardSnapshot && (
@@ -85,10 +84,9 @@ export function FreeClassHistoryPage() {
                         type="button"
                         onClick={() => navigate(`/classroom-history/${item.id}/replay?view=board`)}
                         title="Oxirgi chizma holati"
-                        className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                        className="flex shrink-0 items-center justify-center rounded-xl border border-gray-200 bg-white p-2 text-gray-700 hover:bg-gray-50"
                       >
                         <PenTool size={14} />
-                        <span className="hidden sm:inline">Oxirgi chizma</span>
                       </button>
                     )}
                     {item.status === "ended" && (item.recordingMode === "full" || item.recordingMode === "boardAudio") && (
@@ -96,10 +94,9 @@ export function FreeClassHistoryPage() {
                         type="button"
                         onClick={() => navigate(`/classroom-history/${item.id}/replay`)}
                         title="To'liq (ovozli) ko'rish"
-                        className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3 py-2 text-xs font-semibold text-white hover:bg-indigo-700"
+                        className="flex shrink-0 items-center justify-center rounded-xl bg-indigo-600 p-2 text-white hover:bg-indigo-700"
                       >
-                        <Radio size={14} />
-                        <span className="hidden sm:inline">To'liq ko'rish</span>
+                        <MonitorPlay size={14} />
                       </button>
                     )}
                   </div>
