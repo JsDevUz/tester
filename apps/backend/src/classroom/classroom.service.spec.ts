@@ -1042,6 +1042,81 @@ describe('erkin (guruhsiz) dars', () => {
     const insertCalls = mockedDb.insert.mock.calls.filter((call: any[]) => call[0] === freeSessionParticipants);
     expect(insertCalls.length).toBe(0);
   });
+
+  describe('createFreeSessionFromSnapshot', () => {
+    const fakeSnapshot = {
+      pdfName: 'eski-dars.pdf',
+      pages: ['p1.webp', 'p2.webp'],
+      strokesByPage: { 1: [{ id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.2, 0.2] }] },
+      rightStrokesByPage: {},
+      boardMode: 'pdf',
+      boardLayout: 'single',
+      leftBoardMode: 'pdf',
+      rightBoardMode: 'pdf',
+      notebookStyle: 'grid',
+      notebookPageCount: 4,
+      notebookPageStyles: {},
+    };
+
+    it("topilmagan manba sessiya uchun NotFoundException tashlaydi", async () => {
+      const { service } = makeFreeService();
+      mockedDb.query.classSessions.findFirst.mockResolvedValueOnce(undefined);
+      await expect(service.createFreeSessionFromSnapshot('teacher-1', 'missing-id')).rejects.toThrow();
+    });
+
+    it("boardSnapshot null bo'lgan sessiya uchun rad etadi", async () => {
+      const { service } = makeFreeService();
+      mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+        id: 'old-id', teacherId: 'teacher-1', boardSnapshot: null,
+      });
+      await expect(service.createFreeSessionFromSnapshot('teacher-1', 'old-id')).rejects.toThrow();
+    });
+
+    it('begona ustoz uchun taqiqlanadi', async () => {
+      const { service } = makeFreeService();
+      mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+        id: 'old-id', teacherId: 'boshqa-teacher', boardSnapshot: fakeSnapshot,
+      });
+      await expect(service.createFreeSessionFromSnapshot('teacher-1', 'old-id')).rejects.toThrow();
+    });
+
+    it('snapshotdan yangi erkin sessiya yaratadi va pdf/chizmalarni tiklaydi', async () => {
+      const { service } = makeFreeService();
+      mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+        id: 'old-id', teacherId: 'teacher-1', boardSnapshot: fakeSnapshot,
+      });
+
+      const { id } = await service.createFreeSessionFromSnapshot('teacher-1', 'old-id');
+
+      expect(id).toBeTruthy();
+      const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
+      expect(snap.isFree).toBe(true);
+      expect(snap.pdfName).toBe('eski-dars.pdf');
+      expect(snap.pages).toEqual(['p1.webp', 'p2.webp']);
+      expect(snap.strokesByPage[1]).toHaveLength(1);
+      expect(snap.strokesByPage[1][0].id).toBe('s1');
+      expect(snap.notebookPageCount).toBe(4);
+      expect(snap.currentPage).toBe(1);
+    });
+
+    it('daftar rejimidagi snapshotdan tiklaganda notebook chizmalari ham saqlanadi', async () => {
+      const { service } = makeFreeService();
+      mockedDb.query.classSessions.findFirst.mockResolvedValueOnce({
+        id: 'old-id', teacherId: 'teacher-1',
+        boardSnapshot: {
+          ...fakeSnapshot,
+          boardMode: 'notebook', leftBoardMode: 'notebook', rightBoardMode: 'notebook',
+          strokesByPage: { 1: [{ id: 'n1', tool: 'pen', color: '#00f', width: 2, points: [0.2, 0.2, 0.3, 0.3] }] },
+        },
+      });
+
+      const { id } = await service.createFreeSessionFromSnapshot('teacher-1', 'old-id');
+
+      const snap = service.hostJoin(id, 'teacher-1', 'sock-h');
+      expect(snap.boardMode).toBe('notebook');
+      expect(snap.strokesByPage[1][0].id).toBe('n1');
+    });
+  });
 });
 
 describe('myFreeSessionHistory', () => {

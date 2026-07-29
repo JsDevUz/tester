@@ -170,6 +170,71 @@ export class ClassroomService implements OnModuleInit {
     return { id: row.id };
   }
 
+  // Eski (tugagan yoki hali jonli) erkin darsning oxirgi saqlangan
+  // taxta holatidan (board_snapshot) YANGI erkin dars yaratadi — haqiqiy
+  // "davom ettirish" emas (eski sessiya xotirada allaqachon yo'q bo'lishi
+  // mumkin), balki createFreeSession bilan bir xil, faqat bo'sh o'rniga
+  // snapshot'dagi PDF/daftar/chizmalarni boshlang'ich holat qilib beradi.
+  async createFreeSessionFromSnapshot(teacherId: string, sourceSessionId: string): Promise<{ id: string }> {
+    const sourceRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sourceSessionId) });
+    if (!sourceRow) throw new NotFoundException('Dars topilmadi');
+    if (sourceRow.teacherId !== teacherId) throw new ForbiddenException('Bu dars sizga tegishli emas');
+    if (!sourceRow.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q");
+
+    const snapshot = sourceRow.boardSnapshot as unknown as ClassroomBoardSnapshot;
+
+    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId }).returning();
+
+    const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+    // strokesByPage snapshot olingan ondagi boardMode'ga tegishli, shu
+    // sabab o'sha havuzga joylanadi; rightStrokesByPage esa rightBoardMode'ga
+    // (agar u boardMode'dan farqli bo'lsa — split rejimida ikkalasi ham
+    // to'ldiriladi, yakka rejimda ikkalasi bir xil moddi, shuning uchun
+    // strokesByPage ustunlik qiladi).
+    strokesByMode.set(snapshot.boardMode, new Map(
+      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+    ));
+    if (snapshot.rightBoardMode !== snapshot.boardMode) {
+      strokesByMode.set(snapshot.rightBoardMode, new Map(
+        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+      ));
+    }
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+
+    this.sessions.set(row.id, {
+      id: row.id,
+      courseId: null,
+      courseName: null,
+      isFree: true,
+      hostUserId: teacherId,
+      hostSocketId: null,
+      pdfName: snapshot.pdfName,
+      pdfPages: snapshot.pages,
+      currentPage: 1,
+      strokesByPage: primaryStrokes,
+      boardMode: snapshot.boardMode,
+      boardLayout: snapshot.boardLayout,
+      leftBoardMode: snapshot.leftBoardMode,
+      rightBoardMode: snapshot.rightBoardMode,
+      classroomTheme: 'light',
+      notebookStyle: snapshot.notebookStyle,
+      notebookPageCount: snapshot.notebookPageCount,
+      notebookPageStyles: snapshot.notebookPageStyles,
+      strokesByMode,
+      participants: new Map(),
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      rightZoom: 1,
+      scroll: null,
+      rightScroll: null,
+    });
+    return { id: row.id };
+  }
+
   // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
   // ustoz tanlagan sahifalarni jonli darsga qo'shadi. Konvertatsiya bu
   // yerda sodir bo'lmaydi — u kutubxonaga yuklashda bir marta bajarilgan.
