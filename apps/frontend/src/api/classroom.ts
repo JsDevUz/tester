@@ -21,6 +21,14 @@ export async function apiCreateFreeClassSession(): Promise<{ id: string }> {
   return res.data;
 }
 
+// Eski erkin darsning oxirgi saqlangan taxta holatidan yangi jonli dars
+// boshlaydi (apiCreateFreeClassSession'dan farqli — bo'sh emas, PDF/daftar/
+// chizmalar bilan boshlang'ich holatga keladi).
+export async function apiCreateFreeClassSessionFromSnapshot(sourceSessionId: string): Promise<{ id: string }> {
+  const res = await client.post(`/classroom/sessions/free/from/${sourceSessionId}`);
+  return res.data;
+}
+
 // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
 // ustoz tanlagan sahifalarni jonli darsga qo'shadi.
 export async function apiAttachClassPdf(

@@ -50,6 +50,17 @@ export class ClassroomController {
     return this.classroomService.createFreeSession(req.admin.id);
   }
 
+  // Eski erkin darsning oxirgi saqlangan holatidan yangi jonli dars
+  // boshlaydi — createFreeSessionFromSnapshot'ning REST qatlami.
+  @Post('sessions/free/from/:sourceSessionId')
+  @Roles('teacher', 'super')
+  async createFreeSessionFromSnapshot(
+    @Param('sourceSessionId', ParseUUIDPipe) sourceSessionId: string,
+    @Req() req: any,
+  ) {
+    return this.classroomService.createFreeSessionFromSnapshot(req.admin.id, sourceSessionId);
+  }
+
   @Post('sessions/:id/pdf')
   @Roles('teacher', 'super')
   async attachPdf(
