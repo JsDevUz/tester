@@ -39,7 +39,7 @@ export function FreeClassHistoryPage() {
     setResuming(true);
     try {
       const { id } = await apiCreateFreeClassSessionFromSnapshot(resumeTarget.id);
-      navigate(`/classroom-host/${id}`);
+      navigate(`/classroom/host/${id}`);
     } catch {
       toast.error("Darsni davom ettirib bo'lmadi");
       setResuming(false);
