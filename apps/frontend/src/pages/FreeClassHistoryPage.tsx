@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Clock, PenTool, Radio } from "lucide-react";
+import { Clock, PenTool, Radio, SkipForward } from "lucide-react";
 import { toast } from "sonner";
-import { apiMyFreeSessionHistory, type FreeClassHistoryItem } from "../api/classroom";
+import { apiCreateFreeClassSessionFromSnapshot, apiMyFreeSessionHistory, type FreeClassHistoryItem } from "../api/classroom";
 import { AppShell } from "../components/AppShell";
 
 function fmtDate(iso: string | null): string {
@@ -20,6 +20,8 @@ export function FreeClassHistoryPage() {
   const navigate = useNavigate();
   const [items, setItems] = useState<FreeClassHistoryItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [resumeTarget, setResumeTarget] = useState<FreeClassHistoryItem | null>(null);
+  const [resuming, setResuming] = useState(false);
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -31,6 +33,18 @@ export function FreeClassHistoryPage() {
       setLoading(false);
     }
   }, []);
+
+  const handleResume = async () => {
+    if (!resumeTarget) return;
+    setResuming(true);
+    try {
+      const { id } = await apiCreateFreeClassSessionFromSnapshot(resumeTarget.id);
+      navigate(`/classroom-host/${id}`);
+    } catch {
+      toast.error("Darsni davom ettirib bo'lmadi");
+      setResuming(false);
+    }
+  };
 
   useEffect(() => { void reload(); }, [reload]);
 
@@ -55,6 +69,17 @@ export function FreeClassHistoryPage() {
                       <span className="flex items-center gap-1 text-xs text-gray-400"><Clock size={12} />{fmtDuration(item.startedAt, item.endedAt)}</span>
                     )}
                     <span className="flex-1" />
+                    {item.hasBoardSnapshot && (
+                      <button
+                        type="button"
+                        onClick={() => setResumeTarget(item)}
+                        title="Davom ettirish"
+                        className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
+                      >
+                        <SkipForward size={14} />
+                        <span className="hidden sm:inline">Davom ettirish</span>
+                      </button>
+                    )}
                     {item.status === "ended" && item.hasBoardSnapshot && (
                       <button
                         type="button"
@@ -83,6 +108,35 @@ export function FreeClassHistoryPage() {
             )}
           </div>
         </div>
+        {resumeTarget && (
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
+            role="presentation"
+            onPointerDown={(event) => { if (event.target === event.currentTarget && !resuming) setResumeTarget(null); }}
+          >
+            <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Darsni davom ettirish">
+              <p className="text-sm text-gray-600">Shu darsni davom ettirasizmi? Yangi jonli dars ochiladi va bu darsning oxirgi holati (sahifalar, chizmalar) unga ko'chiriladi.</p>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setResumeTarget(null)}
+                  disabled={resuming}
+                  className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleResume()}
+                  disabled={resuming}
+                  className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {resuming ? "Boshlanmoqda..." : "Davom ettirish"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
     </AppShell>
   );
