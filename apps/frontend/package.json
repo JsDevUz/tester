@@ -16,7 +16,8 @@
     "cap:open:android": "cap open android",
     "cap:open:ios": "cap open ios",
     "lint": "oxlint",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "test": "vitest run"
   },
   "dependencies": {
     "@blocknote/core": "^0.51.4",

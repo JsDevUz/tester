@@ -399,20 +399,29 @@ function applyPageUndoRedo(
 
 export function applyBoardUndo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown },
 ): ClassroomState {
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
-    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: p.before as any, after: null }, "undo");
+    // page:insert'ning undo'si p.after (afterPageIndex/pages/style) ni
+    // talab qiladi (applyPageUndoRedo'dagi p.after!.afterPageIndex) — backend
+    // board:undo payload'ida before VA after ikkalasi ham har doim to'liq
+    // keladi (useClassroomSession.ts socket listener tipi buni tasdiqlaydi),
+    // shuning uchun after'ni ham o'tkazamiz, uni null qilib qattiq yozmaymiz.
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: p.before as any, after: (p.after ?? null) as any }, "undo");
   }
   return applyBoardUndoRedo(s, p, "undo");
 }
 
 export function applyBoardRedo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; after: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown },
 ): ClassroomState {
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
-    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: null, after: p.after as any }, "redo");
+    // page:remove'ning redo'si p.before (pageIndex) ni talab qiladi
+    // (applyPageUndoRedo'dagi p.before!.pageIndex) — xuddi yuqoridagi
+    // applyBoardUndo'dagi kabi, before'ni ham o'tkazamiz, null qilib
+    // qattiq yozmaymiz.
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: (p.before ?? null) as any, after: p.after as any }, "redo");
   }
   return applyBoardUndoRedo(s, p, "redo");
 }
