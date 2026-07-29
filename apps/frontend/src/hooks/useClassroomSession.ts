@@ -181,8 +181,8 @@ export function useClassroomSession(
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
-    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown }) => setState((s) => applyBoardUndo(s, p)));
-    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
+    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
+    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));

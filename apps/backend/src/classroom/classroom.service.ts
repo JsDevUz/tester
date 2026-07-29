@@ -569,7 +569,11 @@ export class ClassroomService implements OnModuleInit {
     s.redoStack.push(entry);
     s.currentPage = entry.page;
     s.boardMode = entry.mode;
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before };
+    // before VA after ikkalasi ham yuboriladi — ko'p turlar (erase/
+    // transform/style/text) uchun faqat before kifoya, lekin stroke:add
+    // uchun before har doim null (yangi chizmaning "oldingi holati" yo'q),
+    // haqiqiy chizma ma'lumoti faqat afterda saqlanadi.
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before, after: entry.after };
     this.recordHistoryEvent(s, 'board:undo', payload);
     this.broadcaster.toRoom(s.id, 'board:undo', payload);
   }
@@ -583,7 +587,10 @@ export class ClassroomService implements OnModuleInit {
     s.undoStack.push(entry);
     s.currentPage = entry.page;
     s.boardMode = entry.mode;
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, after: entry.after };
+    // before ham qo'shiladi — board:undo'dagi bilan bir xil sabab
+    // (stroke:add uchun before har doim null bo'lsa ham, boshqa turlar
+    // uchun kerak bo'lishi mumkin bo'lgan simmetriya uchun).
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before, after: entry.after };
     this.recordHistoryEvent(s, 'board:redo', payload);
     this.broadcaster.toRoom(s.id, 'board:redo', payload);
   }
