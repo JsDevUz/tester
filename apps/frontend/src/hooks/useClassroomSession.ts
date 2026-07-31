@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
 import { useThemeStore } from "../stores/themeStore";
-import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
+import type { CsBoardLayout, CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
   applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
@@ -42,6 +42,7 @@ export interface ClassroomState {
   // Eski umumiy notebookStyle sozlamasi endi yo'q — har bir yangi sahifa
   // "+" bilan qo'shilganda o'z naqshini oladi.
   notebookPageStyles: Record<number, CsNotebookStyle>;
+  notebookPageOrientations: Record<number, CsNotebookOrientation>;
 }
 
 const INITIAL: ClassroomState = {
@@ -50,6 +51,7 @@ const INITIAL: ClassroomState = {
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
   isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, classroomTheme: "light",
   notebookPageStyles: {},
+  notebookPageOrientations: {},
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -130,6 +132,7 @@ export function useClassroomSession(
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? globalTheme,
             notebookPageStyles: snap.notebookPageStyles ?? {},
+            notebookPageOrientations: snap.notebookPageOrientations ?? {},
           });
           // Yangi classroom'ni ustozning asosiy theme'i bilan boshlaymiz.
           // Bu faqat farq bo'lsa yuboriladi; keyingi studentlar snapshot'dan
@@ -187,7 +190,7 @@ export function useClassroomSession(
     socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
-    socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
+    socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
     socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
       setState((s) => applyNotebookPageStyle(s, p)));
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
@@ -349,12 +352,12 @@ export function useClassroomSession(
     setSplitRatio: (ratio: number) => emitHost("host:setSplitRatio", { ratio }),
     removePage: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right" = "left") =>
       emitHost("host:removePage", { mode, pageIndex, pane }),
-    insertNotebookPage: (afterPageIndex: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
-      emitHost("host:insertNotebookPage", { afterPageIndex, style, pane }),
+    insertNotebookPage: (afterPageIndex: number, style: CsNotebookStyle, orientation: CsNotebookOrientation = "portrait", pane: "left" | "right" = "left") =>
+      emitHost("host:insertNotebookPage", { afterPageIndex, style, orientation, pane }),
     setNotebookPageStyle: (page: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
       emitHost("host:setNotebookPageStyle", { page, style, pane }),
-    pastePage: (mode: CsBoardMode, afterPageIndex: number, pageUrl: string | undefined, style: CsNotebookStyle, strokes: CsStroke[], pane: "left" | "right" = "left") =>
-      emitHost("host:pastePage", { mode, afterPageIndex, pageUrl, style, strokes, pane }),
+    pastePage: (mode: CsBoardMode, afterPageIndex: number, pageUrl: string | undefined, style: CsNotebookStyle, orientation: CsNotebookOrientation, strokes: CsStroke[], pane: "left" | "right" = "left") =>
+      emitHost("host:pastePage", { mode, afterPageIndex, pageUrl, style, orientation, strokes, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),

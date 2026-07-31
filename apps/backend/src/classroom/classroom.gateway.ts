@@ -218,10 +218,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:insertNotebookPage')
-  insertNotebookPage(@MessageBody() body: BaseBody & { afterPageIndex: number; style: 'grid' | 'lined' | 'plain'; pane?: 'left' | 'right' }) {
+  insertNotebookPage(@MessageBody() body: BaseBody & { afterPageIndex: number; style: 'grid' | 'lined' | 'plain'; orientation?: 'portrait' | 'landscape'; pane?: 'left' | 'right' }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.insertNotebookPage(body.sessionId, user.sub, body.afterPageIndex, body.style, body.pane ?? 'left');
+      this.classroomService.insertNotebookPage(body.sessionId, user.sub, body.afterPageIndex, body.style, body.orientation ?? 'portrait', body.pane ?? 'left');
     });
   }
 
@@ -231,6 +231,7 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     afterPageIndex: number;
     pageUrl?: string;
     style: 'grid' | 'lined' | 'plain';
+    orientation?: 'portrait' | 'landscape';
     strokes: ClassroomStroke[];
     pane?: 'left' | 'right';
   }) {
@@ -243,6 +244,7 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         body.afterPageIndex,
         body.pageUrl,
         body.style,
+        body.orientation ?? 'portrait',
         body.strokes,
         body.pane ?? 'left',
       );

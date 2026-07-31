@@ -1,5 +1,5 @@
 import { jsPDF } from "jspdf";
-import type { CsBoardMode, CsNotebookStyle, CsStroke } from "../../api/classroom";
+import type { CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsStroke } from "../../api/classroom";
 import { drawStroke } from "./ClassroomPdfViewer";
 
 // Eksport uchun sahifa render kengligi — REF_WIDTH bilan bir xil bo'lishi
@@ -106,6 +106,7 @@ async function renderPageToCanvas(params: {
 export interface ExportBoardParams {
   mode: CsBoardMode;
   notebookPageStyles: Record<number, CsNotebookStyle>;
+  notebookPageOrientations: Record<number, CsNotebookOrientation>;
   // Daftar fonini jonli darsdagi joriy UI temasiga moslashtirish uchun —
   // PDF sahifalari (rasm) temadan mustaqil, faqat "notebook" mode uchun
   // ishlatiladi. Berilmasa "light" (avvalgi xatti-harakat).
@@ -119,13 +120,15 @@ export interface ExportBoardParams {
 // Daftar yoki PDF taxtasining barcha sahifalarini bitta ko'p sahifali PDF
 // faylga yig'ib, brauzerda yuklab olishni ishga tushiradi.
 export async function exportBoardToPdf(params: ExportBoardParams): Promise<void> {
-  const { mode, notebookPageStyles, theme = "light", pageUrls, strokesByPage, pageCount, fileName } = params;
+  const { mode, notebookPageStyles, notebookPageOrientations, theme = "light", pageUrls, strokesByPage, pageCount, fileName } = params;
   const width = EXPORT_WIDTH;
-  const fallbackHeight = Math.round(EXPORT_WIDTH * A4_RATIO);
 
   let pdf: jsPDF | null = null;
 
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+    const fallbackHeight = Math.round(
+      EXPORT_WIDTH * (notebookPageOrientations[pageNumber] === "landscape" ? 1 / A4_RATIO : A4_RATIO),
+    );
     const canvas = await renderPageToCanvas({
       mode,
       notebookStyle: notebookPageStyles[pageNumber] ?? "grid",

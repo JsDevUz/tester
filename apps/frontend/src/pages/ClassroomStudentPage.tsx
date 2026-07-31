@@ -167,6 +167,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           hostSplitRatio={state.splitRatio}
           notebookPageCount={state.notebookPageCount}
           notebookPageStyles={state.notebookPageStyles}
+          notebookPageOrientations={state.notebookPageOrientations}
           hostScroll={state.scroll}
           rightHostScroll={state.rightScroll}
           boardMode={state.boardMode}

@@ -3,6 +3,7 @@ export type ClassroomBoardMode = 'pdf' | 'notebook';
 export type ClassroomBoardLayout = 'single' | 'split';
 export type ClassroomTheme = 'light' | 'dark';
 export type ClassroomNotebookStyle = 'grid' | 'lined' | 'plain';
+export type ClassroomNotebookOrientation = 'portrait' | 'landscape';
 
 export type ClassroomFontFamily = 'Inter' | 'Arial' | 'Georgia' | 'Comic Sans MS' | 'Nunito';
 export type ClassroomFillStyle = 'hachure' | 'cross-hatch' | 'solid';
@@ -75,6 +76,7 @@ export interface ClassroomUndoEntry {
 export interface ClassroomPageSnapshot {
   url?: string; // faqat pdf uchun
   notebookStyle?: ClassroomNotebookStyle; // faqat notebook uchun
+  notebookOrientation?: ClassroomNotebookOrientation; // faqat notebook uchun
   strokes: ClassroomStroke[];
 }
 
@@ -159,6 +161,7 @@ export interface ClassroomSession {
   // Kalit yo'q sahifalar eski umumiy notebookStyle'ni meros qiladi
   // (page-add funksiyasidan oldin yaratilgan barcha sahifalar uchun).
   notebookPageStyles?: Record<number, ClassroomNotebookStyle>;
+  notebookPageOrientations?: Record<number, ClassroomNotebookOrientation>;
   // Yagona, ikkala board mode (pdf/notebook) uchun UMUMIY, vaqt bo'yicha
   // tartiblangan undo/redo tarixi — har bir yozuv o'zining mode'ini olib
   // yuradi (ClassroomUndoEntry.mode), shuning uchun undo joriy
@@ -196,6 +199,7 @@ export interface ClassroomBoardSnapshot {
   notebookStyle: ClassroomNotebookStyle;
   notebookPageCount: number;
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
+  notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
 }
 
 export interface ClassroomSnapshot {
@@ -222,6 +226,7 @@ export interface ClassroomSnapshot {
   classroomTheme: ClassroomTheme;
   notebookStyle: ClassroomNotebookStyle;
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
+  notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

@@ -16,13 +16,13 @@ import {
   attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, insertPdfPagesIntoSession, isValidPage,
   pushUndoEntry, removePageFromSession,
-  reorderStrokes as reorderStrokesInSession, resolveNotebookPageStyle,
+  reorderStrokes as reorderStrokesInSession, resolveNotebookPageOrientation, resolveNotebookPageStyle,
   setPage as setSessionPage, splitStroke as splitStrokeInSession, strokeMapFor, switchBoardMode,
   updateShapeStroke as updateShapeStrokeInSession,
   updateStrokePosition, updateTextStroke as updateTextStrokeInSession,
 } from './classroom.logic';
 import {
-  AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookStyle,
+  AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookOrientation, ClassroomNotebookStyle,
   ClassroomPageSnapshot, ClassroomParticipant, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
 } from './classroom.types';
 
@@ -223,6 +223,7 @@ export class ClassroomService implements OnModuleInit {
       notebookStyle: snapshot.notebookStyle,
       notebookPageCount: snapshot.notebookPageCount,
       notebookPageStyles: snapshot.notebookPageStyles,
+      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
       strokesByMode,
       participants: new Map(),
       startedAtMs: Date.now(),
@@ -819,6 +820,7 @@ export class ClassroomService implements OnModuleInit {
     const pageSnapshot: ClassroomPageSnapshot = {
       url: mode === 'pdf' ? s.pdfPages[pageIndex - 1] : undefined,
       notebookStyle: mode === 'notebook' ? resolveNotebookPageStyle(s, pageIndex) : undefined,
+      notebookOrientation: mode === 'notebook' ? resolveNotebookPageOrientation(s, pageIndex) : undefined,
       strokes: map.get(pageIndex) ?? [],
     };
     const ok = removePageFromSession(s, mode, pageIndex);
@@ -831,12 +833,19 @@ export class ClassroomService implements OnModuleInit {
 
   // Daftarga yangi (bo'sh) sahifa qo'shadi — afterPageIndex'dan keyingi
   // sahifalar va ularning chizmalari/naqshlari bittaga yuqoriga siljiydi.
-  insertNotebookPage(sessionId: string, userId: string, afterPageIndex: number, style: ClassroomNotebookStyle, pane: 'left' | 'right' = 'left'): void {
+  insertNotebookPage(
+    sessionId: string,
+    userId: string,
+    afterPageIndex: number,
+    style: ClassroomNotebookStyle,
+    orientation: ClassroomNotebookOrientation = 'portrait',
+    pane: 'left' | 'right' = 'left',
+  ): void {
     const s = this.requireHost(sessionId, userId);
-    const ok = insertNotebookPageIntoSession(s, afterPageIndex, style);
+    const ok = insertNotebookPageIntoSession(s, afterPageIndex, style, orientation);
     if (!ok) throw new Error('INVALID_PAGE_INSERT');
-    pushUndoEntry(s, { type: 'page:insert', mode: 'notebook', page: afterPageIndex + 1, pane, before: null, after: { afterPageIndex, style } });
-    const payload = { mode: 'notebook' as const, afterPageIndex, style, pane };
+    pushUndoEntry(s, { type: 'page:insert', mode: 'notebook', page: afterPageIndex + 1, pane, before: null, after: { afterPageIndex, style, orientation } });
+    const payload = { mode: 'notebook' as const, afterPageIndex, style, orientation, pane };
     this.recordHistoryEvent(s, 'page:insert', payload);
     this.broadcaster.toRoom(s.id, 'page:insert', payload);
   }
@@ -848,6 +857,7 @@ export class ClassroomService implements OnModuleInit {
     afterPageIndex: number,
     pageUrl: string | undefined,
     style: ClassroomNotebookStyle,
+    orientation: ClassroomNotebookOrientation,
     strokes: ClassroomStroke[],
     pane: 'left' | 'right' = 'left',
   ): void {
@@ -866,7 +876,7 @@ export class ClassroomService implements OnModuleInit {
     if (mode === 'pdf') {
       if (!pageUrl || pageUrl.length > 5000) throw new Error('INVALID_PAGE_URL');
       if (!insertPdfPagesIntoSession(s, [pageUrl], afterPageIndex)) throw new Error('INVALID_PAGE_INSERT');
-    } else if (!insertNotebookPageIntoSession(s, afterPageIndex, style)) {
+    } else if (!insertNotebookPageIntoSession(s, afterPageIndex, style, orientation)) {
       throw new Error('INVALID_PAGE_INSERT');
     }
 
@@ -884,8 +894,8 @@ export class ClassroomService implements OnModuleInit {
       this.recordHistoryEvent(s, 'page:insert', { mode, ...payload, pane });
       this.broadcaster.toRoom(s.id, 'pdf:insert', payload);
     } else {
-      pushUndoEntry(s, { type: 'page:insert', mode, page, pane, before: null, after: { afterPageIndex, style } });
-      const payload = { mode, afterPageIndex, style, pane };
+      pushUndoEntry(s, { type: 'page:insert', mode, page, pane, before: null, after: { afterPageIndex, style, orientation } });
+      const payload = { mode, afterPageIndex, style, orientation, pane };
       this.recordHistoryEvent(s, 'page:insert', payload);
       this.broadcaster.toRoom(s.id, 'page:insert', payload);
     }
@@ -1281,6 +1291,7 @@ export class ClassroomService implements OnModuleInit {
       notebookStyle: full.notebookStyle,
       notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
+      notebookPageOrientations: full.notebookPageOrientations,
     };
   }
 

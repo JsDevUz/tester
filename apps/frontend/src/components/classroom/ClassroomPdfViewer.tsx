@@ -37,6 +37,7 @@ import type {
   CsEdges,
   CsFillStyle,
   CsFontFamily,
+  CsNotebookOrientation,
   CsNotebookStyle,
   CsPointer,
   CsScrollPosition,
@@ -321,6 +322,7 @@ interface Props {
   ) => void;
   // Har bir daftar sahifasining o'z naqshi (sahifa raqami -> naqsh).
   notebookPageStyles?: Record<number, CsNotebookStyle>;
+  notebookPageOrientations?: Record<number, CsNotebookOrientation>;
   // Statik replay/snapshot ko'rinishi uchun — hech qanday jonli host yo'q,
   // shuning uchun "ustoz bilan sinxronlash" tugmasi ma'nosiz (sinxronlanadigan
   // harakat umuman saqlanmagan). Bunday holatda foydalanuvchi har doim
@@ -341,6 +343,7 @@ interface Props {
   onInsertNotebookPage?: (
     afterPageIndex: number,
     style: CsNotebookStyle,
+    orientation: CsNotebookOrientation,
     pane: "left" | "right",
   ) => void;
   onSetNotebookPageStyle?: (
@@ -353,6 +356,7 @@ interface Props {
     afterPageIndex: number,
     pageUrl: string | undefined,
     style: CsNotebookStyle,
+    orientation: CsNotebookOrientation,
     strokes: CsStroke[],
     pane: "left" | "right",
   ) => void;
@@ -1711,6 +1715,7 @@ interface PageProps {
   url?: string;
   notebook?: boolean;
   notebookStyle?: CsNotebookStyle;
+  notebookOrientation?: CsNotebookOrientation;
   strokes: CsStroke[];
   pointer: CsPointer | null;
   showPointer: boolean;
@@ -1758,7 +1763,7 @@ interface PageProps {
   // style bo'lsa (daftar rejimida naqsh tanlanganda) — style bilan birga
   // yuboriladi. PDF rejimida style yo'q (undefined) — bosilganda darhol
   // kutubxona tanlash oqimi ochiladi, popup ko'rsatilmaydi.
-  onInsertPage?: (pageNumber: number, style?: CsNotebookStyle) => void;
+  onInsertPage?: (pageNumber: number, style?: CsNotebookStyle, orientation?: CsNotebookOrientation) => void;
   onSetNotebookStyle?: (pageNumber: number, style: CsNotebookStyle) => void;
   isActiveSurface?: boolean;
   lassoClipboard?: { current: CsStroke[] };
@@ -1772,6 +1777,7 @@ interface ClassroomPageClipboard {
   mode: CsBoardMode;
   pageUrl?: string;
   notebookStyle: CsNotebookStyle;
+  notebookOrientation?: CsNotebookOrientation;
   strokes: CsStroke[];
 }
 
@@ -1781,6 +1787,7 @@ interface ClassroomNotebookClipboard {
   mode: "notebook";
   pages: Array<{
     notebookStyle: CsNotebookStyle;
+    notebookOrientation?: CsNotebookOrientation;
     strokes: CsStroke[];
   }>;
 }
@@ -1795,6 +1802,7 @@ function ClassroomPdfPage({
   url,
   notebook = false,
   notebookStyle = "grid",
+  notebookOrientation = "portrait",
   strokes,
   pointer,
   showPointer,
@@ -1838,6 +1846,8 @@ function ClassroomPdfPage({
   const [stylePopupMode, setStylePopupMode] = useState<"insert" | "set">(
     "insert",
   );
+  const [insertOrientation, setInsertOrientation] =
+    useState<CsNotebookOrientation>("portrait");
   const [showPageMenu, setShowPageMenu] = useState(false);
   const [showNotebookMenu, setShowNotebookMenu] = useState(false);
   // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
@@ -2159,6 +2169,7 @@ function ClassroomPdfPage({
       mode: notebook ? "notebook" : "pdf",
       pageUrl: notebook ? undefined : url,
       notebookStyle,
+      notebookOrientation,
       strokes: strokes.map((stroke) => ({
         ...stroke,
         points: [...stroke.points],
@@ -3484,7 +3495,7 @@ function ClassroomPdfPage({
           ref={(element) => {
             if (notebook) surfaceRef.current = element;
           }}
-          className={`relative ${notebook ? "aspect-[210/297] w-full bg-white shadow-sm" : "w-full"}`}
+          className={`relative ${notebook ? `${notebookOrientation === "landscape" ? "aspect-[297/210]" : "aspect-[210/297]"} w-full bg-white shadow-sm` : "w-full"}`}
           // Daftar 100% zoom'da viewport kengligini to'liq egallaydi. Zoom
           // konteynerning tashqi width'i orqali qo'llanadi; max-width bilan
           // yana 768px ga qisqartirish teacher/student nisbatini buzardi.
@@ -4020,6 +4031,7 @@ function ClassroomPdfPage({
                     setShowPageMenu(false);
                     if (notebook) {
                       setStylePopupMode("insert");
+                      setInsertOrientation("portrait");
                       setShowStylePopup(true);
                     } else onInsertPage?.(pageNumber);
                   }}
@@ -4069,13 +4081,41 @@ function ClassroomPdfPage({
             </div>
           )}
           {showStylePopup && notebook && (
-            <div className="absolute bottom-8 right-0 flex flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+            <div className="absolute bottom-8 right-0 flex min-w-44 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+              {stylePopupMode === "insert" && (
+                <div className="mb-1 grid grid-cols-2 gap-1 border-b border-gray-100 pb-1">
+                  {(["portrait", "landscape"] as const).map((orientation) => (
+                    <button
+                      key={orientation}
+                      type="button"
+                      onClick={() => setInsertOrientation(orientation)}
+                      title={orientation === "portrait" ? "Portrait" : "Landscape"}
+                      aria-label={orientation === "portrait" ? "Portrait" : "Landscape"}
+                      className={`flex items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${
+                        insertOrientation === orientation
+                          ? "bg-indigo-50 text-indigo-600"
+                          : "text-gray-600 hover:bg-gray-100"
+                      }`}
+                    >
+                      <span
+                        className={`block rounded-sm border-2 ${
+                          orientation === "portrait" ? "h-5 w-3.5" : "h-3.5 w-5"
+                        } ${
+                          insertOrientation === orientation
+                            ? "border-indigo-500"
+                            : "border-gray-400"
+                        }`}
+                      />
+                    </button>
+                  ))}
+                </div>
+              )}
               <button
                 type="button"
                 onClick={() => {
                   setShowStylePopup(false);
                   if (stylePopupMode === "insert")
-                    onInsertPage?.(pageNumber, "grid");
+                    onInsertPage?.(pageNumber, "grid", insertOrientation);
                   else onSetNotebookStyle?.(pageNumber, "grid");
                 }}
                 title="Katakli"
@@ -4088,7 +4128,7 @@ function ClassroomPdfPage({
                 onClick={() => {
                   setShowStylePopup(false);
                   if (stylePopupMode === "insert")
-                    onInsertPage?.(pageNumber, "lined");
+                    onInsertPage?.(pageNumber, "lined", insertOrientation);
                   else onSetNotebookStyle?.(pageNumber, "lined");
                 }}
                 title="Yo'l-yo'l"
@@ -4101,7 +4141,7 @@ function ClassroomPdfPage({
                 onClick={() => {
                   setShowStylePopup(false);
                   if (stylePopupMode === "insert")
-                    onInsertPage?.(pageNumber, "plain");
+                    onInsertPage?.(pageNumber, "plain", insertOrientation);
                   else onSetNotebookStyle?.(pageNumber, "plain");
                 }}
                 title="Naqshsiz"
@@ -4205,6 +4245,7 @@ export function ClassroomPdfViewer({
   rightBoardMode = boardMode,
   onBoardViewChange,
   notebookPageStyles = {},
+  notebookPageOrientations = {},
   noSync = false,
   notebookPageCount = 1,
   onRemovePage,
@@ -4316,6 +4357,7 @@ export function ClassroomPdfViewer({
         const page = index + 1;
         return {
           notebookStyle: notebookPageStyles[page] ?? "grid",
+          notebookOrientation: notebookPageOrientations[page] ?? "portrait",
           strokes: (sourceStrokes[page] ?? []).map((stroke) => ({
             ...stroke,
             points: [...stroke.points],
@@ -4334,7 +4376,7 @@ export function ClassroomPdfViewer({
     lassoClipboardRef.current = [];
     void navigator.clipboard?.writeText(serialized).catch(() => {});
     toast.success("Daftar nusxalandi");
-  }, [notebookPageCount, notebookPageStyles]);
+  }, [notebookPageCount, notebookPageOrientations, notebookPageStyles]);
 
   useEffect(() => {
     if (!isHost || !onPastePage) return;
@@ -4371,6 +4413,7 @@ export function ClassroomPdfViewer({
               activeStyleSurface.page + index,
               undefined,
               page.notebookStyle ?? "grid",
+              page.notebookOrientation ?? "portrait",
               page.strokes ?? [],
               pane,
             );
@@ -4390,6 +4433,7 @@ export function ClassroomPdfViewer({
           activeStyleSurface.page,
           copied.pageUrl,
           copied.notebookStyle ?? "grid",
+          copied.notebookOrientation ?? "portrait",
           copied.strokes,
           pane,
         );
@@ -4879,10 +4923,15 @@ export function ClassroomPdfViewer({
                               paneIndex === 1 ? "right" : "left",
                             )
                           }
-                          onInsertPage={(pageNumber, style) => {
+                          onInsertPage={(pageNumber, style, orientation) => {
                             const pane = paneIndex === 1 ? "right" : "left";
                             if (style)
-                              onInsertNotebookPage?.(pageNumber, style, pane);
+                              onInsertNotebookPage?.(
+                                pageNumber,
+                                style,
+                                orientation ?? "portrait",
+                                pane,
+                              );
                             else onInsertPdfPage?.(pageNumber, pane);
                           }}
                           onSetNotebookStyle={(pageNumber, style) =>
@@ -4896,6 +4945,9 @@ export function ClassroomPdfViewer({
                           notebook={paneMode === "notebook"}
                           notebookStyle={
                             notebookPageStyles[pageNumber] ?? "grid"
+                          }
+                          notebookOrientation={
+                            notebookPageOrientations[pageNumber] ?? "portrait"
                           }
                           strokes={
                             displayLayout === "split" && paneIndex === 1

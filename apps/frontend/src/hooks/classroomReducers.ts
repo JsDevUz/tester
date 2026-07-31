@@ -1,4 +1,4 @@
-import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsStroke } from "../api/classroom";
+import type { CsBoardLayout, CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsStroke } from "../api/classroom";
 import type { ClassroomState } from "./useClassroomSession";
 
 export function moveStrokePoints(stroke: CsStroke, x: number, y: number): number[] {
@@ -167,12 +167,19 @@ export function applyPageRemove(
   const pages = isPdf ? s.pages.filter((_, idx) => idx !== p.pageIndex - 1) : s.pages;
   const notebookPageCount = isPdf ? s.notebookPageCount : Math.max(1, s.notebookPageCount - 1);
   let notebookPageStyles = s.notebookPageStyles;
+  let notebookPageOrientations = s.notebookPageOrientations;
   if (!isPdf) {
     notebookPageStyles = {};
     for (const [pageStr, style] of Object.entries(s.notebookPageStyles)) {
       const pageNum = Number(pageStr);
       if (pageNum < p.pageIndex) notebookPageStyles[pageNum] = style;
       else if (pageNum > p.pageIndex) notebookPageStyles[pageNum - 1] = style;
+    }
+    notebookPageOrientations = {};
+    for (const [pageStr, orientation] of Object.entries(s.notebookPageOrientations)) {
+      const pageNum = Number(pageStr);
+      if (pageNum < p.pageIndex) notebookPageOrientations[pageNum] = orientation;
+      else if (pageNum > p.pageIndex) notebookPageOrientations[pageNum - 1] = orientation;
     }
   }
 
@@ -183,7 +190,7 @@ export function applyPageRemove(
     if (currentPage > newCount) currentPage = newCount;
   }
 
-  return { ...s, [key]: rebuilt, pages, notebookPageCount, notebookPageStyles, currentPage };
+  return { ...s, [key]: rebuilt, pages, notebookPageCount, notebookPageStyles, notebookPageOrientations, currentPage };
 }
 
 // PDF'ga qo'shilgan yangi sahifa(lar) — afterPageIndex'dan keyingi barcha
@@ -215,7 +222,7 @@ export function applyPdfInsert(
 // siljiydi, yangi sahifaning o'zi tanlangan naqshni oladi.
 export function applyNotebookPageInsert(
   s: ClassroomState,
-  p: { mode?: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" },
+  p: { mode?: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" },
 ): ClassroomState {
   const right = p.pane === "right";
   if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
@@ -237,10 +244,18 @@ export function applyNotebookPageInsert(
   }
   rebuiltStyles[p.afterPageIndex + 1] = p.style;
 
+  const rebuiltOrientations: Record<number, CsNotebookOrientation> = {};
+  for (const [pageStr, orientation] of Object.entries(s.notebookPageOrientations)) {
+    const pageNum = Number(pageStr);
+    if (pageNum <= p.afterPageIndex) rebuiltOrientations[pageNum] = orientation;
+    else rebuiltOrientations[pageNum + 1] = orientation;
+  }
+  rebuiltOrientations[p.afterPageIndex + 1] = p.orientation ?? "portrait";
+
   const notebookPageCount = s.notebookPageCount + 1;
   const currentPage = s.currentPage > p.afterPageIndex ? s.currentPage + 1 : s.currentPage;
 
-  return { ...s, [key]: rebuilt, notebookPageStyles: rebuiltStyles, notebookPageCount, currentPage };
+  return { ...s, [key]: rebuilt, notebookPageStyles: rebuiltStyles, notebookPageOrientations: rebuiltOrientations, notebookPageCount, currentPage };
 }
 
 export function applyNotebookPageStyle(

@@ -1,5 +1,5 @@
 import {
-  ClassroomBoardMode, ClassroomFontFamily, ClassroomNotebookStyle, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
+  ClassroomBoardMode, ClassroomFontFamily, ClassroomNotebookOrientation, ClassroomNotebookStyle, ClassroomParticipant, ClassroomSession, ClassroomSnapshot, ClassroomStroke,
   ClassroomUndoEntry, ClassroomPageSnapshot,
 } from './classroom.types';
 
@@ -193,6 +193,10 @@ export function resolveNotebookPageStyle(session: ClassroomSession, page: number
   return session.notebookPageStyles?.[page] ?? session.notebookStyle ?? 'grid';
 }
 
+export function resolveNotebookPageOrientation(session: ClassroomSession, page: number): ClassroomNotebookOrientation {
+  return session.notebookPageOrientations?.[page] ?? 'portrait';
+}
+
 // Bitta sahifani (PDF yoki daftar) olib tashlaydi va undan keyingi barcha
 // sahifalar (hamda ularning chizmalari) raqamini bittaga kamaytiradi.
 // Kamida 1 ta sahifa doim qolishi shart — false qaytarilsa hech narsa
@@ -225,6 +229,13 @@ export function removePageFromSession(
       else if (page > pageIndex) rebuiltStyles[page - 1] = style;
     }
     session.notebookPageStyles = rebuiltStyles;
+    const rebuiltOrientations: Record<number, ClassroomNotebookOrientation> = {};
+    for (const [pageStr, orientation] of Object.entries(session.notebookPageOrientations ?? {})) {
+      const page = Number(pageStr);
+      if (page < pageIndex) rebuiltOrientations[page] = orientation;
+      else if (page > pageIndex) rebuiltOrientations[page - 1] = orientation;
+    }
+    session.notebookPageOrientations = rebuiltOrientations;
   }
 
   const map = strokeMapFor(session, mode);
@@ -256,8 +267,10 @@ export function insertNotebookPageIntoSession(
   session: ClassroomSession,
   afterPageIndex: number,
   style: ClassroomNotebookStyle,
+  orientation: ClassroomNotebookOrientation = 'portrait',
 ): boolean {
   if (!['grid', 'lined', 'plain'].includes(style)) return false;
+  if (!['portrait', 'landscape'].includes(orientation)) return false;
   const previousMode = session.boardMode;
   session.boardMode = 'notebook';
   const currentCount = session.notebookPageCount ?? 1;
@@ -277,6 +290,16 @@ export function insertNotebookPageIntoSession(
   }
   rebuiltStyles[afterPageIndex + 1] = style;
   session.notebookPageStyles = rebuiltStyles;
+
+  const previousOrientations = session.notebookPageOrientations ?? {};
+  const rebuiltOrientations: Record<number, ClassroomNotebookOrientation> = {};
+  for (const [key, value] of Object.entries(previousOrientations)) {
+    const pageNum = Number(key);
+    if (pageNum <= afterPageIndex) rebuiltOrientations[pageNum] = value;
+    else rebuiltOrientations[pageNum + 1] = value;
+  }
+  rebuiltOrientations[afterPageIndex + 1] = orientation;
+  session.notebookPageOrientations = rebuiltOrientations;
 
   const map = strokeMapFor(session, 'notebook');
   const rebuiltStrokes = new Map<number, ClassroomStroke[]>();
@@ -343,7 +366,7 @@ export function applyPageRemoveInverse(
   if (mode === 'pdf') {
     insertPdfPagesIntoSession(session, [data.page.url!], afterPageIndex);
   } else {
-    insertNotebookPageIntoSession(session, afterPageIndex, data.page.notebookStyle ?? 'grid');
+    insertNotebookPageIntoSession(session, afterPageIndex, data.page.notebookStyle ?? 'grid', data.page.notebookOrientation ?? 'portrait');
   }
   // Qo'yilgan (bo'sh) sahifaga o'chirishdan oldingi chizmalarni qaytaramiz.
   const map = strokeMapFor(session, mode);
@@ -358,7 +381,7 @@ export function applyPageRemoveInverse(
 // saqlanadi).
 export function applyPageInsertInverse(
   session: ClassroomSession, mode: ClassroomBoardMode,
-  data: { afterPageIndex: number; pages?: string[]; style?: ClassroomNotebookStyle }, direction: 'undo' | 'redo',
+  data: { afterPageIndex: number; pages?: string[]; style?: ClassroomNotebookStyle; orientation?: ClassroomNotebookOrientation }, direction: 'undo' | 'redo',
 ): void {
   if (direction === 'undo') {
     removePageFromSession(session, mode, data.afterPageIndex + 1);
@@ -367,7 +390,7 @@ export function applyPageInsertInverse(
   if (mode === 'pdf') {
     insertPdfPagesIntoSession(session, data.pages ?? [], data.afterPageIndex);
   } else {
-    insertNotebookPageIntoSession(session, data.afterPageIndex, data.style ?? 'grid');
+    insertNotebookPageIntoSession(session, data.afterPageIndex, data.style ?? 'grid', data.orientation ?? 'portrait');
   }
 }
 
@@ -600,6 +623,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     splitRatio: session.splitRatio ?? 0.5,
     notebookPageCount: session.notebookPageCount ?? 1,
     notebookPageStyles: session.notebookPageStyles ?? {},
+    notebookPageOrientations: session.notebookPageOrientations ?? {},
     scroll: session.scroll,
     rightScroll: session.rightScroll ?? null,
     isFree: session.isFree,

@@ -182,6 +182,7 @@ export interface ClassBoardSnapshotData {
   rightBoardMode: CsBoardMode;
   notebookStyle: CsNotebookStyle;
   notebookPageStyles: Record<number, CsNotebookStyle>;
+  notebookPageOrientations: Record<number, CsNotebookOrientation>;
   notebookPageCount: number;
 }
 
@@ -271,6 +272,7 @@ export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'line' | 'text' | 'rectan
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
 export type CsNotebookStyle = 'grid' | 'lined' | 'plain';
+export type CsNotebookOrientation = 'portrait' | 'landscape';
 
 export type CsFontFamily = "Inter" | "Arial" | "Georgia" | "Comic Sans MS" | "Nunito";
 export type CsFillStyle = "hachure" | "cross-hatch" | "solid";
@@ -350,6 +352,7 @@ export interface CsSnapshot {
   classroomTheme: "light" | "dark";
   notebookStyle: CsNotebookStyle;
   notebookPageStyles: Record<number, CsNotebookStyle>;
+  notebookPageOrientations: Record<number, CsNotebookOrientation>;
 }
 
 export interface CsPresenceUpdate {

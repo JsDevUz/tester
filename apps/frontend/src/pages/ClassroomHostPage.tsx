@@ -187,6 +187,7 @@ export function ClassroomHostPage() {
       await exportBoardToPdf({
         mode,
         notebookPageStyles: state.notebookPageStyles,
+        notebookPageOrientations: state.notebookPageOrientations,
         theme: state.classroomTheme,
         pageUrls,
         strokesByPage: strokesByPage ?? {},
@@ -247,11 +248,12 @@ export function ClassroomHostPage() {
           hostSplitRatio={state.splitRatio}
           notebookPageCount={state.notebookPageCount}
           notebookPageStyles={state.notebookPageStyles}
+          notebookPageOrientations={state.notebookPageOrientations}
           onInsertPdfPage={(afterPageIndex) => handleInsertPdfPage(afterPageIndex)}
-          onInsertNotebookPage={(afterPageIndex, style, pane) => hostActions.insertNotebookPage(afterPageIndex, style, pane)}
+          onInsertNotebookPage={(afterPageIndex, style, orientation, pane) => hostActions.insertNotebookPage(afterPageIndex, style, orientation, pane)}
           onSetNotebookPageStyle={(page, style, pane) => hostActions.setNotebookPageStyle(page, style, pane)}
-          onPastePage={(mode, afterPageIndex, pageUrl, style, strokes, pane) =>
-            hostActions.pastePage(mode, afterPageIndex, pageUrl, style, strokes, pane)
+          onPastePage={(mode, afterPageIndex, pageUrl, style, orientation, strokes, pane) =>
+            hostActions.pastePage(mode, afterPageIndex, pageUrl, style, orientation, strokes, pane)
           }
           onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
           onSetSplitRatio={hostActions.setSplitRatio}
