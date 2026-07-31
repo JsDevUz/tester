@@ -23,6 +23,7 @@ import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLi
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
 import { RecordSessionModal } from "../components/classroom/RecordSessionModal";
+import { RouteLoadingScreen } from "../components/RouteLoadingScreen";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import {
   apiAttachClassPdf,
@@ -217,6 +218,8 @@ export function ClassroomHostPage() {
     );
   }
 
+  if (!state.joined) return <RouteLoadingScreen />;
+
   return (
     <div ref={pageRef} className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
       {voice.needsAudioUnlock && (
@@ -247,6 +250,9 @@ export function ClassroomHostPage() {
           onInsertPdfPage={(afterPageIndex) => handleInsertPdfPage(afterPageIndex)}
           onInsertNotebookPage={(afterPageIndex, style, pane) => hostActions.insertNotebookPage(afterPageIndex, style, pane)}
           onSetNotebookPageStyle={(page, style, pane) => hostActions.setNotebookPageStyle(page, style, pane)}
+          onPastePage={(mode, afterPageIndex, pageUrl, style, strokes, pane) =>
+            hostActions.pastePage(mode, afterPageIndex, pageUrl, style, strokes, pane)
+          }
           onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
           onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
@@ -350,6 +356,7 @@ export function ClassroomHostPage() {
           micDisabled={!voice.voiceAvailable}
           onEndCall={() => setConfirmEnd(true)}
           endCallTitle="Darsni yakunlash"
+          hidden={fullscreen.isFullscreen}
           menu={
             <ClassroomCallBarMenu
               items={[

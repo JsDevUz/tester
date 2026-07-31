@@ -559,6 +559,19 @@ describe('sahifa va chizish', () => {
     expect(history[1].payload).toMatchObject({ mode: 'notebook', pane: 'left', stroke });
   });
 
+  it('yangi PDF yuklash daftar chizmalarini o‘chirmaydi', async () => {
+    const { service, sessionId } = await withPdf();
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+    const stroke = { id: 'note-kept', tool: 'pen' as const, color: '#111', width: 4, points: [0.1, 0.1, 0.3, 0.3] };
+    service.stroke(sessionId, 'teacher-1', 1, stroke, 'notebook', 'left');
+
+    service.setPdfForTests(sessionId, 'yangi.pdf', ['new-page.png']);
+    service.setBoardMode(sessionId, 'teacher-1', 'notebook');
+
+    const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-after-pdf');
+    expect(snapshot.strokesByPage[1]).toContainEqual(stroke);
+  });
+
   it('qisqa text stroke broadcast qilinadi va keyingi snapshotda saqlanadi', async () => {
     const { service, events, sessionId } = await withPdf();
     const stroke = {

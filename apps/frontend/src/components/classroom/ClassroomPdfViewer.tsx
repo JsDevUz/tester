@@ -13,13 +13,13 @@ import {
   AlignLeft,
   AlignRight,
   BringToFront,
-  Braces,
   ChevronsDown,
   ChevronsUp,
   Columns2,
   Copy,
   Grid3x3,
   Minus,
+  MoreHorizontal,
   MoreVertical,
   Move,
   Plus,
@@ -30,6 +30,7 @@ import {
   Square,
   Trash2,
 } from "lucide-react";
+import { toast } from "sonner";
 import type {
   CsBoardLayout,
   CsBoardMode,
@@ -347,6 +348,15 @@ interface Props {
     style: CsNotebookStyle,
     pane: "left" | "right",
   ) => void;
+  onPastePage?: (
+    mode: CsBoardMode,
+    afterPageIndex: number,
+    pageUrl: string | undefined,
+    style: CsNotebookStyle,
+    strokes: CsStroke[],
+    pane: "left" | "right",
+  ) => void;
+  allowPageCopy?: boolean;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -1749,10 +1759,33 @@ interface PageProps {
   // yuboriladi. PDF rejimida style yo'q (undefined) — bosilganda darhol
   // kutubxona tanlash oqimi ochiladi, popup ko'rsatilmaydi.
   onInsertPage?: (pageNumber: number, style?: CsNotebookStyle) => void;
+  onSetNotebookStyle?: (pageNumber: number, style: CsNotebookStyle) => void;
   isActiveSurface?: boolean;
   lassoClipboard?: { current: CsStroke[] };
-  onImportNotebookStyle?: (style: CsNotebookStyle) => void;
+  onCopyAllNotebookPages?: () => void;
+  allowPageCopy?: boolean;
 }
+
+interface ClassroomPageClipboard {
+  version: 1;
+  type: "classroom-page";
+  mode: CsBoardMode;
+  pageUrl?: string;
+  notebookStyle: CsNotebookStyle;
+  strokes: CsStroke[];
+}
+
+interface ClassroomNotebookClipboard {
+  version: 1;
+  type: "classroom-notebook-pages";
+  mode: "notebook";
+  pages: Array<{
+    notebookStyle: CsNotebookStyle;
+    strokes: CsStroke[];
+  }>;
+}
+
+const CLASSROOM_PAGE_CLIPBOARD_KEY = "classroom-page-clipboard-v1";
 
 // Bitta sahifa: rasm + chizish canvas. Ko'rinish oynasiga yaqinlashguncha
 // <img src> qo'yilmaydi (lazy) — ko'p sahifali darsda hammasi birdan
@@ -1790,9 +1823,11 @@ function ClassroomPdfPage({
   canRemove = true,
   onRemovePage,
   onInsertPage,
+  onSetNotebookStyle,
   isActiveSurface = false,
   lassoClipboard,
-  onImportNotebookStyle,
+  onCopyAllNotebookPages,
+  allowPageCopy = false,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
@@ -1800,10 +1835,11 @@ function ClassroomPdfPage({
   const [visible, setVisible] = useState(pageNumber <= 2);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [showStylePopup, setShowStylePopup] = useState(false);
+  const [stylePopupMode, setStylePopupMode] = useState<"insert" | "set">(
+    "insert",
+  );
   const [showPageMenu, setShowPageMenu] = useState(false);
-  const [showPageJsonModal, setShowPageJsonModal] = useState(false);
-  const [pageJson, setPageJson] = useState("");
-  const [pageJsonError, setPageJsonError] = useState<string | null>(null);
+  const [showNotebookMenu, setShowNotebookMenu] = useState(false);
   // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
   // xiralashtirib ko'rsatiladi (o'chirilmasdan oldin preview).
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
@@ -2114,85 +2150,40 @@ function ClassroomPdfPage({
     setSelectedGroupIds(new Set());
   };
 
-  const openPageJsonModal = () => {
+  const copyWholePage = () => {
     setShowPageMenu(false);
-    setPageJsonError(null);
-    setPageJson(
-      JSON.stringify(
-        {
-          version: 1,
-          type: "classroom-page",
-          mode: notebook ? "notebook" : "pdf",
-          notebookStyle: notebook ? notebookStyle : undefined,
-          strokes,
-        },
-        null,
-        2,
-      ),
-    );
-    setShowPageJsonModal(true);
+    if (lassoClipboard) lassoClipboard.current = [];
+    const clipboard: ClassroomPageClipboard = {
+      version: 1,
+      type: "classroom-page",
+      mode: notebook ? "notebook" : "pdf",
+      pageUrl: notebook ? undefined : url,
+      notebookStyle,
+      strokes: strokes.map((stroke) => ({
+        ...stroke,
+        points: [...stroke.points],
+      })),
+    };
+    const serialized = JSON.stringify(clipboard);
+    localStorage.setItem(CLASSROOM_PAGE_CLIPBOARD_KEY, serialized);
+    void navigator.clipboard?.writeText(serialized).catch(() => {});
+    toast.success("Sahifa nusxalandi");
   };
 
-  const applyPageJson = () => {
-    try {
-      if (pageJson.length > 2_000_000) throw new Error("JSON juda katta");
-      const parsed = JSON.parse(pageJson) as {
-        type?: unknown;
-        notebookStyle?: unknown;
-        strokes?: unknown;
-      };
-      if (
-        !parsed ||
-        parsed.type !== "classroom-page" ||
-        !Array.isArray(parsed.strokes) ||
-        parsed.strokes.length > 5000
-      )
-        throw new Error("Sahifa JSON formati noto'g'ri");
-
-      const imported = parsed.strokes.map((value) => {
-        const stroke = value as Partial<CsStroke>;
-        if (
-          !stroke ||
-          typeof stroke.tool !== "string" ||
-          !Array.isArray(stroke.points) ||
-          !stroke.points.every(
-            (point) => typeof point === "number" && Number.isFinite(point),
-          )
-        )
-          throw new Error("JSON ichida yaroqsiz element bor");
-        return {
-          ...stroke,
-          id: crypto.randomUUID(),
-          points: [...stroke.points],
-        } as CsStroke;
-      });
-
-      for (const stroke of strokes) onEraseStroke?.(pageNumber, stroke.id);
-      for (const stroke of imported) onStrokeComplete?.(pageNumber, stroke);
-      if (
-        notebook &&
-        (parsed.notebookStyle === "grid" ||
-          parsed.notebookStyle === "lined" ||
-          parsed.notebookStyle === "plain")
-      )
-        onImportNotebookStyle?.(parsed.notebookStyle);
-      setSelectedGroupIds(new Set());
-      setShowPageJsonModal(false);
-      setPageJsonError(null);
-    } catch (error) {
-      setPageJsonError(
-        error instanceof Error ? error.message : "JSON formatida xato bor",
-      );
-    }
+  const copyAllNotebookPages = () => {
+    setShowNotebookMenu(false);
+    onCopyAllNotebookPages?.();
   };
 
   const copySelectedGroup = useCallback(() => {
     if (selectedGroupStrokes.length === 0) return;
+    localStorage.removeItem(CLASSROOM_PAGE_CLIPBOARD_KEY);
     if (lassoClipboard) {
       lassoClipboard.current = selectedGroupStrokes.map((stroke) => ({
         ...stroke,
         points: [...stroke.points],
       }));
+      toast.success("Elementlar nusxalandi");
     }
   }, [lassoClipboard, selectedGroupStrokes]);
 
@@ -3507,6 +3498,30 @@ function ClassroomPdfPage({
           // tugmasi bosilganda daftar bir lahza eski joyga sakrab qaytardi.
           style={notebook ? { width: "100%" } : undefined}
         >
+          {(isHost || allowPageCopy) && notebook && pageNumber === 1 && (
+            <div className="absolute left-1 top-1 z-20">
+              <button
+                type="button"
+                onClick={() => setShowNotebookMenu((visible) => !visible)}
+                title="Daftar amallari"
+                aria-label="Daftar amallari"
+                className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+              >
+                <MoreHorizontal size={13} />
+              </button>
+              {showNotebookMenu && (
+                <div className="absolute left-0 top-8 flex min-w-40 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+                  <button
+                    type="button"
+                    onClick={copyAllNotebookPages}
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                  >
+                    <Copy size={14} /> To'liq nusxalash
+                  </button>
+                </div>
+              )}
+            </div>
+          )}
           {notebook ? (
             <div
               aria-label={`Daftar sahifasi ${pageNumber}`}
@@ -3982,7 +3997,7 @@ function ClassroomPdfPage({
       ) : (
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
       )}
-      {isHost && (
+      {(isHost || (allowPageCopy && notebook)) && (
         <div className="absolute bottom-1 right-1 z-20">
           <button
             type="button"
@@ -3998,38 +4013,59 @@ function ClassroomPdfPage({
           </button>
           {showPageMenu && (
             <div className="absolute bottom-8 right-0 flex min-w-36 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+              {isHost && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPageMenu(false);
+                    if (notebook) {
+                      setStylePopupMode("insert");
+                      setShowStylePopup(true);
+                    } else onInsertPage?.(pageNumber);
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                >
+                  <Plus size={14} /> Qo'shish
+                </button>
+              )}
+              {isHost && notebook && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPageMenu(false);
+                    setStylePopupMode("set");
+                    setShowStylePopup(true);
+                  }}
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                >
+                  <Grid3x3 size={14} /> Naqshlar
+                </button>
+              )}
               <button
                 type="button"
-                onClick={() => {
-                  setShowPageMenu(false);
-                  if (notebook) setShowStylePopup(true);
-                  else onInsertPage?.(pageNumber);
-                }}
+                onClick={copyWholePage}
                 className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
               >
-                <Plus size={14} /> Qo'shish
+                <Copy size={14} /> Nusxalash
               </button>
-              <button
-                type="button"
-                onClick={openPageJsonModal}
-                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
-              >
-                <Braces size={14} /> JSON
-              </button>
-              <button
-                type="button"
-                disabled={!canRemove}
-                onClick={() => {
-                  setShowPageMenu(false);
-                  setConfirmRemove(true);
-                }}
-                title={
-                  canRemove ? "O'chirish" : "Kamida bitta sahifa qolishi kerak"
-                }
-                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                <Trash2 size={14} /> O'chirish
-              </button>
+              {isHost && (
+                <button
+                  type="button"
+                  disabled={!canRemove}
+                  onClick={() => {
+                    setShowPageMenu(false);
+                    setConfirmRemove(true);
+                  }}
+                  title={
+                    canRemove
+                      ? "O'chirish"
+                      : "Kamida bitta sahifa qolishi kerak"
+                  }
+                  className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+                >
+                  <Trash2 size={14} /> O'chirish
+                </button>
+              )}
             </div>
           )}
           {showStylePopup && notebook && (
@@ -4038,7 +4074,9 @@ function ClassroomPdfPage({
                 type="button"
                 onClick={() => {
                   setShowStylePopup(false);
-                  onInsertPage?.(pageNumber, "grid");
+                  if (stylePopupMode === "insert")
+                    onInsertPage?.(pageNumber, "grid");
+                  else onSetNotebookStyle?.(pageNumber, "grid");
                 }}
                 title="Katakli"
                 className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
@@ -4049,7 +4087,9 @@ function ClassroomPdfPage({
                 type="button"
                 onClick={() => {
                   setShowStylePopup(false);
-                  onInsertPage?.(pageNumber, "lined");
+                  if (stylePopupMode === "insert")
+                    onInsertPage?.(pageNumber, "lined");
+                  else onSetNotebookStyle?.(pageNumber, "lined");
                 }}
                 title="Yo'l-yo'l"
                 className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
@@ -4060,7 +4100,9 @@ function ClassroomPdfPage({
                 type="button"
                 onClick={() => {
                   setShowStylePopup(false);
-                  onInsertPage?.(pageNumber, "plain");
+                  if (stylePopupMode === "insert")
+                    onInsertPage?.(pageNumber, "plain");
+                  else onSetNotebookStyle?.(pageNumber, "plain");
                 }}
                 title="Naqshsiz"
                 className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
@@ -4070,60 +4112,6 @@ function ClassroomPdfPage({
             </div>
           )}
         </div>
-      )}
-      {showPageJsonModal && (
-        <>
-          <div
-            className="fixed inset-0 z-40 bg-black/40"
-            onClick={() => setShowPageJsonModal(false)}
-          />
-          <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
-            <div className="pointer-events-auto flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-5 shadow-2xl">
-              <h3 className="text-base font-semibold text-gray-800">
-                Sahifani JSON orqali ko'chirish
-              </h3>
-              <p className="mb-3 mt-1 text-xs text-gray-500">
-                JSON’ni copy qiling. Boshqa sahifada shu oynani ochib joylang va
-                “Qo‘llash”ni bosing.
-              </p>
-              <textarea
-                value={pageJson}
-                onChange={(event) => {
-                  setPageJson(event.target.value);
-                  setPageJsonError(null);
-                }}
-                spellCheck={false}
-                className="min-h-80 flex-1 resize-y rounded-xl border border-gray-200 bg-gray-950 p-3 font-mono text-xs text-gray-100 outline-none focus:border-indigo-400"
-              />
-              {pageJsonError && (
-                <p className="mt-2 text-xs text-red-500">{pageJsonError}</p>
-              )}
-              <div className="mt-4 flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowPageJsonModal(false)}
-                  className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
-                >
-                  Bekor qilish
-                </button>
-                <button
-                  type="button"
-                  onClick={() => void navigator.clipboard.writeText(pageJson)}
-                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
-                >
-                  Copy
-                </button>
-                <button
-                  type="button"
-                  onClick={applyPageJson}
-                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
-                >
-                  Qo'llash
-                </button>
-              </div>
-            </div>
-          </div>
-        </>
       )}
       {confirmRemove && (
         <>
@@ -4223,6 +4211,8 @@ export function ClassroomPdfViewer({
   onInsertPdfPage,
   onInsertNotebookPage,
   onSetNotebookPageStyle,
+  onPastePage,
+  allowPageCopy,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -4318,6 +4308,104 @@ export function ClassroomPdfViewer({
   useEffect(() => {
     onActivePaneChange?.(activeStyleSurface.paneIndex === 1 ? "right" : "left");
   }, [activeStyleSurface.paneIndex, onActivePaneChange]);
+
+  const copyAllNotebookPages = useCallback((sourceStrokes: Record<number, CsStroke[]>) => {
+    const pages: ClassroomNotebookClipboard["pages"] = Array.from(
+      { length: notebookPageCount },
+      (_, index) => {
+        const page = index + 1;
+        return {
+          notebookStyle: notebookPageStyles[page] ?? "grid",
+          strokes: (sourceStrokes[page] ?? []).map((stroke) => ({
+            ...stroke,
+            points: [...stroke.points],
+          })),
+        };
+      },
+    );
+    const clipboard: ClassroomNotebookClipboard = {
+      version: 1,
+      type: "classroom-notebook-pages",
+      mode: "notebook",
+      pages,
+    };
+    const serialized = JSON.stringify(clipboard);
+    localStorage.setItem(CLASSROOM_PAGE_CLIPBOARD_KEY, serialized);
+    lassoClipboardRef.current = [];
+    void navigator.clipboard?.writeText(serialized).catch(() => {});
+    toast.success("Daftar nusxalandi");
+  }, [notebookPageCount, notebookPageStyles]);
+
+  useEffect(() => {
+    if (!isHost || !onPastePage) return;
+    const handlePagePaste = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        event.defaultPrevented ||
+        !(event.ctrlKey || event.metaKey) ||
+        event.key.toLowerCase() !== "v" ||
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      )
+        return;
+      try {
+        const raw = localStorage.getItem(CLASSROOM_PAGE_CLIPBOARD_KEY);
+        if (!raw) return;
+        const copied = JSON.parse(raw) as
+          | ClassroomPageClipboard
+          | ClassroomNotebookClipboard;
+        const pane = activeStyleSurface.paneIndex === 1 ? "right" : "left";
+        const targetMode = pane === "right" ? rightMode : leftMode;
+        if (
+          copied?.type === "classroom-notebook-pages" &&
+          copied.version === 1 &&
+          copied.mode === "notebook" &&
+          targetMode === "notebook" &&
+          Array.isArray(copied.pages)
+        ) {
+          event.preventDefault();
+          copied.pages.forEach((page, index) => {
+            onPastePage(
+              "notebook",
+              activeStyleSurface.page + index,
+              undefined,
+              page.notebookStyle ?? "grid",
+              page.strokes ?? [],
+              pane,
+            );
+          });
+          return;
+        }
+        if (
+          copied?.type !== "classroom-page" ||
+          copied.version !== 1 ||
+          !Array.isArray(copied.strokes)
+        )
+          return;
+        if (copied.mode !== targetMode) return;
+        event.preventDefault();
+        onPastePage(
+          copied.mode,
+          activeStyleSurface.page,
+          copied.pageUrl,
+          copied.notebookStyle ?? "grid",
+          copied.strokes,
+          pane,
+        );
+      } catch {
+        // Buzilgan yoki eski clipboard oddiy Ctrl+V ishiga xalaqit bermaydi.
+      }
+    };
+    window.addEventListener("keydown", handlePagePaste);
+    return () => window.removeEventListener("keydown", handlePagePaste);
+  }, [
+    activeStyleSurface,
+    isHost,
+    leftMode,
+    onPastePage,
+    rightMode,
+  ]);
 
   useEffect(() => {
     if (isHost || synced) {
@@ -4797,6 +4885,13 @@ export function ClassroomPdfViewer({
                               onInsertNotebookPage?.(pageNumber, style, pane);
                             else onInsertPdfPage?.(pageNumber, pane);
                           }}
+                          onSetNotebookStyle={(pageNumber, style) =>
+                            onSetNotebookPageStyle?.(
+                              pageNumber,
+                              style,
+                              paneIndex === 1 ? "right" : "left",
+                            )
+                          }
                           url={paneMode === "pdf" ? pageUrls[idx] : undefined}
                           notebook={paneMode === "notebook"}
                           notebookStyle={
@@ -4830,13 +4925,14 @@ export function ClassroomPdfViewer({
                             activeStyleSurface.page === pageNumber
                           }
                           lassoClipboard={lassoClipboardRef}
-                          onImportNotebookStyle={(style) =>
-                            onSetNotebookPageStyle?.(
-                              pageNumber,
-                              style,
-                              paneIndex === 1 ? "right" : "left",
+                          onCopyAllNotebookPages={() =>
+                            copyAllNotebookPages(
+                              displayLayout === "split" && paneIndex === 1
+                                ? rightStrokesByPage
+                              : strokesByPage,
                             )
                           }
+                          allowPageCopy={allowPageCopy ?? noSync}
                           onToolChange={onToolChange}
                           color={color}
                           onColorChange={onColorChange}

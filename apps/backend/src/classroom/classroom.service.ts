@@ -313,13 +313,19 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private applyPdf(s: ClassroomSession, pdfName: string, pages: string[]) {
+    // Yangi PDF faqat PDF taxtasini almashtiradi. Daftar chizmalari alohida
+    // mode map'da saqlanadi va PDF yuklashda yo'qolmasligi kerak.
+    if (!s.strokesByMode) {
+      s.strokesByMode = new Map([[s.boardMode ?? 'pdf', s.strokesByPage]]);
+    }
+    const pdfStrokes = new Map<number, ClassroomStroke[]>();
+    s.strokesByMode.set('pdf', pdfStrokes);
     s.pdfName = pdfName;
     s.pdfPages = pages;
     s.currentPage = 1;
     s.boardMode = 'pdf';
     s.boardLayout = 'single'; s.leftBoardMode = 'pdf'; s.rightBoardMode = 'pdf';
-    s.strokesByPage = new Map();
-    s.strokesByMode = new Map([['pdf', s.strokesByPage]]);
+    s.strokesByPage = pdfStrokes;
     s.scroll = null;
     s.rightScroll = null;
   }
@@ -835,12 +841,66 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(s.id, 'page:insert', payload);
   }
 
+  pastePage(
+    sessionId: string,
+    userId: string,
+    mode: 'pdf' | 'notebook',
+    afterPageIndex: number,
+    pageUrl: string | undefined,
+    style: ClassroomNotebookStyle,
+    strokes: ClassroomStroke[],
+    pane: 'left' | 'right' = 'left',
+  ): void {
+    const s = this.requireHost(sessionId, userId);
+    if (
+      !Array.isArray(strokes) ||
+      strokes.length > 5000 ||
+      strokes.some((stroke) =>
+        !stroke ||
+        typeof stroke.tool !== 'string' ||
+        !Array.isArray(stroke.points) ||
+        stroke.points.some((point) => typeof point !== 'number' || !Number.isFinite(point)),
+      )
+    ) throw new Error('INVALID_PAGE_CLIPBOARD');
+
+    if (mode === 'pdf') {
+      if (!pageUrl || pageUrl.length > 5000) throw new Error('INVALID_PAGE_URL');
+      if (!insertPdfPagesIntoSession(s, [pageUrl], afterPageIndex)) throw new Error('INVALID_PAGE_INSERT');
+    } else if (!insertNotebookPageIntoSession(s, afterPageIndex, style)) {
+      throw new Error('INVALID_PAGE_INSERT');
+    }
+
+    const page = afterPageIndex + 1;
+    const copiedStrokes = strokes.map((stroke) => ({
+      ...stroke,
+      id: crypto.randomUUID(),
+      points: [...stroke.points],
+    }));
+    strokeMapFor(s, mode).set(page, copiedStrokes);
+
+    if (mode === 'pdf') {
+      pushUndoEntry(s, { type: 'page:insert', mode, page, pane, before: null, after: { afterPageIndex, pages: [pageUrl] } });
+      const payload = { pages: [pageUrl], afterPageIndex };
+      this.recordHistoryEvent(s, 'page:insert', { mode, ...payload, pane });
+      this.broadcaster.toRoom(s.id, 'pdf:insert', payload);
+    } else {
+      pushUndoEntry(s, { type: 'page:insert', mode, page, pane, before: null, after: { afterPageIndex, style } });
+      const payload = { mode, afterPageIndex, style, pane };
+      this.recordHistoryEvent(s, 'page:insert', payload);
+      this.broadcaster.toRoom(s.id, 'page:insert', payload);
+    }
+    for (const stroke of copiedStrokes) {
+      this.broadcaster.toRoom(s.id, 'stroke:add', { page, stroke, mode, pane });
+    }
+  }
+
   setNotebookPageStyle(sessionId: string, userId: string, page: number, style: ClassroomNotebookStyle): void {
     const s = this.requireHost(sessionId, userId);
     const count = s.notebookPageCount ?? 1;
     if (!Number.isInteger(page) || page < 1 || page > count) throw new Error('INVALID_NOTEBOOK_PAGE');
     s.notebookPageStyles = { ...(s.notebookPageStyles ?? {}), [page]: style };
     const payload = { page, style };
+    this.recordHistoryEvent(s, 'notebook:pageStyle', payload);
     this.broadcaster.toRoom(s.id, 'notebook:pageStyle', payload);
   }
 

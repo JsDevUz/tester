@@ -1,9 +1,9 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket";
 import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
-  applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
 } from "./classroomReducers";
@@ -86,6 +86,13 @@ export function useClassroomSession(
   sessionIdRef.current = sessionId;
   const lastPointerSentRef = useRef(0);
   const pointerThrottleTimerRef = useRef<number | null>(null);
+
+  useLayoutEffect(() => {
+    setState({
+      ...INITIAL,
+      classroomTheme: role === "host" ? globalTheme : INITIAL.classroomTheme,
+    });
+  }, [sessionId, role]);
 
   useEffect(() => {
     if (!sessionId) return;
@@ -182,7 +189,7 @@ export function useClassroomSession(
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
     socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
-      setState((s) => ({ ...s, notebookPageStyles: { ...s.notebookPageStyles, [p.page]: p.style } })));
+      setState((s) => applyNotebookPageStyle(s, p)));
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
     socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
@@ -346,6 +353,8 @@ export function useClassroomSession(
       emitHost("host:insertNotebookPage", { afterPageIndex, style, pane }),
     setNotebookPageStyle: (page: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
       emitHost("host:setNotebookPageStyle", { page, style, pane }),
+    pastePage: (mode: CsBoardMode, afterPageIndex: number, pageUrl: string | undefined, style: CsNotebookStyle, strokes: CsStroke[], pane: "left" | "right" = "left") =>
+      emitHost("host:pastePage", { mode, afterPageIndex, pageUrl, style, strokes, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),

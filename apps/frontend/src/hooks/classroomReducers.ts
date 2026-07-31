@@ -243,6 +243,16 @@ export function applyNotebookPageInsert(
   return { ...s, [key]: rebuilt, notebookPageStyles: rebuiltStyles, notebookPageCount, currentPage };
 }
 
+export function applyNotebookPageStyle(
+  s: ClassroomState,
+  p: { page: number; style: CsNotebookStyle },
+): ClassroomState {
+  return {
+    ...s,
+    notebookPageStyles: { ...s.notebookPageStyles, [p.page]: p.style },
+  };
+}
+
 // entry.mode qaysi pane'da ko'rsatilayotganini aniqlaydi — split
 // rejimida DUPLICATE_SPLIT_MODE tufayli ikkala pane bir xil mode'da
 // bo'la olmaydi, shuning uchun bu har doim aynan bitta pane'ni tanlaydi
