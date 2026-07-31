@@ -4,7 +4,9 @@ import { drawStroke } from "./ClassroomPdfViewer";
 
 // Eksport uchun sahifa render kengligi — REF_WIDTH bilan bir xil bo'lishi
 // shart emas, lekin baland bo'lgani sari chiziqlar/matn sifatliroq chiqadi.
-const EXPORT_WIDTH = 1600;
+// A4'ni taxminan 290 DPI'da rasterlaydi. Oldingi 1600px + JPEG siqish
+// ingichka daftar kataklari, matn va pen chiziqlarini xiralashtirardi.
+const EXPORT_WIDTH = 2400;
 const A4_RATIO = 297 / 210; // balandlik/kenglik
 
 function loadImage(src: string): Promise<HTMLImageElement> {
@@ -133,14 +135,16 @@ export async function exportBoardToPdf(params: ExportBoardParams): Promise<void>
       width,
       fallbackHeight,
     });
-    const dataUrl = canvas.toDataURL("image/jpeg", 0.92);
+    // PNG lossless: sahifa allaqachon canvasga rasterlangan, uni yana JPEG
+    // bilan siqish ayniqsa mayda matn va ingichka chiziqlarni buzadi.
+    const dataUrl = canvas.toDataURL("image/png");
     const format: [number, number] = [canvas.width, canvas.height];
     if (!pdf) {
       pdf = new jsPDF({ orientation: "portrait", unit: "px", format });
     } else {
       pdf.addPage(format, "portrait");
     }
-    pdf.addImage(dataUrl, "JPEG", 0, 0, canvas.width, canvas.height);
+    pdf.addImage(dataUrl, "PNG", 0, 0, canvas.width, canvas.height, undefined, "FAST");
   }
 
   pdf?.save(fileName);

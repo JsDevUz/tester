@@ -225,6 +225,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:setNotebookPageStyle')
+  setNotebookPageStyle(@MessageBody() body: BaseBody & { page: number; style: 'grid' | 'lined' | 'plain'; pane?: 'left' | 'right' }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      this.classroomService.setNotebookPageStyle(body.sessionId, user.sub, body.page, body.style);
+    });
+  }
+
   @SubscribeMessage('host:setBoardMode')
   setBoardMode(@MessageBody() body: BaseBody & { mode: 'pdf' | 'notebook' }) {
     return this.run(() => {

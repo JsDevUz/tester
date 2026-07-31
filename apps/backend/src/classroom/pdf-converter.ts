@@ -71,7 +71,9 @@ export async function convertPdfToPageImages(pdfBuffer: Buffer, engine?: PdfEngi
     const images: Buffer[] = [];
     for (let i = 0; i < pageCount; i++) {
       const png = doc.renderPagePng(i, PDF_RENDER_WIDTH);
-      images.push(await sharp(png).webp({ quality: 80 }).toBuffer());
+      // WebP saqlash hajmini nazorat qiladi, 92 quality esa PDF'dagi mayda
+      // matn va formulalarda oldingi 80 quality artefaktlarini kamaytiradi.
+      images.push(await sharp(png).webp({ quality: 92, smartSubsample: true }).toBuffer());
     }
     return images;
   } finally {

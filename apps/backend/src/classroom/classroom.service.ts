@@ -835,6 +835,15 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(s.id, 'page:insert', payload);
   }
 
+  setNotebookPageStyle(sessionId: string, userId: string, page: number, style: ClassroomNotebookStyle): void {
+    const s = this.requireHost(sessionId, userId);
+    const count = s.notebookPageCount ?? 1;
+    if (!Number.isInteger(page) || page < 1 || page > count) throw new Error('INVALID_NOTEBOOK_PAGE');
+    s.notebookPageStyles = { ...(s.notebookPageStyles ?? {}), [page]: style };
+    const payload = { page, style };
+    this.broadcaster.toRoom(s.id, 'notebook:pageStyle', payload);
+  }
+
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
   // ichidagi nisbiy joy (0..1). Session holatiga saqlanadi (kech kirgan
   // o'quvchi snapshot orqali darhol to'g'ri joyni oladi), va hozir
@@ -1210,7 +1219,7 @@ export class ClassroomService implements OnModuleInit {
       leftBoardMode: full.leftBoardMode,
       rightBoardMode: full.rightBoardMode,
       notebookStyle: full.notebookStyle,
-      notebookPageCount: full.notebookPageCount ?? 4,
+      notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
     };
   }

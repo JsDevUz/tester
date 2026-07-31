@@ -97,7 +97,7 @@ export function ClassroomReplayPage() {
         leftBoardMode: boardSnapshot.leftBoardMode,
         rightBoardMode: boardSnapshot.rightBoardMode,
         notebookPageStyles: boardSnapshot.notebookPageStyles ?? {},
-        notebookPageCount: boardSnapshot.notebookPageCount ?? 4,
+        notebookPageCount: boardSnapshot.notebookPageCount ?? 1,
         classroomTheme: replay.state.classroomTheme,
       }
     : replay.state;
@@ -149,7 +149,7 @@ export function ClassroomReplayPage() {
 
   const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
     const pageUrls = mode === "pdf" ? viewState.pages : [];
-    const pageCount = mode === "notebook" ? (viewState.notebookPageCount ?? 4) : viewState.pages.length;
+    const pageCount = mode === "notebook" ? (viewState.notebookPageCount ?? 1) : viewState.pages.length;
     if (pageCount === 0) {
       toast.error("Yuklab olish uchun sahifa topilmadi");
       return;

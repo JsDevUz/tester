@@ -12,7 +12,9 @@ export const MAX_STROKE_POINTS = 2000;
 // hajm/fayl-soni cheklovi (media-library.service.ts), bu faqat DoS'ga
 // qarshi yakuniy chegara (juda ko'p sahifali PDF serverni band qilmasin).
 export const MAX_PDF_PAGES = 300;
-export const PDF_RENDER_WIDTH = 1600;
+// Jonli doska va keyingi PDF eksportda mayda matnlar tiniq qolishi uchun.
+// 2400px A4 sahifada taxminan 290 DPI beradi.
+export const PDF_RENDER_WIDTH = 2400;
 
 const MAX_UNDO_STACK = 100;
 
@@ -179,7 +181,7 @@ export function switchBoardMode(session: ClassroomSession, mode: ClassroomBoardM
 
 export function isValidPage(session: ClassroomSession, page: number): boolean {
   const pageCount = (session.boardMode ?? 'pdf') === 'notebook'
-    ? (session.notebookPageCount ?? 4)
+    ? (session.notebookPageCount ?? 1)
     : session.pdfPages.length;
   return Number.isInteger(page) && page >= 1 && page <= pageCount;
 }
@@ -202,7 +204,7 @@ export function removePageFromSession(
 ): boolean {
   const previousMode = session.boardMode;
   session.boardMode = mode;
-  const currentCount = mode === 'notebook' ? (session.notebookPageCount ?? 4) : session.pdfPages.length;
+  const currentCount = mode === 'notebook' ? (session.notebookPageCount ?? 1) : session.pdfPages.length;
   if (!Number.isInteger(pageIndex) || pageIndex < 1 || pageIndex > currentCount) {
     session.boardMode = previousMode;
     return false;
@@ -216,6 +218,13 @@ export function removePageFromSession(
     session.pdfPages.splice(pageIndex - 1, 1);
   } else {
     session.notebookPageCount = currentCount - 1;
+    const rebuiltStyles: Record<number, ClassroomNotebookStyle> = {};
+    for (const [pageStr, style] of Object.entries(session.notebookPageStyles ?? {})) {
+      const page = Number(pageStr);
+      if (page < pageIndex) rebuiltStyles[page] = style;
+      else if (page > pageIndex) rebuiltStyles[page - 1] = style;
+    }
+    session.notebookPageStyles = rebuiltStyles;
   }
 
   const map = strokeMapFor(session, mode);
@@ -251,7 +260,7 @@ export function insertNotebookPageIntoSession(
   if (!['grid', 'lined', 'plain'].includes(style)) return false;
   const previousMode = session.boardMode;
   session.boardMode = 'notebook';
-  const currentCount = session.notebookPageCount ?? 4;
+  const currentCount = session.notebookPageCount ?? 1;
   if (!Number.isInteger(afterPageIndex) || afterPageIndex < 0 || afterPageIndex > currentCount) {
     session.boardMode = previousMode;
     return false;
@@ -589,7 +598,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     zoom: session.zoom,
     rightZoom: session.rightZoom ?? session.zoom,
     splitRatio: session.splitRatio ?? 0.5,
-    notebookPageCount: session.notebookPageCount ?? 4,
+    notebookPageCount: session.notebookPageCount ?? 1,
     notebookPageStyles: session.notebookPageStyles ?? {},
     scroll: session.scroll,
     rightScroll: session.rightScroll ?? null,

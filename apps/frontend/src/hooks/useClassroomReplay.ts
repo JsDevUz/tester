@@ -41,7 +41,7 @@ function baseState(pdfName: string | null, pdfPages: string[], globalTheme: "lig
     joined: true, error: null, ended: true,
     pdfName, pages: pdfPages, currentPage: 1,
     strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null,
-    zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, scroll: null, rightScroll: null,
+    zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
     classroomTheme: globalTheme, notebookPageStyles: {},
   };

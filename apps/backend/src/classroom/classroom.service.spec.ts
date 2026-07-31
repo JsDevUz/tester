@@ -511,10 +511,10 @@ describe('sahifa va chizish', () => {
   it('kech kirgan ustoz snapshot orqali kopaygan sahifalar sonini oladi', async () => {
     const { service, sessionId } = await setup();
     service.setBoardMode(sessionId, 'teacher-1', 'notebook');
-    service.insertNotebookPage(sessionId, 'teacher-1', 4, 'plain');
+    service.insertNotebookPage(sessionId, 'teacher-1', 1, 'plain');
     const snapshot = service.hostJoin(sessionId, 'teacher-1', 'sock-refresh');
-    expect(snapshot.notebookPageCount).toBe(5); // default 4, one inserted
-    expect(snapshot.notebookPageStyles).toEqual({ 5: 'plain' });
+    expect(snapshot.notebookPageCount).toBe(2); // default 1, one inserted
+    expect(snapshot.notebookPageStyles).toEqual({ 2: 'plain' });
   });
 
   it('host zoom ozgartirsa zoom:set broadcast, tarixga yoziladi va kech kirgan snapshotda saqlanadi', async () => {
@@ -614,13 +614,13 @@ describe('sahifa va chizish', () => {
   it('endSession board-only rejimda notebookPageStyles ni boardSnapshot ichida saqlaydi', async () => {
     const { service, sessionId } = await setup();
     service.setBoardMode(sessionId, 'teacher-1', 'notebook');
-    service.insertNotebookPage(sessionId, 'teacher-1', 4, 'plain');
+    service.insertNotebookPage(sessionId, 'teacher-1', 1, 'plain');
     mockedDb.update.mockClear();
 
     await service.endSession(sessionId, 'teacher-1');
 
     const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
-    expect(saved.boardSnapshot.notebookPageStyles).toEqual({ 5: 'plain' });
+    expect(saved.boardSnapshot.notebookPageStyles).toEqual({ 2: 'plain' });
   });
 
   it('getReplay tarix+recording+attendance qaytaradi', async () => {

@@ -246,6 +246,7 @@ export function ClassroomHostPage() {
           notebookPageStyles={state.notebookPageStyles}
           onInsertPdfPage={(afterPageIndex) => handleInsertPdfPage(afterPageIndex)}
           onInsertNotebookPage={(afterPageIndex, style, pane) => hostActions.insertNotebookPage(afterPageIndex, style, pane)}
+          onSetNotebookPageStyle={(page, style, pane) => hostActions.setNotebookPageStyle(page, style, pane)}
           onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
           onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}

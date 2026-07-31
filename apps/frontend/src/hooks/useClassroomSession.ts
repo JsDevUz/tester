@@ -48,7 +48,7 @@ const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, classroomTheme: "light",
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, classroomTheme: "light",
   notebookPageStyles: {},
 };
 
@@ -118,7 +118,7 @@ export function useClassroomSession(
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             splitRatio: snap.splitRatio ?? 0.5,
-            notebookPageCount: snap.notebookPageCount ?? 4,
+            notebookPageCount: snap.notebookPageCount ?? 1,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
             classroomTheme: snap.classroomTheme ?? globalTheme,
@@ -181,6 +181,8 @@ export function useClassroomSession(
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
+    socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
+      setState((s) => ({ ...s, notebookPageStyles: { ...s.notebookPageStyles, [p.page]: p.style } })));
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
     socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
@@ -209,6 +211,7 @@ export function useClassroomSession(
       socket.off("page:remove");
       socket.off("pdf:insert");
       socket.off("page:insert");
+      socket.off("notebook:pageStyle");
       socket.off("board:undo");
       socket.off("board:redo");
       socket.off("scroll:set");
@@ -341,6 +344,8 @@ export function useClassroomSession(
       emitHost("host:removePage", { mode, pageIndex, pane }),
     insertNotebookPage: (afterPageIndex: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
       emitHost("host:insertNotebookPage", { afterPageIndex, style, pane }),
+    setNotebookPageStyle: (page: number, style: CsNotebookStyle, pane: "left" | "right" = "left") =>
+      emitHost("host:setNotebookPageStyle", { page, style, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),

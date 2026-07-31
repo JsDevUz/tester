@@ -294,10 +294,10 @@ describe('buildSnapshot', () => {
     expect(snap.splitRatio).toBe(0.65);
   });
 
-  it('snapshot defaults notebookPageCount to 4 when not set on the session', () => {
+  it('snapshot defaults notebookPageCount to 1 when not set on the session', () => {
     const session = makeSession();
     const snap = buildSnapshot(session);
-    expect(snap.notebookPageCount).toBe(4);
+    expect(snap.notebookPageCount).toBe(1);
   });
 
   it('snapshot reflects a custom notebookPageCount set on the session', () => {
@@ -378,12 +378,14 @@ describe('removePageFromSession', () => {
     const session = makeSession();
     session.boardMode = 'notebook';
     session.notebookPageCount = 4;
+    session.notebookPageStyles = { 1: 'grid', 2: 'lined', 3: 'plain', 4: 'grid' };
     session.currentPage = 1;
 
     const ok = removePageFromSession(session, 'notebook', 2);
 
     expect(ok).toBe(true);
     expect(session.notebookPageCount).toBe(3);
+    expect(session.notebookPageStyles).toEqual({ 1: 'grid', 2: 'plain', 3: 'grid' });
   });
 
   it('removePageFromSession refuses to remove the last remaining page', () => {

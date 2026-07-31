@@ -13,12 +13,14 @@ import {
   AlignLeft,
   AlignRight,
   BringToFront,
+  Braces,
   ChevronsDown,
   ChevronsUp,
   Columns2,
   Copy,
   Grid3x3,
   Minus,
+  MoreVertical,
   Move,
   Plus,
   Repeat2,
@@ -324,7 +326,7 @@ interface Props {
   // erkin scroll/zoom qila oladi, tugma esa butunlay yashiriladi.
   noSync?: boolean;
   // Daftar sahifalari soni (server-boshqaruvli, o'zgaruvchan) — endi
-  // qattiq 4 emas, session.notebookPageCount'dan keladi.
+  // Sahifalar soni session.notebookPageCount'dan keladi.
   notebookPageCount?: number;
   onRemovePage?: (
     mode: CsBoardMode,
@@ -337,6 +339,11 @@ interface Props {
   onInsertPdfPage?: (afterPageIndex: number, pane: "left" | "right") => void;
   onInsertNotebookPage?: (
     afterPageIndex: number,
+    style: CsNotebookStyle,
+    pane: "left" | "right",
+  ) => void;
+  onSetNotebookPageStyle?: (
+    page: number,
     style: CsNotebookStyle,
     pane: "left" | "right",
   ) => void;
@@ -1742,6 +1749,9 @@ interface PageProps {
   // yuboriladi. PDF rejimida style yo'q (undefined) — bosilganda darhol
   // kutubxona tanlash oqimi ochiladi, popup ko'rsatilmaydi.
   onInsertPage?: (pageNumber: number, style?: CsNotebookStyle) => void;
+  isActiveSurface?: boolean;
+  lassoClipboard?: { current: CsStroke[] };
+  onImportNotebookStyle?: (style: CsNotebookStyle) => void;
 }
 
 // Bitta sahifa: rasm + chizish canvas. Ko'rinish oynasiga yaqinlashguncha
@@ -1780,6 +1790,9 @@ function ClassroomPdfPage({
   canRemove = true,
   onRemovePage,
   onInsertPage,
+  isActiveSurface = false,
+  lassoClipboard,
+  onImportNotebookStyle,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
@@ -1787,6 +1800,10 @@ function ClassroomPdfPage({
   const [visible, setVisible] = useState(pageNumber <= 2);
   const [confirmRemove, setConfirmRemove] = useState(false);
   const [showStylePopup, setShowStylePopup] = useState(false);
+  const [showPageMenu, setShowPageMenu] = useState(false);
+  const [showPageJsonModal, setShowPageJsonModal] = useState(false);
+  const [pageJson, setPageJson] = useState("");
+  const [pageJsonError, setPageJsonError] = useState<string | null>(null);
   // Stroke-eraser rejimida sichqoncha ustidan o'tgan chizma shu ID bilan
   // xiralashtirib ko'rsatiladi (o'chirilmasdan oldin preview).
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
@@ -2097,19 +2114,99 @@ function ClassroomPdfPage({
     setSelectedGroupIds(new Set());
   };
 
-  // Tanlangan guruhni asl nusxadan bir oz pastroq/o'ngroq siljigan holda
-  // klonlaydi (Figma/Miro'dagi odatiy paste-offset xatti-harakati), so'ng
-  // yangi nusxalarni tanlangan holatga o'tkazadi — asl obyektlar
-  // tanlanmagan qoladi. Yangi socket event kerak emas: onStrokeComplete
-  // allaqachon istalgan yangi strokeni yaratish uchun ishlatiladi (2106-qator).
-  const DUPLICATE_OFFSET = 0.02;
-  const duplicateSelectedGroup = () => {
+  const openPageJsonModal = () => {
+    setShowPageMenu(false);
+    setPageJsonError(null);
+    setPageJson(
+      JSON.stringify(
+        {
+          version: 1,
+          type: "classroom-page",
+          mode: notebook ? "notebook" : "pdf",
+          notebookStyle: notebook ? notebookStyle : undefined,
+          strokes,
+        },
+        null,
+        2,
+      ),
+    );
+    setShowPageJsonModal(true);
+  };
+
+  const applyPageJson = () => {
+    try {
+      if (pageJson.length > 2_000_000) throw new Error("JSON juda katta");
+      const parsed = JSON.parse(pageJson) as {
+        type?: unknown;
+        notebookStyle?: unknown;
+        strokes?: unknown;
+      };
+      if (
+        !parsed ||
+        parsed.type !== "classroom-page" ||
+        !Array.isArray(parsed.strokes) ||
+        parsed.strokes.length > 5000
+      )
+        throw new Error("Sahifa JSON formati noto'g'ri");
+
+      const imported = parsed.strokes.map((value) => {
+        const stroke = value as Partial<CsStroke>;
+        if (
+          !stroke ||
+          typeof stroke.tool !== "string" ||
+          !Array.isArray(stroke.points) ||
+          !stroke.points.every(
+            (point) => typeof point === "number" && Number.isFinite(point),
+          )
+        )
+          throw new Error("JSON ichida yaroqsiz element bor");
+        return {
+          ...stroke,
+          id: crypto.randomUUID(),
+          points: [...stroke.points],
+        } as CsStroke;
+      });
+
+      for (const stroke of strokes) onEraseStroke?.(pageNumber, stroke.id);
+      for (const stroke of imported) onStrokeComplete?.(pageNumber, stroke);
+      if (
+        notebook &&
+        (parsed.notebookStyle === "grid" ||
+          parsed.notebookStyle === "lined" ||
+          parsed.notebookStyle === "plain")
+      )
+        onImportNotebookStyle?.(parsed.notebookStyle);
+      setSelectedGroupIds(new Set());
+      setShowPageJsonModal(false);
+      setPageJsonError(null);
+    } catch (error) {
+      setPageJsonError(
+        error instanceof Error ? error.message : "JSON formatida xato bor",
+      );
+    }
+  };
+
+  const copySelectedGroup = useCallback(() => {
     if (selectedGroupStrokes.length === 0) return;
+    if (lassoClipboard) {
+      lassoClipboard.current = selectedGroupStrokes.map((stroke) => ({
+        ...stroke,
+        points: [...stroke.points],
+      }));
+    }
+  }, [lassoClipboard, selectedGroupStrokes]);
+
+  // Clipboard'dagi lasso elementlarini aynan fokus qilingan sahifaga
+  // joylaydi. Kichik offset ketma-ket paste qilinganda nusxani ko'rishga
+  // yordam beradi; Ctrl/Cmd+C esa o'zi hech qanday element yaratmaydi.
+  const PASTE_OFFSET = 0.02;
+  const pasteSelectedGroup = useCallback(() => {
+    if (!lassoClipboard || lassoClipboard.current.length === 0) return;
     const newIds = new Set<string>();
-    for (const stroke of selectedGroupStrokes) {
+    for (const stroke of lassoClipboard.current) {
       const newId = crypto.randomUUID();
-      const offsetPoints = stroke.points.map(
-        (value) => value + DUPLICATE_OFFSET,
+      const offsetPoints = stroke.points.map((value) =>
+        Math.min(1, Math.max(0, value + PASTE_OFFSET)),
       );
       onStrokeComplete?.(pageNumber, {
         ...stroke,
@@ -2119,7 +2216,39 @@ function ClassroomPdfPage({
       newIds.add(newId);
     }
     setSelectedGroupIds(newIds);
-  };
+  }, [lassoClipboard, onStrokeComplete, pageNumber]);
+
+  useEffect(() => {
+    if (!editable || tool !== "lasso" || !isActiveSurface) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable
+      )
+        return;
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === "c" && selectedGroupStrokes.length > 0) {
+        event.preventDefault();
+        copySelectedGroup();
+      } else if (key === "v" && (lassoClipboard?.current.length ?? 0) > 0) {
+        event.preventDefault();
+        pasteSelectedGroup();
+      }
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [
+    copySelectedGroup,
+    editable,
+    isActiveSurface,
+    lassoClipboard,
+    pasteSelectedGroup,
+    selectedGroupStrokes.length,
+    tool,
+  ]);
 
   const draggingGroupRef = useRef<{
     ids: Set<string>;
@@ -3820,7 +3949,7 @@ function ClassroomPdfPage({
                   type="button"
                   aria-label="Tanlangan guruhni nusxalash"
                   title="Nusxalash"
-                  onClick={duplicateSelectedGroup}
+                  onClick={copySelectedGroup}
                   className="rounded-full bg-white p-1.5 text-gray-600 shadow-md hover:bg-gray-100"
                 >
                   <Copy size={13} />
@@ -3854,19 +3983,55 @@ function ClassroomPdfPage({
         <div className="w-full aspect-3/4 max-w-3xl bg-gray-200 animate-pulse rounded-xl" />
       )}
       {isHost && (
-        <div className="absolute bottom-1 right-9 z-20">
+        <div className="absolute bottom-1 right-1 z-20">
           <button
             type="button"
-            onClick={() =>
-              notebook
-                ? setShowStylePopup((v) => !v)
-                : onInsertPage?.(pageNumber)
-            }
-            title="Sahifa qo'shish"
+            onClick={() => {
+              setShowStylePopup(false);
+              setShowPageMenu((visible) => !visible);
+            }}
+            title="Sahifa amallari"
+            aria-label="Sahifa amallari"
             className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-indigo-50 hover:text-indigo-500"
           >
-            <Plus size={12} />
+            <MoreVertical size={13} />
           </button>
+          {showPageMenu && (
+            <div className="absolute bottom-8 right-0 flex min-w-36 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPageMenu(false);
+                  if (notebook) setShowStylePopup(true);
+                  else onInsertPage?.(pageNumber);
+                }}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <Plus size={14} /> Qo'shish
+              </button>
+              <button
+                type="button"
+                onClick={openPageJsonModal}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <Braces size={14} /> JSON
+              </button>
+              <button
+                type="button"
+                disabled={!canRemove}
+                onClick={() => {
+                  setShowPageMenu(false);
+                  setConfirmRemove(true);
+                }}
+                title={
+                  canRemove ? "O'chirish" : "Kamida bitta sahifa qolishi kerak"
+                }
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-red-500 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-40"
+              >
+                <Trash2 size={14} /> O'chirish
+              </button>
+            </div>
+          )}
           {showStylePopup && notebook && (
             <div className="absolute bottom-8 right-0 flex flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
               <button
@@ -3906,22 +4071,59 @@ function ClassroomPdfPage({
           )}
         </div>
       )}
-      {isHost && (
-        <div className="absolute bottom-1 right-1 z-20">
-          <button
-            type="button"
-            onClick={() => setConfirmRemove(true)}
-            disabled={!canRemove}
-            title={
-              canRemove
-                ? "Sahifani o'chirish"
-                : "Kamida bitta sahifa qolishi kerak"
-            }
-            className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-40 disabled:hover:bg-white/90 disabled:hover:text-gray-400"
-          >
-            <Trash2 size={12} />
-          </button>
-        </div>
+      {showPageJsonModal && (
+        <>
+          <div
+            className="fixed inset-0 z-40 bg-black/40"
+            onClick={() => setShowPageJsonModal(false)}
+          />
+          <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+            <div className="pointer-events-auto flex max-h-[85vh] w-full max-w-3xl flex-col rounded-2xl bg-white p-5 shadow-2xl">
+              <h3 className="text-base font-semibold text-gray-800">
+                Sahifani JSON orqali ko'chirish
+              </h3>
+              <p className="mb-3 mt-1 text-xs text-gray-500">
+                JSON’ni copy qiling. Boshqa sahifada shu oynani ochib joylang va
+                “Qo‘llash”ni bosing.
+              </p>
+              <textarea
+                value={pageJson}
+                onChange={(event) => {
+                  setPageJson(event.target.value);
+                  setPageJsonError(null);
+                }}
+                spellCheck={false}
+                className="min-h-80 flex-1 resize-y rounded-xl border border-gray-200 bg-gray-950 p-3 font-mono text-xs text-gray-100 outline-none focus:border-indigo-400"
+              />
+              {pageJsonError && (
+                <p className="mt-2 text-xs text-red-500">{pageJsonError}</p>
+              )}
+              <div className="mt-4 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowPageJsonModal(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-gray-500 hover:bg-gray-100"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void navigator.clipboard.writeText(pageJson)}
+                  className="rounded-lg border border-gray-200 px-4 py-2 text-sm text-gray-600 hover:bg-gray-50"
+                >
+                  Copy
+                </button>
+                <button
+                  type="button"
+                  onClick={applyPageJson}
+                  className="rounded-lg bg-indigo-600 px-4 py-2 text-sm text-white hover:bg-indigo-700"
+                >
+                  Qo'llash
+                </button>
+              </div>
+            </div>
+          </div>
+        </>
       )}
       {confirmRemove && (
         <>
@@ -4016,10 +4218,11 @@ export function ClassroomPdfViewer({
   onBoardViewChange,
   notebookPageStyles = {},
   noSync = false,
-  notebookPageCount = 4,
+  notebookPageCount = 1,
   onRemovePage,
   onInsertPdfPage,
   onInsertNotebookPage,
+  onSetNotebookPageStyle,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
   // toolbar/o'quvchilar/yakunlash barlariga doim tezkor kirishi kerak,
@@ -4098,6 +4301,10 @@ export function ClassroomPdfViewer({
     paneIndex: 0,
     page: currentPage,
   });
+  // Barcha sahifa komponentlari uchun umumiy clipboard: source sahifa
+  // unmount bo'lsa ham nusxa saqlanadi va fokuslangan boshqa sahifaga
+  // Ctrl/Cmd+V orqali qo'yilishi mumkin.
+  const lassoClipboardRef = useRef<CsStroke[]>([]);
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
 
@@ -4617,6 +4824,18 @@ export function ClassroomPdfViewer({
                               paneIndex,
                               page: pageNumber,
                             })
+                          }
+                          isActiveSurface={
+                            activeStyleSurface.paneIndex === paneIndex &&
+                            activeStyleSurface.page === pageNumber
+                          }
+                          lassoClipboard={lassoClipboardRef}
+                          onImportNotebookStyle={(style) =>
+                            onSetNotebookPageStyle?.(
+                              pageNumber,
+                              style,
+                              paneIndex === 1 ? "right" : "left",
+                            )
                           }
                           onToolChange={onToolChange}
                           color={color}

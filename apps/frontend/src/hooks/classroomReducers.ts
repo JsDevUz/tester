@@ -166,6 +166,15 @@ export function applyPageRemove(
 
   const pages = isPdf ? s.pages.filter((_, idx) => idx !== p.pageIndex - 1) : s.pages;
   const notebookPageCount = isPdf ? s.notebookPageCount : Math.max(1, s.notebookPageCount - 1);
+  let notebookPageStyles = s.notebookPageStyles;
+  if (!isPdf) {
+    notebookPageStyles = {};
+    for (const [pageStr, style] of Object.entries(s.notebookPageStyles)) {
+      const pageNum = Number(pageStr);
+      if (pageNum < p.pageIndex) notebookPageStyles[pageNum] = style;
+      else if (pageNum > p.pageIndex) notebookPageStyles[pageNum - 1] = style;
+    }
+  }
 
   let currentPage = s.currentPage;
   if (currentPage > p.pageIndex) currentPage -= 1;
@@ -174,7 +183,7 @@ export function applyPageRemove(
     if (currentPage > newCount) currentPage = newCount;
   }
 
-  return { ...s, [key]: rebuilt, pages, notebookPageCount, currentPage };
+  return { ...s, [key]: rebuilt, pages, notebookPageCount, notebookPageStyles, currentPage };
 }
 
 // PDF'ga qo'shilgan yangi sahifa(lar) — afterPageIndex'dan keyingi barcha

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import type { CsStroke } from "../api/classroom";
 import type { ClassroomState } from "./useClassroomSession";
-import { applyBoardRedo, applyBoardUndo, applyStrokeAdd } from "./classroomReducers";
+import { applyBoardRedo, applyBoardUndo, applyPageRemove, applyStrokeAdd } from "./classroomReducers";
 
 function baseState(overrides: Partial<ClassroomState> = {}): ClassroomState {
   return {
@@ -110,5 +110,19 @@ describe("applyBoardUndo / applyBoardRedo — page:insert and page:remove regres
     expect(() => applyBoardRedo(s, payload)).not.toThrow();
     const next = applyBoardRedo(s, payload);
     expect(next.notebookPageCount).toBe(4);
+  });
+});
+
+describe("applyPageRemove — notebook page reindexing", () => {
+  it("removes the selected page style and shifts following styles back", () => {
+    const next = applyPageRemove(baseState({
+      boardMode: "notebook",
+      leftBoardMode: "notebook",
+      notebookPageCount: 4,
+      notebookPageStyles: { 1: "grid", 2: "lined", 3: "plain", 4: "grid" },
+    }), { mode: "notebook", pageIndex: 2 });
+
+    expect(next.notebookPageCount).toBe(3);
+    expect(next.notebookPageStyles).toEqual({ 1: "grid", 2: "plain", 3: "grid" });
   });
 });
