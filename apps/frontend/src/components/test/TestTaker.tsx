@@ -653,6 +653,10 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   const orderedQuestionsRef = useRef<PublicQuestion[]>([]);
   const submittingRef = useRef(false);
   const autoSubmitSentRef = useRef(false);
+  // SPA ichidagi "Orqaga" oddiy beforeunload/pagehide chiqarmaydi.
+  // Joriy leave-submit funksiyasini tugma va browser history handleriga
+  // ulash uchun ref'da saqlaymiz.
+  const leaveSubmitRef = useRef<() => void>(() => {});
 
   useEffect(() => {
     currentQuestionChipRef.current?.scrollIntoView({
@@ -905,15 +909,59 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
     const handlePageHide = (event: PageTransitionEvent) => {
       if (!event.persisted) sendSubmit();
     };
+    const handlePopState = () => sendSubmit();
+    leaveSubmitRef.current = sendSubmit;
     window.addEventListener("pagehide", handlePageHide);
     window.addEventListener("beforeunload", handleBeforeUnload);
+    window.addEventListener("popstate", handlePopState);
     document.addEventListener("visibilitychange", handleVisibility);
     return () => {
       window.removeEventListener("pagehide", handlePageHide);
       window.removeEventListener("beforeunload", handleBeforeUnload);
+      window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibility);
+      if (leaveSubmitRef.current === sendSubmit)
+        leaveSubmitRef.current = () => {};
     };
   }, [resolvedSubmissionId, test?.autoCompleteOnLeave]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const handleExitWhileAnswering = async () => {
+    if (
+      test?.autoCompleteOnLeave === false ||
+      !resolvedSubmissionId ||
+      orderedQuestionsRef.current.length === 0
+    ) {
+      onExit();
+      return;
+    }
+    if (submittingRef.current || autoSubmitSentRef.current) return;
+
+    // UI'dagi Orqaga uchun requestni kutamiz: foydalanuvchi test ro'yxatiga
+    // qaytib darhol yangi urinish boshlasa ham eski urinish DB'ga yozilmay
+    // qoladigan race bo'lmasin. Browser back/tab close esa yuqoridagi
+    // keepalive/sendBeacon yo'lidan foydalanishda davom etadi.
+    submittingRef.current = true;
+    setSubmitting(true);
+    const answers = orderedQuestionsRef.current.map((q) => ({
+      questionId: q.id,
+      selectedOptionIds: selectedMapRef.current[q.id] ?? [],
+      textAnswer: textMapRef.current[q.id] ?? null,
+    }));
+    try {
+      await apiSubmitAnswers(
+        resolvedSubmissionId,
+        answers,
+        "violation",
+        VIOLATION_REASON,
+        practiceMode,
+      );
+      localStorage.removeItem(draftKey(resolvedSubmissionId));
+      onExit();
+    } catch {
+      submittingRef.current = false;
+      setSubmitting(false);
+    }
+  };
 
   async function handleSubmit() {
     if (submitting || !test || !resolvedSubmissionId) return;
@@ -1419,7 +1467,8 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         <div className="flex-1 flex items-center min-w-0">
           <button
             type="button"
-            onClick={onExit}
+            onClick={() => void handleExitWhileAnswering()}
+            disabled={submitting}
             className="shrink-0 flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-700"
           >
             ← Orqaga
