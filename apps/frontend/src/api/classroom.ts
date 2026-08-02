@@ -208,6 +208,7 @@ export interface ClassSessionRecordingInfo {
   id: string;
   partNumber: number;
   createdAt: string;
+  title?: string | null;
   recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
   recordingMode: ClassRecordingMode | null;
   recordingUrl?: string | null;

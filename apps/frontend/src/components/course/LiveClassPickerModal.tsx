@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Clock, PenTool, X } from "lucide-react";
+import { PenTool, X } from "lucide-react";
 import { apiClassHistory, type ClassHistoryItem } from "../../api/classroom";
 
 interface LiveClassPickerModalProps {
