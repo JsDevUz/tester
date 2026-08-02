@@ -1507,13 +1507,13 @@ select::-ms-expand {
     background-color: #1c1d23 !important;
   }
 }
+/* Replay player pastdagi viewer boshqaruvlarini yopib qo'ymasligi uchun
+   replay sahifasida pastda audio pleyer bo'lganda (hasRecording=true)
+   zoom/mode panellarini pleyer ustiga ko'taramiz. */
+.classroom-replay-viewer-with-player .bottom-3 {
+  bottom: 0.85rem;
+}
 @media (max-width: 639px) and (orientation: portrait) {
-  /* Replay player pastdagi viewer boshqaruvlarini yopib qo'ymasligi uchun
-     faqat portret mobile replay sahifasida, HAQIQATDAN HAM pastda audio
-     pleyer bo'lganda (hasRecording=true) zoom/mode panellarini tepaga
-     ko'taramiz. Landshaftda yoki pleyer yo'q holatda (masalan o'quvchi
-     ko'rinishi yoki faqat-chizma yozuvlari) bu qoida qo'llanmasligi kerak —
-     aks holda tugma keraksiz yuqoriga surilib, ostida bo'sh joy qolar edi. */
   .classroom-replay-viewer-with-player .bottom-3 {
     bottom: 5.75rem;
   }

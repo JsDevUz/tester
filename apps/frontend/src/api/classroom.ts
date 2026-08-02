@@ -9,15 +9,15 @@ export interface ActiveClassSession {
   startedAt: number;
 }
 
-export async function apiCreateClassSession(courseId: string): Promise<{ id: string }> {
-  const res = await client.post('/classroom/sessions', { courseId });
+export async function apiCreateClassSession(courseId: string, title?: string): Promise<{ id: string }> {
+  const res = await client.post('/classroom/sessions', { courseId, title });
   return res.data;
 }
 
-// Erkin (guruhsiz) dars — kursga bog'liq emas, DB'ga yozuv qilinmaydi.
+// Erkin (guruhsiz) dars — kursga bog'liq emas.
 // Havolasi orqali login qilmagan mehmon ham kira oladi.
-export async function apiCreateFreeClassSession(): Promise<{ id: string }> {
-  const res = await client.post('/classroom/sessions/free');
+export async function apiCreateFreeClassSession(title?: string): Promise<{ id: string }> {
+  const res = await client.post('/classroom/sessions/free', { title });
   return res.data;
 }
 
@@ -25,12 +25,22 @@ export async function apiCreateFreeClassSession(): Promise<{ id: string }> {
 // boshlaydi (apiCreateFreeClassSession'dan farqli — bo'sh emas, PDF/daftar/
 // chizmalar bilan boshlang'ich holatga keladi).
 export async function apiCreateFreeClassSessionFromSnapshot(sourceSessionId: string): Promise<{ id: string }> {
-  const res = await client.post(`/classroom/sessions/free/from/${sourceSessionId}`);
+  const res = await client.post<{ id: string }>(`/classroom/sessions/free/from/${sourceSessionId}`);
   return res.data;
 }
 
-// Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
-// ustoz tanlagan sahifalarni jonli darsga qo'shadi.
+export async function apiCreateClassSessionFromSnapshot(sourceSessionId: string, title?: string): Promise<{ id: string }> {
+  const res = await client.post<{ id: string }>(`/classroom/sessions/from/${sourceSessionId}`, { title });
+  return res.data;
+}
+
+// Tugallangan erkin darsni o'SHA ID bilan davom ettiradi — snapshot'ni
+// xotiraga qayta yuklaydi, yangi ID YARATMAYDI.
+export async function apiReopenFreeSession(sessionId: string, title?: string): Promise<{ id: string }> {
+  const res = await client.post(`/classroom/sessions/${sessionId}/reopen`, { title });
+  return res.data;
+}
+
 export async function apiAttachClassPdf(
   sessionId: string, mediaAssetId: string, pageNumbers: number[],
 ): Promise<{ pdfName: string; pages: string[] }> {
@@ -131,6 +141,7 @@ export interface ClassSessionDetail {
   id: string;
   courseId: string;
   courseName: string;
+  title?: string | null;
   status: 'active' | 'ended';
   pdfName: string | null;
   startedAt: string | null;
@@ -148,6 +159,7 @@ export async function apiClassSession(sessionId: string): Promise<ClassSessionDe
 export interface ClassHistoryItem {
   id: string;
   status: 'active' | 'ended';
+  title?: string | null;
   pdfName: string | null;
   startedAt: string | null;
   endedAt: string | null;
@@ -155,6 +167,12 @@ export interface ClassHistoryItem {
   presentCount: number;
   lateCount: number;
   absentCount: number;
+  recordings?: Array<{
+    id: string;
+    partNumber: number;
+    createdAt: string;
+    title?: string | null;
+  }>;
 }
 
 export async function apiClassHistory(courseId: string): Promise<ClassHistoryItem[]> {
@@ -186,6 +204,15 @@ export interface ClassBoardSnapshotData {
   notebookPageCount: number;
 }
 
+export interface ClassSessionRecordingInfo {
+  id: string;
+  partNumber: number;
+  createdAt: string;
+  recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
+  recordingMode: ClassRecordingMode | null;
+  recordingUrl?: string | null;
+}
+
 export interface ClassReplayData {
   // Ustoz (kurs egasi yoki erkin darsning host'i) bo'lsa true — faqat shu
   // holatda to'liq audio replay ko'rsatiladi. O'quvchi uchun har doim
@@ -207,10 +234,13 @@ export interface ClassReplayData {
   // 'boardSilent' faqat statik boardSnapshot saqlaydi.
   recordingMode: ClassRecordingMode | null;
   boardSnapshot: ClassBoardSnapshotData | null;
+  recordings?: ClassSessionRecordingInfo[];
 }
 
-export async function apiClassReplay(sessionId: string): Promise<ClassReplayData> {
-  const res = await client.get(`/classroom/sessions/${sessionId}/replay`);
+export async function apiClassReplay(sessionId: string, recordingId?: string): Promise<ClassReplayData> {
+  const res = await client.get(`/classroom/sessions/${sessionId}/replay`, {
+    params: recordingId ? { recordingId } : undefined,
+  });
   return res.data;
 }
 
@@ -232,11 +262,13 @@ export type ClassRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
 export interface FreeClassHistoryItem {
   id: string;
   status: 'active' | 'ended';
+  title?: string | null;
   pdfName: string | null;
   startedAt: string | null;
   endedAt: string | null;
   recordingMode: ClassRecordingMode | null;
   hasBoardSnapshot: boolean;
+  recordings?: ClassSessionRecordingInfo[];
 }
 
 export async function apiMyFreeSessionHistory(): Promise<FreeClassHistoryItem[]> {

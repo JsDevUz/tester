@@ -89,7 +89,7 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
       <p className="text-center text-xs text-gray-400 mb-3">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
         {BLOCK_ITEMS.map((item) => {
           const Icon = item.icon;
           const isDisabled = disabled || item.disabled;

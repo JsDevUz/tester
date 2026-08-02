@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, PenTool, Radio, Trash2, X } from 'lucide-react';
+import { Clock, PenTool, Radio, SkipForward, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import {
   apiActiveClassSessions, apiClassHistory, apiClassSession, apiCreateClassSession,
-  apiDeleteClassSession, apiOverrideAttendance,
+  apiCreateClassSessionFromSnapshot, apiDeleteClassSession, apiOverrideAttendance,
   type ClassHistoryItem, type ClassSessionDetail,
 } from '../../api/classroom';
 
@@ -45,6 +45,21 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [detail, setDetail] = useState<ClassSessionDetail | null>(null);
+  const [resumeTarget, setResumeTarget] = useState<ClassSessionDetail | null>(null);
+  const [resumeTitle, setResumeTitle] = useState("");
+  const [resuming, setResuming] = useState(false);
+
+  const handleResumeFromSnapshot = async () => {
+    if (!resumeTarget) return;
+    setResuming(true);
+    try {
+      const { id } = await apiCreateClassSessionFromSnapshot(resumeTarget.id, resumeTitle);
+      navigate(`/classroom/host/${id}`);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? "Darsni davom ettirib bo'lmadi");
+      setResuming(false);
+    }
+  };
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -63,14 +78,23 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
 
   if (!course) return null;
 
-  const handleStart = async () => {
+  const [startModalOpen, setStartModalOpen] = useState(false);
+  const [newLessonTitle, setNewLessonTitle] = useState("");
+
+  const handleStartClick = () => {
     if (activeId) {
       navigate(`/classroom/host/${activeId}`);
       return;
     }
+    setNewLessonTitle("");
+    setStartModalOpen(true);
+  };
+
+  const handleConfirmStart = async () => {
     setStarting(true);
     try {
-      const { id } = await apiCreateClassSession(courseId);
+      const { id } = await apiCreateClassSession(courseId, newLessonTitle);
+      setStartModalOpen(false);
       navigate(`/classroom/host/${id}`);
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "Darsni boshlab bo'lmadi");
@@ -131,11 +155,10 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
             <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Jonli darslar</p>
             <button
               type="button"
-              onClick={() => void handleStart()}
+              onClick={handleStartClick}
               disabled={starting}
-              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors ${
-                activeId ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-900 hover:bg-gray-700'
-              } disabled:opacity-50`}
+              className={`flex items-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold text-white transition-colors ${activeId ? 'bg-red-500 hover:bg-red-600' : 'bg-gray-900 hover:bg-gray-700'
+                } disabled:opacity-50`}
             >
               <Radio size={16} className={activeId ? 'animate-pulse' : ''} />
               {activeId ? 'Darsga qaytish' : starting ? 'Ochilmoqda...' : 'Jonli dars boshlash'}
@@ -147,15 +170,18 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
           ) : history.length === 0 ? (
             <p className="py-8 text-center text-sm text-gray-400">Hozircha darslar o'tkazilmagan</p>
           ) : (
-            <div className="flex flex-col divide-y divide-gray-100">
+            <div className="flex flex-col divide-y divide-gray-100 max-h-[calc(100vh-230px)] overflow-y-auto pr-1">
               {history.map((h) => (
                 <button
                   key={h.id}
                   type="button"
                   onClick={() => void openDetail(h.id)}
-                  className="flex flex-wrap items-center gap-x-4 gap-y-1 rounded-xl px-2 py-3 text-left hover:bg-gray-50"
+                  className="flex flex-wrap items-center gap-x-4 gap-y-1 px-2 py-3 text-left hover:bg-gray-50"
                 >
-                  <span className="text-sm font-medium text-gray-800">{fmtDate(h.startedAt)}</span>
+                  <div className="flex flex-col">
+                    <span className="text-sm font-semibold text-gray-900">{h.title ?? h.pdfName ?? "Jonli dars"}</span>
+                    <span className="text-xs text-gray-400">{fmtDate(h.startedAt)}</span>
+                  </div>
                   {h.status === 'active' ? (
                     <span className="rounded-full bg-red-50 px-2 py-0.5 text-xs font-semibold text-red-600">jonli</span>
                   ) : (
@@ -179,7 +205,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
         onSelectSettings={onSelectSettings}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
-        onSelectClasses={() => {}}
+        onSelectClasses={() => { }}
       />
 
       {detail && (
@@ -188,7 +214,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
             <div className="flex flex-col gap-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
-                  <h2 className="font-semibold text-gray-800">Davomat</h2>
+                  <h2 className="font-semibold text-gray-800">{detail.title ?? "Jonli dars"} — Davomat</h2>
                   <p className="text-xs text-gray-400">{fmtDate(detail.startedAt)}{detail.pdfName ? ` — ${detail.pdfName}` : ''}</p>
                 </div>
                 <button type="button" onClick={() => setDetail(null)} className="shrink-0 rounded-xl p-2 text-gray-400 hover:bg-gray-100">
@@ -208,6 +234,18 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
                       Oxirgi chizma
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResumeTarget(detail);
+                      setResumeTitle(detail.title ?? "");
+                    }}
+                    title="Davom ettirish"
+                    className="flex shrink-0 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
+                  >
+                    <SkipForward size={14} />
+                    Davom ettirish
+                  </button>
                   {(detail.recordingMode === 'full' || detail.recordingMode === 'boardAudio') && (
                     <button
                       type="button"
@@ -253,9 +291,8 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
                             key={opt.value}
                             type="button"
                             onClick={() => void handleOverride(a.id, opt.value)}
-                            className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${
-                              a.status === opt.value ? opt.cls : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                            }`}
+                            className={`rounded-lg px-2 py-1 text-[11px] font-semibold transition-colors ${a.status === opt.value ? opt.cls : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                              }`}
                           >
                             {opt.label}
                           </button>
@@ -265,6 +302,94 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
                   ))}
                 </div>
               )}
+            </div>
+          </div>
+        </div>
+      )}
+      {resumeTarget && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onPointerDown={(event) => { if (event.target === event.currentTarget && !resuming) setResumeTarget(null); }}
+        >
+          <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Darsni davom ettirish">
+            <h3 className="text-base font-semibold text-gray-900">Jonli darsni davom ettirish</h3>
+            <p className="text-xs text-gray-600">
+              Ushbu darsning oxirgi taxta holati (sahifalar, chizmalar) bilan yangi jonli dars boshlanadi.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">
+                Dars nomi
+              </label>
+              <input
+                type="text"
+                value={resumeTitle}
+                onChange={(e) => setResumeTitle(e.target.value)}
+                placeholder="Dars nomini kiriting"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setResumeTarget(null)}
+                disabled={resuming}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleResumeFromSnapshot()}
+                disabled={resuming}
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
+              >
+                {resuming ? "Boshlanmoqda..." : "Darsni boshlash"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {startModalOpen && (
+        <div
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
+          role="presentation"
+          onPointerDown={(event) => { if (event.target === event.currentTarget && !starting) setStartModalOpen(false); }}
+        >
+          <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Jonli dars boshlash">
+            <h3 className="text-base font-semibold text-gray-900">Jonli dars boshlash</h3>
+            <p className="text-xs text-gray-600">
+              Ushbu kurs o'quvchilari uchun yangi jonli dars xonasi ochiladi.
+            </p>
+            <div>
+              <label className="block text-xs font-semibold text-gray-500 mb-1">
+                Dars nomi (ixtiyoriy)
+              </label>
+              <input
+                type="text"
+                value={newLessonTitle}
+                onChange={(e) => setNewLessonTitle(e.target.value)}
+                placeholder="Masalan: 1-dars. Kirish"
+                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
+              />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => setStartModalOpen(false)}
+                disabled={starting}
+                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleConfirmStart()}
+                disabled={starting}
+                className="rounded-xl bg-gray-900 px-4 py-2 text-sm font-semibold text-white hover:bg-gray-800 disabled:opacity-50"
+              >
+                {starting ? "Boshlanmoqda..." : "Darsni boshlash"}
+              </button>
             </div>
           </div>
         </div>

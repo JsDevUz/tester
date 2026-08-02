@@ -122,6 +122,7 @@ export interface ClassroomSession {
   courseId: string | null;
   courseName: string | null;
   isFree: boolean;
+  title?: string | null;
   hostUserId: string;
   hostSocketId: string | null;
   pdfName: string | null;
@@ -179,6 +180,10 @@ export interface ClassroomSession {
   // 'boardAudio'/'boardSilent' — faqat sessiya tugagandagi doskaning
   // yakuniy holati saqlanadi (JSON snapshot), ovoz bilan yoki ovozsiz.
   recordingMode?: ClassroomRecordingMode | null;
+  recordingUrl?: string | null;
+  recordingStatus?: 'none' | 'pending' | 'ready' | 'failed';
+  recordingStartedAtMs?: number | null;
+  egressId?: string | null;
 }
 
 export type ClassroomRecordingMode = 'full' | 'boardAudio' | 'boardSilent';

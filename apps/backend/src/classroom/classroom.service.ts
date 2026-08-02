@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import {
   ConflictException, ForbiddenException, Injectable, NotFoundException,
   OnModuleInit, ServiceUnavailableException,
@@ -65,7 +66,7 @@ export class ClassroomService implements OnModuleInit {
     });
   }
 
-  async createSession(courseId: string, teacherId: string, role: string): Promise<{ id: string }> {
+  async createSession(courseId: string, teacherId: string, role: string, title?: string): Promise<{ id: string }> {
     const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
     if (!course) throw new NotFoundException('Kurs topilmadi');
     if (role !== 'super' && course.adminId !== teacherId) {
@@ -85,7 +86,8 @@ export class ClassroomService implements OnModuleInit {
         .where(eq(classSessions.id, staleRow.id));
     }
 
-    const [row] = await db.insert(classSessions).values({ courseId, teacherId }).returning();
+    const cleanTitle = title?.trim() ? title.trim() : null;
+    const [row] = await db.insert(classSessions).values({ courseId, teacherId, title: cleanTitle }).returning();
 
     const enrollments = await this.loadCourseEnrollments(courseId);
 
@@ -113,6 +115,7 @@ export class ClassroomService implements OnModuleInit {
       id: row.id,
       courseId,
       courseName: course.title,
+      title: cleanTitle,
       isFree: false,
       hostUserId: teacherId,
       hostSocketId: null,
@@ -138,15 +141,16 @@ export class ClassroomService implements OnModuleInit {
   }
 
   // Erkin (guruhsiz) dars: kursga, guruhga, enrollmentga umuman bog'liq
-  // emas. DB'ga hech qanday yozuv qilinmaydi — session faqat xotirada
-  // yashaydi, server qayta ishga tushsa yoki dars tugasa butunlay yo'qoladi.
+  // emas. DB'ga yozuv qilinadi — title va saqlanadigan ma'lumotlar bilan.
   // Istalgan kishi (login qilgan yoki anonim mehmon) havola orqali kira oladi.
-  async createFreeSession(teacherId: string): Promise<{ id: string }> {
-    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId }).returning();
+  async createFreeSession(teacherId: string, title?: string): Promise<{ id: string }> {
+    const cleanTitle = title?.trim() ? title.trim() : null;
+    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId, title: cleanTitle }).returning();
     this.sessions.set(row.id, {
       id: row.id,
       courseId: null,
       courseName: null,
+      title: cleanTitle,
       isFree: true,
       hostUserId: teacherId,
       hostSocketId: null,
@@ -234,6 +238,180 @@ export class ClassroomService implements OnModuleInit {
       rightScroll: null,
     });
     return { id: row.id };
+  }
+
+  // Kurs jonli darsini oxirgi saqlangan taxta holati (boardSnapshot) bilan YANGI dars qilib boshlaydi.
+  async createClassSessionFromSnapshot(sourceSessionId: string, teacherId: string, role: string, title?: string): Promise<{ id: string }> {
+    const sourceRow = await db.query.classSessions.findFirst({
+      where: eq(classSessions.id, sourceSessionId),
+      with: { course: true },
+    });
+    if (!sourceRow) throw new NotFoundException('Dars topilmadi');
+    const courseId = sourceRow.courseId;
+    if (!courseId) {
+      return this.createFreeSessionFromSnapshot(teacherId, sourceSessionId);
+    }
+    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
+    if (!course) throw new NotFoundException('Kurs topilmadi');
+    if (role !== 'super' && course.adminId !== teacherId) {
+      throw new ForbiddenException('Bu kurs sizga tegishli emas');
+    }
+    if (!sourceRow.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q");
+
+    const staleRow = await db.query.classSessions.findFirst({
+      where: and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'active')),
+    });
+    if (staleRow) {
+      await db.update(classSessions)
+        .set({ status: 'ended', endedAt: new Date() })
+        .where(eq(classSessions.id, staleRow.id));
+    }
+
+    const cleanTitle = title?.trim() ? title.trim() : (sourceRow.title ?? null);
+    const [row] = await db.insert(classSessions).values({
+      courseId,
+      teacherId,
+      title: cleanTitle,
+      pdfName: sourceRow.pdfName,
+      pdfPages: sourceRow.pdfPages,
+    }).returning();
+
+    const snapshot = sourceRow.boardSnapshot as unknown as ClassroomBoardSnapshot;
+
+    const enrollments = await this.loadCourseEnrollments(courseId);
+    if (enrollments.length > 0) {
+      await db.insert(attendanceRecords)
+        .values(enrollments.map((e) => ({ sessionId: row.id, enrollmentId: e.id })))
+        .onConflictDoNothing();
+    }
+
+    const participants = new Map<string, ClassroomParticipant>();
+    for (const e of enrollments) {
+      const member = e.schoolMember as unknown as { studentId: string; student: { displayName: string } };
+      participants.set(member.studentId, {
+        userId: member.studentId,
+        name: member.student.displayName,
+        enrollmentId: e.id,
+        socketId: null,
+        joinedAtMs: null,
+        totalSeconds: 0,
+        status: 'absent',
+      });
+    }
+
+    const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+    strokesByMode.set(snapshot.boardMode, new Map(
+      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+    ));
+    if (snapshot.rightBoardMode !== snapshot.boardMode) {
+      strokesByMode.set(snapshot.rightBoardMode, new Map(
+        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+      ));
+    }
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+
+    this.sessions.set(row.id, {
+      id: row.id,
+      courseId,
+      courseName: course.title,
+      title: cleanTitle,
+      isFree: false,
+      hostUserId: teacherId,
+      hostSocketId: null,
+      pdfName: snapshot.pdfName,
+      pdfPages: snapshot.pages,
+      currentPage: 1,
+      strokesByPage: primaryStrokes,
+      boardMode: snapshot.boardMode,
+      boardLayout: snapshot.boardLayout,
+      leftBoardMode: snapshot.leftBoardMode,
+      rightBoardMode: snapshot.rightBoardMode,
+      classroomTheme: 'light',
+      notebookStyle: snapshot.notebookStyle,
+      notebookPageCount: snapshot.notebookPageCount,
+      notebookPageStyles: snapshot.notebookPageStyles,
+      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
+      strokesByMode,
+      participants,
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      rightZoom: 1,
+      scroll: null,
+      rightScroll: null,
+    });
+    return { id: row.id };
+  }
+
+  // Tugallangan erkin darsni o'SHA ID bilan davom ettiradi — yangi sessiya
+  // yaratmasdan, DB'dagi boardSnapshot'ni xotiraga qayta yuklaydi va
+  // status'ni 'active' ga o'zgartiradi. Foydalanuvchi URL ham o'zgarmaydi.
+  async reopenFreeSession(teacherId: string, sessionId: string, title?: string): Promise<void> {
+    // Allaqachon jonli bo'lsa — hech narsa qilmay o'tamiz (idempotent)
+    if (this.sessions.has(sessionId)) return;
+
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+    if (!row) throw new NotFoundException('Dars topilmadi');
+    if (row.teacherId !== teacherId) throw new ForbiddenException('Bu dars sizga tegishli emas');
+    if (row.status !== 'ended') throw new ConflictException('Dars allaqachon jonli');
+    if (!row.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q — davom ettirib bo'lmaydi");
+
+    const newTitle = title?.trim() ? title.trim() : row.title;
+    const snapshot = row.boardSnapshot as unknown as ClassroomBoardSnapshot;
+
+    const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+    strokesByMode.set(snapshot.boardMode, new Map(
+      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+    ));
+    if (snapshot.rightBoardMode !== snapshot.boardMode) {
+      strokesByMode.set(snapshot.rightBoardMode, new Map(
+        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+      ));
+    }
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+
+    // Xuddi o'sha ID bilan RAM'ga yuklaymiz
+    this.sessions.set(sessionId, {
+      id: sessionId,
+      courseId: null,
+      courseName: null,
+      title: newTitle,
+      isFree: true,
+      hostUserId: teacherId,
+      hostSocketId: null,
+      pdfName: snapshot.pdfName,
+      pdfPages: snapshot.pages,
+      currentPage: 1,
+      strokesByPage: primaryStrokes,
+      boardMode: snapshot.boardMode,
+      boardLayout: snapshot.boardLayout,
+      leftBoardMode: snapshot.leftBoardMode,
+      rightBoardMode: snapshot.rightBoardMode,
+      classroomTheme: 'light',
+      notebookStyle: snapshot.notebookStyle,
+      notebookPageCount: snapshot.notebookPageCount,
+      notebookPageStyles: snapshot.notebookPageStyles,
+      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
+      strokesByMode,
+      participants: new Map(),
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      rightZoom: 1,
+      scroll: null,
+      rightScroll: null,
+    });
+
+    // DB'da status'ni qayta 'active' ga o'tkazamiz (asosiy dars nomini saqlagan holda)
+    await db.update(classSessions)
+      .set({ status: 'active', endedAt: null, title: row.title ?? newTitle })
+      .where(eq(classSessions.id, sessionId));
   }
 
   // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
@@ -407,6 +585,29 @@ export class ClassroomService implements OnModuleInit {
           event.type === 'splitRatio:set' ||
           event.type === 'page:set')
         : [];
+    const dbRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+    const existingRecordings = (dbRow?.recordings as unknown as any[]) ?? [];
+    const recordingAttendance = Array.from(s.participants.values()).map((p) => ({
+      userId: p.userId,
+      name: p.name,
+      status: p.status ?? 'present',
+    }));
+    const newRecordingEntry = {
+      id: randomUUID(),
+      partNumber: existingRecordings.length + 1,
+      createdAt: new Date().toISOString(),
+      title: s.title ?? dbRow?.title ?? null,
+      historyEvents,
+      recordingUrl: s.recordingUrl ?? null,
+      recordingStatus: s.recordingStatus ?? 'none',
+      recordingStartedAtMs: s.recordingStartedAtMs ?? null,
+      recordingMode: s.recordingMode ?? null,
+      boardSnapshot,
+      egressId: s.egressId ?? null,
+      attendance: recordingAttendance,
+    };
+    const updatedRecordings = [...existingRecordings, newRecordingEntry];
+
     await db.update(classSessions)
       .set({
         status: 'ended',
@@ -414,6 +615,7 @@ export class ClassroomService implements OnModuleInit {
         historyEvents,
         recordingMode: s.recordingMode ?? null,
         boardSnapshot,
+        recordings: updatedRecordings,
       })
       .where(eq(classSessions.id, sessionId));
     if (s.recordingMode === 'full' || s.recordingMode === 'boardAudio') {
@@ -964,6 +1166,7 @@ export class ClassroomService implements OnModuleInit {
       id: row.id,
       courseId: row.courseId,
       courseName: course.title,
+      title: row.title ?? row.pdfName ?? null,
       status: row.status,
       pdfName: row.pdfName,
       startedAt: row.startedAt?.toISOString() ?? null,
@@ -996,7 +1199,7 @@ export class ClassroomService implements OnModuleInit {
   // Bitta darsning to'liq replay ma'lumoti — chizma tarixi + audio +
   // davomat. Talaba (shu kursga yozilgan, attendance_records orqali) yoki
   // o'qituvchi (shu kurs egasi) kira oladi.
-  async getReplay(sessionId: string, callerId: string) {
+  async getReplay(sessionId: string, callerId: string, recordingId?: string) {
     const row = await db.query.classSessions.findFirst({
       where: eq(classSessions.id, sessionId),
       with: {
@@ -1005,8 +1208,6 @@ export class ClassroomService implements OnModuleInit {
       },
     });
     if (!row) throw new NotFoundException('Dars topilmadi');
-    // Erkin sessiyada course null bo'ladi — egalik tekshiruvi teacherId
-    // orqali, guruhli sessiyada esa course.adminId orqali.
     const course = row.course as unknown as { adminId: string; id: string } | null;
     const isTeacher = course ? course.adminId === callerId : row.teacherId === callerId;
     let hasAccess = isTeacher;
@@ -1022,9 +1223,6 @@ export class ClassroomService implements OnModuleInit {
     }
     if (!hasAccess) throw new ForbiddenException();
 
-    // Erkin darsda guruh/enrollment yo'q — attendanceRecords bo'sh qoladi.
-    // Kim qatnashgani free_session_participants'dan olinadi (faqat login
-    // qilgan foydalanuvchilar; anonim mehmonlar hech qayerda saqlanmaydi).
     const freeParticipants = !course
       ? await db.query.freeSessionParticipants.findMany({
           where: eq(freeSessionParticipants.sessionId, sessionId),
@@ -1032,8 +1230,27 @@ export class ClassroomService implements OnModuleInit {
         })
       : [];
 
-    let recordingUrl = row.recordingUrl;
-    let recordingStatus = row.recordingStatus;
+    const rawRecordings = (row.recordings as unknown as any[]) ?? [];
+    const formattedRecordings = rawRecordings.map((r) => ({
+      id: r.id,
+      partNumber: r.partNumber,
+      createdAt: r.createdAt,
+      title: r.title ?? null,
+      recordingStatus: r.recordingStatus ?? 'none',
+      recordingMode: r.recordingMode ?? null,
+      recordingUrl: r.recordingUrl ? this.storage.getPublicUrl(r.recordingUrl) : null,
+    }));
+
+    let selectedEntry: any = null;
+    if (recordingId) {
+      selectedEntry = rawRecordings.find((r) => r.id === recordingId);
+    }
+    if (!selectedEntry && rawRecordings.length > 0) {
+      selectedEntry = rawRecordings[rawRecordings.length - 1];
+    }
+
+    let recordingUrl = selectedEntry ? selectedEntry.recordingUrl : row.recordingUrl;
+    let recordingStatus = selectedEntry ? selectedEntry.recordingStatus : row.recordingStatus;
     if (recordingStatus === 'pending') {
       await this.recording.refreshRecording(sessionId);
       const refreshed = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
@@ -1043,42 +1260,43 @@ export class ClassroomService implements OnModuleInit {
       }
     }
 
+    const historyEvents = selectedEntry
+      ? (selectedEntry.historyEvents ?? [])
+      : ((row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? []);
+    const recordingStartedAtMs = selectedEntry ? selectedEntry.recordingStartedAtMs : row.recordingStartedAtMs;
+    const recordingMode = selectedEntry ? selectedEntry.recordingMode : (row.recordingMode as ClassroomRecordingMode | null);
+    const boardSnapshot = selectedEntry ? selectedEntry.boardSnapshot : (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null);
+
     return {
-      // O'quvchi (isTeacher=false) — hatto 'full' yozib olingan bo'lsa ham
-      // faqat statik oxirgi chizma holatini ko'rishi kerak, to'liq audio
-      // replay emas. Frontend shu bayroqqa qarab ko'rinishni majburlaydi.
       isTeacher,
+      title: selectedEntry?.title ?? row.title ?? row.pdfName ?? null,
       pdfName: row.pdfName,
       pdfPages: (row.pdfPages as string[]) ?? [],
-      historyEvents: (row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? [],
-      // Older webhook versions stored only the S3 key (or an s3:// URL).
-      // Normalize on read as well so already-finished lessons become playable.
+      historyEvents,
       recordingUrl: recordingUrl ? this.storage.getPublicUrl(recordingUrl) : null,
       recordingStatus,
-      // Chizma tarixidagi atMs bilan bir xil birlik — audio yozib olish
-      // sessiya boshlanishidan necha ms keyin ishga tushgani, replay
-      // sahifasi audio elementiga shu siljishni qo'llash uchun.
-      recordingStartedAtMs: row.recordingStartedAtMs,
-      // Ustoz "faqat chizma" rejimini tanlagan bo'lsa — to'liq harakat
-      // tarixi o'rniga faqat yakuniy doska holati (statik ko'rinish uchun).
-      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
-      boardSnapshot: (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null) ?? null,
-      attendance: course
-        ? (row.attendance as unknown as Array<{
-            enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
-            status: string;
-          }>)
-            .filter((a) => a.enrollment?.schoolMember?.studentId)
-            .map((a) => ({
-              userId: a.enrollment!.schoolMember!.studentId as string,
-              name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
-              status: a.status,
-            }))
-        : freeParticipants.map((p) => ({
-            userId: p.userId,
-            name: p.user.displayName,
-            status: 'present' as const,
-          })),
+      recordingStartedAtMs,
+      recordingMode: (recordingMode as ClassroomRecordingMode | null) ?? null,
+      boardSnapshot: (boardSnapshot as unknown as ClassroomBoardSnapshot | null) ?? null,
+      recordings: formattedRecordings,
+      attendance: selectedEntry && Array.isArray(selectedEntry.attendance)
+        ? selectedEntry.attendance
+        : (course
+            ? (row.attendance as unknown as Array<{
+                enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
+                status: string;
+              }>)
+                .filter((a) => a.enrollment?.schoolMember?.studentId)
+                .map((a) => ({
+                  userId: a.enrollment!.schoolMember!.studentId as string,
+                  name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
+                  status: a.status,
+                }))
+            : freeParticipants.map((p) => ({
+                userId: p.userId,
+                name: p.user.displayName,
+                status: 'present' as const,
+              }))),
     };
   }
 
@@ -1092,21 +1310,27 @@ export class ClassroomService implements OnModuleInit {
       with: { course: true },
     });
     if (!row) throw new NotFoundException('Dars topilmadi');
-    const course = row.course as unknown as { adminId: string };
-    if (callerRole !== 'super' && course.adminId !== callerId) throw new ForbiddenException();
+    const course = row.course as unknown as { adminId: string } | null;
+    const isOwner = course ? course.adminId === callerId : row.teacherId === callerId;
+    if (callerRole !== 'super' && !isOwner) throw new ForbiddenException('Bu dars sizga tegishli emas');
     if (row.status !== 'ended') throw new ConflictException("Faqat yakunlangan darsni o'chirish mumkin");
 
-    // deleteFile hech qachon otmaydi (Promise<boolean> qaytaradi) — fayl
-    // topilmasa yoki storage sozlanmagan bo'lsa false qaytaradi, bu
-    // qolgan o'chirish jarayonini to'xtatmaydi.
-    if (row.recordingStatus === 'ready' && row.recordingUrl) {
+    if (row.recordingUrl) {
       await this.storage.deleteFile(`classroom-recordings/${sessionId}.ogg`);
     }
+    const rawRecordings = (row.recordings as unknown as any[]) ?? [];
+    for (const r of rawRecordings) {
+      if (r.recordingUrl) {
+        const key = r.recordingUrl.split('/').pop();
+        if (key) {
+          await this.storage.deleteFile(`classroom-recordings/${key}`);
+        }
+      }
+    }
 
+    await db.delete(freeSessionParticipants).where(eq(freeSessionParticipants.sessionId, sessionId));
     await db.delete(contentBlocks).where(eq(contentBlocks.classSessionId, sessionId));
     await db.delete(classSessions).where(eq(classSessions.id, sessionId));
-    // attendanceRecords o'zi cascade-delete bo'ladi (sessionId FK'ida
-    // onDelete: 'cascade') — alohida so'rov kerak emas.
   }
 
   async courseHistory(courseId: string, callerId: string, role: string) {
@@ -1122,12 +1346,21 @@ export class ClassroomService implements OnModuleInit {
     });
     return rows.map((r) => {
       const attendance = r.attendance as unknown as Array<{ status: string }>;
+      const rawRecordings = (r.recordings as unknown as any[]) ?? [];
+      const recordings = rawRecordings.map((rec) => ({
+        id: rec.id,
+        partNumber: rec.partNumber,
+        createdAt: rec.createdAt,
+        title: rec.title ?? null,
+      }));
       return {
         id: r.id,
         status: r.status,
+        title: r.title ?? r.pdfName ?? "Jonli dars",
         pdfName: r.pdfName,
         startedAt: r.startedAt?.toISOString() ?? null,
         endedAt: r.endedAt?.toISOString() ?? null,
+        recordings,
         total: attendance.length,
         presentCount: attendance.filter((a) => a.status === 'present').length,
         lateCount: attendance.filter((a) => a.status === 'late').length,
@@ -1153,15 +1386,28 @@ export class ClassroomService implements OnModuleInit {
       ),
       orderBy: desc(classSessions.startedAt),
     });
-    return rows.map((row) => ({
-      id: row.id,
-      status: row.status as 'active' | 'ended',
-      pdfName: row.pdfName,
-      startedAt: row.startedAt?.toISOString() ?? null,
-      endedAt: row.endedAt?.toISOString() ?? null,
-      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
-      hasBoardSnapshot: row.boardSnapshot !== null,
-    }));
+    return rows.map((row) => {
+      const rawRecordings = (row.recordings as unknown as any[]) ?? [];
+      const recordings = rawRecordings.map((r) => ({
+        id: r.id,
+        partNumber: r.partNumber,
+        createdAt: r.createdAt,
+        title: r.title ?? null,
+        recordingStatus: r.recordingStatus ?? 'none',
+        recordingMode: r.recordingMode ?? null,
+      }));
+      return {
+        id: row.id,
+        status: row.status as 'active' | 'ended',
+        title: row.title ?? row.pdfName ?? "Erkin dars",
+        pdfName: row.pdfName,
+        startedAt: row.startedAt?.toISOString() ?? null,
+        endedAt: row.endedAt?.toISOString() ?? null,
+        recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
+        hasBoardSnapshot: row.boardSnapshot !== null,
+        recordings,
+      };
+    });
   }
 
   // O'quvchining barcha jonli darslar tarixi — guruhli (attendanceRecords
@@ -1347,7 +1593,6 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
-    if (s.isFree) return;
     if (!s.historyEvents) s.historyEvents = [];
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
   }

@@ -343,7 +343,7 @@ export function LessonEditorView({
         </div>
       </div>
 
-      <div className="w-full shrink-0 lg:mt-25 lg:w-72">
+      <div className="sticky top-6 self-start w-full shrink-0 lg:mt-25 lg:w-72">
         <div className="mb-3">
           <PracticeToggleCard
             enabled={lesson.practiceEnabled}

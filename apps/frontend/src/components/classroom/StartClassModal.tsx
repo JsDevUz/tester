@@ -23,6 +23,7 @@ export function StartClassModal({ onClose }: Props) {
   const courses = useCourseStore((s) => s.courses);
   const [starting, setStarting] = useState<string | null>(null);
   const [startingFree, setStartingFree] = useState(false);
+  const [title, setTitle] = useState("");
 
   async function handleStart(courseId: string) {
     setStarting(courseId);
@@ -33,7 +34,7 @@ export function StartClassModal({ onClose }: Props) {
         navigate(`/classroom/host/${existing.id}`);
         return;
       }
-      const { id } = await apiCreateClassSession(courseId);
+      const { id } = await apiCreateClassSession(courseId, title);
       navigate(`/classroom/host/${id}`);
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "Darsni boshlab bo'lmadi");
@@ -45,7 +46,7 @@ export function StartClassModal({ onClose }: Props) {
   async function handleStartFree() {
     setStartingFree(true);
     try {
-      const { id } = await apiCreateFreeClassSession();
+      const { id } = await apiCreateFreeClassSession(title);
       navigate(`/classroom/host/${id}`);
     } catch (e: any) {
       toast.error(e?.response?.data?.message ?? "Darsni boshlab bo'lmadi");
@@ -66,6 +67,19 @@ export function StartClassModal({ onClose }: Props) {
           >
             <X size={18} />
           </button>
+        </div>
+
+        <div>
+          <label className="block text-xs font-semibold text-gray-500 mb-1">
+            Dars nomi (ixtiyoriy)
+          </label>
+          <input
+            type="text"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            placeholder="Masalan: 5-dars. Trigonometriya"
+            className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
+          />
         </div>
 
         <button

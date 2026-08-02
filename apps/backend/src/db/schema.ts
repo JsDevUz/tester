@@ -609,6 +609,7 @@ export const classSessions = pgTable('class_sessions', {
   // Erkin (guruhsiz) sessiyalarda null — kursga umuman bog'liq emas.
   courseId: uuid('course_id').references(() => courses.id, { onDelete: 'cascade' }),
   teacherId: uuid('teacher_id').references(() => users.id, { onDelete: 'set null' }),
+  title: text('title'),
   status: text('status').notNull().default('active'),
   pdfName: text('pdf_name'),
   pdfPages: jsonb('pdf_pages').notNull().default([]),
@@ -640,6 +641,9 @@ export const classSessions = pgTable('class_sessions', {
   // audio). 'boardAudio'/'boardSilent' — faqat board_snapshot, ovoz bilan
   // yoki ovozsiz.
   recordingMode: text('recording_mode'),
+  // Sessiya bir nechta marta davom ettirilganda (reopen) har bir seans uchun
+  // alohida recording obyektlari massivi { id, partNumber, createdAt, historyEvents, recordingUrl, ... }.
+  recordings: jsonb('recordings'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));

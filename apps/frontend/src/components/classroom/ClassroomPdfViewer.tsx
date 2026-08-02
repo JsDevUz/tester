@@ -58,6 +58,10 @@ import { getStroke } from "perfect-freehand";
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
 const MAX_DPR = 2;
+// Canvas bitmap bir tomoni shu qiymatdan oshmasin — yuqori zoom'da (masalan
+// 400%) canvas juda katta bo'lib brauzer GPU xotirasini to'ldirib qo'yadi
+// va sahifa qotib qoladi. 4096 = ko'p qurilmalarda xavfsiz chegarа.
+const MAX_CANVAS_PX = 4096;
 
 // To'rtburchak/doira asboblari uchun joriy uslub — Excalidraw'dagi
 // "current item style" ga o'xshash: yangi shape shu qiymatlar bilan
@@ -328,6 +332,7 @@ interface Props {
   // harakat umuman saqlanmagan). Bunday holatda foydalanuvchi har doim
   // erkin scroll/zoom qila oladi, tugma esa butunlay yashiriladi.
   noSync?: boolean;
+  hideMoveButton?: boolean;
   // Daftar sahifalari soni (server-boshqaruvli, o'zgaruvchan) — endi
   // Sahifalar soni session.notebookPageCount'dan keladi.
   notebookPageCount?: number;
@@ -2530,13 +2535,23 @@ function ClassroomPdfPage({
     const canvas = canvasRef.current;
     if (!canvas || size.w === 0) return;
     const dpr = Math.min(window.devicePixelRatio || 1, MAX_DPR);
-    canvas.width = Math.round(size.w * dpr);
-    canvas.height = Math.round(size.h * dpr);
+    // Canvas bitmap juda katta bo'lsa (masalan 400% zoom) brauzer GPU
+    // xotirasini ishlatib qotib qoladi. Bitmap o'lchamini MAX_CANVAS_PX
+    // bilan cheklaymiz — CSS o'lcham (vizual) o'zgarishsiz qoladi,
+    // faqat ichki piksel zichligi kamayadi. Yirik zoom'da bu e'tiborli emas.
+    const bitmapW = Math.round(size.w * dpr);
+    const bitmapH = Math.round(size.h * dpr);
+    const scale = Math.min(1, MAX_CANVAS_PX / Math.max(bitmapW, bitmapH));
+    canvas.width = Math.round(bitmapW * scale);
+    canvas.height = Math.round(bitmapH * scale);
     canvas.style.width = `${size.w}px`;
     canvas.style.height = `${size.h}px`;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    // drawScale: chizma koordinatalari (0..size.w, 0..size.h) dan canvas
+    // piksel koordinatalariga o'tkazish koeffitsienti.
+    const drawScale = dpr * scale;
+    ctx.setTransform(drawScale, 0, 0, drawScale, 0, 0);
     ctx.clearRect(0, 0, size.w, size.h);
     for (const s of strokes) {
       // Tahrirlash paytida o'sha matn textarea ichida ko'rinadi. Canvasdagi
@@ -4247,6 +4262,7 @@ export function ClassroomPdfViewer({
   notebookPageStyles = {},
   notebookPageOrientations = {},
   noSync = false,
+  hideMoveButton = false,
   notebookPageCount = 1,
   onRemovePage,
   onInsertPdfPage,
@@ -4280,6 +4296,9 @@ export function ClassroomPdfViewer({
   // qimirlatib bo'lmaydi); o'chirilgan = erkin scroll/zoom. Ustoz doim
   // o'zi navigatsiya qiladi, shu toggle unga tegishli emas.
   const [synced, setSynced] = useState(!noSync);
+  useEffect(() => {
+    setSynced(!noSync);
+  }, [noSync]);
   // Split panel kengligi: ustoz uchun hostSplitRatio to'g'ridan-to'g'ri
   // serverdan boshqariladi (onSetSplitRatio orqali). O'quvchi sinxron
   // (synced) bo'lsa ham hostSplitRatio'ga qarab ko'radi. O'quvchi erkin
@@ -4661,7 +4680,7 @@ export function ClassroomPdfViewer({
     // erkin almashtira oladi. Faqat PDF sahifalari mavjud bo'lsagina
     // ko'rsatiladi — aks holda "PDF" tugmasi bosilganda ko'rsatadigan
     // hech narsa yo'q.
-    if (!isHost && !(noSync && pageUrls.length > 0)) return null;
+    if (!isHost && !((noSync || !synced) && pageUrls.length > 0)) return null;
     const disabled = !isHost && synced;
     const isNotebook = selectedMode === "notebook";
     return (
@@ -5175,7 +5194,7 @@ export function ClassroomPdfViewer({
           </div>
         );
 
-        const moveButton = !isHost && !noSync && (
+        const moveButton = !isHost && !hideMoveButton && (
           <button
             type="button"
             onClick={toggleSynced}

@@ -123,7 +123,7 @@ export function CourseSidePanel({
   }
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="sticky top-6 self-start flex w-full shrink-0 flex-col gap-3 sm:w-72">
       <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;

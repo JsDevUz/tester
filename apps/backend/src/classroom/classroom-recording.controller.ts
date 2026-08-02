@@ -43,10 +43,21 @@ export class ClassroomRecordingController {
       const failed = info.error && info.error.length > 0;
       const location = info.fileResults?.[0]?.location ?? info.fileResults?.[0]?.filename ?? null;
       const recordingUrl = location ? this.storage.getPublicUrl(location) : null;
+      const status = failed ? 'failed' : (location ? 'ready' : 'failed');
+
+      const rawRecordings = (sessionRow.recordings as unknown as any[]) ?? [];
+      const updatedRecordings = rawRecordings.map((r) => {
+        if (r.egressId === info.egressId || (r.recordingStatus === 'pending' && !r.recordingUrl)) {
+          return { ...r, recordingStatus: status, recordingUrl: failed ? null : recordingUrl };
+        }
+        return r;
+      });
+
       await db.update(classSessions)
         .set({
-          recordingStatus: failed ? 'failed' : (location ? 'ready' : 'failed'),
+          recordingStatus: status,
           recordingUrl: failed ? null : recordingUrl,
+          recordings: updatedRecordings,
         })
         .where(eq(classSessions.id, sessionRow.id));
     } catch (e) {

@@ -1,7 +1,7 @@
 import {
-  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Req, UseGuards,
+  Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { ArrayMinSize, IsIn, IsInt, IsString, Min } from 'class-validator';
+import { ArrayMinSize, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
@@ -9,6 +9,15 @@ import { ClassroomService } from './classroom.service';
 
 class CreateClassSessionDto {
   @IsString() courseId!: string;
+  @IsOptional() @IsString() title?: string;
+}
+
+class CreateFreeClassSessionDto {
+  @IsOptional() @IsString() title?: string;
+}
+
+class ReopenFreeSessionDto {
+  @IsOptional() @IsString() title?: string;
 }
 
 class OverrideAttendanceDto {
@@ -38,16 +47,14 @@ export class ClassroomController {
   @Post('sessions')
   @Roles('teacher', 'super')
   createSession(@Body() dto: CreateClassSessionDto, @Req() req: any) {
-    return this.classroomService.createSession(dto.courseId, req.admin.id, req.admin.role);
+    return this.classroomService.createSession(dto.courseId, req.admin.id, req.admin.role, dto.title);
   }
 
-  // Erkin (guruhsiz) dars — kursga, guruhga bog'liq emas, DB'ga hech
-  // qanday yozuv qilinmaydi. Havolasi orqali login qilmagan mehmon ham
-  // kira oladi (WS "student:join" orqali, guestName bilan).
+  // Erkin (guruhsiz) dars — kursga, guruhga bog'liq emas, DB'ga yozuv qilinadi.
   @Post('sessions/free')
   @Roles('teacher', 'super')
-  createFreeSession(@Req() req: any) {
-    return this.classroomService.createFreeSession(req.admin.id);
+  createFreeSession(@Body() dto: CreateFreeClassSessionDto, @Req() req: any) {
+    return this.classroomService.createFreeSession(req.admin.id, dto?.title);
   }
 
   // Eski erkin darsning oxirgi saqlangan holatidan yangi jonli dars
@@ -59,6 +66,29 @@ export class ClassroomController {
     @Req() req: any,
   ) {
     return this.classroomService.createFreeSessionFromSnapshot(req.admin.id, sourceSessionId);
+  }
+
+  // Darsni oxirgi saqlangan holatidan (boardSnapshot) yangi jonli dars qilib boshlaydi
+  @Post('sessions/from/:sourceSessionId')
+  @Roles('teacher', 'super')
+  async createSessionFromSnapshot(
+    @Param('sourceSessionId', ParseUUIDPipe) sourceSessionId: string,
+    @Body() dto: { title?: string },
+    @Req() req: any,
+  ) {
+    return this.classroomService.createClassSessionFromSnapshot(sourceSessionId, req.admin.id, req.admin.role, dto?.title);
+  }
+
+  // Tugallangan erkin darsni o'SHA ID bilan davom ettiradi.
+  @Post('sessions/:id/reopen')
+  @Roles('teacher', 'super')
+  async reopenFreeSession(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: ReopenFreeSessionDto,
+    @Req() req: any,
+  ) {
+    await this.classroomService.reopenFreeSession(req.admin.id, id, dto?.title);
+    return { id };
   }
 
   @Post('sessions/:id/pdf')
@@ -102,8 +132,12 @@ export class ClassroomController {
 
   @Get('sessions/:id/replay')
   @Roles('teacher', 'super', 'student')
-  getReplay(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.classroomService.getReplay(id, req.admin.id);
+  getReplay(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Req() req: any,
+    @Query('recordingId') recordingId?: string,
+  ) {
+    return this.classroomService.getReplay(id, req.admin.id, recordingId);
   }
 
   @Delete('sessions/:id')

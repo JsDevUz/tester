@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
-import { Download, Play, Pause, Users, X } from "lucide-react";
+import { Download, Pause, Play, Users, X } from "lucide-react";
 import { toast } from "sonner";
 import { apiClassReplay, type ClassReplayData } from "../api/classroom";
 import { useClassroomReplay } from "../hooks/useClassroomReplay";
@@ -36,12 +36,14 @@ export function ClassroomReplayPage() {
   // 3s harakatsizlikdan keyin yashirilsin.
   const { visible: controlsVisible, reveal: revealControls } = useAutoHideOverlay(false);
 
+  const recordingId = searchParams.get("recordingId") ?? undefined;
+
   useEffect(() => {
     if (!sessionId) return;
-    apiClassReplay(sessionId)
+    apiClassReplay(sessionId, recordingId)
       .then(setData)
       .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
-  }, [sessionId]);
+  }, [sessionId, recordingId]);
 
   // Ustoz tomonida (Davomat/"Mening darslarim") ikkita mustaqil kirish
   // nuqtasi bor — ustoz ?view=board bilan aniq "faqat chizma"ni tanlashi
@@ -102,6 +104,7 @@ export function ClassroomReplayPage() {
         classroomTheme: replay.state.classroomTheme,
       }
     : replay.state;
+
   useClassroomTheme(viewState.classroomTheme);
   // Scrub joriy vaqti audio boshlanishidan oldin bo'lsa (masalan o'qituvchi
   // ovoz ulanishidan oldin chiza boshlagan bo'lsa), audio hali "mavjud
@@ -232,7 +235,8 @@ export function ClassroomReplayPage() {
             notebookPageStyles={viewState.notebookPageStyles}
             notebookPageOrientations={viewState.notebookPageOrientations}
             notebookPageCount={viewState.notebookPageCount}
-            noSync
+            noSync={useStaticSnapshot}
+            hideMoveButton={useStaticSnapshot}
           />
         </div>
       </div>
@@ -291,14 +295,18 @@ export function ClassroomReplayPage() {
             </div>
             <div className="max-h-[calc(80dvh-52px)] overflow-y-auto p-3">
               <div className="flex flex-col gap-1.5">
-                {data.attendance.map((a) => (
-                  <div key={a.userId} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
-                    <span className="text-gray-700">{a.name}</span>
-                    <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
-                      {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
-                    </span>
-                  </div>
-                ))}
+                {data.attendance.length === 0 ? (
+                  <p className="py-6 text-center text-sm text-gray-500">Hech kim qo'shilmagan</p>
+                ) : (
+                  data.attendance.map((a) => (
+                    <div key={a.userId} className="flex items-center justify-between rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                      <span className="text-gray-700">{a.name}</span>
+                      <span className={`text-xs font-medium ${a.status === "present" ? "text-green-600" : a.status === "late" ? "text-amber-600" : "text-gray-400"}`}>
+                        {a.status === "present" ? "Keldi" : a.status === "late" ? "Kech qoldi" : "Kelmadi"}
+                      </span>
+                    </div>
+                  ))
+                )}
               </div>
             </div>
           </div>
