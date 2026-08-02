@@ -25,8 +25,12 @@ function formatPlanDateRange(plan: PricingPlan): string {
 }
 
 export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups, onSelectClasses }: CourseLaunchPageProps) {
-  const { courses, addLaunch, addPricingPlan, updatePricingPlan, removePricingPlan } = useCourseStore();
+  const { courses, loadCourseDetails, addLaunch, addPricingPlan, updatePricingPlan, removePricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
+
+  useEffect(() => {
+    if (courseId) void loadCourseDetails(courseId);
+  }, [courseId, loadCourseDetails]);
   const [modalOpen, setModalOpen] = useState(false);
   const [editTarget, setEditTarget] = useState<PricingPlan | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<PricingPlan | null>(null);

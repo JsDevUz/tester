@@ -33,12 +33,16 @@ function paletteFor(id: string) {
 
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectClasses }: CourseGroupsPageProps) {
   const {
-    courses, addGroup, renameGroup,
+    courses, loadCourseDetails, addGroup, renameGroup,
     removeStudentFromGroup, deleteGroup,
     setMemberForcedClosed, loadGroupPayments, assignCurator, demoteCurator,
   } = useCourseStore();
   const { staff, loaded: staffLoaded, loadStaff } = useSchoolStore();
   const course = courses.find((c) => c.id === courseId);
+
+  useEffect(() => {
+    if (courseId) void loadCourseDetails(courseId);
+  }, [courseId, loadCourseDetails]);
 
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [innerTab, setInnerTab] = useState<'students' | 'settings'>('students');

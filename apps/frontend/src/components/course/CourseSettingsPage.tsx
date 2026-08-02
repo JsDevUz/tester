@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Trash2 } from 'lucide-react';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
@@ -17,8 +17,12 @@ interface CourseSettingsPageProps {
 const TITLE_MAX = 80;
 
 export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, onSelectLaunch, onSelectGroups, onSelectClasses }: CourseSettingsPageProps) {
-  const { courses, renameCourse, deleteCourse } = useCourseStore();
+  const { courses, loadCourseDetails, renameCourse, deleteCourse } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
+
+  useEffect(() => {
+    if (courseId) void loadCourseDetails(courseId);
+  }, [courseId, loadCourseDetails]);
   const [confirmDelete, setConfirmDelete] = useState(false);
 
   if (!course) return null;

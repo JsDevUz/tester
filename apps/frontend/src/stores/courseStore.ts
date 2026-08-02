@@ -153,6 +153,8 @@ export interface Course {
   modules: Module[];
   launches: Launch[];
   groups: Group[];
+  detailsLoaded?: boolean;
+  detailsLoading?: boolean;
 }
 
 interface CourseState {
@@ -161,6 +163,7 @@ interface CourseState {
   coursesLoaded: boolean;
   coursesError: string | null;
   loadCourses: () => Promise<void>;
+  loadCourseDetails: (courseId: string) => Promise<void>;
   addCourse: (title: string) => Promise<Course>;
   renameCourse: (courseId: string, title: string) => Promise<void>;
   deleteCourse: (courseId: string) => Promise<void>;
@@ -292,77 +295,81 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     set({ coursesLoading: true, coursesError: null });
     try {
       const courseRows = await apiListCourses();
-      const courses = await Promise.all(
-        courseRows.map(async (courseRow) => {
-          const [moduleRows, groupRows, launchRows] = await Promise.all([
-            apiListModules(courseRow.id),
-            apiListGroups(courseRow.id),
-            apiListLaunches(courseRow.id),
-          ]);
-          const moduleList: Module[] = await Promise.all(
-            moduleRows.map(async (moduleRow) => {
-              const lessonRows = await apiListLessons(moduleRow.id);
-              const lessonList: Lesson[] = lessonRows.map((l) => ({
-                id: l.id,
-                title: l.title,
-                orderIndex: l.orderIndex,
-                status: l.status,
-                blocks: [],
-                practiceEnabled: l.practiceEnabled,
-                practiceBlocks: [],
-                passThresholdEnabled: l.passThresholdEnabled,
-                passThresholdPercent: l.passThresholdPercent,
-                completionScore: l.completionScore,
-              }));
-              return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
-            }),
-          );
+      const existingMap = new Map(get().courses.map((c) => [c.id, c]));
+      const courses: Course[] = courseRows.map((courseRow) => {
+        const existing = existingMap.get(courseRow.id);
+        if (existing && existing.detailsLoaded) {
+          return { ...existing, title: courseRow.title };
+        }
+        return {
+          id: courseRow.id,
+          title: courseRow.title,
+          modules: existing?.modules ?? [],
+          launches: existing?.launches ?? [],
+          groups: existing?.groups ?? [],
+          detailsLoaded: existing?.detailsLoaded ?? false,
+          detailsLoading: false,
+        };
+      });
+      set({ courses, coursesLoaded: true, coursesLoading: false });
+    } catch (error) {
+      set({ coursesError: "Kurslarni yuklab bo'lmadi", coursesLoaded: true, coursesLoading: false });
+      throw error;
+    }
+  },
 
-          const groupList: Group[] = await Promise.all(
-            groupRows.map(async (groupRow) => {
-              const memberRows = await apiListGroupMembers(groupRow.id);
-              const members: GroupMember[] = memberRows.map((m) => ({
-                id: m.id,
-                studentId: m.studentId,
-                studentName: m.student.name,
-                studentPhone: m.student.phone,
-                studentAvatarUrl: m.student.avatarUrl,
-                role: m.role,
-                selectedPlanId: m.selectedPlanId,
-                forcedClosed: m.forcedClosed,
-                latestPaymentStatus: m.latestPayment?.status ?? null,
-              }));
-              const plans: PricingPlan[] = launchRows
-                .flatMap((l) => l.plans)
-                .filter((p) => p.groupId === groupRow.id)
-                .map((p) => ({
-                  id: p.id,
-                  name: p.name,
-                  description: p.description,
-                  price: p.price,
-                  originalPrice: p.originalPrice,
-                  groupId: p.groupId,
-                  startDate: p.startDate,
-                  endDate: p.endDate,
-                }));
-              return {
-                id: groupRow.id,
-                name: groupRow.name,
-                groupChatEnabled: groupRow.groupChatEnabled,
-                groupChannelEnabled: groupRow.groupChannelEnabled,
-                inviteToken: groupRow.inviteToken,
-                paymentDay: groupRow.paymentDay,
-                members,
-                plans,
-              };
-            }),
-          );
+  loadCourseDetails: async (courseId: string) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    if (course?.detailsLoaded || course?.detailsLoading) return;
 
-          const launchList: Launch[] = launchRows.map((launchRow) => ({
-            id: launchRow.id,
-            name: launchRow.name,
-            active: launchRow.active,
-            plans: launchRow.plans.map((p) => ({
+    set({
+      courses: get().courses.map((c) => (c.id === courseId ? { ...c, detailsLoading: true } : c)),
+    });
+
+    try {
+      const [moduleRows, groupRows, launchRows] = await Promise.all([
+        apiListModules(courseId),
+        apiListGroups(courseId),
+        apiListLaunches(courseId),
+      ]);
+
+      const moduleList: Module[] = await Promise.all(
+        moduleRows.map(async (moduleRow) => {
+          const lessonRows = await apiListLessons(moduleRow.id);
+          const lessonList: Lesson[] = lessonRows.map((l) => ({
+            id: l.id,
+            title: l.title,
+            orderIndex: l.orderIndex,
+            status: l.status,
+            blocks: [],
+            practiceEnabled: l.practiceEnabled,
+            practiceBlocks: [],
+            passThresholdEnabled: l.passThresholdEnabled,
+            passThresholdPercent: l.passThresholdPercent,
+            completionScore: l.completionScore,
+          }));
+          return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
+        }),
+      );
+
+      const groupList: Group[] = await Promise.all(
+        groupRows.map(async (groupRow) => {
+          const memberRows = await apiListGroupMembers(groupRow.id);
+          const members: GroupMember[] = memberRows.map((m) => ({
+            id: m.id,
+            studentId: m.studentId,
+            studentName: m.student.name,
+            studentPhone: m.student.phone,
+            studentAvatarUrl: m.student.avatarUrl,
+            role: m.role,
+            selectedPlanId: m.selectedPlanId,
+            forcedClosed: m.forcedClosed,
+            latestPaymentStatus: m.latestPayment?.status ?? null,
+          }));
+          const plans: PricingPlan[] = launchRows
+            .flatMap((l) => l.plans)
+            .filter((p) => p.groupId === groupRow.id)
+            .map((p) => ({
               id: p.id,
               name: p.name,
               description: p.description,
@@ -371,26 +378,58 @@ export const useCourseStore = create<CourseState>((set, get) => ({
               groupId: p.groupId,
               startDate: p.startDate,
               endDate: p.endDate,
-            })),
-          }));
-
+            }));
           return {
-            id: courseRow.id,
-            title: courseRow.title,
-            modules: moduleList,
-            launches: launchList,
-            groups: groupList,
+            id: groupRow.id,
+            name: groupRow.name,
+            groupChatEnabled: groupRow.groupChatEnabled,
+            groupChannelEnabled: groupRow.groupChannelEnabled,
+            inviteToken: groupRow.inviteToken,
+            paymentDay: groupRow.paymentDay,
+            members,
+            plans,
           };
         }),
       );
-      set({ courses, coursesLoaded: true, coursesLoading: false });
-    } catch (error) {
-      set({ coursesError: "Kurslarni yuklab bo'lmadi", coursesLoaded: true });
-      throw error;
-    } finally {
-      set({ coursesLoading: false });
+
+      const launchList: Launch[] = launchRows.map((launchRow) => ({
+        id: launchRow.id,
+        name: launchRow.name,
+        active: launchRow.active,
+        plans: launchRow.plans.map((p) => ({
+          id: p.id,
+          name: p.name,
+          description: p.description,
+          price: p.price,
+          originalPrice: p.originalPrice,
+          groupId: p.groupId,
+          startDate: p.startDate,
+          endDate: p.endDate,
+        })),
+      }));
+
+      set({
+        courses: get().courses.map((c) =>
+          c.id === courseId
+            ? {
+                ...c,
+                modules: moduleList,
+                groups: groupList,
+                launches: launchList,
+                detailsLoaded: true,
+                detailsLoading: false,
+              }
+            : c,
+        ),
+      });
+    } catch (e) {
+      console.error('Failed to load course details', e);
+      set({
+        courses: get().courses.map((c) => (c.id === courseId ? { ...c, detailsLoading: false } : c)),
+      });
     }
   },
+
   addCourse: async (title) => {
     const row = await apiCreateCourse(title);
     const course = toFrontendCourse(row);

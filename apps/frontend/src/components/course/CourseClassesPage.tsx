@@ -39,7 +39,12 @@ function fmtDuration(startIso: string | null, endIso: string | null): string {
 
 export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectGroups }: CourseClassesPageProps) {
   const navigate = useNavigate();
+  const loadCourseDetails = useCourseStore((s) => s.loadCourseDetails);
   const course = useCourseStore((s) => s.courses.find((c) => c.id === courseId));
+
+  useEffect(() => {
+    if (courseId) void loadCourseDetails(courseId);
+  }, [courseId, loadCourseDetails]);
   const [history, setHistory] = useState<ClassHistoryItem[]>([]);
   const [activeId, setActiveId] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);

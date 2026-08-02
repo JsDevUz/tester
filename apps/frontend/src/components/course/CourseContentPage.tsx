@@ -28,11 +28,15 @@ type DeleteTarget =
   | null;
 
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectClasses }: CourseContentPageProps) {
-  const { courses, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
+  const { courses, loadCourseDetails, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
   const [deleteTarget, setDeleteTarget] = useState<DeleteTarget>(null);
+
+  useEffect(() => {
+    if (courseId) void loadCourseDetails(courseId);
+  }, [courseId, loadCourseDetails]);
 
   // Sahifa birinchi ochilganda hamma modul yopiq (collapsed) holatda
   // boshlansin — modullar ro'yxati store'dan asinxron kelgani uchun
