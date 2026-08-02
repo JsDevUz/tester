@@ -64,6 +64,7 @@ export function LessonEditorView({
 }: LessonEditorViewProps) {
   const {
     courses,
+    loadLessonBlocks,
     renameLesson,
     addBlock,
     addFileBlockFromLibrary,
@@ -93,6 +94,12 @@ export function LessonEditorView({
     "content",
   );
   const [liveClassPickerOpen, setLiveClassPickerOpen] = useState(false);
+
+  useEffect(() => {
+    if (courseId && moduleId && lessonId) {
+      void loadLessonBlocks(courseId, moduleId, lessonId);
+    }
+  }, [courseId, moduleId, lessonId, loadLessonBlocks]);
 
   useEffect(() => {
     if (!lesson) return;

@@ -187,6 +187,7 @@ interface CourseState {
   removeBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
   moveBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, direction: 'up' | 'down') => Promise<void>;
   refreshLessonBlocks: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  loadLessonBlocks: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   retryVideoBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
@@ -292,107 +293,97 @@ export const useCourseStore = create<CourseState>((set, get) => ({
     try {
       const courseRows = await apiListCourses();
       const courses = await Promise.all(
-      courseRows.map(async (courseRow) => {
-        const [moduleRows, groupRows, launchRows] = await Promise.all([
-          apiListModules(courseRow.id),
-          apiListGroups(courseRow.id),
-          apiListLaunches(courseRow.id),
-        ]);
-        const moduleList: Module[] = await Promise.all(
-          moduleRows.map(async (moduleRow) => {
-            const lessonRows = await apiListLessons(moduleRow.id);
-            const lessonList: Lesson[] = await Promise.all(
-              lessonRows.map(async (l) => {
-                const [blockRows, practiceBlockRows] = await Promise.all([
-                  apiListBlocks(l.id),
-                  apiListPracticeBlocks(l.id),
-                ]);
-                const blocks: ContentBlock[] = blockRows.map(toFrontendBlock);
-                const practiceBlocks: PracticeBlock[] = practiceBlockRows.map(toFrontendPracticeBlock);
-                return {
-                  id: l.id,
-                  title: l.title,
-                  orderIndex: l.orderIndex,
-                  status: l.status,
-                  blocks,
-                  practiceEnabled: l.practiceEnabled,
-                  practiceBlocks,
-                  passThresholdEnabled: l.passThresholdEnabled,
-                  passThresholdPercent: l.passThresholdPercent,
-                  completionScore: l.completionScore,
-                };
-              }),
-            );
-            return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
-          }),
-        );
-
-        const groupList: Group[] = await Promise.all(
-          groupRows.map(async (groupRow) => {
-            const memberRows = await apiListGroupMembers(groupRow.id);
-            const members: GroupMember[] = memberRows.map((m) => ({
-              id: m.id,
-              studentId: m.studentId,
-              studentName: m.student.name,
-              studentPhone: m.student.phone,
-              studentAvatarUrl: m.student.avatarUrl,
-              role: m.role,
-              selectedPlanId: m.selectedPlanId,
-              forcedClosed: m.forcedClosed,
-              latestPaymentStatus: m.latestPayment?.status ?? null,
-            }));
-            const plans: PricingPlan[] = launchRows
-              .flatMap((l) => l.plans)
-              .filter((p) => p.groupId === groupRow.id)
-              .map((p) => ({
-                id: p.id,
-                name: p.name,
-                description: p.description,
-                price: p.price,
-                originalPrice: p.originalPrice,
-                groupId: p.groupId,
-                startDate: p.startDate,
-                endDate: p.endDate,
+        courseRows.map(async (courseRow) => {
+          const [moduleRows, groupRows, launchRows] = await Promise.all([
+            apiListModules(courseRow.id),
+            apiListGroups(courseRow.id),
+            apiListLaunches(courseRow.id),
+          ]);
+          const moduleList: Module[] = await Promise.all(
+            moduleRows.map(async (moduleRow) => {
+              const lessonRows = await apiListLessons(moduleRow.id);
+              const lessonList: Lesson[] = lessonRows.map((l) => ({
+                id: l.id,
+                title: l.title,
+                orderIndex: l.orderIndex,
+                status: l.status,
+                blocks: [],
+                practiceEnabled: l.practiceEnabled,
+                practiceBlocks: [],
+                passThresholdEnabled: l.passThresholdEnabled,
+                passThresholdPercent: l.passThresholdPercent,
+                completionScore: l.completionScore,
               }));
-            return {
-              id: groupRow.id,
-              name: groupRow.name,
-              groupChatEnabled: groupRow.groupChatEnabled,
-              groupChannelEnabled: groupRow.groupChannelEnabled,
-              inviteToken: groupRow.inviteToken,
-              paymentDay: groupRow.paymentDay,
-              members,
-              plans,
-            };
-          }),
-        );
+              return { id: moduleRow.id, title: moduleRow.title, orderIndex: moduleRow.orderIndex, lessons: lessonList };
+            }),
+          );
 
-        const launchList: Launch[] = launchRows.map((launchRow) => ({
-          id: launchRow.id,
-          name: launchRow.name,
-          active: launchRow.active,
-          plans: launchRow.plans.map((p) => ({
-            id: p.id,
-            name: p.name,
-            description: p.description,
-            price: p.price,
-            originalPrice: p.originalPrice,
-            groupId: p.groupId,
-            startDate: p.startDate,
-            endDate: p.endDate,
-          })),
-        }));
+          const groupList: Group[] = await Promise.all(
+            groupRows.map(async (groupRow) => {
+              const memberRows = await apiListGroupMembers(groupRow.id);
+              const members: GroupMember[] = memberRows.map((m) => ({
+                id: m.id,
+                studentId: m.studentId,
+                studentName: m.student.name,
+                studentPhone: m.student.phone,
+                studentAvatarUrl: m.student.avatarUrl,
+                role: m.role,
+                selectedPlanId: m.selectedPlanId,
+                forcedClosed: m.forcedClosed,
+                latestPaymentStatus: m.latestPayment?.status ?? null,
+              }));
+              const plans: PricingPlan[] = launchRows
+                .flatMap((l) => l.plans)
+                .filter((p) => p.groupId === groupRow.id)
+                .map((p) => ({
+                  id: p.id,
+                  name: p.name,
+                  description: p.description,
+                  price: p.price,
+                  originalPrice: p.originalPrice,
+                  groupId: p.groupId,
+                  startDate: p.startDate,
+                  endDate: p.endDate,
+                }));
+              return {
+                id: groupRow.id,
+                name: groupRow.name,
+                groupChatEnabled: groupRow.groupChatEnabled,
+                groupChannelEnabled: groupRow.groupChannelEnabled,
+                inviteToken: groupRow.inviteToken,
+                paymentDay: groupRow.paymentDay,
+                members,
+                plans,
+              };
+            }),
+          );
 
-        return {
-          id: courseRow.id,
-          title: courseRow.title,
-          modules: moduleList,
-          launches: launchList,
-          groups: groupList,
-        };
-      }),
+          const launchList: Launch[] = launchRows.map((launchRow) => ({
+            id: launchRow.id,
+            name: launchRow.name,
+            active: launchRow.active,
+            plans: launchRow.plans.map((p) => ({
+              id: p.id,
+              name: p.name,
+              description: p.description,
+              price: p.price,
+              originalPrice: p.originalPrice,
+              groupId: p.groupId,
+              startDate: p.startDate,
+              endDate: p.endDate,
+            })),
+          }));
+
+          return {
+            id: courseRow.id,
+            title: courseRow.title,
+            modules: moduleList,
+            launches: launchList,
+            groups: groupList,
+          };
+        }),
       );
-      set({ courses, coursesLoaded: true });
+      set({ courses, coursesLoaded: true, coursesLoading: false });
     } catch (error) {
       set({ coursesError: "Kurslarni yuklab bo'lmadi", coursesLoaded: true });
       throw error;
@@ -1127,6 +1118,39 @@ export const useCourseStore = create<CourseState>((set, get) => ({
             },
       ),
     });
+  },
+  loadLessonBlocks: async (courseId, moduleId, lessonId) => {
+    try {
+      const [blockRows, practiceBlockRows] = await Promise.all([
+        apiListBlocks(lessonId),
+        apiListPracticeBlocks(lessonId),
+      ]);
+      const blocks: ContentBlock[] = blockRows.map(toFrontendBlock);
+      const practiceBlocks: PracticeBlock[] = practiceBlockRows.map(toFrontendPracticeBlock);
+      set({
+        courses: get().courses.map((c) =>
+          c.id !== courseId
+            ? c
+            : {
+                ...c,
+                modules: c.modules.map((m) =>
+                  m.id !== moduleId
+                    ? m
+                    : {
+                        ...m,
+                        lessons: m.lessons.map((l) =>
+                          l.id !== lessonId
+                            ? l
+                            : { ...l, blocks, practiceBlocks },
+                        ),
+                      },
+                ),
+              },
+        ),
+      });
+    } catch (e) {
+      console.error('Failed to load lesson blocks', e);
+    }
   },
   retryVideoBlock: async (courseId, moduleId, lessonId, blockId) => {
     const row = await apiRetryVideoBlock(blockId);
