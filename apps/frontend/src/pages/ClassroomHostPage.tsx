@@ -15,6 +15,8 @@ import {
   type ShapeStyle,
 } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
+import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
+import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
@@ -51,7 +53,8 @@ export function ClassroomHostPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const admin = useAuthStore((s) => s.admin);
-  const { state, hostActions } = useClassroomSession(id, "host");
+  const { state, hostActions, sendReaction, toggleHandRaise, lowerAllHands, lowerUserHand } = useClassroomSession(id, "host");
+  const isHandRaised = (state.raisedHands ?? []).some((h) => h.userId === (admin?.id ?? "host"));
   useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
   const pageRef = useRef<HTMLDivElement>(null);
@@ -331,6 +334,12 @@ export function ClassroomHostPage() {
                   {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
               )}
+              <RaisedHandsControl
+                raisedHands={state.raisedHands ?? []}
+                onLowerAll={lowerAllHands}
+                onLowerUser={lowerUserHand}
+                theme={state.classroomTheme}
+              />
               <ClassroomThemeToggle
                 theme={state.classroomTheme}
                 onToggle={() => hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")}
@@ -341,11 +350,15 @@ export function ClassroomHostPage() {
                 isHost
                 myUserId={admin?.id ?? null}
                 onMute={(uid) => void handleMute(uid)}
+                userReactions={state.userReactions}
                 compact
+                theme={state.classroomTheme}
               />
             </div>
           }
         />
+
+        <StickerReactionsOverlay reactions={state.reactions ?? []} />
 
         <ClassroomCallBar
           micEnabled={voice.micEnabled}
@@ -359,8 +372,13 @@ export function ClassroomHostPage() {
           onEndCall={() => setConfirmEnd(true)}
           endCallTitle="Darsni yakunlash"
           hidden={fullscreen.isFullscreen}
+          theme={state.classroomTheme}
+          onSendReaction={sendReaction}
+          handRaised={isHandRaised}
+          onToggleHandRaise={toggleHandRaise}
           menu={
             <ClassroomCallBarMenu
+              theme={state.classroomTheme}
               items={[
                 ...(!recordingMode ? [{
                   key: "record",

@@ -633,5 +633,6 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     rightBoardMode: session.rightBoardMode ?? session.boardMode ?? 'pdf',
     classroomTheme: session.classroomTheme ?? 'light',
     notebookStyle: session.notebookStyle ?? 'grid',
+    raisedHands: session.raisedHands ?? [],
   };
 }

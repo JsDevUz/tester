@@ -3,12 +3,22 @@ import type { CsParticipant } from "../../api/classroom";
 
 const STATUS_LABEL: Record<
   CsParticipant["status"],
-  { text: string; cls: string }
+  { text: string; dotCls: string; badgeCls: string }
 > = {
-  present: { text: "keldi", cls: "bg-emerald-500 text-white" },
-  late: { text: "kech keldi", cls: "bg-amber-500 text-white" },
-  absent: { text: "yo'q", cls: "bg-gray-500 text-white" },
+  present: { text: "keldi",      dotCls: "bg-emerald-500", badgeCls: "bg-emerald-500/15 text-emerald-600" },
+  late:    { text: "kech keldi", dotCls: "bg-amber-500",   badgeCls: "bg-amber-500/15  text-amber-600"   },
+  absent:  { text: "yo'q",       dotCls: "bg-gray-400",    badgeCls: "bg-gray-400/15   text-gray-500"    },
 };
+
+const AVATAR_HEX = [
+  "#e67700", "#087f5b", "#1971c2", "#5f3dc4",
+  "#c2255c", "#2f9e44", "#1864ab", "#862e9c",
+];
+function avatarColor(name: string) {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = name.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_HEX[Math.abs(h) % AVATAR_HEX.length];
+}
 
 interface Props {
   participants: CsParticipant[];
@@ -16,97 +26,125 @@ interface Props {
   isHost: boolean;
   myUserId: string | null;
   onMute?: (userId: string) => void;
-  // true bo'lsa o'zining karta-shadow/sarlavhasini chizmaydi — masalan
-  // ParticipantsPanelToggle o'ziga xos konteyner ichida ishlatganda.
+  userReactions?: Record<string, string>;
   bare?: boolean;
+  theme?: "light" | "dark";
 }
 
 export function ClassroomParticipants({
-  participants,
-  speakingUserIds,
-  isHost,
-  myUserId,
-  onMute,
-  bare = false,
+  participants, speakingUserIds, isHost, myUserId,
+  onMute, userReactions, bare = false, theme = "light",
 }: Props) {
+  const isDark = theme === "dark";
+
   const sorted = [...participants].sort(
-    (a, b) =>
-      Number(b.online) - Number(a.online) || a.name.localeCompare(b.name),
+    (a, b) => Number(b.online) - Number(a.online) || a.name.localeCompare(b.name),
   );
   const onlineCount = participants.filter((p) => p.online).length;
 
+  // Theme tokens
+  const nameCls     = isDark ? "text-white"     : "text-gray-900";
+  const nameOffCls  = isDark ? "text-white/40"  : "text-gray-400";
+  const rowHover    = isDark ? "hover:bg-white/5"  : "hover:bg-gray-50";
+  const speakBg     = isDark ? "bg-indigo-500/20"  : "bg-indigo-50";
+  const micHover    = isDark
+    ? "text-white/40 hover:text-red-400 hover:bg-red-500/15"
+    : "text-gray-400 hover:text-red-600 hover:bg-red-50";
+  const emptyCls    = isDark ? "text-white/40"  : "text-gray-400";
+
   return (
-    <div
-      className={
-        bare
-          ? "flex flex-col gap-2 min-h-0"
-          : "bg-white rounded-2xl shadow-sm p-4 flex flex-col gap-2 min-h-0"
-      }
-    >
+    <div className={bare ? "flex flex-col min-h-0" : ""}>
       {!bare && (
-        <div className="flex items-center justify-between">
-          <h3 className="font-semibold text-gray-800 text-sm">O'quvchilar</h3>
-          <span className="text-xs text-gray-400">
+        <div className="flex items-center justify-between px-1 pb-2">
+          <span className={`text-xs font-medium ${isDark ? "text-white/50" : "text-gray-400"}`}>
             {onlineCount}/{participants.length} onlayn
           </span>
         </div>
       )}
-      <div
-        className={`flex-1 overflow-y-auto flex flex-col gap-1 ${bare ? "p-2" : ""}`}
-      >
+
+      <div className="flex-1 overflow-y-auto flex flex-col gap-0.5">
         {sorted.length === 0 && (
-          <p className="text-sm text-gray-400 py-4 text-center">
+          <p className={`text-sm py-6 text-center ${emptyCls}`}>
             Hozircha o'quvchi yo'q
           </p>
         )}
+
         {sorted.map((p) => {
-          const status = STATUS_LABEL[p.status];
+          const status  = STATUS_LABEL[p.status];
           const speaking = speakingUserIds.has(p.userId);
+          const reaction = userReactions?.[p.userId];
+          const initial  = p.name.charAt(0).toUpperCase() || "?";
+
           return (
             <div
               key={p.userId}
-              className={`flex items-center gap-2 px-2 py-1.5 rounded-xl ${speaking ? "bg-indigo-50" : ""}`}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${speaking ? speakBg : ""}`}
             >
-              <span
-                className={`w-2 h-2 rounded-full shrink-0 ${p.online ? "bg-emerald-500" : "bg-gray-300"}`}
-              />
-              <span
-                className={`text-sm truncate flex-1 ${p.online ? "text-gray-800" : "text-gray-400"}`}
-              >
-                {p.name}
-                {p.userId === myUserId ? " (siz)" : ""}
-              </span>
-              {speaking && (
-                <Volume2
-                  size={14}
-                  className="text-indigo-600 shrink-0 animate-pulse"
+              {/* Avatar */}
+              <div className="relative shrink-0">
+                <div
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+                  style={{ backgroundColor: avatarColor(p.name) }}
+                >
+                  {initial}
+                </div>
+                {/* Online dot */}
+                <span
+                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${
+                    isDark ? "ring-[#202124]" : "ring-white"
+                  } ${status.dotCls}`}
                 />
+              </div>
+
+              {/* Name */}
+              <span className={`text-sm truncate flex-1 font-medium ${p.online ? nameCls : nameOffCls}`}>
+                {p.name}
+                {p.userId === myUserId && (
+                  <span className={`ml-1 text-[11px] font-normal ${isDark ? "text-white/40" : "text-gray-400"}`}>(siz)</span>
+                )}
+              </span>
+
+              {/* Reaction emoji */}
+              {reaction && (
+                <span className="text-base shrink-0 leading-none" title="Oxirgi reaksiya">
+                  {reaction}
+                </span>
               )}
+
+              {/* Speaking indicator */}
+              {speaking && (
+                <Volume2 size={14} className="text-indigo-400 shrink-0 animate-pulse" />
+              )}
+
+              {/* Status badge */}
+              <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium ${status.badgeCls}`}>
+                {status.text}
+              </span>
+
+              {/* Host mute button */}
               {isHost && p.online && (
                 <button
                   type="button"
                   onClick={() => onMute?.(p.userId)}
-                  className="p-1 rounded-lg text-gray-400 hover:text-red-600 hover:bg-red-50 shrink-0"
+                  className={`p-1 rounded-lg transition-colors shrink-0 ${micHover}`}
                   title="Mikrofonini o'chirish"
                 >
                   <MicOff size={14} />
                 </button>
               )}
-              <span
-                className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 ${status.cls}`}
-              >
-                {status.text}
-              </span>
             </div>
           );
         })}
       </div>
+
+      {/* Mic hint for students */}
       {!isHost && (
-        <p
-          className={`text-[11px] text-gray-400 flex items-center gap-1 ${bare ? "px-2 pb-2" : ""}`}
-        >
-          <Mic size={12} /> Gapirish uchun pastdagi mikrofon tugmasini yoqing
-        </p>
+        <div className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] border-t ${
+          isDark ? "border-white/10 text-white/30" : "border-gray-100 text-gray-400"
+        }`}>
+          <Mic size={11} />
+          Gapirish uchun mikrofon tugmasini yoqing
+        </div>
       )}
     </div>
   );

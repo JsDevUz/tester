@@ -174,6 +174,7 @@ export interface ClassroomSession {
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
   historyEvents?: ClassroomHistoryEvent[];
+  raisedHands?: ClassroomRaisedHand[];
   // Ustoz "Yozib olish" tugmasi orqali tanlagan rejim — null bo'lsa hech
   // narsa yozilmaydi (avval avtomatik boshlanardi, endi faqat shu tugma
   // orqali). 'full' — to'liq (ovoz + harakat tarixi, to'liq replay).
@@ -207,6 +208,12 @@ export interface ClassroomBoardSnapshot {
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
 }
 
+export interface ClassroomRaisedHand {
+  userId: string;
+  userName: string;
+  raisedAt: number;
+}
+
 export interface ClassroomSnapshot {
   sessionId: string;
   pdfName: string | null;
@@ -232,6 +239,7 @@ export interface ClassroomSnapshot {
   notebookStyle: ClassroomNotebookStyle;
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
+  raisedHands?: ClassroomRaisedHand[];
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

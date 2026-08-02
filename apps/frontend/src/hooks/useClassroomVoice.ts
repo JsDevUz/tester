@@ -16,7 +16,7 @@ interface VoiceState {
   activeAudioInputId: string | null;
 }
 
-export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean) {
+export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean, guestName?: string) {
   const roomRef = useRef<Room | null>(null);
   const [state, setState] = useState<VoiceState>({
     voiceAvailable: true,
@@ -89,7 +89,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
 
     (async () => {
       try {
-        const { token, url } = await apiVoiceToken(sessionId);
+        const { token, url } = await apiVoiceToken(sessionId, guestName);
         if (cancelled) return;
         await room.connect(url, token);
         if (cancelled) { await room.disconnect(); return; }
@@ -116,7 +116,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       void room.disconnect();
       document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());
     };
-  }, [sessionId, startMuted]);
+  }, [sessionId, startMuted, guestName]);
 
   const toggleMic = useCallback(async () => {
     const room = roomRef.current;

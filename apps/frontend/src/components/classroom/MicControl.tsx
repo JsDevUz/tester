@@ -8,15 +8,23 @@ interface Props {
   activeAudioInputId: string | null;
   onSwitchAudioInput: (deviceId: string) => void;
   disabled?: boolean;
+  theme?: 'light' | 'dark';
 }
 
 // Mikrofon yoqish/o'chirish + qaysi mikrofon qurilmasi ishlatilishini
 // tanlash uchun birlashtirilgan pill: asosiy tugma mikrofonni almashtiradi,
 // chevron esa qurilmalar ro'yxatini ochadi (LiveKit switchActiveDevice orqali).
 // Mikrofon o'chirilganda butun pill (chevron qismi ham) qizg'ish fonga o'tadi.
-export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput, disabled }: Props) {
+export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput, disabled, theme = 'light' }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const isDark = theme === 'dark';
+
+  // Mikrofon yoqilgan holda fon: dark → #3c4043, light → #f1f3f4
+  // Mikrofon o'chirilganda har doim qizg'ish
+  const pillBg = micEnabled
+    ? (isDark ? '#3c4043' : '#f1f3f4')
+    : '#fef2f2';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -32,17 +40,18 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
   return (
     <div ref={wrapRef} className="relative">
       <div
-        className={`flex items-center rounded-full shadow-md transition-colors ${hasDevices ? "gap-0.5 p-1" : ""}`}
-        style={{ backgroundColor: micEnabled ? "#1f2937" : "#fef2f2" }}
+        className={`flex items-center rounded-full shadow-md h-[44px] transition-colors ${hasDevices ? "gap-0.5" : ""}`}
+        style={{ backgroundColor: pillBg }}
       >
         {hasDevices && (
           <button
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             disabled={disabled}
-            className={`flex items-center justify-center p-2.5 rounded-full disabled:opacity-40 ${
-              micEnabled ? "text-gray-300 hover:bg-white/10" : "text-red-400 hover:bg-red-100"
-            }`}
+            className={`flex items-center justify-center p-2.5 rounded-full disabled:opacity-40 ${micEnabled
+              ? (isDark ? "text-gray-300 hover:bg-white/10" : "text-gray-500 hover:bg-gray-200")
+              : "text-red-400 hover:bg-red-100"
+              }`}
             title="Mikrofon qurilmasini tanlash"
           >
             {menuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
@@ -52,9 +61,10 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
           type="button"
           onClick={onToggleMic}
           disabled={disabled}
-          className={`flex items-center justify-center rounded-full disabled:opacity-40 disabled:cursor-not-allowed p-3 ${
-            micEnabled ? "text-white hover:bg-white/10" : "bg-red-100 text-red-500"
-          }`}
+          className={`flex items-center justify-center rounded-full disabled:opacity-40 disabled:cursor-not-allowed p-3 ${micEnabled
+            ? (isDark ? "text-white hover:bg-white/10" : "text-[#3c4043] hover:bg-gray-200")
+            : "bg-red-100 text-red-500"
+            }`}
           title={disabled ? "Ovoz o'chirilgan" : micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
         >
           {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
@@ -69,9 +79,8 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
               key={d.deviceId}
               type="button"
               onClick={() => { onSwitchAudioInput(d.deviceId); setMenuOpen(false); }}
-              className={`w-full text-left px-3 py-2 text-sm truncate hover:bg-gray-50 ${
-                d.deviceId === activeAudioInputId ? "text-indigo-600 font-medium" : "text-gray-700"
-              }`}
+              className={`w-full text-left px-3 py-2 text-sm truncate hover:bg-gray-50 ${d.deviceId === activeAudioInputId ? "text-indigo-600 font-medium" : "text-gray-700"
+                }`}
             >
               {d.label || "Noma'lum mikrofon"}
             </button>

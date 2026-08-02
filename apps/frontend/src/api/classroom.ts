@@ -253,8 +253,12 @@ export async function apiOverrideAttendance(recordId: string, status: 'absent' |
   await client.patch(`/classroom/attendance/${recordId}`, { status });
 }
 
-export async function apiVoiceToken(sessionId: string): Promise<{ token: string; url: string }> {
-  const res = await client.post(`/classroom/sessions/${sessionId}/voice-token`);
+export async function apiVoiceToken(sessionId: string, guestName?: string): Promise<{ token: string; url: string }> {
+  const url = guestName
+    ? `/classroom/sessions/${sessionId}/voice-token/guest`
+    : `/classroom/sessions/${sessionId}/voice-token`;
+  const body = guestName ? { guestName } : {};
+  const res = await client.post(url, body);
   return res.data;
 }
 
@@ -386,6 +390,7 @@ export interface CsSnapshot {
   notebookStyle: CsNotebookStyle;
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
+  raisedHands?: { userId: string; userName: string; raisedAt: number }[];
 }
 
 export interface CsPresenceUpdate {

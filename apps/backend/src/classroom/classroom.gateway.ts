@@ -293,4 +293,66 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
       return { ok: false, code: e?.message ?? 'ERROR' };
     }
   }
+
+  @SubscribeMessage('reaction:send')
+  sendReaction(
+    @MessageBody() body: BaseBody & { emoji: string; userName?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    return this.run(() => {
+      let userId: string = client.id;
+      let userName = body.userName || 'Mehmon';
+      if (body.token) {
+        try {
+          const u = this.verify(body.token);
+          userId = u.sub;
+          userName = u.name || userName;
+        } catch {}
+      }
+      this.classroomService.recordReaction(body.sessionId, userId, userName, body.emoji);
+      this.server.to(`cs:${body.sessionId}`).emit('reaction:receive', {
+        id: crypto.randomUUID(),
+        userId,
+        emoji: body.emoji,
+        userName,
+        socketId: client.id,
+      });
+    });
+  }
+
+  @SubscribeMessage('hand:toggle')
+  handToggle(
+    @MessageBody() body: BaseBody & { userName?: string },
+    @ConnectedSocket() client: Socket,
+  ) {
+    return this.run(() => {
+      let userId: string = client.id;
+      let userName = body.userName || 'Mehmon';
+      if (body.token) {
+        try {
+          const u = this.verify(body.token);
+          userId = u.sub;
+          userName = u.name || userName;
+        } catch {}
+      }
+      const raisedHands = this.classroomService.handToggle(body.sessionId, userId, userName);
+      this.server.to(`cs:${body.sessionId}`).emit('hand:update', { raisedHands });
+    });
+  }
+
+  @SubscribeMessage('hand:lowerAll')
+  handLowerAll(@MessageBody() body: BaseBody) {
+    return this.run(() => {
+      const raisedHands = this.classroomService.handLowerAll(body.sessionId);
+      this.server.to(`cs:${body.sessionId}`).emit('hand:update', { raisedHands });
+    });
+  }
+
+  @SubscribeMessage('hand:lowerUser')
+  handLowerUser(@MessageBody() body: BaseBody & { targetUserId: string }) {
+    return this.run(() => {
+      const raisedHands = this.classroomService.handLowerUser(body.sessionId, body.targetUserId);
+      this.server.to(`cs:${body.sessionId}`).emit('hand:update', { raisedHands });
+    });
+  }
 }

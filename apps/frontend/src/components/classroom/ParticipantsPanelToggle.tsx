@@ -10,24 +10,23 @@ interface Props {
   isHost: boolean;
   myUserId: string | null;
   onMute?: (userId: string) => void;
-  // Ixcham toolbar qatorlarida (kichikroq padding, "O'quvchilar" matni yashirin) ishlatish uchun
+  userReactions?: Record<string, string>;
   compact?: boolean;
+  theme?: "light" | "dark";
 }
 
-// Header'dagi icon orqali ochiladigan/yopiladigan o'quvchilar paneli.
-// position: absolute bilan PDF ustiga tushadi — asosiy kontent joyini
-// egallamaydi. Tashqariga bosilganda va Escape bosilganda yopiladi.
-export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost, myUserId, onMute, compact }: Props) {
+export function ParticipantsPanelToggle({
+  participants, speakingUserIds, isHost, myUserId,
+  onMute, userReactions, theme = "light",
+}: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  // Desktop (sm+) uchun panel pozitsiyasi tugma joylashuviga qarab
-  // hisoblanadi (portal orqali document.body'ga chiqarilgani uchun CSS
-  // position:absolute endi tugmaga emas, body'ga nisbatan bo'lardi).
-  // Mobil uchun esa null qoladi — CSS orqali pastdan sheet sifatida ochiladi.
   const [desktopPos, setDesktopPos] = useState<{ top: number; right: number } | null>(null);
   const onlineCount = participants.filter((p) => p.online).length;
+  const isDark = theme === "dark";
 
+  // Desktop pozitsiyasi
   useEffect(() => {
     if (!open) { setDesktopPos(null); return; }
     const btn = buttonRef.current;
@@ -38,7 +37,6 @@ export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost,
 
   useEffect(() => {
     if (!open) return;
-
     function handlePointerDown(e: PointerEvent) {
       const target = e.target as Node;
       if (panelRef.current?.contains(target) || buttonRef.current?.contains(target)) return;
@@ -47,7 +45,6 @@ export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost,
     function handleKeyDown(e: KeyboardEvent) {
       if (e.key === "Escape") setOpen(false);
     }
-
     document.addEventListener("pointerdown", handlePointerDown);
     document.addEventListener("keydown", handleKeyDown);
     return () => {
@@ -55,6 +52,23 @@ export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost,
       document.removeEventListener("keydown", handleKeyDown);
     };
   }, [open]);
+
+  // Theme tokens — RaisedHandsControl bilan bir xil
+  const panelBg      = isDark ? "bg-[#202124]"   : "bg-white";
+  const borderCls    = isDark ? "border-white/10" : "border-gray-200";
+  const titleCls     = isDark ? "text-white"      : "text-gray-900";
+  const closeCls     = isDark
+    ? "text-white/60 hover:bg-white/10 hover:text-white"
+    : "text-gray-400 hover:bg-gray-100 hover:text-gray-700";
+  const dragHandleCls = isDark ? "bg-white/20"    : "bg-gray-300";
+  const countBadgeCls = isDark
+    ? "bg-white/10 text-white"
+    : "bg-gray-900 text-white";
+
+  // Trigger button — theme-aware pill
+  const btnCls = isDark
+    ? `flex items-center transition-colors shadow-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-white/10 ${open ? "bg-[#5c5e62] text-white" : "bg-[#3c4043] text-white hover:bg-[#4a4d51]"}`
+    : `flex items-center transition-colors shadow-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-gray-100 ${open ? "bg-indigo-100 text-indigo-700" : "bg-white text-gray-500 hover:bg-gray-100"}`;
 
   return (
     <div className="relative">
@@ -66,53 +80,67 @@ export function ParticipantsPanelToggle({ participants, speakingUserIds, isHost,
         aria-haspopup="dialog"
         aria-label="O'quvchilar ro'yxati"
         title="O'quvchilar"
-        className={`relative flex items-center transition-colors shadow-md ${
-          compact
-            ? `gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-gray-100 ${open ? "bg-indigo-100 text-indigo-700" : "bg-white text-gray-500 hover:bg-gray-100"}`
-            : `gap-1.5 rounded-xl px-2.5 py-2.5 text-sm font-medium sm:px-3 ${open ? "bg-indigo-100 text-indigo-700" : "bg-white text-gray-500 hover:bg-gray-100"}`
-        }`}
+        className={btnCls}
       >
-        <Users size={compact ? 14 : 18} />
-        {!compact && <span className="hidden sm:inline">O'quvchilar</span>}
-        <span className={`rounded-full bg-gray-900 text-white font-semibold ${compact ? "px-1.5 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px]"}`}>
+        <Users size={14} />
+        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${countBadgeCls}`}>
           {onlineCount}/{participants.length}
         </span>
       </button>
 
       {open && createPortal(
         <>
-          {/* Mobil: pastdan chiqadigan sheet, orqa fonni qoraytiradi */}
+          {/* Mobil overlay */}
           <div
-            className="sm:hidden fixed inset-0 z-40 bg-black/30"
+            className="sm:hidden fixed inset-0 z-40 bg-black/40"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
+
+          {/* Panel */}
           <div
             ref={panelRef}
             role="dialog"
             aria-label="O'quvchilar ro'yxati"
-            className="classroom-panel-in z-40 bg-white ring-1 ring-black/5 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl max-h-[75vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:shadow-xl sm:w-[min(20rem,calc(100vw-2rem))] sm:max-h-[min(28rem,calc(100vh-6rem))] sm:origin-top-right"
+            className={`classroom-panel-in z-50 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl max-h-[75vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:max-h-[min(28rem,calc(100vh-6rem))] sm:origin-top-right border ${panelBg} ${borderCls}`}
             style={desktopPos ? { top: desktopPos.top, right: desktopPos.right } : undefined}
           >
-            <div className="overflow-hidden rounded-t-2xl sm:rounded-2xl">
-              <div className="flex items-center justify-between border-b border-gray-100 px-4 py-3">
-                <span className="text-sm font-semibold text-gray-800">O'quvchilar</span>
-                <button
-                  type="button"
-                  onClick={() => setOpen(false)}
-                  aria-label="Yopish"
-                  className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-                >
-                  <X size={16} />
-                </button>
+            {/* Drag handle — mobile only */}
+            <div className="sm:hidden flex justify-center pt-3 pb-1">
+              <div className={`w-10 h-1 rounded-full ${dragHandleCls}`} />
+            </div>
+
+            {/* Header */}
+            <div className={`flex items-center justify-between px-4 py-3 border-b ${borderCls}`}>
+              <div className="flex items-center gap-2">
+                <h4 className={`text-base font-semibold ${titleCls}`}>O'quvchilar</h4>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
+                  isDark ? "bg-white/10 text-white/70" : "bg-gray-100 text-gray-500"
+                }`}>
+                  {onlineCount}/{participants.length}
+                </span>
               </div>
+              <button
+                type="button"
+                onClick={() => setOpen(false)}
+                className={`rounded-full p-1.5 transition-colors ${closeCls}`}
+                aria-label="Yopish"
+              >
+                <X size={16} />
+              </button>
+            </div>
+
+            {/* Content */}
+            <div className="overflow-y-auto px-2 py-2" style={{ maxHeight: "min(340px, 60vh)" }}>
               <ClassroomParticipants
                 participants={participants}
                 speakingUserIds={speakingUserIds}
                 isHost={isHost}
                 myUserId={myUserId}
                 onMute={onMute}
+                userReactions={userReactions}
                 bare
+                theme={theme}
               />
             </div>
           </div>

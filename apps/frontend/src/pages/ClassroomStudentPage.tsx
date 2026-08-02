@@ -9,6 +9,8 @@ import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 import { useFullscreen } from "../hooks/useFullscreen";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
+import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
+import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 
@@ -48,13 +50,21 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   }, [isFreeRoute, token, admin]);
 
   const needsGuestForm = isFreeRoute && !meLoading && !admin && guestNameSubmitted === null;
-  const { state } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
+  const { state, sendReaction, toggleHandRaise } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
+  // Guest uchun admin.id yo'q — server socket ID yoki guestName asosida saqlaydi.
+  // raisedHands da userId bor, shuning uchun admin.id ham, guestName ham bo'lishi mumkin.
+  // Eng ishonchli yo'l: guestNameSubmitted yoki admin.name bo'yicha qidirish.
+  const myName = admin?.name ?? guestNameSubmitted ?? "";
+  const isHandRaised = (state.raisedHands ?? []).some(
+    (h) => h.userId === (admin?.id ?? "") || h.userName === myName
+  );
   useClassroomTheme(state.classroomTheme);
-  // Anonim mehmon token'siz — voice-token so'rovi auth talab qilgani uchun
-  // unga ovoz ulanmaydi, faqat ustoz/login qilgan ishtirokchilarni ko'radi/eshitadi.
+  // Login qilgan foydalanuvchilar ham, ismi kiritilgan mehmonlar ham (guestNameSubmitted) ovoz (LiveKit) xonasiga ulanadi.
+  const isGuestUser = !admin && Boolean(guestNameSubmitted);
   const voice = useClassroomVoice(
-    !needsGuestForm && admin && state.joined && !state.ended ? id : undefined,
+    !needsGuestForm && (admin || isGuestUser) && state.joined && !state.ended ? id : undefined,
     true,
+    isGuestUser ? guestNameSubmitted! : undefined,
   );
   const { visible: overlayVisible } = useAutoHideOverlay();
   const pageRef = useRef<HTMLDivElement>(null);
@@ -65,18 +75,23 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   }
 
   if (needsGuestForm) {
+    const isDark = state.classroomTheme === "dark";
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 p-6">
+      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 p-6 transition-colors ${
+        isDark ? "bg-[#18191c] text-white" : "bg-gray-50 text-gray-800"
+      }`}>
         <form
-          className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white p-6 shadow-xl"
+          className={`flex w-full max-w-sm flex-col gap-3 rounded-2xl p-6 shadow-xl border ${
+            isDark ? "bg-[#202124] border-white/10" : "bg-white border-gray-100"
+          }`}
           onSubmit={(e) => {
             e.preventDefault();
             const trimmed = guestNameInput.trim();
             if (trimmed) setGuestNameSubmitted(trimmed);
           }}
         >
-          <h2 className="font-semibold text-gray-800">Jonli darsga qo'shilish</h2>
-          <p className="text-sm text-gray-500">Davom etish uchun ismingizni kiriting.</p>
+          <h2 className={`font-semibold ${isDark ? "text-white" : "text-gray-800"}`}>Jonli darsga qo'shilish</h2>
+          <p className={`text-sm ${isDark ? "text-white/60" : "text-gray-500"}`}>Davom etish uchun ismingizni kiriting.</p>
           <input
             type="text"
             autoFocus
@@ -84,12 +99,16 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
             onChange={(e) => setGuestNameInput(e.target.value)}
             placeholder="Ismingiz"
             maxLength={60}
-            className="rounded-xl border border-gray-200 px-3 py-2.5 text-sm focus:border-indigo-400 focus:outline-none"
+            className={`rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${
+              isDark
+                ? "bg-[#2d2e31] border-white/10 text-white placeholder-white/40 focus:border-indigo-500"
+                : "border-gray-200 bg-white text-gray-900 focus:border-indigo-400"
+            }`}
           />
           <button
             type="submit"
             disabled={!guestNameInput.trim()}
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50"
+            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
           >
             Kirish
           </button>
@@ -131,8 +150,12 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
     );
   }
 
+  const isDarkTheme = state.classroomTheme === "dark";
+
   return (
-    <div ref={pageRef} className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div ref={pageRef} className={`relative h-dvh flex flex-col overflow-hidden transition-colors ${
+      isDarkTheme ? "bg-[#121316] text-white" : "bg-gray-50 text-gray-800"
+    }`}>
       {!state.hostOnline && state.joined && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-amber-50 text-amber-700 text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2">
           <WifiOff size={14} />
@@ -189,30 +212,44 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
                   {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                 </button>
               )}
+              {/* O'quvchilar qo'l ko'targanlar ro'yxatini ko'rishi uchun — faqat read-only, lower qilolmaydi */}
+              <RaisedHandsControl
+                raisedHands={state.raisedHands ?? []}
+                onLowerAll={() => {}}
+                onLowerUser={() => {}}
+                readOnly
+                theme={state.classroomTheme}
+              />
               <ParticipantsPanelToggle
                 participants={state.participants}
                 speakingUserIds={voice.speakingUserIds}
                 isHost={false}
                 myUserId={admin?.id ?? null}
+                userReactions={state.userReactions}
                 compact
+                theme={state.classroomTheme}
               />
             </div>
           }
         />
 
-        {admin && (
-          <ClassroomCallBar
-            micEnabled={voice.micEnabled}
-            onToggleMic={() => void voice.toggleMic()}
-            audioInputs={voice.audioInputs}
-            activeAudioInputId={voice.activeAudioInputId}
-            onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
-            micDisabled={!voice.voiceAvailable}
-            onEndCall={() => navigate("/")}
-            endCallTitle="Darsdan chiqish"
-            hidden={!overlayVisible}
-          />
-        )}
+        <StickerReactionsOverlay reactions={state.reactions ?? []} />
+
+        <ClassroomCallBar
+          micEnabled={voice.micEnabled}
+          onToggleMic={() => void voice.toggleMic()}
+          audioInputs={voice.audioInputs}
+          activeAudioInputId={voice.activeAudioInputId}
+          onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+          micDisabled={(!admin && !isGuestUser) || !voice.voiceAvailable}
+          onEndCall={() => navigate("/")}
+          endCallTitle="Darsdan chiqish"
+          hidden={!overlayVisible}
+          theme={state.classroomTheme}
+          onSendReaction={sendReaction}
+          handRaised={isHandRaised}
+          onToggleHandRaise={admin || guestNameSubmitted ? toggleHandRaise : undefined}
+        />
       </div>
     </div>
   );

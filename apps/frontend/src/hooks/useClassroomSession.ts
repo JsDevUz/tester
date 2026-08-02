@@ -7,6 +7,8 @@ import {
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
 } from "./classroomReducers";
+import type { StickerReactionItem } from "../components/classroom/StickerReactionsOverlay";
+import type { RaisedHandItem } from "../components/classroom/RaisedHandsControl";
 
 export interface ClassroomState {
   joined: boolean;
@@ -20,38 +22,35 @@ export interface ClassroomState {
   participants: CsParticipant[];
   hostOnline: boolean;
   pointer: CsPointer | null;
-  // Ustozning zoom darajasi — o'quvchi sinxron rejimda bo'lsa shunga qarab kattalashtiradi.
   zoom: number;
   rightZoom: number;
   splitRatio: number;
   notebookPageCount: number;
-  // Ustozning aniq scroll pozitsiyasi — sahifa raqami + o'sha sahifa
-  // balandligi ichidagi nisbiy joy. O'quvchi sinxron rejimda shu sahifaning
-  // aynan shu foiziga scroll qiladi (device/ekrandan mustaqil, piksel-aniq).
   scroll: CsScrollPosition | null;
   rightScroll: CsScrollPosition | null;
-  // Erkin (guruhsiz) dars — kursga bog'liq emas, davomat/attendance
-  // yozilmaydi, anonim mehmonlar kirishi mumkin.
   isFree: boolean;
   boardMode: CsBoardMode;
   boardLayout: CsBoardLayout;
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
   classroomTheme: "light" | "dark";
-  // Har bir daftar sahifasining o'z naqshi (sahifa raqami -> naqsh).
-  // Eski umumiy notebookStyle sozlamasi endi yo'q — har bir yangi sahifa
-  // "+" bilan qo'shilganda o'z naqshini oladi.
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
+  reactions?: StickerReactionItem[];
+  userReactions?: Record<string, string>;
+  raisedHands?: RaisedHandItem[];
 }
 
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
   strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, classroomTheme: "light",
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, classroomTheme: useThemeStore.getState().theme,
   notebookPageStyles: {},
   notebookPageOrientations: {},
+  reactions: [],
+  userReactions: {},
+  raisedHands: [],
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -133,6 +132,9 @@ export function useClassroomSession(
             classroomTheme: snap.classroomTheme ?? globalTheme,
             notebookPageStyles: snap.notebookPageStyles ?? {},
             notebookPageOrientations: snap.notebookPageOrientations ?? {},
+            reactions: [],
+            userReactions: {},
+            raisedHands: snap.raisedHands ?? [],
           });
           // Yangi classroom'ni ustozning asosiy theme'i bilan boshlaymiz.
           // Bu faqat farq bo'lsa yuboriladi; keyingi studentlar snapshot'dan
@@ -200,6 +202,37 @@ export function useClassroomSession(
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
     socket.on("session:ended", () => setState((s) => ({ ...s, ended: true })));
+    socket.on("reaction:receive", (p: { id: string; userId: string; emoji: string; userName: string; socketId: string }) => {
+      const isSelf = p.socketId === socket.id;
+      const item: StickerReactionItem = { id: p.id, userId: p.userId, emoji: p.emoji, userName: p.userName, isSelf };
+
+      setState((s) => ({
+        ...s,
+        reactions: [...(s.reactions ?? []), item],
+        userReactions: { ...s.userReactions, [p.userId]: p.emoji },
+      }));
+
+      setTimeout(() => {
+        setState((s) => ({
+          ...s,
+          reactions: (s.reactions ?? []).filter((r) => r.id !== p.id),
+        }));
+      }, 3500);
+
+      setTimeout(() => {
+        setState((s) => {
+          const nextMap = { ...s.userReactions };
+          if (nextMap[p.userId] === p.emoji) {
+            delete nextMap[p.userId];
+          }
+          return { ...s, userReactions: nextMap };
+        });
+      }, 5000);
+    });
+
+    socket.on("hand:update", (p: { raisedHands: RaisedHandItem[] }) => {
+      setState((s) => ({ ...s, raisedHands: p.raisedHands }));
+    });
 
     return () => {
       socket.off("connect", join);
@@ -229,6 +262,8 @@ export function useClassroomSession(
       socket.off("host:online");
       socket.off("host:offline");
       socket.off("session:ended");
+      socket.off("reaction:receive");
+      socket.off("hand:update");
       if (pointerThrottleTimerRef.current) window.clearTimeout(pointerThrottleTimerRef.current);
       closeClassroomSocket();
     };
@@ -368,5 +403,53 @@ export function useClassroomSession(
     endLesson: () => emitHost("host:end"),
   };
 
-  return { state, hostActions };
+  const sendReaction = useCallback((emoji: string) => {
+    if (!sessionIdRef.current) return;
+    const socket = getClassroomSocket();
+    const token = localStorage.getItem("token");
+    socket.emit("reaction:send", {
+      sessionId: sessionIdRef.current,
+      token,
+      emoji,
+      userName: guestName || (role === "host" ? "Ustoz" : "O'quvchi"),
+    });
+  }, [role, guestName]);
+
+  const toggleHandRaise = useCallback(() => {
+    if (!sessionIdRef.current) return;
+    const socket = getClassroomSocket();
+    const token = localStorage.getItem("token");
+    socket.emit("hand:toggle", {
+      sessionId: sessionIdRef.current,
+      token,
+      userName: guestName || (role === "host" ? "Ustoz" : "O'quvchi"),
+    });
+  }, [role, guestName]);
+
+  const lowerAllHands = useCallback(() => {
+    if (!sessionIdRef.current) return;
+    const socket = getClassroomSocket();
+    const token = localStorage.getItem("token");
+    socket.emit("hand:lowerAll", { sessionId: sessionIdRef.current, token });
+  }, []);
+
+  const lowerUserHand = useCallback((targetUserId: string) => {
+    if (!sessionIdRef.current) return;
+    const socket = getClassroomSocket();
+    const token = localStorage.getItem("token");
+    socket.emit("hand:lowerUser", { sessionId: sessionIdRef.current, token, targetUserId });
+  }, []);
+
+  return {
+    state,
+    hostActions: {
+      ...hostActions,
+      lowerAllHands,
+      lowerUserHand,
+    },
+    sendReaction,
+    toggleHandRaise,
+    lowerAllHands,
+    lowerUserHand,
+  };
 }

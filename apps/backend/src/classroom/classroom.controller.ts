@@ -4,7 +4,7 @@ import {
 import { ArrayMinSize, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Roles, Public } from '../auth/roles.decorator';
 import { ClassroomService } from './classroom.service';
 
 class CreateClassSessionDto {
@@ -37,6 +37,10 @@ class InsertPdfPagesDto {
 
 class StartRecordingDto {
   @IsIn(['full', 'boardAudio', 'boardSilent']) mode!: 'full' | 'boardAudio' | 'boardSilent';
+}
+
+class GuestVoiceTokenDto {
+  @IsString() guestName!: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -179,6 +183,18 @@ export class ClassroomController {
   @Roles('teacher', 'super', 'student', 'curator')
   voiceToken(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
     return this.classroomService.voiceToken(id, req.admin.id, req.admin.name ?? '');
+  }
+
+  /** Guest (auth qilmagan) foydalanuvchi uchun voice token — JWT talab qilinmaydi.
+   * Identity: "guest_<randomUUID prefix>" — boshqa ishtirokchilar bilan aralashmasligi uchun. */
+  @Public()
+  @Post('sessions/:id/voice-token/guest')
+  guestVoiceToken(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: GuestVoiceTokenDto,
+  ) {
+    const guestIdentity = `guest_${Math.random().toString(36).slice(2, 10)}`;
+    return this.classroomService.voiceToken(id, guestIdentity, dto.guestName);
   }
 
   @Post('sessions/:id/recording/start')

@@ -24,7 +24,7 @@ import {
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookOrientation, ClassroomNotebookStyle,
-  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
+  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -1553,7 +1553,8 @@ export class ClassroomService implements OnModuleInit {
   async voiceToken(sessionId: string, userId: string, displayName: string): Promise<{ token: string; url: string }> {
     const s = this.requireSessionHttp(sessionId);
     const isHost = s.hostUserId === userId;
-    if (!isHost && !s.participants.has(userId)) throw new ForbiddenException('Siz bu darsning ishtirokchisi emassiz');
+    const isGuest = userId.startsWith('guest_');
+    if (!isHost && !isGuest && !s.participants.has(userId)) throw new ForbiddenException('Siz bu darsning ishtirokchisi emassiz');
 
     const cfg = this.livekitConfig();
     if (!cfg) throw new ServiceUnavailableException('VOICE_DISABLED');
@@ -1595,6 +1596,41 @@ export class ClassroomService implements OnModuleInit {
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
     if (!s.historyEvents) s.historyEvents = [];
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
+  }
+
+  recordReaction(sessionId: string, userId: string, userName: string, emoji: string): void {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    this.recordHistoryEvent(s, 'reaction', { userId, userName, emoji });
+  }
+
+  handToggle(sessionId: string, userId: string, userName: string): ClassroomRaisedHand[] {
+    const s = this.requireSession(sessionId);
+    if (!s.raisedHands) s.raisedHands = [];
+    const idx = s.raisedHands.findIndex((h) => h.userId === userId);
+    if (idx >= 0) {
+      s.raisedHands.splice(idx, 1);
+      this.recordHistoryEvent(s, 'hand_lower', { userId, userName });
+    } else {
+      s.raisedHands.push({ userId, userName, raisedAt: Date.now() });
+      this.recordHistoryEvent(s, 'hand_raise', { userId, userName });
+    }
+    return s.raisedHands;
+  }
+
+  handLowerAll(sessionId: string): ClassroomRaisedHand[] {
+    const s = this.requireSession(sessionId);
+    s.raisedHands = [];
+    this.recordHistoryEvent(s, 'hand_lower_all', {});
+    return [];
+  }
+
+  handLowerUser(sessionId: string, userId: string): ClassroomRaisedHand[] {
+    const s = this.requireSession(sessionId);
+    if (!s.raisedHands) s.raisedHands = [];
+    s.raisedHands = s.raisedHands.filter((h) => h.userId !== userId);
+    this.recordHistoryEvent(s, 'hand_lower', { userId });
+    return s.raisedHands;
   }
 
   // Faqat testlar uchun — xotiradagi tarix massivini to'g'ridan-to'g'ri o'qiydi.
