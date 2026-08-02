@@ -212,6 +212,7 @@ interface CourseState {
 
   addGroup: (courseId: string, name: string, paymentDay?: number) => Promise<Group | undefined>;
   renameGroup: (courseId: string, groupId: string, name: string) => Promise<void>;
+  setGroupPaymentDay: (courseId: string, groupId: string, paymentDay: number) => Promise<void>;
   toggleGroupChat: (courseId: string, groupId: string) => Promise<void>;
   toggleGroupChannel: (courseId: string, groupId: string) => Promise<void>;
   setMemberRole: (courseId: string, groupId: string, memberId: string, role: 'student' | 'curator') => Promise<void>;
@@ -1622,6 +1623,16 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
     persistLatest(`group:${groupId}:name`, () => apiUpdateGroup(groupId, { name }));
+  },
+  setGroupPaymentDay: async (courseId, groupId, paymentDay) => {
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : { ...c, groups: c.groups.map((g) => (g.id === groupId ? { ...g, paymentDay } : g)) },
+      ),
+    });
+    persistLatest(`group:${groupId}:paymentDay`, () => apiUpdateGroup(groupId, { paymentDay }));
   },
   toggleGroupChat: async (courseId, groupId) => {
     const course = get().courses.find((c) => c.id === courseId);

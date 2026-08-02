@@ -33,7 +33,7 @@ function paletteFor(id: string) {
 
 export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectClasses }: CourseGroupsPageProps) {
   const {
-    courses, loadCourseDetails, addGroup, renameGroup,
+    courses, loadCourseDetails, addGroup, renameGroup, setGroupPaymentDay,
     removeStudentFromGroup, deleteGroup,
     setMemberForcedClosed, loadGroupPayments, assignCurator, demoteCurator,
   } = useCourseStore();
@@ -249,6 +249,19 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   onChange={(e) => void renameGroup(courseId, group.id, e.target.value)}
                   className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 />
+
+                <p className="mb-1.5 text-sm text-gray-500">Oylik to'lov kuni (har oyning qaysi sanasida)</p>
+                <select
+                  value={group.paymentDay ?? 1}
+                  onChange={(e) => void setGroupPaymentDay(courseId, group.id, parseInt(e.target.value, 10) || 1)}
+                  className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none cursor-pointer"
+                >
+                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                    <option key={day} value={day}>
+                      Har oyning {day}-sanasi
+                    </option>
+                  ))}
+                </select>
 
                 <div className="flex items-center gap-3 py-2">
                   <div className="min-w-0 flex-1">
