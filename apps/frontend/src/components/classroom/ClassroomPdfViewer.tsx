@@ -3616,27 +3616,18 @@ function ClassroomPdfPage({
                   ? undefined
                   : notebookStyle === "lined"
                     ? {
-                        // Yo'l-yo'l (chiziqli) daftar — faqat gorizontal
-                        // chiziqlar, katak/vertikal chiziqsiz. Real daftarda
-                        // qatorlar orasi ~7mm — A4 kengligi (210mm) ga
-                        // proporsional: 210/7 = 30 qator butun sahifa
-                        // kengligida (piksel emas, mm asosida hisoblangan,
-                        // shuning uchun ekran o'lchamidan qat'i nazar doim
-                        // haqiqiy daftarga mos keladi).
+                        // Yo'l-yo'l (chiziqli) daftar — yumshoq, ko'zga tashlanmaydigan chiziqlar
                         backgroundImage:
-                          "linear-gradient(rgba(96,165,250,.28) 1px, transparent 1px)",
-                        backgroundSize: `100% ${size.w > 0 ? size.w / 30 : 32}px`,
+                          "linear-gradient(rgba(148,163,184,.14) 1px, transparent 1px)",
+                        backgroundSize: `100% ${size.w > 0 ? size.w / 22 : 32}px`,
                       }
                     : {
-                        // Kataklar qat'iy pikselda emas, A4 sahifa kengligiga
-                        // proporsional. Real daftar katagi ~5mm — A4 kengligi
-                        // (210mm) ga nisbatan 210/5 = 42 ta katak butun
-                        // sahifa kengligida, katta-kichik ekran va split
-                        // panelda ham doim bir xil (haqiqiy daftarga mos)
-                        // ko'rinadi.
+                        // Kataklar — mobil va desktopda yozuvlar bilan "shuvalib" ketmasligi
+                        // uchun katak o'lchami kengaytirildi (24 ta katak) va chiziqlar
+                        // shaffofligi (12%) yumshatildi.
                         backgroundImage:
-                          "linear-gradient(rgba(96,165,250,.22) 1px, transparent 1px), linear-gradient(90deg, rgba(96,165,250,.22) 1px, transparent 1px)",
-                        backgroundSize: `${size.w > 0 ? size.w / 42 : 24}px ${size.w > 0 ? size.w / 42 : 24}px`,
+                          "linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px)",
+                        backgroundSize: `${size.w > 0 ? size.w / 24 : 32}px ${size.w > 0 ? size.w / 24 : 32}px`,
                       }
               }
             />
