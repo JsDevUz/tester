@@ -36,12 +36,24 @@ export class ClassroomRecordingService {
   constructor(private readonly config: ConfigService) {}
 
   private publicRecordingUrl(location: string, storage: StorageConfig): string {
-    if (/^https?:\/\//i.test(location)) return location;
-    let key = location.replace(/^\/+/, '');
+    let key = location.trim();
     if (/^s3:\/\//i.test(key)) {
       const withoutScheme = key.replace(/^s3:\/\//i, '');
       const slashIndex = withoutScheme.indexOf('/');
-      key = slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : '';
+      key = slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1).replace(/^\/+/, '') : '';
+    } else if (/^https?:\/\//i.test(key)) {
+      try {
+        const u = new URL(key);
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length > 0 && parts[0] === storage.bucket) {
+          parts.shift();
+        }
+        key = parts.join('/');
+      } catch {
+        key = key.replace(/^\/+/, '');
+      }
+    } else {
+      key = key.replace(/^\/+/, '');
     }
     return storage.publicBaseUrl ? `${storage.publicBaseUrl}/${key}` : key;
   }
@@ -140,9 +152,9 @@ export class ClassroomRecordingService {
 
       const httpUrl = lk.url.replace(/^ws/, 'http');
       const egress = new EgressClient(httpUrl, lk.apiKey, lk.apiSecret);
-      const filepath = `classroom-recordings/${sessionId}.ogg`;
+      const filepath = `classroom-recordings/${sessionId}.mp4`;
       const output = new EncodedFileOutput({
-        fileType: EncodedFileType.OGG,
+        fileType: EncodedFileType.MP4,
         filepath,
         output: {
           case: 's3',

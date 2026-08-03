@@ -194,6 +194,7 @@ export interface ClassBoardSnapshotData {
   pages: string[];
   strokesByPage: Record<number, CsStroke[]>;
   rightStrokesByPage: Record<number, CsStroke[]>;
+  strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
   boardMode: CsBoardMode;
   boardLayout: CsBoardLayout;
   leftBoardMode: CsBoardMode;

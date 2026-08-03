@@ -39,9 +39,11 @@ const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = 
 
 function baseState(pdfName: string | null, pdfPages: string[], globalTheme: "light" | "dark"): ClassroomState {
   return {
-    joined: true, error: null, ended: true,
+    joined: true, error: null, ended: true, isReplay: true,
     pdfName, pages: pdfPages, currentPage: 1,
-    strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null,
+    strokesByPage: {}, rightStrokesByPage: {},
+    strokesByMode: { pdf: {}, notebook: {} },
+    participants: [], hostOnline: false, pointer: null,
     zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
     classroomTheme: globalTheme, notebookPageStyles: {}, notebookPageOrientations: {},
@@ -59,6 +61,24 @@ function computeStateAt(events: ReplayHistoryEvent[], timeMs: number, pdfName: s
   let state = baseState(hasPdfEvent ? null : pdfName, hasPdfEvent ? [] : pdfPages, globalTheme);
   for (const event of events) {
     if (event.atMs > timeMs) break;
+    if (event.type === "reaction") {
+      const age = timeMs - event.atMs;
+      if (age <= 2500) {
+        const payload = event.payload as { id?: string; userId: string; userName?: string; emoji: string };
+        const item = {
+          id: payload.id ?? `${payload.userId}-${event.atMs}`,
+          userId: payload.userId,
+          emoji: payload.emoji,
+          userName: payload.userName ?? "",
+          isSelf: false,
+        };
+        state = {
+          ...state,
+          reactions: [...(state.reactions ?? []), item],
+        };
+      }
+      continue;
+    }
     const reducer = REDUCERS[event.type];
     if (reducer) state = reducer(state, event.payload);
   }

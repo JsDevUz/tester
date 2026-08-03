@@ -32,7 +32,30 @@ export function applyPdfSet(s: ClassroomState, p: { pdfName: string; pages: stri
 }
 
 export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]> }): ClassroomState {
-  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: p.leftMode ?? p.mode, rightBoardMode: p.rightMode ?? p.mode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, pointer: null, scroll: null };
+  const leftMode = p.leftMode ?? p.mode;
+  const rightMode = p.rightMode ?? p.mode;
+
+  if (s.isReplay) {
+    const byMode = s.strokesByMode ?? {
+      pdf: { ...s.strokesByPage },
+      notebook: {},
+    };
+    return {
+      ...s,
+      boardMode: p.mode,
+      boardLayout: p.layout ?? "single",
+      leftBoardMode: leftMode,
+      rightBoardMode: rightMode,
+      currentPage: p.currentPage,
+      strokesByMode: byMode,
+      strokesByPage: byMode[leftMode] ?? {},
+      rightStrokesByPage: byMode[rightMode] ?? {},
+      pointer: null,
+      scroll: null,
+    };
+  }
+
+  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, pointer: null, scroll: null };
 }
 
 export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomState {
@@ -40,7 +63,33 @@ export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomS
 }
 
 export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  if (p.pane === "right") {
+  const isRight = p.pane === "right";
+  const targetMode = p.mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
+
+  if (s.isReplay) {
+    const byMode = s.strokesByMode ?? {
+      pdf: { ...(s.strokesByPage ?? {}) },
+      notebook: {},
+    };
+    const modeObj = byMode[targetMode] ?? {};
+    const pageStrokes = modeObj[p.page] ?? [];
+    if (pageStrokes.some((x) => x.id === p.stroke.id)) return s;
+
+    const nextModeObj = { ...modeObj, [p.page]: [...pageStrokes, p.stroke] };
+    const nextByMode = { ...byMode, [targetMode]: nextModeObj };
+
+    const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
+    const activeRightMode = s.rightBoardMode ?? s.boardMode ?? "pdf";
+
+    return {
+      ...s,
+      strokesByMode: nextByMode,
+      strokesByPage: nextByMode[activeLeftMode] ?? s.strokesByPage,
+      rightStrokesByPage: nextByMode[activeRightMode] ?? s.rightStrokesByPage,
+    };
+  }
+
+  if (isRight) {
     if (p.mode && p.mode !== s.rightBoardMode) return s;
     const existing = s.rightStrokesByPage[p.page] ?? [];
     if (existing.some((x) => x.id === p.stroke.id)) return s;
@@ -48,8 +97,6 @@ export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsS
   }
   if (p.mode && p.mode !== s.leftBoardMode) return s;
   const existing = s.strokesByPage[p.page] ?? [];
-  // Optimistik qo'shilgan (o'zimiz chizgan) stroke server javobida
-  // qaytib kelganda dublikat bo'lib qo'shilib qolmasin.
   if (existing.some((x) => x.id === p.stroke.id)) return s;
   return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, p.stroke] } };
 }

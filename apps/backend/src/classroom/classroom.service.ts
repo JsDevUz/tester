@@ -623,18 +623,23 @@ export class ClassroomService implements OnModuleInit {
       name: p.name,
       status: p.status ?? 'present',
     }));
+    const recUrl = s.recordingUrl ?? dbRow?.recordingUrl ?? null;
+    const recStatus = (s.recordingStatus && s.recordingStatus !== 'none') ? s.recordingStatus : (dbRow?.recordingStatus ?? 'none');
+    const recStartedAtMs = s.recordingStartedAtMs ?? dbRow?.recordingStartedAtMs ?? null;
+    const recEgressId = s.egressId ?? dbRow?.egressId ?? null;
+
     const newRecordingEntry = {
       id: randomUUID(),
       partNumber: existingRecordings.length + 1,
       createdAt: new Date().toISOString(),
       title: s.title ?? dbRow?.title ?? null,
       historyEvents,
-      recordingUrl: s.recordingUrl ?? null,
-      recordingStatus: s.recordingStatus ?? 'none',
-      recordingStartedAtMs: s.recordingStartedAtMs ?? null,
-      recordingMode: s.recordingMode ?? null,
+      recordingUrl: recUrl,
+      recordingStatus: recStatus,
+      recordingStartedAtMs: recStartedAtMs,
+      recordingMode: s.recordingMode ?? dbRow?.recordingMode ?? null,
       boardSnapshot,
-      egressId: s.egressId ?? null,
+      egressId: recEgressId,
       attendance: recordingAttendance,
     };
     const updatedRecordings = [...existingRecordings, newRecordingEntry];
@@ -1280,8 +1285,10 @@ export class ClassroomService implements OnModuleInit {
       selectedEntry = rawRecordings[rawRecordings.length - 1];
     }
 
-    let recordingUrl = selectedEntry ? selectedEntry.recordingUrl : row.recordingUrl;
-    let recordingStatus = selectedEntry ? selectedEntry.recordingStatus : row.recordingStatus;
+    let recordingUrl = (selectedEntry && selectedEntry.recordingUrl) ? selectedEntry.recordingUrl : row.recordingUrl;
+    let recordingStatus = (selectedEntry && selectedEntry.recordingStatus && selectedEntry.recordingStatus !== 'none')
+      ? selectedEntry.recordingStatus
+      : row.recordingStatus;
     if (recordingStatus === 'pending') {
       await this.recording.refreshRecording(sessionId);
       const refreshed = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
@@ -1347,7 +1354,8 @@ export class ClassroomService implements OnModuleInit {
     if (row.status !== 'ended') throw new ConflictException("Faqat yakunlangan darsni o'chirish mumkin");
 
     if (row.recordingUrl) {
-      await this.storage.deleteFile(`classroom-recordings/${sessionId}.ogg`);
+      const ext = row.recordingUrl.endsWith('.mp4') ? 'mp4' : 'ogg';
+      await this.storage.deleteFile(`classroom-recordings/${sessionId}.${ext}`);
     }
     const rawRecordings = (row.recordings as unknown as any[]) ?? [];
     for (const r of rawRecordings) {
@@ -1649,15 +1657,15 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
-    if (s.isFree) return;
+    if (s.isFree && !s.recordingMode) return;
     if (!s.historyEvents) s.historyEvents = [];
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
   }
 
-  recordReaction(sessionId: string, userId: string, userName: string, emoji: string): void {
+  recordReaction(sessionId: string, userId: string, userName: string, emoji: string, id?: string): void {
     const s = this.sessions.get(sessionId);
     if (!s) return;
-    this.recordHistoryEvent(s, 'reaction', { userId, userName, emoji });
+    this.recordHistoryEvent(s, 'reaction', { id: id ?? randomUUID(), userId, userName, emoji });
   }
 
   handToggle(sessionId: string, userId: string, userName: string): ClassroomRaisedHand[] {

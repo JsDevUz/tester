@@ -250,7 +250,7 @@ export function LoginPage() {
               >
                 {displayBot}
               </a>
-              telegram botiga kiring va 1 daqiqalik kodingizni oling.
+              telegram botiga kiring va 10 daqiqalik kodingizni oling.
             </p>
             <div className="mt-8 flex w-full justify-center gap-2">
               {codeDigits.map((digit, index) => (

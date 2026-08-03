@@ -113,20 +113,32 @@ export class StorageService {
     const clean = value.trim();
     if (!clean) return '';
     if (this.publicDomain && clean.startsWith(this.publicDomain)) {
-      return clean.slice(this.publicDomain.length + 1);
+      return clean.slice(this.publicDomain.length + 1).replace(/^\/+/, '');
     }
     if (/^s3:\/\//i.test(clean)) {
       const withoutScheme = clean.replace(/^s3:\/\//i, '');
       const slashIndex = withoutScheme.indexOf('/');
-      return slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1) : '';
+      return slashIndex >= 0 ? withoutScheme.slice(slashIndex + 1).replace(/^\/+/, '') : '';
+    }
+    if (/^https?:\/\//i.test(clean)) {
+      try {
+        const u = new URL(clean);
+        const parts = u.pathname.split('/').filter(Boolean);
+        if (parts.length > 0 && parts[0] === this.bucketName) {
+          parts.shift();
+        }
+        return parts.join('/');
+      } catch {
+        return clean.replace(/^\/+/, '');
+      }
     }
     return clean.replace(/^\/+/, '');
   }
 
   getPublicUrl(key: string): string {
     const clean = key.trim();
-    if (/^https?:\/\//i.test(clean)) return clean;
-    const cleanKey = this.getKeyFromUrlOrKey(key);
+    if (!clean) return '';
+    const cleanKey = this.getKeyFromUrlOrKey(clean);
     return this.publicDomain ? `${this.publicDomain}/${cleanKey}` : cleanKey;
   }
 

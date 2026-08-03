@@ -139,35 +139,28 @@ export function applyStrokeReorderInverse(
   map.set(page, reordered);
 }
 
-export function activeStrokeMap(session: ClassroomSession): Map<number, ClassroomStroke[]> {
-  const mode = session.boardMode ?? 'pdf';
-  if (!session.strokesByMode) session.strokesByMode = new Map([['pdf', session.strokesByPage]]);
+export function strokeMapFor(
+  session: ClassroomSession,
+  mode: ClassroomBoardMode,
+): Map<number, ClassroomStroke[]> {
+  if (!session.strokesByMode) {
+    session.strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', session.strokesByPage ?? new Map()],
+      ['notebook', new Map()],
+    ]);
+  }
   let map = session.strokesByMode.get(mode);
   if (!map) {
     map = new Map();
     session.strokesByMode.set(mode, map);
   }
-  session.strokesByPage = map;
   return map;
 }
 
-// MUHIM: chizmalar MODE (pdf/notebook) bo'yicha saqlanadi, PANE (chap/o'ng)
-// bo'yicha EMAS — `pane` parametri faqat activeStrokeMap'ning yon
-// ta'sirlaridan (session.boardMode/session.strokesByPage) himoyalanish uchun
-// ishlatiladi, lekin ikkala pane bir xil session.strokesByMode havuzidan
-// o'qiydi/yozadi. Avval 'right' pane uchun butunlay alohida
-// (session.rightStrokesByMode) havuz ishlatilardi — shu sabab split
-// taxtalarni almashtirish (swap) tugmasi bosilganda daftarga chapda
-// chizilgan chizmalar o'ngga o'tganda "yo'qolib qolar", chunki ular hali
-// ham eski (endi hech kim o'qimaydigan) chap havuzda qolib ketardi.
-export function strokeMapFor(
-  session: ClassroomSession,
-  mode: ClassroomBoardMode,
-): Map<number, ClassroomStroke[]> {
-  const previousMode = session.boardMode;
-  session.boardMode = mode;
-  const map = activeStrokeMap(session);
-  session.boardMode = previousMode;
+export function activeStrokeMap(session: ClassroomSession): Map<number, ClassroomStroke[]> {
+  const mode = session.boardMode ?? 'pdf';
+  const map = strokeMapFor(session, mode);
+  session.strokesByPage = map;
   return map;
 }
 

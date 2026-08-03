@@ -36,9 +36,11 @@ export interface ClassroomState {
   classroomTheme: "light" | "dark";
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
+  strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
   reactions?: StickerReactionItem[];
   userReactions?: Record<string, string>;
   raisedHands?: RaisedHandItem[];
+  isReplay?: boolean;
 }
 
 const INITIAL: ClassroomState = {

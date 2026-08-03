@@ -183,6 +183,7 @@ interface Props {
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
   rightStrokesByPage?: Record<number, CsStroke[]>;
+  strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
   pointer: CsPointer | null;
   editable: boolean;
   // Ustoz uchun erkin/sinxron toggle ko'rsatilmaydi — u har doim o'zi boshqaradi.
@@ -4213,6 +4214,7 @@ export function ClassroomPdfViewer({
   currentPage,
   strokesByPage,
   rightStrokesByPage = {},
+  strokesByMode,
   pointer,
   editable,
   isHost,
@@ -4969,9 +4971,11 @@ export function ClassroomPdfViewer({
                             notebookPageOrientations[pageNumber] ?? "portrait"
                           }
                           strokes={
-                            displayLayout === "split" && paneIndex === 1
-                              ? (rightStrokesByPage[pageNumber] ?? [])
-                              : (strokesByPage[pageNumber] ?? [])
+                            strokesByMode
+                              ? (strokesByMode[paneMode]?.[pageNumber] ?? [])
+                              : displayLayout === "split" && paneIndex === 1
+                                ? (rightStrokesByPage[pageNumber] ?? [])
+                                : (strokesByPage[pageNumber] ?? [])
                           }
                           pointer={pointer}
                           showPointer={
@@ -4998,9 +5002,11 @@ export function ClassroomPdfViewer({
                           lassoClipboard={lassoClipboardRef}
                           onCopyAllNotebookPages={() =>
                             copyAllNotebookPages(
-                              displayLayout === "split" && paneIndex === 1
-                                ? rightStrokesByPage
-                              : strokesByPage,
+                              strokesByMode
+                                ? (strokesByMode[paneMode] ?? {})
+                                : displayLayout === "split" && paneIndex === 1
+                                  ? rightStrokesByPage
+                                  : strokesByPage,
                             )
                           }
                           allowPageCopy={allowPageCopy ?? noSync}

@@ -7,6 +7,7 @@ import { useClassroomReplay } from "../hooks/useClassroomReplay";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useThemeStore } from "../stores/themeStore";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
+import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
@@ -51,7 +52,7 @@ export function ClassroomReplayPage() {
   // qat'iy nazar) har doim statik ko'rinish majburlanadi — backend
   // isTeacher=false qaytarsa, o'quvchi hech qachon to'liq audio replay'ni
   // ko'rmasligi kerak (hatto to'g'ridan-to'g'ri URL orqali kirsa ham).
-  const forceBoardView = searchParams.get("view") === "board" || data?.isTeacher === false;
+  const forceBoardView = searchParams.get("view") === "board";
 
   // boardAudio'da chizmalar yakuniy holatda turadi, lekin audio va
   // pointer/scroll/zoom timeline qayta ijro etiladi. boardSilent esa
@@ -82,12 +83,16 @@ export function ClassroomReplayPage() {
   // "Faqat chizma" va yangi null-mode fallback'da boardSnapshot'dagi
   // statik holat ko'rsatiladi. Null-mode + tarixli eski replaylar esa
   // timeline orqali ishlashda davom etadi.
+  const leftMode = boardSnapshot?.leftBoardMode ?? boardSnapshot?.boardMode ?? "pdf";
+  const rightMode = boardSnapshot?.rightBoardMode ?? boardSnapshot?.boardMode ?? "pdf";
+
   const viewState = useStaticSnapshot && boardSnapshot
     ? {
         pages: boardSnapshot.pages,
         currentPage: isBoardAudio ? replay.state.currentPage : 1,
-        strokesByPage: boardSnapshot.strokesByPage,
-        rightStrokesByPage: boardSnapshot.rightStrokesByPage,
+        strokesByPage: boardSnapshot.strokesByMode?.[leftMode] ?? boardSnapshot.strokesByPage,
+        rightStrokesByPage: boardSnapshot.strokesByMode?.[rightMode] ?? boardSnapshot.rightStrokesByPage,
+        strokesByMode: boardSnapshot.strokesByMode,
         zoom: isBoardAudio ? replay.state.zoom : 1,
         rightZoom: isBoardAudio ? replay.state.rightZoom : 1,
         splitRatio: isBoardAudio ? replay.state.splitRatio : 0.5,
@@ -102,6 +107,7 @@ export function ClassroomReplayPage() {
         notebookPageOrientations: boardSnapshot.notebookPageOrientations ?? {},
         notebookPageCount: boardSnapshot.notebookPageCount ?? 1,
         classroomTheme: replay.state.classroomTheme,
+        reactions: replay.state.reactions,
       }
     : replay.state;
 
@@ -166,7 +172,9 @@ export function ClassroomReplayPage() {
         notebookPageOrientations: viewState.notebookPageOrientations,
         theme: viewState.classroomTheme,
         pageUrls,
-        strokesByPage: viewState.strokesByPage ?? {},
+        strokesByPage: (viewState.strokesByMode
+          ? viewState.strokesByMode[mode]
+          : viewState.strokesByPage) ?? {},
         pageCount,
         fileName: `${mode === "notebook" ? "daftar" : "pdf"}-${Date.now()}.pdf`,
       });
@@ -217,6 +225,7 @@ export function ClassroomReplayPage() {
             currentPage={viewState.currentPage}
             strokesByPage={viewState.strokesByPage}
             rightStrokesByPage={viewState.rightStrokesByPage}
+            strokesByMode={viewState.strokesByMode}
             pointer={viewState.pointer}
             editable={false}
             isHost={false}
@@ -238,6 +247,7 @@ export function ClassroomReplayPage() {
             noSync={useStaticSnapshot}
             hideMoveButton={useStaticSnapshot}
           />
+          <StickerReactionsOverlay reactions={viewState.reactions ?? []} />
         </div>
       </div>
 
@@ -273,7 +283,10 @@ export function ClassroomReplayPage() {
             <audio
               ref={audioRef}
               src={data.recordingUrl ?? undefined}
+              preload="auto"
+              crossOrigin="anonymous"
               onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
+              onError={(e) => console.error("Audio playback error:", e)}
               className="h-0 w-0 opacity-0"
             />
           )}

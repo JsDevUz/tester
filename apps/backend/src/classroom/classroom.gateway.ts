@@ -309,9 +309,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
           userName = u.name || userName;
         } catch {}
       }
-      this.classroomService.recordReaction(body.sessionId, userId, userName, body.emoji);
+      const reactionId = crypto.randomUUID();
+      this.classroomService.recordReaction(body.sessionId, userId, userName, body.emoji, reactionId);
       this.server.to(`cs:${body.sessionId}`).emit('reaction:receive', {
-        id: crypto.randomUUID(),
+        id: reactionId,
         userId,
         emoji: body.emoji,
         userName,
