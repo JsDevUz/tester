@@ -1754,10 +1754,10 @@ export class ClassroomService implements OnModuleInit {
     const session: ClassroomSession = {
       id: row.id,
       courseId: row.courseId,
-      courseName: row.course?.name ?? null,
+      courseName: row.course?.title ?? null,
       title: row.title ?? null,
       isFree,
-      hostUserId: row.teacherId,
+      hostUserId: row.teacherId ?? row.course?.adminId ?? '',
       hostSocketId: null,
       pdfName: snapshot.pdfName ?? row.pdfName ?? null,
       pdfPages: snapshot.pages ?? row.pdfPages ?? [],
