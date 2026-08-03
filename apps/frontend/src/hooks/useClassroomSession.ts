@@ -294,32 +294,32 @@ export function useClassroomSession(
       }
       emitHost("host:stroke", { page, stroke, pane, mode });
     },
-    moveStroke: (page: number, strokeId: string, x: number, y: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+    moveStroke: (page: number, strokeId: string, x: number, y: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => {
         const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
         const source = s[key];
         const next = (source[page] ?? []).map((stroke) => stroke.id === strokeId ? { ...stroke, points: moveStrokePoints(stroke, x, y) } : stroke);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:moveStroke", { page, strokeId, x, y, pane, mode });
+      emitHost("host:moveStroke", { page, strokeId, x, y, pane, mode, groupId });
     },
-    updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+    updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => {
         const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
         const source = s[key];
         const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:updateTextStroke", { page, stroke, pane, mode });
+      emitHost("host:updateTextStroke", { page, stroke, pane, mode, groupId });
     },
-    updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+    updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => {
         const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
         const source = s[key];
         const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:updateShapeStroke", { page, stroke, pane, mode });
+      emitHost("host:updateShapeStroke", { page, stroke, pane, mode, groupId });
     },
     // MUHIM: bu yerda optimistik local o'zgartirish YO'Q — "forward"/"backward"
     // amallari (undo/erase/move'dan farqli) ID bo'yicha idempotent emas, balki
@@ -336,13 +336,13 @@ export function useClassroomSession(
     redo: () => emitHost("host:redo"),
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
     // darhol o'chiradi, keyin serverga ID bilan yuboradi.
-    eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+    eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
       setState((s) => ({
         ...s,
         [key]: { ...s[key], [page]: (s[key][page] ?? []).filter((x) => x.id !== strokeId) },
       }));
-      emitHost("host:eraseStroke", { page, strokeId, pane, mode });
+      emitHost("host:eraseStroke", { page, strokeId, pane, mode, groupId });
     },
     // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
     // yangi chizmalar bilan optimistik almashtiradi.

@@ -66,6 +66,7 @@ export interface ClassroomUndoEntry {
   // (ba'zilarida to'liq stroke, ba'zilarida faqat patch), shuning uchun
   // strokeId'ni alohida, barqaror joyda saqlash ancha soddaroq.
   strokeId?: string;
+  groupId?: string;
   before: unknown;
   after: unknown;
 }

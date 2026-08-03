@@ -459,14 +459,16 @@ function applyPageUndoRedo(
 
 export function applyBoardUndo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown; entries?: Array<{ mode?: CsBoardMode; page?: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }> },
 ): ClassroomState {
+  if (p.entries && p.entries.length > 0) {
+    let current = s;
+    for (const item of p.entries) {
+      current = applyBoardUndo(current, { ...item, mode: item.mode ?? p.mode, page: item.page ?? p.page });
+    }
+    return current;
+  }
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
-    // page:insert'ning undo'si p.after (afterPageIndex/pages/style) ni
-    // talab qiladi (applyPageUndoRedo'dagi p.after!.afterPageIndex) — backend
-    // board:undo payload'ida before VA after ikkalasi ham har doim to'liq
-    // keladi (useClassroomSession.ts socket listener tipi buni tasdiqlaydi),
-    // shuning uchun after'ni ham o'tkazamiz, uni null qilib qattiq yozmaymiz.
     return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, pane: p.pane, before: p.before as any, after: (p.after ?? null) as any }, "undo");
   }
   return applyBoardUndoRedo(s, p, "undo");
@@ -474,13 +476,16 @@ export function applyBoardUndo(
 
 export function applyBoardRedo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after?: unknown; entries?: Array<{ mode?: CsBoardMode; page?: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after?: unknown }> },
 ): ClassroomState {
+  if (p.entries && p.entries.length > 0) {
+    let current = s;
+    for (const item of p.entries) {
+      current = applyBoardRedo(current, { ...item, mode: item.mode ?? p.mode, page: item.page ?? p.page });
+    }
+    return current;
+  }
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
-    // page:remove'ning redo'si p.before (pageIndex) ni talab qiladi
-    // (applyPageUndoRedo'dagi p.before!.pageIndex) — xuddi yuqoridagi
-    // applyBoardUndo'dagi kabi, before'ni ham o'tkazamiz, null qilib
-    // qattiq yozmaymiz.
     return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, pane: p.pane, before: (p.before ?? null) as any, after: p.after as any }, "redo");
   }
   return applyBoardUndoRedo(s, p, "redo");

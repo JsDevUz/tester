@@ -114,26 +114,26 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:moveStroke')
-  moveStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; x: number; y: number; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  moveStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; x: number; y: number; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right'; groupId?: string }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.moveStroke(body.sessionId, user.sub, body.page, body.strokeId, body.x, body.y, body.mode, body.pane);
+      this.classroomService.moveStroke(body.sessionId, user.sub, body.page, body.strokeId, body.x, body.y, body.mode, body.pane, body.groupId);
     });
   }
 
   @SubscribeMessage('host:updateTextStroke')
-  updateTextStroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  updateTextStroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right'; groupId?: string }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.updateTextStroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane);
+      this.classroomService.updateTextStroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane, body.groupId);
     });
   }
 
   @SubscribeMessage('host:updateShapeStroke')
-  updateShapeStroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  updateShapeStroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right'; groupId?: string }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.updateShapeStroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane);
+      this.classroomService.updateShapeStroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane, body.groupId);
     });
   }
 
@@ -154,10 +154,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:eraseStroke')
-  eraseStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  eraseStroke(@MessageBody() body: BaseBody & { page: number; strokeId: string; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right'; groupId?: string }) {
     return this.run(() => {
       const user = this.verify(body.token);
-      this.classroomService.eraseStroke(body.sessionId, user.sub, body.page, body.strokeId, body.mode, body.pane);
+      this.classroomService.eraseStroke(body.sessionId, user.sub, body.page, body.strokeId, body.mode, body.pane, body.groupId);
     });
   }
 

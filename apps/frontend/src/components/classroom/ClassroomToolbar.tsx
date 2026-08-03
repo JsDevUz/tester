@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import {
   ArrowUpRight,
@@ -108,29 +108,8 @@ export function ClassroomToolbar({
   onClear,
   onOpenPdfLibrary,
 }: Props) {
-  const [colorMenuOpen, setColorMenuOpen] = useState(false);
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
-  const colorMenuRef = useRef<HTMLDivElement>(null);
-  const colorButtonRef = useRef<HTMLButtonElement>(null);
-  const colorPopupRef = useRef<HTMLDivElement>(null);
-  const [colorPopupPos, setColorPopupPos] = useState<{ top: number; left: number } | null>(null);
-
-  useEffect(() => {
-    if (!colorMenuOpen) return;
-    const closeOnOutsidePointer = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (!colorMenuRef.current?.contains(target) && !colorPopupRef.current?.contains(target)) setColorMenuOpen(false);
-    };
-    document.addEventListener("pointerdown", closeOnOutsidePointer);
-    return () => document.removeEventListener("pointerdown", closeOnOutsidePointer);
-  }, [colorMenuOpen]);
-
-  useEffect(() => {
-    if (!colorMenuOpen) { setColorPopupPos(null); return; }
-    const rect = colorButtonRef.current?.getBoundingClientRect();
-    if (rect) setColorPopupPos({ top: rect.bottom + 8, left: rect.left + rect.width / 2 });
-  }, [colorMenuOpen]);
 
   useEffect(() => {
     if (!confirmClearOpen && !infoOpen) return;
@@ -286,35 +265,40 @@ export function ClassroomToolbar({
 
       <div className="w-px h-5 bg-gray-200 mx-0.5" />
 
-      <div ref={colorMenuRef} className="relative px-0.5">
-        <button
-          ref={colorButtonRef}
-          type="button"
-          onClick={() => setColorMenuOpen((open) => !open)}
-          className={`block h-4 w-4 rounded-full border transition-transform ${colorMenuOpen ? "scale-125 border-gray-800" : "border-gray-300"}`}
-          style={{ backgroundColor: color }}
-          title="Ranglar palitrasini ochish"
-          aria-label="Ranglar palitrasini ochish"
-        />
-        {colorMenuOpen && colorPopupPos && createPortal(
-          <div ref={colorPopupRef} className="fixed z-[100] flex -translate-x-1/2 items-center gap-1 rounded-full border border-gray-100 bg-white px-1.5 py-1 shadow-xl whitespace-nowrap" style={{ top: colorPopupPos.top, left: colorPopupPos.left }}>
-          {COLORS.map((c) => (
+      <div className="flex items-center gap-1.5 px-0.5">
+        {COLORS.map((c) => (
           <button
             key={c}
             type="button"
-            onClick={() => {
-              onColorChange(c);
-              setColorMenuOpen(false);
-            }}
-            className={`w-4 h-4 rounded-full border transition-transform ${
-              color === c ? "border-gray-800 scale-125" : "border-gray-200"
+            onClick={() => onColorChange(c)}
+            className={`h-4 w-4 rounded-full border transition-transform ${
+              color.toLowerCase() === c.toLowerCase()
+                ? "scale-125 border-gray-900 ring-2 ring-indigo-500/40"
+                : "border-gray-300 hover:scale-110"
             }`}
             style={{ backgroundColor: c }}
-            title="Rang"
+            title={`Rang: ${c}`}
           />
-          ))}
-          </div>
-        , document.body)}
+        ))}
+        <label
+          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-gray-300 transition-transform hover:scale-110 overflow-hidden ${
+            !COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
+              ? "ring-2 ring-indigo-500/40 scale-125"
+              : ""
+          }`}
+          style={{
+            background:
+              "conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)",
+          }}
+          title="Maxsus rang tanlash"
+        >
+          <input
+            type="color"
+            value={color}
+            onChange={(e) => onColorChange(e.target.value)}
+            className="absolute inset-0 opacity-0 cursor-pointer h-full w-full"
+          />
+        </label>
       </div>
 
       <div className="w-px h-5 bg-gray-200 mx-0.5" />

@@ -50,6 +50,14 @@ export class ClassroomService implements OnModuleInit {
     await db.update(classSessions)
       .set({ status: 'ended', endedAt: new Date() })
       .where(eq(classSessions.status, 'active'));
+
+    // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
+    // ustoz to'satdan brauzerni yopib yuborsa ham saqlanmay qolib ketmaydi.
+    setInterval(() => {
+      for (const s of this.sessions.values()) {
+        void this.persistBoardSnapshot(s.id).catch(() => {});
+      }
+    }, 15000);
   }
 
   // ---------- REST: lifecycle ----------
@@ -764,6 +772,8 @@ export class ClassroomService implements OnModuleInit {
         s.hostSocketId = null;
         this.broadcaster.toRoom(s.id, 'host:offline', {});
         this.broadcastPresence(s);
+        // Ustoz kutilmaganda (call off bosmay) chiqib ketsa ham doskani DARHOL DB ga saqlaymiz:
+        void this.persistBoardSnapshot(s.id).catch(() => {});
         if (!s.hostDisconnectTimer) {
           s.hostDisconnectTimer = setTimeout(() => {
             void this.endSession(s.id, null).catch(() => {});
@@ -815,7 +825,20 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'stroke:add', payload);
   }
 
-  moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  async persistBoardSnapshot(sessionId: string): Promise<void> {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    const boardSnapshot = this.buildBoardSnapshot(s);
+    await db.update(classSessions)
+      .set({
+        boardSnapshot,
+        pdfName: s.pdfName,
+        pdfPages: s.pdfPages,
+      })
+      .where(eq(classSessions.id, sessionId));
+  }
+
+  moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
@@ -828,14 +851,14 @@ export class ClassroomService implements OnModuleInit {
     if (before) {
       const updated = map.get(page)!.find((item) => item.id === strokeId)!;
       const after = { points: [...updated.points], rotation: updated.rotation, textBoxWidth: updated.textBoxWidth, textBoxHeight: updated.textBoxHeight };
-      pushUndoEntry(s, { type: 'stroke:transform', mode, page, pane, strokeId, before, after });
+      pushUndoEntry(s, { type: 'stroke:transform', mode, page, pane, strokeId, before, after, groupId });
     }
     const payload = { page, strokeId, x, y, pane, mode };
     this.recordHistoryEvent(s, 'stroke:update', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:update', payload);
   }
 
-  updateTextStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  updateTextStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
@@ -845,13 +868,13 @@ export class ClassroomService implements OnModuleInit {
     const accepted = updateTextStrokeInSession(s, page, stroke, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    pushUndoEntry(s, { type: 'stroke:text', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] } });
+    pushUndoEntry(s, { type: 'stroke:text', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] }, groupId });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:textUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload);
   }
 
-  updateShapeStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  updateShapeStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
@@ -861,7 +884,7 @@ export class ClassroomService implements OnModuleInit {
     const accepted = updateShapeStrokeInSession(s, page, stroke, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    pushUndoEntry(s, { type: 'stroke:style', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] } });
+    pushUndoEntry(s, { type: 'stroke:style', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] }, groupId });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:shapeUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
@@ -872,35 +895,94 @@ export class ClassroomService implements OnModuleInit {
   // o'ziniki) qo'llaydi — sahifa/panel qaysi bo'lishidan qat'i nazar.
   undo(sessionId: string, userId: string): void {
     const s = this.requireHost(sessionId, userId);
-    const entry = s.undoStack?.pop();
-    if (!entry) return;
-    this.applyUndoEntry(s, entry, 'undo');
+    if (!s.undoStack || s.undoStack.length === 0) return;
+
+    const firstEntry = s.undoStack.pop()!;
+    const groupId = firstEntry.groupId;
+    const batch: ClassroomUndoEntry[] = [firstEntry];
+
+    if (groupId) {
+      while (s.undoStack.length > 0 && s.undoStack[s.undoStack.length - 1].groupId === groupId) {
+        batch.push(s.undoStack.pop()!);
+      }
+    }
+
+    for (const entry of batch) {
+      this.applyUndoEntry(s, entry, 'undo');
+    }
     if (!s.redoStack) s.redoStack = [];
-    s.redoStack.push(entry);
-    s.currentPage = entry.page;
-    s.boardMode = entry.mode;
-    // before VA after ikkalasi ham yuboriladi — ko'p turlar (erase/
-    // transform/style/text) uchun faqat before kifoya, lekin stroke:add
-    // uchun before har doim null (yangi chizmaning "oldingi holati" yo'q),
-    // haqiqiy chizma ma'lumoti faqat afterda saqlanadi.
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, pane: entry.pane, before: entry.before, after: entry.after };
+    s.redoStack.push(...batch);
+
+    s.currentPage = firstEntry.page;
+    s.boardMode = firstEntry.mode;
+
+    const entriesPayload = batch.map((entry) => ({
+      mode: entry.mode,
+      page: entry.page,
+      entryType: entry.type,
+      strokeId: entry.strokeId,
+      pane: entry.pane,
+      before: entry.before,
+      after: entry.after,
+    }));
+
+    const payload = {
+      mode: firstEntry.mode,
+      page: firstEntry.page,
+      entryType: firstEntry.type,
+      strokeId: firstEntry.strokeId,
+      pane: firstEntry.pane,
+      before: firstEntry.before,
+      after: firstEntry.after,
+      entries: entriesPayload,
+    };
     this.recordHistoryEvent(s, 'board:undo', payload);
     this.broadcaster.toRoom(s.id, 'board:undo', payload);
   }
 
   redo(sessionId: string, userId: string): void {
     const s = this.requireHost(sessionId, userId);
-    const entry = s.redoStack?.pop();
-    if (!entry) return;
-    this.applyUndoEntry(s, entry, 'redo');
+    if (!s.redoStack || s.redoStack.length === 0) return;
+
+    const firstEntry = s.redoStack.pop()!;
+    const groupId = firstEntry.groupId;
+    const batch: ClassroomUndoEntry[] = [firstEntry];
+
+    if (groupId) {
+      while (s.redoStack.length > 0 && s.redoStack[s.redoStack.length - 1].groupId === groupId) {
+        batch.push(s.redoStack.pop()!);
+      }
+    }
+
+    for (const entry of batch) {
+      this.applyUndoEntry(s, entry, 'redo');
+    }
     if (!s.undoStack) s.undoStack = [];
-    s.undoStack.push(entry);
-    s.currentPage = entry.page;
-    s.boardMode = entry.mode;
-    // before ham qo'shiladi — board:undo'dagi bilan bir xil sabab
-    // (stroke:add uchun before har doim null bo'lsa ham, boshqa turlar
-    // uchun kerak bo'lishi mumkin bo'lgan simmetriya uchun).
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, pane: entry.pane, before: entry.before, after: entry.after };
+    s.undoStack.push(...batch);
+
+    s.currentPage = firstEntry.page;
+    s.boardMode = firstEntry.mode;
+
+    const entriesPayload = batch.map((entry) => ({
+      mode: entry.mode,
+      page: entry.page,
+      entryType: entry.type,
+      strokeId: entry.strokeId,
+      pane: entry.pane,
+      before: entry.before,
+      after: entry.after,
+    }));
+
+    const payload = {
+      mode: firstEntry.mode,
+      page: firstEntry.page,
+      entryType: firstEntry.type,
+      strokeId: firstEntry.strokeId,
+      pane: firstEntry.pane,
+      before: firstEntry.before,
+      after: firstEntry.after,
+      entries: entriesPayload,
+    };
     this.recordHistoryEvent(s, 'board:redo', payload);
     this.broadcaster.toRoom(s.id, 'board:redo', payload);
   }
@@ -951,7 +1033,7 @@ export class ClassroomService implements OnModuleInit {
 
   // Stroke-eraser asbobi: sichqoncha ustidan o'tgan chizmani ID bo'yicha
   // to'g'ridan-to'g'ri o'chiradi (undo kabi faqat oxirgisini emas).
-  eraseStroke(sessionId: string, userId: string, page: number, strokeId: string, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  eraseStroke(sessionId: string, userId: string, page: number, strokeId: string, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
@@ -962,7 +1044,7 @@ export class ClassroomService implements OnModuleInit {
     const erased = eraseStrokeById(s, page, strokeId, map);
     s.boardMode = previousMode;
     if (erased) {
-      if (index !== -1) pushUndoEntry(s, { type: 'stroke:erase', mode, page, pane, before: { stroke: strokeBeforeErase, index }, after: null });
+      if (index !== -1) pushUndoEntry(s, { type: 'stroke:erase', mode, page, pane, before: { stroke: strokeBeforeErase, index }, after: null, groupId });
       const payload = { page, strokeId, pane, mode };
       this.recordHistoryEvent(s, 'stroke:undo', payload);
       this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);

@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
 import { Circle, Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
@@ -61,6 +61,12 @@ export function ClassroomHostPage() {
   const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");
+  const [colorNonce, setColorNonce] = useState(0);
+
+  const handleColorChange = useCallback((newColor: string) => {
+    setColor(newColor);
+    setColorNonce(Date.now());
+  }, []);
   const [strokeWidth, setStrokeWidth] = useState(4);
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [confirmEnd, setConfirmEnd] = useState(false);
@@ -270,7 +276,8 @@ export function ClassroomHostPage() {
           tool={tool}
           onToolChange={setTool}
           color={color}
-          onColorChange={setColor}
+          colorNonce={colorNonce}
+          onColorChange={handleColorChange}
           strokeWidth={tool === "highlighter" ? strokeWidth * 7 : strokeWidth}
           onStrokeWidthChange={setStrokeWidth}
           shapeStyle={shapeStyle}
@@ -310,7 +317,7 @@ export function ClassroomHostPage() {
               color={color}
               strokeWidth={strokeWidth}
               onToolChange={setTool}
-              onColorChange={setColor}
+              onColorChange={handleColorChange}
               onStrokeWidthChange={setStrokeWidth}
               onUndo={() => hostActions.undo()}
               onRedo={() => hostActions.redo()}

@@ -234,6 +234,7 @@ interface Props {
   // boshlanib qolmasin.
   onToolChange?: (tool: DrawTool) => void;
   color: string;
+  colorNonce?: number;
   onColorChange?: (color: string) => void;
   strokeWidth: number;
   onStrokeWidthChange?: (width: number) => void;
@@ -243,7 +244,7 @@ interface Props {
   // sozlamalar panelini ko'rsatish uchun.
   shapeStyle?: ShapeStyle;
   onShapeStyleChange?: (style: ShapeStyle) => void;
-  onUpdateShapeStroke?: (page: number, stroke: CsStroke) => void;
+  onUpdateShapeStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onPaneUpdateShapeStroke?: (
     pane: "left" | "right",
     mode: CsBoardMode,
@@ -272,7 +273,7 @@ interface Props {
     x: number,
     y: number,
   ) => void;
-  onUpdateTextStroke?: (page: number, stroke: CsStroke) => void;
+  onUpdateTextStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onPaneUpdateTextStroke?: (
     pane: "left" | "right",
     mode: CsBoardMode,
@@ -292,7 +293,7 @@ interface Props {
     active: boolean,
     pane: "left" | "right",
   ) => void;
-  onEraseStroke?: (page: number, strokeId: string) => void;
+  onEraseStroke?: (page: number, strokeId: string, groupId?: string) => void;
   onPaneEraseStroke?: (
     pane: "left" | "right",
     mode: CsBoardMode,
@@ -382,6 +383,8 @@ interface Props {
     pane: "left" | "right",
   ) => void;
   allowPageCopy?: boolean;
+  activeSelectionKey?: string | null;
+  onClaimSelection?: (key: string) => void;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -1053,14 +1056,6 @@ function findStrokesInLasso(strokes: CsStroke[], polygon: number[]): string[] {
   return ids;
 }
 
-const TEXT_COLORS = [
-  "#ffffff",
-  "#000000",
-  "#ef4444",
-  "#3b82f6",
-  "#22c55e",
-  "#f97316",
-];
 const FONT_FAMILY_OPTIONS: CsFontFamily[] = [
   "Inter",
   "Arial",
@@ -1124,34 +1119,25 @@ function LayersSection({
 }
 
 interface TextStylePanelProps {
-  color: string;
+  color?: string;
   fontFamily: CsFontFamily;
   fontSize: number;
   fontWeight: 400 | 500 | 600 | 700;
   textAlign: "left" | "center" | "right";
-  onColorChange: (color: string) => void;
+  onColorChange?: (color: string) => void;
   onFontFamilyChange: (fontFamily: CsFontFamily) => void;
   onFontSizeChange: (fontSize: number) => void;
   onFontWeightChange: (fontWeight: 400 | 500 | 600 | 700) => void;
   onTextAlignChange: (textAlign: "left" | "center" | "right") => void;
   onReorder: (op: "front" | "back" | "forward" | "backward") => void;
-  // Faqat allaqachon saqlangan (tanlangan) matn uchun beriladi — yozilayotgan
-  // (hali commit qilinmagan) matnda o'chirish tugmasi ko'rsatilmaydi, chunki
-  // Escape orqali bekor qilish allaqachon mavjud.
   onDelete?: () => void;
 }
 
-// Excalidraw'ning chap tomondagi to'liq balandlikdagi sozlamalar paneliga
-// o'xshash — matn ustida yoki yonida emas, ekranning chap chekkasida fixed
-// holda turadi, shu bilan matn/tanlangan chizma ustiga chiqib to'sib
-// qo'ymaydi.
 function TextStylePanel({
-  color,
   fontFamily,
   fontSize,
   fontWeight,
   textAlign,
-  onColorChange,
   onFontFamilyChange,
   onFontSizeChange,
   onFontWeightChange,
@@ -1165,22 +1151,6 @@ function TextStylePanel({
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}
     >
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Rang</p>
-        <div className="flex items-center gap-1.5">
-          {TEXT_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Rang ${c}`}
-              onClick={() => onColorChange(c)}
-              className={`h-6 w-6 rounded-full border-2 ${color === c ? "border-indigo-500" : "border-gray-200"}`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-      </div>
-
       <div className="flex flex-col gap-1.5">
         <p className="text-[11px] font-medium text-gray-400">Shrift</p>
         <select
@@ -1275,13 +1245,6 @@ function TextStylePanel({
   );
 }
 
-const SHAPE_STROKE_COLORS = [
-  "#1e1e1e",
-  "#e03131",
-  "#2f9e44",
-  "#1971c2",
-  "#f08c00",
-];
 const SHAPE_BACKGROUND_COLORS = [
   "transparent",
   "#ffc9c9",
@@ -1384,14 +1347,14 @@ function EdgeIcon({ rounded }: { rounded: boolean }) {
 }
 
 interface ShapeStylePanelProps {
-  color: string;
+  color?: string;
   backgroundColor: string;
   fillStyle: CsFillStyle;
   strokeWidth: number;
   strokeStyle: CsStrokeStyle;
   edges: CsEdges;
   opacity: number;
-  onColorChange: (color: string) => void;
+  onColorChange?: (color: string) => void;
   onBackgroundColorChange: (color: string) => void;
   onFillStyleChange: (fillStyle: CsFillStyle) => void;
   onStrokeWidthChange: (width: number) => void;
@@ -1401,17 +1364,13 @@ interface ShapeStylePanelProps {
   onReorder: (op: "front" | "back" | "forward" | "backward") => void;
 }
 
-// To'rtburchak/doira uchun Excalidraw'ga to'liq mos sozlamalar paneli —
-// TextStylePanel bilan bir xil joyga (chap-markaz, fixed) chiqadi.
 function ShapeStylePanel({
-  color,
   backgroundColor,
   fillStyle,
   strokeWidth,
   strokeStyle,
   edges,
   opacity,
-  onColorChange,
   onBackgroundColorChange,
   onFillStyleChange,
   onStrokeWidthChange,
@@ -1427,22 +1386,6 @@ function ShapeStylePanel({
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}
     >
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Kontur</p>
-        <div className="flex items-center gap-1.5">
-          {SHAPE_STROKE_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Kontur rangi ${c}`}
-              onClick={() => onColorChange(c)}
-              className={`h-6 w-6 rounded-full border-2 ${color === c ? "border-indigo-500" : "border-gray-200"}`}
-              style={{ backgroundColor: c }}
-            />
-          ))}
-        </div>
-      </div>
-
       <div className="flex flex-col gap-1.5">
         <p className="text-[11px] font-medium text-gray-400">Fon</p>
         <div className="flex items-center gap-1.5">
@@ -1746,12 +1689,13 @@ interface PageProps {
   onActivate: () => void;
   onToolChange?: (tool: DrawTool) => void;
   color: string;
+  colorNonce?: number;
   onColorChange?: (color: string) => void;
   strokeWidth: number;
   onStrokeWidthChange?: (width: number) => void;
   shapeStyle?: ShapeStyle;
   onShapeStyleChange?: (style: ShapeStyle) => void;
-  onUpdateShapeStroke?: (page: number, stroke: CsStroke) => void;
+  onUpdateShapeStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onReorderStroke?: (
     page: number,
     strokeIds: string[],
@@ -1759,9 +1703,9 @@ interface PageProps {
   ) => void;
   onStrokeComplete?: (page: number, stroke: CsStroke) => void;
   onMoveStroke?: (page: number, strokeId: string, x: number, y: number) => void;
-  onUpdateTextStroke?: (page: number, stroke: CsStroke) => void;
+  onUpdateTextStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onPointerMove?: (page: number, x: number, y: number, active: boolean) => void;
-  onEraseStroke?: (page: number, strokeId: string) => void;
+  onEraseStroke?: (page: number, strokeId: string, groupId?: string) => void;
   onSplitStroke?: (
     page: number,
     strokeId: string,
@@ -1790,6 +1734,8 @@ interface PageProps {
   lassoClipboard?: { current: CsStroke[] };
   onCopyAllNotebookPages?: () => void;
   allowPageCopy?: boolean;
+  activeSelectionKey?: string | null;
+  onClaimSelection?: (key: string) => void;
 }
 
 interface ClassroomPageClipboard {
@@ -1833,6 +1779,7 @@ function ClassroomPdfPage({
   onActivate,
   onToolChange,
   color,
+  colorNonce,
   onColorChange,
   strokeWidth,
   onStrokeWidthChange,
@@ -1857,6 +1804,8 @@ function ClassroomPdfPage({
   lassoClipboard,
   onCopyAllNotebookPages,
   allowPageCopy = false,
+  activeSelectionKey,
+  onClaimSelection,
 }: PageProps) {
   const wrapRef = useRef<HTMLDivElement>(null);
   const surfaceRef = useRef<HTMLElement>(null);
@@ -1883,6 +1832,26 @@ function ClassroomPdfPage({
   );
   const lassoDraftRef = useRef<number[] | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  const pageSelectionKeyRef = useRef<string | null>(null);
+
+  const claimSelection = useCallback(
+    (key: string) => {
+      pageSelectionKeyRef.current = key;
+      onClaimSelection?.(key);
+    },
+    [onClaimSelection],
+  );
+
+  useEffect(() => {
+    if (activeSelectionKey && activeSelectionKey !== pageSelectionKeyRef.current) {
+      pageSelectionKeyRef.current = null;
+      setSelectedShapeId(null);
+      setSelectedGroupIds(new Set());
+      setSelectedTextId(null);
+      setEditingTextId(null);
+    }
+  }, [activeSelectionKey]);
   const erasedThisDragRef = useRef<Set<string>>(new Set());
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const draftRef = useRef<number[] | null>(null);
@@ -2009,18 +1978,35 @@ function ClassroomPdfPage({
         1,
         Math.min(2000, (nextHeight / size.w) * REF_WIDTH),
       );
-      setTextEditor((current) =>
-        current && Math.abs(normalizedHeight - current.textBoxHeight) > 0.5
-          ? { ...current, textBoxHeight: normalizedHeight }
-          : current,
+      const measured = measureTextBox(
+        textEditor.text,
+        textEditor.fontFamily,
+        textEditor.fontSize,
+        textEditor.fontWeight,
       );
+      const neededWidth = Math.max(
+        textEditor.textBoxWidth,
+        measured.width + 24,
+      );
+      setTextEditor((current) => {
+        if (!current) return null;
+        const heightDiff = Math.abs(normalizedHeight - current.textBoxHeight);
+        const widthDiff = neededWidth - current.textBoxWidth;
+        if (heightDiff > 0.5 || widthDiff > 0.5) {
+          return {
+            ...current,
+            textBoxHeight: normalizedHeight,
+            textBoxWidth: neededWidth,
+          };
+        }
+        return current;
+      });
     }
   }, [
     textEditor?.text,
     textEditor?.fontFamily,
     textEditor?.fontSize,
     textEditor?.fontWeight,
-    textEditor,
     size.w,
   ]);
 
@@ -2166,16 +2152,43 @@ function ClassroomPdfPage({
       : null;
 
   const commitGroupStroke = useCallback(
-    (stroke: CsStroke) => {
-      if (stroke.tool === "text") onUpdateTextStroke?.(pageNumber, stroke);
-      // Lasso resize barcha nuqtalarni va stroke.width'ni o'zgartiradi. Faqat
-      // birinchi nuqtani moveStroke orqali yuborish pen/highlighter/arrow'ning
-      // serverdagi eski geometriyasini saqlab qolardi; hostda esa lokal mutation
-      // sabab vaqtincha to'g'ri ko'rinardi. To'liq stroke'ni atomik yangilaymiz.
-      else onUpdateShapeStroke?.(pageNumber, stroke);
+    (stroke: CsStroke, groupId?: string) => {
+      if (stroke.tool === "text") onUpdateTextStroke?.(pageNumber, stroke, groupId);
+      else onUpdateShapeStroke?.(pageNumber, stroke, groupId);
     },
     [pageNumber, onUpdateTextStroke, onUpdateShapeStroke],
   );
+
+  const applyColorToSelection = useCallback(
+    (nextColor: string) => {
+      if (textEditor) {
+        setTextEditor((current) => (current ? { ...current, color: nextColor } : current));
+      }
+      if (selectedText) {
+        updateSelectedText({ color: nextColor });
+      }
+      if (selectedShape) {
+        onUpdateShapeStroke?.(pageNumber, { ...selectedShape, color: nextColor });
+      }
+      if (selectedGroupIds.size > 0) {
+        for (const id of selectedGroupIds) {
+          const stroke = strokes.find((s) => s.id === id);
+          if (stroke) {
+            commitGroupStroke({ ...stroke, color: nextColor });
+          }
+        }
+      }
+    },
+    [textEditor, selectedText, updateSelectedText, selectedShape, selectedGroupIds, strokes, commitGroupStroke, pageNumber, onUpdateShapeStroke],
+  );
+
+  const lastProcessedNonceRef = useRef(0);
+  useEffect(() => {
+    if (colorNonce && colorNonce > 0 && colorNonce !== lastProcessedNonceRef.current) {
+      lastProcessedNonceRef.current = colorNonce;
+      applyColorToSelection(color);
+    }
+  }, [colorNonce, color, applyColorToSelection]);
 
   const deleteSelectedGroup = () => {
     for (const id of selectedGroupIds) onEraseStroke?.(pageNumber, id);
@@ -2443,10 +2456,8 @@ function ClassroomPdfPage({
     event.preventDefault();
     event.stopPropagation();
     resizingGroupRef.current = null;
+    const groupId = crypto.randomUUID();
     for (const stroke of selectedGroupStrokes) {
-      // Lasso-resize ham boxni faqat scale qilgani uchun matndan katta
-      // bo'sh joy qolishi mumkin — tugagach tekis moslashtiramiz (yakka
-      // handle resize'dagi finishTextTransform bilan bir xil mantiq).
       if (stroke.tool === "text" && stroke.text) {
         const measured = measureTextBox(
           stroke.text,
@@ -2457,7 +2468,7 @@ function ClassroomPdfPage({
         stroke.textBoxWidth = measured.width + 8;
         stroke.textBoxHeight = measured.height;
       }
-      commitGroupStroke({ ...stroke, points: [...stroke.points] });
+      commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
     }
   };
 
@@ -2575,8 +2586,9 @@ function ClassroomPdfPage({
     event.preventDefault();
     event.stopPropagation();
     rotatingGroupRef.current = null;
+    const groupId = crypto.randomUUID();
     for (const stroke of selectedGroupStrokes) {
-      commitGroupStroke({ ...stroke, points: [...stroke.points] });
+      commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
     }
   };
 
@@ -3136,6 +3148,8 @@ function ClassroomPdfPage({
       setSelectedTextId(existing?.id ?? null);
       if (existing) {
         setSelectedShapeId(null);
+        setSelectedGroupIds(new Set());
+        claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-text-${existing.id}`);
         // Ikki marta bosish (yoki tanlangan matnni qayta bosish) workspace
         // ichida matnni bevosita tahrirlash rejimini ochadi. e.detail
         // PointerEvent uchun ba'zi brauzerlarda (Safari) ishonchli emas,
@@ -3198,6 +3212,9 @@ function ClassroomPdfPage({
       );
       setSelectedShapeId(existingShape?.id ?? null);
       if (existingShape) {
+        setSelectedTextId(null);
+        setSelectedGroupIds(new Set());
+        claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-shape-${existingShape.id}`);
         draggingShapeRef.current = {
           stroke: existingShape,
           dx: p[0] - existingShape.points[0],
@@ -3467,9 +3484,10 @@ function ClassroomPdfPage({
     if (draggingGroupRef.current) {
       const { ids } = draggingGroupRef.current;
       draggingGroupRef.current = null;
+      const groupId = crypto.randomUUID();
       for (const stroke of strokes) {
         if (ids.has(stroke.id))
-          commitGroupStroke({ ...stroke, points: [...stroke.points] });
+          commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
       }
       forceRedraw((n) => n + 1);
       return;
@@ -3480,6 +3498,10 @@ function ClassroomPdfPage({
       if (path.length >= 6) {
         const enclosed = findStrokesInLasso(strokes, path);
         setSelectedGroupIds(new Set(enclosed));
+        if (enclosed.length > 0) {
+          const key = `${notebook ? "nb" : "pdf"}-${pageNumber}-group-${enclosed.join(",")}`;
+          claimSelection(key);
+        }
       }
       forceRedraw((n) => n + 1);
       return;
@@ -3887,7 +3909,9 @@ function ClassroomPdfPage({
                 strokeStyle={shapeStyle.strokeStyle}
                 edges={shapeStyle.edges}
                 opacity={shapeStyle.opacity}
-                onColorChange={(nextColor) => onColorChange?.(nextColor)}
+                    onColorChange={(nextColor) =>
+                      applyColorToSelection(nextColor)
+                    }
                 onBackgroundColorChange={(backgroundColor) =>
                   onShapeStyleChange({ ...shapeStyle, backgroundColor })
                 }
@@ -4278,6 +4302,7 @@ export function ClassroomPdfViewer({
   tool,
   onToolChange,
   color,
+  colorNonce,
   onColorChange,
   strokeWidth,
   onStrokeWidthChange,
@@ -4327,6 +4352,7 @@ export function ClassroomPdfViewer({
   // shuning uchun ular hech qachon yashirilmaydi.
   const { visible: autoHideVisible } = useAutoHideOverlay();
   const overlayVisible = isHost || autoHideVisible;
+  const [activeSelectionKey, setActiveSelectionKey] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const paneScrollRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const pageElsRef = useRef<Map<number, HTMLDivElement>>(new Map());
@@ -4983,6 +5009,8 @@ export function ClassroomPdfViewer({
                         <ClassroomPdfPage
                           key={`${paneIndex}-${pageNumber}`}
                           pageNumber={pageNumber}
+                          activeSelectionKey={activeSelectionKey}
+                          onClaimSelection={setActiveSelectionKey}
                           zoomVersion={paneIndex === 1 ? rightZoom : zoom}
                           isHost={isHost}
                           canRemove={visiblePageCount(paneMode) > 1}
@@ -5061,6 +5089,7 @@ export function ClassroomPdfViewer({
                           allowPageCopy={allowPageCopy ?? noSync}
                           onToolChange={onToolChange}
                           color={color}
+                          colorNonce={colorNonce}
                           onColorChange={onColorChange}
                           strokeWidth={strokeWidth}
                           onStrokeWidthChange={onStrokeWidthChange}
@@ -5188,11 +5217,11 @@ export function ClassroomPdfViewer({
                   onPointerMove={handleSplitPointerMove}
                   onPointerUp={handleSplitPointerUp}
                   onPointerCancel={handleSplitPointerUp}
-                  className={`relative h-full shrink-0 w-4 -mx-1.5 z-20 flex items-center justify-center select-none touch-none ${
+                  className={`relative h-full shrink-0 w-4 -mx-1.5 z-[1] flex items-center justify-center select-none touch-none ${
                     canDragSplit ? "cursor-col-resize hover:bg-blue-500/10" : "cursor-default"
                   }`}
                 >
-                  <div className="h-full w-1 bg-gray-300 hover:bg-blue-500 rounded-full transition-colors" />
+                  <div className="h-full w-[1px] bg-gray-400/30 hover:bg-blue-500 transition-colors" />
                 </div>
               )}
             </Fragment>
