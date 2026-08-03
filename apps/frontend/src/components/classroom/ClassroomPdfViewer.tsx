@@ -57,11 +57,11 @@ import { getStroke } from "perfect-freehand";
 
 // Chizish uchun reference kenglik — stroke.width shu kenglikdagi px deb saqlanadi
 const REF_WIDTH = 1000;
-const MAX_DPR = 2;
+const MAX_DPR = 3.5;
 // Canvas bitmap bir tomoni shu qiymatdan oshmasin — yuqori zoom'da (masalan
-// 400%) canvas juda katta bo'lib brauzer GPU xotirasini to'ldirib qo'yadi
-// va sahifa qotib qoladi. 4096 = ko'p qurilmalarda xavfsiz chegarа.
-const MAX_CANVAS_PX = 4096;
+// 400%) canvas juda katta bo'lib brauzer GPU xotirasini to'ldirib qo'yadi.
+// 8192 = 4K/8K va Retina 3x+ displeylarda ultra-tiniq render ko'rsatkichi.
+const MAX_CANVAS_PX = 8192;
 
 // To'rtburchak/doira asboblari uchun joriy uslub — Excalidraw'dagi
 // "current item style" ga o'xshash: yangi shape shu qiymatlar bilan
@@ -146,6 +146,21 @@ function wrapTextLines(
 // eski (kichik) qutidan tashqariga chiqib ketardi). maxWrapWidth berilsa
 // (masalan textarea joriy eni) undan kengroq bo'lmaydi — aks holda bo'shliqsiz
 // uzun matn hech qachon sindirilmay bitta cheksiz qator bo'lib qolardi.
+export function getFontFamilyString(family?: CsFontFamily): string {
+  switch (family) {
+    case "Comic Sans MS":
+      return '"Comic Sans MS", "Comic Neue", cursive, sans-serif';
+    case "Nunito":
+      return '"Nunito", sans-serif';
+    case "Georgia":
+      return '"Georgia", serif';
+    case "Arial":
+      return '"Arial", sans-serif';
+    default:
+      return '"Inter", sans-serif';
+  }
+}
+
 function measureTextBox(
   text: string,
   fontFamily: CsFontFamily,
@@ -154,7 +169,7 @@ function measureTextBox(
   maxWrapWidth?: number,
 ): { width: number; height: number } {
   const ctx = getMeasureCtx();
-  ctx.font = `${fontWeight} ${fontSize}px ${fontFamily}`;
+  ctx.font = `${fontWeight} ${fontSize}px ${getFontFamilyString(fontFamily)}`;
   const lines = maxWrapWidth
     ? wrapTextLines(ctx, text, maxWrapWidth)
     : text.split("\n");
@@ -634,7 +649,7 @@ export function drawStroke(
     ctx.globalAlpha = dimmed ? 0.25 : 1;
     const referenceFontSize = s.fontSize ?? Math.max(14, s.width * 6);
     const renderedFontSize = Math.max(1, referenceFontSize * (w / REF_WIDTH));
-    ctx.font = `${s.fontWeight ?? 600} ${renderedFontSize}px ${s.fontFamily ?? "Inter"}`;
+    ctx.font = `${s.fontWeight ?? 600} ${renderedFontSize}px ${getFontFamilyString(s.fontFamily)}`;
     ctx.textBaseline = "alphabetic";
     const lineHeight = renderedFontSize * 1.25;
     const boxWidth = (s.textBoxWidth ?? 320) * (w / REF_WIDTH);
@@ -2588,6 +2603,8 @@ function ClassroomPdfPage({
     canvas.style.height = `${size.h}px`;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     // drawScale: chizma koordinatalari (0..size.w, 0..size.h) dan canvas
     // piksel koordinatalariga o'tkazish koeffitsienti.
     const drawScale = dpr * scale;
@@ -3729,7 +3746,7 @@ function ClassroomPdfPage({
                     backgroundColor: "transparent",
                     appearance: "none",
                     color: textEditor.color,
-                    fontFamily: textEditor.fontFamily,
+                    fontFamily: getFontFamilyString(textEditor.fontFamily),
                     fontSize: editorFontSize,
                     fontWeight: textEditor.fontWeight,
                     textAlign: textEditor.textAlign,
