@@ -149,7 +149,7 @@ function wrapTextLines(
 export function getFontFamilyString(family?: CsFontFamily): string {
   switch (family) {
     case "Comic Sans MS":
-      return '"Comic Sans MS", "Comic Neue", cursive, sans-serif';
+      return '"Comic Neue", "Comic Sans MS", cursive, sans-serif';
     case "Nunito":
       return '"Nunito", sans-serif';
     case "Georgia":
