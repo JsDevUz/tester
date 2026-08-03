@@ -62,7 +62,11 @@ export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomS
   return { ...s, currentPage: p.page, pointer: null };
 }
 
-export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
+function updateStrokeListInState(
+  s: ClassroomState,
+  p: { page: number; pane?: "left" | "right"; mode?: CsBoardMode },
+  updateFn: (list: CsStroke[]) => CsStroke[]
+): ClassroomState {
   const isRight = p.pane === "right";
   const targetMode = p.mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
 
@@ -73,9 +77,9 @@ export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsS
     };
     const modeObj = byMode[targetMode] ?? {};
     const pageStrokes = modeObj[p.page] ?? [];
-    if (pageStrokes.some((x) => x.id === p.stroke.id)) return s;
+    const nextStrokes = updateFn(pageStrokes);
 
-    const nextModeObj = { ...modeObj, [p.page]: [...pageStrokes, p.stroke] };
+    const nextModeObj = { ...modeObj, [p.page]: nextStrokes };
     const nextByMode = { ...byMode, [targetMode]: nextModeObj };
 
     const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
@@ -92,91 +96,65 @@ export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsS
   if (isRight) {
     if (p.mode && p.mode !== s.rightBoardMode) return s;
     const existing = s.rightStrokesByPage[p.page] ?? [];
-    if (existing.some((x) => x.id === p.stroke.id)) return s;
-    return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: [...existing, p.stroke] } };
+    return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: updateFn(existing) } };
   }
   if (p.mode && p.mode !== s.leftBoardMode) return s;
   const existing = s.strokesByPage[p.page] ?? [];
-  if (existing.some((x) => x.id === p.stroke.id)) return s;
-  return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: [...existing, p.stroke] } };
+  return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: updateFn(existing) } };
+}
+
+export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
+  return updateStrokeListInState(s, p, (list) => {
+    if (list.some((x) => x.id === p.stroke.id)) return list;
+    return [...list, p.stroke];
+  });
 }
 
 export function applyStrokeUpdate(s: ClassroomState, p: { page: number; strokeId: string; x: number; y: number; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const source = right ? s.rightStrokesByPage : s.strokesByPage;
-  const list = source[p.page] ?? [];
-  const next = list.map((stroke) => stroke.id === p.strokeId ? { ...stroke, points: moveStrokePoints(stroke, p.x, p.y) } : stroke);
-  return right
-    ? { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: next } }
-    : { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: next } };
+  return updateStrokeListInState(s, p, (list) =>
+    list.map((stroke) => (stroke.id === p.strokeId ? { ...stroke, points: moveStrokePoints(stroke, p.x, p.y) } : stroke))
+  );
 }
 
 export function applyStrokeTextUpdate(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  const next = list.some((stroke) => stroke.id === p.stroke.id)
-    ? list.map((stroke) => stroke.id === p.stroke.id ? p.stroke : stroke)
-    : [...list, p.stroke];
-  return { ...s, [key]: { ...source, [p.page]: next } };
+  return updateStrokeListInState(s, p, (list) =>
+    list.some((x) => x.id === p.stroke.id)
+      ? list.map((x) => (x.id === p.stroke.id ? p.stroke : x))
+      : [...list, p.stroke]
+  );
 }
 
 export function applyStrokeShapeUpdate(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  const next = list.some((stroke) => stroke.id === p.stroke.id)
-    ? list.map((stroke) => stroke.id === p.stroke.id ? p.stroke : stroke)
-    : [...list, p.stroke];
-  return { ...s, [key]: { ...source, [p.page]: next } };
+  return updateStrokeListInState(s, p, (list) =>
+    list.some((x) => x.id === p.stroke.id)
+      ? list.map((x) => (x.id === p.stroke.id ? p.stroke : x))
+      : [...list, p.stroke]
+  );
 }
 
 export function applyStrokeReorder(s: ClassroomState, p: { page: number; strokeIds: string[]; op: "front" | "back" | "forward" | "backward"; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  return { ...s, [key]: { ...source, [p.page]: reorderStrokeList(list, p.strokeIds, p.op) } };
+  return updateStrokeListInState(s, p, (list) => reorderStrokeList(list, p.strokeIds, p.op));
 }
 
 export function applyStrokeUndo(s: ClassroomState, p: { page: number; strokeId: string; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  return { ...s, [key]: { ...source, [p.page]: (source[p.page] ?? []).filter((x) => x.id !== p.strokeId) } };
+  return updateStrokeListInState(s, p, (list) => list.filter((x) => x.id !== p.strokeId));
 }
 
 export function applyStrokeSplit(s: ClassroomState, p: { page: number; strokeId: string; replacements: CsStroke[]; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  const existing = source[p.page] ?? [];
-  const idx = existing.findIndex((x) => x.id === p.strokeId);
-  // O'zimiz optimistik split qilgan bo'lsak, eski ID allaqachon yo'q —
-  // shu holatda o'rniga qo'shishning o'rniga dublikatni tekshirib qo'shamiz.
-  if (idx === -1) {
-    const news = p.replacements.filter((r) => !existing.some((x) => x.id === r.id));
-    if (news.length === 0) return s;
-    return { ...s, [key]: { ...source, [p.page]: [...existing, ...news] } };
-  }
-  const next = [...existing];
-  next.splice(idx, 1, ...p.replacements);
-  return { ...s, [key]: { ...source, [p.page]: next } };
+  return updateStrokeListInState(s, p, (list) => {
+    const idx = list.findIndex((x) => x.id === p.strokeId);
+    if (idx === -1) {
+      const news = p.replacements.filter((r) => !list.some((x) => x.id === r.id));
+      return news.length === 0 ? list : [...list, ...news];
+    }
+    const next = [...list];
+    next.splice(idx, 1, ...p.replacements);
+    return next;
+  });
 }
 
 export function applyPageClear(s: ClassroomState, p: { page: number; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {
-  const right = p.pane === "right";
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  return { ...s, [key]: { ...s[key], [p.page]: [] } };
+  return updateStrokeListInState(s, p, () => []);
 }
 
 // Sahifa o'chirilganda undan keyingi barcha sahifalarning chizmalari

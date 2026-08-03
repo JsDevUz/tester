@@ -1899,6 +1899,7 @@ function ClassroomPdfPage({
   // O'chirg'ich rejimida sichqoncha ostida qancha joy o'chishini ko'rsatadigan
   // opacity-doira uchun joriy kursor pozitsiyasi (normalized).
   const eraserCursorRef = useRef<[number, number] | null>(null);
+  const lastPointerPosRef = useRef<[number, number] | null>(null);
   const [, forceRedraw] = useState(0);
   // PointerEvent.detail ko'p brauzerlarda (xususan Safari) ikki marta
   // bosishni hisoblamaydi (faqat MouseEvent/click uchun ishonchli) — shu
@@ -2204,22 +2205,60 @@ function ClassroomPdfPage({
     }
   }, [lassoClipboard, selectedGroupStrokes]);
 
-  // Clipboard'dagi lasso elementlarini aynan fokus qilingan sahifaga
-  // joylaydi. Kichik offset ketma-ket paste qilinganda nusxani ko'rishga
-  // yordam beradi; Ctrl/Cmd+C esa o'zi hech qanday element yaratmaydi.
+  // Clipboard'dagi lasso elementlarini ustoz sichqonchani tutib turgan
+  // (hover / click) nuqtaga markazlashtirib joylaydi.
   const PASTE_OFFSET = 0.02;
   const pasteSelectedGroup = useCallback(() => {
     if (!lassoClipboard || lassoClipboard.current.length === 0) return;
+
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const stroke of lassoClipboard.current) {
+      for (let i = 0; i < stroke.points.length; i += 2) {
+        const x = stroke.points[i];
+        const y = stroke.points[i + 1];
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    let targetX = centerX + PASTE_OFFSET;
+    let targetY = centerY + PASTE_OFFSET;
+
+    if (lastPointerPosRef.current) {
+      targetX = lastPointerPosRef.current[0];
+      targetY = lastPointerPosRef.current[1];
+    }
+
+    let dx = targetX - centerX;
+    let dy = targetY - centerY;
+
+    const newMinX = minX + dx;
+    const newMaxX = maxX + dx;
+    const newMinY = minY + dy;
+    const newMaxY = maxY + dy;
+
+    if (newMinX < 0) dx -= newMinX;
+    else if (newMaxX > 1) dx -= (newMaxX - 1);
+
+    if (newMinY < 0) dy -= newMinY;
+    else if (newMaxY > 1) dy -= (newMaxY - 1);
+
     const newIds = new Set<string>();
     for (const stroke of lassoClipboard.current) {
       const newId = crypto.randomUUID();
-      const offsetPoints = stroke.points.map((value) =>
-        Math.min(1, Math.max(0, value + PASTE_OFFSET)),
+      const shiftedPoints = stroke.points.map((val, idx) =>
+        idx % 2 === 0
+          ? Math.min(1, Math.max(0, val + dx))
+          : Math.min(1, Math.max(0, val + dy))
       );
       onStrokeComplete?.(pageNumber, {
         ...stroke,
         id: newId,
-        points: offsetPoints,
+        points: shiftedPoints,
       });
       newIds.add(newId);
     }
@@ -3028,6 +3067,7 @@ function ClassroomPdfPage({
     onActivate();
     const p = normPoint(e);
     if (!p) return;
+    lastPointerPosRef.current = p;
     (e.target as HTMLElement).setPointerCapture(e.pointerId);
     onPointerMove?.(pageNumber, p[0], p[1], true);
     // Alohida saqlash/bekor qilish tugmalari kerak emas: canvasga qayta
@@ -3208,6 +3248,7 @@ function ClassroomPdfPage({
     if (!editable) return;
     const p = normPoint(e);
     if (!p) return;
+    lastPointerPosRef.current = p;
     onPointerMove?.(pageNumber, p[0], p[1], true);
     if (tool === "laser") return;
     if (draggingGroupRef.current) {
