@@ -4329,8 +4329,8 @@ export function ClassroomPdfViewer({
     if (rect.width <= 0) return;
     const raw = (event.clientX - rect.left) / rect.width;
     const clamped = Math.min(0.8, Math.max(0.2, raw));
+    setLocalSplitRatio(clamped);
     if (isHost) onSetSplitRatio?.(clamped);
-    else setLocalSplitRatio(clamped);
   };
 
   const handleSplitPointerUp = (event: React.PointerEvent<HTMLDivElement>) => {
@@ -5133,8 +5133,12 @@ export function ClassroomPdfViewer({
                   onPointerMove={handleSplitPointerMove}
                   onPointerUp={handleSplitPointerUp}
                   onPointerCancel={handleSplitPointerUp}
-                  className={`h-full shrink-0 w-1  ${canDragSplit ? "cursor-col-resize" : "cursor-default"}`}
-                />
+                  className={`relative h-full shrink-0 w-4 -mx-1.5 z-20 flex items-center justify-center select-none touch-none ${
+                    canDragSplit ? "cursor-col-resize hover:bg-blue-500/10" : "cursor-default"
+                  }`}
+                >
+                  <div className="h-full w-1 bg-gray-300 hover:bg-blue-500 rounded-full transition-colors" />
+                </div>
               )}
             </Fragment>
           ))}

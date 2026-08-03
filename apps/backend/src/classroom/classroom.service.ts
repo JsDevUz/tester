@@ -367,13 +367,16 @@ export class ClassroomService implements OnModuleInit {
   // yaratmasdan, DB'dagi boardSnapshot'ni xotiraga qayta yuklaydi va
   // status'ni 'active' ga o'zgartiradi. Foydalanuvchi URL ham o'zgarmaydi.
   async reopenFreeSession(teacherId: string, sessionId: string, title?: string): Promise<void> {
-    // Allaqachon jonli bo'lsa — hech narsa qilmay o'tamiz (idempotent)
-    if (this.sessions.has(sessionId)) return;
+    // Allaqachon jonli bo'lsa va RAM'da bor bo'lsa — s.title yangilab o'tamiz (idempotent)
+    const existing = this.sessions.get(sessionId);
+    if (existing) {
+      if (title?.trim()) existing.title = title.trim();
+      return;
+    }
 
     const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
     if (!row) throw new NotFoundException('Dars topilmadi');
     if (row.teacherId !== teacherId) throw new ForbiddenException('Bu dars sizga tegishli emas');
-    if (row.status !== 'ended') throw new ConflictException('Dars allaqachon jonli');
     if (!row.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q — davom ettirib bo'lmaydi");
 
     const newTitle = title?.trim() ? title.trim() : row.title;
@@ -671,7 +674,7 @@ export class ClassroomService implements OnModuleInit {
   async studentJoin(
     sessionId: string, userId: string, socketId: string, guestName?: string, displayName?: string,
   ): Promise<ClassroomSnapshot> {
-    const s = this.requireSession(sessionId);
+    const s = await this.requireSessionAsync(sessionId);
     let p = s.participants.get(userId);
     if (!p) {
       if (s.isFree) {
@@ -875,7 +878,7 @@ export class ClassroomService implements OnModuleInit {
     // transform/style/text) uchun faqat before kifoya, lekin stroke:add
     // uchun before har doim null (yangi chizmaning "oldingi holati" yo'q),
     // haqiqiy chizma ma'lumoti faqat afterda saqlanadi.
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before, after: entry.after };
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, pane: entry.pane, before: entry.before, after: entry.after };
     this.recordHistoryEvent(s, 'board:undo', payload);
     this.broadcaster.toRoom(s.id, 'board:undo', payload);
   }
@@ -892,7 +895,7 @@ export class ClassroomService implements OnModuleInit {
     // before ham qo'shiladi — board:undo'dagi bilan bir xil sabab
     // (stroke:add uchun before har doim null bo'lsa ham, boshqa turlar
     // uchun kerak bo'lishi mumkin bo'lgan simmetriya uchun).
-    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, before: entry.before, after: entry.after };
+    const payload = { mode: entry.mode, page: entry.page, entryType: entry.type, strokeId: entry.strokeId, pane: entry.pane, before: entry.before, after: entry.after };
     this.recordHistoryEvent(s, 'board:redo', payload);
     this.broadcaster.toRoom(s.id, 'board:redo', payload);
   }
@@ -1356,7 +1359,9 @@ export class ClassroomService implements OnModuleInit {
       }
     }
 
-    await db.delete(freeSessionParticipants).where(eq(freeSessionParticipants.sessionId, sessionId));
+    if (!row.course && !row.courseId) {
+      await db.delete(freeSessionParticipants).where(eq(freeSessionParticipants.sessionId, sessionId));
+    }
     await db.delete(contentBlocks).where(eq(contentBlocks.classSessionId, sessionId));
     await db.delete(classSessions).where(eq(classSessions.id, sessionId));
   }
@@ -1644,6 +1649,7 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
+    if (s.isFree) return;
     if (!s.historyEvents) s.historyEvents = [];
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
   }
@@ -1698,6 +1704,99 @@ export class ClassroomService implements OnModuleInit {
   }
 
   // ---------- Yordamchilar ----------
+
+  private async getOrRestoreSession(sessionId: string): Promise<ClassroomSession | null> {
+    if (this.sessions.has(sessionId)) {
+      return this.sessions.get(sessionId)!;
+    }
+    const row = await db.query.classSessions.findFirst({
+      where: eq(classSessions.id, sessionId),
+      with: { course: true },
+    });
+    if (!row || row.status !== 'active') return null;
+
+    const snapshot = (row.boardSnapshot as unknown as ClassroomBoardSnapshot) ?? {
+      pdfName: row.pdfName ?? null,
+      pages: row.pdfPages ?? [],
+      strokesByPage: {},
+      rightStrokesByPage: {},
+      boardMode: 'pdf',
+      boardLayout: 'single',
+    };
+
+    const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+
+    const snapshotStrokesByMode = (snapshot as any).strokesByMode as Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> | undefined;
+    if (snapshotStrokesByMode) {
+      if (snapshotStrokesByMode.pdf) {
+        strokesByMode.set('pdf', new Map(Object.entries(snapshotStrokesByMode.pdf).map(([p, s]) => [Number(p), s])));
+      }
+      if (snapshotStrokesByMode.notebook) {
+        strokesByMode.set('notebook', new Map(Object.entries(snapshotStrokesByMode.notebook).map(([p, s]) => [Number(p), s])));
+      }
+    } else {
+      strokesByMode.set(snapshot.boardMode ?? 'pdf', new Map(
+        Object.entries(snapshot.strokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
+      ));
+      if (snapshot.rightBoardMode && snapshot.rightBoardMode !== snapshot.boardMode) {
+        strokesByMode.set(snapshot.rightBoardMode, new Map(
+          Object.entries(snapshot.rightStrokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
+        ));
+      }
+    }
+    const boardMode = snapshot.boardMode ?? 'pdf';
+    const primaryStrokes = strokesByMode.get(boardMode) ?? new Map();
+
+    const isFree = row.courseId === null;
+    const session: ClassroomSession = {
+      id: row.id,
+      courseId: row.courseId,
+      courseName: row.course?.name ?? null,
+      title: row.title ?? null,
+      isFree,
+      hostUserId: row.teacherId,
+      hostSocketId: null,
+      pdfName: snapshot.pdfName ?? row.pdfName ?? null,
+      pdfPages: snapshot.pages ?? row.pdfPages ?? [],
+      currentPage: 1,
+      strokesByPage: primaryStrokes,
+      boardMode,
+      boardLayout: snapshot.boardLayout ?? 'single',
+      leftBoardMode: snapshot.leftBoardMode ?? boardMode,
+      rightBoardMode: snapshot.rightBoardMode ?? boardMode,
+      classroomTheme: 'light',
+      notebookStyle: snapshot.notebookStyle ?? 'grid',
+      notebookPageCount: snapshot.notebookPageCount ?? 1,
+      notebookPageStyles: snapshot.notebookPageStyles ?? {},
+      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
+      strokesByMode,
+      participants: new Map(),
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      rightZoom: 1,
+      scroll: null,
+      rightScroll: null,
+    };
+
+    this.sessions.set(sessionId, session);
+    return session;
+  }
+
+  private async requireSessionAsync(sessionId: string): Promise<ClassroomSession> {
+    const s = await this.getOrRestoreSession(sessionId);
+    if (!s) throw new Error('SESSION_NOT_FOUND');
+    return s;
+  }
+
+  private async requireSessionHttpAsync(sessionId: string): Promise<ClassroomSession> {
+    const s = await this.getOrRestoreSession(sessionId);
+    if (!s) throw new NotFoundException('Jonli dars topilmadi yoki tugagan');
+    return s;
+  }
 
   private requireSession(sessionId: string): ClassroomSession {
     const s = this.sessions.get(sessionId);

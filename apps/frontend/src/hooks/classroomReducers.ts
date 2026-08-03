@@ -333,10 +333,11 @@ function applyStrokeTextInverseClient(
 
 function applyBoardUndoRedo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after?: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after?: unknown },
   direction: "undo" | "redo",
 ): ClassroomState {
-  const key = paneKeyForMode(s, p.mode);
+  const pane = p.pane ?? (paneKeyForMode(s, p.mode) === "rightStrokesByPage" ? "right" : "left");
+  const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
   const source = s[key];
 
   let nextSource: Record<number, CsStroke[]> | null = null;
@@ -392,13 +393,13 @@ function applyBoardUndoRedo(
 function applyPageUndoRedo(
   s: ClassroomState,
   p: {
-    mode: CsBoardMode; entryType: string;
+    mode: CsBoardMode; entryType: string; pane?: "left" | "right";
     before: { pageIndex: number; page: { url?: string; notebookStyle?: CsNotebookStyle; strokes: CsStroke[] } } | null;
     after: { afterPageIndex: number; pages?: string[]; style?: CsNotebookStyle } | null;
   },
   direction: "undo" | "redo",
 ): ClassroomState {
-  const pane: "left" | "right" = paneKeyForMode(s, p.mode) === "rightStrokesByPage" ? "right" : "left";
+  const pane: "left" | "right" = p.pane ?? (paneKeyForMode(s, p.mode) === "rightStrokesByPage" ? "right" : "left");
 
   if (p.entryType === "page:remove") {
     if (direction === "redo") {
@@ -433,7 +434,7 @@ function applyPageUndoRedo(
 
 export function applyBoardUndo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown },
 ): ClassroomState {
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
     // page:insert'ning undo'si p.after (afterPageIndex/pages/style) ni
@@ -441,21 +442,21 @@ export function applyBoardUndo(
     // board:undo payload'ida before VA after ikkalasi ham har doim to'liq
     // keladi (useClassroomSession.ts socket listener tipi buni tasdiqlaydi),
     // shuning uchun after'ni ham o'tkazamiz, uni null qilib qattiq yozmaymiz.
-    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: p.before as any, after: (p.after ?? null) as any }, "undo");
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, pane: p.pane, before: p.before as any, after: (p.after ?? null) as any }, "undo");
   }
   return applyBoardUndoRedo(s, p, "undo");
 }
 
 export function applyBoardRedo(
   s: ClassroomState,
-  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown },
+  p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown },
 ): ClassroomState {
   if (p.entryType === "page:remove" || p.entryType === "page:insert") {
     // page:remove'ning redo'si p.before (pageIndex) ni talab qiladi
     // (applyPageUndoRedo'dagi p.before!.pageIndex) — xuddi yuqoridagi
     // applyBoardUndo'dagi kabi, before'ni ham o'tkazamiz, null qilib
     // qattiq yozmaymiz.
-    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, before: (p.before ?? null) as any, after: p.after as any }, "redo");
+    return applyPageUndoRedo(s, { mode: p.mode, entryType: p.entryType, pane: p.pane, before: (p.before ?? null) as any, after: p.after as any }, "redo");
   }
   return applyBoardUndoRedo(s, p, "redo");
 }

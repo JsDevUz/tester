@@ -157,7 +157,9 @@ export function ClassroomHostPage() {
   };
 
   const handleCopyLink = () => {
-    const url = `${window.location.origin}/classroom/free/${id}`;
+    const url = state.isFree
+      ? `${window.location.origin}/classroom/free/${id}`
+      : `${window.location.origin}/classroom/${id}`;
     void navigator.clipboard.writeText(url).then(
       () => toast.success("Havola nusxalandi"),
       () => toast.error("Havolani nusxalab bo'lmadi"),

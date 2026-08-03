@@ -195,8 +195,8 @@ export function useClassroomSession(
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
     socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
       setState((s) => applyNotebookPageStyle(s, p)));
-    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
-    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
+    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
+    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
@@ -384,7 +384,10 @@ export function useClassroomSession(
       }
     },
     setZoom: (zoom: number, pane: "left" | "right" = "left") => emitHost("host:setZoom", { zoom, pane }),
-    setSplitRatio: (ratio: number) => emitHost("host:setSplitRatio", { ratio }),
+    setSplitRatio: (ratio: number) => {
+      setState((s) => ({ ...s, splitRatio: ratio }));
+      emitHost("host:setSplitRatio", { ratio });
+    },
     removePage: (mode: CsBoardMode, pageIndex: number, pane: "left" | "right" = "left") =>
       emitHost("host:removePage", { mode, pageIndex, pane }),
     insertNotebookPage: (afterPageIndex: number, style: CsNotebookStyle, orientation: CsNotebookOrientation = "portrait", pane: "left" | "right" = "left") =>
