@@ -198,6 +198,7 @@ export interface ClassroomBoardSnapshot {
   pages: string[];
   strokesByPage: Record<number, ClassroomStroke[]>;
   rightStrokesByPage: Record<number, ClassroomStroke[]>;
+  strokesByMode?: Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>>;
   boardMode: ClassroomBoardMode;
   boardLayout: ClassroomBoardLayout;
   leftBoardMode: ClassroomBoardMode;

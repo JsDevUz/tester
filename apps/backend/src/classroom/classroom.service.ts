@@ -193,20 +193,26 @@ export class ClassroomService implements OnModuleInit {
       ['pdf', new Map()],
       ['notebook', new Map()],
     ]);
-    // strokesByPage snapshot olingan ondagi boardMode'ga tegishli, shu
-    // sabab o'sha havuzga joylanadi; rightStrokesByPage esa rightBoardMode'ga
-    // (agar u boardMode'dan farqli bo'lsa — split rejimida ikkalasi ham
-    // to'ldiriladi, yakka rejimda ikkalasi bir xil moddi, shuning uchun
-    // strokesByPage ustunlik qiladi).
-    strokesByMode.set(snapshot.boardMode, new Map(
-      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
-    ));
-    if (snapshot.rightBoardMode !== snapshot.boardMode) {
-      strokesByMode.set(snapshot.rightBoardMode, new Map(
-        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+
+    const snapshotStrokesByMode = (snapshot as any).strokesByMode as Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> | undefined;
+    if (snapshotStrokesByMode) {
+      if (snapshotStrokesByMode.pdf) {
+        strokesByMode.set('pdf', new Map(Object.entries(snapshotStrokesByMode.pdf).map(([p, s]) => [Number(p), s])));
+      }
+      if (snapshotStrokesByMode.notebook) {
+        strokesByMode.set('notebook', new Map(Object.entries(snapshotStrokesByMode.notebook).map(([p, s]) => [Number(p), s])));
+      }
+    } else {
+      strokesByMode.set(snapshot.boardMode, new Map(
+        Object.entries(snapshot.strokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
       ));
+      if (snapshot.rightBoardMode && snapshot.rightBoardMode !== snapshot.boardMode) {
+        strokesByMode.set(snapshot.rightBoardMode, new Map(
+          Object.entries(snapshot.rightStrokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
+        ));
+      }
     }
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
     this.sessions.set(row.id, {
       id: row.id,
@@ -303,15 +309,26 @@ export class ClassroomService implements OnModuleInit {
       ['pdf', new Map()],
       ['notebook', new Map()],
     ]);
-    strokesByMode.set(snapshot.boardMode, new Map(
-      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
-    ));
-    if (snapshot.rightBoardMode !== snapshot.boardMode) {
-      strokesByMode.set(snapshot.rightBoardMode, new Map(
-        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+
+    const snapshotStrokesByMode = (snapshot as any).strokesByMode as Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> | undefined;
+    if (snapshotStrokesByMode) {
+      if (snapshotStrokesByMode.pdf) {
+        strokesByMode.set('pdf', new Map(Object.entries(snapshotStrokesByMode.pdf).map(([p, s]) => [Number(p), s])));
+      }
+      if (snapshotStrokesByMode.notebook) {
+        strokesByMode.set('notebook', new Map(Object.entries(snapshotStrokesByMode.notebook).map(([p, s]) => [Number(p), s])));
+      }
+    } else {
+      strokesByMode.set(snapshot.boardMode, new Map(
+        Object.entries(snapshot.strokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
       ));
+      if (snapshot.rightBoardMode && snapshot.rightBoardMode !== snapshot.boardMode) {
+        strokesByMode.set(snapshot.rightBoardMode, new Map(
+          Object.entries(snapshot.rightStrokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
+        ));
+      }
     }
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
     this.sessions.set(row.id, {
       id: row.id,
@@ -366,15 +383,26 @@ export class ClassroomService implements OnModuleInit {
       ['pdf', new Map()],
       ['notebook', new Map()],
     ]);
-    strokesByMode.set(snapshot.boardMode, new Map(
-      Object.entries(snapshot.strokesByPage).map(([page, strokes]) => [Number(page), strokes]),
-    ));
-    if (snapshot.rightBoardMode !== snapshot.boardMode) {
-      strokesByMode.set(snapshot.rightBoardMode, new Map(
-        Object.entries(snapshot.rightStrokesByPage).map(([page, strokes]) => [Number(page), strokes]),
+
+    const snapshotStrokesByMode = (snapshot as any).strokesByMode as Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> | undefined;
+    if (snapshotStrokesByMode) {
+      if (snapshotStrokesByMode.pdf) {
+        strokesByMode.set('pdf', new Map(Object.entries(snapshotStrokesByMode.pdf).map(([p, s]) => [Number(p), s])));
+      }
+      if (snapshotStrokesByMode.notebook) {
+        strokesByMode.set('notebook', new Map(Object.entries(snapshotStrokesByMode.notebook).map(([p, s]) => [Number(p), s])));
+      }
+    } else {
+      strokesByMode.set(snapshot.boardMode, new Map(
+        Object.entries(snapshot.strokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
       ));
+      if (snapshot.rightBoardMode && snapshot.rightBoardMode !== snapshot.boardMode) {
+        strokesByMode.set(snapshot.rightBoardMode, new Map(
+          Object.entries(snapshot.rightStrokesByPage ?? {}).map(([page, strokes]) => [Number(page), strokes]),
+        ));
+      }
     }
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode)!;
+    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
     // Xuddi o'sha ID bilan RAM'ga yuklaymiz
     this.sessions.set(sessionId, {
@@ -1525,11 +1553,33 @@ export class ClassroomService implements OnModuleInit {
   // tashlanadi.
   private buildBoardSnapshot(s: ClassroomSession): ClassroomBoardSnapshot {
     const full = buildSnapshot(s);
+    const pdfStrokes: Record<number, ClassroomStroke[]> = {};
+    const notebookStrokes: Record<number, ClassroomStroke[]> = {};
+
+    if (s.strokesByMode) {
+      const pdfMap = s.strokesByMode.get('pdf');
+      if (pdfMap) {
+        for (const [p, strokes] of pdfMap) {
+          if (strokes.length > 0) pdfStrokes[p] = strokes;
+        }
+      }
+      const notebookMap = s.strokesByMode.get('notebook');
+      if (notebookMap) {
+        for (const [p, strokes] of notebookMap) {
+          if (strokes.length > 0) notebookStrokes[p] = strokes;
+        }
+      }
+    }
+
     return {
       pdfName: full.pdfName,
       pages: full.pages,
       strokesByPage: full.strokesByPage,
       rightStrokesByPage: full.rightStrokesByPage,
+      strokesByMode: {
+        pdf: pdfStrokes,
+        notebook: notebookStrokes,
+      },
       boardMode: full.boardMode,
       boardLayout: full.boardLayout,
       leftBoardMode: full.leftBoardMode,
