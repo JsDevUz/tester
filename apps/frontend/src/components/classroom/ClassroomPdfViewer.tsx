@@ -1780,7 +1780,6 @@ function ClassroomPdfPage({
   onToolChange,
   color,
   colorNonce,
-  onColorChange,
   strokeWidth,
   onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE,
