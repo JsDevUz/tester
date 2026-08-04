@@ -26,7 +26,6 @@ export function useClassroomSubtitleRecorder(
   const chunkStartMsRef = useRef<number>(0);
   const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const ownsStreamRef = useRef(false);
-  const speechRecognitionRef = useRef<{ stop: () => void } | null>(null);
 
   useEffect(() => {
     if (!sessionId || !isHost || !micEnabled) {
@@ -40,8 +39,6 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
-      speechRecognitionRef.current?.stop();
-      speechRecognitionRef.current = null;
       if (streamRef.current) {
         if (ownsStreamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -54,50 +51,6 @@ export function useClassroomSubtitleRecorder(
 
     async function startRecording() {
       try {
-        const SpeechRecognitionCtor = (
-          window as typeof window & {
-            SpeechRecognition?: new () => any;
-            webkitSpeechRecognition?: new () => any;
-          }
-        ).SpeechRecognition ?? (
-          window as typeof window & { webkitSpeechRecognition?: new () => any }
-        ).webkitSpeechRecognition;
-
-        if (SpeechRecognitionCtor) {
-          const recognition = new SpeechRecognitionCtor();
-          speechRecognitionRef.current = recognition;
-          recognition.lang = "uz-UZ";
-          recognition.continuous = true;
-          recognition.interimResults = true;
-          recognition.onresult = (event: any) => {
-            for (let i = event.resultIndex; i < event.results.length; i += 1) {
-              const result = event.results[i];
-              const text = result?.[0]?.transcript?.trim();
-              if (!result?.isFinal || !text) continue;
-              const endMs = Date.now();
-              getClassroomSocket().emit("board:subtitle", {
-                sessionId,
-                token: useAuthStore.getState().token,
-                text,
-                startMs: endMs - 5000,
-                endMs,
-              });
-            }
-          };
-          recognition.onend = () => {
-            if (active) {
-              try { recognition.start(); } catch {}
-            }
-          };
-          recognition.onerror = (event: any) => {
-            if (event?.error !== "no-speech") {
-              console.warn("Native subtitle recognition error:", event?.error);
-            }
-          };
-          recognition.start();
-          return;
-        }
-
         let stream: MediaStream | null = null;
         try {
           const livekitStream = getAudioStream?.();
@@ -184,8 +137,6 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
-      speechRecognitionRef.current?.stop();
-      speechRecognitionRef.current = null;
       if (streamRef.current) {
         if (ownsStreamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
