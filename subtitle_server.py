@@ -19,7 +19,7 @@ from faster_whisper import WhisperModel
 import uvicorn
 
 PORT = int(os.environ.get("PORT", 8090))
-MODEL_NAME = os.environ.get("WHISPER_MODEL", "small")
+MODEL_NAME = os.environ.get("WHISPER_MODEL", "turbo")
 
 print(f"🔄 Faster-Whisper ({MODEL_NAME}) modeli yuklanmoqda...")
 start_time = time.time()
@@ -58,6 +58,10 @@ def clean_transcript(text: str) -> str:
     # or silent audio. Do not discard ordinary punctuation or Cyrillic text.
     if re.search(r"[\u0600-\u06ff\u3040-\u30ff\u3400-\u9fff]", text):
         return ""
+    # IPA va diakritikali hallucinationlarni (ʕ, ʔ, tʃ, ì, ĕ...) butunlay
+    # rad etamiz. O'zbek lotin yozuvi ASCII harflar + apostrofdan iborat.
+    if any(ch.isalpha() and not re.match(r"[A-Za-z\u0400-\u04ff]", ch) for ch in text):
+        return ""
     text = re.sub(r"\s+", " ", text).strip()
     return text if re.search(r"[A-Za-z\u0400-\u04ff]", text) else ""
 
@@ -83,11 +87,12 @@ async def transcribe_base64(req: TranscribeRequest):
             segments, info = model.transcribe(
                 tmp.name,
                 language="uz",
-                initial_prompt="Bu o‘zbek tilidagi jonli dars. Matnni o‘zbek lotin yozuvida aniq yozing.",
                 condition_on_previous_text=False,
+                hotwords="o'zbek, o'qituvchi, o'quvchi, dars, bugun, mavzu, savol, javob",
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
-                beam_size=1,
+                beam_size=5,
+                best_of=5,
                 temperature=0.0,
                 repetition_penalty=1.15,
                 no_repeat_ngram_size=3,
@@ -132,11 +137,12 @@ async def transcribe_file(req: TranscribeFileRequest):
             segments, info = model.transcribe(
                 tmp.name,
                 language="uz",
-                initial_prompt="Bu o‘zbek tilidagi dars. Matnni o‘zbek lotin yozuvida aniq yozing.",
                 condition_on_previous_text=False,
+                hotwords="o'zbek, o'qituvchi, o'quvchi, dars, bugun, mavzu, savol, javob",
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
-                beam_size=1,
+                beam_size=5,
+                best_of=5,
                 temperature=0.0,
                 repetition_penalty=1.15,
                 no_repeat_ngram_size=3,

@@ -114,7 +114,7 @@ export function useClassroomSubtitleRecorder(
           recorder.start();
           intervalRef.current = setTimeout(() => {
             if (recorder.state === "recording") recorder.stop();
-          }, 3000);
+          }, 6000);
         };
 
         recordChunk();

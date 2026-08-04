@@ -54,7 +54,7 @@ services:
       - "8090:8090"
     environment:
       PORT: 8090
-      WHISPER_MODEL: small
+      WHISPER_MODEL: ${WHISPER_MODEL:-turbo}
 
   web:
     build:
