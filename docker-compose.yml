@@ -38,6 +38,7 @@ services:
       LIVEKIT_URL: ${LIVEKIT_URL:-}
       LIVEKIT_API_KEY: ${LIVEKIT_API_KEY:-}
       LIVEKIT_API_SECRET: ${LIVEKIT_API_SECRET:-}
+      SUBTITLE_SERVER_URL: ${SUBTITLE_SERVER_URL:-http://subtitle-server:8090}
     volumes:
       - uploads_data:/app/apps/backend/uploads
     depends_on:

@@ -197,6 +197,7 @@ export function useClassroomSession(
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("board:subtitle", (cue: { id: string; startMs: number; endMs: number; text: string }) => {
+      console.log("💬 Client received board:subtitle cue:", cue);
       setState((s) => ({
         ...s,
         subtitles: [...(s.subtitles ?? []), cue],

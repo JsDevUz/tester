@@ -101,6 +101,7 @@ export function useClassroomSubtitleRecorder(
               const base64 = bufferToBase64(buffer);
               const token = useAuthStore.getState().token;
               const socket = getClassroomSocket();
+              console.log("📤 Emitting board:subtitle_audio chunk size:", blobToSend.size);
               socket.emit("board:subtitle_audio", {
                 sessionId,
                 token,

@@ -354,18 +354,36 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
       if (!s) return;
       if (userId && s.hostUserId !== userId) return;
 
-      const subtitleUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
-      const response = await fetch(`${subtitleUrl}/transcribe-base64`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          audioBase64: body.audioBase64,
-          startMs: body.startMs,
-          endMs: body.endMs,
-        }),
-      });
+      const primaryUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
+      let response: Response | null = null;
 
-      if (!response.ok) return;
+      try {
+        response = await fetch(`${primaryUrl}/transcribe-base64`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            audioBase64: body.audioBase64,
+            startMs: body.startMs,
+            endMs: body.endMs,
+          }),
+        });
+      } catch {
+        try {
+          response = await fetch('http://127.0.0.1:8090/transcribe-base64', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              audioBase64: body.audioBase64,
+              startMs: body.startMs,
+              endMs: body.endMs,
+            }),
+          });
+        } catch (err) {
+          console.warn('Subtitle server connection error:', err);
+        }
+      }
+
+      if (!response || !response.ok) return;
       const data = (await response.json()) as { text?: string };
       if (data.text && data.text.trim().length > 0) {
         const cue = {
@@ -377,8 +395,8 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         this.classroomService.addSubtitleCue(body.sessionId, cue);
         this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);
       }
-    } catch {
-      // Subtitle server unavailable or error swallowed silently
+    } catch (err) {
+      console.warn('handleSubtitleAudio error:', err);
     }
   }
 
