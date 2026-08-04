@@ -45,12 +45,9 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster = b;
   }
 
-  // Server restartda xotira holati yo'qoladi — osilib qolgan sessiyalarni yopamiz
+  // Server restartda aktiv sessiyalarni yopmaymiz. Ular DB snapshotdan
+  // birinchi host/student join vaqtida getOrRestoreSession orqali tiklanadi.
   async onModuleInit() {
-    await db.update(classSessions)
-      .set({ status: 'ended', endedAt: new Date() })
-      .where(eq(classSessions.status, 'active'));
-
     // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
     // ustoz to'satdan brauzerni yopib yuborsa ham saqlanmay qolib ketmaydi.
     setInterval(() => {
@@ -680,6 +677,16 @@ export class ClassroomService implements OnModuleInit {
 
   hostJoin(sessionId: string, userId: string, socketId: string): ClassroomSnapshot {
     const s = this.requireSession(sessionId);
+    if (s.hostUserId !== userId) throw new Error('FORBIDDEN');
+    if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
+    s.hostSocketId = socketId;
+    this.broadcaster.toRoom(sessionId, 'host:online', {});
+    return buildSnapshot(s);
+  }
+
+  async hostJoinRestored(sessionId: string, userId: string, socketId: string): Promise<ClassroomSnapshot> {
+    const s = await this.getOrRestoreSession(sessionId, userId);
+    if (!s) throw new Error('SESSION_NOT_FOUND');
     if (s.hostUserId !== userId) throw new Error('FORBIDDEN');
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
     s.hostSocketId = socketId;
@@ -1854,7 +1861,7 @@ export class ClassroomService implements OnModuleInit {
 
   // ---------- Yordamchilar ----------
 
-  private async getOrRestoreSession(sessionId: string): Promise<ClassroomSession | null> {
+  private async getOrRestoreSession(sessionId: string, restoringHostId?: string): Promise<ClassroomSession | null> {
     if (this.sessions.has(sessionId)) {
       return this.sessions.get(sessionId)!;
     }
@@ -1862,7 +1869,15 @@ export class ClassroomService implements OnModuleInit {
       where: eq(classSessions.id, sessionId),
       with: { course: true },
     });
-    if (!row || row.status !== 'active') return null;
+    if (!row) return null;
+    if (row.status !== 'active') {
+      // Faqat erkin dars egasi eski host URL orqali o'z darsini qayta
+      // ochishi mumkin. Student/begona user va kurs darsi avtomatik ochilmaydi.
+      if (!restoringHostId || row.courseId !== null || row.teacherId !== restoringHostId) return null;
+      await db.update(classSessions)
+        .set({ status: 'active', endedAt: null })
+        .where(eq(classSessions.id, sessionId));
+    }
 
     const snapshot = (row.boardSnapshot as unknown as ClassroomBoardSnapshot) ?? {
       pdfName: row.pdfName ?? null,
@@ -1929,6 +1944,7 @@ export class ClassroomService implements OnModuleInit {
       rightZoom: 1,
       scroll: null,
       rightScroll: null,
+      subtitles: snapshot.subtitles ?? [],
     };
 
     this.sessions.set(sessionId, session);

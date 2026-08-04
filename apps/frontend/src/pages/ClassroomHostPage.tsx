@@ -49,6 +49,7 @@ const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
   FORBIDDEN: "Bu darsni boshqarish huquqingiz yo'q",
   UNAUTHORIZED: "Avtorizatsiya xatosi — qayta kiring",
+  CONNECTION_TIMEOUT: "Server bilan ulanish vaqti tugadi — sahifani yangilang",
 };
 
 export function ClassroomHostPage() {

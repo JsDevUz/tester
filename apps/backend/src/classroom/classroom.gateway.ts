@@ -50,14 +50,16 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:join')
-  hostJoin(@MessageBody() body: BaseBody, @ConnectedSocket() client: Socket) {
-    return this.run(() => {
+  async hostJoin(@MessageBody() body: BaseBody, @ConnectedSocket() client: Socket) {
+    try {
       const user = this.verify(body.token);
       if (user.role !== 'teacher' && user.role !== 'super') throw new Error('UNAUTHORIZED');
-      const state = this.classroomService.hostJoin(body.sessionId, user.sub, client.id);
+      const state = await this.classroomService.hostJoinRestored(body.sessionId, user.sub, client.id);
       void client.join(`cs:${body.sessionId}`);
-      return { state };
-    });
+      return { ok: true, state };
+    } catch (e: any) {
+      return { ok: false, code: e?.message ?? 'ERROR' };
+    }
   }
 
   // Erkin (guruhsiz) darsga login qilmagan mehmon ham kirishi mumkin —

@@ -112,12 +112,16 @@ export function useClassroomSession(
         joinPayload.guestId = getGuestId();
         joinPayload.guestName = guestName;
       }
-      socket.emit(
+      socket.timeout(10_000).emit(
         role === "host" ? "host:join" : "student:join",
         joinPayload,
-        (res: { ok: boolean; code?: string; state?: CsSnapshot }) => {
-          if (!res.ok || !res.state) {
-            setState((s) => ({ ...s, error: res.code ?? "ERROR" }));
+        (timeoutError: Error | null, res?: { ok: boolean; code?: string; state?: CsSnapshot }) => {
+          if (timeoutError) {
+            setState((s) => ({ ...s, error: "CONNECTION_TIMEOUT" }));
+            return;
+          }
+          if (!res?.ok || !res.state) {
+            setState((s) => ({ ...s, error: res?.code ?? "ERROR" }));
             return;
           }
           const snap = res.state;
