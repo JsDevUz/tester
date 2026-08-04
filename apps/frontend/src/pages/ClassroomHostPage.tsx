@@ -16,6 +16,7 @@ import {
 } from "../components/classroom/ClassroomPdfViewer";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
+import { ClassroomSubtitleOverlay } from "../components/classroom/ClassroomSubtitleOverlay";
 import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomThemeToggle } from "../components/classroom/ClassroomThemeToggle";
@@ -368,6 +369,7 @@ export function ClassroomHostPage() {
         />
 
         <StickerReactionsOverlay reactions={state.reactions ?? []} />
+        <ClassroomSubtitleOverlay subtitles={state.subtitles} />
 
         <ClassroomCallBar
           micEnabled={voice.micEnabled}

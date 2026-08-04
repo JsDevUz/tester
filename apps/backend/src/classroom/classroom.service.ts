@@ -24,7 +24,7 @@ import {
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookOrientation, ClassroomNotebookStyle,
-  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
+  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomSubtitleCue, ClassroomUndoEntry,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -836,6 +836,13 @@ export class ClassroomService implements OnModuleInit {
         pdfPages: s.pdfPages,
       })
       .where(eq(classSessions.id, sessionId));
+  }
+
+  addSubtitleCue(sessionId: string, cue: ClassroomSubtitleCue): void {
+    const s = this.sessions.get(sessionId);
+    if (!s) return;
+    if (!s.subtitles) s.subtitles = [];
+    s.subtitles.push(cue);
   }
 
   moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
@@ -1683,6 +1690,7 @@ export class ClassroomService implements OnModuleInit {
       notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
       notebookPageOrientations: full.notebookPageOrientations,
+      subtitles: s.subtitles ?? [],
     };
   }
 

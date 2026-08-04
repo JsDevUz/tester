@@ -203,6 +203,7 @@ export interface ClassBoardSnapshotData {
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
   notebookPageCount: number;
+  subtitles?: Array<{ id: string; startMs: number; endMs: number; text: string }>;
 }
 
 export interface ClassSessionRecordingInfo {

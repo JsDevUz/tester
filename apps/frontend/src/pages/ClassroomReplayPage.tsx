@@ -8,6 +8,7 @@ import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useThemeStore } from "../stores/themeStore";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
+import { ClassroomSubtitleOverlay } from "../components/classroom/ClassroomSubtitleOverlay";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
@@ -248,6 +249,11 @@ export function ClassroomReplayPage() {
             hideMoveButton={useStaticSnapshot}
           />
           <StickerReactionsOverlay reactions={viewState.reactions ?? []} />
+          <ClassroomSubtitleOverlay
+            isReplay={true}
+            replayTimeMs={replay.currentTimeMs}
+            subtitles={(viewState as any).subtitles ?? data?.boardSnapshot?.subtitles ?? []}
+          />
         </div>
       </div>
 

@@ -10,6 +10,7 @@ import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 import { useFullscreen } from "../hooks/useFullscreen";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
+import { ClassroomSubtitleOverlay } from "../components/classroom/ClassroomSubtitleOverlay";
 import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
@@ -234,6 +235,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
         />
 
         <StickerReactionsOverlay reactions={state.reactions ?? []} />
+        <ClassroomSubtitleOverlay subtitles={state.subtitles} />
 
         <ClassroomCallBar
           micEnabled={voice.micEnabled}

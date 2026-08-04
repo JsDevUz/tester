@@ -186,6 +186,7 @@ export interface ClassroomSession {
   recordingStatus?: 'none' | 'pending' | 'ready' | 'failed';
   recordingStartedAtMs?: number | null;
   egressId?: string | null;
+  subtitles?: ClassroomSubtitleCue[];
 }
 
 export type ClassroomRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
@@ -194,6 +195,13 @@ export type ClassroomRecordingMode = 'full' | 'boardAudio' | 'boardSilent';
 // rejimlarida class_sessions.board_snapshot'ga saqlanadi. Vektor
 // (stroke) darajasida saqlangani uchun istalgan zoom darajasida sifat
 // yo'qolmasdan qayta chiziladi (rasm/PDF emas).
+export interface ClassroomSubtitleCue {
+  id: string;
+  startMs: number;
+  endMs: number;
+  text: string;
+}
+
 export interface ClassroomBoardSnapshot {
   pdfName: string | null;
   pages: string[];
@@ -208,6 +216,7 @@ export interface ClassroomBoardSnapshot {
   notebookPageCount: number;
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
+  subtitles?: ClassroomSubtitleCue[];
 }
 
 export interface ClassroomRaisedHand {
@@ -242,6 +251,7 @@ export interface ClassroomSnapshot {
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
   raisedHands?: ClassroomRaisedHand[];
+  subtitles?: ClassroomSubtitleCue[];
 }
 
 // Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi

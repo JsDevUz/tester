@@ -321,6 +321,23 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('board:subtitle')
+  sendSubtitle(
+    @MessageBody() body: BaseBody & { text: string; startMs: number; endMs: number },
+    @ConnectedSocket() client: Socket,
+  ) {
+    return this.run(() => {
+      const cue = {
+        id: crypto.randomUUID(),
+        text: body.text,
+        startMs: body.startMs,
+        endMs: body.endMs,
+      };
+      this.classroomService.addSubtitleCue(body.sessionId, cue);
+      this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);
+    });
+  }
+
   @SubscribeMessage('hand:toggle')
   handToggle(
     @MessageBody() body: BaseBody & { userName?: string },
