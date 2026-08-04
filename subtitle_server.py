@@ -16,10 +16,13 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from faster_whisper import WhisperModel
+from groq import Groq
 import uvicorn
 
 PORT = int(os.environ.get("PORT", 8090))
 MODEL_NAME = os.environ.get("WHISPER_MODEL", "turbo")
+GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
+groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 print(f"🔄 Faster-Whisper ({MODEL_NAME}) modeli yuklanmoqda...")
 start_time = time.time()
@@ -84,26 +87,40 @@ async def transcribe_base64(req: TranscribeRequest):
             tmp.write(audio_bytes)
             tmp.flush()
 
-            segments, info = model.transcribe(
-                tmp.name,
-                language="uz",
-                condition_on_previous_text=False,
-                hotwords="o'zbek, o'qituvchi, o'quvchi, dars, bugun, mavzu, savol, javob",
-                vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=500),
-                beam_size=5,
-                best_of=5,
-                temperature=0.0,
-                repetition_penalty=1.15,
-                no_repeat_ngram_size=3,
-                compression_ratio_threshold=2.4,
-                log_prob_threshold=-1.0,
-                no_speech_threshold=0.6,
-            )
+            segments = []
+            info = None
+            text_out = ""
+            if groq_client:
+                try:
+                    result = groq_client.audio.transcriptions.create(
+                        file=("chunk.webm", audio_bytes),
+                        model="whisper-large-v3",
+                        language="uz",
+                        response_format="verbose_json",
+                        temperature=0.0,
+                    )
+                    text_out = result.text.strip()
+                except Exception as groq_error:
+                    print(f"⚠️ Groq transcription failed, using local fallback: {groq_error}")
 
-            segments = list(segments)
-            text_parts = [s.text.strip() for s in segments if s.text.strip()]
-            text_out = " ".join(text_parts).strip()
+            if not text_out:
+                local_segments, info = model.transcribe(
+                    tmp.name,
+                    language="uz",
+                    condition_on_previous_text=False,
+                    vad_filter=True,
+                    vad_parameters=dict(min_silence_duration_ms=500),
+                    beam_size=5,
+                    best_of=5,
+                    temperature=0.0,
+                    repetition_penalty=1.15,
+                    no_repeat_ngram_size=3,
+                    compression_ratio_threshold=2.4,
+                    log_prob_threshold=-1.0,
+                    no_speech_threshold=0.6,
+                )
+                segments = list(local_segments)
+                text_out = " ".join(s.text.strip() for s in segments if s.text.strip()).strip()
 
             text_out = clean_transcript(text_out)
 
@@ -116,7 +133,7 @@ async def transcribe_base64(req: TranscribeRequest):
                 "text": text_out,
                 "startMs": req.startMs,
                 "endMs": req.endMs,
-                "language": info.language if info else "uz",
+                "language": "uz",
                 "cueStartOffsetMs": int(segments[0].start * 1000) if segments else 0,
                 "cueEndOffsetMs": int(segments[-1].end * 1000) if segments else 0,
             }
@@ -138,7 +155,6 @@ async def transcribe_file(req: TranscribeFileRequest):
                 tmp.name,
                 language="uz",
                 condition_on_previous_text=False,
-                hotwords="o'zbek, o'qituvchi, o'quvchi, dars, bugun, mavzu, savol, javob",
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
                 beam_size=5,

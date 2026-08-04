@@ -55,6 +55,7 @@ services:
     environment:
       PORT: 8090
       WHISPER_MODEL: ${WHISPER_MODEL:-turbo}
+      GROQ_API_KEY: ${GROQ_API_KEY:-}
 
   web:
     build:
