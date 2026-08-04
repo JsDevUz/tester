@@ -25,6 +25,7 @@ export function useClassroomSubtitleRecorder(
   const streamRef = useRef<MediaStream | null>(null);
   const chunkStartMsRef = useRef<number>(0);
   const intervalRef = useRef<NodeJS.Timeout | null>(null);
+  const headerBlobRef = useRef<Blob | null>(null);
 
   useEffect(() => {
     if (!sessionId || !isHost || !micEnabled) {
@@ -38,6 +39,7 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
+      headerBlobRef.current = null;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
@@ -65,49 +67,59 @@ export function useClassroomSubtitleRecorder(
           ? "audio/webm"
           : "";
 
-        const createRecorder = () => {
-          if (!stream || !active) return;
-          const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-          mediaRecorderRef.current = recorder;
-          chunkStartMsRef.current = Date.now();
+        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+        mediaRecorderRef.current = recorder;
+        headerBlobRef.current = null;
+        chunkStartMsRef.current = Date.now();
 
-          recorder.ondataavailable = async (e) => {
-            if (e.data && e.data.size > 200 && sessionId) {
-              const startMs = chunkStartMsRef.current;
-              const endMs = Date.now();
+        recorder.ondataavailable = async (e) => {
+          if (e.data && e.data.size > 50 && sessionId) {
+            const startMs = chunkStartMsRef.current;
+            const endMs = Date.now();
+            chunkStartMsRef.current = endMs;
 
-              try {
-                const buffer = await e.data.arrayBuffer();
-                const base64 = bufferToBase64(buffer);
-                const token = useAuthStore.getState().token;
-                const socket = getClassroomSocket();
-                socket.emit("board:subtitle_audio", {
-                  sessionId,
-                  token,
-                  audioBase64: base64,
-                  startMs,
-                  endMs,
-                });
-              } catch (err) {
-                console.warn("Subtitle chunk encode error:", err);
-              }
+            let blobToSend: Blob = e.data;
+            if (!headerBlobRef.current) {
+              // Store WebM header from the first chunk (first 300 bytes)
+              headerBlobRef.current = e.data.slice(0, Math.min(300, e.data.size));
+            } else {
+              // Prepend WebM header to subsequent chunks so FFmpeg can parse standalone chunks
+              blobToSend = new Blob([headerBlobRef.current, e.data], {
+                type: mimeType || "audio/webm",
+              });
             }
-          };
 
-          recorder.start();
+            try {
+              const buffer = await blobToSend.arrayBuffer();
+              const base64 = bufferToBase64(buffer);
+              const token = useAuthStore.getState().token;
+              const socket = getClassroomSocket();
+              socket.emit("board:subtitle_audio", {
+                sessionId,
+                token,
+                audioBase64: base64,
+                startMs,
+                endMs,
+              });
+            } catch (err) {
+              console.warn("Subtitle chunk encode error:", err);
+            }
+          }
         };
 
-        createRecorder();
+        // Start recording once
+        recorder.start();
 
-        // Continuous 2.5-second chunking with standalone WebM headers
+        // Flush data every 2.5s using requestData() without stopping recorder
         intervalRef.current = setInterval(() => {
           if (!active) return;
           if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
             try {
-              mediaRecorderRef.current.stop();
-            } catch {}
+              mediaRecorderRef.current.requestData();
+            } catch (err) {
+              console.warn("requestData error:", err);
+            }
           }
-          createRecorder();
         }, 2500);
       } catch (err) {
         console.warn("Subtitle audio recorder warning:", err);
@@ -128,6 +140,7 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
+      headerBlobRef.current = null;
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
