@@ -9,7 +9,7 @@ import os
 import sys
 import tempfile
 import time
-from fastapi import FastAPI, UploadFile, File, Form
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from faster_whisper import WhisperModel
@@ -42,13 +42,6 @@ class TranscribeRequest(BaseModel):
     startMs: int = 0
     endMs: int = 0
 
-EXACT_PROMPT_HALLUCINATIONS = {
-    "bu onlayn dars ma'ruzasi, o'zbekcha nutq.",
-    "bu onlayn dars ma'ruzasi.",
-    "o'zbekcha nutq.",
-    "bu onlayn dars ma'ruzasi, o'zbekcha nutq",
-}
-
 @app.get("/")
 def health():
     return {"status": "ok", "model": MODEL_NAME}
@@ -60,7 +53,6 @@ async def transcribe_base64(req: TranscribeRequest):
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
         audio_bytes = base64.b64decode(req.audioBase64)
-        print(f"📥 Received audio bytes: {len(audio_bytes)}")
 
         if len(audio_bytes) < 300:
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
@@ -73,21 +65,20 @@ async def transcribe_base64(req: TranscribeRequest):
                 tmp.name,
                 language="uz",
                 vad_filter=True,
-                vad_parameters=dict(min_silence_duration_ms=400),
+                vad_parameters=dict(min_silence_duration_ms=500),
                 beam_size=1,
+                initial_prompt="Bu o'zbek tilidagi jonli dars ma'ruzasi va muloqoti.",
+                condition_on_previous_text=False,
+                no_speech_threshold=0.6,
             )
 
             text_parts = [s.text.strip() for s in segments if s.text.strip()]
             text_out = " ".join(text_parts).strip()
 
-            # Only filter exact prompt hallucination strings
-            if text_out.lower() in EXACT_PROMPT_HALLUCINATIONS:
-                text_out = ""
-
             if text_out:
                 print(f"💬 Transcribed [{req.startMs}ms - {req.endMs}ms]: '{text_out}'")
             else:
-                print(f"🔇 Silent chunk or no text detected.")
+                print(f"🔇 Silent chunk or no speech detected.")
 
             return {
                 "text": text_out,
