@@ -6,6 +6,7 @@ Jonli darslar uchun audio bo'laklarini o'zbek tiliga transkripsiya qiladi.
 
 import base64
 import os
+import re
 import sys
 import tempfile
 import time
@@ -42,6 +43,18 @@ class TranscribeRequest(BaseModel):
     startMs: int = 0
     endMs: int = 0
 
+def is_valid_uzbek_text(text: str) -> bool:
+    if not text or len(text.strip()) == 0:
+        return False
+    if "\ufffd" in text:
+        return False
+    # Ruxsat etilgan belgilar: Lotin, Kirill, raqamlar, probel va odatiy tinish belgilari
+    cleaned = re.sub(r"[a-zA-Z\u0400-\u04FF0-9\s.,?!'\-\"’`‘]", "", text)
+    # Agar begona (Xitoy, Yapon, g'alati belgilar) bo'lsa rad etiladi
+    if len(cleaned) > 0:
+        return False
+    return True
+
 @app.get("/")
 def health():
     return {"status": "ok", "model": MODEL_NAME}
@@ -67,18 +80,21 @@ async def transcribe_base64(req: TranscribeRequest):
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
                 beam_size=1,
-                initial_prompt="Bu o'zbek tilidagi jonli dars ma'ruzasi va muloqoti.",
-                condition_on_previous_text=False,
+                compression_ratio_threshold=2.4,
+                logprob_threshold=-1.0,
                 no_speech_threshold=0.6,
             )
 
             text_parts = [s.text.strip() for s in segments if s.text.strip()]
             text_out = " ".join(text_parts).strip()
 
+            if not is_valid_uzbek_text(text_out):
+                text_out = ""
+
             if text_out:
                 print(f"💬 Transcribed [{req.startMs}ms - {req.endMs}ms]: '{text_out}'")
             else:
-                print(f"🔇 Silent chunk or no speech detected.")
+                print(f"🔇 Silent chunk or filtered garbage noise.")
 
             return {
                 "text": text_out,
