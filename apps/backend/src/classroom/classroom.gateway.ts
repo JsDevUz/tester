@@ -338,6 +338,43 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('board:subtitle_audio')
+  async handleSubtitleAudio(
+    @MessageBody() body: BaseBody & { audioBase64: string; startMs: number; endMs: number },
+  ) {
+    try {
+      const user = this.verify(body.token);
+      const s = this.classroomService.getSession(body.sessionId);
+      if (!s || s.hostUserId !== user.sub) return;
+
+      const subtitleUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
+      const response = await fetch(`${subtitleUrl}/transcribe-base64`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioBase64: body.audioBase64,
+          startMs: body.startMs,
+          endMs: body.endMs,
+        }),
+      });
+
+      if (!response.ok) return;
+      const data = (await response.json()) as { text?: string };
+      if (data.text && data.text.trim().length > 0) {
+        const cue = {
+          id: crypto.randomUUID(),
+          text: data.text.trim(),
+          startMs: body.startMs,
+          endMs: body.endMs,
+        };
+        this.classroomService.addSubtitleCue(body.sessionId, cue);
+        this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);
+      }
+    } catch {
+      // Subtitle server unavailable or error swallowed silently
+    }
+  }
+
   @SubscribeMessage('hand:toggle')
   handToggle(
     @MessageBody() body: BaseBody & { userName?: string },

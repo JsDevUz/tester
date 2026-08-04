@@ -1,96 +1,87 @@
 #!/usr/bin/env python3
 """
-Jonli darslar uchun Whisper Subtitle Microservice
-VPS da 8090 portda WebSocket server sifatida ishlaydi.
+Faster-Whisper Subtitle Microservice (FastAPI)
+Jonli darslar uchun audio bo'laklarini o'zbek tiliga transkripsiya qiladi.
 """
 
-import asyncio
-import json
+import base64
 import os
 import sys
-import time
 import tempfile
-import websockets
+import time
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.middleware.cors import CORSMiddleware
+from pydantic import BaseModel
 from faster_whisper import WhisperModel
+import uvicorn
 
 PORT = int(os.environ.get("PORT", 8090))
 MODEL_NAME = os.environ.get("WHISPER_MODEL", "small")
 
-print(f"🔄 Faster-Whisper ({MODEL_NAME}) modeli xotiraga yuklanmoqda...")
+print(f"🔄 Faster-Whisper ({MODEL_NAME}) modeli yuklanmoqda...")
 start_time = time.time()
 try:
     model = WhisperModel(MODEL_NAME, device="cpu", compute_type="int8", cpu_threads=4)
-    print(f"✅ Model {time.time() - start_time:.2f} soniyada muvaffaqiyatli yuklandi!")
+    print(f"✅ Model {time.time() - start_time:.2f} soniyada yuklandi!")
 except Exception as e:
     print(f"❌ Modelni yuklashda xatolik: {e}")
     sys.exit(1)
 
-async def handle_client(websocket):
-    print(f"🎙 Client ulandi: {websocket.remote_address}")
-    audio_buffer = bytearray()
-    start_timestamp_ms = int(time.time() * 1000)
+app = FastAPI(title="Whisper Subtitle Microservice")
 
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
+class TranscribeRequest(BaseModel):
+    audioBase64: str
+    startMs: int = 0
+    endMs: int = 0
+
+@app.get("/")
+def health():
+    return {"status": "ok", "model": MODEL_NAME}
+
+@app.post("/transcribe-base64")
+async def transcribe_base64(req: TranscribeRequest):
     try:
-        async for message in websocket:
-            if isinstance(message, bytes):
-                audio_buffer.extend(message)
+        if not req.audioBase64:
+            return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
-                # ~2 soniyalik audio yig'ilganda (16kHz 16-bit PCM = 64000 bytes)
-                if len(audio_buffer) >= 64000:
-                    current_now = int(time.time() * 1000)
-                    chunk = bytes(audio_buffer)
-                    audio_buffer.clear()
+        audio_bytes = base64.b64decode(req.audioBase64)
+        if len(audio_bytes) < 100:
+            return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
-                    # VAD va transkripsiya
-                    with tempfile.NamedTemporaryFile(suffix=".wav", delete=True) as tmp:
-                        tmp.write(chunk)
-                        tmp.flush()
+        with tempfile.NamedTemporaryFile(suffix=".webm", delete=True) as tmp:
+            tmp.write(audio_bytes)
+            tmp.flush()
 
-                        try:
-                            segments, info = model.transcribe(
-                                tmp.name,
-                                language="uz",
-                                initial_prompt="Bu onlayn dars ma'ruzasi, o'zbekcha nutq.",
-                                beam_size=1,
-                            )
+            segments, info = model.transcribe(
+                tmp.name,
+                language="uz",
+                initial_prompt="Bu onlayn dars ma'ruzasi, o'zbekcha nutq.",
+                beam_size=1,
+            )
 
-                            text_parts = [segment.text.strip() for segment in segments if segment.text.strip()]
-                            text_out = " ".join(text_parts).strip()
+            text_parts = [s.text.strip() for s in segments if s.text.strip()]
+            text_out = " ".join(text_parts).strip()
 
-                            if text_out:
-                                cue = {
-                                    "text": text_out,
-                                    "startMs": start_timestamp_ms,
-                                    "endMs": current_now,
-                                    "language": info.language,
-                                }
-                                await websocket.send(json.dumps(cue))
-                                print(f"💬 [{info.language}]: {text_out}")
-                        except Exception as ex:
-                            print(f"⚠️ Transkripsiya xatosi: {ex}")
+            if text_out:
+                print(f"💬 [{req.startMs}ms - {req.endMs}ms]: {text_out}")
 
-                    start_timestamp_ms = current_now
-
-            elif isinstance(message, str):
-                try:
-                    data = json.loads(message)
-                    if data.get("type") == "ping":
-                        await websocket.send(json.dumps({"type": "pong"}))
-                except Exception:
-                    pass
-
-    except websockets.exceptions.ConnectionClosed:
-        print(f"🔴 Client uzildi: {websocket.remote_address}")
+            return {
+                "text": text_out,
+                "startMs": req.startMs,
+                "endMs": req.endMs,
+                "language": info.language if info else "uz",
+            }
     except Exception as e:
-        print(f"⚠️ Kutilmagan xatolik: {e}")
-
-async def main():
-    async with websockets.serve(handle_client, "0.0.0.0", PORT):
-        print(f"🚀 Subtitle Server ws://0.0.0.0:{PORT} da muvaffaqiyatli ishga tushdi!")
-        await asyncio.Future()
+        print(f"⚠️ Transcribe error: {e}")
+        return {"text": "", "error": str(e), "startMs": req.startMs, "endMs": req.endMs}
 
 if __name__ == "__main__":
-    try:
-        asyncio.run(main())
-    except KeyboardInterrupt:
-        print("\n👋 Server to'xtatildi.")
+    uvicorn.run(app, host="0.0.0.0", port=PORT)

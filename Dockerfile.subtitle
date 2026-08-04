@@ -8,7 +8,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 COPY subtitle_server.py /app/
 
-RUN pip install --no-cache-dir faster-whisper websockets
+RUN pip install --no-cache-dir faster-whisper fastapi uvicorn pydantic python-multipart
 
 EXPOSE 8090
 

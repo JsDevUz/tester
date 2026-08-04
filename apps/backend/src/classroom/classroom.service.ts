@@ -589,6 +589,10 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'board:set', payload);
   }
 
+  getSession(sessionId: string): ClassroomSession | undefined {
+    return this.sessions.get(sessionId);
+  }
+
   async endSession(sessionId: string, byUserId: string | null): Promise<void> {
     const s = this.requireSession(sessionId);
     if (byUserId !== null && s.hostUserId !== byUserId) throw new ForbiddenException('Faqat dars ustozi yakunlay oladi');

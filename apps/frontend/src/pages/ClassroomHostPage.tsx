@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
+import { useClassroomSubtitleRecorder } from "../hooks/useClassroomSubtitleRecorder";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useFullscreen } from "../hooks/useFullscreen";
 import {
@@ -58,6 +59,7 @@ export function ClassroomHostPage() {
   const isHandRaised = (state.raisedHands ?? []).some((h) => h.userId === (admin?.id ?? "host"));
   useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
+  useClassroomSubtitleRecorder(id, true, voice.micEnabled);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");
