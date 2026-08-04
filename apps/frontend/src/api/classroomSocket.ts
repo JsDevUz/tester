@@ -6,7 +6,14 @@ let socket: Socket | null = null;
 
 export function getClassroomSocket(): Socket {
   if (!socket) {
-    socket = io(`${BACKEND}/classroom`, { transports: ['websocket', 'polling'] });
+    // Cloudflare/Nginx ayrim ulanishlarda WebSocket handshake'ni reset qilishi
+    // mumkin. Polling bilan ishonchli ulanib, keyin WebSocket'ga upgrade qilamiz.
+    socket = io(`${BACKEND}/classroom`, {
+      transports: ['polling', 'websocket'],
+      upgrade: true,
+      timeout: 10_000,
+      reconnection: true,
+    });
   }
   return socket;
 }
