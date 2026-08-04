@@ -42,7 +42,12 @@ class TranscribeRequest(BaseModel):
     startMs: int = 0
     endMs: int = 0
 
-PROMPT_FILTER = ["bu onlayn dars ma'ruzasi", "o'zbekcha nutq", "dars ma'ruzasi"]
+EXACT_PROMPT_HALLUCINATIONS = {
+    "bu onlayn dars ma'ruzasi, o'zbekcha nutq.",
+    "bu onlayn dars ma'ruzasi.",
+    "o'zbekcha nutq.",
+    "bu onlayn dars ma'ruzasi, o'zbekcha nutq",
+}
 
 @app.get("/")
 def health():
@@ -55,6 +60,8 @@ async def transcribe_base64(req: TranscribeRequest):
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
         audio_bytes = base64.b64decode(req.audioBase64)
+        print(f"📥 Received audio bytes: {len(audio_bytes)}")
+
         if len(audio_bytes) < 300:
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
@@ -62,7 +69,6 @@ async def transcribe_base64(req: TranscribeRequest):
             tmp.write(audio_bytes)
             tmp.flush()
 
-            # VAD (Voice Activity Detection) orqali sukunatni avtomatik filtrlash
             segments, info = model.transcribe(
                 tmp.name,
                 language="uz",
@@ -74,13 +80,14 @@ async def transcribe_base64(req: TranscribeRequest):
             text_parts = [s.text.strip() for s in segments if s.text.strip()]
             text_out = " ".join(text_parts).strip()
 
-            # Prompt yoki sukunat gallyutsinatsiyasini filtrlash
-            clean_text = text_out.lower()
-            if any(pf in clean_text for pf in PROMPT_FILTER) and len(clean_text) < 45:
+            # Only filter exact prompt hallucination strings
+            if text_out.lower() in EXACT_PROMPT_HALLUCINATIONS:
                 text_out = ""
 
             if text_out:
-                print(f"💬 [{req.startMs}ms - {req.endMs}ms]: {text_out}")
+                print(f"💬 Transcribed [{req.startMs}ms - {req.endMs}ms]: '{text_out}'")
+            else:
+                print(f"🔇 Silent chunk or no text detected.")
 
             return {
                 "text": text_out,

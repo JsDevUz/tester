@@ -343,16 +343,13 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     @MessageBody() body: BaseBody & { audioBase64: string; startMs: number; endMs: number },
   ) {
     try {
-      let userId: string | null = null;
-      if (body.token) {
-        try {
-          const user = this.verify(body.token);
-          userId = user.sub;
-        } catch {}
-      }
       const s = this.classroomService.getSession(body.sessionId);
-      if (!s) return;
-      if (userId && s.hostUserId !== userId) return;
+      if (!s) {
+        console.warn(`[Subtitle] Session not found: ${body.sessionId}`);
+        return;
+      }
+
+      console.log(`[Subtitle] 📥 Received audio chunk for ${body.sessionId}, base64 len: ${body.audioBase64?.length}`);
 
       const primaryUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
       let response: Response | null = null;
@@ -367,7 +364,7 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
             endMs: body.endMs,
           }),
         });
-      } catch {
+      } catch (err1) {
         try {
           response = await fetch('http://127.0.0.1:8090/transcribe-base64', {
             method: 'POST',
@@ -378,13 +375,19 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
               endMs: body.endMs,
             }),
           });
-        } catch (err) {
-          console.warn('Subtitle server connection error:', err);
+        } catch (err2) {
+          console.warn('[Subtitle] Connection error to subtitle-server:', err2);
         }
       }
 
-      if (!response || !response.ok) return;
+      if (!response || !response.ok) {
+        console.warn(`[Subtitle] Subtitle server response not ok: ${response?.status}`);
+        return;
+      }
+
       const data = (await response.json()) as { text?: string };
+      console.log(`[Subtitle] 💬 Whisper transcribed for ${body.sessionId}: "${data.text}"`);
+
       if (data.text && data.text.trim().length > 0) {
         const cue = {
           id: crypto.randomUUID(),
@@ -394,9 +397,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         };
         this.classroomService.addSubtitleCue(body.sessionId, cue);
         this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);
+        console.log(`[Subtitle] 📢 Broadcasted cue to cs:${body.sessionId}: "${cue.text}"`);
       }
     } catch (err) {
-      console.warn('handleSubtitleAudio error:', err);
+      console.warn('[Subtitle] Gateway error:', err);
     }
   }
 
