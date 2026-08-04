@@ -329,11 +329,17 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     @ConnectedSocket() client: Socket,
   ) {
     return this.run(() => {
+      const s = this.classroomService.getSession(body.sessionId);
+      if (!s) throw new Error('SESSION_NOT_FOUND');
+      const user = this.verify(body.token);
+      if (user.sub !== s.hostUserId) throw new Error('FORBIDDEN');
+      const endMs = Math.max(0, Date.now() - s.startedAtMs);
+      const durationMs = Math.min(10_000, Math.max(1000, body.endMs - body.startMs));
       const cue = {
         id: crypto.randomUUID(),
-        text: body.text,
-        startMs: body.startMs,
-        endMs: body.endMs,
+        text: body.text.trim(),
+        startMs: Math.max(0, endMs - durationMs),
+        endMs,
       };
       this.classroomService.addSubtitleCue(body.sessionId, cue);
       this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);

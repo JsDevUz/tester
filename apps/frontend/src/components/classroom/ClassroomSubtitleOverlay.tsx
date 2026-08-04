@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from "react";
-import { Subtitles } from "lucide-react";
 
 export interface ClassroomSubtitleCue {
   id: string;
@@ -13,6 +12,7 @@ interface ClassroomSubtitleOverlayProps {
   replayTimeMs?: number;
   subtitles?: ClassroomSubtitleCue[];
   liveSubtitle?: string;
+  enabled?: boolean;
 }
 
 export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> = ({
@@ -20,8 +20,8 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
   replayTimeMs = 0,
   subtitles = [],
   liveSubtitle = "",
+  enabled = true,
 }) => {
-  const [enabled, setEnabled] = useState<boolean>(true);
   const [displayText, setDisplayText] = useState<string>("");
 
   useEffect(() => {
@@ -50,9 +50,7 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
     }
   }, [isReplay, liveSubtitle, subtitles]);
 
-  return (
-    <>
-      {enabled && displayText ? (
+  return enabled && displayText ? (
         <div className="pointer-events-none fixed bottom-[84px] sm:bottom-[92px] left-1/2 z-30 -translate-x-1/2 w-auto max-w-xl px-4 text-center">
           <span
             className="inline bg-black/90 text-white font-medium text-base sm:text-lg leading-relaxed px-3.5 py-1.5 rounded-lg shadow-xl tracking-wide select-none transition-all duration-200"
@@ -64,17 +62,5 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
             {displayText}
           </span>
         </div>
-      ) : null}
-      <button
-        type="button"
-        onClick={() => setEnabled((value) => !value)}
-        className={`fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur ${enabled ? "bg-slate-900/80 hover:bg-slate-900" : "bg-slate-600/70 hover:bg-slate-700"}`}
-        title={enabled ? "Subtitrni o‘chirish" : "Subtitrni yoqish"}
-        aria-pressed={enabled}
-      >
-        <Subtitles size={14} className={enabled ? "text-yellow-400" : "text-slate-300"} />
-        <span>CC</span>
-      </button>
-    </>
-  );
+      ) : null;
 };

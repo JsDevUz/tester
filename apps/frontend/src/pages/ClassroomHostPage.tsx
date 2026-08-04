@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Circle, Download, Link2, Maximize2, Minimize2, Volume2 } from "lucide-react";
+import { Circle, Download, Link2, Maximize2, Minimize2, Subtitles, Volume2 } from "lucide-react";
 import { toast } from "sonner";
 import { useAuthStore } from "../stores/authStore";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -77,6 +77,7 @@ export function ClassroomHostPage() {
   const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [recordingMode, setRecordingMode] = useState<ClassRecordingMode | null>(null);
+  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
   const [elapsedMs, setElapsedMs] = useState(0);
 
@@ -372,7 +373,7 @@ export function ClassroomHostPage() {
         />
 
         <StickerReactionsOverlay reactions={state.reactions ?? []} />
-        <ClassroomSubtitleOverlay subtitles={state.subtitles} />
+        <ClassroomSubtitleOverlay subtitles={state.subtitles} enabled={subtitlesEnabled} />
 
         <ClassroomCallBar
           micEnabled={voice.micEnabled}
@@ -400,6 +401,12 @@ export function ClassroomHostPage() {
                   icon: <Circle size={16} className="fill-red-500 text-red-500" />,
                   onSelect: () => setRecordModalOpen(true),
                 }] : []),
+                {
+                  key: "subtitles",
+                  label: subtitlesEnabled ? "Subtitrni o‘chirish" : "Subtitrni yoqish",
+                  icon: <Subtitles size={16} />,
+                  onSelect: () => setSubtitlesEnabled((value) => !value),
+                },
                 ...(state.isFree ? [{
                   key: "link",
                   label: "Havola",
