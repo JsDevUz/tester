@@ -153,5 +153,15 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     }
   }, []);
 
-  return { ...state, toggleMic, unlockAudio, switchAudioInput };
+  const getLocalAudioStream = useCallback(() => {
+    const room = roomRef.current;
+    if (!room) return null;
+    const trackPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
+    if (!trackPub || !trackPub.track) return null;
+    const mediaStreamTrack = trackPub.track.mediaStreamTrack;
+    if (!mediaStreamTrack) return null;
+    return new MediaStream([mediaStreamTrack]);
+  }, []);
+
+  return { ...state, toggleMic, unlockAudio, switchAudioInput, getLocalAudioStream };
 }

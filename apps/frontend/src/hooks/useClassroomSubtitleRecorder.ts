@@ -1,10 +1,24 @@
 import { useEffect, useRef } from "react";
 import { getClassroomSocket } from "../api/classroomSocket";
 
+function bufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  let binary = "";
+  const chunkSize = 8192;
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    binary += String.fromCharCode.apply(
+      null,
+      bytes.subarray(i, i + chunkSize) as unknown as number[],
+    );
+  }
+  return btoa(binary);
+}
+
 export function useClassroomSubtitleRecorder(
   sessionId: string | undefined,
   isHost: boolean,
   micEnabled: boolean,
+  getAudioStream?: () => MediaStream | null,
 ) {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
@@ -29,9 +43,12 @@ export function useClassroomSubtitleRecorder(
 
     async function startRecording() {
       try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        let stream: MediaStream | null = getAudioStream?.() ?? null;
+        if (!stream || stream.getAudioTracks().length === 0 || !stream.getAudioTracks()[0].enabled) {
+          stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        }
         if (!active) {
-          stream.getTracks().forEach((t) => t.stop());
+          if (stream) stream.getTracks().forEach((t) => t.stop());
           return;
         }
         streamRef.current = stream;
@@ -53,9 +70,7 @@ export function useClassroomSubtitleRecorder(
             chunkStartMsRef.current = endMs;
 
             const buffer = await e.data.arrayBuffer();
-            const base64 = btoa(
-              new Uint8Array(buffer).reduce((data, byte) => data + String.fromCharCode(byte), ""),
-            );
+            const base64 = bufferToBase64(buffer);
 
             const socket = getClassroomSocket();
             socket.emit("board:subtitle_audio", {
@@ -88,5 +103,5 @@ export function useClassroomSubtitleRecorder(
         streamRef.current = null;
       }
     };
-  }, [sessionId, isHost, micEnabled]);
+  }, [sessionId, isHost, micEnabled, getAudioStream]);
 }
