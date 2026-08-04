@@ -349,6 +349,18 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         return;
       }
 
+      const user = this.verify(body.token);
+      if (user.sub !== s.hostUserId) {
+        console.warn(`[Subtitle] Rejected audio from non-host for ${body.sessionId}`);
+        return;
+      }
+
+      // Browser timestamps are Unix milliseconds, while replay uses elapsed
+      // session milliseconds. Normalize on the trusted server clock.
+      const durationMs = Math.min(15_000, Math.max(0, body.endMs - body.startMs));
+      const endMs = Math.max(0, Date.now() - s.startedAtMs);
+      const startMs = Math.max(0, endMs - durationMs);
+
       console.log(`[Subtitle] 📥 Received audio chunk for ${body.sessionId}, base64 len: ${body.audioBase64?.length}`);
 
       const primaryUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
@@ -360,8 +372,8 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             audioBase64: body.audioBase64,
-            startMs: body.startMs,
-            endMs: body.endMs,
+            startMs,
+            endMs,
           }),
         });
       } catch (err1) {
@@ -371,8 +383,8 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               audioBase64: body.audioBase64,
-              startMs: body.startMs,
-              endMs: body.endMs,
+              startMs,
+              endMs,
             }),
           });
         } catch (err2) {
@@ -385,15 +397,21 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         return;
       }
 
-      const data = (await response.json()) as { text?: string };
+      const data = (await response.json()) as {
+        text?: string;
+        cueStartOffsetMs?: number;
+        cueEndOffsetMs?: number;
+      };
       console.log(`[Subtitle] 💬 Whisper transcribed for ${body.sessionId}: "${data.text}"`);
 
       if (data.text && data.text.trim().length > 0) {
         const cue = {
           id: crypto.randomUUID(),
           text: data.text.trim(),
-          startMs: body.startMs,
-          endMs: body.endMs,
+          startMs: startMs + Math.max(0, data.cueStartOffsetMs ?? 0),
+          endMs: data.cueEndOffsetMs && data.cueEndOffsetMs > 0
+            ? Math.min(endMs, startMs + data.cueEndOffsetMs)
+            : endMs,
         };
         this.classroomService.addSubtitleCue(body.sessionId, cue);
         this.server.to(`cs:${body.sessionId}`).emit('board:subtitle', cue);

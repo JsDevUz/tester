@@ -50,11 +50,9 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
     }
   }, [isReplay, liveSubtitle, subtitles]);
 
-  if (!enabled) return null;
-
   return (
     <>
-      {displayText ? (
+      {enabled && displayText ? (
         <div className="pointer-events-none fixed bottom-[84px] sm:bottom-[92px] left-1/2 z-30 -translate-x-1/2 w-auto max-w-xl px-4 text-center">
           <span
             className="inline bg-black/90 text-white font-medium text-base sm:text-lg leading-relaxed px-3.5 py-1.5 rounded-lg shadow-xl tracking-wide select-none transition-all duration-200"
@@ -66,17 +64,17 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
             {displayText}
           </span>
         </div>
-      ) : (
-        <button
-          type="button"
-          onClick={() => setEnabled(false)}
-          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur hover:bg-slate-900"
-          title="Subtitr rejimida"
-        >
-          <Subtitles size={14} className="text-yellow-400" />
-          <span>CC</span>
-        </button>
-      )}
+      ) : null}
+      <button
+        type="button"
+        onClick={() => setEnabled((value) => !value)}
+        className={`fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur ${enabled ? "bg-slate-900/80 hover:bg-slate-900" : "bg-slate-600/70 hover:bg-slate-700"}`}
+        title={enabled ? "Subtitrni o‘chirish" : "Subtitrni yoqish"}
+        aria-pressed={enabled}
+      >
+        <Subtitles size={14} className={enabled ? "text-yellow-400" : "text-slate-300"} />
+        <span>CC</span>
+      </button>
     </>
   );
 };

@@ -24,13 +24,13 @@ export function useClassroomSubtitleRecorder(
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunkStartMsRef = useRef<number>(0);
-  const intervalRef = useRef<NodeJS.Timeout | null>(null);
-  const headerBlobRef = useRef<Blob | null>(null);
+  const intervalRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const ownsStreamRef = useRef(false);
 
   useEffect(() => {
     if (!sessionId || !isHost || !micEnabled) {
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearTimeout(intervalRef.current);
         intervalRef.current = null;
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -39,10 +39,10 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
-      headerBlobRef.current = null;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        if (ownsStreamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        ownsStreamRef.current = false;
       }
       return;
     }
@@ -55,12 +55,16 @@ export function useClassroomSubtitleRecorder(
         try {
           const livekitStream = getAudioStream?.();
           if (livekitStream && livekitStream.getAudioTracks().length > 0) {
-            stream = livekitStream;
+            // Record a cloned track. Stopping the subtitle recorder must never
+            // stop the LiveKit microphone track used by the lesson itself.
+            stream = new MediaStream(livekitStream.getAudioTracks().map((track) => track.clone()));
+            ownsStreamRef.current = true;
           }
         } catch {}
 
         if (!stream) {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          ownsStreamRef.current = true;
         }
         if (!active) {
           if (stream) stream.getTracks().forEach((t) => t.stop());
@@ -74,61 +78,46 @@ export function useClassroomSubtitleRecorder(
           ? "audio/webm"
           : "";
 
-        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-        mediaRecorderRef.current = recorder;
-        headerBlobRef.current = null;
-        chunkStartMsRef.current = Date.now();
+        const recordChunk = () => {
+          if (!active || !stream || stream.getAudioTracks().every((track) => track.readyState === "ended")) return;
 
-        recorder.ondataavailable = async (e) => {
-          if (e.data && e.data.size > 50 && sessionId) {
+          const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+          const parts: Blob[] = [];
+          mediaRecorderRef.current = recorder;
+          chunkStartMsRef.current = Date.now();
+
+          recorder.ondataavailable = (event) => {
+            if (event.data.size > 0) parts.push(event.data);
+          };
+          recorder.onstop = async () => {
             const startMs = chunkStartMsRef.current;
             const endMs = Date.now();
-            chunkStartMsRef.current = endMs;
-
-            let blobToSend: Blob = e.data;
-            if (!headerBlobRef.current) {
-              // Store complete WebM header chunk from first slice
-              headerBlobRef.current = e.data;
-            } else {
-              // Prepend complete WebM header chunk to subsequent slices
-              blobToSend = new Blob([headerBlobRef.current, e.data], {
-                type: mimeType || "audio/webm",
-              });
+            const blob = new Blob(parts, { type: mimeType || recorder.mimeType });
+            if (blob.size > 300 && sessionId) {
+              try {
+                const base64 = bufferToBase64(await blob.arrayBuffer());
+                getClassroomSocket().emit("board:subtitle_audio", {
+                  sessionId,
+                  token: useAuthStore.getState().token,
+                  audioBase64: base64,
+                  startMs,
+                  endMs,
+                });
+              } catch (err) {
+                console.warn("Subtitle chunk encode error:", err);
+              }
             }
+            if (active) recordChunk();
+          };
 
-            try {
-              const buffer = await blobToSend.arrayBuffer();
-              const base64 = bufferToBase64(buffer);
-              const token = useAuthStore.getState().token;
-              const socket = getClassroomSocket();
-              console.log("📤 Emitting board:subtitle_audio chunk size:", blobToSend.size);
-              socket.emit("board:subtitle_audio", {
-                sessionId,
-                token,
-                audioBase64: base64,
-                startMs,
-                endMs,
-              });
-            } catch (err) {
-              console.warn("Subtitle chunk encode error:", err);
-            }
-          }
+          // stop() finalizes a complete, independently decodable WebM file.
+          recorder.start();
+          intervalRef.current = setTimeout(() => {
+            if (recorder.state === "recording") recorder.stop();
+          }, 3000);
         };
 
-        // Start recording once
-        recorder.start();
-
-        // Flush data every 2.5s using requestData() without stopping recorder
-        intervalRef.current = setInterval(() => {
-          if (!active) return;
-          if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
-            try {
-              mediaRecorderRef.current.requestData();
-            } catch (err) {
-              console.warn("requestData error:", err);
-            }
-          }
-        }, 2500);
+        recordChunk();
       } catch (err) {
         console.warn("Subtitle audio recorder warning:", err);
       }
@@ -139,7 +128,7 @@ export function useClassroomSubtitleRecorder(
     return () => {
       active = false;
       if (intervalRef.current) {
-        clearInterval(intervalRef.current);
+        clearTimeout(intervalRef.current);
         intervalRef.current = null;
       }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
@@ -148,10 +137,10 @@ export function useClassroomSubtitleRecorder(
         } catch {}
       }
       mediaRecorderRef.current = null;
-      headerBlobRef.current = null;
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        if (ownsStreamRef.current) streamRef.current.getTracks().forEach((t) => t.stop());
         streamRef.current = null;
+        ownsStreamRef.current = false;
       }
     };
   }, [sessionId, isHost, micEnabled, getAudioStream]);

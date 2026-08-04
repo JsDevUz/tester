@@ -651,6 +651,7 @@ export class ClassroomService implements OnModuleInit {
       recordingStartedAtMs: recStartedAtMs,
       recordingMode: s.recordingMode ?? dbRow?.recordingMode ?? null,
       boardSnapshot,
+      subtitles: s.subtitles ?? [],
       egressId: recEgressId,
       attendance: recordingAttendance,
     };
@@ -663,6 +664,7 @@ export class ClassroomService implements OnModuleInit {
         historyEvents,
         recordingMode: s.recordingMode ?? null,
         boardSnapshot,
+        subtitles: s.subtitles ?? [],
         recordings: updatedRecordings,
       })
       .where(eq(classSessions.id, sessionId));
@@ -1398,12 +1400,26 @@ export class ClassroomService implements OnModuleInit {
     const recordingMode = selectedEntry ? selectedEntry.recordingMode : (row.recordingMode as ClassroomRecordingMode | null);
     const boardSnapshot = selectedEntry ? selectedEntry.boardSnapshot : (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null);
 
+    let subtitles = selectedEntry && Array.isArray(selectedEntry.subtitles)
+      ? selectedEntry.subtitles
+      : (((row as any).subtitles as unknown as any[]) ?? []);
+
+    if ((!subtitles || subtitles.length === 0) && recordingUrl) {
+      const publicUrl = this.storage.getPublicUrl(recordingUrl);
+      if (publicUrl) {
+        this.autoTranscribeReplayAudio(sessionId, publicUrl).catch((err) => {
+          console.warn('[Subtitle] Auto-transcribe error for past replay:', err);
+        });
+      }
+    }
+
     return {
       isTeacher,
       title: selectedEntry?.title ?? row.title ?? row.pdfName ?? null,
       pdfName: row.pdfName,
       pdfPages: (row.pdfPages as string[]) ?? [],
       historyEvents,
+      subtitles,
       recordingUrl: recordingUrl ? this.storage.getPublicUrl(recordingUrl) : null,
       recordingStatus,
       recordingStartedAtMs,
@@ -1429,6 +1445,37 @@ export class ClassroomService implements OnModuleInit {
                 status: 'present' as const,
               }))),
     };
+  }
+
+  async autoTranscribeReplayAudio(sessionId: string, audioUrl: string) {
+    try {
+      const primaryUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
+      let response: Response | null = null;
+      try {
+        response = await fetch(`${primaryUrl}/transcribe-file`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ audioUrl }),
+        });
+      } catch {
+        try {
+          response = await fetch('http://127.0.0.1:8090/transcribe-file', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ audioUrl }),
+          });
+        } catch {}
+      }
+
+      if (!response || !response.ok) return;
+      const data = (await response.json()) as { cues?: any[] };
+      if (data.cues && data.cues.length > 0) {
+        await db.update(classSessions).set({ subtitles: data.cues }).where(eq(classSessions.id, sessionId));
+        console.log(`[Subtitle] Auto-transcribed ${data.cues.length} cues for past replay ${sessionId}`);
+      }
+    } catch (err) {
+      console.warn('[Subtitle] autoTranscribeReplayAudio failed:', err);
+    }
   }
 
   // Yakunlangan sessiyani butunlay ochiradi: DB yozuvi, audio yozuv fayli

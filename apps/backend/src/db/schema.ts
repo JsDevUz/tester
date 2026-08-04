@@ -644,6 +644,7 @@ export const classSessions = pgTable('class_sessions', {
   // Sessiya bir nechta marta davom ettirilganda (reopen) har bir seans uchun
   // alohida recording obyektlari massivi { id, partNumber, createdAt, historyEvents, recordingUrl, ... }.
   recordings: jsonb('recordings'),
+  subtitles: jsonb('subtitles'),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));

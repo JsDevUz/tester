@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """
 Faster-Whisper Subtitle Microservice (FastAPI)
-Jonli darslar uchun audio bo'laklarini o'zbek tiliga transkripsiya qiladi.
+Jonli darslar va yozib olingan audio fayllar uchun o'zbek tiliga transkripsiya qiladi.
 """
 
 import base64
@@ -10,6 +10,8 @@ import re
 import sys
 import tempfile
 import time
+import urllib.request
+import unicodedata
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
@@ -43,17 +45,21 @@ class TranscribeRequest(BaseModel):
     startMs: int = 0
     endMs: int = 0
 
-def is_valid_uzbek_text(text: str) -> bool:
-    if not text or len(text.strip()) == 0:
-        return False
-    if "\ufffd" in text:
-        return False
-    # Ruxsat etilgan belgilar: Lotin, Kirill, raqamlar, probel va odatiy tinish belgilari
-    cleaned = re.sub(r"[a-zA-Z\u0400-\u04FF0-9\s.,?!'\-\"’`‘]", "", text)
-    # Agar begona (Xitoy, Yapon, g'alati belgilar) bo'lsa rad etiladi
-    if len(cleaned) > 0:
-        return False
-    return True
+class TranscribeFileRequest(BaseModel):
+    audioUrl: str
+
+def clean_transcript(text: str) -> str:
+    """Keep normal Uzbek punctuation; reject only clearly wrong scripts/noise."""
+    if not text:
+        return ""
+    text = unicodedata.normalize("NFKC", text).replace("\ufffd", "")
+    text = text.replace("ʻ", "'").replace("ʼ", "'").replace("’", "'").replace("‘", "'")
+    # Forced Uzbek decoding can still hallucinate CJK/Arabic glyphs on broken
+    # or silent audio. Do not discard ordinary punctuation or Cyrillic text.
+    if re.search(r"[\u0600-\u06ff\u3040-\u30ff\u3400-\u9fff]", text):
+        return ""
+    text = re.sub(r"\s+", " ", text).strip()
+    return text if re.search(r"[A-Za-z\u0400-\u04ff]", text) else ""
 
 @app.get("/")
 def health():
@@ -65,7 +71,7 @@ async def transcribe_base64(req: TranscribeRequest):
         if not req.audioBase64:
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
-        audio_bytes = base64.b64decode(req.audioBase64)
+        audio_bytes = base64.b64decode(req.audioBase64, validate=True)
 
         if len(audio_bytes) < 300:
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
@@ -77,19 +83,24 @@ async def transcribe_base64(req: TranscribeRequest):
             segments, info = model.transcribe(
                 tmp.name,
                 language="uz",
+                initial_prompt="Bu o‘zbek tilidagi jonli dars. Matnni o‘zbek lotin yozuvida aniq yozing.",
+                condition_on_previous_text=False,
                 vad_filter=True,
                 vad_parameters=dict(min_silence_duration_ms=500),
                 beam_size=1,
+                temperature=0.0,
+                repetition_penalty=1.15,
+                no_repeat_ngram_size=3,
                 compression_ratio_threshold=2.4,
                 logprob_threshold=-1.0,
                 no_speech_threshold=0.6,
             )
 
+            segments = list(segments)
             text_parts = [s.text.strip() for s in segments if s.text.strip()]
             text_out = " ".join(text_parts).strip()
 
-            if not is_valid_uzbek_text(text_out):
-                text_out = ""
+            text_out = clean_transcript(text_out)
 
             if text_out:
                 print(f"💬 Transcribed [{req.startMs}ms - {req.endMs}ms]: '{text_out}'")
@@ -101,10 +112,55 @@ async def transcribe_base64(req: TranscribeRequest):
                 "startMs": req.startMs,
                 "endMs": req.endMs,
                 "language": info.language if info else "uz",
+                "cueStartOffsetMs": int(segments[0].start * 1000) if segments else 0,
+                "cueEndOffsetMs": int(segments[-1].end * 1000) if segments else 0,
             }
     except Exception as e:
         print(f"⚠️ Transcribe error: {e}")
         return {"text": "", "error": str(e), "startMs": req.startMs, "endMs": req.endMs}
+
+@app.post("/transcribe-file")
+async def transcribe_file(req: TranscribeFileRequest):
+    try:
+        if not req.audioUrl:
+            return {"cues": []}
+
+        print(f"📥 Transcribing full audio file for past replay: {req.audioUrl}")
+        with tempfile.NamedTemporaryFile(suffix=".mp3", delete=True) as tmp:
+            urllib.request.urlretrieve(req.audioUrl, tmp.name)
+
+            segments, info = model.transcribe(
+                tmp.name,
+                language="uz",
+                initial_prompt="Bu o‘zbek tilidagi dars. Matnni o‘zbek lotin yozuvida aniq yozing.",
+                condition_on_previous_text=False,
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=500),
+                beam_size=1,
+                temperature=0.0,
+                repetition_penalty=1.15,
+                no_repeat_ngram_size=3,
+                compression_ratio_threshold=2.4,
+                logprob_threshold=-1.0,
+                no_speech_threshold=0.6,
+            )
+
+            cues = []
+            for idx, s in enumerate(segments):
+                txt = clean_transcript(s.text)
+                if txt:
+                    cues.append({
+                        "id": f"cue_{idx}_{int(s.start * 1000)}",
+                        "startMs": int(s.start * 1000),
+                        "endMs": int(s.end * 1000),
+                        "text": txt,
+                    })
+
+            print(f"✅ Generated {len(cues)} subtitle cues for replay audio file!")
+            return {"cues": cues}
+    except Exception as e:
+        print(f"⚠️ Transcribe file error: {e}")
+        return {"cues": [], "error": str(e)}
 
 if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=PORT)
