@@ -156,9 +156,11 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
   const getLocalAudioStream = useCallback(() => {
     const room = roomRef.current;
     if (!room) return null;
-    const trackPub = room.localParticipant.getTrackPublication(Track.Source.Microphone);
-    if (!trackPub || !trackPub.track) return null;
-    const mediaStreamTrack = trackPub.track.mediaStreamTrack;
+    const pub =
+      room.localParticipant.getTrackPublication(Track.Source.Microphone) ||
+      Array.from(room.localParticipant.audioTrackPublications.values())[0];
+    if (!pub || !pub.track) return null;
+    const mediaStreamTrack = pub.track.mediaStreamTrack;
     if (!mediaStreamTrack) return null;
     return new MediaStream([mediaStreamTrack]);
   }, []);

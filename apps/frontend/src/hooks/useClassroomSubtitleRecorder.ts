@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "react";
 import { getClassroomSocket } from "../api/classroomSocket";
+import { useAuthStore } from "../stores/authStore";
 
 function bufferToBase64(buffer: ArrayBuffer): string {
   const bytes = new Uint8Array(buffer);
@@ -72,9 +73,11 @@ export function useClassroomSubtitleRecorder(
             const buffer = await e.data.arrayBuffer();
             const base64 = bufferToBase64(buffer);
 
+            const token = useAuthStore.getState().token;
             const socket = getClassroomSocket();
             socket.emit("board:subtitle_audio", {
               sessionId,
+              token,
               audioBase64: base64,
               startMs,
               endMs,

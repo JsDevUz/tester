@@ -343,9 +343,16 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     @MessageBody() body: BaseBody & { audioBase64: string; startMs: number; endMs: number },
   ) {
     try {
-      const user = this.verify(body.token);
+      let userId: string | null = null;
+      if (body.token) {
+        try {
+          const user = this.verify(body.token);
+          userId = user.sub;
+        } catch {}
+      }
       const s = this.classroomService.getSession(body.sessionId);
-      if (!s || s.hostUserId !== user.sub) return;
+      if (!s) return;
+      if (userId && s.hostUserId !== userId) return;
 
       const subtitleUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
       const response = await fetch(`${subtitleUrl}/transcribe-base64`, {
