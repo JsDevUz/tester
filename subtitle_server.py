@@ -42,6 +42,8 @@ class TranscribeRequest(BaseModel):
     startMs: int = 0
     endMs: int = 0
 
+PROMPT_FILTER = ["bu onlayn dars ma'ruzasi", "o'zbekcha nutq", "dars ma'ruzasi"]
+
 @app.get("/")
 def health():
     return {"status": "ok", "model": MODEL_NAME}
@@ -53,22 +55,29 @@ async def transcribe_base64(req: TranscribeRequest):
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
         audio_bytes = base64.b64decode(req.audioBase64)
-        if len(audio_bytes) < 100:
+        if len(audio_bytes) < 300:
             return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
 
         with tempfile.NamedTemporaryFile(suffix=".webm", delete=True) as tmp:
             tmp.write(audio_bytes)
             tmp.flush()
 
+            # VAD (Voice Activity Detection) orqali sukunatni avtomatik filtrlash
             segments, info = model.transcribe(
                 tmp.name,
                 language="uz",
-                initial_prompt="Bu onlayn dars ma'ruzasi, o'zbekcha nutq.",
+                vad_filter=True,
+                vad_parameters=dict(min_silence_duration_ms=400),
                 beam_size=1,
             )
 
             text_parts = [s.text.strip() for s in segments if s.text.strip()]
             text_out = " ".join(text_parts).strip()
+
+            # Prompt yoki sukunat gallyutsinatsiyasini filtrlash
+            clean_text = text_out.lower()
+            if any(pf in clean_text for pf in PROMPT_FILTER) and len(clean_text) < 45:
+                text_out = ""
 
             if text_out:
                 print(f"💬 [{req.startMs}ms - {req.endMs}ms]: {text_out}")
