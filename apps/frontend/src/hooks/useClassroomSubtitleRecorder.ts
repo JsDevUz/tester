@@ -51,8 +51,15 @@ export function useClassroomSubtitleRecorder(
 
     async function startRecording() {
       try {
-        let stream: MediaStream | null = getAudioStream?.() ?? null;
-        if (!stream || stream.getAudioTracks().length === 0 || !stream.getAudioTracks()[0].enabled) {
+        let stream: MediaStream | null = null;
+        try {
+          const livekitStream = getAudioStream?.();
+          if (livekitStream && livekitStream.getAudioTracks().length > 0) {
+            stream = livekitStream;
+          }
+        } catch {}
+
+        if (!stream) {
           stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         }
         if (!active) {
@@ -80,10 +87,10 @@ export function useClassroomSubtitleRecorder(
 
             let blobToSend: Blob = e.data;
             if (!headerBlobRef.current) {
-              // Store WebM header from the first chunk (first 300 bytes)
-              headerBlobRef.current = e.data.slice(0, Math.min(300, e.data.size));
+              // Store complete WebM header chunk from first slice
+              headerBlobRef.current = e.data;
             } else {
-              // Prepend WebM header to subsequent chunks so FFmpeg can parse standalone chunks
+              // Prepend complete WebM header chunk to subsequent slices
               blobToSend = new Blob([headerBlobRef.current, e.data], {
                 type: mimeType || "audio/webm",
               });
