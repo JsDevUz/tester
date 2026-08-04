@@ -44,6 +44,17 @@ services:
       db:
         condition: service_healthy
 
+  subtitle-server:
+    build:
+      context: .
+      dockerfile: Dockerfile.subtitle
+    restart: unless-stopped
+    ports:
+      - "8090:8090"
+    environment:
+      PORT: 8090
+      WHISPER_MODEL: small
+
   web:
     build:
       context: .
