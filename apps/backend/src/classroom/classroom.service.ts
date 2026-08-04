@@ -24,7 +24,7 @@ import {
 } from './classroom.logic';
 import {
   AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookOrientation, ClassroomNotebookStyle,
-  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomSubtitleCue, ClassroomUndoEntry,
+  ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
 } from './classroom.types';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
@@ -32,6 +32,7 @@ const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
 @Injectable()
 export class ClassroomService implements OnModuleInit {
   private sessions = new Map<string, ClassroomSession>();
+  private subtitleTranscriptionJobs = new Map<string, Promise<void>>();
   private broadcaster: ClassroomBroadcaster = { toRoom: () => {}, toSocket: () => {} };
 
   constructor(
@@ -648,7 +649,6 @@ export class ClassroomService implements OnModuleInit {
       recordingStartedAtMs: recStartedAtMs,
       recordingMode: s.recordingMode ?? dbRow?.recordingMode ?? null,
       boardSnapshot,
-      subtitles: s.subtitles ?? [],
       egressId: recEgressId,
       attendance: recordingAttendance,
     };
@@ -661,7 +661,6 @@ export class ClassroomService implements OnModuleInit {
         historyEvents,
         recordingMode: s.recordingMode ?? null,
         boardSnapshot,
-        subtitles: s.subtitles ?? [],
         recordings: updatedRecordings,
       })
       .where(eq(classSessions.id, sessionId));
@@ -849,13 +848,6 @@ export class ClassroomService implements OnModuleInit {
         pdfPages: s.pdfPages,
       })
       .where(eq(classSessions.id, sessionId));
-  }
-
-  addSubtitleCue(sessionId: string, cue: ClassroomSubtitleCue): void {
-    const s = this.sessions.get(sessionId);
-    if (!s) return;
-    if (!s.subtitles) s.subtitles = [];
-    s.subtitles.push(cue);
   }
 
   moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
@@ -1414,9 +1406,13 @@ export class ClassroomService implements OnModuleInit {
     if ((!subtitles || subtitles.length === 0) && recordingUrl) {
       const publicUrl = this.storage.getPublicUrl(recordingUrl);
       if (publicUrl) {
-        this.autoTranscribeReplayAudio(sessionId, publicUrl).catch((err) => {
-          console.warn('[Subtitle] Auto-transcribe error for past replay:', err);
-        });
+        const jobKey = `${sessionId}:${selectedEntry?.id ?? 'latest'}`;
+        if (!this.subtitleTranscriptionJobs.has(jobKey)) {
+          const job = this.autoTranscribeReplayAudio(sessionId, publicUrl, selectedEntry?.id)
+            .catch((err) => console.warn('[Subtitle] Auto-transcribe error for past replay:', err))
+            .finally(() => this.subtitleTranscriptionJobs.delete(jobKey));
+          this.subtitleTranscriptionJobs.set(jobKey, job);
+        }
       }
     }
 
@@ -1454,7 +1450,7 @@ export class ClassroomService implements OnModuleInit {
     };
   }
 
-  async autoTranscribeReplayAudio(sessionId: string, audioUrl: string) {
+  async autoTranscribeReplayAudio(sessionId: string, audioUrl: string, recordingId?: string) {
     try {
       const primaryUrl = process.env.SUBTITLE_SERVER_URL || 'http://subtitle-server:8090';
       let response: Response | null = null;
@@ -1477,7 +1473,14 @@ export class ClassroomService implements OnModuleInit {
       if (!response || !response.ok) return;
       const data = (await response.json()) as { cues?: any[] };
       if (data.cues && data.cues.length > 0) {
-        await db.update(classSessions).set({ subtitles: data.cues }).where(eq(classSessions.id, sessionId));
+        const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+        const recordings = ((row?.recordings as unknown as any[]) ?? []).map((entry) =>
+          recordingId && entry.id === recordingId ? { ...entry, subtitles: data.cues } : entry,
+        );
+        await db.update(classSessions).set({
+          subtitles: recordingId ? ((row?.subtitles as any[]) ?? []) : data.cues,
+          ...(recordingId ? { recordings } : {}),
+        }).where(eq(classSessions.id, sessionId));
         console.log(`[Subtitle] Auto-transcribed ${data.cues.length} cues for past replay ${sessionId}`);
       }
     } catch (err) {
@@ -1748,7 +1751,6 @@ export class ClassroomService implements OnModuleInit {
       notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
       notebookPageOrientations: full.notebookPageOrientations,
-      subtitles: s.subtitles ?? [],
     };
   }
 
@@ -1944,7 +1946,6 @@ export class ClassroomService implements OnModuleInit {
       rightZoom: 1,
       scroll: null,
       rightScroll: null,
-      subtitles: snapshot.subtitles ?? [],
     };
 
     this.sessions.set(sessionId, session);

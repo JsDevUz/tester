@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Maximize2, Minimize2, Subtitles, Volume2, WifiOff } from "lucide-react";
+import { Maximize2, Minimize2, Volume2, WifiOff } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -10,11 +10,9 @@ import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
 import { useFullscreen } from "../hooks/useFullscreen";
 import { ClassroomPdfViewer } from "../components/classroom/ClassroomPdfViewer";
 import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
-import { ClassroomSubtitleOverlay } from "../components/classroom/ClassroomSubtitleOverlay";
 import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
-import { ClassroomCallBarMenu } from "../components/classroom/ClassroomCallBarMenu";
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -35,7 +33,6 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   const [guestNameInput, setGuestNameInput] = useState("");
   const [guestNameSubmitted, setGuestNameSubmitted] = useState<string | null>(null);
   const [meLoading, setMeLoading] = useState(isFreeRoute && Boolean(token) && !admin);
-  const [subtitlesEnabled, setSubtitlesEnabled] = useState(true);
 
   // Erkin (guruhsiz) dars marshruti PrivateRoute bilan o'ralmaydi (mehmon
   // ham kira olishi kerak), shuning uchun localStorage'dagi token bo'lsa-da
@@ -237,7 +234,6 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
         />
 
         <StickerReactionsOverlay reactions={state.reactions ?? []} />
-        <ClassroomSubtitleOverlay subtitles={state.subtitles} enabled={subtitlesEnabled} />
 
         <ClassroomCallBar
           micEnabled={voice.micEnabled}
@@ -253,17 +249,6 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           onSendReaction={sendReaction}
           handRaised={isHandRaised}
           onToggleHandRaise={admin || guestNameSubmitted ? toggleHandRaise : undefined}
-          menu={
-            <ClassroomCallBarMenu
-              theme={state.classroomTheme}
-              items={[{
-                key: "subtitles",
-                label: subtitlesEnabled ? "Subtitrni o‘chirish" : "Subtitrni yoqish",
-                icon: <Subtitles size={16} />,
-                onSelect: () => setSubtitlesEnabled((value) => !value),
-              }]}
-            />
-          }
         />
       </div>
     </div>

@@ -237,6 +237,7 @@ export interface ClassReplayData {
   // 'boardSilent' faqat statik boardSnapshot saqlaydi.
   recordingMode: ClassRecordingMode | null;
   boardSnapshot: ClassBoardSnapshotData | null;
+  subtitles?: Array<{ id: string; startMs: number; endMs: number; text: string }>;
   recordings?: ClassSessionRecordingInfo[];
 }
 

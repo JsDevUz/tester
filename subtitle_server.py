@@ -1,10 +1,9 @@
 #!/usr/bin/env python3
 """
 Faster-Whisper Subtitle Microservice (FastAPI)
-Jonli darslar va yozib olingan audio fayllar uchun o'zbek tiliga transkripsiya qiladi.
+Yozib olingan dars audio fayllaridan replay subtitrlarini yaratadi.
 """
 
-import base64
 import os
 import re
 import sys
@@ -16,13 +15,10 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from faster_whisper import WhisperModel
-from groq import Groq
 import uvicorn
 
 PORT = int(os.environ.get("PORT", 8090))
 MODEL_NAME = os.environ.get("WHISPER_MODEL", "turbo")
-GROQ_API_KEY = os.environ.get("GROQ_API_KEY", "")
-groq_client = Groq(api_key=GROQ_API_KEY) if GROQ_API_KEY else None
 
 print(f"🔄 Faster-Whisper ({MODEL_NAME}) modeli yuklanmoqda...")
 start_time = time.time()
@@ -42,11 +38,6 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
-class TranscribeRequest(BaseModel):
-    audioBase64: str
-    startMs: int = 0
-    endMs: int = 0
 
 class TranscribeFileRequest(BaseModel):
     audioUrl: str
@@ -71,75 +62,6 @@ def clean_transcript(text: str) -> str:
 @app.get("/")
 def health():
     return {"status": "ok", "model": MODEL_NAME}
-
-@app.post("/transcribe-base64")
-async def transcribe_base64(req: TranscribeRequest):
-    try:
-        if not req.audioBase64:
-            return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
-
-        audio_bytes = base64.b64decode(req.audioBase64, validate=True)
-
-        if len(audio_bytes) < 300:
-            return {"text": "", "startMs": req.startMs, "endMs": req.endMs}
-
-        with tempfile.NamedTemporaryFile(suffix=".webm", delete=True) as tmp:
-            tmp.write(audio_bytes)
-            tmp.flush()
-
-            segments = []
-            info = None
-            text_out = ""
-            if groq_client:
-                try:
-                    result = groq_client.audio.transcriptions.create(
-                        file=("chunk.webm", audio_bytes),
-                        model="whisper-large-v3",
-                        language="uz",
-                        response_format="verbose_json",
-                        temperature=0.0,
-                    )
-                    text_out = result.text.strip()
-                except Exception as groq_error:
-                    print(f"⚠️ Groq transcription failed, using local fallback: {groq_error}")
-
-            if not text_out:
-                local_segments, info = model.transcribe(
-                    tmp.name,
-                    language="uz",
-                    condition_on_previous_text=False,
-                    vad_filter=True,
-                    vad_parameters=dict(min_silence_duration_ms=500),
-                    beam_size=5,
-                    best_of=5,
-                    temperature=0.0,
-                    repetition_penalty=1.15,
-                    no_repeat_ngram_size=3,
-                    compression_ratio_threshold=2.4,
-                    log_prob_threshold=-1.0,
-                    no_speech_threshold=0.6,
-                )
-                segments = list(local_segments)
-                text_out = " ".join(s.text.strip() for s in segments if s.text.strip()).strip()
-
-            text_out = clean_transcript(text_out)
-
-            if text_out:
-                print(f"💬 Transcribed [{req.startMs}ms - {req.endMs}ms]: '{text_out}'")
-            else:
-                print(f"🔇 Silent chunk or filtered garbage noise.")
-
-            return {
-                "text": text_out,
-                "startMs": req.startMs,
-                "endMs": req.endMs,
-                "language": "uz",
-                "cueStartOffsetMs": int(segments[0].start * 1000) if segments else 0,
-                "cueEndOffsetMs": int(segments[-1].end * 1000) if segments else 0,
-            }
-    except Exception as e:
-        print(f"⚠️ Transcribe error: {e}")
-        return {"text": "", "error": str(e), "startMs": req.startMs, "endMs": req.endMs}
 
 @app.post("/transcribe-file")
 async def transcribe_file(req: TranscribeFileRequest):

@@ -42,9 +42,24 @@ export function ClassroomReplayPage() {
 
   useEffect(() => {
     if (!sessionId) return;
-    apiClassReplay(sessionId, recordingId)
-      .then(setData)
-      .catch(() => setError("Dars topilmadi yoki kirish huquqi yo'q"));
+    let cancelled = false;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const load = () => {
+      apiClassReplay(sessionId, recordingId)
+        .then((next) => {
+          if (cancelled) return;
+          setData(next);
+          if (next.recordingUrl && (next.subtitles?.length ?? 0) === 0) {
+            timer = setTimeout(load, 5000);
+          }
+        })
+        .catch(() => { if (!cancelled) setError("Dars topilmadi yoki kirish huquqi yo'q"); });
+    };
+    load();
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
   }, [sessionId, recordingId]);
 
   // Ustoz tomonida (Davomat/"Mening darslarim") ikkita mustaqil kirish
@@ -252,7 +267,7 @@ export function ClassroomReplayPage() {
           <ClassroomSubtitleOverlay
             isReplay={true}
             replayTimeMs={replay.currentTimeMs}
-            subtitles={(viewState as any).subtitles ?? data?.boardSnapshot?.subtitles ?? []}
+            subtitles={data?.subtitles ?? data?.boardSnapshot?.subtitles ?? []}
           />
         </div>
       </div>

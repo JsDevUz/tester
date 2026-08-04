@@ -40,7 +40,6 @@ export interface ClassroomState {
   reactions?: StickerReactionItem[];
   userReactions?: Record<string, string>;
   raisedHands?: RaisedHandItem[];
-  subtitles?: Array<{ id: string; startMs: number; endMs: number; text: string }>;
   isReplay?: boolean;
 }
 
@@ -54,7 +53,6 @@ const INITIAL: ClassroomState = {
   reactions: [],
   userReactions: {},
   raisedHands: [],
-  subtitles: [],
 };
 
 // Ustoz kursorining tarmoqqa yuborilish chastotasi — brauzer pointermove'ni
@@ -200,13 +198,6 @@ export function useClassroomSession(
     socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
-    socket.on("board:subtitle", (cue: { id: string; startMs: number; endMs: number; text: string }) => {
-      console.log("💬 Client received board:subtitle cue:", cue);
-      setState((s) => ({
-        ...s,
-        subtitles: [...(s.subtitles ?? []), cue],
-      }));
-    });
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
     socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
       setState((s) => applyNotebookPageStyle(s, p)));

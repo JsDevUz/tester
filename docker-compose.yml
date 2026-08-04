@@ -28,7 +28,6 @@ services:
       TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN:-}
       TELEGRAM_BOT_USERNAME: ${TELEGRAM_BOT_USERNAME:-}
       TELEGRAM_WEBHOOK_SECRET: ${TELEGRAM_WEBHOOK_SECRET:-}
-      GROQ_API_KEY: ${GROQ_API_KEY:-}
       OBJECT_STORAGE_ENDPOINT: ${OBJECT_STORAGE_ENDPOINT:-}
       OBJECT_STORAGE_REGION: ${OBJECT_STORAGE_REGION:-auto}
       OBJECT_STORAGE_ACCESS_KEY_ID: ${OBJECT_STORAGE_ACCESS_KEY_ID:-}
@@ -55,6 +54,8 @@ services:
     environment:
       PORT: 8090
       WHISPER_MODEL: ${WHISPER_MODEL:-turbo}
+      # Test/health diagnostikasi uchun env mavjud qoladi; replay
+      # transkripsiyasi Groq'ni chaqirmaydi, faqat lokal Faster-Whisper ishlaydi.
       GROQ_API_KEY: ${GROQ_API_KEY:-}
 
   web:
