@@ -59,7 +59,7 @@ export function ClassroomHostPage() {
   const isHandRaised = (state.raisedHands ?? []).some((h) => h.userId === (admin?.id ?? "host"));
   useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
-  useClassroomSubtitleRecorder(id, true, voice.micEnabled);
+  useClassroomSubtitleRecorder(id, true, voice.micEnabled, voice.getLocalAudioStream);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
   const [tool, setTool] = useState<DrawTool>("pen");
