@@ -92,7 +92,7 @@ async def transcribe_base64(req: TranscribeRequest):
                 repetition_penalty=1.15,
                 no_repeat_ngram_size=3,
                 compression_ratio_threshold=2.4,
-                logprob_threshold=-1.0,
+                log_prob_threshold=-1.0,
                 no_speech_threshold=0.6,
             )
 
@@ -141,7 +141,7 @@ async def transcribe_file(req: TranscribeFileRequest):
                 repetition_penalty=1.15,
                 no_repeat_ngram_size=3,
                 compression_ratio_threshold=2.4,
-                logprob_threshold=-1.0,
+                log_prob_threshold=-1.0,
                 no_speech_threshold=0.6,
             )
 
