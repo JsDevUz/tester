@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { Subtitles } from "lucide-react";
 
 export interface ClassroomSubtitleCue {
   id: string;
@@ -20,7 +21,7 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
   subtitles = [],
   liveSubtitle = "",
 }) => {
-  const [enabled] = useState<boolean>(true);
+  const [enabled, setEnabled] = useState<boolean>(true);
   const [displayText, setDisplayText] = useState<string>("");
 
   useEffect(() => {
@@ -41,7 +42,7 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
         setDisplayText(lastCue ? lastCue.text : "");
         const timer = setTimeout(() => {
           setDisplayText("");
-        }, 5000);
+        }, 7000);
         return () => clearTimeout(timer);
       } else {
         setDisplayText("");
@@ -49,21 +50,33 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
     }
   }, [isReplay, liveSubtitle, subtitles]);
 
-  if (!enabled || !displayText) {
-    return null;
-  }
+  if (!enabled) return null;
 
   return (
-    <div className="pointer-events-none fixed bottom-[84px] sm:bottom-[92px] left-1/2 z-30 -translate-x-1/2 w-auto max-w-xl px-4 text-center">
-      <span
-        className="inline bg-black/90 text-white font-medium text-base sm:text-lg leading-relaxed px-3.5 py-1.5 rounded-lg shadow-xl tracking-wide select-none transition-all duration-200"
-        style={{
-          boxDecorationBreak: "clone",
-          WebkitBoxDecorationBreak: "clone",
-        }}
-      >
-        {displayText}
-      </span>
-    </div>
+    <>
+      {displayText ? (
+        <div className="pointer-events-none fixed bottom-[84px] sm:bottom-[92px] left-1/2 z-30 -translate-x-1/2 w-auto max-w-xl px-4 text-center">
+          <span
+            className="inline bg-black/90 text-white font-medium text-base sm:text-lg leading-relaxed px-3.5 py-1.5 rounded-lg shadow-xl tracking-wide select-none transition-all duration-200"
+            style={{
+              boxDecorationBreak: "clone",
+              WebkitBoxDecorationBreak: "clone",
+            }}
+          >
+            {displayText}
+          </span>
+        </div>
+      ) : (
+        <button
+          type="button"
+          onClick={() => setEnabled(false)}
+          className="fixed bottom-4 right-4 z-40 flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur hover:bg-slate-900"
+          title="Subtitr rejimida"
+        >
+          <Subtitles size={14} className="text-yellow-400" />
+          <span>CC</span>
+        </button>
+      )}
+    </>
   );
 };
