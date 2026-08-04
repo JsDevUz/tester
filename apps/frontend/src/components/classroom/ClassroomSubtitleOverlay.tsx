@@ -35,9 +35,20 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
 
   useEffect(() => {
     if (!isReplay) {
-      setDisplayText(liveSubtitle);
+      if (liveSubtitle) {
+        setDisplayText(liveSubtitle);
+      } else if (subtitles && subtitles.length > 0) {
+        const lastCue = subtitles[subtitles.length - 1];
+        setDisplayText(lastCue ? lastCue.text : "");
+        const timer = setTimeout(() => {
+          setDisplayText("");
+        }, 5000);
+        return () => clearTimeout(timer);
+      } else {
+        setDisplayText("");
+      }
     }
-  }, [isReplay, liveSubtitle]);
+  }, [isReplay, liveSubtitle, subtitles]);
 
   if (!enabled || !displayText) {
     return (
