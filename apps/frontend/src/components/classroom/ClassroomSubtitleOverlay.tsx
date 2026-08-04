@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { Subtitles } from "lucide-react";
+import { Subtitles, X } from "lucide-react";
 
 export interface ClassroomSubtitleCue {
   id: string;
@@ -51,33 +51,26 @@ export const ClassroomSubtitleOverlay: React.FC<ClassroomSubtitleOverlayProps> =
   }, [isReplay, liveSubtitle, subtitles]);
 
   if (!enabled || !displayText) {
-    return (
-      <button
-        type="button"
-        onClick={() => setEnabled((prev) => !prev)}
-        className="fixed bottom-4 right-4 z-50 flex items-center gap-1.5 rounded-full bg-slate-900/80 px-3 py-1.5 text-xs font-medium text-white shadow-lg backdrop-blur hover:bg-slate-900"
-        title="Subtitrlarni yoqish/o'chirish"
-      >
-        <Subtitles size={14} className={enabled ? "text-yellow-400" : "text-gray-400"} />
-        <span>CC</span>
-      </button>
-    );
+    return null;
   }
 
   return (
-    <div className="pointer-events-none fixed bottom-8 left-1/2 z-50 -translate-x-1/2">
-      <div className="pointer-events-auto flex items-center gap-2.5 rounded-2xl bg-slate-950/85 px-6 py-3 text-white shadow-2xl backdrop-blur-md transition-all duration-300">
+    <div className="pointer-events-none fixed bottom-[76px] sm:bottom-[84px] left-1/2 z-30 -translate-x-1/2 w-full max-w-lg px-4 transition-all duration-300">
+      <div className="pointer-events-auto flex items-center justify-between gap-3 rounded-2xl bg-slate-950/90 border border-white/10 px-4 py-2.5 shadow-2xl backdrop-blur-xl transition-all duration-300 animate-in fade-in slide-in-from-bottom-2">
+        <div className="flex items-center gap-2.5 min-w-0 flex-1">
+          <Subtitles size={16} className="text-amber-400 shrink-0" />
+          <span className="text-sm font-medium text-white tracking-wide leading-snug line-clamp-2 text-left select-none">
+            {displayText}
+          </span>
+        </div>
         <button
           type="button"
           onClick={() => setEnabled(false)}
-          className="text-yellow-400 hover:opacity-80 transition-opacity shrink-0"
-          title="Subtitrni yashirish"
+          className="text-white/40 hover:text-white transition-colors shrink-0 p-1 rounded-full hover:bg-white/10"
+          title="Yashirish"
         >
-          <Subtitles size={18} />
+          <X size={14} />
         </button>
-        <span className="text-sm font-semibold tracking-wide text-gray-100 max-w-xl text-center leading-relaxed">
-          {displayText}
-        </span>
       </div>
     </div>
   );

@@ -24,9 +24,14 @@ export function useClassroomSubtitleRecorder(
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunkStartMsRef = useRef<number>(0);
+  const intervalRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     if (!sessionId || !isHost || !micEnabled) {
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         try {
           mediaRecorderRef.current.stop();
@@ -60,32 +65,50 @@ export function useClassroomSubtitleRecorder(
           ? "audio/webm"
           : "";
 
-        const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
-        mediaRecorderRef.current = recorder;
-        chunkStartMsRef.current = Date.now();
+        const createRecorder = () => {
+          if (!stream || !active) return;
+          const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
+          mediaRecorderRef.current = recorder;
+          chunkStartMsRef.current = Date.now();
 
-        recorder.ondataavailable = async (e) => {
-          if (e.data && e.data.size > 0 && sessionId) {
-            const startMs = chunkStartMsRef.current;
-            const endMs = Date.now();
-            chunkStartMsRef.current = endMs;
+          recorder.ondataavailable = async (e) => {
+            if (e.data && e.data.size > 200 && sessionId) {
+              const startMs = chunkStartMsRef.current;
+              const endMs = Date.now();
 
-            const buffer = await e.data.arrayBuffer();
-            const base64 = bufferToBase64(buffer);
+              try {
+                const buffer = await e.data.arrayBuffer();
+                const base64 = bufferToBase64(buffer);
+                const token = useAuthStore.getState().token;
+                const socket = getClassroomSocket();
+                socket.emit("board:subtitle_audio", {
+                  sessionId,
+                  token,
+                  audioBase64: base64,
+                  startMs,
+                  endMs,
+                });
+              } catch (err) {
+                console.warn("Subtitle chunk encode error:", err);
+              }
+            }
+          };
 
-            const token = useAuthStore.getState().token;
-            const socket = getClassroomSocket();
-            socket.emit("board:subtitle_audio", {
-              sessionId,
-              token,
-              audioBase64: base64,
-              startMs,
-              endMs,
-            });
-          }
+          recorder.start();
         };
 
-        recorder.start(2500); // 2.5 soniyali oqim bo'laklari
+        createRecorder();
+
+        // Continuous 2.5-second chunking with standalone WebM headers
+        intervalRef.current = setInterval(() => {
+          if (!active) return;
+          if (mediaRecorderRef.current && mediaRecorderRef.current.state === "recording") {
+            try {
+              mediaRecorderRef.current.stop();
+            } catch {}
+          }
+          createRecorder();
+        }, 2500);
       } catch (err) {
         console.warn("Subtitle audio recorder warning:", err);
       }
@@ -95,6 +118,10 @@ export function useClassroomSubtitleRecorder(
 
     return () => {
       active = false;
+      if (intervalRef.current) {
+        clearInterval(intervalRef.current);
+        intervalRef.current = null;
+      }
       if (mediaRecorderRef.current && mediaRecorderRef.current.state !== "inactive") {
         try {
           mediaRecorderRef.current.stop();
