@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { RemoteTrack, RemoteTrackPublication, RemoteParticipant, Room, RoomEvent, Track } from "livekit-client";
 import { apiVoiceToken } from "../api/classroom";
+import { getGuestId } from "./useClassroomSession";
 
 interface VoiceState {
   // false — LiveKit sozlanmagan (dars ovozsiz rejimda)
@@ -8,6 +9,7 @@ interface VoiceState {
   connected: boolean;
   micEnabled: boolean;
   speakingUserIds: Set<string>;
+  unmutedUserIds: Set<string>;
   // true — brauzer autoplay siyosati kiruvchi ovozni bloklagan, foydalanuvchi
   // amali (tugma bosish) bilan qo'lda ijro ettirish kerak.
   needsAudioUnlock: boolean;
@@ -23,6 +25,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     connected: false,
     micEnabled: false,
     speakingUserIds: new Set(),
+    unmutedUserIds: new Set(),
     needsAudioUnlock: false,
     audioInputs: [],
     activeAudioInputId: null,
@@ -48,20 +51,66 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     const room = new Room();
     roomRef.current = room;
 
+    const updateUnmuted = () => {
+      const r = roomRef.current;
+      if (!r) return;
+      const unmuted = new Set<string>();
+      if (r.localParticipant.isMicrophoneEnabled) {
+        unmuted.add(r.localParticipant.identity);
+        if (r.localParticipant.name) {
+          unmuted.add(r.localParticipant.name);
+        }
+      }
+      for (const p of r.remoteParticipants.values()) {
+        if (p.isMicrophoneEnabled) {
+          unmuted.add(p.identity);
+          if (p.name) {
+            unmuted.add(p.name);
+          }
+        }
+      }
+      setState((s) => ({ ...s, unmutedUserIds: unmuted }));
+    };
+
     room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-      setState((s) => ({ ...s, speakingUserIds: new Set(speakers.map((p) => p.identity)) }));
+      const set = new Set<string>();
+      for (const speaker of speakers) {
+        set.add(speaker.identity);
+        if (speaker.name) {
+          set.add(speaker.name);
+        }
+      }
+      setState((s) => ({ ...s, speakingUserIds: set }));
     });
     room.on(RoomEvent.LocalTrackPublished, () => {
       setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
+      updateUnmuted();
+    });
+    room.on(RoomEvent.LocalTrackUnpublished, () => {
+      updateUnmuted();
     });
     // Ustoz majburiy mute qilganda ham holat yangilansin
     room.on(RoomEvent.TrackMuted, (_pub, participant) => {
       if (participant === room.localParticipant) {
         setState((s) => ({ ...s, micEnabled: false }));
       }
+      updateUnmuted();
+    });
+    room.on(RoomEvent.TrackUnmuted, () => {
+      updateUnmuted();
+    });
+    room.on(RoomEvent.ParticipantConnected, () => {
+      updateUnmuted();
+    });
+    room.on(RoomEvent.ParticipantDisconnected, () => {
+      updateUnmuted();
+    });
+    room.on(RoomEvent.Connected, () => {
+      updateUnmuted();
     });
     room.on(RoomEvent.Disconnected, () => {
       setState((s) => ({ ...s, connected: false }));
+      updateUnmuted();
     });
     // Boshqa ishtirokchilarning ovozi shu orqali eshitiladi — track
     // kelganda audio elementga ulanadi, ketganda tozalanadi.
@@ -78,6 +127,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
         pendingAudioElsRef.current.add(el);
         setState((s) => ({ ...s, needsAudioUnlock: true }));
       });
+      updateUnmuted();
     });
     room.on(RoomEvent.TrackUnsubscribed, (track: RemoteTrack) => {
       if (track.kind !== Track.Kind.Audio) return;
@@ -85,19 +135,38 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
         pendingAudioElsRef.current.delete(el);
         el.remove();
       });
+      updateUnmuted();
     });
 
     (async () => {
       try {
-        const { token, url } = await apiVoiceToken(sessionId, guestName);
+        const { token, url } = await apiVoiceToken(sessionId, guestName ? getGuestId() : null, guestName);
         if (cancelled) return;
         await room.connect(url, token);
         if (cancelled) { await room.disconnect(); return; }
-        setState((s) => ({ ...s, connected: true }));
+        let isMicOn = false;
         if (!startMuted) {
           await room.localParticipant.setMicrophoneEnabled(true);
-          setState((s) => ({ ...s, micEnabled: true }));
+          isMicOn = true;
         }
+        setState((s) => {
+          const unmuted = new Set(s.unmutedUserIds);
+          if (isMicOn) {
+            unmuted.add(room.localParticipant.identity);
+            if (room.localParticipant.name) {
+              unmuted.add(room.localParticipant.name);
+            }
+          }
+          for (const p of room.remoteParticipants.values()) {
+            if (p.isMicrophoneEnabled) {
+              unmuted.add(p.identity);
+              if (p.name) {
+                unmuted.add(p.name);
+              }
+            }
+          }
+          return { ...s, connected: true, micEnabled: isMicOn, unmutedUserIds: unmuted };
+        });
         void refreshAudioInputs(room);
       } catch (e: any) {
         if (cancelled) return;
@@ -124,7 +193,21 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     const next = !room.localParticipant.isMicrophoneEnabled;
     try {
       await room.localParticipant.setMicrophoneEnabled(next);
-      setState((s) => ({ ...s, micEnabled: next }));
+      setState((s) => {
+        const unmuted = new Set(s.unmutedUserIds);
+        if (next) {
+          unmuted.add(room.localParticipant.identity);
+          if (room.localParticipant.name) {
+            unmuted.add(room.localParticipant.name);
+          }
+        } else {
+          unmuted.delete(room.localParticipant.identity);
+          if (room.localParticipant.name) {
+            unmuted.delete(room.localParticipant.name);
+          }
+        }
+        return { ...s, micEnabled: next, unmutedUserIds: unmuted };
+      });
     } catch (e) {
       console.error("Mikrofonni almashtirib bo'lmadi:", e);
     }

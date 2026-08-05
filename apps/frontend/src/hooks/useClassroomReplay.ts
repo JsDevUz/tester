@@ -46,6 +46,7 @@ function baseState(pdfName: string | null, pdfPages: string[], globalTheme: "lig
     participants: [], hostOnline: false, pointer: null,
     zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
+    isBoardOpen: true,
     classroomTheme: globalTheme, notebookPageStyles: {}, notebookPageOrientations: {},
   };
 }

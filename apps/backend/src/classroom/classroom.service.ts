@@ -117,6 +117,9 @@ export class ClassroomService implements OnModuleInit {
       });
     }
 
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
     this.sessions.set(row.id, {
       id: row.id,
       courseId,
@@ -125,6 +128,7 @@ export class ClassroomService implements OnModuleInit {
       isFree: false,
       hostUserId: teacherId,
       hostSocketId: null,
+      hostName,
       pdfName: null,
       pdfPages: [],
       currentPage: 1,
@@ -152,6 +156,9 @@ export class ClassroomService implements OnModuleInit {
   async createFreeSession(teacherId: string, title?: string): Promise<{ id: string }> {
     const cleanTitle = title?.trim() ? title.trim() : null;
     const [row] = await db.insert(classSessions).values({ courseId: null, teacherId, title: cleanTitle }).returning();
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
     this.sessions.set(row.id, {
       id: row.id,
       courseId: null,
@@ -160,6 +167,7 @@ export class ClassroomService implements OnModuleInit {
       isFree: true,
       hostUserId: teacherId,
       hostSocketId: null,
+      hostName,
       pdfName: null,
       pdfPages: [],
       currentPage: 1,
@@ -220,6 +228,9 @@ export class ClassroomService implements OnModuleInit {
     }
     const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
     this.sessions.set(row.id, {
       id: row.id,
       courseId: null,
@@ -227,6 +238,7 @@ export class ClassroomService implements OnModuleInit {
       isFree: true,
       hostUserId: teacherId,
       hostSocketId: null,
+      hostName,
       pdfName: snapshot.pdfName,
       pdfPages: snapshot.pages,
       currentPage: 1,
@@ -336,6 +348,9 @@ export class ClassroomService implements OnModuleInit {
     }
     const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
     this.sessions.set(row.id, {
       id: row.id,
       courseId,
@@ -344,6 +359,7 @@ export class ClassroomService implements OnModuleInit {
       isFree: false,
       hostUserId: teacherId,
       hostSocketId: null,
+      hostName,
       pdfName: snapshot.pdfName,
       pdfPages: snapshot.pages,
       currentPage: 1,
@@ -413,6 +429,9 @@ export class ClassroomService implements OnModuleInit {
     }
     const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
 
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
     // Xuddi o'sha ID bilan RAM'ga yuklaymiz
     this.sessions.set(sessionId, {
       id: sessionId,
@@ -422,6 +441,7 @@ export class ClassroomService implements OnModuleInit {
       isFree: true,
       hostUserId: teacherId,
       hostSocketId: null,
+      hostName,
       pdfName: snapshot.pdfName,
       pdfPages: snapshot.pages,
       currentPage: 1,
@@ -744,6 +764,12 @@ export class ClassroomService implements OnModuleInit {
         await db.insert(attendanceRecords)
           .values({ sessionId: s.id, enrollmentId: enrollment.id })
           .onConflictDoNothing();
+      }
+    } else {
+      if (userId.startsWith('guest:') && guestName?.trim()) {
+        p.name = guestName.trim();
+      } else if (displayName?.trim()) {
+        p.name = displayName.trim();
       }
     }
 
@@ -1869,7 +1895,12 @@ export class ClassroomService implements OnModuleInit {
     }
     const row = await db.query.classSessions.findFirst({
       where: eq(classSessions.id, sessionId),
-      with: { course: true },
+      with: {
+        course: {
+          with: { owner: true },
+        },
+        teacher: true,
+      },
     });
     if (!row) return null;
     if (row.status !== 'active') {
@@ -1925,6 +1956,7 @@ export class ClassroomService implements OnModuleInit {
       isFree,
       hostUserId: row.teacherId ?? row.course?.adminId ?? '',
       hostSocketId: null,
+      hostName: row.teacher?.displayName ?? row.course?.owner?.displayName ?? "Ustoz",
       pdfName: snapshot.pdfName ?? row.pdfName ?? null,
       pdfPages: snapshot.pages ?? row.pdfPages ?? [],
       currentPage: 1,

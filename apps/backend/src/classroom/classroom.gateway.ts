@@ -285,6 +285,18 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:setBoardOpen')
+  setBoardOpen(@MessageBody() body: BaseBody & { isOpen: boolean }) {
+    return this.run(() => {
+      const user = this.verify(body.token);
+      const s = this.classroomService.getSession(body.sessionId);
+      if (!s) return;
+      if (s.hostUserId !== user.sub) return;
+      s.isBoardOpen = body.isOpen;
+      this.server.to(`cs:${body.sessionId}`).emit('board:open:set', { isOpen: body.isOpen });
+    });
+  }
+
   @SubscribeMessage('host:end')
   async hostEnd(@MessageBody() body: BaseBody) {
     try {

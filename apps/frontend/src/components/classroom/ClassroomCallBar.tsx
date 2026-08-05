@@ -36,7 +36,7 @@ export function ClassroomCallBar({
 
   return (
     <div
-      className="absolute bottom-[10px] left-1/2 -translate-x-1/2 z-10 flex items-center gap-2 transition-transform duration-300 ease-in-out"
+      className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 transition-transform duration-300 ease-in-out"
       style={{ transform: hidden ? "translateY(200px)" : "translateY(0)" }}
     >
       {/* Emoji picker popover */}

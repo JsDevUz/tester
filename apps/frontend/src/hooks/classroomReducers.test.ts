@@ -10,6 +10,7 @@ function baseState(overrides: Partial<ClassroomState> = {}): ClassroomState {
     strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: true, pointer: null,
     zoom: 1, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 4, scroll: null, rightScroll: null,
     isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf",
+    isBoardOpen: false,
     classroomTheme: "light", notebookPageStyles: {}, notebookPageOrientations: {},
     ...overrides,
   };

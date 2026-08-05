@@ -21,6 +21,7 @@ export interface ClassroomState {
   rightStrokesByPage: Record<number, CsStroke[]>;
   participants: CsParticipant[];
   hostOnline: boolean;
+  hostName?: string | null;
   pointer: CsPointer | null;
   zoom: number;
   rightZoom: number;
@@ -33,6 +34,7 @@ export interface ClassroomState {
   boardLayout: CsBoardLayout;
   leftBoardMode: CsBoardMode;
   rightBoardMode: CsBoardMode;
+  isBoardOpen: boolean;
   classroomTheme: "light" | "dark";
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
@@ -46,8 +48,8 @@ export interface ClassroomState {
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
-  strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, pointer: null, zoom: 1, scroll: null,
-  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, classroomTheme: useThemeStore.getState().theme,
+  strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, hostName: null, pointer: null, zoom: 1, scroll: null,
+  isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, isBoardOpen: false, classroomTheme: useThemeStore.getState().theme,
   notebookPageStyles: {},
   notebookPageOrientations: {},
   reactions: [],
@@ -64,7 +66,7 @@ const POINTER_THROTTLE_MS = 30;
 // ulanishlarda bir xil qolishi uchun sessionStorage'da saqlanadi (login
 // qilingandan farqli, bu foydalanuvchi identifikatsiyasi emas — faqat
 // bitta jonli dars davomida boshqalardan farqlash uchun).
-function getGuestId(): string {
+export function getGuestId(): string {
   const key = "classroom_guest_id";
   let id = sessionStorage.getItem(key);
   if (!id) {
@@ -128,13 +130,14 @@ export function useClassroomSession(
             pdfName: snap.pdfName, pages: snap.pages, currentPage: snap.currentPage,
             strokesByPage: snap.strokesByPage ?? {},
             rightStrokesByPage: snap.rightStrokesByPage ?? {},
-            participants: snap.participants, hostOnline: snap.hostOnline, pointer: null,
+            participants: snap.participants, hostOnline: snap.hostOnline, hostName: snap.hostName, pointer: null,
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             splitRatio: snap.splitRatio ?? 0.5,
             notebookPageCount: snap.notebookPageCount ?? 1,
             boardMode: snap.boardMode ?? "pdf",
             boardLayout: snap.boardLayout ?? "single", leftBoardMode: snap.leftBoardMode ?? snap.boardMode ?? "pdf", rightBoardMode: snap.rightBoardMode ?? snap.boardMode ?? "pdf",
+            isBoardOpen: snap.isBoardOpen ?? false,
             classroomTheme: snap.classroomTheme ?? globalTheme,
             notebookPageStyles: snap.notebookPageStyles ?? {},
             notebookPageOrientations: snap.notebookPageOrientations ?? {},
@@ -204,6 +207,7 @@ export function useClassroomSession(
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
     socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
+    socket.on("board:open:set", (p: { isOpen: boolean }) => setState((s) => ({ ...s, isBoardOpen: p.isOpen })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
     socket.on("host:offline", () => setState((s) => ({ ...s, hostOnline: false })));
@@ -405,6 +409,10 @@ export function useClassroomSession(
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
+    setBoardOpen: (isOpen: boolean) => {
+      setState((s) => ({ ...s, isBoardOpen: isOpen }));
+      emitHost("host:setBoardOpen", { isOpen });
+    },
     setTheme: (theme: "light" | "dark") => {
       setState((s) => ({ ...s, classroomTheme: theme }));
       emitHost("host:setTheme", { theme });

@@ -126,6 +126,7 @@ export interface ClassroomSession {
   title?: string | null;
   hostUserId: string;
   hostSocketId: string | null;
+  hostName: string;
   pdfName: string | null;
   pdfPages: string[];
   // Daftar (notebook) sahifalari soni — PDF'dan farqli, bular fayldan
@@ -157,6 +158,7 @@ export interface ClassroomSession {
   boardLayout?: ClassroomBoardLayout;
   leftBoardMode?: ClassroomBoardMode;
   rightBoardMode?: ClassroomBoardMode;
+  isBoardOpen?: boolean;
   classroomTheme?: ClassroomTheme;
   notebookStyle?: ClassroomNotebookStyle;
   // Har bir daftar sahifasining o'z naqshi — sahifa raqami -> naqsh.
@@ -235,6 +237,7 @@ export interface ClassroomSnapshot {
   participants: Array<{ userId: string; name: string; online: boolean; status: AttendanceStatus }>;
   startedAt: number;
   hostOnline: boolean;
+  hostName: string;
   zoom: number;
   rightZoom: number;
   splitRatio: number;
@@ -246,6 +249,7 @@ export interface ClassroomSnapshot {
   boardLayout: ClassroomBoardLayout;
   leftBoardMode: ClassroomBoardMode;
   rightBoardMode: ClassroomBoardMode;
+  isBoardOpen: boolean;
   classroomTheme: ClassroomTheme;
   notebookStyle: ClassroomNotebookStyle;
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;

@@ -41,6 +41,7 @@ class StartRecordingDto {
 
 class GuestVoiceTokenDto {
   @IsString() guestName!: string;
+  @IsString() @IsOptional() guestId?: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -193,7 +194,7 @@ export class ClassroomController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: GuestVoiceTokenDto,
   ) {
-    const guestIdentity = `guest_${Math.random().toString(36).slice(2, 10)}`;
+    const guestIdentity = dto.guestId ? `guest:${dto.guestId}` : `guest_${Math.random().toString(36).slice(2, 10)}`;
     return this.classroomService.voiceToken(id, guestIdentity, dto.guestName);
   }
 

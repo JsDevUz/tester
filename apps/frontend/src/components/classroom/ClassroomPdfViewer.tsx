@@ -4734,28 +4734,22 @@ export function ClassroomPdfViewer({
     mode === "notebook" ? notebookPageCount : pageUrls.length;
 
   const toolbarRow = (toolbar || toolbarActions) && (
-    <div
-      className="absolute top-[5px] left-[5px] right-3 z-10 flex items-center justify-between gap-2 transition-transform duration-300 ease-in-out"
-      style={{
-        transform: overlayVisible ? "translateY(0)" : "translateY(-150%)",
-      }}
-    >
-      <div className="min-w-0 flex-1">{toolbar}</div>
-      <div className="flex shrink-0 items-center gap-2">{toolbarActions}</div>
+    <div className="absolute top-[5px] left-[5px] right-3 z-10 flex items-center justify-between gap-2 pointer-events-none">
+      <div
+        className="min-w-0 flex-1 transition-transform duration-300 ease-in-out pointer-events-auto"
+        style={{
+          transform: overlayVisible ? "translateY(0)" : "translateY(-150%)",
+        }}
+      >
+        {toolbar}
+      </div>
+      <div className="flex shrink-0 items-center gap-2 pointer-events-auto">
+        {toolbarActions}
+      </div>
     </div>
   );
 
-  // PDF ↔ Daftar ikkita variantdan iborat — segmented-pill switch: ikkala
-  // yorliq yonma-yon ko'rinadi, faol variant indigo fon bilan ajratiladi
-  // (iOS-uslubidagi sirpanuvchi doira emas).
   const modeMenuFor = (selectedMode: CsBoardMode, pane?: "left" | "right") => {
-    // Ustoz uchun har doim ko'rinadi. O'quvchi uchun faqat statik
-    // replay/snapshot ko'rinishida (noSync) — jonli darsda o'quvchi
-    // ustoz belgilagan rejimga bog'liq (sinxron), lekin replay'da hech
-    // qanday jonli host yo'q, shuning uchun o'zi PDF/Daftar orasida
-    // erkin almashtira oladi. Faqat PDF sahifalari mavjud bo'lsagina
-    // ko'rsatiladi — aks holda "PDF" tugmasi bosilganda ko'rsatadigan
-    // hech narsa yo'q.
     if (!isHost && !((noSync || !synced) && pageUrls.length > 0)) return null;
     const disabled = !isHost && synced;
     const isNotebook = selectedMode === "notebook";

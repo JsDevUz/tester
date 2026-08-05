@@ -7,33 +7,36 @@ import { ClassroomParticipants } from "./ClassroomParticipants";
 interface Props {
   participants: CsParticipant[];
   speakingUserIds: Set<string>;
+  unmutedUserIds?: Set<string>;
   isHost: boolean;
   myUserId: string | null;
   onMute?: (userId: string) => void;
   userReactions?: Record<string, string>;
   compact?: boolean;
   theme?: "light" | "dark";
+  hostOnline?: boolean;
+  hostName?: string;
+  hidden?: boolean;
 }
 
 export function ParticipantsPanelToggle({
-  participants, speakingUserIds, isHost, myUserId,
+  participants, speakingUserIds, unmutedUserIds = new Set(), isHost, myUserId,
   onMute, userReactions, theme = "light",
+  hostOnline = false, hostName = "Ustoz",
+  hidden = false,
 }: Props) {
   const [open, setOpen] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const [desktopPos, setDesktopPos] = useState<{ top: number; right: number } | null>(null);
   const onlineCount = participants.filter((p) => p.online).length;
   const isDark = theme === "dark";
 
-  // Desktop pozitsiyasi
+  // Global event listener to open from elsewhere (like clicking + others tile)
   useEffect(() => {
-    if (!open) { setDesktopPos(null); return; }
-    const btn = buttonRef.current;
-    if (!btn || window.innerWidth < 640) return;
-    const rect = btn.getBoundingClientRect();
-    setDesktopPos({ top: rect.bottom + 8, right: window.innerWidth - rect.right });
-  }, [open]);
+    const handleOpen = () => setOpen(true);
+    window.addEventListener("open-participants-panel", handleOpen);
+    return () => window.removeEventListener("open-participants-panel", handleOpen);
+  }, []);
 
   useEffect(() => {
     if (!open) return;
@@ -72,27 +75,29 @@ export function ParticipantsPanelToggle({
 
   return (
     <div className="relative">
-      <button
-        ref={buttonRef}
-        type="button"
-        onClick={() => setOpen((v) => !v)}
-        aria-expanded={open}
-        aria-haspopup="dialog"
-        aria-label="O'quvchilar ro'yxati"
-        title="O'quvchilar"
-        className={btnCls}
-      >
-        <Users size={14} />
-        <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${countBadgeCls}`}>
-          {onlineCount}/{participants.length}
-        </span>
-      </button>
+      {!hidden && (
+        <button
+          ref={buttonRef}
+          type="button"
+          onClick={() => setOpen((v) => !v)}
+          aria-expanded={open}
+          aria-haspopup="dialog"
+          aria-label="O'quvchilar ro'yxati"
+          title="O'quvchilar"
+          className={btnCls}
+        >
+          <Users size={14} />
+          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${countBadgeCls}`}>
+            {onlineCount}/{participants.length}
+          </span>
+        </button>
+      )}
 
       {open && createPortal(
         <>
           {/* Mobil overlay */}
           <div
-            className="sm:hidden fixed inset-0 z-40 bg-black/40"
+            className="sm:hidden fixed inset-0 z-[70] bg-black/40"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
@@ -102,8 +107,12 @@ export function ParticipantsPanelToggle({
             ref={panelRef}
             role="dialog"
             aria-label="O'quvchilar ro'yxati"
-            className={`classroom-panel-in z-50 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl max-h-[75vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:max-h-[min(28rem,calc(100vh-6rem))] sm:origin-top-right border ${panelBg} ${borderCls}`}
-            style={desktopPos ? { top: desktopPos.top, right: desktopPos.right } : undefined}
+            className={`classroom-panel-in z-[80] fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl h-[98vh] max-h-[98vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:origin-top-right border ${panelBg} ${borderCls}`}
+            style={
+              typeof window !== "undefined" && window.innerWidth >= 640
+                ? { top: "1vh", right: "16px" }
+                : undefined
+            }
           >
             {/* Drag handle — mobile only */}
             <div className="sm:hidden flex justify-center pt-3 pb-1">
@@ -131,16 +140,22 @@ export function ParticipantsPanelToggle({
             </div>
 
             {/* Content */}
-            <div className="overflow-y-auto px-2 py-2" style={{ maxHeight: "min(340px, 60vh)" }}>
+            <div
+              className="overflow-y-auto px-2 py-2"
+              style={{ maxHeight: "calc(98vh - 80px)" }}
+            >
               <ClassroomParticipants
                 participants={participants}
                 speakingUserIds={speakingUserIds}
+                unmutedUserIds={unmutedUserIds}
                 isHost={isHost}
                 myUserId={myUserId}
                 onMute={onMute}
                 userReactions={userReactions}
                 bare
                 theme={theme}
+                hostOnline={hostOnline}
+                hostName={hostName}
               />
             </div>
           </div>

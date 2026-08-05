@@ -3,7 +3,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Maximize2, Minimize2, Volume2, WifiOff } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { apiGetMe } from "../api/auth";
-import { useClassroomSession } from "../hooks/useClassroomSession";
+import { useClassroomSession, getGuestId } from "../hooks/useClassroomSession";
 import { useClassroomVoice } from "../hooks/useClassroomVoice";
 import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
@@ -13,6 +13,8 @@ import { StickerReactionsOverlay } from "../components/classroom/StickerReaction
 import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";
 import { ParticipantsPanelToggle } from "../components/classroom/ParticipantsPanelToggle";
 import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
+import { ClassroomParticipantsGrid } from "../components/classroom/ClassroomParticipantsGrid";
+import { ClassroomTopParticipantBar } from "../components/classroom/ClassroomTopParticipantBar";
 
 const ERROR_TEXT: Record<string, string> = {
   SESSION_NOT_FOUND: "Jonli dars topilmadi yoki allaqachon tugagan",
@@ -51,6 +53,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
 
   const needsGuestForm = isFreeRoute && !meLoading && !admin && guestNameSubmitted === null;
   const { state, sendReaction, toggleHandRaise } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
+  const myUserId = admin?.id ?? (guestNameSubmitted ? `guest:${getGuestId()}` : null);
   // Guest uchun admin.id yo'q — server socket ID yoki guestName asosida saqlaydi.
   // raisedHands da userId bor, shuning uchun admin.id ham, guestName ham bo'lishi mumkin.
   // Eng ishonchli yo'l: guestNameSubmitted yoki admin.name bo'yicha qidirish.
@@ -77,13 +80,11 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   if (needsGuestForm) {
     const isDark = state.classroomTheme === "dark";
     return (
-      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 p-6 transition-colors ${
-        isDark ? "bg-[#18191c] text-white" : "bg-gray-50 text-gray-800"
-      }`}>
+      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 p-6 transition-colors ${isDark ? "bg-[#18191c] text-white" : "bg-gray-50 text-gray-800"
+        }`}>
         <form
-          className={`flex w-full max-w-sm flex-col gap-3 rounded-2xl p-6 shadow-xl border ${
-            isDark ? "bg-[#202124] border-white/10" : "bg-white border-gray-100"
-          }`}
+          className={`flex w-full max-w-sm flex-col gap-3 rounded-2xl p-6 shadow-xl border ${isDark ? "bg-[#202124] border-white/10" : "bg-white border-gray-100"
+            }`}
           onSubmit={(e) => {
             e.preventDefault();
             const trimmed = guestNameInput.trim();
@@ -99,11 +100,10 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
             onChange={(e) => setGuestNameInput(e.target.value)}
             placeholder="Ismingiz"
             maxLength={60}
-            className={`rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${
-              isDark
-                ? "bg-[#2d2e31] border-white/10 text-white placeholder-white/40 focus:border-indigo-500"
-                : "border-gray-200 bg-white text-gray-900 focus:border-indigo-400"
-            }`}
+            className={`rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${isDark
+              ? "bg-[#2d2e31] border-white/10 text-white placeholder-white/40 focus:border-indigo-500"
+              : "border-gray-200 bg-white text-gray-900 focus:border-indigo-400"
+              }`}
           />
           <button
             type="submit"
@@ -153,9 +153,8 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   const isDarkTheme = state.classroomTheme === "dark";
 
   return (
-    <div ref={pageRef} className={`relative h-dvh flex flex-col overflow-hidden transition-colors ${
-      isDarkTheme ? "bg-[#121316] text-white" : "bg-gray-50 text-gray-800"
-    }`}>
+    <div ref={pageRef} className={`relative h-dvh flex flex-col overflow-hidden transition-colors ${isDarkTheme ? "bg-gray-50 text-white" : "bg-gray-50 text-gray-800"
+      }`}>
       {!state.hostOnline && state.joined && (
         <div className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-amber-50 text-amber-700 text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2">
           <WifiOff size={14} />
@@ -167,90 +166,151 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
         <button
           type="button"
           onClick={voice.unlockAudio}
-          className={`absolute left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2 font-medium hover:bg-indigo-700 ${
-            !state.hostOnline && state.joined ? "top-14" : "top-3"
-          }`}
+          className={`absolute left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2 font-medium hover:bg-indigo-700 ${!state.hostOnline && state.joined ? "top-14" : "top-3"
+            }`}
         >
           <Volume2 size={16} />
           Ovozni yoqish uchun bosing
         </button>
       )}
 
-      <div className="relative flex-1 min-h-0 flex flex-col p-0 sm:p-1">
-        <ClassroomPdfViewer
-          pageUrls={state.pages}
-          currentPage={state.currentPage}
-          strokesByPage={state.strokesByPage}
-          rightStrokesByPage={state.rightStrokesByPage}
-          pointer={state.pointer}
-          editable={false}
-          isHost={false}
-          hostZoom={state.zoom}
-          rightHostZoom={state.rightZoom}
-          hostSplitRatio={state.splitRatio}
-          notebookPageCount={state.notebookPageCount}
-          notebookPageStyles={state.notebookPageStyles}
-          notebookPageOrientations={state.notebookPageOrientations}
-          hostScroll={state.scroll}
-          rightHostScroll={state.rightScroll}
-          boardMode={state.boardMode}
-          boardLayout={state.boardLayout}
-          leftBoardMode={state.leftBoardMode}
-          rightBoardMode={state.rightBoardMode}
-          tool="pen"
-          color="#ef4444"
-          strokeWidth={3}
-          toolbarActions={
-            <div className="flex items-center gap-1.5">
-              {fullscreen.supported && (
-                <button
-                  type="button"
-                  onClick={() => void fullscreen.toggle()}
-                  title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
-                  className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
-                >
-                  {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
-                </button>
-              )}
-              {/* O'quvchilar qo'l ko'targanlar ro'yxatini ko'rishi uchun — faqat read-only, lower qilolmaydi */}
-              <RaisedHandsControl
-                raisedHands={state.raisedHands ?? []}
-                onLowerAll={() => {}}
-                onLowerUser={() => {}}
-                readOnly
-                theme={state.classroomTheme}
-              />
-              <ParticipantsPanelToggle
-                participants={state.participants}
-                speakingUserIds={voice.speakingUserIds}
-                isHost={false}
-                myUserId={admin?.id ?? null}
-                userReactions={state.userReactions}
-                compact
-                theme={state.classroomTheme}
-              />
-            </div>
-          }
-        />
-
-        <StickerReactionsOverlay reactions={state.reactions ?? []} />
-
-        <ClassroomCallBar
-          micEnabled={voice.micEnabled}
-          onToggleMic={() => void voice.toggleMic()}
-          audioInputs={voice.audioInputs}
-          activeAudioInputId={voice.activeAudioInputId}
-          onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
-          micDisabled={(!admin && !isGuestUser) || !voice.voiceAvailable}
-          onEndCall={() => navigate("/")}
-          endCallTitle="Darsdan chiqish"
-          hidden={!overlayVisible}
+      {!state.isBoardOpen ? (
+        <ClassroomParticipantsGrid
+          participants={state.participants}
+          speakingUserIds={voice.speakingUserIds}
+          unmutedUserIds={voice.unmutedUserIds}
+          myUserId={myUserId}
+          myUserName={admin?.name || guestNameSubmitted || "O'quvchi"}
           theme={state.classroomTheme}
-          onSendReaction={sendReaction}
-          handRaised={isHandRaised}
-          onToggleHandRaise={admin || guestNameSubmitted ? toggleHandRaise : undefined}
+          isHost={false}
+          hostOnline={state.hostOnline}
+          hostName={state.hostName || "Ustoz"}
         />
-      </div>
+      ) : (
+        <div className="relative flex-1 min-h-0 flex flex-col">
+          {!fullscreen.isFullscreen && (
+            <ClassroomTopParticipantBar
+              participants={state.participants}
+              speakingUserIds={voice.speakingUserIds}
+              unmutedUserIds={voice.unmutedUserIds}
+              myUserId={myUserId}
+              myUserName={admin?.name || guestNameSubmitted || "O'quvchi"}
+              theme={state.classroomTheme}
+              isHost={false}
+              hostOnline={state.hostOnline}
+              hostName={state.hostName || "Ustoz"}
+            />
+          )}
+
+          <div className="relative flex-1 min-h-0 px-2 pb-2 pt-2 sm:px-2 sm:pb-2 flex flex-col">
+            <ClassroomPdfViewer
+              pageUrls={state.pages}
+              currentPage={state.currentPage}
+              strokesByPage={state.strokesByPage}
+              rightStrokesByPage={state.rightStrokesByPage}
+              pointer={state.pointer}
+              editable={false}
+              isHost={false}
+              hostZoom={state.zoom}
+              rightHostZoom={state.rightZoom}
+              hostSplitRatio={state.splitRatio}
+              notebookPageCount={state.notebookPageCount}
+              notebookPageStyles={state.notebookPageStyles}
+              notebookPageOrientations={state.notebookPageOrientations}
+              hostScroll={state.scroll}
+              rightHostScroll={state.rightScroll}
+              boardMode={state.boardMode}
+              boardLayout={state.boardLayout}
+              leftBoardMode={state.leftBoardMode}
+              rightBoardMode={state.rightBoardMode}
+              tool="pen"
+              color="#ef4444"
+              strokeWidth={3}
+              toolbarActions={
+                <div className="flex items-center gap-1.5">
+                  {fullscreen.isFullscreen && (
+                    <>
+                      <RaisedHandsControl
+                        raisedHands={state.raisedHands ?? []}
+                        onLowerAll={() => { }}
+                        onLowerUser={() => { }}
+                        readOnly
+                        theme={state.classroomTheme}
+                      />
+                      <ParticipantsPanelToggle
+                        participants={state.participants}
+                        speakingUserIds={voice.speakingUserIds}
+                        unmutedUserIds={voice.unmutedUserIds}
+                        isHost={false}
+                        myUserId={myUserId}
+                        userReactions={state.userReactions}
+                        compact
+                        theme={state.classroomTheme}
+                        hostOnline={state.hostOnline}
+                        hostName="Ustoz"
+                      />
+                    </>
+                  )}
+                  {fullscreen.supported && (
+                    <button
+                      type="button"
+                      onClick={() => void fullscreen.toggle()}
+                      title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
+                      className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                    >
+                      {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+                    </button>
+                  )}
+                </div>
+              }
+            />
+          </div>
+        </div>
+      )}
+
+      {/* Floating Top Right Actions */}
+      {!fullscreen.isFullscreen && (
+        <div className="absolute top-4 right-4 z-[60] flex items-center gap-1.5 pointer-events-auto">
+          <RaisedHandsControl
+            raisedHands={state.raisedHands ?? []}
+            onLowerAll={() => { }}
+            onLowerUser={() => { }}
+            readOnly
+            theme={state.classroomTheme}
+          />
+          <ParticipantsPanelToggle
+            participants={state.participants}
+            speakingUserIds={voice.speakingUserIds}
+            unmutedUserIds={voice.unmutedUserIds}
+            isHost={false}
+            myUserId={myUserId}
+            userReactions={state.userReactions}
+            compact
+            theme={state.classroomTheme}
+            hostOnline={state.hostOnline}
+            hostName={state.hostName || "Ustoz"}
+            hidden={true}
+          />
+        </div>
+      )}
+
+      <StickerReactionsOverlay reactions={state.reactions ?? []} />
+
+      <ClassroomCallBar
+        micEnabled={voice.micEnabled}
+        onToggleMic={() => void voice.toggleMic()}
+        audioInputs={voice.audioInputs}
+        activeAudioInputId={voice.activeAudioInputId}
+        onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+        micDisabled={(!admin && !isGuestUser) || !voice.voiceAvailable}
+        onEndCall={() => navigate("/")}
+        endCallTitle="Darsdan chiqish"
+        hidden={!overlayVisible}
+        theme={state.classroomTheme}
+        onSendReaction={sendReaction}
+        handRaised={isHandRaised}
+        onToggleHandRaise={admin || guestNameSubmitted ? toggleHandRaise : undefined}
+      />
     </div>
   );
 }
