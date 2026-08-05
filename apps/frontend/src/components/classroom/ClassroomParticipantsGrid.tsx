@@ -49,7 +49,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
   hostName = "Ustoz",
 }) => {
   const isDark = theme === "dark";
-
+  // test
 
   const hasMe = _participants.some((p) => p.userId === myUserId || p.userId === "me" || (myUserName && p.name === myUserName));
   const listToRender: Array<{ userId: string; name: string; isMuted?: boolean; role?: string }> = [
@@ -135,14 +135,14 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
     const H = containerSize.height;
     const gap = 12; // gap-3 is 12px
     const tileWidth = (W - (colsCount - 1) * gap) / colsCount;
-    
+
     // Account for CSS constraints: min-h-[160px] sm:min-h-[220px] max-h-[360px]
     // sm: min-height is active when screen width >= 640px.
     const isSmBreakpoint = W >= 640;
     const minH = isSmBreakpoint ? 220 : 160;
     const maxH = 360;
     const tileHeight = Math.max(minH, Math.min(maxH, (tileWidth * 9) / 16));
-    
+
     const availableHeight = H - 40; // safety margin
     const maxRows = Math.max(1, Math.floor((availableHeight + gap) / (tileHeight + gap)));
     gridLimit = colsCount * maxRows;
@@ -186,7 +186,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
     <div
       ref={containerRef}
       className={`flex-1 w-full h-full flex flex-col items-center px-4 pt-4 pb-28 sm:px-4 sm:pt-8 sm:pb-32 overflow-y-auto select-none transition-colors duration-250 ${isDark ? "bg-[#18191c]" : "bg-gray-100"
-      }`}
+        }`}
     >
       <div className={`grid gap-3 sm:gap-3 w-full ${gridColsClass} justify-center items-center my-auto`}>
         {listToDisplay.map((p) => {
