@@ -126,8 +126,22 @@ export interface ApiMyCourse {
   progressPercent: number;
 }
 
-export async function apiGetMyCourses(): Promise<ApiMyCourse[]> {
-  const res = await client.get('/my/courses');
+export async function apiGetMyCourses(schoolId?: string): Promise<ApiMyCourse[]> {
+  const res = await client.get('/my/courses', { params: schoolId ? { schoolId } : undefined });
+  return res.data;
+}
+
+export interface ApiMySchool {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  studentCount: number;
+  courseCount: number;
+}
+
+export async function apiGetMySchools(): Promise<ApiMySchool[]> {
+  const res = await client.get('/my/schools');
   return res.data;
 }
 
