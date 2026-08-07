@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Param, Body, UseGuards, Req, Query } from '@nestjs/common';
 import { GroupsService } from './groups.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -134,8 +134,15 @@ export class GroupsController {
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('student')
   @Get('my/courses')
-  getMyCourses(@Req() req: any) {
-    return this.groupsService.getMyCourses(req.user.id);
+  getMyCourses(@Req() req: any, @Query('schoolId') schoolId?: string) {
+    return this.groupsService.getMyCourses(req.user.id, schoolId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('student')
+  @Get('my/schools')
+  getMySchools(@Req() req: any) {
+    return this.groupsService.getMySchools(req.user.id);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)
