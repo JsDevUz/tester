@@ -8,6 +8,7 @@ import { IsIn, IsNotEmpty, IsOptional, IsString, IsUUID, MaxLength, MinLength } 
 class UpdateSchoolDto {
   @IsOptional() @IsString() name?: string;
   @IsOptional() @IsString() description?: string;
+  @IsOptional() @IsString() imageUrl?: string;
 }
 
 class AddStaffDto {

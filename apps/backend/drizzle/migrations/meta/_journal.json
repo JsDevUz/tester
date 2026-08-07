@@ -169,6 +169,13 @@
       "when": 1785827730068,
       "tag": "0023_blue_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1786094297338,
+      "tag": "0024_conscious_cobalt_man",
+      "breakpoints": true
     }
   ]
 }

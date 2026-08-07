@@ -380,6 +380,7 @@ export const schools = pgTable('schools', {
   adminId: uuid('admin_id').notNull().unique().references(() => users.id, { onDelete: 'cascade' }),
   name: text('name').notNull().default('Mening maktabim'),
   description: text('description').notNull().default(''),
+  imageUrl: text('image_url'),
   inviteToken: text('invite_token').notNull().unique(),
   inviteRegenerationCount: integer('invite_regeneration_count').notNull().default(0),
   inviteRegenerationWindowStartedAt: timestamp('invite_regeneration_window_started_at', { withTimezone: true }),
