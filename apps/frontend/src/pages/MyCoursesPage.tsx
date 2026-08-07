@@ -114,6 +114,7 @@ function useLessonAntiCapture(enabled: boolean) {
 
 export function MyCoursesPage() {
   const { schoolId } = useParams<{ schoolId: string }>();
+  const navigate = useNavigate();
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -155,9 +156,23 @@ export function MyCoursesPage() {
   return (
     <StudentShell>
       <div className="w-full  rounded-2xl bg-white p-4 sm:p-5">
-        <h1 className="mb-4 text-lg font-bold text-gray-800">
-          Mening kurslarim
-        </h1>
+        {schoolId ? (
+          <div className="mb-4 flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => navigate("/schools")}
+              aria-label="Maktablarga qaytish"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+            >
+              <ArrowLeft size={20} />
+            </button>
+            <h1 className="text-lg font-bold text-gray-800">Kurslar</h1>
+          </div>
+        ) : (
+          <h1 className="mb-4 text-lg font-bold text-gray-800">
+            Mening kurslarim
+          </h1>
+        )}
 
         {loading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 

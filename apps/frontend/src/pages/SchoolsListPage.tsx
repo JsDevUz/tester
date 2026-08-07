@@ -18,7 +18,7 @@ export function SchoolsListPage() {
   }
 
   return (
-    <StudentShell restrictedNav>
+    <StudentShell>
       <div className="w-full rounded-2xl bg-white p-4 sm:p-5">
         <h1 className="mb-4 text-lg font-bold text-gray-800">
           Mening maktablarim
