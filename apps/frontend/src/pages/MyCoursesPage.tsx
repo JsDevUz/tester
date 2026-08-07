@@ -1,5 +1,5 @@
 import { useEffect, useLayoutEffect, useMemo, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
   BookOpen,
@@ -113,6 +113,7 @@ function useLessonAntiCapture(enabled: boolean) {
 }
 
 export function MyCoursesPage() {
+  const { schoolId } = useParams<{ schoolId: string }>();
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -123,7 +124,7 @@ export function MyCoursesPage() {
   function loadCourses() {
     setLoading(true);
     setLoadError(null);
-    return apiGetMyCourses()
+    return apiGetMyCourses(schoolId)
       .then(setCourses)
       .catch(() => {
         setLoadError("Kurslarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
@@ -133,7 +134,7 @@ export function MyCoursesPage() {
 
   useEffect(() => {
     void loadCourses();
-  }, []);
+  }, [schoolId]);
 
   useLayoutEffect(() => {
     return schedulePageScrollReset();

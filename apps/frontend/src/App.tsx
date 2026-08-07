@@ -23,6 +23,7 @@ import { SchoolStaffPage } from './pages/SchoolStaffPage';
 import { SchoolInvitePage } from './pages/SchoolInvitePage';
 import { SchoolInviteJoinPage } from './pages/SchoolInviteJoinPage';
 import { MyCoursesPage } from './pages/MyCoursesPage';
+import { SchoolsListPage } from './pages/SchoolsListPage';
 import { PracticeMessengerPage } from './pages/PracticeMessengerPage';
 import { ClassroomHostPage } from './pages/ClassroomHostPage';
 import { ClassroomStudentPage } from './pages/ClassroomStudentPage';
@@ -36,7 +37,7 @@ import { useAuthStore } from './stores/authStore';
 
 function HomeRoute() {
   const admin = useAuthStore((s) => s.admin);
-  if (admin?.role === 'student') return <StudentHistoryPage />;
+  if (admin?.role === 'student') return <Navigate to="/schools" replace />;
   if (admin?.role === 'curator') return <Navigate to="/students/list" replace />;
   return <DashboardPage />;
 }
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
   { path: '/tests/:id/edit', element: <TeacherRoute><QuestionEditorPage /></TeacherRoute> },
   { path: '/tests/:id/submissions', element: <TeacherRoute><SubmissionsPage /></TeacherRoute> },
   { path: '/submissions/:id', element: <TeacherRoute><SubmissionDetailPage /></TeacherRoute> },
+  { path: '/history', element: <PrivateRoute><StudentHistoryPage /></PrivateRoute> },
   { path: '/history/:id', element: <PrivateRoute><StudentSubmissionDetailPage /></PrivateRoute> },
   { path: '/t/:slug', element: <TakeTestEntryPage /> },
   { path: '/t/:slug/take', element: <TakeTestPage /> },
@@ -66,7 +68,9 @@ const router = createBrowserRouter([
   { path: '/live-classes', element: <PrivateRoute><StudentLiveClassesPage /></PrivateRoute> },
   { path: '/lessons', element: <TeacherRoute><CoursesPage /></TeacherRoute> },
   { path: '/free-classes', element: <TeacherRoute><FreeClassHistoryPage /></TeacherRoute> },
-  { path: '/my-courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
+  { path: '/schools', element: <PrivateRoute><SchoolsListPage /></PrivateRoute> },
+  { path: '/schools/:schoolId/courses', element: <PrivateRoute><MyCoursesPage /></PrivateRoute> },
+  { path: '/my-courses', element: <Navigate to="/schools" replace /> },
   { path: '/messenger', element: <PrivateRoute><PracticeMessengerPage /></PrivateRoute> },
   { path: '/payments', element: <TeacherRoute><PaymentsPage /></TeacherRoute> },
   { path: '/students', element: <TeacherRoute curatorAllowed><StudentsPage /></TeacherRoute> },

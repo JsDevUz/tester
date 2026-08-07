@@ -40,7 +40,7 @@ const NAV_ITEMS = [
   {
     label: "Amaliyotlar tarixi",
     shortLabel: "Tarix",
-    path: "/",
+    path: "/history",
     icon: ClipboardList,
   },
   {
@@ -71,7 +71,7 @@ const SCHOOLS_NAV_ITEM = {
 };
 
 function isNavActive(pathname: string, path: string) {
-  if (path === "/") return pathname === "/" || pathname.startsWith("/history/");
+  if (path === "/history") return pathname === "/history" || pathname.startsWith("/history/");
   if (path === "/live/join") return pathname.startsWith("/live/");
   if (path === "/my-courses") return pathname.startsWith("/schools/") && pathname.endsWith("/courses");
   return pathname === path;
