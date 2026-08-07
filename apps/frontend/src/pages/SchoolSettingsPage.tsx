@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { useSchoolStore } from '../stores/schoolStore';
@@ -7,6 +8,7 @@ import { apiUploadMedia } from '../api/questions';
 
 const NAME_MAX = 50;
 const DESCRIPTION_MAX = 200;
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 
 export function SchoolSettingsPage() {
   const { name, description, imageUrl, loaded, loadSchool, renameSchool, setSchoolDescription, setSchoolImage } = useSchoolStore();
@@ -21,11 +23,20 @@ export function SchoolSettingsPage() {
     const file = e.target.files?.[0];
     e.target.value = '';
     if (!file) return;
-    if (!file.type.startsWith('image/')) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error("Faqat rasm fayllarini yuklash mumkin");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      toast.error("Rasm hajmi 5 MB dan oshmasligi kerak");
+      return;
+    }
     setUploadingLogo(true);
     try {
       const { url } = await apiUploadMedia(file, 'avatars');
       await setSchoolImage(url);
+    } catch {
+      toast.error("Rasmni yuklab bo'lmadi");
     } finally {
       setUploadingLogo(false);
     }

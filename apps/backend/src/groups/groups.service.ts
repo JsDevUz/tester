@@ -398,27 +398,16 @@ export class GroupsService {
 
     return Promise.all(
       schoolRows.map(async (school) => {
-        const allMembers = await db.query.schoolMembers.findMany({
-          where: eq(schoolMembers.schoolId, school.id),
+        const studentMembers = await db.query.schoolMembers.findMany({
+          where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
         });
-        const studentCount = allMembers.filter((m) => m.role === 'student').length;
-
-        const memberIds = allMembers.map((m) => m.id);
-        const enrollments = memberIds.length
-          ? await db.query.groupEnrollments.findMany({
-              where: (e, { inArray }) => and(inArray(e.schoolMemberId, memberIds), isNull(e.removedAt)),
-              with: { group: true },
-            })
-          : [];
-        const courseCount = new Set(enrollments.map((e) => e.group.courseId)).size;
 
         return {
           id: school.id,
           name: school.name,
           description: school.description,
           imageUrl: school.imageUrl,
-          studentCount,
-          courseCount,
+          studentCount: studentMembers.length,
         };
       }),
     );

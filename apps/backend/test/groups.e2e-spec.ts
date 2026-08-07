@@ -18,6 +18,9 @@ describe('Groups / My Schools (e2e)', () => {
     const teacherRes = await request(app.getHttpServer())
       .post('/api/v1/auth/login')
       .send({ email: process.env.SUPER_ADMIN_EMAIL, password: process.env.SUPER_ADMIN_PASSWORD });
+    if (teacherRes.status !== 200) {
+      throw new Error(`Teacher login failed with status ${teacherRes.status}: ${JSON.stringify(teacherRes.body)}`);
+    }
     teacherToken = teacherRes.body.access_token;
 
     const phone = `+998${Math.floor(900000000 + Math.random() * 99999999)}`;
@@ -46,7 +49,6 @@ describe('Groups / My Schools (e2e)', () => {
       name: expect.any(String),
       description: expect.any(String),
       studentCount: expect.any(Number),
-      courseCount: expect.any(Number),
     });
     expect(res.body[0].studentCount).toBeGreaterThanOrEqual(1);
   });
@@ -67,6 +69,11 @@ describe('Groups / My Schools (e2e)', () => {
       .set('Authorization', `Bearer ${studentToken}`);
     expect(unfiltered.status).toBe(200);
 
+    // This fixture student belongs to exactly one school, so filtering to it
+    // is expected to equal the unfiltered result — this only proves the
+    // filter doesn't wrongly exclude the student's own school, not that
+    // filtering is actually applied. The unknown-schoolId case below is
+    // what proves the filter is genuinely applied.
     const filteredToOwnSchool = await request(app.getHttpServer())
       .get('/api/v1/my/courses')
       .query({ schoolId: ownSchoolId })

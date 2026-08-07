@@ -389,7 +389,7 @@ export function StudentShell({ children, restrictedNav = false }: { children: Re
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
+        <nav className={`fixed inset-x-0 bottom-0 z-40 grid ${restrictedNav ? "grid-cols-2" : "grid-cols-6"} border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden`}>
           {navItems.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);

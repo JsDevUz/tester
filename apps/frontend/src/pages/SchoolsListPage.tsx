@@ -6,7 +6,7 @@ import { useStudentSchoolStore } from "../stores/studentSchoolStore";
 
 export function SchoolsListPage() {
   const navigate = useNavigate();
-  const { schools, loaded, loadSchools, selectSchool } = useStudentSchoolStore();
+  const { schools, loaded, error, loadSchools, selectSchool } = useStudentSchoolStore();
 
   useEffect(() => {
     void loadSchools();
@@ -26,7 +26,20 @@ export function SchoolsListPage() {
 
         {!loaded && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 
-        {loaded && schools.length === 0 && (
+        {loaded && error && (
+          <div className="rounded-2xl bg-red-50 p-4 text-center">
+            <p className="mb-3 text-sm text-red-600">{error}</p>
+            <button
+              type="button"
+              onClick={() => void loadSchools()}
+              className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
+            >
+              Qayta urinish
+            </button>
+          </div>
+        )}
+
+        {loaded && !error && schools.length === 0 && (
           <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
             <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">Hali hech qanday maktabga qo'shilmagansiz</p>

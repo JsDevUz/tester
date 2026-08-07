@@ -137,7 +137,6 @@ export interface ApiMySchool {
   description: string;
   imageUrl: string | null;
   studentCount: number;
-  courseCount: number;
 }
 
 export async function apiGetMySchools(): Promise<ApiMySchool[]> {
