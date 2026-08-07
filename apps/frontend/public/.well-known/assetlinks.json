@@ -5,7 +5,8 @@
       "namespace": "android_app",
       "package_name": "uz.jamm.app",
       "sha256_cert_fingerprints": [
-        "63:7B:FF:1A:B9:1F:40:A4:8B:F4:B5:80:79:B7:76:4A:D2:84:CC:1F:8D:E0:77:80:41:A9:F6:7B:5D:8A:A8:93"
+        "63:7B:FF:1A:B9:1F:40:A4:8B:F4:B5:80:79:B7:76:4A:D2:84:CC:1F:8D:E0:77:80:41:A9:F6:7B:5D:8A:A8:93",
+        "FA:C6:17:45:DC:09:03:78:6F:B9:ED:E6:2A:96:2B:39:9F:73:48:F0:BB:6F:89:9B:83:32:66:75:91:03:3B:9C"
       ]
     }
   }
