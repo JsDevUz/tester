@@ -308,9 +308,10 @@ export class GroupsService {
       });
   }
 
-  async getMyCourses(studentId: string) {
+  async getMyCourses(studentId: string, schoolId?: string) {
     const memberships = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, studentId) });
-    const schoolMemberIds = memberships.map((m) => m.id);
+    const scopedMemberships = schoolId ? memberships.filter((m) => m.schoolId === schoolId) : memberships;
+    const schoolMemberIds = scopedMemberships.map((m) => m.id);
     if (schoolMemberIds.length === 0) return [];
 
     const enrollments = await db.query.groupEnrollments.findMany({
@@ -381,6 +382,32 @@ export class GroupsService {
           lessonsCompleted,
           lessonsTotal,
           progressPercent,
+        };
+      }),
+    );
+  }
+
+  async getMySchools(studentId: string) {
+    const memberships = await db.query.schoolMembers.findMany({ where: eq(schoolMembers.studentId, studentId) });
+    if (memberships.length === 0) return [];
+
+    const schoolIds = [...new Set(memberships.map((m) => m.schoolId))];
+    const schoolRows = await db.query.schools.findMany({
+      where: (s, { inArray }) => inArray(s.id, schoolIds),
+    });
+
+    return Promise.all(
+      schoolRows.map(async (school) => {
+        const studentMembers = await db.query.schoolMembers.findMany({
+          where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.role, 'student')),
+        });
+
+        return {
+          id: school.id,
+          name: school.name,
+          description: school.description,
+          imageUrl: school.imageUrl,
+          studentCount: studentMembers.length,
         };
       }),
     );

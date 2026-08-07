@@ -12,11 +12,13 @@ import {
   Presentation,
   Radio,
   RefreshCw,
+  School,
   Settings,
   UserRound,
 } from "lucide-react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
+import { useStudentSchoolStore } from "../../stores/studentSchoolStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessengerNotifications";
 import { UserAvatar } from "../UserAvatar";
@@ -38,7 +40,7 @@ const NAV_ITEMS = [
   {
     label: "Amaliyotlar tarixi",
     shortLabel: "Tarix",
-    path: "/",
+    path: "/history",
     icon: ClipboardList,
   },
   {
@@ -61,13 +63,21 @@ const NAV_ITEMS = [
   },
 ];
 
+const SCHOOLS_NAV_ITEM = {
+  label: "Mening maktablarim",
+  shortLabel: "Maktablar",
+  path: "/schools",
+  icon: School,
+};
+
 function isNavActive(pathname: string, path: string) {
-  if (path === "/") return pathname === "/" || pathname.startsWith("/history/");
+  if (path === "/history") return pathname === "/history" || pathname.startsWith("/history/");
   if (path === "/live/join") return pathname.startsWith("/live/");
+  if (path === "/my-courses") return pathname.startsWith("/schools/") && pathname.endsWith("/courses");
   return pathname === path;
 }
 
-export function StudentShell({ children }: { children: ReactNode }) {
+export function StudentShell({ children, restrictedNav = false }: { children: ReactNode; restrictedNav?: boolean }) {
   const admin = useAuthStore((s) => s.admin);
   const logout = useAuthStore((s) => s.logout);
   const hasUnreadMessages = usePracticeMessengerStore(
@@ -221,6 +231,17 @@ export function StudentShell({ children }: { children: ReactNode }) {
     navigate("/login");
   }
 
+  const navItems = restrictedNav ? [SCHOOLS_NAV_ITEM] : NAV_ITEMS;
+
+  function navigateToNavItem(path: string) {
+    if (path === "/my-courses") {
+      const schoolId = useStudentSchoolStore.getState().currentSchoolId;
+      navigate(schoolId ? `/schools/${schoolId}/courses` : "/schools");
+      return;
+    }
+    navigate(path);
+  }
+
   return (
     <div
       style={messengerViewportStyle}
@@ -269,14 +290,14 @@ export function StudentShell({ children }: { children: ReactNode }) {
           </button>
 
           <nav className="flex gap-1.5 overflow-x-auto rounded-2xl bg-white p-3 lg:flex-col lg:overflow-visible">
-            {NAV_ITEMS.map((item) => {
+            {navItems.map((item) => {
               const Icon = item.icon;
               const active = isNavActive(location.pathname, item.path);
               return (
                 <button
                   key={item.path}
                   type="button"
-                  onClick={() => navigate(item.path)}
+                  onClick={() => navigateToNavItem(item.path)}
                   className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${
                     active
                       ? "bg-gray-100 text-gray-900"
@@ -368,8 +389,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
-          {NAV_ITEMS.map((item) => {
+        <nav className={`fixed inset-x-0 bottom-0 z-40 grid ${restrictedNav ? "grid-cols-2" : "grid-cols-6"} border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden`}>
+          {navItems.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);
             return (
@@ -378,7 +399,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 type="button"
                 onClick={() => {
                   setProfileOpen(false);
-                  navigate(item.path);
+                  navigateToNavItem(item.path);
                 }}
                 className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
                   active ? "bg-gray-100 text-gray-900" : "text-gray-500"

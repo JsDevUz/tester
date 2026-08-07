@@ -183,6 +183,13 @@
       "when": 1785947603525,
       "tag": "0025_dusty_ricochet",
       "breakpoints": true
+    },
+    {
+      "idx": 26,
+      "version": "7",
+      "when": 1786094297338,
+      "tag": "0026_conscious_cobalt_man",
+      "breakpoints": true
     }
   ]
 }

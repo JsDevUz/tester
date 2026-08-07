@@ -20,6 +20,7 @@ export interface SchoolStaff {
 interface SchoolState {
   name: string;
   description: string;
+  imageUrl: string | null;
   inviteToken: string;
   inviteRegenerationsRemaining: number;
   inviteRegenerationResetAt: string | null;
@@ -33,6 +34,7 @@ interface SchoolState {
   loadSchool: () => Promise<void>;
   renameSchool: (name: string) => Promise<void>;
   setSchoolDescription: (description: string) => Promise<void>;
+  setSchoolImage: (imageUrl: string) => Promise<void>;
   regenerateInviteToken: () => Promise<void>;
   loadStaff: (limit?: number, offset?: number) => Promise<void>;
   searchStudents: (query: string) => Promise<ApiStudentSearchResult[]>;
@@ -43,6 +45,7 @@ interface SchoolState {
 export const useSchoolStore = create<SchoolState>((set, get) => ({
   name: '',
   description: '',
+  imageUrl: null,
   inviteToken: '',
   inviteRegenerationsRemaining: 2,
   inviteRegenerationResetAt: null,
@@ -58,6 +61,7 @@ export const useSchoolStore = create<SchoolState>((set, get) => ({
     set({
       name: school.name,
       description: school.description,
+      imageUrl: school.imageUrl,
       inviteToken: school.inviteToken,
       inviteRegenerationsRemaining: school.inviteRegenerationsRemaining,
       inviteRegenerationResetAt: school.inviteRegenerationResetAt,
@@ -73,6 +77,11 @@ export const useSchoolStore = create<SchoolState>((set, get) => ({
   setSchoolDescription: async (description) => {
     set({ description });
     persistLatest('school:description', () => apiUpdateSchool({ description }));
+  },
+
+  setSchoolImage: async (imageUrl) => {
+    const updated = await apiUpdateSchool({ imageUrl });
+    set({ imageUrl: updated.imageUrl });
   },
 
   regenerateInviteToken: async () => {

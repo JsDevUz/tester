@@ -82,7 +82,7 @@ export class SchoolsService {
     return this.withInviteRateLimit(await this.getOrCreateSchool(adminId));
   }
 
-  async updateSchool(adminId: string, data: { name?: string; description?: string }) {
+  async updateSchool(adminId: string, data: { name?: string; description?: string; imageUrl?: string }) {
     const school = await this.getOrCreateSchool(adminId);
     const [updated] = await db.update(schools).set(data).where(eq(schools.id, school.id)).returning();
     return updated;

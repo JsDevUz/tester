@@ -1,6 +1,6 @@
 {
-  "id": "c1347647-2598-41b0-8aa4-f026eacad0a3",
-  "prevId": "cf0e7572-6276-4fd1-81a0-51aa46ff9061",
+  "id": "7c71b09b-05ed-43ef-83ac-60661e804de5",
+  "prevId": "b28d410e-942d-42ca-840d-63726cae55d0",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -422,6 +422,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": false
+        },
+        "attached_board_id": {
+          "name": "attached_board_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -461,6 +467,19 @@
           "tableTo": "users",
           "columnsFrom": [
             "teacher_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
+          "onUpdate": "no action"
+        },
+        "class_sessions_attached_board_id_class_sessions_id_fk": {
+          "name": "class_sessions_attached_board_id_class_sessions_id_fk",
+          "tableFrom": "class_sessions",
+          "tableTo": "class_sessions",
+          "columnsFrom": [
+            "attached_board_id"
           ],
           "columnsTo": [
             "id"
@@ -3060,6 +3079,12 @@
           "primaryKey": false,
           "notNull": true,
           "default": "''"
+        },
+        "image_url": {
+          "name": "image_url",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         },
         "invite_token": {
           "name": "invite_token",

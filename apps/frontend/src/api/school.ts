@@ -5,6 +5,7 @@ export interface ApiSchool {
   adminId: string;
   name: string;
   description: string;
+  imageUrl: string | null;
   inviteToken: string;
   inviteRegenerationsRemaining: number;
   inviteRegenerationResetAt: string | null;
@@ -39,7 +40,7 @@ export async function apiGetSchool(): Promise<ApiSchool> {
   return res.data;
 }
 
-export async function apiUpdateSchool(data: { name?: string; description?: string }): Promise<ApiSchool> {
+export async function apiUpdateSchool(data: { name?: string; description?: string; imageUrl?: string }): Promise<ApiSchool> {
   const res = await client.patch('/school', data);
   return res.data;
 }

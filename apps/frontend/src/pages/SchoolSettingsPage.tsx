@@ -1,17 +1,46 @@
-import { useEffect } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { Camera, Loader2 } from 'lucide-react';
+import { toast } from 'sonner';
 import { AppShell } from '../components/AppShell';
 import { SchoolSidePanel } from '../components/school/SchoolSidePanel';
 import { useSchoolStore } from '../stores/schoolStore';
+import { apiUploadMedia } from '../api/questions';
 
 const NAME_MAX = 50;
 const DESCRIPTION_MAX = 200;
+const LOGO_MAX_BYTES = 5 * 1024 * 1024;
 
 export function SchoolSettingsPage() {
-  const { name, description, loaded, loadSchool, renameSchool, setSchoolDescription } = useSchoolStore();
+  const { name, description, imageUrl, loaded, loadSchool, renameSchool, setSchoolDescription, setSchoolImage } = useSchoolStore();
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     void loadSchool();
   }, [loadSchool]);
+
+  async function handleLogoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error("Faqat rasm fayllarini yuklash mumkin");
+      return;
+    }
+    if (file.size > LOGO_MAX_BYTES) {
+      toast.error("Rasm hajmi 5 MB dan oshmasligi kerak");
+      return;
+    }
+    setUploadingLogo(true);
+    try {
+      const { url } = await apiUploadMedia(file, 'avatars');
+      await setSchoolImage(url);
+    } catch {
+      toast.error("Rasmni yuklab bo'lmadi");
+    } finally {
+      setUploadingLogo(false);
+    }
+  }
 
   if (!loaded) {
     return (
@@ -32,6 +61,35 @@ export function SchoolSettingsPage() {
           <div className="rounded-2xl bg-white p-5">
             <h2 className="mb-1 text-lg font-bold text-gray-800">Maktab nomi va tavsifi</h2>
             <p className="mb-4 text-sm text-gray-400">Bu yerda maktab nomi va tavsifini tahrirlashingiz mumkin</p>
+
+            <div className="mb-4 flex items-center gap-3">
+              <div className="relative shrink-0">
+                <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-gray-100">
+                  {imageUrl ? (
+                    <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-gray-400">Rasm yo'q</span>
+                  )}
+                </div>
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  disabled={uploadingLogo}
+                  aria-label="Maktab rasmini o'zgartirish"
+                  className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-indigo-500 text-white shadow ring-2 ring-white transition-colors hover:bg-indigo-600 disabled:opacity-60"
+                >
+                  {uploadingLogo ? <Loader2 size={13} className="animate-spin" /> : <Camera size={13} />}
+                </button>
+                <input
+                  ref={logoInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handleLogoChange}
+                />
+              </div>
+              <p className="text-sm text-gray-500">Maktab rasmi</p>
+            </div>
 
             <p className="mb-1.5 text-sm text-gray-500">Maktab nomi</p>
             <input
