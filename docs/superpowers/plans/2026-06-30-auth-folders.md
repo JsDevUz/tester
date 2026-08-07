@@ -1640,7 +1640,7 @@ export function FolderCard({ folder, onDoubleClick, onContextMenu }: Props) {
       className="flex flex-col items-center gap-1 p-3 rounded-xl cursor-pointer hover:bg-white/60 active:bg-white/80 select-none w-24"
     >
       <div
-        className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl shadow-sm"
+        className="w-14 h-14 rounded-xl flex items-center justify-center text-3xl "
         style={{
           backgroundColor: folder.color + "22",
           border: `2px solid ${folder.color}44`,
@@ -2136,7 +2136,7 @@ export function AdminsPage() {
             + Add Admin
           </button>
         </div>
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
+        <div className="bg-white rounded-2xl  overflow-hidden">
           {admins.map((admin) => (
             <div
               key={admin.id}

@@ -72,14 +72,20 @@ export interface ShapeStyle {
   strokeStyle: CsStrokeStyle;
   edges: CsEdges;
   opacity: number;
+  lineShape?: "straight" | "curved" | "elbow";
+  startArrowHead?: string;
+  endArrowHead?: string;
 }
 
 export const DEFAULT_SHAPE_STYLE: ShapeStyle = {
   backgroundColor: "transparent",
-  fillStyle: "hachure",
+  fillStyle: "solid",
   strokeStyle: "solid",
   edges: "sharp",
   opacity: 100,
+  lineShape: "straight",
+  startArrowHead: "none",
+  endArrowHead: "arrow",
 };
 
 let measureCtx: CanvasRenderingContext2D | null = null;
@@ -385,6 +391,7 @@ interface Props {
   allowPageCopy?: boolean;
   activeSelectionKey?: string | null;
   onClaimSelection?: (key: string) => void;
+  focusedStrokeId?: string | null;
 }
 
 // O'q boshi (arrowhead) REF_WIDTH'ga nisbiy o'lchamda chiziladi (xuddi
@@ -393,6 +400,83 @@ interface Props {
 // qanchalik uzun bo'lmasin, uchi kattalashib ketmaydi.
 const ARROW_HEAD_LEN_REF = 14;
 const ARROW_HEAD_ANGLE = Math.PI / 7;
+
+function drawHead(
+  ctx: CanvasRenderingContext2D,
+  type: string,
+  x: number,
+  y: number,
+  angle: number,
+  headLen: number,
+) {
+  if (!type || type === "none") return;
+  ctx.save();
+  ctx.setLineDash([]);
+  ctx.fillStyle = ctx.strokeStyle;
+
+  // Head size calculation relative to headLen, ensuring high visibility
+  const len = Math.max(headLen, 14);
+
+  if (type === "arrow" || type === "open") {
+    ctx.beginPath();
+    ctx.moveTo(
+      x - len * Math.cos(angle - ARROW_HEAD_ANGLE),
+      y - len * Math.sin(angle - ARROW_HEAD_ANGLE),
+    );
+    ctx.lineTo(x, y);
+    ctx.lineTo(
+      x - len * Math.cos(angle + ARROW_HEAD_ANGLE),
+      y - len * Math.sin(angle + ARROW_HEAD_ANGLE),
+    );
+    ctx.stroke();
+  } else if (type === "arrow-filled" || type === "filled") {
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(
+      x - len * 1.1 * Math.cos(angle - ARROW_HEAD_ANGLE),
+      y - len * 1.1 * Math.sin(angle - ARROW_HEAD_ANGLE),
+    );
+    ctx.lineTo(
+      x - len * 1.1 * Math.cos(angle + ARROW_HEAD_ANGLE),
+      y - len * 1.1 * Math.sin(angle + ARROW_HEAD_ANGLE),
+    );
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === "circle" || type === "dot") {
+    const r = Math.max(len * 0.55, 6);
+    const cx = x - Math.cos(angle) * (r * 0.5);
+    const cy = y - Math.sin(angle) * (r * 0.5);
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+    ctx.fill();
+  } else if (type === "diamond") {
+    const dLen = len * 1.25;
+    const dWidth = len * 0.65;
+    const backX = x - Math.cos(angle) * dLen;
+    const backY = y - Math.sin(angle) * dLen;
+    const midX = x - Math.cos(angle) * (dLen / 2);
+    const midY = y - Math.sin(angle) * (dLen / 2);
+    const perpX = Math.cos(angle + Math.PI / 2) * dWidth;
+    const perpY = Math.sin(angle + Math.PI / 2) * dWidth;
+
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(midX + perpX, midY + perpY);
+    ctx.lineTo(backX, backY);
+    ctx.lineTo(midX - perpX, midY - perpY);
+    ctx.closePath();
+    ctx.fill();
+  } else if (type === "bar") {
+    const bWidth = Math.max(len * 0.85, 10);
+    const perpX = Math.cos(angle + Math.PI / 2) * bWidth;
+    const perpY = Math.sin(angle + Math.PI / 2) * bWidth;
+    ctx.beginPath();
+    ctx.moveTo(x + perpX, y + perpY);
+    ctx.lineTo(x - perpX, y - perpY);
+    ctx.stroke();
+  }
+  ctx.restore();
+}
 
 function drawArrow(
   ctx: CanvasRenderingContext2D,
@@ -412,56 +496,53 @@ function drawArrow(
   ctx.lineJoin = "round";
   ctx.strokeStyle = s.color;
   ctx.globalAlpha = dimmed ? 0.25 : 1;
-  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  const lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  ctx.lineWidth = lineWidth;
+  const strokeStyle = s.strokeStyle ?? "solid";
+  if (strokeStyle === "dashed") ctx.setLineDash([lineWidth * 3, lineWidth * 2]);
+  else if (strokeStyle === "dotted") ctx.setLineDash([lineWidth, lineWidth * 1.5]);
+  else ctx.setLineDash([]);
 
-  const angle = Math.atan2(y1 - y0, x1 - x0);
-  const dist = Math.hypot(x1 - x0, y1 - y0);
-  // O'q boshi REF_WIDTH'ga nisbiy sobit uzunlikda — Excalidraw'dagi kabi
-  // qalinlik oshsa juda sekin (chiziqli emas) kattalashadi va qattiq
-  // maksimal chegaraga ega, shuning uchun chiziq qanchalik qalin yoki
-  // uzun bo'lmasin, boshi hech qachon nomutanosib katta bo'lib ketmaydi.
-  // Qisqa chiziqlarda esa boshi butun chiziqdan uzun chiqmasin deb
-  // dist/3 bilan ham cheklanadi.
-  // headLen endi bevosita stroke.width (REF_WIDTH'ga nisbiy chiziq
-  // qalinligi)ga proporsional — lasso bilan butun o'q strelkasi
-  // kichraytirilganda (stroke.width ham shu bilan proporsional kamayadi)
-  // o'q boshi ham HAQIQIY ravishda kichrayadi, faqat ctx.lineWidth'ning
-  // (piksel darajasidagi) o'zi orqali emas. REF_WIDTH'dagi odatiy
-  // qalinlik (~4) uchun ARROW_HEAD_LEN_REF chiqadigan qilib normallashtirilgan.
+  const shape = s.lineShape ?? "straight";
+  let lastAngle = Math.atan2(y1 - y0, x1 - x0);
+  let firstAngle = Math.atan2(y0 - y1, x0 - x1);
+
+  const ctrlX = s.controlX !== undefined ? s.controlX * w : (x0 + x1) / 2;
+  const ctrlY = s.controlY !== undefined ? s.controlY * h : (y0 + y1) / 2;
+
+  ctx.beginPath();
+  ctx.moveTo(x0, y0);
+  if (shape === "elbow") {
+    const midX = ctrlX;
+    ctx.lineTo(midX, y0);
+    ctx.lineTo(midX, y1);
+    ctx.lineTo(x1, y1);
+    lastAngle = Math.atan2(0, x1 - midX);
+    firstAngle = Math.atan2(0, x0 - midX);
+  } else if (shape === "curved") {
+    ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
+    lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
+    firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+  } else {
+    ctx.lineTo(x1, y1);
+  }
+  ctx.stroke();
+
   const arrowHeadLen =
     ARROW_HEAD_LEN_REF *
     (w / REF_WIDTH) *
     Math.max(0.35, Math.min(1.4, s.width / 4));
-  const headLen = Math.min(arrowHeadLen, dist / 3);
+  const headLen = Math.min(arrowHeadLen, Math.hypot(x1 - x0, y1 - y0) / 3);
 
-  // Shaft to'g'ridan-to'g'ri o'q uchigacha (x1,y1) chiziladi — headLen
-  // masofasida oldinroq to'xtatilmaydi, aks holda shaft uchi va "V" boshining
-  // orqa uchlari turli burchakda bo'lgani uchun ular orasida bo'shliq
-  // (uzilish) hosil bo'lardi. Head endi shaft ustidan chiziladi va ikkovi
-  // doim x1,y1 nuqtasida ustma-ust tegib turadi.
-  ctx.beginPath();
-  ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
-  ctx.stroke();
+  const endHead = s.endArrowHead ?? "arrow";
+  const startHead = s.startArrowHead ?? "none";
 
-  // Ochiq "V" (>) shaklidagi o'q boshi — closePath yo'q, ikkita alohida
-  // qiya chiziq, shuning uchun orqa tomoni yopiq uchburchak bo'lmaydi.
-  ctx.beginPath();
-  ctx.moveTo(
-    x1 - headLen * Math.cos(angle - ARROW_HEAD_ANGLE),
-    y1 - headLen * Math.sin(angle - ARROW_HEAD_ANGLE),
-  );
-  ctx.lineTo(x1, y1);
-  ctx.lineTo(
-    x1 - headLen * Math.cos(angle + ARROW_HEAD_ANGLE),
-    y1 - headLen * Math.sin(angle + ARROW_HEAD_ANGLE),
-  );
-  ctx.stroke();
+  drawHead(ctx, endHead, x1, y1, lastAngle, headLen);
+  drawHead(ctx, startHead, x0, y0, firstAngle, headLen);
+
   ctx.restore();
 }
 
-// Oddiy to'g'ri chiziq — arrow bilan bir xil bounding-box draft/hit-test
-// yo'lini ishlatadi, faqat o'q boshi chizilmaydi.
 function drawLine(
   ctx: CanvasRenderingContext2D,
   s: CsStroke,
@@ -480,11 +561,50 @@ function drawLine(
   ctx.lineJoin = "round";
   ctx.strokeStyle = s.color;
   ctx.globalAlpha = dimmed ? 0.25 : 1;
-  ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  const lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
+  ctx.lineWidth = lineWidth;
+  const strokeStyle = s.strokeStyle ?? "solid";
+  if (strokeStyle === "dashed") ctx.setLineDash([lineWidth * 3, lineWidth * 2]);
+  else if (strokeStyle === "dotted") ctx.setLineDash([lineWidth, lineWidth * 1.5]);
+  else ctx.setLineDash([]);
+
+  const shape = s.lineShape ?? "straight";
+  let lastAngle = Math.atan2(y1 - y0, x1 - x0);
+  let firstAngle = Math.atan2(y0 - y1, x0 - x1);
+
+  const ctrlX = s.controlX !== undefined ? s.controlX * w : (x0 + x1) / 2;
+  const ctrlY = s.controlY !== undefined ? s.controlY * h : (y0 + y1) / 2;
+
   ctx.beginPath();
   ctx.moveTo(x0, y0);
-  ctx.lineTo(x1, y1);
+  if (shape === "elbow") {
+    const midX = ctrlX;
+    ctx.lineTo(midX, y0);
+    ctx.lineTo(midX, y1);
+    ctx.lineTo(x1, y1);
+    lastAngle = Math.atan2(0, x1 - midX);
+    firstAngle = Math.atan2(0, x0 - midX);
+  } else if (shape === "curved") {
+    ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
+    lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
+    firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+  } else {
+    ctx.lineTo(x1, y1);
+  }
   ctx.stroke();
+
+  const arrowHeadLen =
+    ARROW_HEAD_LEN_REF *
+    (w / REF_WIDTH) *
+    Math.max(0.35, Math.min(1.4, s.width / 4));
+  const headLen = Math.min(arrowHeadLen, Math.hypot(x1 - x0, y1 - y0) / 3);
+
+  const endHead = s.endArrowHead ?? "none";
+  const startHead = s.startArrowHead ?? "none";
+
+  drawHead(ctx, endHead, x1, y1, lastAngle, headLen);
+  drawHead(ctx, startHead, x0, y0, firstAngle, headLen);
+
   ctx.restore();
 }
 
@@ -723,10 +843,10 @@ export function drawStroke(
     const input: number[][] = Array.from({ length: pointCount }, (_, index) =>
       hasRealPressure
         ? [
-            s.points[index * 2] * w,
-            s.points[index * 2 + 1] * h,
-            s.pressures![index],
-          ]
+          s.points[index * 2] * w,
+          s.points[index * 2 + 1] * h,
+          s.pressures![index],
+        ]
         : [s.points[index * 2] * w, s.points[index * 2 + 1] * h],
     );
     const size = Math.max(1, s.width * (w / REF_WIDTH));
@@ -760,6 +880,64 @@ export function drawStroke(
       ctx.fill();
       ctx.restore();
     }
+    return;
+  }
+  if (s.tool === "laser") {
+    const now = Date.now();
+    const startTime = s.createdAt || now;
+    const elapsed = (now - startTime) / 1000;
+    if (elapsed >= 3) {
+      return;
+    }
+    let laserAlpha = 1;
+    if (elapsed > 2) {
+      laserAlpha = 1 - (elapsed - 2);
+    }
+    ctx.save();
+    ctx.lineCap = "round";
+    ctx.lineJoin = "round";
+    const laserColor = s.color && s.color !== "#000000" ? s.color : "#ff2b2b";
+    ctx.strokeStyle = laserColor;
+    ctx.shadowColor = laserColor;
+    ctx.shadowBlur = Math.max(8, (s.width || 4) * 2.5);
+    ctx.lineWidth = Math.max(3, s.width * (w / REF_WIDTH));
+    ctx.globalAlpha = (dimmed ? 0.25 : 1) * Math.max(0, Math.min(1, laserAlpha));
+
+    ctx.beginPath();
+    if (s.points.length === 2) {
+      ctx.moveTo(s.points[0] * w, s.points[1] * h);
+      ctx.lineTo(s.points[0] * w + 0.5, s.points[1] * h + 0.5);
+    } else if (s.points.length === 4) {
+      ctx.moveTo(s.points[0] * w, s.points[1] * h);
+      ctx.lineTo(s.points[2] * w, s.points[3] * h);
+    } else {
+      ctx.moveTo(s.points[0] * w, s.points[1] * h);
+      let prevX = s.points[0] * w;
+      let prevY = s.points[1] * h;
+      for (let i = 2; i + 1 < s.points.length; i += 2) {
+        const curX = s.points[i] * w;
+        const curY = s.points[i + 1] * h;
+        const midX = (prevX + curX) / 2;
+        const midY = (prevY + curY) / 2;
+        ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+        prevX = curX;
+        prevY = curY;
+      }
+      ctx.lineTo(prevX, prevY);
+    }
+    ctx.stroke();
+
+    if (s.points.length >= 2) {
+      const tipX = s.points[s.points.length - 2] * w;
+      const tipY = s.points[s.points.length - 1] * h;
+      const dotRadius = Math.max(4, (s.width * (w / REF_WIDTH)) * 1.1);
+      ctx.fillStyle = laserColor;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, dotRadius, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    ctx.restore();
     return;
   }
   ctx.save();
@@ -886,6 +1064,51 @@ function hitTestShape(
   );
 }
 
+function hitTestLineOrArrow(
+  stroke: CsStroke,
+  px: number,
+  py: number,
+  hitRadius: number,
+): boolean {
+  const [x0, y0, x1, y1] = stroke.points;
+  const shape = stroke.lineShape ?? "straight";
+  const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
+  const ctrlY = stroke.controlY ?? (y0 + y1) / 2;
+
+  // Hit radiusni foydalanuvchi qulay va oson ushlab olishi uchun sezgir qilamiz
+  const radius = Math.max(hitRadius, 0.025);
+
+  if (shape === "elbow") {
+    const d1 = distToSegment(px, py, x0, y0, ctrlX, y0);
+    const d2 = distToSegment(px, py, ctrlX, y0, ctrlX, y1);
+    const d3 = distToSegment(px, py, ctrlX, y1, x1, y1);
+    return Math.min(d1, d2, d3) <= radius;
+  }
+
+  if (shape === "curved") {
+    const STEPS = 16;
+    let prevX = x0;
+    let prevY = y0;
+    let minDist = Infinity;
+
+    for (let i = 1; i <= STEPS; i += 1) {
+      const t = i / STEPS;
+      const invT = 1 - t;
+      const curX = invT * invT * x0 + 2 * invT * t * ctrlX + t * t * x1;
+      const curY = invT * invT * y0 + 2 * invT * t * ctrlY + t * t * y1;
+
+      const d = distToSegment(px, py, prevX, prevY, curX, curY);
+      if (d < minDist) minDist = d;
+
+      prevX = curX;
+      prevY = curY;
+    }
+    return minDist <= radius;
+  }
+
+  return distToSegment(px, py, x0, y0, x1, y1) <= radius;
+}
+
 function findSelectableShapeAt(
   strokes: CsStroke[],
   x: number,
@@ -894,12 +1117,12 @@ function findSelectableShapeAt(
 ): CsStroke | null {
   for (let index = strokes.length - 1; index >= 0; index -= 1) {
     const stroke = strokes[index];
-    if (
-      (stroke.tool === "rectangle" || stroke.tool === "ellipse") &&
-      stroke.points.length === 4 &&
-      hitTestShape(stroke, x, y, hitRadius, true)
-    )
-      return stroke;
+    if (stroke.points.length < 4) continue;
+    if (stroke.tool === "line" || stroke.tool === "arrow") {
+      if (hitTestLineOrArrow(stroke, x, y, hitRadius)) return stroke;
+    } else if (stroke.tool === "rectangle" || stroke.tool === "ellipse") {
+      if (hitTestShape(stroke, x, y, hitRadius, true)) return stroke;
+    }
   }
   return null;
 }
@@ -915,8 +1138,12 @@ function findStrokeAt(
   for (let i = strokes.length - 1; i >= 0; i--) {
     const s = strokes[i];
     const pts = s.points;
-    if (s.tool === "rectangle" || s.tool === "ellipse") {
-      if (pts.length === 4 && hitTestShape(s, x, y, hitRadius)) return s;
+    if (pts.length >= 4 && (s.tool === "line" || s.tool === "arrow")) {
+      if (hitTestLineOrArrow(s, x, y, hitRadius)) return s;
+      continue;
+    }
+    if (pts.length === 4 && (s.tool === "rectangle" || s.tool === "ellipse")) {
+      if (hitTestShape(s, x, y, hitRadius)) return s;
       continue;
     }
     if (pts.length < 4) {
@@ -1012,6 +1239,26 @@ function strokeCentroid(stroke: CsStroke): [number, number] {
   return [(box.left + box.right) / 2, (box.top + box.bottom) / 2];
 }
 
+/**
+ * Rotation uchun magnit (snap) effekti:
+ * 0, 45, 90, 135, 180, 225, 270, 315, 360 graduslarga yaqinlashganda
+ * (SNAP_THRESHOLD = 4.5 gradus oralig'ida) burchak o'sha aniq gradusga yopishadi.
+ */
+function snapRotationAngle(deg: number): number {
+  const normalized = ((deg % 360) + 360) % 360;
+  const SNAP_ANGLES = [0, 45, 90, 135, 180, 225, 270, 315, 360];
+  const THRESHOLD = 4.5;
+
+  for (const snap of SNAP_ANGLES) {
+    if (Math.abs(normalized - snap) <= THRESHOLD) {
+      const targetDeg = snap === 360 ? 0 : snap;
+      const fullRotations = Math.floor(deg / 360);
+      return fullRotations * 360 + targetDeg;
+    }
+  }
+  return Math.round(deg * 10) / 10;
+}
+
 // Ray-casting: nuqta yopiq ko'pburchak (lasso yo'li) ichidami tekshiradi.
 function pointInPolygon(x: number, y: number, polygon: number[]): boolean {
   let inside = false;
@@ -1073,49 +1320,43 @@ const TEXT_ALIGN_OPTIONS: Array<{
   value: "left" | "center" | "right";
   icon: typeof AlignLeft;
 }> = [
-  { value: "left", icon: AlignLeft },
-  { value: "center", icon: AlignCenter },
-  { value: "right", icon: AlignRight },
-];
+    { value: "left", icon: AlignLeft },
+    { value: "center", icon: AlignCenter },
+    { value: "right", icon: AlignRight },
+  ];
 
 const LAYER_OPTIONS: Array<{
   value: "back" | "backward" | "forward" | "front";
   label: string;
   icon: typeof SendToBack;
 }> = [
-  { value: "back", label: "Eng orqaga", icon: SendToBack },
-  { value: "backward", label: "Orqaga", icon: ChevronsDown },
-  { value: "forward", label: "Oldinga", icon: ChevronsUp },
-  { value: "front", label: "Eng oldinga", icon: BringToFront },
-];
+    { value: "back", label: "Eng orqaga", icon: SendToBack },
+    { value: "backward", label: "Orqaga", icon: ChevronsDown },
+    { value: "forward", label: "Oldinga", icon: ChevronsUp },
+    { value: "front", label: "Eng oldinga", icon: BringToFront },
+  ];
 
-// TextStylePanel va ShapeStylePanel'da baravar ishlatiladigan qatlam
-// (z-order) tugmalari — 4 ta amal: eng orqaga/bir pog'ona orqaga/bir
-// pog'ona oldinga/eng oldinga.
-function LayersSection({
-  onReorder,
-}: {
-  onReorder: (op: "front" | "back" | "forward" | "backward") => void;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <p className="text-[11px] font-medium text-gray-400">Qatlamlar</p>
-      <div className="grid grid-cols-4 gap-1">
-        {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            aria-label={label}
-            title={label}
-            onClick={() => onReorder(value)}
-            className="flex items-center justify-center rounded-lg bg-gray-100 py-1.5 text-gray-600 transition-colors hover:bg-gray-200"
-          >
-            <Icon size={14} />
-          </button>
-        ))}
-      </div>
-    </div>
-  );
+function applyRichStyleToSelection(styleName: string, value: string | number): boolean {
+  if (typeof window === "undefined") return false;
+  const sel = window.getSelection();
+  if (sel && sel.rangeCount > 0 && !sel.isCollapsed) {
+    const range = sel.getRangeAt(0);
+    const span = document.createElement("span");
+    if (styleName === "color") span.style.color = String(value);
+    else if (styleName === "fontSize") span.style.fontSize = typeof value === "number" ? `${value}px` : String(value);
+    else if (styleName === "fontFamily") span.style.fontFamily = String(value);
+    else if (styleName === "fontWeight") span.style.fontWeight = String(value);
+
+    try {
+      const contents = range.extractContents();
+      span.appendChild(contents);
+      range.insertNode(span);
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  return false;
 }
 
 interface TextStylePanelProps {
@@ -1124,12 +1365,14 @@ interface TextStylePanelProps {
   fontSize: number;
   fontWeight: 400 | 500 | 600 | 700;
   textAlign: "left" | "center" | "right";
+  rotation?: number;
+  style?: React.CSSProperties;
   onColorChange?: (color: string) => void;
   onFontFamilyChange: (fontFamily: CsFontFamily) => void;
   onFontSizeChange: (fontSize: number) => void;
   onFontWeightChange: (fontWeight: 400 | 500 | 600 | 700) => void;
   onTextAlignChange: (textAlign: "left" | "center" | "right") => void;
-  onReorder: (op: "front" | "back" | "forward" | "backward") => void;
+  onReorder?: (op: "front" | "back" | "forward" | "backward") => void;
   onDelete?: () => void;
 }
 
@@ -1138,6 +1381,8 @@ function TextStylePanel({
   fontSize,
   fontWeight,
   textAlign,
+  rotation: _rotation = 0,
+  style: customStyle,
   onFontFamilyChange,
   onFontSizeChange,
   onFontWeightChange,
@@ -1145,102 +1390,152 @@ function TextStylePanel({
   onReorder,
   onDelete,
 }: TextStylePanelProps) {
+  const [moreOpen, setMoreOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const handler = (e: Event) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, [moreOpen]);
+
   return (
     <div
-      className="pointer-events-auto fixed left-3 top-1/2 z-40 flex max-h-[calc(100vh-24px)] w-44 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 text-gray-700 shadow-xl"
+      ref={panelRef}
+      className="pointer-events-auto absolute z-50 flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-gray-900 shadow-xl"
+      style={{
+        ...customStyle,
+      }}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}
     >
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Shrift</p>
-        <select
-          aria-label="Font family"
-          value={fontFamily}
-          onChange={(event) =>
-            onFontFamilyChange(event.target.value as CsFontFamily)
-          }
-          className="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-indigo-400"
-        >
-          {FONT_FAMILY_OPTIONS.map((font) => (
-            <option key={font} value={font}>
-              {font === "Comic Sans MS" ? "Comic Sans" : font}
-            </option>
-          ))}
-        </select>
-      </div>
+      {/* Font Family Selector */}
+      <select
+        aria-label="Font family"
+        value={fontFamily}
+        onChange={(event) => onFontFamilyChange(event.target.value as CsFontFamily)}
+        className="h-7 rounded-xl border border-gray-200 bg-gray-50 px-2.5 text-xs font-semibold text-gray-800 outline-none focus:border-indigo-500 cursor-pointer"
+      >
+        {FONT_FAMILY_OPTIONS.map((font) => (
+          <option key={font} value={font} className="bg-white text-gray-900 font-medium">
+            {font === "Comic Sans MS" ? "Comic Sans" : font}
+          </option>
+        ))}
+      </select>
 
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Shrift o'lchami</p>
-        <div className="grid grid-cols-4 gap-1">
-          {FONT_SIZE_PRESETS.map((preset) => (
-            <button
-              key={preset.label}
-              type="button"
-              onClick={() => onFontSizeChange(preset.size)}
-              className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                fontSize === preset.size
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+      <div className="h-4 w-px bg-gray-200" />
+
+      {/* Font Size Preset Buttons */}
+      <div className="flex items-center gap-0.5">
+        {FONT_SIZE_PRESETS.map((preset) => (
+          <button
+            key={preset.label}
+            type="button"
+            onClick={() => onFontSizeChange(preset.size)}
+            className={`flex h-7 px-2.5 items-center justify-center rounded-xl text-xs font-bold transition-all ${fontSize === preset.size
+              ? "bg-gray-900 text-white "
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
-            >
-              {preset.label}
-            </button>
-          ))}
-        </div>
+          >
+            {preset.label}
+          </button>
+        ))}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Matn joylashuvi</p>
-        <div className="grid grid-cols-3 gap-1">
-          {TEXT_ALIGN_OPTIONS.map(({ value, icon: Icon }) => (
-            <button
-              key={value}
-              type="button"
-              aria-label={`Matn joylashuvi ${value}`}
-              onClick={() => onTextAlignChange(value)}
-              className={`flex items-center justify-center rounded-lg py-1.5 transition-colors ${
-                textAlign === value
-                  ? "bg-indigo-100 text-indigo-600"
-                  : "bg-gray-100 text-gray-500 hover:bg-gray-200"
+      <div className="h-4 w-px bg-gray-200" />
+
+      {/* Text Alignment */}
+      <div className="flex items-center gap-0.5">
+        {TEXT_ALIGN_OPTIONS.map(({ value, icon: Icon }) => (
+          <button
+            key={value}
+            type="button"
+            onClick={() => onTextAlignChange(value)}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${textAlign === value
+              ? "bg-gray-900 text-white "
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
               }`}
-            >
-              <Icon size={14} />
-            </button>
-          ))}
-        </div>
+          >
+            <Icon size={14} />
+          </button>
+        ))}
       </div>
 
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Qalinlik</p>
-        <select
-          aria-label="Font weight"
-          value={fontWeight}
-          onChange={(event) =>
-            onFontWeightChange(
-              Number(event.target.value) as 400 | 500 | 600 | 700,
-            )
-          }
-          className="h-8 w-full rounded-lg border border-gray-200 bg-white px-2 text-xs outline-none focus:border-indigo-400"
-        >
-          <option value={400}>Regular</option>
-          <option value={500}>Medium</option>
-          <option value={600}>Semi bold</option>
-          <option value={700}>Bold</option>
-        </select>
-      </div>
+      <div className="h-4 w-px bg-gray-200" />
 
-      <LayersSection onReorder={onReorder} />
+      {/* Bold Toggle */}
+      <button
+        type="button"
+        onClick={() => onFontWeightChange(fontWeight === 700 ? 400 : 700)}
+        className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-black transition-all ${fontWeight === 700
+          ? "bg-gray-900 text-white "
+          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+        title="Bold"
+      >
+        B
+      </button>
 
-      {onDelete && (
+      <div className="h-4 w-px bg-gray-200" />
+
+      {/* More ... Dropdown Button */}
+      <div className="relative">
         <button
           type="button"
-          onClick={onDelete}
-          className="flex items-center justify-center gap-1.5 rounded-lg bg-red-50 py-2 text-xs font-medium text-red-600 transition-colors hover:bg-red-100"
+          onClick={() => setMoreOpen((prev) => !prev)}
+          className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${moreOpen ? "bg-indigo-600 text-white " : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            }`}
         >
-          <Trash2 size={13} />
-          O'chirish
+          <MoreHorizontal size={16} />
         </button>
-      )}
+
+        {/* More Menu Dropdown Popup */}
+        {moreOpen && (
+          <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="px-2 py-1 text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+              Qatlamlar (Order)
+            </div>
+            <div className="grid grid-cols-4 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+              {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  title={label}
+                  onClick={() => {
+                    onReorder?.(value);
+                    setMoreOpen(false);
+                  }}
+                  className="flex h-7 w-full items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 transition-colors"
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+
+            {onDelete && (
+              <>
+                <div className="h-px bg-gray-200 my-0.5" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete();
+                    setMoreOpen(false);
+                  }}
+                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 transition-colors font-semibold"
+                >
+                  <Trash2 size={14} />
+                  <span>O'chirish</span>
+                </button>
+              </>
+            )}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1252,6 +1547,7 @@ const SHAPE_BACKGROUND_COLORS = [
   "#a5d8ff",
   "#ffec99",
 ];
+
 const FILL_STYLE_OPTIONS: Array<{ value: CsFillStyle; label: string }> = [
   { value: "hachure", label: "Shtrix" },
   { value: "cross-hatch", label: "Katak" },
@@ -1346,180 +1642,535 @@ function EdgeIcon({ rounded }: { rounded: boolean }) {
   );
 }
 
+
+
+const ARROWHEAD_PREVIEWS = [
+  { id: "none", title: "O'qsiz", endHead: "none", startHead: "none", svg: <line x1="4" y1="12" x2="20" y2="12" /> },
+  { id: "arrow", title: "O'qli", endHead: "arrow", startHead: "none", svg: <path d="M4 12h15M14 6l6 6-6 6" /> },
+  { id: "double-arrow", title: "Ikki tomonlama", endHead: "arrow", startHead: "arrow", svg: <path d="M9 6L3 12l6 6M15 6l6 6-6 6M3 12h18" /> },
+  { id: "arrow-filled", title: "To'ldirilgan o'q", endHead: "arrow-filled", startHead: "none", svg: <><line x1="4" y1="12" x2="16" y2="12" /><polygon points="15,6 21,12 15,18" fill="currentColor" /></> },
+  { id: "circle", title: "Nuqtali", endHead: "circle", startHead: "none", svg: <><line x1="4" y1="12" x2="16" y2="12" /><circle cx="18" cy="12" r="3.5" fill="currentColor" /></> },
+  { id: "diamond", title: "Romb", endHead: "diamond", startHead: "none", svg: <><line x1="4" y1="12" x2="15" y2="12" /><polygon points="15,12 18,8 21,12 18,16" fill="currentColor" /></> },
+  { id: "bar", title: "Chiziqcha", endHead: "bar", startHead: "none", svg: <><line x1="4" y1="12" x2="19" y2="12" /><line x1="19" y1="6" x2="19" y2="18" /></> },
+];
+
 interface ShapeStylePanelProps {
   color?: string;
   backgroundColor: string;
   fillStyle: CsFillStyle;
   strokeWidth: number;
   strokeStyle: CsStrokeStyle;
+  lineShape?: "straight" | "curved" | "elbow";
+  startArrowHead?: string;
+  endArrowHead?: string;
   edges: CsEdges;
   opacity: number;
+  rotation?: number;
+  strokeTool?: CsTool;
+  style?: React.CSSProperties;
   onColorChange?: (color: string) => void;
   onBackgroundColorChange: (color: string) => void;
   onFillStyleChange: (fillStyle: CsFillStyle) => void;
   onStrokeWidthChange: (width: number) => void;
   onStrokeStyleChange: (strokeStyle: CsStrokeStyle) => void;
+  onLineShapeChange?: (shape: "straight" | "curved" | "elbow") => void;
+  onArrowHeadChange?: (endHead: string, startHead: string) => void;
   onEdgesChange: (edges: CsEdges) => void;
   onOpacityChange: (opacity: number) => void;
+  onToolChange?: (tool: CsTool) => void;
   onReorder: (op: "front" | "back" | "forward" | "backward") => void;
 }
 
 function ShapeStylePanel({
   backgroundColor,
-  fillStyle,
+  fillStyle = "solid",
   strokeWidth,
   strokeStyle,
+  lineShape = "straight",
+  startArrowHead = "none",
+  endArrowHead = "arrow",
   edges,
   opacity,
+  rotation: _rotation = 0,
+  strokeTool,
+  style: customStyle,
   onBackgroundColorChange,
   onFillStyleChange,
   onStrokeWidthChange,
   onStrokeStyleChange,
+  onLineShapeChange,
+  onArrowHeadChange,
   onEdgesChange,
   onOpacityChange,
+  onToolChange: _onToolChange,
   onReorder,
 }: ShapeStylePanelProps) {
-  const hasBackground = backgroundColor !== "transparent";
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [lineThicknessOpen, setLineThicknessOpen] = useState(false);
+  const [arrowHeadOpen, setArrowHeadOpen] = useState(false);
+  const [opacityOpen, setOpacityOpen] = useState(false);
+  const isLineOrArrow = strokeTool === "line" || strokeTool === "arrow";
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  const toggleLineThickness = () => {
+    setLineThicknessOpen((prev) => {
+      if (!prev) {
+        setMoreOpen(false);
+        setArrowHeadOpen(false);
+        setOpacityOpen(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleArrowHead = () => {
+    setArrowHeadOpen((prev) => {
+      if (!prev) {
+        setLineThicknessOpen(false);
+        setMoreOpen(false);
+        setOpacityOpen(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleOpacity = () => {
+    setOpacityOpen((prev) => {
+      if (!prev) {
+        setLineThicknessOpen(false);
+        setArrowHeadOpen(false);
+        setMoreOpen(false);
+      }
+      return !prev;
+    });
+  };
+
+  const toggleMore = () => {
+    setMoreOpen((prev) => {
+      if (!prev) {
+        setLineThicknessOpen(false);
+        setArrowHeadOpen(false);
+        setOpacityOpen(false);
+      }
+      return !prev;
+    });
+  };
+
+  const anyOpen = moreOpen || lineThicknessOpen || arrowHeadOpen || opacityOpen;
+  useEffect(() => {
+    if (!anyOpen) return;
+    const handler = (e: Event) => {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        setMoreOpen(false);
+        setLineThicknessOpen(false);
+        setArrowHeadOpen(false);
+        setOpacityOpen(false);
+      }
+    };
+    document.addEventListener("pointerdown", handler, true);
+    return () => document.removeEventListener("pointerdown", handler, true);
+  }, [anyOpen]);
+
   return (
     <div
-      className="pointer-events-auto fixed left-3 top-1/2 z-40 flex max-h-[calc(100vh-24px)] w-44 -translate-y-1/2 flex-col gap-4 overflow-y-auto rounded-2xl border border-gray-200 bg-white p-3 text-gray-700 shadow-xl"
+      ref={panelRef}
+      className="pointer-events-auto absolute z-40 flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-gray-900 shadow-xl"
+      style={{
+        ...customStyle,
+      }}
       onPointerDown={(event) => event.stopPropagation()}
       onPointerMove={(event) => event.stopPropagation()}
     >
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Fon</p>
-        <div className="flex items-center gap-1.5">
+      {/* Line Thickness & Style Dropdown Button for Line/Arrow */}
+      {isLineOrArrow && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={toggleLineThickness}
+            className={`flex h-7 items-center gap-1.5 px-2.5 rounded-xl transition-all ${lineThicknessOpen
+              ? "bg-indigo-600 text-white "
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-semibold"
+              }`}
+            title="Chiziq qalinligi va uslubi"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={Math.max(1.5, Math.min(4, strokeWidth / 2))} strokeLinecap="round">
+              {strokeStyle === "dashed" ? (
+                <path d="M4 12h4M12 12h4M20 12h4" />
+              ) : strokeStyle === "dotted" ? (
+                <path d="M4 12h.01M10 12h.01M16 12h.01" />
+              ) : (
+                <path d="M4 12h16" />
+              )}
+            </svg>
+            <span className="text-xs font-bold text-gray-800">{strokeWidth}px</span>
+          </button>
+
+          {/* Line Thickness & Style Popover Dropdown */}
+          {lineThicknessOpen && (
+            <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-xs z-50 flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-100">
+              {/* Line thickness slider */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between font-bold text-gray-700 text-xs">
+                  <span>Line thickness</span>
+                  <span className="text-indigo-600 font-bold">{strokeWidth}px</span>
+                </div>
+                <input
+                  type="range"
+                  min={1}
+                  max={16}
+                  step={1}
+                  value={strokeWidth}
+                  onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
+                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                />
+              </div>
+
+              <div className="h-px bg-gray-200" />
+
+              {/* Line style options */}
+              <div className="flex flex-col gap-1.5">
+                <div className="font-bold text-gray-700 text-xs">Line style</div>
+                <div className="grid grid-cols-3 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("solid")}
+                    title="Solid"
+                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "solid"
+                      ? "bg-gray-900 text-white "
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+                      }`}
+                  >
+                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("dashed")}
+                    title="Dashed"
+                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "dashed"
+                      ? "bg-gray-900 text-white "
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+                      }`}
+                  >
+                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="2.5" strokeDasharray="5,3">
+                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("dotted")}
+                    title="Dotted"
+                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "dotted"
+                      ? "bg-gray-900 text-white "
+                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
+                      }`}
+                  >
+                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="3" strokeDasharray="1,4">
+                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+
+            </div>
+          )}
+        </div>
+      )}
+
+      {isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
+
+      {/* Background Fill Colors (for Rect/Ellipse) */}
+      {!isLineOrArrow && (
+        <div className="flex items-center gap-1 px-1">
           {SHAPE_BACKGROUND_COLORS.map((c) => (
             <button
               key={c}
               type="button"
               aria-label={`Fon rangi ${c}`}
               onClick={() => onBackgroundColorChange(c)}
-              className={`h-6 w-6 rounded-full border-2 ${backgroundColor === c ? "border-indigo-500" : "border-gray-200"}`}
+              className={`h-5 w-5 rounded-full border border-gray-300 transition-transform hover:scale-110 ${backgroundColor === c ? "ring-2 ring-indigo-500 scale-105" : ""
+                }`}
               style={
                 c === "transparent"
                   ? {
-                      backgroundImage:
-                        "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)",
-                      backgroundSize: "6px 6px",
-                      backgroundPosition: "0 0, 0 3px, 3px -3px, -3px 0",
-                    }
+                    backgroundImage:
+                      "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
+                    backgroundSize: "6px 6px",
+                  }
                   : { backgroundColor: c }
               }
             />
           ))}
         </div>
-      </div>
-
-      {hasBackground && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">To‘ldirish</p>
-          <div className="grid grid-cols-3 gap-1">
-            {FILL_STYLE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onFillStyleChange(option.value)}
-                aria-label={option.label}
-                title={option.label}
-                className={`flex items-center justify-center rounded-lg py-1.5 text-[11px] font-medium transition-colors ${
-                  fillStyle === option.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                <FillStyleIcon style={option.value} />
-              </button>
-            ))}
-          </div>
-        </div>
       )}
 
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">
-          Kontur qalinligi
-        </p>
-        <div className="grid grid-cols-3 gap-1">
-          {STROKE_WIDTH_OPTIONS.map((option) => (
+      {/* Fill Style Selector (To'ldirish for Rect/Ellipse) */}
+      {!isLineOrArrow && backgroundColor !== "transparent" && (
+        <div className="flex items-center gap-0.5">
+          {FILL_STYLE_OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
-              onClick={() => onStrokeWidthChange(option.value)}
-              className={`rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                strokeWidth === option.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
-            >
-              {option.label}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Kontur uslubi</p>
-        <div className="grid grid-cols-3 gap-1">
-          {STROKE_STYLE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onStrokeStyleChange(option.value)}
+              onClick={() => onFillStyleChange(option.value)}
               aria-label={option.label}
               title={option.label}
-              className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                strokeStyle === option.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${fillStyle === option.value
+                ? "bg-gray-900 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
             >
-              <StrokeStyleIcon style={option.value} />
+              <FillStyleIcon style={option.value} />
             </button>
           ))}
         </div>
+      )}
+
+      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
+
+      {/* Stroke Width */}
+      <div className="flex items-center gap-0.5">
+        {STROKE_WIDTH_OPTIONS.map((option) => (
+          <button
+            key={option.value}
+            type="button"
+            onClick={() => onStrokeWidthChange(option.value)}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-bold transition-all ${strokeWidth === option.value
+              ? "bg-gray-900 text-white "
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+          >
+            {option.label}
+          </button>
+        ))}
       </div>
 
-      {
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">Burchaklar</p>
-          <div className="grid grid-cols-2 gap-1">
-            {EDGES_OPTIONS.map((option) => (
+      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
+
+      {/* Stroke Style — only for shapes (line/arrow has it in thickness subpanel) */}
+      {!isLineOrArrow && (
+        <>
+          <div className="flex items-center gap-0.5">
+            {STROKE_STYLE_OPTIONS.map((option) => (
               <button
                 key={option.value}
                 type="button"
-                onClick={() => onEdgesChange(option.value)}
+                onClick={() => onStrokeStyleChange(option.value)}
                 aria-label={option.label}
                 title={option.label}
-                className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                  edges === option.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${strokeStyle === option.value
+                  ? "bg-gray-900 text-white "
+                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                  }`}
               >
-                <EdgeIcon rounded={option.value === "round"} />
+                <StrokeStyleIcon style={option.value} />
               </button>
             ))}
           </div>
-        </div>
-      }
 
-      {hasBackground && (
-        <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">Shaffoflik</p>
-          <input
-            aria-label="Shaffoflik"
-            type="range"
-            min={0}
-            max={100}
-            step={10}
-            value={opacity}
-            onChange={(event) => onOpacityChange(Number(event.target.value))}
-            className="classroom-opacity-slider w-full"
-          />
+          <div className="h-4 w-px bg-gray-200" />
+        </>
+      )}
+
+      {/* Line Shape — in main panel for line/arrow */}
+      {isLineOrArrow && (
+        <>
+          <div className="h-4 w-px bg-gray-200" />
+          <div className="flex items-center gap-0.5">
+            <button
+              type="button"
+              onClick={() => onLineShapeChange?.("straight")}
+              title="To'g'ri chiziq"
+              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "straight"
+                ? "bg-gray-900 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <line x1="4" y1="20" x2="20" y2="4" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => onLineShapeChange?.("elbow")}
+              title="Burchakli chiziq"
+              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "elbow"
+                ? "bg-gray-900 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                <polyline points="4,6 4,18 20,18" />
+              </svg>
+            </button>
+            <button
+              type="button"
+              onClick={() => onLineShapeChange?.("curved")}
+              title="Egri chiziq"
+              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "curved"
+                ? "bg-gray-900 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+            >
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M4 18 Q 12 4, 20 18" />
+              </svg>
+            </button>
+          </div>
+          <div className="h-4 w-px bg-gray-200" />
+        </>
+      )}
+
+      {/* Arrowhead / Line Endings Dropdown Popover */}
+      {isLineOrArrow && (
+        <div className="relative">
+          <button
+            type="button"
+            onClick={toggleArrowHead}
+            className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${arrowHeadOpen
+              ? "bg-indigo-600 text-white "
+              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+              }`}
+            title="O'q uchlari shakllari"
+          >
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="4" y1="12" x2="19" y2="12" />
+              <polyline points="13 6 19 12 13 18" />
+            </svg>
+          </button>
+
+          {/* Arrowhead Dropdown Popup Grid */}
+          {arrowHeadOpen && (
+            <div className="absolute left-0 top-full mt-2 w-60 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 grid grid-cols-4 gap-1.5 animate-in fade-in zoom-in-95 duration-100">
+              {ARROWHEAD_PREVIEWS.map((opt) => {
+                const defaultEnd = strokeTool === "line" ? "none" : "arrow";
+                const currentEnd = endArrowHead ?? defaultEnd;
+                const currentStart = startArrowHead ?? "none";
+                const isActive = currentEnd === opt.endHead && currentStart === opt.startHead;
+                return (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => {
+                      onArrowHeadChange?.(opt.endHead, opt.startHead);
+                      setArrowHeadOpen(false);
+                    }}
+                    title={opt.title}
+                    className={`flex h-9 items-center justify-center rounded-xl transition-all ${isActive
+                      ? "bg-indigo-600 text-white  font-bold"
+                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                      }`}
+                  >
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      {opt.svg}
+                    </svg>
+                  </button>
+                );
+              })}
+            </div>
+          )}
         </div>
       )}
 
-      <LayersSection onReorder={onReorder} />
+      {/* Edges (for Rect/Ellipse) */}
+      {!isLineOrArrow && (
+        <div className="flex items-center gap-0.5">
+          {EDGES_OPTIONS.map((option) => (
+            <button
+              key={option.value}
+              type="button"
+              onClick={() => onEdgesChange(option.value)}
+              aria-label={option.label}
+              title={option.label}
+              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${edges === option.value
+                ? "bg-gray-900 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+                }`}
+            >
+              <EdgeIcon rounded={option.value === "round"} />
+            </button>
+          ))}
+        </div>
+      )}
+
+      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
+
+      {/* Opacity Range Slider Popover (for Rect/Ellipse) */}
+      {!isLineOrArrow && (
+        <>
+          <div className="relative">
+            <button
+              type="button"
+              onClick={toggleOpacity}
+              className={`flex h-7 items-center gap-1 px-2.5 rounded-xl transition-all ${opacityOpen
+                ? "bg-indigo-600 text-white "
+                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-semibold"
+                }`}
+              title="Shaffoflik (Opacity)"
+            >
+              <span className="text-xs font-bold text-gray-800">{opacity}%</span>
+            </button>
+
+            {/* Opacity Range Slider Dropdown */}
+            {opacityOpen && (
+              <div className="absolute left-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100">
+                <div className="flex items-center justify-between text-gray-700 font-bold text-xs mb-1">
+                  <span>Opacity</span>
+                  <span className="text-indigo-600 font-bold">{opacity}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={10}
+                  max={100}
+                  step={1}
+                  value={opacity}
+                  onChange={(e) => onOpacityChange(Number(e.target.value))}
+                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-gray-200" />
+        </>
+      )}
+
+      {/* More ... Dropdown Button */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={toggleMore}
+          className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${moreOpen ? "bg-indigo-600 text-white " : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+            }`}
+        >
+          <MoreHorizontal size={16} />
+        </button>
+
+        {/* More Menu Dropdown Popup */}
+        {moreOpen && (
+          <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="px-2 py-1 text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+              Qatlamlar (Order)
+            </div>
+            <div className="grid grid-cols-4 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+              {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
+                <button
+                  key={value}
+                  type="button"
+                  title={label}
+                  onClick={() => {
+                    onReorder(value);
+                    setMoreOpen(false);
+                  }}
+                  className="flex h-7 w-full items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 transition-colors"
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -1561,7 +2212,7 @@ export function ShapeStyleOnlyPanel({
       onPointerMove={(event) => event.stopPropagation()}
     >
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Fon</p>
+        <p className="text-[11px] font-bold text-gray-700">Fon</p>
         <div className="flex items-center gap-1.5">
           {SHAPE_BACKGROUND_COLORS.map((c) => (
             <button
@@ -1569,15 +2220,15 @@ export function ShapeStyleOnlyPanel({
               type="button"
               aria-label={`Fon rangi ${c}`}
               onClick={() => onBackgroundColorChange(c)}
-              className={`h-6 w-6 rounded-full border-2 ${backgroundColor === c ? "border-indigo-500" : "border-gray-200"}`}
+              className={`h-6 w-6 rounded-full border-2 ${backgroundColor === c ? "border-indigo-600 ring-1 ring-indigo-500" : "border-gray-200"}`}
               style={
                 c === "transparent"
                   ? {
-                      backgroundImage:
-                        "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)",
-                      backgroundSize: "6px 6px",
-                      backgroundPosition: "0 0, 0 3px, 3px -3px, -3px 0",
-                    }
+                    backgroundImage:
+                      "linear-gradient(45deg, #e5e7eb 25%, transparent 25%), linear-gradient(-45deg, #e5e7eb 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #e5e7eb 75%), linear-gradient(-45deg, transparent 75%, #e5e7eb 75%)",
+                    backgroundSize: "6px 6px",
+                    backgroundPosition: "0 0, 0 3px, 3px -3px, -3px 0",
+                  }
                   : { backgroundColor: c }
               }
             />
@@ -1587,7 +2238,7 @@ export function ShapeStyleOnlyPanel({
 
       {hasBackground && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">To‘ldirish</p>
+          <p className="text-[11px] font-bold text-gray-700">To‘ldirish</p>
           <div className="grid grid-cols-3 gap-1">
             {FILL_STYLE_OPTIONS.map((option) => (
               <button
@@ -1596,11 +2247,10 @@ export function ShapeStyleOnlyPanel({
                 onClick={() => onFillStyleChange(option.value)}
                 aria-label={option.label}
                 title={option.label}
-                className={`flex items-center justify-center rounded-lg py-1.5 text-[11px] font-medium transition-colors ${
-                  fillStyle === option.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`flex items-center justify-center rounded-lg py-1.5 text-[11px] font-bold transition-colors ${fillStyle === option.value
+                  ? "bg-indigo-600 text-white "
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 <FillStyleIcon style={option.value} />
               </button>
@@ -1610,7 +2260,7 @@ export function ShapeStyleOnlyPanel({
       )}
 
       <div className="flex flex-col gap-1.5">
-        <p className="text-[11px] font-medium text-gray-400">Kontur uslubi</p>
+        <p className="text-[11px] font-bold text-gray-700">Kontur uslubi</p>
         <div className="grid grid-cols-3 gap-1">
           {STROKE_STYLE_OPTIONS.map((option) => (
             <button
@@ -1619,11 +2269,10 @@ export function ShapeStyleOnlyPanel({
               onClick={() => onStrokeStyleChange(option.value)}
               aria-label={option.label}
               title={option.label}
-              className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                strokeStyle === option.value
-                  ? "bg-indigo-600 text-white"
-                  : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-              }`}
+              className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-bold transition-colors ${strokeStyle === option.value
+                ? "bg-indigo-600 text-white "
+                : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                }`}
             >
               <StrokeStyleIcon style={option.value} />
             </button>
@@ -1633,7 +2282,7 @@ export function ShapeStyleOnlyPanel({
 
       {
         <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">Burchaklar</p>
+          <p className="text-[11px] font-bold text-gray-700">Burchaklar</p>
           <div className="grid grid-cols-2 gap-1">
             {EDGES_OPTIONS.map((option) => (
               <button
@@ -1642,11 +2291,10 @@ export function ShapeStyleOnlyPanel({
                 onClick={() => onEdgesChange(option.value)}
                 aria-label={option.label}
                 title={option.label}
-                className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-medium transition-colors ${
-                  edges === option.value
-                    ? "bg-indigo-600 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
+                className={`flex items-center justify-center rounded-lg py-1.5 text-xs font-bold transition-colors ${edges === option.value
+                  ? "bg-indigo-600 text-white "
+                  : "bg-gray-100 text-gray-700 hover:bg-gray-200"
+                  }`}
               >
                 <EdgeIcon rounded={option.value === "round"} />
               </button>
@@ -1657,7 +2305,7 @@ export function ShapeStyleOnlyPanel({
 
       {hasBackground && (
         <div className="flex flex-col gap-1.5">
-          <p className="text-[11px] font-medium text-gray-400">Shaffoflik</p>
+          <p className="text-[11px] font-bold text-gray-700">Shaffoflik</p>
           <input
             aria-label="Shaffoflik"
             type="range"
@@ -1666,7 +2314,7 @@ export function ShapeStyleOnlyPanel({
             step={10}
             value={opacity}
             onChange={(event) => onOpacityChange(Number(event.target.value))}
-            className="classroom-opacity-slider w-full"
+            className="classroom-opacity-slider w-full accent-indigo-600"
           />
         </div>
       )}
@@ -2049,8 +2697,8 @@ function ClassroomPdfPage({
     };
     const edited = editingTextId
       ? strokes.find(
-          (stroke) => stroke.id === editingTextId && stroke.tool === "text",
-        )
+        (stroke) => stroke.id === editingTextId && stroke.tool === "text",
+      )
       : null;
     const savedId = edited ? edited.id : crypto.randomUUID();
     if (edited) {
@@ -2084,8 +2732,8 @@ function ClassroomPdfPage({
 
   const selectedText = selectedTextId
     ? strokes.find(
-        (stroke) => stroke.id === selectedTextId && stroke.tool === "text",
-      )
+      (stroke) => stroke.id === selectedTextId && stroke.tool === "text",
+    )
     : null;
   const updateSelectedText = (changes: Partial<CsStroke>) => {
     if (!selectedText) return;
@@ -2115,10 +2763,10 @@ function ClassroomPdfPage({
 
   const selectedShape = selectedShapeId
     ? strokes.find(
-        (stroke) =>
-          stroke.id === selectedShapeId &&
-          (stroke.tool === "rectangle" || stroke.tool === "ellipse"),
-      )
+      (stroke) =>
+        stroke.id === selectedShapeId &&
+        (stroke.tool === "rectangle" || stroke.tool === "ellipse" || stroke.tool === "line" || stroke.tool === "arrow"),
+    )
     : null;
   const updateSelectedShape = (changes: Partial<CsStroke>) => {
     if (!selectedShape) return;
@@ -2132,22 +2780,22 @@ function ClassroomPdfPage({
   const selectedGroupBounds =
     selectedGroupStrokes.length > 0
       ? selectedGroupStrokes.reduce(
-          (acc, stroke) => {
-            const box = strokeBoundingBox(stroke);
-            return {
-              left: Math.min(acc.left, box.left),
-              top: Math.min(acc.top, box.top),
-              right: Math.max(acc.right, box.right),
-              bottom: Math.max(acc.bottom, box.bottom),
-            };
-          },
-          {
-            left: Infinity,
-            top: Infinity,
-            right: -Infinity,
-            bottom: -Infinity,
-          },
-        )
+        (acc, stroke) => {
+          const box = strokeBoundingBox(stroke);
+          return {
+            left: Math.min(acc.left, box.left),
+            top: Math.min(acc.top, box.top),
+            right: Math.max(acc.right, box.right),
+            bottom: Math.max(acc.bottom, box.bottom),
+          };
+        },
+        {
+          left: Infinity,
+          top: Infinity,
+          right: -Infinity,
+          bottom: -Infinity,
+        },
+      )
       : null;
 
   const commitGroupStroke = useCallback(
@@ -2211,7 +2859,7 @@ function ClassroomPdfPage({
     };
     const serialized = JSON.stringify(clipboard);
     localStorage.setItem(CLASSROOM_PAGE_CLIPBOARD_KEY, serialized);
-    void navigator.clipboard?.writeText(serialized).catch(() => {});
+    void navigator.clipboard?.writeText(serialized).catch(() => { });
     toast.success("Sahifa nusxalandi");
   };
 
@@ -2449,6 +3097,93 @@ function ClassroomPdfPage({
     forceRedraw((v) => v + 1);
   };
 
+  const lineEndpointDragRef = useRef<{
+    endpoint: "start" | "end" | "mid";
+    startX: number;
+    startY: number;
+    initPts: number[];
+    initControlX?: number;
+    initControlY?: number;
+    shape?: string;
+  } | null>(null);
+
+  const beginLineEndpointResize = (
+    e: React.PointerEvent,
+    endpoint: "start" | "end" | "mid",
+  ) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!selectedShape || !surfaceRef.current) return;
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = surfaceRef.current.getBoundingClientRect();
+    // For mid on curved/elbow: derive initial control point
+    const x0 = selectedShape.points[0];
+    const y0 = selectedShape.points[1];
+    const x1 = selectedShape.points[2];
+    const y1 = selectedShape.points[3];
+    const shape = selectedShape.lineShape ?? "straight";
+    const initControlX = selectedShape.controlX ?? (
+      shape === "curved" ? (x0 + x1) / 2 : (x0 + x1) / 2
+    );
+    const initControlY = selectedShape.controlY ?? (
+      shape === "curved" ? (y0 + y1) / 2 : (y0 + y1) / 2
+    );
+    lineEndpointDragRef.current = {
+      endpoint,
+      startX: (e.clientX - rect.left) / rect.width,
+      startY: (e.clientY - rect.top) / rect.height,
+      initPts: [...selectedShape.points],
+      initControlX,
+      initControlY,
+      shape,
+    };
+  };
+
+  const transformLineEndpoint = (e: React.PointerEvent) => {
+    if (!lineEndpointDragRef.current || !selectedShape || !surfaceRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    const rect = surfaceRef.current.getBoundingClientRect();
+    const curX = (e.clientX - rect.left) / rect.width;
+    const curY = (e.clientY - rect.top) / rect.height;
+    const dx = curX - lineEndpointDragRef.current.startX;
+    const dy = curY - lineEndpointDragRef.current.startY;
+    const { endpoint, initPts, initControlX, initControlY, shape } = lineEndpointDragRef.current;
+
+    if (endpoint === "start") {
+      const nextPts = [...initPts];
+      nextPts[0] = Math.max(0, Math.min(1, initPts[0] + dx));
+      nextPts[1] = Math.max(0, Math.min(1, initPts[1] + dy));
+      updateSelectedShape({ points: nextPts });
+    } else if (endpoint === "end") {
+      const nextPts = [...initPts];
+      nextPts[2] = Math.max(0, Math.min(1, initPts[2] + dx));
+      nextPts[3] = Math.max(0, Math.min(1, initPts[3] + dy));
+      updateSelectedShape({ points: nextPts });
+    } else if (endpoint === "mid") {
+      if (shape === "curved") {
+        const initOnCurveX = 0.25 * initPts[0] + 0.5 * (initControlX ?? (initPts[0] + initPts[2]) / 2) + 0.25 * initPts[2];
+        const initOnCurveY = 0.25 * initPts[1] + 0.5 * (initControlY ?? (initPts[1] + initPts[3]) / 2) + 0.25 * initPts[3];
+        const curOnCurveX = Math.max(0.01, Math.min(0.99, initOnCurveX + dx));
+        const curOnCurveY = Math.max(0.01, Math.min(0.99, initOnCurveY + dy));
+        const nextCtrlX = 2 * curOnCurveX - 0.5 * (initPts[0] + initPts[2]);
+        const nextCtrlY = 2 * curOnCurveY - 0.5 * (initPts[1] + initPts[3]);
+        updateSelectedShape({ controlX: nextCtrlX, controlY: nextCtrlY });
+      } else if (shape === "elbow") {
+        const nextCtrlX = Math.max(0.01, Math.min(0.99, (initControlX ?? (initPts[0] + initPts[2]) / 2) + dx));
+        updateSelectedShape({ controlX: nextCtrlX });
+      } else {
+        // straight: move entire line
+        const nextPts = [...initPts];
+        nextPts[0] = Math.max(0, Math.min(1, initPts[0] + dx));
+        nextPts[1] = Math.max(0, Math.min(1, initPts[1] + dy));
+        nextPts[2] = Math.max(0, Math.min(1, initPts[2] + dx));
+        nextPts[3] = Math.max(0, Math.min(1, initPts[3] + dy));
+        updateSelectedShape({ points: nextPts });
+      }
+    }
+  };
+
   const finishGroupResize = (event: React.PointerEvent<HTMLButtonElement>) => {
     const current = resizingGroupRef.current;
     if (!current) return;
@@ -2641,7 +3376,7 @@ function ClassroomPdfPage({
         ctx,
         {
           id: "__draft__",
-          tool: tool === "laser" ? "pen" : tool,
+          tool: tool as CsTool,
           color,
           width: strokeWidth,
           points: draftRef.current,
@@ -2697,6 +3432,27 @@ function ClassroomPdfPage({
       ctx.lineWidth = 1;
       ctx.stroke();
       ctx.restore();
+    }
+
+    let hasActiveLaser = false;
+    const now = Date.now();
+    for (const s of strokes) {
+      if (s.tool === "laser") {
+        const startTime = s.createdAt || now;
+        if (now - startTime < 3000) {
+          hasActiveLaser = true;
+          break;
+        }
+      }
+    }
+    if (draftRef.current && (tool as string) === "laser") {
+      hasActiveLaser = true;
+    }
+
+    if (hasActiveLaser) {
+      requestAnimationFrame(() => {
+        forceRedraw((n) => n + 1);
+      });
     }
   });
 
@@ -2791,70 +3547,101 @@ function ClassroomPdfPage({
 
   const transformShape = (event: React.PointerEvent<HTMLButtonElement>) => {
     const current = transformingShapeRef.current;
-    if (!current || size.w <= 0) return;
+    if (!current || size.w <= 0 || size.h <= 0) return;
     event.preventDefault();
     event.stopPropagation();
+
     if (current.type === "rotate") {
       const angle = Math.atan2(
         event.clientY - (current.centerY ?? 0),
         event.clientX - (current.centerX ?? 0),
       );
-      current.stroke.rotation =
-        Math.round(
-          ((current.startRotation ?? 0) +
-            ((angle - (current.startAngle ?? 0)) * 180) / Math.PI) *
-            10,
-        ) / 10;
+      const rawDeg =
+        (current.startRotation ?? 0) +
+        ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
+      current.stroke.rotation = snapRotationAngle(rawDeg);
       forceRedraw((value) => value + 1);
       return;
     }
-    let dx = (event.clientX - current.startClientX) / size.w;
-    let dy = (event.clientY - current.startClientY) / size.h;
+
+    const rad = ((current.stroke.rotation ?? 0) * Math.PI) / 180;
+    const cosR = Math.cos(rad);
+    const sinR = Math.sin(rad);
+
+    let dxScreen = (event.clientX - current.startClientX) / size.w;
+    let dyScreen = (event.clientY - current.startClientY) / size.h;
+
+    // Mouse movement'ini rotatsiya burchagi bo'yicha shaklning lokal koordinatasiga aylantiramiz
+    let dxLocal = dxScreen * cosR + dyScreen * sinR;
+    let dyLocal = -dxScreen * sinR + dyScreen * cosR;
+
+    const startW = Math.abs(current.startX1 - current.startX0);
+    const startH = Math.abs(current.startY1 - current.startY0);
+    const startCx = (current.startX0 + current.startX1) / 2;
+    const startCy = (current.startY0 + current.startY1) / 2;
+
     const left = current.corner?.includes("w") ?? false;
     const top = current.corner?.includes("n") ?? false;
-    // Shift bosib turilsa, shakl kvadrat (eni=bo'yi) bo'lib qoladi —
-    // piksel (aspect-corrected) o'lchamda kattaroq tomonga moslashtiriladi,
-    // ikkala o'q ham shu umumiy o'lchamga tenglanadi, faqat siljish
-    // yo'nalishi (ishora) saqlanadi.
-    if (event.shiftKey && size.w > 0 && size.h > 0) {
-      const dxPx = dx * size.w;
-      const dyPx = dy * size.h;
+
+    if (event.shiftKey) {
+      const dxPx = dxLocal * size.w;
+      const dyPx = dyLocal * size.h;
       const side = Math.max(Math.abs(dxPx), Math.abs(dyPx));
-      dx = ((Math.sign(dxPx) || 1) * side) / size.w;
-      dy = ((Math.sign(dyPx) || 1) * side) / size.h;
+      dxLocal = ((Math.sign(dxPx) || 1) * side) / size.w;
+      dyLocal = ((Math.sign(dyPx) || 1) * side) / size.h;
     }
-    // Chapdan/tepadan tortilsa mos burchak (x0/y0), o'ngdan/pastdan
-    // tortilsa qarama-qarshi burchak (x1/y1) siljiydi — oddiy bounding-box
-    // resize, aspekt-nisbat qulflanmaydi (Excalidraw'da ham shift bosilmasa
-    // erkin resize bo'ladi).
-    const nextX0 = left
-      ? Math.max(0, Math.min(1, current.startX0 + dx))
-      : current.startX0;
-    const nextY0 = top
-      ? Math.max(0, Math.min(1, current.startY0 + dy))
-      : current.startY0;
-    const nextX1 = !left
-      ? Math.max(0, Math.min(1, current.startX1 + dx))
-      : current.startX1;
-    const nextY1 = !top
-      ? Math.max(0, Math.min(1, current.startY1 + dy))
-      : current.startY1;
+
+    let deltaW = left ? -dxLocal : dxLocal;
+    let deltaH = top ? -dyLocal : dyLocal;
+
+    const newW = Math.max(0.005, startW + deltaW);
+    const newH = Math.max(0.005, startH + deltaH);
+
+    deltaW = newW - startW;
+    deltaH = newH - startH;
+
+    const localShiftX = (left ? -deltaW : deltaW) / 2;
+    const localShiftY = (top ? -deltaH : deltaH) / 2;
+
+    const worldShiftX = localShiftX * cosR - localShiftY * sinR;
+    const worldShiftY = localShiftX * sinR + localShiftY * cosR;
+
+    const newCx = startCx + worldShiftX;
+    const newCy = startCy + worldShiftY;
+
+    const nextX0 = newCx - newW / 2;
+    const nextY0 = newCy - newH / 2;
+    const nextX1 = newCx + newW / 2;
+    const nextY1 = newCy + newH / 2;
+
     current.stroke.points = [nextX0, nextY0, nextX1, nextY1];
     forceRedraw((value) => value + 1);
   };
 
   const finishShapeTransform = (
-    event: React.PointerEvent<HTMLButtonElement>,
+    event: React.PointerEvent<HTMLElement>,
   ) => {
-    const current = transformingShapeRef.current;
-    if (!current) return;
     event.preventDefault();
     event.stopPropagation();
-    transformingShapeRef.current = null;
-    onUpdateShapeStroke?.(pageNumber, {
-      ...current.stroke,
-      points: [...current.stroke.points],
-    });
+
+    // Shakl resize/rotate tugashi
+    const current = transformingShapeRef.current;
+    if (current) {
+      transformingShapeRef.current = null;
+      onUpdateShapeStroke?.(pageNumber, {
+        ...current.stroke,
+        points: [...current.stroke.points],
+      });
+    }
+
+    // Chiziq endpoint/control drag tugashi
+    const epCurrent = lineEndpointDragRef.current;
+    if (epCurrent && selectedShape) {
+      lineEndpointDragRef.current = null;
+      onUpdateShapeStroke?.(pageNumber, { ...selectedShape });
+    } else {
+      lineEndpointDragRef.current = null;
+    }
   };
   const transformingTextRef = useRef<{
     type: "resize" | "rotate";
@@ -2916,8 +3703,6 @@ function ClassroomPdfPage({
       startWidth: selectedText.textBoxWidth ?? 320,
       startHeight: selectedText.textBoxHeight ?? 120,
       startFontSize: selectedText.fontSize ?? 24,
-      centerX,
-      centerY,
       startAngle: Math.atan2(event.clientY - centerY, event.clientX - centerX),
       startRotation: selectedText.rotation ?? 0,
     };
@@ -2925,49 +3710,51 @@ function ClassroomPdfPage({
 
   const transformText = (event: React.PointerEvent<HTMLButtonElement>) => {
     const current = transformingTextRef.current;
-    if (!current || size.w <= 0) return;
+    if (!current || size.w <= 0 || size.h <= 0) return;
     event.preventDefault();
     event.stopPropagation();
+
     if (current.type === "rotate") {
       const angle = Math.atan2(
         event.clientY - (current.centerY ?? 0),
         event.clientX - (current.centerX ?? 0),
       );
-      current.stroke.rotation =
-        Math.round(
-          ((current.startRotation ?? 0) +
-            ((angle - (current.startAngle ?? 0)) * 180) / Math.PI) *
-            10,
-        ) / 10;
+      const rawDeg =
+        (current.startRotation ?? 0) +
+        ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
+      current.stroke.rotation = snapRotationAngle(rawDeg);
       forceRedraw((value) => value + 1);
       return;
     }
-    const dx = ((event.clientX - current.startClientX) / size.w) * REF_WIDTH;
-    const dy = ((event.clientY - current.startClientY) / size.w) * REF_WIDTH;
+
+    const rad = ((current.stroke.rotation ?? 0) * Math.PI) / 180;
+    const cosR = Math.cos(rad);
+    const sinR = Math.sin(rad);
+
+    const dxScreen = ((event.clientX - current.startClientX) / size.w) * REF_WIDTH;
+    const dyScreen = ((event.clientY - current.startClientY) / size.h) * REF_WIDTH;
+
+    const dxLocal = dxScreen * cosR + dyScreen * sinR;
+    const dyLocal = -dxScreen * sinR + dyScreen * cosR;
+
     const left = current.corner?.includes("w") ?? false;
     const top = current.corner?.includes("n") ?? false;
-    // Burchakdan tortilganda x/y bir xil nisbatda (lock qilingan aspect
-    // ratio) o'zgaradi — diagonal masofa bo'yicha bitta scale koeffitsienti
-    // hisoblanadi, keyin shu koeffitsient ham kenglik, ham balandlikka
-    // (va shrift o'lchamiga) baravar qo'llanadi.
-    const rawDx = left ? -dx : dx;
-    const rawDy = top ? -dy : dy;
+
+    const rawDx = left ? -dxLocal : dxLocal;
+    const rawDy = top ? -dyLocal : dyLocal;
+
     const startDiagonal =
       Math.hypot(current.startWidth, current.startHeight) || 1;
     const projected =
       (current.startWidth * rawDx + current.startHeight * rawDy) /
       startDiagonal;
-    // Pastki chegara font 1px'ga yetguncha kichrayishga ruxsat beradi —
-    // avval 80x40 ref-piksel floor bo'lgani uchun fontSize kerakli darajaga
-    // hali yetmasdan box kichrayishi to'xtab qolardi.
+
     const minScale = Math.max(
       1 / current.startFontSize,
       2 / current.startWidth,
       1.2 / current.startHeight,
     );
     const requestedScale = Math.max(minScale, 1 + projected / startDiagonal);
-    // Font 96px ga yetgach faqat matn to'xtab qolmasin: frame ham shu
-    // nuqtada to'xtaydi. Eni/bo'yi backend limitlari ham shu clamp'ga kiradi.
     const maxScale = Math.max(
       minScale,
       Math.min(
@@ -2979,32 +3766,36 @@ function ClassroomPdfPage({
     const scale = Math.min(maxScale, Math.max(minScale, requestedScale));
     const nextWidth = Math.min(1000, current.startWidth * scale);
     const nextHeight = Math.min(2000, current.startHeight * scale);
+
     current.stroke.textBoxWidth = nextWidth;
     current.stroke.textBoxHeight = nextHeight;
-    // Shrift o'lchami har doim butun son bo'lishi kerak — resize paytida
-    // scale koeffitsienti kasr bo'lgani uchun Math.round bilan yaxlitlanadi.
     current.stroke.fontSize = Math.round(
       Math.max(1, Math.min(96, current.startFontSize * scale)),
     );
-    if (left)
-      current.stroke.points[0] = Math.max(
-        0,
-        Math.min(
-          1,
-          current.startX + (current.startWidth - nextWidth) / REF_WIDTH,
-        ),
-      );
-    if (top)
-      current.stroke.points[1] = Math.max(
-        0,
-        Math.min(
-          1,
-          current.startY +
-            ((current.startHeight - nextHeight) * size.w) /
-              REF_WIDTH /
-              Math.max(size.h, 1),
-        ),
-      );
+
+    const startW = current.startWidth / REF_WIDTH;
+    const startH = (current.startHeight / REF_WIDTH) * (size.w / size.h);
+    const nextW = nextWidth / REF_WIDTH;
+    const nextH = (nextHeight / REF_WIDTH) * (size.w / size.h);
+
+    const startCx = current.startX + startW / 2;
+    const startCy = current.startY + startH / 2;
+
+    const deltaW = nextW - startW;
+    const deltaH = nextH - startH;
+
+    const localShiftX = (left ? -deltaW : deltaW) / 2;
+    const localShiftY = (top ? -deltaH : deltaH) / 2;
+
+    const worldShiftX = localShiftX * cosR - localShiftY * sinR;
+    const worldShiftY = localShiftX * sinR + localShiftY * cosR;
+
+    const newCx = startCx + worldShiftX;
+    const newCy = startCy + worldShiftY;
+
+    current.stroke.points[0] = Math.max(0, Math.min(1, newCx - nextW / 2));
+    current.stroke.points[1] = Math.max(0, Math.min(1, newCy - nextH / 2));
+
     forceRedraw((value) => value + 1);
   };
 
@@ -3044,7 +3835,7 @@ function ClassroomPdfPage({
         1,
         (stroke.textBoxWidth ??
           Math.max(...lines.map((line) => line.length), 1) * fontSize * 0.62) /
-          REF_WIDTH,
+        REF_WIDTH,
       );
       const renderedFontSize = fontSize * (size.w / REF_WIDTH);
       const height =
@@ -3104,9 +3895,10 @@ function ClassroomPdfPage({
       commitText();
       return;
     }
-    if (tool === "laser") return;
     if (tool === "text") {
       setEditingTextId(null);
+      setSelectedShapeId(null);
+      setSelectedGroupIds(new Set());
       setTextEditor({
         x: p[0],
         y: p[1],
@@ -3203,7 +3995,7 @@ function ClassroomPdfPage({
       }
       const existingShape = findSelectableShapeAt(
         strokes.filter(
-          (stroke) => stroke.tool === "rectangle" || stroke.tool === "ellipse",
+          (stroke) => stroke.tool === "rectangle" || stroke.tool === "ellipse" || stroke.tool === "line" || stroke.tool === "arrow",
         ),
         p[0],
         p[1],
@@ -3263,11 +4055,15 @@ function ClassroomPdfPage({
       }
       return;
     }
+    // Yangi shakil/chiziq chizishni boshlaganda avvalgi tanlovni olib tashlash
+    setSelectedShapeId(null);
+    setSelectedTextId(null);
+    setSelectedGroupIds(new Set());
     draftRef.current =
       tool === "arrow" ||
-      tool === "line" ||
-      tool === "rectangle" ||
-      tool === "ellipse"
+        tool === "line" ||
+        tool === "rectangle" ||
+        tool === "ellipse"
         ? [p[0], p[1], p[0], p[1]]
         : [...p];
     draftPressuresRef.current =
@@ -3283,7 +4079,6 @@ function ClassroomPdfPage({
     if (!p) return;
     lastPointerPosRef.current = p;
     onPointerMove?.(pageNumber, p[0], p[1], true);
-    if (tool === "laser") return;
     if (draggingGroupRef.current) {
       const { ids, startX, startY } = draggingGroupRef.current;
       const offsetX = p[0] - startX;
@@ -3295,6 +4090,8 @@ function ClassroomPdfPage({
           stroke.points[i] += offsetX;
           stroke.points[i + 1] += offsetY;
         }
+        if (stroke.controlX !== undefined) stroke.controlX += offsetX;
+        if (stroke.controlY !== undefined) stroke.controlY += offsetY;
       }
       forceRedraw((n) => n + 1);
       return;
@@ -3315,11 +4112,17 @@ function ClassroomPdfPage({
     }
     if (draggingShapeRef.current) {
       const { stroke, dx, dy } = draggingShapeRef.current;
+      const oldX0 = stroke.points[0];
+      const oldY0 = stroke.points[1];
       const width = stroke.points[2] - stroke.points[0];
       const height = stroke.points[3] - stroke.points[1];
       const nextX0 = Math.max(0, Math.min(1 - width, p[0] - dx));
       const nextY0 = Math.max(0, Math.min(1 - height, p[1] - dy));
+      const offsetX = nextX0 - oldX0;
+      const offsetY = nextY0 - oldY0;
       stroke.points = [nextX0, nextY0, nextX0 + width, nextY0 + height];
+      if (stroke.controlX !== undefined) stroke.controlX += offsetX;
+      if (stroke.controlY !== undefined) stroke.controlY += offsetY;
       forceRedraw((n) => n + 1);
       return;
     }
@@ -3379,28 +4182,28 @@ function ClassroomPdfPage({
       const hoveredShape = hoveredText
         ? null
         : findSelectableShapeAt(
+          strokes.filter(
+            (stroke) =>
+              stroke.tool === "rectangle" || stroke.tool === "ellipse",
+          ),
+          p[0],
+          p[1],
+          eraseHitRadius(strokeWidth),
+        );
+      const hoveredStroke =
+        hoveredText || hoveredShape
+          ? null
+          : findStrokeAt(
             strokes.filter(
               (stroke) =>
-                stroke.tool === "rectangle" || stroke.tool === "ellipse",
+                stroke.tool !== "text" &&
+                stroke.tool !== "rectangle" &&
+                stroke.tool !== "ellipse",
             ),
             p[0],
             p[1],
             eraseHitRadius(strokeWidth),
           );
-      const hoveredStroke =
-        hoveredText || hoveredShape
-          ? null
-          : findStrokeAt(
-              strokes.filter(
-                (stroke) =>
-                  stroke.tool !== "text" &&
-                  stroke.tool !== "rectangle" &&
-                  stroke.tool !== "ellipse",
-              ),
-              p[0],
-              p[1],
-              eraseHitRadius(strokeWidth),
-            );
       const hit = hoveredText ?? hoveredShape ?? hoveredStroke;
       setHoveredStrokeId(hit?.id ?? null);
       return;
@@ -3475,7 +4278,6 @@ function ClassroomPdfPage({
   const finishStroke = () => {
     if (!editable) return;
     onPointerMove?.(pageNumber, 0, 0, false);
-    if (tool === "laser") return;
     if (isEraser) {
       draggingEraserRef.current = false;
       return;
@@ -3517,6 +4319,8 @@ function ClassroomPdfPage({
       onUpdateShapeStroke?.(pageNumber, {
         ...stroke,
         points: [...stroke.points],
+        ...(stroke.controlX !== undefined ? { controlX: stroke.controlX } : {}),
+        ...(stroke.controlY !== undefined ? { controlY: stroke.controlY } : {}),
       });
       draggingShapeRef.current = null;
       forceRedraw((n) => n + 1);
@@ -3535,10 +4339,12 @@ function ClassroomPdfPage({
     draftPressuresRef.current = null;
     if (draft && draft.length >= 2) {
       const isShape = tool === "rectangle" || tool === "ellipse";
+      const isLineOrArrow = tool === "line" || tool === "arrow";
+      const isAnyShapeOrLine = isShape || isLineOrArrow;
       // Nuqta kabi bosilib qo'yilgan (drag qilinmagan) shape saqlanmaydi —
       // ko'rinmas 0x0 chizma qolib ketmasin.
       if (
-        !isShape ||
+        !isAnyShapeOrLine ||
         Math.abs(draft[2] - draft[0]) > 0.003 ||
         Math.abs(draft[3] - draft[1]) > 0.003
       ) {
@@ -3549,12 +4355,24 @@ function ClassroomPdfPage({
           color,
           width: strokeWidth,
           points: draft,
+          ...((tool as string) === "laser" ? { createdAt: Date.now() } : {}),
           ...(tool === "pen" && draftPressures?.length === draft.length / 2
             ? { pressures: draftPressures }
             : {}),
-          ...(isShape ? { ...shapeStyle } : {}),
+          ...(isAnyShapeOrLine
+            ? {
+              ...shapeStyle,
+              lineShape: shapeStyle.lineShape ?? "straight",
+              ...(tool === "arrow" && !shapeStyle.endArrowHead
+                ? { endArrowHead: "arrow", startArrowHead: "none" }
+                : {}),
+              ...(tool === "line" && !shapeStyle.endArrowHead
+                ? { endArrowHead: "none", startArrowHead: "none" }
+                : {}),
+            }
+            : {}),
         });
-        if (isShape) {
+        if (isAnyShapeOrLine) {
           setSelectedShapeId(strokeId);
           onToolChange?.("select");
         }
@@ -3590,7 +4408,7 @@ function ClassroomPdfPage({
           ref={(element) => {
             if (notebook) surfaceRef.current = element;
           }}
-          className={`relative ${notebook ? `${notebookOrientation === "landscape" ? "aspect-[297/210]" : "aspect-[210/297]"} w-full bg-white shadow-sm` : "w-full"}`}
+          className={`relative ${notebook ? `${notebookOrientation === "landscape" ? "aspect-[297/210]" : "aspect-[210/297]"} w-full bg-white ` : "w-full"}`}
           // Daftar 100% zoom'da viewport kengligini to'liq egallaydi. Zoom
           // konteynerning tashqi width'i orqali qo'llanadi; max-width bilan
           // yana 768px ga qisqartirish teacher/student nisbatini buzardi.
@@ -3637,19 +4455,19 @@ function ClassroomPdfPage({
                   ? undefined
                   : notebookStyle === "lined"
                     ? {
-                        // Yo'l-yo'l (chiziqli) daftar — yumshoq, ko'zga tashlanmaydigan chiziqlar
-                        backgroundImage:
-                          "linear-gradient(rgba(148,163,184,.14) 1px, transparent 1px)",
-                        backgroundSize: `100% ${size.w > 0 ? size.w / 22 : 32}px`,
-                      }
+                      // Yo'l-yo'l (chiziqli) daftar — yumshoq, ko'zga tashlanmaydigan chiziqlar
+                      backgroundImage:
+                        "linear-gradient(rgba(148,163,184,.14) 1px, transparent 1px)",
+                      backgroundSize: `100% ${size.w > 0 ? size.w / 22 : 32}px`,
+                    }
                     : {
-                        // Kataklar — mobil va desktopda yozuvlar bilan "shuvalib" ketmasligi
-                        // uchun katak o'lchami kengaytirildi (24 ta katak) va chiziqlar
-                        // shaffofligi (12%) yumshatildi.
-                        backgroundImage:
-                          "linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px)",
-                        backgroundSize: `${size.w > 0 ? size.w / 24 : 32}px ${size.w > 0 ? size.w / 24 : 32}px`,
-                      }
+                      // Kataklar — mobil va desktopda yozuvlar bilan "shuvalib" ketmasligi
+                      // uchun katak o'lchami kengaytirildi (24 ta katak) va chiziqlar
+                      // shaffofligi (12%) yumshatildi.
+                      backgroundImage:
+                        "linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px)",
+                      backgroundSize: `${size.w > 0 ? size.w / 24 : 32}px ${size.w > 0 ? size.w / 24 : 32}px`,
+                    }
               }
             />
           ) : (
@@ -3693,115 +4511,123 @@ function ClassroomPdfPage({
             onPointerLeave={handlePointerLeave}
           />
           {textEditor && (
-            <>
-              <div
-                className="absolute z-30 flex flex-col justify-center"
-                style={{
-                  left: `${textEditor.x * 100}%`,
-                  top: `${textEditor.y * 100}%`,
-                  width: editorWidth,
-                  height: editorHeight,
+            <div
+              className="absolute z-30 flex flex-col justify-center"
+              style={{
+                left: `${textEditor.x * 100}%`,
+                top: `${textEditor.y * 100}%`,
+                width: editorWidth,
+                height: editorHeight,
+              }}
+              onPointerDown={(event) => event.stopPropagation()}
+              onPointerMove={(event) => event.stopPropagation()}
+            >
+              <textarea
+                ref={textInputRef}
+                value={textEditor.text}
+                onChange={(event) =>
+                  setTextEditor((current) =>
+                    current
+                      ? { ...current, text: event.target.value.slice(0, 500) }
+                      : current,
+                  )
+                }
+                onKeyDown={(event) => {
+                  if (event.key === "Escape") setTextEditor(null);
+                  if (
+                    event.key === "Enter" &&
+                    (event.metaKey || event.ctrlKey)
+                  )
+                    commitText();
                 }}
-                onPointerDown={(event) => event.stopPropagation()}
-                onPointerMove={(event) => event.stopPropagation()}
-              >
-                <textarea
-                  ref={textInputRef}
-                  value={textEditor.text}
-                  onChange={(event) =>
-                    setTextEditor((current) =>
-                      current
-                        ? { ...current, text: event.target.value.slice(0, 500) }
-                        : current,
-                    )
-                  }
-                  onKeyDown={(event) => {
-                    if (event.key === "Escape") setTextEditor(null);
-                    if (
-                      event.key === "Enter" &&
-                      (event.metaKey || event.ctrlKey)
-                    )
-                      commitText();
-                  }}
-                  onPointerUp={() => {
-                    const rect = textInputRef.current?.getBoundingClientRect();
-                    if (!rect || size.w <= 0) return;
-                    setTextEditor((current) =>
-                      current
-                        ? {
-                            ...current,
-                            textBoxWidth: Math.max(
-                              4,
-                              Math.min(1000, (rect.width / size.w) * REF_WIDTH),
-                            ),
-                            textBoxHeight: Math.max(
-                              1,
-                              Math.min(
-                                1600,
-                                (rect.height / size.w) * REF_WIDTH,
-                              ),
-                            ),
-                          }
-                        : current,
-                    );
-                  }}
-                  className="classroom-text-editor block w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
-                  style={{
-                    // MUHIM: height endi butun qutini (editorHeight) emas,
-                    // faqat matnning o'zi egallaydigan tabiiy balandlikni
-                    // to'ldiradi ("auto" + JS orqali scrollHeight'ga
-                    // moslashtiriladi, pastdagi useEffect'ga qarang) — shunda
-                    // atrofdagi flex konteyner (justify-center) qolgan bo'sh
-                    // joyni tepa/pastga teng taqsimlab, matn qutida vertikal
-                    // markazda ko'rinadi.
-                    margin: 0,
-                    backgroundColor: "transparent",
-                    appearance: "none",
-                    color: textEditor.color,
-                    fontFamily: getFontFamilyString(textEditor.fontFamily),
-                    fontSize: editorFontSize,
-                    fontWeight: textEditor.fontWeight,
-                    textAlign: textEditor.textAlign,
-                    lineHeight: 1.25,
-                  }}
-                />
-              </div>
-              {showStylePanel && (
-                <TextStylePanel
-                  color={textEditor.color}
-                  fontFamily={textEditor.fontFamily}
-                  fontSize={textEditor.fontSize}
-                  fontWeight={textEditor.fontWeight}
-                  textAlign={textEditor.textAlign}
-                  onColorChange={(nextColor) =>
-                    setTextEditor((current) =>
-                      current ? { ...current, color: nextColor } : current,
-                    )
-                  }
-                  onFontFamilyChange={(fontFamily) =>
-                    setTextEditor((current) =>
-                      current ? { ...current, fontFamily } : current,
-                    )
-                  }
-                  onFontSizeChange={(fontSize) =>
-                    setTextEditor((current) =>
-                      current ? { ...current, fontSize } : current,
-                    )
-                  }
-                  onFontWeightChange={(fontWeight) =>
-                    setTextEditor((current) =>
-                      current ? { ...current, fontWeight } : current,
-                    )
-                  }
-                  onTextAlignChange={(textAlign) =>
-                    setTextEditor((current) =>
-                      current ? { ...current, textAlign } : current,
-                    )
-                  }
-                  onReorder={() => {}}
-                />
-              )}
-            </>
+                onPointerUp={() => {
+                  const rect = textInputRef.current?.getBoundingClientRect();
+                  if (!rect || size.w <= 0) return;
+                  setTextEditor((current) =>
+                    current
+                      ? {
+                        ...current,
+                        textBoxWidth: Math.max(
+                          4,
+                          Math.min(1000, (rect.width / size.w) * REF_WIDTH),
+                        ),
+                        textBoxHeight: Math.max(
+                          1,
+                          Math.min(
+                            1600,
+                            (rect.height / size.w) * REF_WIDTH,
+                          ),
+                        ),
+                      }
+                      : current,
+                  );
+                }}
+                className="classroom-text-editor block w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
+                style={{
+                  margin: 0,
+                  backgroundColor: "transparent",
+                  appearance: "none",
+                  color: textEditor.color,
+                  fontFamily: getFontFamilyString(textEditor.fontFamily),
+                  fontSize: editorFontSize,
+                  fontWeight: textEditor.fontWeight,
+                  textAlign: textEditor.textAlign,
+                  lineHeight: 1.25,
+                }}
+              />
+            </div>
+          )}
+          {/* TextStylePanel for active text editor — rendered OUTSIDE the editor div
+              so it doesn't overlap the textarea. Positioned above the text box. */}
+          {textEditor && showStylePanel && (
+            <TextStylePanel
+              color={textEditor.color}
+              fontFamily={textEditor.fontFamily}
+              fontSize={textEditor.fontSize}
+              fontWeight={textEditor.fontWeight}
+              textAlign={textEditor.textAlign}
+              rotation={0}
+              style={(() => {
+                const PANEL_H = 52; // taxminiy panel balandligi px
+                const GAP = 8;
+                const textTopPx = textEditor.y * size.h;
+                const panelTop = Math.max(GAP, textTopPx - PANEL_H - GAP);
+                return {
+                  left: `${textEditor.x * 100}%`,
+                  top: `${panelTop}px`,
+                  transform: "none",
+                };
+              })()}
+              onColorChange={(nextColor) => {
+                applyRichStyleToSelection("color", nextColor);
+                setTextEditor((current) =>
+                  current ? { ...current, color: nextColor } : current,
+                );
+              }}
+              onFontFamilyChange={(fontFamily) => {
+                applyRichStyleToSelection("fontFamily", getFontFamilyString(fontFamily));
+                setTextEditor((current) =>
+                  current ? { ...current, fontFamily } : current,
+                );
+              }}
+              onFontSizeChange={(fontSize) => {
+                applyRichStyleToSelection("fontSize", fontSize);
+                setTextEditor((current) =>
+                  current ? { ...current, fontSize } : current,
+                );
+              }}
+              onFontWeightChange={(fontWeight) => {
+                applyRichStyleToSelection("fontWeight", fontWeight);
+                setTextEditor((current) =>
+                  current ? { ...current, fontWeight } : current,
+                );
+              }}
+              onTextAlignChange={(textAlign) =>
+                setTextEditor((current) =>
+                  current ? { ...current, textAlign } : current,
+                )
+              }
+            />
           )}
           {tool === "select" &&
             selectedText &&
@@ -3847,53 +4673,70 @@ function ClassroomPdfPage({
                       onPointerCancel={finishTextTransform}
                     />
                   ))}
-                  <div className="pointer-events-none absolute left-1/2 -top-8 h-6 w-px -translate-x-1/2 bg-indigo-500" />
+                  <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
                   <button
                     type="button"
                     aria-label="Matnni aylantirish"
-                    className="pointer-events-auto absolute left-1/2 -top-10 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing"
+                    className="pointer-events-auto absolute left-1/2 -bottom-10 h-4.5 w-4.5 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing z-50 shadow-md hover:scale-110 transition-transform"
                     onPointerDown={beginTextRotate}
                     onPointerMove={transformText}
                     onPointerUp={finishTextTransform}
                     onPointerCancel={finishTextTransform}
                   />
                 </div>
-                {showStylePanel && (
-                  <TextStylePanel
-                    color={selectedText.color}
-                    fontFamily={selectedText.fontFamily ?? "Inter"}
-                    fontSize={selectedText.fontSize ?? 24}
-                    fontWeight={selectedText.fontWeight ?? 600}
-                    textAlign={selectedText.textAlign ?? "left"}
-                    onColorChange={(nextColor) =>
-                      updateSelectedText({ color: nextColor })
-                    }
-                    onFontFamilyChange={(fontFamily) =>
-                      updateSelectedText({ fontFamily })
-                    }
-                    onFontSizeChange={(fontSize) =>
-                      updateSelectedText({ fontSize })
-                    }
-                    onFontWeightChange={(fontWeight) =>
-                      updateSelectedText({ fontWeight })
-                    }
-                    onTextAlignChange={(textAlign) =>
-                      updateSelectedText({ textAlign })
-                    }
-                    onReorder={(op) =>
-                      selectedText &&
-                      onReorderStroke?.(pageNumber, [selectedText.id], op)
-                    }
-                    onDelete={() => {
-                      onEraseStroke?.(pageNumber, selectedText.id);
-                      setSelectedTextId(null);
-                    }}
-                  />
-                )}
+                {showStylePanel && (() => {
+                  const w = (selectedText.textBoxWidth ?? 320) * (size.w / REF_WIDTH);
+                  const h = (selectedText.textBoxHeight ?? 120) * (size.w / REF_WIDTH);
+                  const originX = selectedText.points[0] * size.w;
+                  const originY = selectedText.points[1] * size.h;
+                  const cx = originX + w / 2;
+                  const cy = originY + h / 2;
+                  const rad = ((selectedText.rotation ?? 0) * Math.PI) / 180;
+                  const halfRotH = (w / 2) * Math.abs(Math.sin(rad)) + (h / 2) * Math.abs(Math.cos(rad));
+                  const topY = cy - halfRotH;
+                  return (
+                    <TextStylePanel
+                      color={selectedText.color}
+                      fontFamily={selectedText.fontFamily ?? "Inter"}
+                      fontSize={selectedText.fontSize ?? 24}
+                      fontWeight={selectedText.fontWeight ?? 600}
+                      textAlign={selectedText.textAlign ?? "left"}
+                      rotation={0}
+                      style={{
+                        left: `${cx}px`,
+                        top: `${Math.max(12, topY - 48)}px`,
+                        transform: "translate(-50%, -100%)",
+                      }}
+                      onColorChange={(nextColor) =>
+                        updateSelectedText({ color: nextColor })
+                      }
+                      onFontFamilyChange={(fontFamily) =>
+                        updateSelectedText({ fontFamily })
+                      }
+                      onFontSizeChange={(fontSize) =>
+                        updateSelectedText({ fontSize })
+                      }
+                      onFontWeightChange={(fontWeight) =>
+                        updateSelectedText({ fontWeight })
+                      }
+                      onTextAlignChange={(textAlign) =>
+                        updateSelectedText({ textAlign })
+                      }
+                      onReorder={(op) =>
+                        selectedText &&
+                        onReorderStroke?.(pageNumber, [selectedText.id], op)
+                      }
+                      onDelete={() => {
+                        onEraseStroke?.(pageNumber, selectedText.id);
+                        setSelectedTextId(null);
+                      }}
+                    />
+                  );
+                })()}
               </>
             )}
           {showStylePanel &&
-            (tool === "rectangle" || tool === "ellipse") &&
+            (tool === "rectangle" || tool === "ellipse" || tool === "line" || tool === "arrow") &&
             !selectedShape &&
             onShapeStyleChange && (
               // Excalidraw'da bo'lgani kabi: hali hech narsa chizilmasdan
@@ -3906,13 +4749,22 @@ function ClassroomPdfPage({
                 fillStyle={shapeStyle.fillStyle}
                 strokeWidth={strokeWidth}
                 strokeStyle={shapeStyle.strokeStyle}
+                lineShape={shapeStyle.lineShape ?? "straight"}
+                startArrowHead={shapeStyle.startArrowHead ?? "none"}
+                endArrowHead={shapeStyle.endArrowHead ?? (tool === "line" ? "none" : "arrow")}
                 edges={shapeStyle.edges}
                 opacity={shapeStyle.opacity}
-                    onColorChange={(nextColor) =>
-                      applyColorToSelection(nextColor)
-                    }
+                strokeTool={tool}
+                onToolChange={onToolChange}
+                onColorChange={(nextColor) =>
+                  applyColorToSelection(nextColor)
+                }
                 onBackgroundColorChange={(backgroundColor) =>
-                  onShapeStyleChange({ ...shapeStyle, backgroundColor })
+                  onShapeStyleChange({
+                    ...shapeStyle,
+                    backgroundColor,
+                    fillStyle: backgroundColor === "transparent" ? (shapeStyle.fillStyle ?? "solid") : "solid",
+                  })
                 }
                 onFillStyleChange={(fillStyle) =>
                   onShapeStyleChange({ ...shapeStyle, fillStyle })
@@ -3921,95 +4773,208 @@ function ClassroomPdfPage({
                 onStrokeStyleChange={(strokeStyle) =>
                   onShapeStyleChange({ ...shapeStyle, strokeStyle })
                 }
+                onLineShapeChange={(lineShape) =>
+                  onShapeStyleChange({ ...shapeStyle, lineShape })
+                }
+                onArrowHeadChange={(endArrowHead, startArrowHead) => {
+                  const isNone = endArrowHead === "none" && startArrowHead === "none";
+                  onShapeStyleChange({ ...shapeStyle, endArrowHead, startArrowHead });
+                  if (isNone) {
+                    onToolChange?.("line");
+                  } else {
+                    onToolChange?.("arrow");
+                  }
+                }}
                 onEdgesChange={(edges) =>
                   onShapeStyleChange({ ...shapeStyle, edges })
                 }
                 onOpacityChange={(opacity) =>
                   onShapeStyleChange({ ...shapeStyle, opacity })
                 }
-                onReorder={() => {}}
+                onReorder={() => { }}
               />
             )}
           {tool === "select" && selectedShape && (
             // TextStylePanel'dagi kabi: ShapeStylePanel shu rotate()
             // transformli divning TASHQARISIDA render qilinadi.
             <>
-              <div
-                className="pointer-events-none absolute z-20 border border-indigo-500"
-                style={{
-                  left: `${Math.min(selectedShape.points[0], selectedShape.points[2]) * 100}%`,
-                  top: `${Math.min(selectedShape.points[1], selectedShape.points[3]) * 100}%`,
-                  width: `${Math.abs(selectedShape.points[2] - selectedShape.points[0]) * 100}%`,
-                  height: `${Math.abs(selectedShape.points[3] - selectedShape.points[1]) * 100}%`,
-                  transform: `rotate(${selectedShape.rotation ?? 0}deg)`,
-                  transformOrigin: "center",
-                }}
-              >
-                {(["nw", "ne", "sw", "se"] as const).map((corner) => (
-                  <button
-                    key={corner}
-                    type="button"
-                    aria-label={`Shape o'lchamini ${corner} tomondan o'zgartirish`}
-                    className={`pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-indigo-500 bg-white ${corner.includes("n") ? "-top-1.5" : "-bottom-1.5"} ${corner.includes("w") ? "-left-1.5" : "-right-1.5"}`}
+              {selectedShape.tool === "line" || selectedShape.tool === "arrow" ? (
+                <>
+                  {/* Start handle (blue square dot) */}
+                  <div
+                    className="pointer-events-auto absolute z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-indigo-500 bg-white cursor-move shadow-md"
                     style={{
-                      cursor:
-                        corner === "nw" || corner === "se"
-                          ? "nwse-resize"
-                          : "nesw-resize",
+                      left: `${selectedShape.points[0] * 100}%`,
+                      top: `${selectedShape.points[1] * 100}%`,
                     }}
-                    onPointerDown={(event) => beginShapeResize(event, corner)}
+                    onPointerDown={(e) => beginLineEndpointResize(e, "start")}
+                    onPointerMove={transformLineEndpoint}
+                    onPointerUp={finishShapeTransform}
+                    onPointerCancel={finishShapeTransform}
+                  />
+                  {/* End handle (blue square dot) */}
+                  <div
+                    className="pointer-events-auto absolute z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-sm border-2 border-indigo-500 bg-white cursor-move shadow-md"
+                    style={{
+                      left: `${selectedShape.points[2] * 100}%`,
+                      top: `${selectedShape.points[3] * 100}%`,
+                    }}
+                    onPointerDown={(e) => beginLineEndpointResize(e, "end")}
+                    onPointerMove={transformLineEndpoint}
+                    onPointerUp={finishShapeTransform}
+                    onPointerCancel={finishShapeTransform}
+                  />
+                  {/* Mid handle — only for curved/elbow, shown directly ON the line/curve body */}
+                  {(selectedShape.lineShape === "curved" || selectedShape.lineShape === "elbow") && (() => {
+                    const x0 = selectedShape.points[0];
+                    const y0 = selectedShape.points[1];
+                    const x1 = selectedShape.points[2];
+                    const y1 = selectedShape.points[3];
+                    const ctrlX = selectedShape.controlX ?? (x0 + x1) / 2;
+                    const ctrlY = selectedShape.controlY ?? (y0 + y1) / 2;
+                    let dotX = (x0 + x1) / 2;
+                    let dotY = (y0 + y1) / 2;
+                    if (selectedShape.lineShape === "curved") {
+                      // Point directly on quadratic curve at t = 0.5
+                      dotX = 0.25 * x0 + 0.5 * ctrlX + 0.25 * x1;
+                      dotY = 0.25 * y0 + 0.5 * ctrlY + 0.25 * y1;
+                    } else if (selectedShape.lineShape === "elbow") {
+                      dotX = ctrlX;
+                      dotY = (y0 + y1) / 2;
+                    }
+                    dotX = Math.max(0.01, Math.min(0.99, dotX));
+                    dotY = Math.max(0.01, Math.min(0.99, dotY));
+                    return (
+                      <div
+                        className="pointer-events-auto absolute z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab shadow-md"
+                        style={{
+                          left: `${dotX * 100}%`,
+                          top: `${dotY * 100}%`,
+                        }}
+                        onPointerDown={(e) => beginLineEndpointResize(e, "mid")}
+                        onPointerMove={transformLineEndpoint}
+                        onPointerUp={finishShapeTransform}
+                        onPointerCancel={finishShapeTransform}
+                      />
+                    );
+                  })()}
+                </>
+              ) : (
+                <div
+                  className="pointer-events-none absolute z-20 border border-indigo-500"
+                  style={{
+                    left: `${Math.min(selectedShape.points[0], selectedShape.points[2]) * 100}%`,
+                    top: `${Math.min(selectedShape.points[1], selectedShape.points[3]) * 100}%`,
+                    width: `${Math.abs(selectedShape.points[2] - selectedShape.points[0]) * 100}%`,
+                    height: `${Math.abs(selectedShape.points[3] - selectedShape.points[1]) * 100}%`,
+                    transform: `rotate(${selectedShape.rotation ?? 0}deg)`,
+                    transformOrigin: "center",
+                  }}
+                >
+                  {(["nw", "ne", "sw", "se"] as const).map((corner) => (
+                    <button
+                      key={corner}
+                      type="button"
+                      aria-label={`Shape o'lchamini ${corner} tomondan o'zgartirish`}
+                      className={`pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-indigo-500 bg-white ${corner.includes("n") ? "-top-1.5" : "-bottom-1.5"} ${corner.includes("w") ? "-left-1.5" : "-right-1.5"}`}
+                      style={{
+                        cursor:
+                          corner === "nw" || corner === "se"
+                            ? "nwse-resize"
+                            : "nesw-resize",
+                      }}
+                      onPointerDown={(event) => beginShapeResize(event, corner)}
+                      onPointerMove={transformShape}
+                      onPointerUp={finishShapeTransform}
+                      onPointerCancel={finishShapeTransform}
+                    />
+                  ))}
+                  <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
+                  <button
+                    type="button"
+                    aria-label="Shape'ni aylantirish"
+                    className="pointer-events-auto absolute left-1/2 -bottom-10 h-4.5 w-4.5 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing z-50 shadow-md hover:scale-110 transition-transform"
+                    onPointerDown={beginShapeRotate}
                     onPointerMove={transformShape}
                     onPointerUp={finishShapeTransform}
                     onPointerCancel={finishShapeTransform}
                   />
-                ))}
-                <div className="pointer-events-none absolute left-1/2 -top-8 h-6 w-px -translate-x-1/2 bg-indigo-500" />
-                <button
-                  type="button"
-                  aria-label="Shape'ni aylantirish"
-                  className="pointer-events-auto absolute left-1/2 -top-10 h-4 w-4 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing"
-                  onPointerDown={beginShapeRotate}
-                  onPointerMove={transformShape}
-                  onPointerUp={finishShapeTransform}
-                  onPointerCancel={finishShapeTransform}
-                />
-              </div>
-              {showStylePanel && (
-                <ShapeStylePanel
-                  color={selectedShape.color}
-                  backgroundColor={
-                    selectedShape.backgroundColor ?? "transparent"
-                  }
-                  fillStyle={selectedShape.fillStyle ?? "hachure"}
-                  strokeWidth={selectedShape.width}
-                  strokeStyle={selectedShape.strokeStyle ?? "solid"}
-                  edges={selectedShape.edges ?? "sharp"}
-                  opacity={selectedShape.opacity ?? 100}
-                  onColorChange={(nextColor) =>
-                    updateSelectedShape({ color: nextColor })
-                  }
-                  onBackgroundColorChange={(backgroundColor) =>
-                    updateSelectedShape({ backgroundColor })
-                  }
-                  onFillStyleChange={(fillStyle) =>
-                    updateSelectedShape({ fillStyle })
-                  }
-                  onStrokeWidthChange={(width) =>
-                    updateSelectedShape({ width })
-                  }
-                  onStrokeStyleChange={(strokeStyle) =>
-                    updateSelectedShape({ strokeStyle })
-                  }
-                  onEdgesChange={(edges) => updateSelectedShape({ edges })}
-                  onOpacityChange={(opacity) =>
-                    updateSelectedShape({ opacity })
-                  }
-                  onReorder={(op) =>
-                    selectedShape &&
-                    onReorderStroke?.(pageNumber, [selectedShape.id], op)
-                  }
-                />
+                </div>
               )}
+              {showStylePanel && (() => {
+                const w = Math.abs(selectedShape.points[2] - selectedShape.points[0]) * size.w;
+                const h = Math.abs(selectedShape.points[3] - selectedShape.points[1]) * size.h;
+                const originX = Math.min(selectedShape.points[0], selectedShape.points[2]) * size.w;
+                const originY = Math.min(selectedShape.points[1], selectedShape.points[3]) * size.h;
+                const cx = originX + w / 2;
+                const cy = originY + h / 2;
+                const rad = ((selectedShape.rotation ?? 0) * Math.PI) / 180;
+                const halfRotH = (w / 2) * Math.abs(Math.sin(rad)) + (h / 2) * Math.abs(Math.cos(rad));
+                const topY = cy - halfRotH;
+                return (
+                  <ShapeStylePanel
+                    color={selectedShape.color}
+                    backgroundColor={
+                      selectedShape.backgroundColor ?? "transparent"
+                    }
+                    fillStyle={selectedShape.fillStyle ?? "hachure"}
+                    strokeWidth={selectedShape.width}
+                    strokeStyle={selectedShape.strokeStyle ?? "solid"}
+                    lineShape={selectedShape.lineShape ?? "straight"}
+                    startArrowHead={selectedShape.startArrowHead ?? "none"}
+                    endArrowHead={selectedShape.endArrowHead ?? (selectedShape.tool === "line" ? "none" : "arrow")}
+                    edges={selectedShape.edges ?? "sharp"}
+                    opacity={selectedShape.opacity ?? 100}
+                    rotation={0}
+                    strokeTool={selectedShape.tool}
+                    onToolChange={(nextTool) =>
+                      updateSelectedShape({ tool: nextTool })
+                    }
+                    style={{
+                      left: `${cx}px`,
+                      top: `${Math.max(12, topY - 48)}px`,
+                      transform: "translate(-50%, -100%)",
+                    }}
+                    onColorChange={(nextColor) =>
+                      updateSelectedShape({ color: nextColor })
+                    }
+                    onBackgroundColorChange={(backgroundColor) =>
+                      updateSelectedShape({
+                        backgroundColor,
+                        fillStyle: backgroundColor === "transparent" ? (selectedShape.fillStyle ?? "solid") : "solid",
+                      })
+                    }
+                    onFillStyleChange={(fillStyle) =>
+                      updateSelectedShape({ fillStyle })
+                    }
+                    onStrokeWidthChange={(width) =>
+                      updateSelectedShape({ width })
+                    }
+                    onStrokeStyleChange={(strokeStyle) =>
+                      updateSelectedShape({ strokeStyle })
+                    }
+                    onLineShapeChange={(lineShape) =>
+                      updateSelectedShape({ lineShape })
+                    }
+                    onArrowHeadChange={(endArrowHead, startArrowHead) => {
+                      const isNone = endArrowHead === "none" && startArrowHead === "none";
+                      updateSelectedShape({
+                        endArrowHead,
+                        startArrowHead,
+                        tool: isNone ? "line" : "arrow",
+                      });
+                    }}
+                    onEdgesChange={(edges) => updateSelectedShape({ edges })}
+                    onOpacityChange={(opacity) =>
+                      updateSelectedShape({ opacity })
+                    }
+                    onReorder={(op) =>
+                      selectedShape &&
+                      onReorderStroke?.(pageNumber, [selectedShape.id], op)
+                    }
+                  />
+                );
+              })()}
             </>
           )}
           {tool === "lasso" && selectedGroupBounds && (
@@ -4179,20 +5144,17 @@ function ClassroomPdfPage({
                       onClick={() => setInsertOrientation(orientation)}
                       title={orientation === "portrait" ? "Portrait" : "Landscape"}
                       aria-label={orientation === "portrait" ? "Portrait" : "Landscape"}
-                      className={`flex items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${
-                        insertOrientation === orientation
-                          ? "bg-indigo-50 text-indigo-600"
-                          : "text-gray-600 hover:bg-gray-100"
-                      }`}
+                      className={`flex items-center justify-center rounded-lg px-2 py-1.5 transition-colors ${insertOrientation === orientation
+                        ? "bg-indigo-50 text-indigo-600"
+                        : "text-gray-600 hover:bg-gray-100"
+                        }`}
                     >
                       <span
-                        className={`block rounded-sm border-2 ${
-                          orientation === "portrait" ? "h-5 w-3.5" : "h-3.5 w-5"
-                        } ${
-                          insertOrientation === orientation
+                        className={`block rounded-sm border-2 ${orientation === "portrait" ? "h-5 w-3.5" : "h-3.5 w-5"
+                          } ${insertOrientation === orientation
                             ? "border-indigo-500"
                             : "border-gray-400"
-                        }`}
+                          }`}
                       />
                     </button>
                   ))}
@@ -4469,7 +5431,7 @@ export function ClassroomPdfViewer({
     const serialized = JSON.stringify(clipboard);
     localStorage.setItem(CLASSROOM_PAGE_CLIPBOARD_KEY, serialized);
     lassoClipboardRef.current = [];
-    void navigator.clipboard?.writeText(serialized).catch(() => {});
+    void navigator.clipboard?.writeText(serialized).catch(() => { });
     toast.success("Daftar nusxalandi");
   }, [notebookPageCount, notebookPageOrientations, notebookPageStyles]);
 
@@ -4610,7 +5572,7 @@ export function ClassroomPdfViewer({
     pageElsRef: rightPageElsRef,
     onScrollChange: onPaneScrollChange
       ? (page, yRatio, xRatio) =>
-          onPaneScrollChange("right", page, yRatio, xRatio)
+        onPaneScrollChange("right", page, yRatio, xRatio)
       : undefined,
   });
 
@@ -4763,11 +5725,10 @@ export function ClassroomPdfViewer({
           onClick={() => {
             if (!pane) changeDisplayMode("pdf");
           }}
-          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
-            !isNotebook
-              ? "bg-indigo-600 text-white"
-              : "text-gray-500 hover:bg-gray-100"
-          }`}
+          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${!isNotebook
+            ? "bg-indigo-600 text-white"
+            : "text-gray-500 hover:bg-gray-100"
+            }`}
         >
           PDF
         </button>
@@ -4777,11 +5738,10 @@ export function ClassroomPdfViewer({
           onClick={() => {
             if (!pane) changeDisplayMode("notebook");
           }}
-          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${
-            isNotebook
-              ? "bg-indigo-600 text-white"
-              : "text-gray-500 hover:bg-gray-100"
-          }`}
+          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${isNotebook
+            ? "bg-indigo-600 text-white"
+            : "text-gray-500 hover:bg-gray-100"
+            }`}
         >
           Daftar
         </button>
@@ -4949,31 +5909,31 @@ export function ClassroomPdfViewer({
                 style={
                   displayLayout === "split"
                     ? {
-                        // Split panellar hostSplitRatio (yoki move rejimida
-                        // localSplitRatio)ga mos ravishda kenglashadi/torayadi —
-                        // grow/shrink 0 qilib, faqat flex-basis orqali aniq
-                        // nisbatni belgilaymiz.
-                        flex: `0 0 ${(paneIndex === 0 ? effectiveSplitRatio : 1 - effectiveSplitRatio) * 100}%`,
-                        touchAction: freeToMove ? "pan-x pan-y" : "none",
-                        // items-center bola (PDF/daftar paneli) zoomda
-                        // konteynerdan kengroq bo'lib qolganda flexbox
-                        // scrollLeft'ni manfiy qila olmaydi va chap chekkaga
-                        // scroll qilib bo'lmay qolardi — "safe center" kontent
-                        // kichkina bo'lsa markazlaydi, katta bo'lsa "start"ga
-                        // qaytib to'liq scroll imkonini beradi.
-                        alignItems: "safe center",
-                      }
+                      // Split panellar hostSplitRatio (yoki move rejimida
+                      // localSplitRatio)ga mos ravishda kenglashadi/torayadi —
+                      // grow/shrink 0 qilib, faqat flex-basis orqali aniq
+                      // nisbatni belgilaymiz.
+                      flex: `0 0 ${(paneIndex === 0 ? effectiveSplitRatio : 1 - effectiveSplitRatio) * 100}%`,
+                      touchAction: freeToMove ? "pan-x pan-y" : "none",
+                      // items-center bola (PDF/daftar paneli) zoomda
+                      // konteynerdan kengroq bo'lib qolganda flexbox
+                      // scrollLeft'ni manfiy qila olmaydi va chap chekkaga
+                      // scroll qilib bo'lmay qolardi — "safe center" kontent
+                      // kichkina bo'lsa markazlaydi, katta bo'lsa "start"ga
+                      // qaytib to'liq scroll imkonini beradi.
+                      alignItems: "safe center",
+                    }
                     : {
-                        // Daftar ham PDF kabi konteyner kengligiga NISBATAN (%)
-                        // o'lchanadi — REF_WIDTH'ga bog'langan mutlaq piksel
-                        // (masalan 1000px) tor mobil ekranda 100% zoom'da ham
-                        // viewport'dan katta bo'lib, gorizontal scroll chiqarib
-                        // yuborardi. Grid/stroke o'lchami baribir REF_WIDTH
-                        // asosida hisoblanadi (canvas render'da), shuning uchun
-                        // teacher/student o'rtasida nisbiy ko'rinish bir xil qoladi.
-                        width: `${zoom * 100}%`,
-                        alignItems: "safe center",
-                      }
+                      // Daftar ham PDF kabi konteyner kengligiga NISBATAN (%)
+                      // o'lchanadi — REF_WIDTH'ga bog'langan mutlaq piksel
+                      // (masalan 1000px) tor mobil ekranda 100% zoom'da ham
+                      // viewport'dan katta bo'lib, gorizontal scroll chiqarib
+                      // yuborardi. Grid/stroke o'lchami baribir REF_WIDTH
+                      // asosida hisoblanadi (canvas render'da), shuning uchun
+                      // teacher/student o'rtasida nisbiy ko'rinish bir xil qoladi.
+                      width: `${zoom * 100}%`,
+                      alignItems: "safe center",
+                    }
                 }
               >
                 <div
@@ -5051,7 +6011,7 @@ export function ClassroomPdfViewer({
                           showPointer={
                             pointer?.page === pageNumber &&
                             (pointer?.pane ?? "left") ===
-                              (paneIndex === 1 ? "right" : "left")
+                            (paneIndex === 1 ? "right" : "left")
                           }
                           editable={editable}
                           tool={tool}
@@ -5210,9 +6170,8 @@ export function ClassroomPdfViewer({
                   onPointerMove={handleSplitPointerMove}
                   onPointerUp={handleSplitPointerUp}
                   onPointerCancel={handleSplitPointerUp}
-                  className={`relative h-full shrink-0 w-4 -mx-1.5 z-[1] flex items-center justify-center select-none touch-none ${
-                    canDragSplit ? "cursor-col-resize hover:bg-blue-500/10" : "cursor-default"
-                  }`}
+                  className={`relative h-full shrink-0 w-4 -mx-1.5 z-[1] flex items-center justify-center select-none touch-none ${canDragSplit ? "cursor-col-resize hover:bg-blue-500/10" : "cursor-default"
+                    }`}
                 >
                   <div className="h-full w-[1px] bg-gray-400/30 hover:bg-blue-500 transition-colors" />
                 </div>
@@ -5284,11 +6243,10 @@ export function ClassroomPdfViewer({
                 ? "Erkin harakatlanish (ustozdan mustaqil)"
                 : "Ustoz bilan sinxronlash"
             }
-            className={`rounded-xl p-1.5 shadow-md transition-colors ${
-              synced
-                ? "bg-white text-gray-400 hover:bg-gray-50"
-                : "bg-indigo-600 text-white hover:bg-indigo-700"
-            }`}
+            className={`rounded-xl p-1.5 shadow-md transition-colors ${synced
+              ? "bg-white text-gray-400 hover:bg-gray-50"
+              : "bg-indigo-600 text-white hover:bg-indigo-700"
+              }`}
           >
             <Move size={14} />
           </button>

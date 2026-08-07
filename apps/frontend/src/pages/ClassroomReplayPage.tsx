@@ -104,27 +104,27 @@ export function ClassroomReplayPage() {
 
   const viewState = useStaticSnapshot && boardSnapshot
     ? {
-        pages: boardSnapshot.pages,
-        currentPage: isBoardAudio ? replay.state.currentPage : 1,
-        strokesByPage: boardSnapshot.strokesByMode?.[leftMode] ?? boardSnapshot.strokesByPage,
-        rightStrokesByPage: boardSnapshot.strokesByMode?.[rightMode] ?? boardSnapshot.rightStrokesByPage,
-        strokesByMode: boardSnapshot.strokesByMode,
-        zoom: isBoardAudio ? replay.state.zoom : 1,
-        rightZoom: isBoardAudio ? replay.state.rightZoom : 1,
-        splitRatio: isBoardAudio ? replay.state.splitRatio : 0.5,
-        scroll: isBoardAudio ? replay.state.scroll : null,
-        rightScroll: isBoardAudio ? replay.state.rightScroll : null,
-        pointer: isBoardAudio ? replay.state.pointer : null,
-        boardMode: boardSnapshot.boardMode,
-        boardLayout: boardSnapshot.boardLayout,
-        leftBoardMode: boardSnapshot.leftBoardMode,
-        rightBoardMode: boardSnapshot.rightBoardMode,
-        notebookPageStyles: boardSnapshot.notebookPageStyles ?? {},
-        notebookPageOrientations: boardSnapshot.notebookPageOrientations ?? {},
-        notebookPageCount: boardSnapshot.notebookPageCount ?? 1,
-        classroomTheme: replay.state.classroomTheme,
-        reactions: replay.state.reactions,
-      }
+      pages: boardSnapshot.pages,
+      currentPage: isBoardAudio ? replay.state.currentPage : 1,
+      strokesByPage: boardSnapshot.strokesByMode?.[leftMode] ?? boardSnapshot.strokesByPage,
+      rightStrokesByPage: boardSnapshot.strokesByMode?.[rightMode] ?? boardSnapshot.rightStrokesByPage,
+      strokesByMode: boardSnapshot.strokesByMode,
+      zoom: isBoardAudio ? replay.state.zoom : 1,
+      rightZoom: isBoardAudio ? replay.state.rightZoom : 1,
+      splitRatio: isBoardAudio ? replay.state.splitRatio : 0.5,
+      scroll: isBoardAudio ? replay.state.scroll : null,
+      rightScroll: isBoardAudio ? replay.state.rightScroll : null,
+      pointer: isBoardAudio ? replay.state.pointer : null,
+      boardMode: boardSnapshot.boardMode,
+      boardLayout: boardSnapshot.boardLayout,
+      leftBoardMode: boardSnapshot.leftBoardMode,
+      rightBoardMode: boardSnapshot.rightBoardMode,
+      notebookPageStyles: boardSnapshot.notebookPageStyles ?? {},
+      notebookPageOrientations: boardSnapshot.notebookPageOrientations ?? {},
+      notebookPageCount: boardSnapshot.notebookPageCount ?? 1,
+      classroomTheme: replay.state.classroomTheme,
+      reactions: replay.state.reactions,
+    }
     : replay.state;
 
   useClassroomTheme(viewState.classroomTheme);
@@ -138,7 +138,7 @@ export function ClassroomReplayPage() {
     const audio = audioRef.current;
     if (!audio) return;
     if (replay.isPlaying && !beforeRecordingStarted) {
-      audio.play().catch(() => {});
+      audio.play().catch(() => { });
     } else {
       audio.pause();
     }
@@ -273,44 +273,44 @@ export function ClassroomReplayPage() {
       </div>
 
       {showTimeline && (
-        <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
-          <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-xl border border-indigo-300/20 bg-indigo-950/90 px-2.5 py-1.5 text-white shadow-2xl backdrop-blur-md sm:gap-3 sm:px-3">
-          <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-indigo-600 px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
-          <button
-            type="button"
-            onClick={handlePlayPause}
-            className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white hover:bg-indigo-800/70 sm:h-9 sm:w-9"
-          >
-            {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
-          </button>
-          <span className="hidden w-10 shrink-0 text-right text-xs tabular-nums text-white/80 sm:block">{formatMs(replay.currentTimeMs)}</span>
-          <input
-            type="range"
-            min={0}
-            max={replay.durationMs}
-            value={replay.currentTimeMs}
-            onChange={(e) => handleSeek(Number(e.target.value))}
-            onClick={revealControls}
-            className="h-1 flex-1 cursor-pointer accent-indigo-400"
-          />
-          <span className="w-10 shrink-0 text-xs tabular-nums text-white/80">{formatMs(replay.durationMs)}</span>
-          {data.recordingStatus === "pending" && (
-            <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
-          )}
-          {data.recordingStatus === "failed" && (
-            <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
-          )}
-          {hasRecording && (
-            <audio
-              ref={audioRef}
-              src={data.recordingUrl ?? undefined}
-              preload="auto"
-              crossOrigin="anonymous"
-              onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
-              onError={(e) => console.error("Audio playback error:", e)}
-              className="h-0 w-0 opacity-0"
+        <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 bg-black-950 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
+          <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-3xl border border-black-300 bg-black px-2.5 py-1.5 text-white shadow-2xl  sm:gap-3 sm:px-3">
+            <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
+            <button
+              type="button"
+              onClick={handlePlayPause}
+              className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-white hover:bg-black-800/70 sm:h-9 sm:w-9"
+            >
+              {replay.isPlaying ? <Pause size={16} /> : <Play size={16} />}
+            </button>
+            <span className="hidden w-10 shrink-0 text-right text-xs tabular-nums text-white/80 sm:block">{formatMs(replay.currentTimeMs)}</span>
+            <input
+              type="range"
+              min={0}
+              max={replay.durationMs}
+              value={replay.currentTimeMs}
+              onChange={(e) => handleSeek(Number(e.target.value))}
+              onClick={revealControls}
+              className="h-1 flex-1 cursor-pointer accent-white-400"
             />
-          )}
+            <span className="w-10 shrink-0 text-xs tabular-nums text-white/80">{formatMs(replay.durationMs)}</span>
+            {data.recordingStatus === "pending" && (
+              <span className="shrink-0 text-xs text-gray-500">Audio yozuvi tayyor emas</span>
+            )}
+            {data.recordingStatus === "failed" && (
+              <span className="shrink-0 text-xs text-gray-500">Audio yozuvi mavjud emas</span>
+            )}
+            {hasRecording && (
+              <audio
+                ref={audioRef}
+                src={data.recordingUrl ?? undefined}
+                preload="auto"
+                crossOrigin="anonymous"
+                onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
+                onError={(e) => console.error("Audio playback error:", e)}
+                className="h-0 w-0 opacity-0"
+              />
+            )}
           </div>
         </div>
       )}

@@ -198,13 +198,12 @@ function MatchingInput({
                 key={opt.id}
                 type="button"
                 onClick={() => tapLeft(opt.id)}
-                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${
-                  isPending
+                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${isPending
                     ? "bg-gray-900 text-white border-gray-900"
                     : isPaired
                       ? "bg-gray-100 border-gray-300 text-gray-700"
                       : "bg-white border-border text-gray-700 hover:border-gray-300"
-                } ${locked ? "pointer-events-none" : ""}`}
+                  } ${locked ? "pointer-events-none" : ""}`}
               >
                 {opt.text}
               </button>
@@ -220,13 +219,12 @@ function MatchingInput({
                 type="button"
                 onClick={() => tapRight(opt.id)}
                 disabled={(!pendingLeft && !isPaired) || locked}
-                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${
-                  isPaired
+                className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${isPaired
                     ? "bg-gray-100 border-gray-300 text-gray-700"
                     : pendingLeft
                       ? "bg-white border-border text-gray-700 hover:border-green-400 hover:bg-green-50"
                       : "bg-gray-50 border-border text-gray-400"
-                }`}
+                  }`}
               >
                 {opt.text}
               </button>
@@ -265,7 +263,7 @@ function ArrangeInput({
               type="button"
               disabled={locked}
               onClick={() => onSelect(selected.filter((x) => x !== id))}
-              className="px-3.5 py-2 bg-gray-900 text-white rounded-xl shadow-sm hover:bg-gray-800 active:scale-95 transition-all text-sm"
+              className="px-3.5 py-2 bg-gray-900 text-white rounded-xl  hover:bg-gray-800 active:scale-95 transition-all text-sm"
             >
               {opt.text}
             </button>
@@ -497,19 +495,19 @@ export function LivePlayPage() {
     const event = isTeamMode ? "captain:answer" : "player:answer";
     const payload = isTeamMode
       ? {
-          pin,
-          token,
-          questionId: question.id,
-          selectedOptionIds: ids,
-          textAnswer: text,
-        }
+        pin,
+        token,
+        questionId: question.id,
+        selectedOptionIds: ids,
+        textAnswer: text,
+      }
       : {
-          pin,
-          token,
-          questionId: question.id,
-          selectedOptionIds: ids,
-          textAnswer: text,
-        };
+        pin,
+        token,
+        questionId: question.id,
+        selectedOptionIds: ids,
+        textAnswer: text,
+      };
     getLiveSocket().emit(event, payload, (res: any) => {
       if (res?.ok) setPhase("waiting");
     });
@@ -535,7 +533,7 @@ export function LivePlayPage() {
     getLiveSocket().emit(
       "member:suggest",
       { pin, token, teamId: myTeam.id, optionId },
-      () => {},
+      () => { },
     );
     setSuggestedOptionIds((prev) =>
       prev.includes(optionId)
@@ -634,415 +632,412 @@ export function LivePlayPage() {
 
   return (
     <StudentShell>
-    <div
-      className="flex h-[calc(100vh-2rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl bg-white notranslate"
-      translate="no"
-      style={{
-        paddingTop: "env(safe-area-inset-top)",
-        paddingBottom: "max(16px, env(safe-area-inset-bottom))",
-      }}
-    >
-      <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-500 to-gray-300" />
+      <div
+        className="flex h-[calc(100vh-2rem)] min-h-[560px] flex-col overflow-hidden rounded-2xl bg-white notranslate"
+        translate="no"
+        style={{
+          paddingTop: "env(safe-area-inset-top)",
+          paddingBottom: "max(16px, env(safe-area-inset-bottom))",
+        }}
+      >
+        <div className="shrink-0 h-1 bg-linear-to-r from-gray-800 via-gray-500 to-gray-300" />
 
-      {voice.voiceAvailable && phase !== "connecting" && phase !== "error" && (
-        <div className="fixed left-1/2 z-50 -translate-x-1/2" style={{ bottom: "max(76px, calc(env(safe-area-inset-bottom) + 70px))" }}>
-          <MicControl
-            micEnabled={voice.micEnabled}
-            onToggleMic={() => void voice.toggleMic()}
-            audioInputs={voice.audioInputs}
-            activeAudioInputId={voice.activeAudioInputId}
-            onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
-            disabled={!voice.connected}
-          />
-        </div>
-      )}
-
-      {voice.needsAudioUnlock && (
-        <button
-          type="button"
-          onClick={voice.unlockAudio}
-          className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md font-medium hover:bg-indigo-700"
-        >
-          Ovozni yoqish uchun bosing
-        </button>
-      )}
-
-      {phase === "connecting" && (
-        <div className="flex-1 flex items-center justify-center">
-          <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
-        </div>
-      )}
-
-      {phase === "error" && (
-        <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
-          <p className="text-red-400 text-center">
-            {errorCode === "NOT_FOUND"
-              ? "Sessiya topilmadi yoki tugagan."
-              : "Ulanishda xato. Qayta urinib ko'ring."}
-          </p>
-          <button
-            onClick={() => navigate("/live/join")}
-            className="text-gray-700 text-sm font-medium"
-          >
-            ← PIN kiritish
-          </button>
-        </div>
-      )}
-
-      {phase === "lobby" && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6">
-          <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
-          <p className="text-lg font-bold text-gray-900 mb-2">
-            Siz ichkaridasiz!
-          </p>
-          <p className="text-sm text-gray-400 mb-6">
-            Ustoz o'yinni boshlashini kuting...
-          </p>
-          <div className="flex items-center gap-2 text-gray-500">
-            <Users size={15} />
-            <span className="text-sm">{players.length} o'yinchi</span>
-          </div>
-        </div>
-      )}
-
-      {phase === "team_waiting" && (
-        <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
-          <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
-          <p className="text-lg font-bold text-gray-900 mb-2">
-            {myTeam?.name ?? "Guruh kutilmoqda"}
-          </p>
-          <p className="text-sm text-gray-400 mb-4">
-            {isCaptain ? "Siz sardorsiz" : "Siz a'zosiz"}
-          </p>
-          {myTeam && myTeam.members.length > 0 && (
-            <div className="w-full max-w-xs flex flex-col gap-1.5 mb-4">
-              {myTeam.members.map((m) => (
-                <div
-                  key={m.userId}
-                  className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl text-sm"
-                >
-                  {m.userId === myTeam.captainUserId ? (
-                    <Crown size={14} className="text-amber-500 shrink-0" />
-                  ) : (
-                    <Users size={14} className="text-gray-300 shrink-0" />
-                  )}
-                  <span className="text-gray-700 font-medium truncate">
-                    {m.name}
-                  </span>
-                </div>
-              ))}
-            </div>
-          )}
-          <p className="text-sm text-gray-400">
-            Ustoz o'yinni boshlashini kuting...
-          </p>
-        </div>
-      )}
-
-      {(phase === "question" || phase === "waiting" || phase === "reveal") &&
-        question && (
-          <div className="flex-1 flex flex-col min-h-0 lg:max-w-2xl lg:mx-auto lg:w-full">
-            <div className="shrink-0 px-5 pt-3">
-              <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
-                <div
-                  className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-gray-900"}`}
-                  style={{
-                    width: phase === "reveal" ? "0%" : `${remainingPct}%`,
-                  }}
-                />
-              </div>
-              <div className="flex items-center justify-between py-2">
-                <span className="text-sm font-semibold text-gray-700">
-                  {question.idx + 1} / {question.total}
-                </span>
-                <span className="text-sm font-bold text-gray-900">
-                  {score} ball
-                </span>
-              </div>
-            </div>
-
-            <div className="flex-1 min-h-0 overflow-y-auto px-5">
-              <p className="text-lg font-bold text-gray-900 leading-snug mb-4">
-                {question.text}
-              </p>
-              {question.imageUrl && (
-                <img
-                  src={
-                    question.imageUrl.startsWith("http")
-                      ? question.imageUrl
-                      : `${BACKEND}${question.imageUrl}`
-                  }
-                  alt=""
-                  className="w-full rounded-2xl object-cover mb-4"
-                  style={{ maxHeight: 200 }}
-                />
-              )}
-
-              {phase === "waiting" ? (
-                <div className="flex flex-col items-center py-10">
-                  <CheckCircle2 size={36} className="text-green-400 mb-3" />
-                  <p className="font-semibold text-gray-800 mb-1">
-                    Javob qabul qilindi
-                  </p>
-                  <p className="text-sm text-gray-400">
-                    {progress.answered} / {progress.total} javob berdi
-                  </p>
-                </div>
-              ) : isTeamMode &&
-                !isCaptain &&
-                !["single", "multi", "truefalse"].includes(question.type) ? (
-                <div className="flex flex-col items-center py-10 text-center">
-                  <p className="font-semibold text-gray-700 mb-1">
-                    Sardoringiz javob bermoqda...
-                  </p>
-                  <p className="text-sm text-gray-400">{myTeam?.name}</p>
-                </div>
-              ) : isTeamMode &&
-                isCaptain &&
-                !["single", "multi", "truefalse"].includes(question.type) ? (
-                renderCaptainInput()
-              ) : question.type === "single" ||
-                question.type === "multi" ||
-                question.type === "truefalse" ? (
-                <div className="flex flex-col gap-2.5 pb-4">
-                  {question.options.map((opt, i) => {
-                    const isSel = selected.includes(opt.id);
-                    const isSuggested = suggestedOptionIds.includes(opt.id);
-                    const isCorrect = reveal?.correctOptionIds.includes(opt.id);
-                    return (
-                      <button
-                        key={opt.id}
-                        onClick={() => tapOption(opt.id)}
-                        disabled={phase === "reveal"}
-                        className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all active:scale-[0.99] ${
-                          phase === "reveal"
-                            ? isCorrect
-                              ? "bg-green-50 border-green-300"
-                              : "bg-gray-50 border-border opacity-60"
-                            : (isTeamMode && !isCaptain ? isSuggested : isSel)
-                              ? "bg-gray-900 border-gray-900 text-white"
-                              : "bg-white border-border text-gray-800 hover:border-gray-300"
-                        }`}
-                      >
-                        <span
-                          className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${
-                            (isTeamMode && !isCaptain ? isSuggested : isSel) &&
-                            phase !== "reveal"
-                              ? "bg-white/20 text-white"
-                              : "bg-gray-100 text-gray-500"
-                          }`}
-                        >
-                          {LABELS[i]}
-                        </span>
-                        <span className="leading-snug flex-1">{opt.text}</span>
-                        {isTeamMode &&
-                          isCaptain &&
-                          suggestionCounts[opt.id] > 0 && (
-                            <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg shrink-0">
-                              {suggestionCounts[opt.id]}
-                            </span>
-                          )}
-                      </button>
-                    );
-                  })}
-                </div>
-              ) : question.type === "fillblank" ? (
-                <div className="flex flex-col gap-1.5 pb-4">
-                  <p className="text-xs text-gray-400">
-                    Bo'sh joyni to'ldiring:
-                  </p>
-                  <input
-                    value={textAnswer}
-                    disabled={phase === "reveal"}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors"
-                  />
-                </div>
-              ) : question.type === "open" ? (
-                <div className="pb-4">
-                  <textarea
-                    value={textAnswer}
-                    rows={4}
-                    disabled={phase === "reveal"}
-                    onChange={(e) => setTextAnswer(e.target.value)}
-                    placeholder="Javobingizni yozing..."
-                    className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors resize-none"
-                  />
-                </div>
-              ) : question.type === "slider" ? (
-                <div className="pb-4">
-                  <SliderInput
-                    options={question.options}
-                    value={textAnswer}
-                    onChange={setTextAnswer}
-                    locked={phase === "reveal"}
-                  />
-                </div>
-              ) : question.type === "droppin" ? (
-                <div className="pb-4">
-                  <DropPinInput
-                    imageUrl={
-                      question.imageUrl ? mediaUrl(question.imageUrl) : ""
-                    }
-                    value={textAnswer}
-                    onChange={setTextAnswer}
-                    locked={phase === "reveal"}
-                  />
-                </div>
-              ) : question.type === "matching" ? (
-                <div className="pb-4">
-                  <MatchingInput
-                    options={question.options}
-                    selected={selected}
-                    onSelect={setSelected}
-                    locked={phase === "reveal"}
-                  />
-                </div>
-              ) : question.type === "arrange" ? (
-                <div className="pb-4">
-                  <ArrangeInput
-                    options={question.options}
-                    selected={selected}
-                    onSelect={setSelected}
-                    locked={phase === "reveal"}
-                  />
-                </div>
-              ) : question.type === "reorder" ? (
-                <div className="pb-4">
-                  <ReorderInput
-                    options={question.options}
-                    selected={selected}
-                    onSelect={setSelected}
-                    locked={phase === "reveal"}
-                  />
-                </div>
-              ) : null}
-
-              {phase === "reveal" && myReveal && (
-                <div
-                  className={`rounded-2xl px-4 py-4 mb-4 flex items-center gap-3 ${myReveal.isCorrect ? "bg-green-50" : "bg-red-50"}`}
-                >
-                  {myReveal.isCorrect ? (
-                    <CheckCircle2
-                      size={22}
-                      className="text-green-500 shrink-0"
-                    />
-                  ) : (
-                    <XCircle size={22} className="text-red-400 shrink-0" />
-                  )}
-                  <div>
-                    <p
-                      className={`font-semibold ${myReveal.isCorrect ? "text-green-700" : "text-red-600"}`}
-                    >
-                      {myReveal.isCorrect
-                        ? `To'g'ri! +${myReveal.points} ball`
-                        : "Noto'g'ri"}
-                    </p>
-                    <p className="text-xs text-gray-500 mt-0.5">
-                      Siz {myReveal.rank}-o'rindasiz
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-
-            {!isTeamMode &&
-              phase === "question" &&
-              (question.type === "multi" ||
-                question.type === "fillblank" ||
-                question.type === "open" ||
-                question.type === "slider" ||
-                question.type === "droppin" ||
-                question.type === "matching" ||
-                question.type === "arrange" ||
-                question.type === "reorder") && (
-                <div className="shrink-0 px-5 pt-2 pb-2">
-                  <button
-                    onClick={() => {
-                      if (
-                        question.type === "fillblank" ||
-                        question.type === "open" ||
-                        question.type === "slider" ||
-                        question.type === "droppin"
-                      ) {
-                        submitAnswer([], textAnswer);
-                      } else if (question.type === "reorder") {
-                        submitAnswer(
-                          selected.length > 0
-                            ? selected
-                            : question.options.map((o) => o.id),
-                        );
-                      } else {
-                        submitAnswer(selected);
-                      }
-                    }}
-                    disabled={
-                      question.type === "multi"
-                        ? selected.length === 0
-                        : question.type === "matching" ||
-                            question.type === "arrange"
-                          ? selected.length === 0
-                          : question.type === "reorder"
-                            ? false
-                            : !textAnswer.trim()
-                    }
-                    className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
-                  >
-                    Javob berish
-                  </button>
-                </div>
-              )}
-
-            {isTeamMode &&
-              isCaptain &&
-              ["single", "multi", "truefalse"].includes(question.type) &&
-              phase === "question" && (
-                <div className="shrink-0 px-5 pt-2 pb-2">
-                  <button
-                    onClick={() => submitAnswer(selected)}
-                    disabled={selected.length === 0}
-                    className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
-                  >
-                    Javob berish
-                  </button>
-                </div>
-              )}
+        {voice.voiceAvailable && phase !== "connecting" && phase !== "error" && (
+          <div className="fixed left-1/2 z-50 -translate-x-1/2" style={{ bottom: "max(76px, calc(env(safe-area-inset-bottom) + 70px))" }}>
+            <MicControl
+              micEnabled={voice.micEnabled}
+              onToggleMic={() => void voice.toggleMic()}
+              audioInputs={voice.audioInputs}
+              activeAudioInputId={voice.activeAudioInputId}
+              onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+              disabled={!voice.connected}
+            />
           </div>
         )}
 
-      {phase === "finished" && (
-        <div className="flex-1 flex flex-col items-center px-6 pt-10 overflow-y-auto">
-          <Trophy size={40} className="text-amber-400 mb-4" />
-          <p className="text-xl font-bold text-gray-900 mb-6">O'yin tugadi!</p>
-          <div className="w-full max-w-md flex flex-col gap-2 mb-8">
-            {leaderboard.map((e) => (
-              <div
-                key={e.userId}
-                className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${
-                  e.rank === 1
-                    ? "bg-amber-50 border-amber-200"
-                    : e.rank <= 3
-                      ? "bg-gray-50 border-gray-200"
-                      : "bg-white border-border"
-                }`}
-              >
-                <span className="font-semibold text-gray-800">
-                  {e.rank}. {e.name}
-                </span>
-                <span className="font-bold text-gray-900">{e.score}</span>
-              </div>
-            ))}
-          </div>
+        {voice.needsAudioUnlock && (
           <button
-            onClick={() => navigate("/")}
-            className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 transition-colors mb-4"
+            type="button"
+            onClick={voice.unlockAudio}
+            className="fixed top-3 left-1/2 -translate-x-1/2 z-50 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md font-medium hover:bg-indigo-700"
           >
-            Bosh sahifa
+            Ovozni yoqish uchun bosing
           </button>
-        </div>
-      )}
-    </div>
+        )}
+
+        {phase === "connecting" && (
+          <div className="flex-1 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-full border-3 border-gray-200 border-t-gray-900 animate-spin" />
+          </div>
+        )}
+
+        {phase === "error" && (
+          <div className="flex-1 flex flex-col items-center justify-center gap-4 px-6">
+            <p className="text-red-400 text-center">
+              {errorCode === "NOT_FOUND"
+                ? "Sessiya topilmadi yoki tugagan."
+                : "Ulanishda xato. Qayta urinib ko'ring."}
+            </p>
+            <button
+              onClick={() => navigate("/live/join")}
+              className="text-gray-700 text-sm font-medium"
+            >
+              ← PIN kiritish
+            </button>
+          </div>
+        )}
+
+        {phase === "lobby" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6">
+            <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
+            <p className="text-lg font-bold text-gray-900 mb-2">
+              Siz ichkaridasiz!
+            </p>
+            <p className="text-sm text-gray-400 mb-6">
+              Ustoz o'yinni boshlashini kuting...
+            </p>
+            <div className="flex items-center gap-2 text-gray-500">
+              <Users size={15} />
+              <span className="text-sm">{players.length} o'yinchi</span>
+            </div>
+          </div>
+        )}
+
+        {phase === "team_waiting" && (
+          <div className="flex-1 flex flex-col items-center justify-center px-6 text-center">
+            <Hourglass size={32} className="text-gray-400 mb-4 animate-pulse" />
+            <p className="text-lg font-bold text-gray-900 mb-2">
+              {myTeam?.name ?? "Guruh kutilmoqda"}
+            </p>
+            <p className="text-sm text-gray-400 mb-4">
+              {isCaptain ? "Siz sardorsiz" : "Siz a'zosiz"}
+            </p>
+            {myTeam && myTeam.members.length > 0 && (
+              <div className="w-full max-w-xs flex flex-col gap-1.5 mb-4">
+                {myTeam.members.map((m) => (
+                  <div
+                    key={m.userId}
+                    className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-xl text-sm"
+                  >
+                    {m.userId === myTeam.captainUserId ? (
+                      <Crown size={14} className="text-amber-500 shrink-0" />
+                    ) : (
+                      <Users size={14} className="text-gray-300 shrink-0" />
+                    )}
+                    <span className="text-gray-700 font-medium truncate">
+                      {m.name}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            )}
+            <p className="text-sm text-gray-400">
+              Ustoz o'yinni boshlashini kuting...
+            </p>
+          </div>
+        )}
+
+        {(phase === "question" || phase === "waiting" || phase === "reveal") &&
+          question && (
+            <div className="flex-1 flex flex-col min-h-0 lg:max-w-2xl lg:mx-auto lg:w-full">
+              <div className="shrink-0 px-5 pt-3">
+                <div className="h-2 bg-gray-100 rounded-full overflow-hidden">
+                  <div
+                    className={`h-full rounded-full transition-all ${remainingPct < 20 ? "bg-red-400" : "bg-gray-900"}`}
+                    style={{
+                      width: phase === "reveal" ? "0%" : `${remainingPct}%`,
+                    }}
+                  />
+                </div>
+                <div className="flex items-center justify-between py-2">
+                  <span className="text-sm font-semibold text-gray-700">
+                    {question.idx + 1} / {question.total}
+                  </span>
+                  <span className="text-sm font-bold text-gray-900">
+                    {score} ball
+                  </span>
+                </div>
+              </div>
+
+              <div className="flex-1 min-h-0 overflow-y-auto px-5">
+                <p className="text-lg font-bold text-gray-900 leading-snug mb-4">
+                  {question.text}
+                </p>
+                {question.imageUrl && (
+                  <img
+                    src={
+                      question.imageUrl.startsWith("http")
+                        ? question.imageUrl
+                        : `${BACKEND}${question.imageUrl}`
+                    }
+                    alt=""
+                    className="w-full rounded-2xl object-cover mb-4"
+                    style={{ maxHeight: 200 }}
+                  />
+                )}
+
+                {phase === "waiting" ? (
+                  <div className="flex flex-col items-center py-10">
+                    <CheckCircle2 size={36} className="text-green-400 mb-3" />
+                    <p className="font-semibold text-gray-800 mb-1">
+                      Javob qabul qilindi
+                    </p>
+                    <p className="text-sm text-gray-400">
+                      {progress.answered} / {progress.total} javob berdi
+                    </p>
+                  </div>
+                ) : isTeamMode &&
+                  !isCaptain &&
+                  !["single", "multi", "truefalse"].includes(question.type) ? (
+                  <div className="flex flex-col items-center py-10 text-center">
+                    <p className="font-semibold text-gray-700 mb-1">
+                      Sardoringiz javob bermoqda...
+                    </p>
+                    <p className="text-sm text-gray-400">{myTeam?.name}</p>
+                  </div>
+                ) : isTeamMode &&
+                  isCaptain &&
+                  !["single", "multi", "truefalse"].includes(question.type) ? (
+                  renderCaptainInput()
+                ) : question.type === "single" ||
+                  question.type === "multi" ||
+                  question.type === "truefalse" ? (
+                  <div className="flex flex-col gap-2.5 pb-4">
+                    {question.options.map((opt, i) => {
+                      const isSel = selected.includes(opt.id);
+                      const isSuggested = suggestedOptionIds.includes(opt.id);
+                      const isCorrect = reveal?.correctOptionIds.includes(opt.id);
+                      return (
+                        <button
+                          key={opt.id}
+                          onClick={() => tapOption(opt.id)}
+                          disabled={phase === "reveal"}
+                          className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all active:scale-[0.99] ${phase === "reveal"
+                              ? isCorrect
+                                ? "bg-green-50 border-green-300"
+                                : "bg-gray-50 border-border opacity-60"
+                              : (isTeamMode && !isCaptain ? isSuggested : isSel)
+                                ? "bg-gray-900 border-gray-900 text-white"
+                                : "bg-white border-border text-gray-800 hover:border-gray-300"
+                            }`}
+                        >
+                          <span
+                            className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${(isTeamMode && !isCaptain ? isSuggested : isSel) &&
+                                phase !== "reveal"
+                                ? "bg-white/20 text-white"
+                                : "bg-gray-100 text-gray-500"
+                              }`}
+                          >
+                            {LABELS[i]}
+                          </span>
+                          <span className="leading-snug flex-1">{opt.text}</span>
+                          {isTeamMode &&
+                            isCaptain &&
+                            suggestionCounts[opt.id] > 0 && (
+                              <span className="text-xs font-semibold bg-amber-100 text-amber-700 px-2 py-0.5 rounded-lg shrink-0">
+                                {suggestionCounts[opt.id]}
+                              </span>
+                            )}
+                        </button>
+                      );
+                    })}
+                  </div>
+                ) : question.type === "fillblank" ? (
+                  <div className="flex flex-col gap-1.5 pb-4">
+                    <p className="text-xs text-gray-400">
+                      Bo'sh joyni to'ldiring:
+                    </p>
+                    <input
+                      value={textAnswer}
+                      disabled={phase === "reveal"}
+                      onChange={(e) => setTextAnswer(e.target.value)}
+                      placeholder="Javobingizni yozing..."
+                      className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors"
+                    />
+                  </div>
+                ) : question.type === "open" ? (
+                  <div className="pb-4">
+                    <textarea
+                      value={textAnswer}
+                      rows={4}
+                      disabled={phase === "reveal"}
+                      onChange={(e) => setTextAnswer(e.target.value)}
+                      placeholder="Javobingizni yozing..."
+                      className="w-full bg-gray-50 rounded-2xl border border-border px-4 py-3.5 outline-none focus:border-gray-400 focus:bg-white transition-colors resize-none"
+                    />
+                  </div>
+                ) : question.type === "slider" ? (
+                  <div className="pb-4">
+                    <SliderInput
+                      options={question.options}
+                      value={textAnswer}
+                      onChange={setTextAnswer}
+                      locked={phase === "reveal"}
+                    />
+                  </div>
+                ) : question.type === "droppin" ? (
+                  <div className="pb-4">
+                    <DropPinInput
+                      imageUrl={
+                        question.imageUrl ? mediaUrl(question.imageUrl) : ""
+                      }
+                      value={textAnswer}
+                      onChange={setTextAnswer}
+                      locked={phase === "reveal"}
+                    />
+                  </div>
+                ) : question.type === "matching" ? (
+                  <div className="pb-4">
+                    <MatchingInput
+                      options={question.options}
+                      selected={selected}
+                      onSelect={setSelected}
+                      locked={phase === "reveal"}
+                    />
+                  </div>
+                ) : question.type === "arrange" ? (
+                  <div className="pb-4">
+                    <ArrangeInput
+                      options={question.options}
+                      selected={selected}
+                      onSelect={setSelected}
+                      locked={phase === "reveal"}
+                    />
+                  </div>
+                ) : question.type === "reorder" ? (
+                  <div className="pb-4">
+                    <ReorderInput
+                      options={question.options}
+                      selected={selected}
+                      onSelect={setSelected}
+                      locked={phase === "reveal"}
+                    />
+                  </div>
+                ) : null}
+
+                {phase === "reveal" && myReveal && (
+                  <div
+                    className={`rounded-2xl px-4 py-4 mb-4 flex items-center gap-3 ${myReveal.isCorrect ? "bg-green-50" : "bg-red-50"}`}
+                  >
+                    {myReveal.isCorrect ? (
+                      <CheckCircle2
+                        size={22}
+                        className="text-green-500 shrink-0"
+                      />
+                    ) : (
+                      <XCircle size={22} className="text-red-400 shrink-0" />
+                    )}
+                    <div>
+                      <p
+                        className={`font-semibold ${myReveal.isCorrect ? "text-green-700" : "text-red-600"}`}
+                      >
+                        {myReveal.isCorrect
+                          ? `To'g'ri! +${myReveal.points} ball`
+                          : "Noto'g'ri"}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-0.5">
+                        Siz {myReveal.rank}-o'rindasiz
+                      </p>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {!isTeamMode &&
+                phase === "question" &&
+                (question.type === "multi" ||
+                  question.type === "fillblank" ||
+                  question.type === "open" ||
+                  question.type === "slider" ||
+                  question.type === "droppin" ||
+                  question.type === "matching" ||
+                  question.type === "arrange" ||
+                  question.type === "reorder") && (
+                  <div className="shrink-0 px-5 pt-2 pb-2">
+                    <button
+                      onClick={() => {
+                        if (
+                          question.type === "fillblank" ||
+                          question.type === "open" ||
+                          question.type === "slider" ||
+                          question.type === "droppin"
+                        ) {
+                          submitAnswer([], textAnswer);
+                        } else if (question.type === "reorder") {
+                          submitAnswer(
+                            selected.length > 0
+                              ? selected
+                              : question.options.map((o) => o.id),
+                          );
+                        } else {
+                          submitAnswer(selected);
+                        }
+                      }}
+                      disabled={
+                        question.type === "multi"
+                          ? selected.length === 0
+                          : question.type === "matching" ||
+                            question.type === "arrange"
+                            ? selected.length === 0
+                            : question.type === "reorder"
+                              ? false
+                              : !textAnswer.trim()
+                      }
+                      className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
+                    >
+                      Javob berish
+                    </button>
+                  </div>
+                )}
+
+              {isTeamMode &&
+                isCaptain &&
+                ["single", "multi", "truefalse"].includes(question.type) &&
+                phase === "question" && (
+                  <div className="shrink-0 px-5 pt-2 pb-2">
+                    <button
+                      onClick={() => submitAnswer(selected)}
+                      disabled={selected.length === 0}
+                      className="w-full py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg shadow-indigo-100"
+                    >
+                      Javob berish
+                    </button>
+                  </div>
+                )}
+            </div>
+          )}
+
+        {phase === "finished" && (
+          <div className="flex-1 flex flex-col items-center px-6 pt-10 overflow-y-auto">
+            <Trophy size={40} className="text-amber-400 mb-4" />
+            <p className="text-xl font-bold text-gray-900 mb-6">O'yin tugadi!</p>
+            <div className="w-full max-w-md flex flex-col gap-2 mb-8">
+              {leaderboard.map((e) => (
+                <div
+                  key={e.userId}
+                  className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${e.rank === 1
+                      ? "bg-amber-50 border-amber-200"
+                      : e.rank <= 3
+                        ? "bg-gray-50 border-gray-200"
+                        : "bg-white border-border"
+                    }`}
+                >
+                  <span className="font-semibold text-gray-800">
+                    {e.rank}. {e.name}
+                  </span>
+                  <span className="font-bold text-gray-900">{e.score}</span>
+                </div>
+              ))}
+            </div>
+            <button
+              onClick={() => navigate("/")}
+              className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-semibold hover:bg-indigo-600 transition-colors mb-4"
+            >
+              Bosh sahifa
+            </button>
+          </div>
+        )}
+      </div>
     </StudentShell>
   );
 }

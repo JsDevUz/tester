@@ -57,13 +57,13 @@ export function ParticipantsPanelToggle({
   }, [open]);
 
   // Theme tokens — RaisedHandsControl bilan bir xil
-  const panelBg      = isDark ? "bg-[#202124]"   : "bg-white";
-  const borderCls    = isDark ? "border-white/10" : "border-gray-200";
-  const titleCls     = isDark ? "text-white"      : "text-gray-900";
-  const closeCls     = isDark
+  const panelBg = isDark ? "bg-gray-50" : "bg-white";
+  const borderCls = isDark ? "border-white/10" : "border-gray-200";
+  const titleCls = isDark ? "text-white" : "text-gray-900";
+  const closeCls = isDark
     ? "text-white/60 hover:bg-white/10 hover:text-white"
     : "text-gray-400 hover:bg-gray-100 hover:text-gray-700";
-  const dragHandleCls = isDark ? "bg-white/20"    : "bg-gray-300";
+  const dragHandleCls = isDark ? "bg-white/20" : "bg-gray-300";
   const countBadgeCls = isDark
     ? "bg-white/10 text-white"
     : "bg-gray-900 text-white";
@@ -107,7 +107,7 @@ export function ParticipantsPanelToggle({
             ref={panelRef}
             role="dialog"
             aria-label="O'quvchilar ro'yxati"
-            className={`classroom-panel-in z-[80] fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl h-[98vh] max-h-[98vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:origin-top-right border ${panelBg} ${borderCls}`}
+            className={`classroom-panel-in z-[80] fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl h-[86vh] max-h-[86vh] sm:h-auto sm:max-h-none sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:origin-top-right border ${panelBg} ${borderCls}`}
             style={
               typeof window !== "undefined" && window.innerWidth >= 640
                 ? { top: "1vh", right: "16px" }
@@ -123,9 +123,8 @@ export function ParticipantsPanelToggle({
             <div className={`flex items-center justify-between px-4 py-3 border-b ${borderCls}`}>
               <div className="flex items-center gap-2">
                 <h4 className={`text-base font-semibold ${titleCls}`}>O'quvchilar</h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${
-                  isDark ? "bg-white/10 text-white/70" : "bg-gray-100 text-gray-500"
-                }`}>
+                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? "bg-white/10 text-white/70" : "bg-gray-100 text-gray-500"
+                  }`}>
                   {onlineCount}/{participants.length}
                 </span>
               </div>
@@ -142,7 +141,7 @@ export function ParticipantsPanelToggle({
             {/* Content */}
             <div
               className="overflow-y-auto px-2 py-2"
-              style={{ maxHeight: "calc(98vh - 80px)" }}
+              style={{ maxHeight: "calc(86vh - 80px)" }}
             >
               <ClassroomParticipants
                 participants={participants}

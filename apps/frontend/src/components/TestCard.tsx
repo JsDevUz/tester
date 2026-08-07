@@ -83,7 +83,7 @@ export function TestCard({
   }
 
   return (
-    <div className="bg-white rounded-3xl shadow-smoverflow-hidden flex flex-col">
+    <div className="bg-white rounded-3xl overflow-hidden flex flex-col">
       {/* Header */}
       <div className="h-[100px] px-4 pt-4 pb-4 shrink-0">
         <p className="text-[10px] text-gray-400 uppercase tracking-wide font-medium mb-1">

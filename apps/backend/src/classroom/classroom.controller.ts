@@ -16,6 +16,14 @@ class CreateFreeClassSessionDto {
   @IsOptional() @IsString() title?: string;
 }
 
+class CreateBoardDto {
+  @IsOptional() @IsString() title?: string;
+}
+
+class UpdateBoardTitleDto {
+  @IsString() title!: string;
+}
+
 class ReopenFreeSessionDto {
   @IsOptional() @IsString() title?: string;
 }
@@ -104,6 +112,16 @@ export class ClassroomController {
     @Req() req: any,
   ) {
     return this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers);
+  }
+
+  @Post('sessions/:id/attach-board')
+  @Roles('teacher', 'super')
+  async attachBoard(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: { boardId: string },
+    @Req() req: any,
+  ) {
+    return this.classroomService.attachBoardToSession(id, req.admin.id, dto.boardId);
   }
 
   @Post('sessions/:id/pdf/insert')

@@ -1,13 +1,13 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, PenTool, Radio, SkipForward, Trash2, X } from 'lucide-react';
+import { Clock, Radio, Trash2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import {
   apiActiveClassSessions, apiClassHistory, apiClassSession, apiCreateClassSession,
-  apiCreateClassSessionFromSnapshot, apiDeleteClassSession, apiOverrideAttendance,
+  apiDeleteClassSession, apiOverrideAttendance,
   type ClassHistoryItem, type ClassSessionDetail,
 } from '../../api/classroom';
 
@@ -50,21 +50,6 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
   const [loading, setLoading] = useState(true);
   const [starting, setStarting] = useState(false);
   const [detail, setDetail] = useState<ClassSessionDetail | null>(null);
-  const [resumeTarget, setResumeTarget] = useState<ClassSessionDetail | null>(null);
-  const [resumeTitle, setResumeTitle] = useState("");
-  const [resuming, setResuming] = useState(false);
-
-  const handleResumeFromSnapshot = async () => {
-    if (!resumeTarget) return;
-    setResuming(true);
-    try {
-      const { id } = await apiCreateClassSessionFromSnapshot(resumeTarget.id, resumeTitle);
-      navigate(`/classroom/host/${id}`);
-    } catch (e: any) {
-      toast.error(e?.response?.data?.message ?? "Darsni davom ettirib bo'lmadi");
-      setResuming(false);
-    }
-  };
 
   const reload = useCallback(async () => {
     setLoading(true);
@@ -228,29 +213,6 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
               </div>
               {detail.status === 'ended' && (
                 <div className="flex flex-wrap items-center gap-2">
-                  {detail.hasBoardSnapshot && (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/classroom-history/${detail.id}/replay?view=board`)}
-                      title="Oxirgi chizma holati"
-                      className="flex shrink-0 items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-50"
-                    >
-                      <PenTool size={14} />
-                      Oxirgi chizma
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResumeTarget(detail);
-                      setResumeTitle(detail.title ?? "");
-                    }}
-                    title="Davom ettirish"
-                    className="flex shrink-0 items-center gap-1.5 rounded-xl border border-indigo-200 bg-indigo-50 px-3 py-2 text-xs font-semibold text-indigo-700 hover:bg-indigo-100"
-                  >
-                    <SkipForward size={14} />
-                    Davom ettirish
-                  </button>
                   {(detail.recordingMode === 'full' || detail.recordingMode === 'boardAudio') && (
                     <button
                       type="button"
@@ -307,50 +269,6 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
                   ))}
                 </div>
               )}
-            </div>
-          </div>
-        </div>
-      )}
-      {resumeTarget && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 p-4"
-          role="presentation"
-          onPointerDown={(event) => { if (event.target === event.currentTarget && !resuming) setResumeTarget(null); }}
-        >
-          <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Darsni davom ettirish">
-            <h3 className="text-base font-semibold text-gray-900">Jonli darsni davom ettirish</h3>
-            <p className="text-xs text-gray-600">
-              Ushbu darsning oxirgi taxta holati (sahifalar, chizmalar) bilan yangi jonli dars boshlanadi.
-            </p>
-            <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
-                Dars nomi
-              </label>
-              <input
-                type="text"
-                value={resumeTitle}
-                onChange={(e) => setResumeTitle(e.target.value)}
-                placeholder="Dars nomini kiriting"
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
-              />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setResumeTarget(null)}
-                disabled={resuming}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Bekor qilish
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleResumeFromSnapshot()}
-                disabled={resuming}
-                className="rounded-xl bg-indigo-600 px-4 py-2 text-sm font-semibold text-white hover:bg-indigo-700 disabled:opacity-50"
-              >
-                {resuming ? "Boshlanmoqda..." : "Darsni boshlash"}
-              </button>
             </div>
           </div>
         </div>

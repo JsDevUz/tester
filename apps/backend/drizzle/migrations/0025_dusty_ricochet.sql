@@ -1,0 +1,2 @@
+ALTER TABLE "class_sessions" ADD COLUMN "attached_board_id" uuid;--> statement-breakpoint
+ALTER TABLE "class_sessions" ADD CONSTRAINT "class_sessions_attached_board_id_class_sessions_id_fk" FOREIGN KEY ("attached_board_id") REFERENCES "public"."class_sessions"("id") ON DELETE set null ON UPDATE no action;

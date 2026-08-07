@@ -134,25 +134,25 @@ export function StudentsPage() {
 
     const request = status === "all"
       ? Promise.all([
-          apiListAllStudents(pageSize, offset, query),
-          apiListEnrollments(1, 0),
-        ]).then(([result, enrollmentMeta]) => {
-          if (cancelled) return;
-          setAllUsers(result.items);
-          setAllUsersTotal(result.total);
-          setEnrollmentsTotal(enrollmentMeta.total);
-        })
+        apiListAllStudents(pageSize, offset, query),
+        apiListEnrollments(1, 0),
+      ]).then(([result, enrollmentMeta]) => {
+        if (cancelled) return;
+        setAllUsers(result.items);
+        setAllUsersTotal(result.total);
+        setEnrollmentsTotal(enrollmentMeta.total);
+      })
       : Promise.all([
-          apiListEnrollments(pageSize, offset, query, courseFilter),
-          apiListAllStudents(1, 0),
-          apiListEnrollments(100, 0),
-        ]).then(([result, allUsersMeta, courseCatalog]) => {
-          if (cancelled) return;
-          setEnrollments(result.items);
-          setEnrollmentsTotal(result.total);
-          setAllUsersTotal(allUsersMeta.total);
-          setCourseOptions(Array.from(new Set(courseCatalog.items.map((enrollment) => enrollment.courseTitle))).sort());
-        });
+        apiListEnrollments(pageSize, offset, query, courseFilter),
+        apiListAllStudents(1, 0),
+        apiListEnrollments(100, 0),
+      ]).then(([result, allUsersMeta, courseCatalog]) => {
+        if (cancelled) return;
+        setEnrollments(result.items);
+        setEnrollmentsTotal(result.total);
+        setAllUsersTotal(allUsersMeta.total);
+        setCourseOptions(Array.from(new Set(courseCatalog.items.map((enrollment) => enrollment.courseTitle))).sort());
+      });
 
     void request
       .catch(() => {
@@ -200,7 +200,7 @@ export function StudentsPage() {
                 <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{subtitle}</p>
               </div>
               {canCreateStudent && (
-                <button type="button" onClick={() => setShowAddStudent(true)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-600">
+                <button type="button" onClick={() => setShowAddStudent(true)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white  transition-colors hover:bg-indigo-600">
                   <Plus size={16} /> O'quvchi qo'shish
                 </button>
               )}

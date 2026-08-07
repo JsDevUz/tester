@@ -73,7 +73,7 @@ export function SubmissionsPage() {
     try {
       const all: Submission[] = [];
       let offset = 0;
-      for (;;) {
+      for (; ;) {
         const rows = await apiGetSubmissions(testId, 200, offset, sort, dir);
         all.push(...rows);
         if (rows.length < 200) break;
@@ -118,7 +118,7 @@ export function SubmissionsPage() {
     if (!storeTest)
       apiGetTest(testId)
         .then(setFetchedTest)
-        .catch(() => {});
+        .catch(() => { });
   }, [testId, sort, dir]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleSortChange(field: SubmissionSortField) {
@@ -267,7 +267,7 @@ export function SubmissionsPage() {
                 })}
               </div>
 
-              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 shadow-sm">
+              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 ">
                 <table className="w-full min-w-[820px] text-left">
                   <thead className="border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-700">
                     <tr>

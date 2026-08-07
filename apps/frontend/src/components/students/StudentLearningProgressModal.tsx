@@ -212,7 +212,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                                   </div>
                                   {video.durationSec ? (
                                     <>
-                                  <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200">
+                                      <div className="relative mt-1.5 h-1.5 overflow-hidden rounded-full bg-gray-200">
                                         {video.segments.map((segment, index) => (
                                           <span key={`${segment.startSec}-${segment.endSec}-${index}`} className="student-progress-fill absolute inset-y-0 rounded-full" style={{ left: `${(segment.startSec / video.durationSec!) * 100}%`, width: `${((segment.endSec - segment.startSec) / video.durationSec!) * 100}%` }} />
                                         ))}
@@ -270,7 +270,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                 ) : (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
                     {selectedPractice.practiceBlock.imageSubmissions.map((submission) => (
-                      <button key={submission.id} type="button" onClick={() => setFullscreenImage({ imageUrl: submission.imageUrl, submittedAt: submission.submittedAt })} className="group overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 text-left transition hover:border-gray-300 hover:shadow-sm">
+                      <button key={submission.id} type="button" onClick={() => setFullscreenImage({ imageUrl: submission.imageUrl, submittedAt: submission.submittedAt })} className="group overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 text-left transition hover:border-gray-300 hover:">
                         <img src={submission.imageUrl} alt="O‘quvchi yuborgan topshiriq" className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.02]" />
                         <span className="block truncate px-2.5 py-2 text-[11px] font-medium text-gray-400">{formatDateTime(submission.submittedAt)}</span>
                       </button>

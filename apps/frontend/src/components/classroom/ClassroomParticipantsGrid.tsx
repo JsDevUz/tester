@@ -227,7 +227,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
                   ))}
                   {/* Fallback if empty */}
                   {hUsers.length === 0 && (
-                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold shadow-sm">
+                    <div className="flex h-12 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold ">
                       <Users size={20} />
                     </div>
                   )}

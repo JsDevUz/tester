@@ -32,8 +32,11 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
   const [usage, setUsage] = useState<PdfLibraryUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [displayCount, setDisplayCount] = useState(10);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<number | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const sentinelRef = useRef<HTMLDivElement>(null);
 
   const reload = async () => {
     const [list, usageSummary] = await Promise.all([apiListPdfLibrary(), apiPdfLibraryUsage()]);
@@ -49,6 +52,24 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
       .finally(() => { if (!cancelled) setLoading(false); });
     return () => { cancelled = true; };
   }, []);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    if (loading || displayCount >= assets.length) return;
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0].isIntersecting) {
+          setDisplayCount((prev) => Math.min(prev + 10, assets.length));
+        }
+      },
+      { root: bodyRef.current, threshold: 0.1 }
+    );
+    const sentinel = sentinelRef.current;
+    if (sentinel) observer.observe(sentinel);
+    return () => {
+      if (sentinel) observer.unobserve(sentinel);
+    };
+  }, [loading, displayCount, assets.length]);
 
   // Konvertatsiya orqa fonda ketayotgan fayllar bo'lsa — holatini kuzatib turamiz
   useEffect(() => {
@@ -134,7 +155,7 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
           </div>
         )}
 
-        <div className="max-h-[60vh] min-h-70 overflow-y-auto p-5">
+        <div ref={bodyRef} className="max-h-[60vh] min-h-70 overflow-y-auto p-5">
           {loading ? (
             <p className="py-10 text-center text-sm text-gray-400">Yuklanmoqda...</p>
           ) : assets.length === 0 ? (
@@ -143,50 +164,59 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
               <p className="text-sm">Hali PDF yuklanmagan</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-1.5">
-              {assets.map((asset) => {
-                const status = statusLabel(asset.pdfProcessingStatus);
-                const ready = !status;
-                return (
-                  <div
-                    key={asset.id}
-                    className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-colors ${ready ? "bg-gray-50 hover:bg-gray-100 cursor-pointer" : "bg-gray-50"}`}
-                    onClick={() => ready && onSelect(asset)}
-                  >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500">
-                      {status?.text === 'Tayyorlanmoqda...' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold text-gray-800">{asset.originalName}</span>
-                      <span className="block truncate text-xs text-gray-400">
-                        {asset.uploaderName} · {formatBytes(asset.sizeBytes)}
-                        {asset.pdfPageCount != null && ` · ${asset.pdfPageCount} sahifa`}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col gap-1.5">
+                {assets.slice(0, displayCount).map((asset) => {
+                  const status = statusLabel(asset.pdfProcessingStatus);
+                  const ready = !status;
+                  return (
+                    <div
+                      key={asset.id}
+                      className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-colors ${ready ? "bg-gray-50 hover:bg-gray-100 cursor-pointer" : "bg-gray-50"}`}
+                      onClick={() => ready && onSelect(asset)}
+                    >
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500">
+                        {status?.text === 'Tayyorlanmoqda...' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                       </span>
-                    </span>
-                    {status && (
-                      <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.cls}`}>{status.text}</span>
-                    )}
-                    {status?.text === 'Xatolik' && (
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-sm font-semibold text-gray-800">{asset.originalName}</span>
+                        <span className="block truncate text-xs text-gray-400">
+                          {asset.uploaderName} · {formatBytes(asset.sizeBytes)}
+                          {asset.pdfPageCount != null && ` · ${asset.pdfPageCount} sahifa`}
+                        </span>
+                      </span>
+                      {status && (
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.cls}`}>{status.text}</span>
+                      )}
+                      {status?.text === 'Xatolik' && (
+                        <button
+                          type="button"
+                          onClick={(e) => { e.stopPropagation(); void handleRetry(asset.id); }}
+                          className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                          title="Qayta urinish"
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      )}
                       <button
                         type="button"
-                        onClick={(e) => { e.stopPropagation(); void handleRetry(asset.id); }}
-                        className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
-                        title="Qayta urinish"
+                        onClick={(e) => { e.stopPropagation(); void handleDelete(asset.id); }}
+                        className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                        title="O'chirish"
                       >
-                        <RefreshCw size={14} />
+                        <Trash2 size={14} />
                       </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); void handleDelete(asset.id); }}
-                      className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
-                      title="O'chirish"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
-                );
-              })}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {displayCount < assets.length && (
+                <div ref={sentinelRef} className="flex items-center justify-center py-3 text-xs text-indigo-600 gap-2 font-medium">
+                  <Loader2 size={15} className="animate-spin" />
+                  <span>Ko'proq PDF fayllar yuklanmoqda...</span>
+                </div>
+              )}
             </div>
           )}
         </div>

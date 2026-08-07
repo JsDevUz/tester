@@ -1,6 +1,29 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+/* Global Scrollbar Hider — barcha elementlardagi scrollbarlarni butunlay yashirish */
+* {
+  -ms-overflow-style: none !important;
+  scrollbar-width: none !important;
+}
+
+*::-webkit-scrollbar {
+  display: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-track {
+  display: none !important;
+  background: transparent !important;
+}
+
+*::-webkit-scrollbar-thumb {
+  display: none !important;
+  background: transparent !important;
+}
+
 /* Classroom shape opacity — Excalidraw kabi ingichka track va ixcham thumb. */
 .classroom-opacity-slider {
   height: 18px;
@@ -212,7 +235,7 @@
   color: #52525b !important;
 }
 
-.practice-message-reply-incoming > p:first-child {
+.practice-message-reply-incoming>p:first-child {
   color: #18181b !important;
 }
 
@@ -281,11 +304,11 @@
   color: #c7c9d1 !important;
 }
 
-:root[data-theme="dark"] .practice-message-reply-incoming > p:first-child {
+:root[data-theme="dark"] .practice-message-reply-incoming>p:first-child {
   color: #f4f4f5 !important;
 }
 
-:root[data-theme="dark"] .practice-message-reply-incoming > p:last-child {
+:root[data-theme="dark"] .practice-message-reply-incoming>p:last-child {
   color: #c7c9d1 !important;
 }
 
@@ -367,11 +390,11 @@
     color: #c7c9d1 !important;
   }
 
-  :root:not([data-theme="light"]) .practice-message-reply-incoming > p:first-child {
+  :root:not([data-theme="light"]) .practice-message-reply-incoming>p:first-child {
     color: #f4f4f5 !important;
   }
 
-  :root:not([data-theme="light"]) .practice-message-reply-incoming > p:last-child {
+  :root:not([data-theme="light"]) .practice-message-reply-incoming>p:last-child {
     color: #c7c9d1 !important;
   }
 
@@ -464,6 +487,7 @@ select::-ms-expand {
 }
 
 @media (prefers-color-scheme: dark) {
+
   :root:not([data-theme="light"]) .bg-\[\#f6f6f6\],
   :root:not([data-theme="light"]) .bg-gray-50,
   :root:not([data-theme="light"]) .bg-gray-50\/30,
@@ -588,7 +612,7 @@ select::-ms-expand {
     border-color: #2a2f3a !important;
   }
 
-  :root:not([data-theme="light"]) .shadow-sm,
+  :root:not([data-theme="light"]) .,
   :root:not([data-theme="light"]) .shadow-lg,
   :root:not([data-theme="light"]) .shadow-xl,
   :root:not([data-theme="light"]) .shadow-2xl {
@@ -752,7 +776,7 @@ select::-ms-expand {
   border-color: #2a2f3a !important;
 }
 
-:root[data-theme="dark"] .shadow-sm,
+:root[data-theme="dark"] .,
 :root[data-theme="dark"] .shadow-lg,
 :root[data-theme="dark"] .shadow-xl,
 :root[data-theme="dark"] .shadow-2xl {
@@ -947,6 +971,7 @@ select::-ms-expand {
   padding-left: 48px;
   padding-right: 8px;
 }
+
 .course-editor .bn-container {
   background: transparent;
 }
@@ -965,7 +990,7 @@ select::-ms-expand {
   overflow-x: auto;
   overflow-y: hidden;
   -webkit-overflow-scrolling: touch;
-  scrollbar-width: thin;
+  scrollbar-width: none;
 }
 
 .lesson-reader-html [data-content-type="table"] table {
@@ -1002,6 +1027,7 @@ select::-ms-expand {
 }
 
 @media (prefers-color-scheme: dark) {
+
   :root:not([data-theme="light"]) .lesson-reader-html [data-content-type="table"] th,
   :root:not([data-theme="light"]) .lesson-reader-html [data-content-type="table"] td {
     border-color: #3a414d;
@@ -1027,6 +1053,7 @@ select::-ms-expand {
 }
 
 @media (prefers-color-scheme: dark) {
+
   :root:not([data-theme="light"]) .course-editor blockquote,
   :root:not([data-theme="light"]) .lesson-reader-html blockquote {
     color: #d1d5db !important;
@@ -1507,12 +1534,14 @@ select::-ms-expand {
     background-color: #1c1d23 !important;
   }
 }
+
 /* Replay player pastdagi viewer boshqaruvlarini yopib qo'ymasligi uchun
    replay sahifasida pastda audio pleyer bo'lganda (hasRecording=true)
    zoom/mode panellarini pleyer ustiga ko'taramiz. */
 .classroom-replay-viewer-with-player .bottom-3 {
   bottom: 0.85rem;
 }
+
 @media (max-width: 639px) and (orientation: portrait) {
   .classroom-replay-viewer-with-player .bottom-3 {
     bottom: 5.75rem;

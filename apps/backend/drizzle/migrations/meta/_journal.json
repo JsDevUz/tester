@@ -169,6 +169,20 @@
       "when": 1785827730068,
       "tag": "0023_blue_pestilence",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1785946308404,
+      "tag": "0024_fine_james_howlett",
+      "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1785947603525,
+      "tag": "0025_dusty_ricochet",
+      "breakpoints": true
     }
   ]
 }

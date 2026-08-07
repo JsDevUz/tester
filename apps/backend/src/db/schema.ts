@@ -645,6 +645,13 @@ export const classSessions = pgTable('class_sessions', {
   // alohida recording obyektlari massivi { id, partNumber, createdAt, historyEvents, recordingUrl, ... }.
   recordings: jsonb('recordings'),
   subtitles: jsonb('subtitles'),
+  // /boards sahifasi orqali yaratilgan doskalar — erkin darslardan farqli.
+  // isFree=true bo'lgan sessiyalar uchun: isBoard=true bo'lsa /boards sahifasida,
+  // isBoard=false bo'lsa eski erkin darslar ro'yxatida (FreeClassHistoryPage) ko'rinadi.
+  isBoard: boolean('is_board').notNull().default(false),
+  // Jonli dars xonasiga biriktirilgan doska ID si — darsda qilingan barcha chizmalar
+  // o'sha biriktirilgan doskaga ham real-time saqlanadi.
+  attachedBoardId: uuid('attached_board_id').references((): AnyPgColumn => classSessions.id, { onDelete: 'set null' }),
 }, (table) => ({
   courseIdIdx: index('class_sessions_course_id_idx').on(table.courseId),
 }));

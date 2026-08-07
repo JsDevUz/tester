@@ -741,7 +741,7 @@ function PracticeMessengerContent() {
                   <>
                     {loadingOlderMessages && (
                       <div className="sticky top-1 z-10 mb-2 flex justify-center">
-                        <span className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 shadow-sm">
+                        <span className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 ">
                           <Loader2 className="animate-spin" size={14} /> Oldingi
                           xabarlar yuklanmoqda...
                         </span>
@@ -753,12 +753,12 @@ function PracticeMessengerContent() {
                         const startsDateGroup =
                           index === 0 ||
                           messageDateKey(message.createdAt) !==
-                            messageDateKey(messages[index - 1].createdAt);
+                          messageDateKey(messages[index - 1].createdAt);
                         const practiceMessage = message.type !== "text";
                         const maxScore = Number(
                           message.practice?.maxScore ??
-                            message.metadata.maxScore ??
-                            0,
+                          message.metadata.maxScore ??
+                          0,
                         );
                         const gradedImage = message.imageSubmissions.find(
                           (image) =>
@@ -806,18 +806,17 @@ function PracticeMessengerContent() {
                                     current === message.id ? null : message.id,
                                   );
                                 }}
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5 shadow-sm sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${
-                                  own
+                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${own
                                     ? practiceMessage
                                       ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
                                       : "practice-message-own rounded-[22px] rounded-br-[6px]"
                                     : "practice-message-incoming rounded-[22px] rounded-bl-[6px]"
-                                }`}
+                                  }`}
                               >
                                 {!message.deletedAt && (
                                   <div
                                     onClick={(event) => event.stopPropagation()}
-                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5 shadow-sm transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:after:absolute sm:after:left-0 sm:after:top-full sm:after:h-1 sm:after:w-full sm:after:content-[''] sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5  transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:after:absolute sm:after:left-0 sm:after:top-full sm:after:h-1 sm:after:w-full sm:after:content-[''] sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
                                   >
                                     <button
                                       type="button"
@@ -1045,7 +1044,7 @@ function PracticeMessengerContent() {
                                                   <input
                                                     value={
                                                       scoreByMessage[
-                                                        message.id
+                                                      message.id
                                                       ] ?? ""
                                                     }
                                                     onChange={(event) =>

@@ -86,22 +86,22 @@ export function StartClassModal({ onClose }: Props) {
           type="button"
           disabled={startingFree || starting !== null}
           onClick={() => void handleStartFree()}
-          className="flex items-center gap-3 rounded-xl border border-indigo-100 bg-indigo-50 px-3 py-3 text-left hover:bg-indigo-100 disabled:opacity-50"
+          className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-left hover:bg-indigo-100/80 hover:border-indigo-200 transition-all disabled:opacity-50 group"
         >
-          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-indigo-600 text-white">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white  group-hover:bg-indigo-700 transition-colors">
             <Link2 size={16} />
           </span>
-          <span className="flex-1">
-            <span className="block text-sm font-semibold text-gray-900">
+          <span className="flex-1 min-w-0">
+            <span className="block text-sm font-bold text-gray-900 group-hover:text-indigo-950 transition-colors">
               Erkin dars
             </span>
-            <span className="block text-xs text-gray-600">
+            <span className="block text-xs text-gray-500 mt-0.5 leading-snug">
               Guruhdan tashqari, havola orqali — login shart emas, davomat
               yozilmaydi
             </span>
           </span>
           {startingFree && (
-            <span className="text-xs text-indigo-500">Ochilmoqda...</span>
+            <span className="text-xs font-semibold text-indigo-600">Ochilmoqda...</span>
           )}
         </button>
 

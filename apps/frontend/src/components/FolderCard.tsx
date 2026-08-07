@@ -31,13 +31,13 @@ export function FolderCard({ folder, testCount, onClick, onEdit, onDelete }: Pro
       <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm shadow-sm text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm  text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
         >
           <Pencil size={12} />
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm shadow-sm text-gray-500 hover:text-red-500 hover:bg-white transition-colors"
+          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm  text-gray-500 hover:text-red-500 hover:bg-white transition-colors"
         >
           <Trash2 size={12} />
         </button>

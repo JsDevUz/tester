@@ -77,20 +77,20 @@ export function RaisedHandsControl({ raisedHands, onLowerAll, onLowerUser, readO
   const countMore = raisedHands.length - 1;
 
   // Theme-aware classes
-  const panelBg    = isDark ? "bg-[#202124]"    : "bg-white";
-  const borderCls  = isDark ? "border-white/10" : "border-gray-200";
-  const titleCls   = isDark ? "text-white"      : "text-gray-900";
-  const closeCls   = isDark
+  const panelBg = isDark ? "bg-gray-50" : "bg-white";
+  const borderCls = isDark ? "border-white/10" : "border-gray-200";
+  const titleCls = isDark ? "text-white" : "text-gray-900";
+  const closeCls = isDark
     ? "text-white/60 hover:bg-white/10 hover:text-white"
     : "text-gray-400 hover:bg-gray-100 hover:text-gray-700";
-  const subTextCls = isDark ? "text-white/50"   : "text-gray-400";
+  const subTextCls = isDark ? "text-white/50" : "text-gray-400";
   const lowerBtnCls = isDark
     ? "text-blue-400 hover:text-blue-300"
     : "text-blue-600 hover:text-blue-700";
   const rowHoverCls = isDark ? "hover:bg-white/5" : "hover:bg-gray-50";
-  const nameCls     = isDark ? "text-white"       : "text-gray-900";
-  const dragHandleCls = isDark ? "bg-white/20"    : "bg-gray-300";
-  const lowerIconCls  = isDark
+  const nameCls = isDark ? "text-white" : "text-gray-900";
+  const dragHandleCls = isDark ? "bg-white/20" : "bg-gray-300";
+  const lowerIconCls = isDark
     ? "text-emerald-400 hover:bg-white/10 hover:text-emerald-300"
     : "text-emerald-600 hover:bg-gray-100 hover:text-emerald-700";
 
@@ -133,7 +133,7 @@ export function RaisedHandsControl({ raisedHands, onLowerAll, onLowerUser, readO
             ref={panelRef}
             role="dialog"
             aria-label="Qo'l ko'targanlar"
-            className={`classroom-panel-in z-50 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl max-h-[75vh] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:max-h-[min(28rem,calc(100vh-6rem))] sm:origin-top-right border ${panelBg} ${borderCls}`}
+            className={`classroom-panel-in z-50 fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl h-[52vh] max-h-[75vh] sm:h-auto sm:max-h-[min(28rem,calc(100vh-6rem))] sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:origin-top-right border ${panelBg} ${borderCls}`}
             style={desktopPos ? { top: desktopPos.top, right: desktopPos.right } : undefined}
           >
             {/* Drag handle — faqat mobileda */}
@@ -157,7 +157,7 @@ export function RaisedHandsControl({ raisedHands, onLowerAll, onLowerUser, readO
             </div>
 
             {/* Content */}
-            <div className="p-3 overflow-y-auto" style={{ maxHeight: "min(340px, 60vh)" }}>
+            <div className="p-3 overflow-y-auto min-h-[240px]" style={{ maxHeight: "calc(52vh - 60px)" }}>
               <div className="flex items-center justify-between pb-3 text-xs">
                 <span className={subTextCls}>Birinchidan oxirigacha</span>
                 {!readOnly && (

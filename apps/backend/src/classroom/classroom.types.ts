@@ -1,4 +1,4 @@
-export type ClassroomTool = 'pen' | 'highlighter' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
+export type ClassroomTool = 'pen' | 'highlighter' | 'laser' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
 export type ClassroomBoardMode = 'pdf' | 'notebook';
 export type ClassroomBoardLayout = 'single' | 'split';
 export type ClassroomTheme = 'light' | 'dark';
@@ -14,6 +14,7 @@ export type ClassroomEdges = 'sharp' | 'round';
 export interface ClassroomStroke {
   id: string;
   tool: ClassroomTool;
+  createdAt?: number;
   color: string;
   width: number;
   // Text asbobi uchun matn mazmuni; points esa matnning chap-yuqori anchor'i.
@@ -124,6 +125,7 @@ export interface ClassroomSession {
   courseName: string | null;
   isFree: boolean;
   title?: string | null;
+  attachedBoardId?: string | null;
   hostUserId: string;
   hostSocketId: string | null;
   hostName: string;
@@ -174,6 +176,8 @@ export interface ClassroomSession {
   // qiladi. In-memory only — snapshot/DB'ga hech qachon yozilmaydi.
   undoStack?: ClassroomUndoEntry[];
   redoStack?: ClassroomUndoEntry[];
+  needsVersionCheckpointOnFirstMutation?: boolean;
+  savedVersions?: any[];
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
   historyEvents?: ClassroomHistoryEvent[];
@@ -219,6 +223,7 @@ export interface ClassroomBoardSnapshot {
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
   subtitles?: ClassroomSubtitleCue[];
+  savedVersions?: any[];
 }
 
 export interface ClassroomRaisedHand {

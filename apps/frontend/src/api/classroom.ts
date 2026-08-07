@@ -48,6 +48,14 @@ export async function apiAttachClassPdf(
   return res.data;
 }
 
+export async function apiAttachBoardToClassroom(
+  sessionId: string, boardId: string,
+): Promise<{ ok: boolean }> {
+  const res = await client.post(`/classroom/sessions/${sessionId}/attach-board`, { boardId });
+  return res.data;
+}
+
+
 // Kutubxonadan tanlangan (istalgan fayldan) sahifalarni mavjud darsga
 // QO'SHADI — apiAttachClassPdf'dan farqli, eski sahifalarni almashtirmaydi.
 export async function apiInsertClassPdfPages(
@@ -308,7 +316,7 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 
 // ---------- WS payload tiplari ----------
 
-export type CsTool = 'pen' | 'highlighter' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
+export type CsTool = 'pen' | 'highlighter' | 'laser' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
 export type CsNotebookStyle = 'grid' | 'lined' | 'plain';
@@ -323,6 +331,7 @@ export type CsEdges = "sharp" | "round";
 export interface CsStroke {
   id: string;
   tool: CsTool;
+  createdAt?: number;
   color: string;
   width: number;
   text?: string;
@@ -342,6 +351,11 @@ export interface CsStroke {
   sloppiness?: CsSloppiness;
   edges?: CsEdges;
   opacity?: number;
+  lineShape?: "straight" | "curved" | "elbow";
+  startArrowHead?: string;
+  endArrowHead?: string;
+  controlX?: number;
+  controlY?: number;
   // Normalizatsiyalangan (0..1), flat: [x0, y0, x1, y1, ...]. Shape uchun
   // bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];

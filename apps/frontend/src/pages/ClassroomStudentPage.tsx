@@ -78,44 +78,67 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   }
 
   if (needsGuestForm) {
-    const isDark = state.classroomTheme === "dark";
+    const displayName = guestNameInput.trim() || "Mehmon";
     return (
-      <div className={`min-h-screen flex flex-col items-center justify-center gap-4 p-6 transition-colors ${isDark ? "bg-[#18191c] text-white" : "bg-gray-50 text-gray-800"
-        }`}>
-        <form
-          className={`flex w-full max-w-sm flex-col gap-3 rounded-2xl p-6 shadow-xl border ${isDark ? "bg-[#202124] border-white/10" : "bg-white border-gray-100"
-            }`}
-          onSubmit={(e) => {
-            e.preventDefault();
-            const trimmed = guestNameInput.trim();
-            if (trimmed) setGuestNameSubmitted(trimmed);
-          }}
-        >
-          <h2 className={`font-semibold ${isDark ? "text-white" : "text-gray-800"}`}>Jonli darsga qo'shilish</h2>
-          <p className={`text-sm ${isDark ? "text-white/60" : "text-gray-500"}`}>Davom etish uchun ismingizni kiriting.</p>
-          <input
-            type="text"
-            autoFocus
-            value={guestNameInput}
-            onChange={(e) => setGuestNameInput(e.target.value)}
-            placeholder="Ismingiz"
-            maxLength={60}
-            className={`rounded-xl border px-3 py-2.5 text-sm focus:outline-none ${isDark
-              ? "bg-[#2d2e31] border-white/10 text-white placeholder-white/40 focus:border-indigo-500"
-              : "border-gray-200 bg-white text-gray-900 focus:border-indigo-400"
-              }`}
-          />
-          <button
-            type="submit"
-            disabled={!guestNameInput.trim()}
-            className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-medium text-white hover:bg-indigo-700 disabled:opacity-50 transition-colors"
+      <div className="min-h-screen flex items-center justify-center bg-[#1a1a1e] p-4">
+        <div className="w-full max-w-sm rounded-3xl bg-[#242428] shadow-2xl overflow-hidden">
+          {/* Avatar area */}
+          <div className="flex flex-col items-center gap-4 px-8 pt-10 pb-6">
+            {/* Avatar circle */}
+            <div className="relative">
+              <div className="w-32 h-32 rounded-full bg-[#4fc3f7]/20 flex items-center justify-center border-2 border-[#4fc3f7]/30">
+                <svg viewBox="0 0 80 80" width="80" height="80" fill="none">
+                  <circle cx="40" cy="30" r="16" fill="#4fc3f7" opacity="0.85"/>
+                  <ellipse cx="40" cy="68" rx="26" ry="18" fill="#4fc3f7" opacity="0.85"/>
+                </svg>
+              </div>
+            </div>
+
+            {/* Meeting name label */}
+            <div className="text-center">
+              <p className="text-[13px] text-white/50 mb-0.5">Uchrashuvdagi ismingiz</p>
+              <p className="text-2xl font-bold text-white tracking-tight">{displayName}</p>
+            </div>
+          </div>
+
+          {/* Divider */}
+          <div className="h-px bg-white/8 mx-6" />
+
+          {/* Input area */}
+          <form
+            className="px-6 py-5 flex flex-col gap-3"
+            onSubmit={(e) => {
+              e.preventDefault();
+              const trimmed = guestNameInput.trim();
+              if (trimmed) setGuestNameSubmitted(trimmed);
+            }}
           >
-            Kirish
-          </button>
-        </form>
+            <input
+              type="text"
+              autoFocus
+              value={guestNameInput}
+              onChange={(e) => setGuestNameInput(e.target.value)}
+              placeholder="Ismingizni kiriting..."
+              maxLength={60}
+              className="w-full rounded-xl border border-white/10 bg-white/8 px-4 py-3 text-sm text-white placeholder-white/30 focus:outline-none focus:border-[#4fc3f7]/60 focus:bg-white/10 transition-all"
+            />
+
+            <button
+              type="submit"
+              disabled={!guestNameInput.trim()}
+              className="w-full rounded-xl py-3.5 text-sm font-semibold text-white transition-all
+                bg-[#34a853] hover:bg-[#2d9447] active:scale-[0.98]
+                disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:bg-[#34a853]
+                shadow-lg shadow-[#34a853]/20"
+            >
+              Qo'shilish
+            </button>
+          </form>
+        </div>
       </div>
     );
   }
+
 
   if (state.error) {
     return (

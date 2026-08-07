@@ -57,11 +57,11 @@ export function StickerReactionsOverlay({ reactions }: Props) {
       <style>{`
         @keyframes gmeetFloat {
           0% {
-            transform: translate3d(0, 0, 0) scale(0.5);
-            opacity: 0;
+            transform: translate3d(0, 0, 0) scale(1);
+            opacity: 0.9;
           }
-          8% {
-            transform: translate3d(0, -6vh, 0) scale(1.15);
+          15% {
+            transform: translate3d(0, -8vh, 0) scale(1);
             opacity: 1;
           }
           35% {
@@ -85,15 +85,7 @@ export function StickerReactionsOverlay({ reactions }: Props) {
           will-change: transform, opacity;
           animation: gmeetFloat var(--dur) linear var(--delay) forwards;
         }
-        @keyframes popIn {
-          0%   { transform: scale(0); }
-          65%  { transform: scale(1.2); }
-          85%  { transform: scale(0.95); }
-          100% { transform: scale(1); }
-        }
         .gmeet-emoji {
-          will-change: transform;
-          animation: popIn 0.35s ease-out forwards;
           display: inline-block;
         }
       `}</style>

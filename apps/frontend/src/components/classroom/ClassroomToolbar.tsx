@@ -6,6 +6,7 @@ import {
   CircleDashed,
   Copy,
   Eraser,
+  History,
   Info,
   Lasso,
   Maximize2,
@@ -94,6 +95,8 @@ interface Props {
   onRedo: () => void;
   onClear: () => void;
   onOpenPdfLibrary: () => void;
+  onToggleHistory?: () => void;
+  historyOpen?: boolean;
 }
 
 export function ClassroomToolbar({
@@ -107,6 +110,8 @@ export function ClassroomToolbar({
   onRedo,
   onClear,
   onOpenPdfLibrary,
+  onToggleHistory,
+  historyOpen,
 }: Props) {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
   const [infoOpen, setInfoOpen] = useState(false);
@@ -197,6 +202,27 @@ export function ClassroomToolbar({
           <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
         </svg>
         {shortcut("4")}
+      </button>
+      <button
+        type="button"
+        className={iconBtn(tool === "laser")}
+        title="Lazer (Z)"
+        onClick={() => onToolChange("laser")}
+      >
+        <svg
+          width="15"
+          height="15"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          <path d="M4 17c2-3 4-8 7-8s4 5 7 5 3-4 4-6" />
+          <circle cx="21" cy="7" r="1.5" fill="currentColor" />
+        </svg>
+        {shortcut("Z")}
       </button>
       <button
         type="button"
@@ -402,6 +428,20 @@ export function ClassroomToolbar({
       >
         <Info size={15} />
       </button>
+
+      {onToggleHistory && (
+        <>
+          <div className="w-px h-5 bg-gray-200 mx-0.5" />
+          <button
+            type="button"
+            className={iconBtn(!!historyOpen)}
+            title="Whiteboard tarixi va faoliyati"
+            onClick={onToggleHistory}
+          >
+            <History size={15} />
+          </button>
+        </>
+      )}
       {infoOpen && createPortal(
         <div
           className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"

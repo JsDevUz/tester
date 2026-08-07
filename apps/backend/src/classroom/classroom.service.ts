@@ -188,7 +188,465 @@ export class ClassroomService implements OnModuleInit {
     return { id: row.id };
   }
 
+  // -------------------- BOARDS --------------------
+  // /boards sahifasi orqali boshqariladigan doskalar — erkin darslardan
+  // farqli: isBoard=true flagiga ega, ovoz/davomat yo'q, faqat chizish.
+
+  async createBoard(teacherId: string, title?: string): Promise<{ id: string }> {
+    const cleanTitle = title?.trim() ? title.trim() : null;
+    const [row] = await db.insert(classSessions).values({
+      courseId: null,
+      teacherId,
+      title: cleanTitle,
+      isBoard: true,
+    }).returning();
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
+    const hostName = hostUser?.displayName ?? 'Ustoz';
+
+    this.sessions.set(row.id, {
+      id: row.id,
+      courseId: null,
+      courseName: null,
+      title: cleanTitle,
+      isFree: true,
+      hostUserId: teacherId,
+      hostSocketId: null,
+      hostName,
+      pdfName: null,
+      pdfPages: [],
+      currentPage: 1,
+      strokesByPage: new Map(),
+      boardMode: 'pdf',
+      boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
+      classroomTheme: 'light',
+      notebookStyle: 'grid',
+      strokesByMode: new Map([['pdf', new Map()]]),
+      participants: new Map(),
+      startedAtMs: Date.now(),
+      hostDisconnectTimer: null,
+      zoom: 1,
+      rightZoom: 1,
+      scroll: null,
+      rightScroll: null,
+    });
+    return { id: row.id };
+  }
+
+  async listMyBoards(teacherId: string) {
+    const rows = await db.query.classSessions.findMany({
+      where: and(
+        isNull(classSessions.courseId),
+        eq(classSessions.teacherId, teacherId),
+        eq(classSessions.isBoard, true),
+      ),
+      orderBy: desc(classSessions.startedAt),
+    });
+    return rows.map((row) => ({
+      id: row.id,
+      title: row.title ?? null,
+      pdfName: row.pdfName,
+      startedAt: row.startedAt?.toISOString() ?? null,
+      endedAt: row.endedAt?.toISOString() ?? null,
+      status: row.status as 'active' | 'ended',
+      hasBoardSnapshot: row.boardSnapshot !== null,
+    }));
+  }
+
+  async deleteBoard(boardId: string, teacherId: string): Promise<void> {
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!row) throw new NotFoundException('Doska topilmadi');
+    if (row.teacherId !== teacherId) throw new ForbiddenException('Bu doska sizga tegishli emas');
+    if (!row.isBoard) throw new ForbiddenException('Bu erkin dars — /boards orqali o\'chirish mumkin emas');
+    await db.delete(classSessions).where(eq(classSessions.id, boardId));
+  }
+
+  async updateBoardTitle(boardId: string, teacherId: string, title: string): Promise<void> {
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!row) throw new NotFoundException('Doska topilmadi');
+    if (row.teacherId !== teacherId) throw new ForbiddenException('Bu doska sizga tegishli emas');
+    const cleanTitle = title.trim() || null;
+    await db.update(classSessions).set({ title: cleanTitle }).where(eq(classSessions.id, boardId));
+    const s = this.sessions.get(boardId);
+    if (s) s.title = cleanTitle;
+  }
+
+  async getBoardActivity(boardId: string, userId: string, page = 1, limit = 20) {
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!row) throw new NotFoundException('Doska topilmadi');
+
+    const s = this.sessions.get(boardId);
+    const targetBoardId = s?.attachedBoardId ?? row.attachedBoardId ?? boardId;
+
+    const targetRow = targetBoardId !== boardId
+      ? ((await db.query.classSessions.findFirst({ where: eq(classSessions.id, targetBoardId) })) ?? row)
+      : row;
+    const targetSession = this.sessions.get(targetBoardId) ?? s;
+
+    const events: any[] = targetSession?.historyEvents ?? (targetRow.historyEvents as any[]) ?? [];
+
+    const hostUser = await db.query.users.findFirst({ where: eq(users.id, targetRow.teacherId ?? userId) });
+    const userName = hostUser?.displayName ?? 'Ustoz';
+
+    const activityLogs: Array<{
+      id: string;
+      type: string;
+      description: string;
+      timestampMs: number;
+      userName: string;
+      strokeId?: string | null;
+      page?: number | null;
+      stroke?: any;
+    }> = [];
+
+    // Base initial creation event
+    activityLogs.push({
+      id: `${boardId}-init`,
+      type: 'board',
+      description: `Doska yaratildi: "${row.title ?? 'Nomsiz doska'}"`,
+      timestampMs: row.startedAt ? new Date(row.startedAt).getTime() : Date.now(),
+      userName,
+    });
+
+    for (let i = 0; i < events.length; i++) {
+      const ev = events[i];
+      let desc = '';
+      let type = 'stroke';
+      if (ev.type === 'stroke:add') {
+        const modeLabel = ev.payload?.mode === 'notebook' ? 'daftarga' : 'taxtaga';
+        const tool = ev.payload?.stroke?.tool;
+        let toolName = 'chizma';
+        if (tool === 'pen') toolName = 'qalam (pen)';
+        else if (tool === 'text') toolName = 'matn (text)';
+        else if (tool === 'highlighter') toolName = 'marker (highlighter)';
+        else if (tool === 'eraser') toolName = 'o\'chirgich (eraser)';
+        else if (tool === 'shape' || tool === 'rectangle' || tool === 'circle' || tool === 'line' || tool === 'arrow') toolName = 'shakl (shape)';
+        desc = `Yangi ${toolName} chizildi (${modeLabel})`;
+        type = 'stroke';
+      } else if (ev.type === 'stroke:update') {
+        desc = `Chizma joylashuvi ko'chirildi`;
+        type = 'stroke';
+      } else if (ev.type === 'stroke:textUpdate') {
+        desc = `Matn tahrirlandi`;
+        type = 'stroke';
+      } else if (ev.type === 'stroke:shapeUpdate') {
+        desc = `Shakl tahrirlandi`;
+        type = 'stroke';
+      } else if (ev.type === 'stroke:undo' || ev.type === 'board:undo') {
+        desc = `Oxirgi chizma bekor qilindi (Undo)`;
+        type = 'stroke';
+      } else if (ev.type === 'board:redo') {
+        desc = `Chizma qayta tiklandi (Redo)`;
+        type = 'stroke';
+      } else if (ev.type === 'pdf:set') {
+        desc = `PDF biriktirildi: "${ev.payload?.pdfName ?? 'hujjat'}"`;
+        type = 'pdf';
+      } else if (ev.type === 'pdf:insert') {
+        desc = `PDF sahifalari qo'shildi (${ev.payload?.pages?.length ?? 1} ta)`;
+        type = 'pdf';
+      } else if (ev.type === 'page:insert') {
+        desc = `Yangi sahifa qo'shildi`;
+        type = 'page';
+      } else if (ev.type === 'page:remove') {
+        desc = `Sahifa o'chirildi`;
+        type = 'page';
+      } else if (ev.type === 'page:clear') {
+        desc = `Sahifa chizmalari tozalandi`;
+        type = 'stroke';
+      } else if (ev.type === 'board:toggle') {
+        desc = ev.payload?.open ? `Doska ochildi` : `Doska yopildi`;
+        type = 'board';
+      } else if (ev.type === 'board:set') {
+        desc = `Rejim o'zgartirildi: ${ev.payload?.mode === 'notebook' ? 'Daftar' : 'PDF'}`;
+        type = 'board';
+      } else {
+        continue;
+      }
+
+      const eventTime = ev.atMs ? (row.startedAt ? new Date(row.startedAt).getTime() + ev.atMs : Date.now()) : (ev.t ?? Date.now());
+
+      activityLogs.push({
+        id: `${boardId}-ev-${i}`,
+        type,
+        description: desc,
+        timestampMs: eventTime,
+        userName,
+        strokeId: ev.payload?.stroke?.id ?? ev.payload?.strokeId ?? null,
+        page: ev.payload?.page ?? ev.payload?.stroke?.page ?? 1,
+        stroke: ev.payload?.stroke ?? null,
+      });
+    }
+
+    const allReversed = activityLogs.reverse();
+    const total = allReversed.length;
+    const startIndex = (page - 1) * limit;
+    const items = allReversed.slice(startIndex, startIndex + limit);
+
+    return {
+      items,
+      total,
+      hasMore: startIndex + limit < total,
+      page,
+      limit,
+    };
+  }
+
+  async createBoardVersionCheckpoint(sessionId: string, customLabel?: string): Promise<void> {
+    const s = this.sessions.get(sessionId);
+    const dbRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
+    if (!dbRow && !s) return;
+
+    const currentSnapshot = s ? this.buildBoardSnapshot(s) : (dbRow?.boardSnapshot as any);
+    if (!currentSnapshot) return;
+
+    let totalStrokes = 0;
+    if (currentSnapshot?.strokesByMode) {
+      for (const map of Object.values(currentSnapshot.strokesByMode as Record<string, Record<number, any[]>>)) {
+        for (const list of Object.values(map)) {
+          totalStrokes += list?.length ?? 0;
+        }
+      }
+    } else if (currentSnapshot?.strokesByPage) {
+      for (const list of Object.values(currentSnapshot.strokesByPage as Record<number, any[]>)) {
+        totalStrokes += list?.length ?? 0;
+      }
+    }
+
+    const pageCount = currentSnapshot?.boardMode === 'notebook'
+      ? (currentSnapshot?.notebookPageCount ?? 1)
+      : (currentSnapshot?.pages?.length ?? 1);
+
+    const savedVersions: any[] = currentSnapshot.savedVersions ? [...currentSnapshot.savedVersions] : [];
+    
+    // Agar chizmalar 0 bo'lsa yoki oxirgi saqlangan versiya bilan bir xil chizmalar soni va vaqti 5s farq qilsa takroriy versiya yaratmaymiz
+    const lastVer = savedVersions[0];
+    if (lastVer && lastVer.strokeCount === totalStrokes && (Date.now() - lastVer.timestampMs < 5000)) {
+      return;
+    }
+
+    const nextVerNum = savedVersions.length + 2;
+    const now = Date.now();
+    const dateStr = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    // Snapshot snapshot nusxasi (savedVersions loop'siz)
+    const cleanSnap = JSON.parse(JSON.stringify(currentSnapshot));
+    delete cleanSnap.savedVersions;
+
+    const newVersion = {
+      id: randomUUID(),
+      versionNumber: nextVerNum,
+      label: customLabel ?? `Seans versiyasi (${dateStr})`,
+      timestampMs: now,
+      boardMode: currentSnapshot.boardMode ?? 'pdf',
+      pdfName: currentSnapshot.pdfName ?? null,
+      pageCount,
+      strokeCount: totalStrokes,
+      snapshot: cleanSnap,
+    };
+
+    savedVersions.unshift(newVersion);
+    currentSnapshot.savedVersions = savedVersions;
+
+    if (s) {
+      s.savedVersions = savedVersions;
+    }
+
+    await db.update(classSessions)
+      .set({ boardSnapshot: currentSnapshot })
+      .where(eq(classSessions.id, sessionId));
+
+    const targetBoardId = s?.attachedBoardId ?? dbRow?.attachedBoardId;
+    if (targetBoardId && targetBoardId !== sessionId) {
+      const attachedS = this.sessions.get(targetBoardId);
+      if (attachedS) attachedS.savedVersions = savedVersions;
+      await db.update(classSessions)
+        .set({ boardSnapshot: currentSnapshot })
+        .where(eq(classSessions.id, targetBoardId));
+    }
+  }
+
+  async getBoardVersions(boardId: string, userId: string): Promise<Array<{
+    id: string;
+    versionNumber: number;
+    label: string;
+    timestampMs: number;
+    boardMode: string;
+    pdfName: string | null;
+    pageCount: number;
+    strokeCount: number;
+    snapshot: any;
+  }>> {
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!row) throw new NotFoundException('Doska topilmadi');
+
+    const s = this.sessions.get(boardId);
+    const targetBoardId = s?.attachedBoardId ?? row.attachedBoardId ?? boardId;
+
+    const targetRow = targetBoardId !== boardId
+      ? ((await db.query.classSessions.findFirst({ where: eq(classSessions.id, targetBoardId) })) ?? row)
+      : row;
+    const targetSession = this.sessions.get(targetBoardId) ?? s;
+
+    const currentSnapshot = targetSession ? this.buildBoardSnapshot(targetSession) : (targetRow.boardSnapshot as any);
+
+    const versions: Array<{
+      id: string;
+      versionNumber: number;
+      label: string;
+      timestampMs: number;
+      boardMode: string;
+      pdfName: string | null;
+      pageCount: number;
+      strokeCount: number;
+      snapshot: any;
+    }> = [];
+
+    const startTime = row.startedAt ? new Date(row.startedAt).getTime() : Date.now();
+    let totalStrokes = 0;
+    if (currentSnapshot?.strokesByMode) {
+      for (const map of Object.values(currentSnapshot.strokesByMode as Record<string, Record<number, any[]>>)) {
+        for (const list of Object.values(map)) {
+          totalStrokes += list?.length ?? 0;
+        }
+      }
+    } else if (currentSnapshot?.strokesByPage) {
+      for (const list of Object.values(currentSnapshot.strokesByPage as Record<number, any[]>)) {
+        totalStrokes += list?.length ?? 0;
+      }
+    }
+
+    const pageCount = currentSnapshot?.boardMode === 'notebook'
+      ? (currentSnapshot?.notebookPageCount ?? 1)
+      : (currentSnapshot?.pages?.length ?? 1);
+
+    const savedVersionsList: any[] = s?.savedVersions ?? currentSnapshot?.savedVersions ?? (row.boardSnapshot as any)?.savedVersions ?? [];
+
+    // 1. Live Current Checkpoint
+    versions.push({
+      id: 'current',
+      versionNumber: savedVersionsList.length + 2,
+      label: "Hozirgi holat (Oxirgi saqlangan)",
+      timestampMs: Date.now(),
+      boardMode: currentSnapshot?.boardMode ?? 'pdf',
+      pdfName: currentSnapshot?.pdfName ?? null,
+      pageCount,
+      strokeCount: totalStrokes,
+      snapshot: currentSnapshot,
+    });
+
+    // 2. Saved session versions (har safar doskadan chiqilganda/yopilganda yaratilgan)
+    if (Array.isArray(savedVersionsList)) {
+      for (const ver of savedVersionsList) {
+        versions.push(ver);
+      }
+    }
+
+    // 3. Initial version checkpoint
+    versions.push({
+      id: 'initial',
+      versionNumber: 1,
+      label: "Boshlang'ich holat (Yaratilgan vaqti)",
+      timestampMs: startTime,
+      boardMode: 'notebook',
+      pdfName: null,
+      pageCount: 1,
+      strokeCount: 0,
+      snapshot: {
+        pdfName: null,
+        pages: [],
+        strokesByPage: {},
+        strokesByMode: { pdf: {}, notebook: {} },
+        boardMode: 'notebook',
+        boardLayout: 'single',
+        notebookStyle: 'grid',
+        notebookPageCount: 1,
+        notebookPageStyles: {},
+        notebookPageOrientations: {},
+      },
+    });
+
+    return versions;
+  }
+
+  async restoreBoardVersion(boardId: string, userId: string, versionId: string): Promise<void> {
+    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!row) throw new NotFoundException('Doska topilmadi');
+    if (row.teacherId !== userId) throw new ForbiddenException('Bu doska sizga tegishli emas');
+
+    const s = this.sessions.get(boardId);
+    const versions = await this.getBoardVersions(boardId, userId);
+    const targetVersion = versions.find((v) => v.id === versionId);
+    if (!targetVersion || !targetVersion.snapshot) {
+      throw new NotFoundException('Versiya topilmadi');
+    }
+
+    const snap = JSON.parse(JSON.stringify(targetVersion.snapshot));
+    const currentSaved = (row.boardSnapshot as any)?.savedVersions ?? s?.savedVersions ?? [];
+    snap.savedVersions = currentSaved;
+
+    await db.update(classSessions)
+      .set({
+        boardSnapshot: snap,
+        pdfName: snap.pdfName ?? null,
+        pdfPages: snap.pages ?? [],
+      })
+      .where(eq(classSessions.id, boardId));
+
+    const targetBoardId = s?.attachedBoardId ?? row.attachedBoardId ?? boardId;
+    if (targetBoardId !== boardId) {
+      await db.update(classSessions)
+        .set({
+          boardSnapshot: snap,
+          pdfName: snap.pdfName ?? null,
+          pdfPages: snap.pages ?? [],
+        })
+        .where(eq(classSessions.id, targetBoardId));
+    }
+
+    if (s) {
+      s.pdfName = snap.pdfName ?? null;
+      s.pdfPages = snap.pages ?? [];
+      s.boardMode = snap.boardMode ?? 'pdf';
+      s.boardLayout = snap.boardLayout ?? 'single';
+      s.leftBoardMode = snap.leftBoardMode ?? s.boardMode;
+      s.rightBoardMode = snap.rightBoardMode ?? s.boardMode;
+      s.notebookStyle = snap.notebookStyle ?? 'grid';
+      s.notebookPageCount = snap.notebookPageCount ?? 1;
+      s.notebookPageStyles = snap.notebookPageStyles ?? {};
+      s.notebookPageOrientations = snap.notebookPageOrientations ?? {};
+
+      const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+        ['pdf', new Map()],
+        ['notebook', new Map()],
+      ]);
+
+      if (snap.strokesByMode) {
+        if (snap.strokesByMode.pdf) {
+          strokesByMode.set('pdf', new Map(Object.entries(snap.strokesByMode.pdf).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
+        }
+        if (snap.strokesByMode.notebook) {
+          strokesByMode.set('notebook', new Map(Object.entries(snap.strokesByMode.notebook).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
+        }
+      }
+      s.strokesByMode = strokesByMode;
+      s.strokesByPage = strokesByMode.get(s.boardMode ?? 'pdf') ?? new Map();
+
+      const strokesRecord: Record<number, ClassroomStroke[]> = {};
+      for (const [p, list] of s.strokesByPage.entries()) {
+        strokesRecord[p] = [...list];
+      }
+
+      this.broadcaster.toRoom(boardId, 'board:set', {
+        mode: s.boardMode,
+        currentPage: 1,
+        strokesByPage: strokesRecord,
+      });
+    }
+  }
+
+  // -------------------- END BOARDS --------------------
+
   // Eski (tugagan yoki hali jonli) erkin darsning oxirgi saqlangan
+
   // taxta holatidan (board_snapshot) YANGI erkin dars yaratadi — haqiqiy
   // "davom ettirish" emas (eski sessiya xotirada allaqachon yo'q bo'lishi
   // mumkin), balki createFreeSession bilan bir xil, faqat bo'sh o'rniga
@@ -463,6 +921,8 @@ export class ClassroomService implements OnModuleInit {
       rightZoom: 1,
       scroll: null,
       rightScroll: null,
+      needsVersionCheckpointOnFirstMutation: true,
+      savedVersions: snapshot.savedVersions ?? [],
     });
 
     // DB'da status'ni qayta 'active' ga o'tkazamiz (asosiy dars nomini saqlagan holda)
@@ -505,7 +965,153 @@ export class ClassroomService implements OnModuleInit {
     const payload = { pdfName: s.pdfName, pages: selectedPages, currentPage: 1 };
     this.recordHistoryEvent(s, 'pdf:set', payload);
     this.broadcaster.toRoom(sessionId, 'pdf:set', payload);
+    this.onBoardMutation(s);
     return { pdfName, pages: selectedPages };
+  }
+
+  // Mavjud doskani (boardId) jonli dars sessiyasiga (sessionId) biriktiradi
+  async attachBoardToSession(
+    sessionId: string, teacherId: string, boardId: string,
+  ): Promise<{ ok: boolean }> {
+    const s = this.requireSession(sessionId);
+    if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi doska biriktira oladi');
+
+    const boardRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    if (!boardRow) throw new NotFoundException('Doska topilmadi');
+    if (boardRow.teacherId !== teacherId) throw new ForbiddenException('Bu doska sizga tegishli emas');
+
+    const memoryBoard = this.sessions.get(boardId);
+    let pdfName = boardRow.pdfName;
+    let pages = (boardRow.pdfPages as string[]) ?? [];
+    let boardMode: ClassroomBoardMode = 'pdf';
+    let boardLayout: 'single' | 'split' = 'single';
+    let leftBoardMode: ClassroomBoardMode = 'pdf';
+    let rightBoardMode: ClassroomBoardMode = 'pdf';
+    let notebookStyle: ClassroomNotebookStyle = 'grid';
+    let notebookPageCount = 1;
+    let notebookPageStyles: Record<number, ClassroomNotebookStyle> = {};
+    let notebookPageOrientations: Record<number, ClassroomNotebookOrientation> = {};
+    let strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+
+    if (memoryBoard) {
+      pdfName = memoryBoard.pdfName;
+      pages = memoryBoard.pdfPages;
+      boardMode = memoryBoard.boardMode ?? 'pdf';
+      boardLayout = memoryBoard.boardLayout ?? 'single';
+      leftBoardMode = memoryBoard.leftBoardMode ?? boardMode;
+      rightBoardMode = memoryBoard.rightBoardMode ?? boardMode;
+      notebookStyle = memoryBoard.notebookStyle ?? 'grid';
+      notebookPageCount = memoryBoard.notebookPageCount ?? 1;
+      notebookPageStyles = { ...(memoryBoard.notebookPageStyles ?? {}) };
+      notebookPageOrientations = { ...(memoryBoard.notebookPageOrientations ?? {}) };
+      if (memoryBoard.strokesByMode) {
+        for (const [mode, map] of memoryBoard.strokesByMode.entries()) {
+          const newMap = new Map<number, ClassroomStroke[]>();
+          for (const [p, list] of map.entries()) {
+            newMap.set(p, [...list]);
+          }
+          strokesByMode.set(mode, newMap);
+        }
+      } else {
+        const primaryMap = new Map<number, ClassroomStroke[]>();
+        for (const [p, list] of memoryBoard.strokesByPage.entries()) {
+          primaryMap.set(p, [...list]);
+        }
+        strokesByMode.set(boardMode, primaryMap);
+      }
+    } else if (boardRow.boardSnapshot) {
+      const snap = boardRow.boardSnapshot as any;
+      pdfName = snap.pdfName ?? pdfName;
+      pages = snap.pages ?? pages;
+      boardMode = snap.boardMode ?? 'pdf';
+      boardLayout = snap.boardLayout ?? 'single';
+      leftBoardMode = snap.leftBoardMode ?? boardMode;
+      rightBoardMode = snap.rightBoardMode ?? boardMode;
+      notebookStyle = snap.notebookStyle ?? 'grid';
+      notebookPageCount = snap.notebookPageCount ?? 1;
+      notebookPageStyles = snap.notebookPageStyles ?? {};
+      notebookPageOrientations = snap.notebookPageOrientations ?? {};
+
+      if (snap.strokesByMode) {
+        if (snap.strokesByMode.pdf) {
+          strokesByMode.set('pdf', new Map(Object.entries(snap.strokesByMode.pdf).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
+        }
+        if (snap.strokesByMode.notebook) {
+          strokesByMode.set('notebook', new Map(Object.entries(snap.strokesByMode.notebook).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
+        }
+      } else if (snap.strokesByPage) {
+        const primaryMap = new Map<number, ClassroomStroke[]>();
+        for (const [p, list] of Object.entries(snap.strokesByPage)) {
+          primaryMap.set(Number(p), list as ClassroomStroke[]);
+        }
+        strokesByMode.set(boardMode, primaryMap);
+      }
+    }
+
+    s.attachedBoardId = boardId;
+    s.pdfName = pdfName;
+    s.pdfPages = pages;
+    s.boardMode = boardMode;
+    s.boardLayout = boardLayout;
+    s.leftBoardMode = leftBoardMode;
+    s.rightBoardMode = rightBoardMode;
+    s.notebookStyle = notebookStyle;
+    s.notebookPageCount = notebookPageCount;
+    s.notebookPageStyles = notebookPageStyles;
+    s.notebookPageOrientations = notebookPageOrientations;
+    s.strokesByMode = strokesByMode;
+
+    const primaryStrokesMap = strokesByMode.get(boardMode) ?? new Map();
+    s.strokesByPage = primaryStrokesMap;
+
+    const strokesRecord: Record<number, ClassroomStroke[]> = {};
+    for (const [p, list] of primaryStrokesMap.entries()) {
+      strokesRecord[p] = [...list];
+    }
+
+    const snapshotData = this.buildBoardSnapshot(s);
+
+    await db.update(classSessions)
+      .set({
+        pdfName,
+        pdfPages: pages,
+        boardSnapshot: snapshotData as any,
+        attachedBoardId: boardId,
+      })
+      .where(eq(classSessions.id, sessionId));
+
+    await db.update(classSessions)
+      .set({
+        pdfName,
+        pdfPages: pages,
+        boardSnapshot: snapshotData as any,
+      })
+      .where(eq(classSessions.id, boardId));
+
+    const payload = { pdfName: s.pdfName, pages, currentPage: 1 };
+    this.recordHistoryEvent(s, 'pdf:set', payload);
+    this.broadcaster.toRoom(sessionId, 'pdf:set', payload);
+
+    this.broadcaster.toRoom(sessionId, 'board:set', {
+      mode: boardMode,
+      currentPage: 1,
+      strokesByPage: strokesRecord,
+    });
+
+    for (const [page, strokes] of primaryStrokesMap.entries()) {
+      for (const stroke of strokes) {
+        this.broadcaster.toRoom(sessionId, 'stroke:add', { page, stroke, pane: 'left', mode: boardMode });
+      }
+    }
+
+    s.isBoardOpen = true;
+    this.recordHistoryEvent(s, 'board:toggle', { open: true });
+    this.broadcaster.toRoom(sessionId, 'board:toggle', { open: true });
+
+    return { ok: true };
   }
 
   // Kutubxonadagi (istalgan, hozirgi darsga biriktirilganidan farqli
@@ -545,6 +1151,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { pages: newPages, afterPageIndex };
     this.recordHistoryEvent(s, 'pdf:insert', payload);
     this.broadcaster.toRoom(sessionId, 'pdf:insert', payload);
+    this.onBoardMutation(s);
     return { pages: newPages };
   }
 
@@ -636,16 +1243,14 @@ export class ClassroomService implements OnModuleInit {
     // boardAudio'da chizmalarning bosqichma-bosqich tarixi kerak emas:
     // yakuniy vektor holati boardSnapshot'da saqlanadi. Faqat o'qituvchi
     // navigatsiyasi va kursori audio timeline bilan birga qayta ijro etiladi.
-    const historyEvents = s.recordingMode === 'full'
-      ? (s.historyEvents ?? [])
-      : s.recordingMode === 'boardAudio'
-        ? (s.historyEvents ?? []).filter((event) =>
-          event.type === 'pointer:move' ||
-          event.type === 'scroll:set' ||
-          event.type === 'zoom:set' ||
-          event.type === 'splitRatio:set' ||
-          event.type === 'page:set')
-        : [];
+    const historyEvents = s.recordingMode === 'boardAudio'
+      ? (s.historyEvents ?? []).filter((event) =>
+        event.type === 'pointer:move' ||
+        event.type === 'scroll:set' ||
+        event.type === 'zoom:set' ||
+        event.type === 'splitRatio:set' ||
+        event.type === 'page:set')
+      : (s.historyEvents ?? []);
     const dbRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
     const existingRecordings = (dbRow?.recordings as unknown as any[]) ?? [];
     const recordingAttendance = Array.from(s.participants.values()).map((p) => ({
@@ -674,16 +1279,34 @@ export class ClassroomService implements OnModuleInit {
     };
     const updatedRecordings = [...existingRecordings, newRecordingEntry];
 
-    await db.update(classSessions)
-      .set({
-        status: 'ended',
-        endedAt: new Date(),
-        historyEvents,
-        recordingMode: s.recordingMode ?? null,
-        boardSnapshot,
-        recordings: updatedRecordings,
-      })
-      .where(eq(classSessions.id, sessionId));
+    await this.createBoardVersionCheckpoint(sessionId);
+
+    const hasRecording = s.recordingMode != null;
+
+    if (s.isFree && !hasRecording) {
+      // Erkin dars + yozib olish yo'q → sessiyani o'chir
+      // Doska MUSTAQIL entity — uning statusini o'zgartirmaymiz, faqat oxirgi snapshotni saqlaymiz
+      if (s.attachedBoardId) {
+        await db.update(classSessions)
+          .set({ boardSnapshot })
+          .where(eq(classSessions.id, s.attachedBoardId));
+      }
+      await db.delete(classSessions)
+        .where(eq(classSessions.id, sessionId));
+    } else {
+      // Recording bor yoki guruh darsi → saqla
+      await db.update(classSessions)
+        .set({
+          status: 'ended',
+          endedAt: new Date(),
+          historyEvents,
+          recordingMode: s.recordingMode ?? null,
+          boardSnapshot,
+          recordings: updatedRecordings,
+        })
+        .where(eq(classSessions.id, sessionId));
+    }
+
     if (s.recordingMode === 'full' || s.recordingMode === 'boardAudio') {
       void this.recording.stopRecording(s.id);
     }
@@ -810,7 +1433,8 @@ export class ClassroomService implements OnModuleInit {
         s.hostSocketId = null;
         this.broadcaster.toRoom(s.id, 'host:offline', {});
         this.broadcastPresence(s);
-        // Ustoz kutilmaganda (call off bosmay) chiqib ketsa ham doskani DARHOL DB ga saqlaymiz:
+        // Ustoz chiqib ketsa, doskani va uning yangi seans versiyasini DB ga saqlaymiz:
+        void this.createBoardVersionCheckpoint(s.id).catch(() => {});
         void this.persistBoardSnapshot(s.id).catch(() => {});
         if (!s.hostDisconnectTimer) {
           s.hostDisconnectTimer = setTimeout(() => {
@@ -861,6 +1485,15 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:add', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:add', payload);
+    this.onBoardMutation(s);
+  }
+
+  private onBoardMutation(s: ClassroomSession): void {
+    if (s.needsVersionCheckpointOnFirstMutation) {
+      s.needsVersionCheckpointOnFirstMutation = false;
+      void this.createBoardVersionCheckpoint(s.id).catch(() => {});
+    }
+    void this.persistBoardSnapshot(s.id).catch(() => {});
   }
 
   async persistBoardSnapshot(sessionId: string): Promise<void> {
@@ -874,6 +1507,33 @@ export class ClassroomService implements OnModuleInit {
         pdfPages: s.pdfPages,
       })
       .where(eq(classSessions.id, sessionId));
+
+    if (s.attachedBoardId) {
+      await db.update(classSessions)
+        .set({
+          boardSnapshot,
+          pdfName: s.pdfName,
+          pdfPages: s.pdfPages,
+        })
+        .where(eq(classSessions.id, s.attachedBoardId));
+
+      const attachedBoard = this.sessions.get(s.attachedBoardId);
+      if (attachedBoard) {
+        attachedBoard.pdfName = s.pdfName;
+        attachedBoard.pdfPages = s.pdfPages;
+        attachedBoard.boardMode = s.boardMode;
+        attachedBoard.boardLayout = s.boardLayout;
+        attachedBoard.leftBoardMode = s.leftBoardMode;
+        attachedBoard.rightBoardMode = s.rightBoardMode;
+        attachedBoard.strokesByPage = new Map(s.strokesByPage);
+        if (s.strokesByMode) {
+          attachedBoard.strokesByMode = new Map(s.strokesByMode);
+        }
+        attachedBoard.notebookPageCount = s.notebookPageCount;
+        attachedBoard.notebookPageStyles = s.notebookPageStyles;
+        attachedBoard.notebookPageOrientations = s.notebookPageOrientations;
+      }
+    }
   }
 
   moveStroke(sessionId: string, userId: string, page: number, strokeId: string, x: number, y: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
@@ -894,6 +1554,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, strokeId, x, y, pane, mode };
     this.recordHistoryEvent(s, 'stroke:update', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:update', payload);
+    this.onBoardMutation(s);
   }
 
   updateTextStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
@@ -910,6 +1571,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:textUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload);
+    this.onBoardMutation(s);
   }
 
   updateShapeStroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
@@ -926,6 +1588,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:shapeUpdate', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
+    this.onBoardMutation(s);
   }
 
   // Undo/redo: yagona, ikkala board mode uchun UMUMIY tarixdan eng
@@ -976,6 +1639,7 @@ export class ClassroomService implements OnModuleInit {
     };
     this.recordHistoryEvent(s, 'board:undo', payload);
     this.broadcaster.toRoom(s.id, 'board:undo', payload);
+    this.onBoardMutation(s);
   }
 
   redo(sessionId: string, userId: string): void {
@@ -1023,6 +1687,7 @@ export class ClassroomService implements OnModuleInit {
     };
     this.recordHistoryEvent(s, 'board:redo', payload);
     this.broadcaster.toRoom(s.id, 'board:redo', payload);
+    this.onBoardMutation(s);
   }
 
   private applyUndoEntry(s: ClassroomSession, entry: ClassroomUndoEntry, direction: 'undo' | 'redo'): void {
@@ -1086,6 +1751,7 @@ export class ClassroomService implements OnModuleInit {
       const payload = { page, strokeId, pane, mode };
       this.recordHistoryEvent(s, 'stroke:undo', payload);
       this.broadcaster.toRoom(sessionId, 'stroke:undo', payload);
+      this.onBoardMutation(s);
     }
   }
 
@@ -1109,6 +1775,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, strokeIds, op, pane, mode };
     this.recordHistoryEvent(s, 'stroke:reorder', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:reorder', payload);
+    this.onBoardMutation(s);
   }
 
   // Pixel-eraser: bitta chizmaning faqat teginilgan qismini "kesib"
@@ -1126,6 +1793,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, strokeId, replacements, pane, mode };
     this.recordHistoryEvent(s, 'stroke:split', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:split', payload);
+    this.onBoardMutation(s);
   }
 
   clearPage(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
@@ -1137,6 +1805,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, pane, mode };
     this.recordHistoryEvent(s, 'page:clear', payload);
     this.broadcaster.toRoom(sessionId, 'page:clear', payload);
+    this.onBoardMutation(s);
   }
 
   pointer(sessionId: string, userId: string, page: number, x: number, y: number, active: boolean, pane: 'left' | 'right' = 'left'): void {
@@ -1187,6 +1856,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { mode, pageIndex, pane };
     this.recordHistoryEvent(s, 'page:remove', payload);
     this.broadcaster.toRoom(s.id, 'page:remove', payload);
+    this.onBoardMutation(s);
   }
 
   // Daftarga yangi (bo'sh) sahifa qo'shadi — afterPageIndex'dan keyingi
@@ -1206,6 +1876,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { mode: 'notebook' as const, afterPageIndex, style, orientation, pane };
     this.recordHistoryEvent(s, 'page:insert', payload);
     this.broadcaster.toRoom(s.id, 'page:insert', payload);
+    this.onBoardMutation(s);
   }
 
   pastePage(
@@ -1260,6 +1931,7 @@ export class ClassroomService implements OnModuleInit {
     for (const stroke of copiedStrokes) {
       this.broadcaster.toRoom(s.id, 'stroke:add', { page, stroke, mode, pane });
     }
+    this.onBoardMutation(s);
   }
 
   setNotebookPageStyle(sessionId: string, userId: string, page: number, style: ClassroomNotebookStyle): void {
@@ -1270,6 +1942,7 @@ export class ClassroomService implements OnModuleInit {
     const payload = { page, style };
     this.recordHistoryEvent(s, 'notebook:pageStyle', payload);
     this.broadcaster.toRoom(s.id, 'notebook:pageStyle', payload);
+    this.onBoardMutation(s);
   }
 
   // Ustozning scroll pozitsiyasi — sahifa raqami + o'sha sahifa balandligi
@@ -1315,13 +1988,19 @@ export class ClassroomService implements OnModuleInit {
       },
     });
     if (!row) throw new NotFoundException('Sessiya topilmadi');
-    const course = row.course as unknown as { adminId: string; title: string };
-    if (role !== 'super' && course.adminId !== callerId) throw new ForbiddenException();
+    const course = row.course as unknown as { adminId: string; title: string } | null;
+    if (role !== 'super') {
+      if (course) {
+        if (course.adminId !== callerId) throw new ForbiddenException();
+      } else if (row.teacherId !== callerId) {
+        throw new ForbiddenException();
+      }
+    }
     const live = this.sessions.get(sessionId);
     return {
       id: row.id,
       courseId: row.courseId,
-      courseName: course.title,
+      courseName: course?.title ?? null,
       title: row.title ?? row.pdfName ?? null,
       status: row.status,
       pdfName: row.pdfName,
@@ -1777,6 +2456,7 @@ export class ClassroomService implements OnModuleInit {
       notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
       notebookPageOrientations: full.notebookPageOrientations,
+      savedVersions: s.savedVersions ?? (s as any).boardSnapshot?.savedVersions ?? [],
     };
   }
 
@@ -1833,7 +2513,6 @@ export class ClassroomService implements OnModuleInit {
   }
 
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
-    if (s.isFree && !s.recordingMode) return;
     if (!s.historyEvents) s.historyEvents = [];
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
   }
@@ -1953,6 +2632,7 @@ export class ClassroomService implements OnModuleInit {
       courseId: row.courseId,
       courseName: row.course?.title ?? null,
       title: row.title ?? null,
+      attachedBoardId: row.attachedBoardId ?? null,
       isFree,
       hostUserId: row.teacherId ?? row.course?.adminId ?? '',
       hostSocketId: null,

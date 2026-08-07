@@ -21,16 +21,16 @@ interface FullscreenEl extends HTMLElement {
 // paytida faqat shu subtree'ni "top layer"da chizadi, shuning uchun portal
 // orqali ochilgan modal ko'rinmay/ochilmay qolardi.
 export function useFullscreen(_ref?: React.RefObject<HTMLElement | null>) {
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [nativeFullscreen, setNativeFullscreen] = useState(false);
+  const [pseudoFullscreen, setPseudoFullscreen] = useState(false);
   const doc = document as FullscreenDoc;
-  const supported = Boolean(
-    document.fullscreenEnabled ||
-    (doc as any).webkitFullscreenEnabled,
+  const nativeSupported = typeof document !== "undefined" && Boolean(
+    document.fullscreenEnabled || (doc as any).webkitFullscreenEnabled,
   );
 
   useEffect(() => {
     const onChange = () => {
-      setIsFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
+      setNativeFullscreen(Boolean(document.fullscreenElement || doc.webkitFullscreenElement));
     };
     document.addEventListener("fullscreenchange", onChange);
     document.addEventListener("webkitfullscreenchange", onChange);
@@ -42,18 +42,29 @@ export function useFullscreen(_ref?: React.RefObject<HTMLElement | null>) {
 
   const toggle = useCallback(async () => {
     const el = document.documentElement as FullscreenEl;
-    try {
-      if (document.fullscreenElement || doc.webkitFullscreenElement) {
-        if (document.exitFullscreen) await document.exitFullscreen();
-        else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
-      } else {
-        if (el.requestFullscreen) await el.requestFullscreen();
-        else if (el.webkitRequestFullscreen) await el.webkitRequestFullscreen();
+    if (nativeSupported) {
+      try {
+        if (document.fullscreenElement || doc.webkitFullscreenElement) {
+          if (document.exitFullscreen) await document.exitFullscreen();
+          else if (doc.webkitExitFullscreen) await doc.webkitExitFullscreen();
+          return;
+        } else {
+          if (el.requestFullscreen) {
+            await el.requestFullscreen();
+            return;
+          } else if (el.webkitRequestFullscreen) {
+            await el.webkitRequestFullscreen();
+            return;
+          }
+        }
+      } catch (e) {
+        console.warn("Native fullscreen toggle failed, falling back to pseudo fullscreen", e);
       }
-    } catch (e) {
-      console.error("Fullscreen rejimini almashtirib bo'lmadi:", e);
     }
-  }, [doc]);
+    setPseudoFullscreen((v) => !v);
+  }, [doc, nativeSupported]);
 
-  return { isFullscreen, supported, toggle };
+  const isFullscreen = nativeFullscreen || pseudoFullscreen;
+
+  return { isFullscreen, supported: true, toggle };
 }

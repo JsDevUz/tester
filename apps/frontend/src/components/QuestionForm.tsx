@@ -83,16 +83,16 @@ interface OptionInput {
 interface InitialValues {
   text: string;
   type:
-    | "single"
-    | "multi"
-    | "open"
-    | "arrange"
-    | "truefalse"
-    | "reorder"
-    | "matching"
-    | "fillblank"
-    | "slider"
-    | "droppin";
+  | "single"
+  | "multi"
+  | "open"
+  | "arrange"
+  | "truefalse"
+  | "reorder"
+  | "matching"
+  | "fillblank"
+  | "slider"
+  | "droppin";
   options: OptionInput[];
   imageUrl?: string | null;
   audioUrl?: string | null;
@@ -455,22 +455,20 @@ export function QuestionForm({
             <button
               type="button"
               onClick={() => setTfCorrect("true")}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-                tfCorrect === "true"
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "true"
                   ? "bg-green-500 text-white border-green-500"
                   : "border-border text-gray-500 hover:border-green-300 hover:text-green-600"
-              }`}
+                }`}
             >
               ✓ To'g'ri
             </button>
             <button
               type="button"
               onClick={() => setTfCorrect("false")}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${
-                tfCorrect === "false"
+              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "false"
                   ? "bg-red-400 text-white border-red-400"
                   : "border-border text-gray-500 hover:border-red-300 hover:text-red-500"
-              }`}
+                }`}
             >
               ✗ Noto'g'ri
             </button>
@@ -723,7 +721,7 @@ export function QuestionForm({
                   .map((tok, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 shadow-sm"
+                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
                     >
                       {tok}
                     </span>
@@ -839,7 +837,7 @@ export function QuestionForm({
                   .map((tok, i) => (
                     <span
                       key={i}
-                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 shadow-sm"
+                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
                     >
                       {tok}
                     </span>

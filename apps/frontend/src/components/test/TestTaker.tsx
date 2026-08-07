@@ -56,15 +56,14 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(verticalTransform), transition }}
-      className={`flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border select-none ${
-        isDragging
+      className={`flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border select-none ${isDragging
           ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
           : result === "correct"
             ? "border-emerald-500 bg-emerald-500 text-white"
             : result === "incorrect"
               ? "border-rose-500 bg-rose-500 text-white"
-          : "bg-white border-border"
-      }`}
+              : "bg-white border-border"
+        }`}
     >
       <span
         className={`text-sm font-mono w-5 shrink-0 ${result ? "text-white/70" : "text-gray-300"}`}
@@ -253,13 +252,13 @@ function MatchingQuestion({
       );
       const missingCorrectPairs = feedback
         ? [...correctPairs.entries()]
-            .filter(([leftId, rightId]) => !selectedPairKeys.has(`${leftId}:${rightId}`))
-            .map(([leftId, rightId]) => ({
-              key: `correct-${leftId}-${rightId}`,
-              leftId,
-              rightId,
-              result: "correct" as const,
-            }))
+          .filter(([leftId, rightId]) => !selectedPairKeys.has(`${leftId}:${rightId}`))
+          .map(([leftId, rightId]) => ({
+            key: `correct-${leftId}-${rightId}`,
+            leftId,
+            rightId,
+            result: "correct" as const,
+          }))
         : [];
       setConnections([...selectedPairs, ...missingCorrectPairs].flatMap((pair) => {
         const { leftId, rightId } = pair;
@@ -357,13 +356,12 @@ function MatchingQuestion({
                 type="button"
                 onClick={() => tapLeft(opt.id)}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
-                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${
-                  isPending
+                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${isPending
                     ? "bg-gray-900 text-white border-gray-900"
                     : isPaired
                       ? "bg-gray-100 border-gray-400 text-gray-800"
                       : "bg-white border-border text-gray-700 hover:border-gray-300"
-                } ${locked ? "pointer-events-none" : ""}`}
+                  } ${locked ? "pointer-events-none" : ""}`}
               >
                 {opt.text}
               </button>
@@ -382,13 +380,12 @@ function MatchingQuestion({
                 onClick={() => tapRight(opt.id)}
                 disabled={(!pendingLeft && !isPaired) || locked}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
-                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${
-                  isPaired
+                className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${isPaired
                     ? "bg-gray-100 border-gray-400 text-gray-800"
                     : pendingLeft
                       ? "bg-white border-gray-400 text-gray-700 hover:bg-gray-50"
                       : "bg-gray-50 border-border text-gray-400"
-                }`}
+                  }`}
               >
                 {opt.text}
               </button>
@@ -433,13 +430,12 @@ function SliderQuestion({
   return (
     <div className="flex flex-col gap-3">
       <div
-        className={`text-center text-3xl font-bold ${
-          feedback?.isCorrect === true
+        className={`text-center text-3xl font-bold ${feedback?.isCorrect === true
             ? "text-emerald-600"
             : feedback?.isCorrect === false
               ? "text-rose-600"
               : "text-gray-900"
-        }`}
+          }`}
       >
         {current}
       </div>
@@ -451,13 +447,12 @@ function SliderQuestion({
         value={current}
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
-        className={`w-full h-2 cursor-pointer disabled:opacity-100 ${
-          feedback?.isCorrect === true
+        className={`w-full h-2 cursor-pointer disabled:opacity-100 ${feedback?.isCorrect === true
             ? "accent-emerald-500"
             : feedback?.isCorrect === false
               ? "accent-rose-500"
               : "accent-gray-900"
-        }`}
+          }`}
       />
       <div className="flex justify-between text-xs text-gray-400">
         <span>{min}</span>
@@ -522,13 +517,12 @@ function DropPinQuestion({
             style={{ left: `${pin[0] * 100}%`, top: `${pin[1] * 100}%` }}
           >
             <div
-              className={`w-6 h-6 rounded-full border border-white shadow-lg flex items-center justify-center ${
-                feedback?.isCorrect === true
+              className={`w-6 h-6 rounded-full border border-white shadow-lg flex items-center justify-center ${feedback?.isCorrect === true
                   ? "bg-emerald-500"
                   : feedback?.isCorrect === false
                     ? "bg-rose-500"
                     : "bg-indigo-500"
-              }`}
+                }`}
             >
               <div className="w-2 h-2 rounded-full bg-white" />
             </div>
@@ -638,7 +632,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
     const audio = isCorrect ? correctAudioRef.current : wrongAudioRef.current;
     if (!audio) return;
     audio.currentTime = 0;
-    audio.play().catch(() => {});
+    audio.play().catch(() => { });
   }
   const [selectedMap, setSelectedMap] = useState<Record<string, string[]>>({});
   const [textMap, setTextMap] = useState<Record<string, string>>({});
@@ -656,7 +650,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   // SPA ichidagi "Orqaga" oddiy beforeunload/pagehide chiqarmaydi.
   // Joriy leave-submit funksiyasini tugma va browser history handleriga
   // ulash uchun ref'da saqlaymiz.
-  const leaveSubmitRef = useRef<() => void>(() => {});
+  const leaveSubmitRef = useRef<() => void>(() => { });
 
   useEffect(() => {
     currentQuestionChipRef.current?.scrollIntoView({
@@ -897,7 +891,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                 goToResult(resolvedSubmissionId);
               else autoSubmitSentRef.current = false;
             })
-            .catch(() => {});
+            .catch(() => { });
         }, 800);
       }
     };
@@ -921,7 +915,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
       window.removeEventListener("popstate", handlePopState);
       document.removeEventListener("visibilitychange", handleVisibility);
       if (leaveSubmitRef.current === sendSubmit)
-        leaveSubmitRef.current = () => {};
+        leaveSubmitRef.current = () => { };
     };
   }, [resolvedSubmissionId, test?.autoCompleteOnLeave]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -1164,13 +1158,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             }}
             placeholder="Javobingizni yozing..."
             readOnly={locked}
-            className={`w-full rounded-2xl border px-4 py-3.5 outline-none transition-colors ${
-              feedback?.isCorrect === true
+            className={`w-full rounded-2xl border px-4 py-3.5 outline-none transition-colors ${feedback?.isCorrect === true
                 ? "border-emerald-500 bg-emerald-500 text-white"
                 : feedback?.isCorrect === false
                   ? "border-rose-500 bg-rose-500 text-white"
                   : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
-            }`}
+              }`}
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
           {feedback?.isCorrect === false && feedback.correctAnswer && (
@@ -1193,13 +1186,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             }}
             placeholder="Javobingizni yozing..."
             readOnly={locked}
-            className={`w-full resize-none rounded-2xl border px-4 py-3.5 outline-none transition-colors ${
-              feedback?.isCorrect === true
+            className={`w-full resize-none rounded-2xl border px-4 py-3.5 outline-none transition-colors ${feedback?.isCorrect === true
                 ? "border-emerald-500 bg-emerald-500 text-white"
                 : feedback?.isCorrect === false
                   ? "border-rose-500 bg-rose-500 text-white"
                   : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
-            }`}
+              }`}
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
           {feedback?.isCorrect === false && feedback.correctAnswer && (
@@ -1303,13 +1295,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   type="button"
                   onClick={() => arrangeRemove(q.id, id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
-                  className={`px-3.5 py-2 rounded-xl shadow-sm transition-all active:scale-95 ${
-                    result === "correct"
+                  className={`px-3.5 py-2 rounded-xl  transition-all active:scale-95 ${result === "correct"
                       ? "bg-emerald-500 text-white"
                       : result === "incorrect"
                         ? "bg-rose-500 text-white"
                         : "bg-gray-900 text-white hover:bg-gray-800"
-                  }`}
+                    }`}
                 >
                   {opt.text}
                 </button>
@@ -1395,13 +1386,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${cardClass} ${locked ? "pointer-events-none" : ""}`}
             >
               <span
-                className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${
-                  checked
+                className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${checked
                     ? "bg-white/20 text-white"
                     : unselectedButCorrect
                       ? "bg-emerald-100 text-emerald-700"
                       : "bg-gray-100 text-gray-500"
-                }`}
+                  }`}
               >
                 {label}
               </span>
@@ -1561,8 +1551,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                 ref={isCurrent ? currentQuestionChipRef : undefined}
                 disabled={!jumpable}
                 onClick={() => jumpable && setCurrentIdx(i)}
-                className={`w-9 h-9 shrink-0 rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${
-                  isCurrent
+                className={`w-9 h-9 shrink-0 rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${isCurrent
                     ? "bg-gray-900 text-white shadow-md"
                     : checkedQ
                       ? feedbackMap[q.id].isCorrect
@@ -1573,7 +1562,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                         : jumpable
                           ? "bg-white border border-border text-gray-500"
                           : "bg-gray-100 text-gray-300"
-                }`}
+                  }`}
               >
                 {i + 1}
               </button>
@@ -1609,8 +1598,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                           : "Noto'g'ri"
                         : undefined
                     }
-                    className={`aspect-square rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${
-                      isCurrent
+                    className={`aspect-square rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${isCurrent
                         ? "bg-gray-900 text-white shadow-md"
                         : checkedQ
                           ? feedbackMap[q.id].isCorrect
@@ -1621,7 +1609,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                             : jumpable
                               ? "bg-white text-gray-500 hover:border-gray-300"
                               : "bg-gray-100 text-gray-300 cursor-not-allowed"
-                    }`}
+                      }`}
                   >
                     {i + 1}
                   </button>
@@ -1777,7 +1765,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             {questions.map(
               (q, i) =>
                 q && (
-                  <div key={q.id} className="bg-white rounded-2xl p-3 shadow-sm sm:p-5">
+                  <div key={q.id} className="bg-white rounded-2xl p-3  sm:p-5">
                     {/* Header */}
                     <div className="flex items-center gap-2 mb-3">
                       <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-700 text-xs font-bold flex items-center justify-center shrink-0">

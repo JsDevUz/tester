@@ -24,7 +24,7 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
   // Mikrofon o'chirilganda har doim qizg'ish
   const pillBg = micEnabled
     ? (isDark ? '#3c4043' : '#f1f3f4')
-    : '#fef2f2';
+    : 'oklch(63.7% .237 25.331)';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -40,7 +40,7 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
   return (
     <div ref={wrapRef} className="relative">
       <div
-        className={`flex items-center rounded-full shadow-md h-[44px] transition-colors ${hasDevices ? "gap-0.5" : ""}`}
+        className={`flex items-center rounded-full shadow-md h-[44px] p-0 transition-colors ${hasDevices ? "gap-0.5" : ""}`}
         style={{ backgroundColor: pillBg }}
       >
         {hasDevices && (
@@ -48,9 +48,9 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
             type="button"
             onClick={() => setMenuOpen((v) => !v)}
             disabled={disabled}
-            className={`flex items-center justify-center p-2.5 rounded-full disabled:opacity-40 ${micEnabled
+            className={`flex items-center justify-center p-2.5 ml-1 rounded-full disabled:opacity-40 ${micEnabled
               ? (isDark ? "text-gray-300 hover:bg-white/10" : "text-gray-500 hover:bg-gray-200")
-              : "text-red-400 hover:bg-red-100"
+              : "text-white hover:bg-red-100"
               }`}
             title="Mikrofon qurilmasini tanlash"
           >
@@ -63,7 +63,7 @@ export function MicControl({ micEnabled, onToggleMic, audioInputs, activeAudioIn
           disabled={disabled}
           className={`flex items-center justify-center rounded-full disabled:opacity-40 disabled:cursor-not-allowed p-3 ${micEnabled
             ? (isDark ? "text-white hover:bg-white/10" : "text-[#3c4043] hover:bg-gray-200")
-            : "bg-red-100 text-red-500"
+            : "bg-red-700 text-white"
             }`}
           title={disabled ? "Ovoz o'chirilgan" : micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
         >

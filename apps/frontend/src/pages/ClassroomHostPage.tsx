@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams } from "react-router-dom";
-import { Circle, Download, Link2, Maximize2, Minimize2, Volume2, LayoutGrid, SquareX, Sun, Moon } from "lucide-react";
+import { Circle, Download, Link2, Maximize2, Minimize2, Volume2, Presentation, Sun, Moon, FolderOpen, Plus, X } from "lucide-react";
 import { ClassroomParticipantsGrid } from "../components/classroom/ClassroomParticipantsGrid";
 import { ClassroomTopParticipantBar } from "../components/classroom/ClassroomTopParticipantBar";
 import { toast } from "sonner";
@@ -24,18 +24,24 @@ import { ClassroomCallBar } from "../components/classroom/ClassroomCallBar";
 import { ClassroomCallBarMenu } from "../components/classroom/ClassroomCallBarMenu";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
+import { WhiteboardHistoryModal } from "../components/classroom/WhiteboardHistoryModal";
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
 import { RecordSessionModal } from "../components/classroom/RecordSessionModal";
+import { BoardAttachModal } from "../components/classroom/BoardAttachModal";
 import { RouteLoadingScreen } from "../components/RouteLoadingScreen";
+import { type BoardActivityItem } from "../api/boards";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import {
+  apiAttachBoardToClassroom,
   apiAttachClassPdf,
+  apiClassSession,
   apiInsertClassPdfPages,
   apiMuteParticipant,
   apiStartClassRecording,
   type ClassRecordingMode,
   type PdfLibraryAsset,
 } from "../api/classroom";
+import { apiCreateBoard } from "../api/boards";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -73,6 +79,7 @@ export function ClassroomHostPage() {
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [confirmEnd, setConfirmEnd] = useState(false);
   const [pdfLibraryOpen, setPdfLibraryOpen] = useState(false);
+  const [boardAttachOpen, setBoardAttachOpen] = useState(false);
   const [recordModalOpen, setRecordModalOpen] = useState(false);
   const [recordingMode, setRecordingMode] = useState<ClassRecordingMode | null>(null);
   const [recordingStartedAt, setRecordingStartedAt] = useState<number | null>(null);
@@ -96,19 +103,43 @@ export function ClassroomHostPage() {
   const [insertAfterPageIndex, setInsertAfterPageIndex] = useState<number | null>(null);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const [showHistoryModal, setShowHistoryModal] = useState(false);
+  const [focusedStrokeId, setFocusedStrokeId] = useState<string | null>(null);
+
+  const handleSelectActivity = (item: BoardActivityItem) => {
+    if (item.page && item.page !== state.currentPage) {
+      hostActions.setPage(item.page);
+    }
+    if (item.strokeId) {
+      setFocusedStrokeId(item.strokeId);
+      setTimeout(() => setFocusedStrokeId(null), 3500);
+    }
+  };
+  const [lessonTitle, setLessonTitle] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!id) return;
+    apiClassSession(id)
+      .then((detail) => {
+        if (detail.title) setLessonTitle(detail.title);
+      })
+      .catch(() => {});
+  }, [id]);
 
   // Classroom toolbar shortcuts. `mod` maps to Ctrl on Windows/Linux and
   // Command on macOS. Form fields are intentionally excluded by the hook.
-  useHotkeys("1", () => setTool("select"), { preventDefault: true });
-  useHotkeys("2", () => setTool("pen"), { preventDefault: true });
-  useHotkeys("3", () => setTool("text"), { preventDefault: true });
-  useHotkeys("4", () => setTool("highlighter"), { preventDefault: true });
-  useHotkeys("5", () => setTool("arrow"), { preventDefault: true });
-  useHotkeys("6", () => setTool("rectangle"), { preventDefault: true });
-  useHotkeys("7", () => setTool("ellipse"), { preventDefault: true });
-  useHotkeys("8", () => setTool("eraser-pixel"), { preventDefault: true });
-  useHotkeys("9", () => setTool("eraser-stroke"), { preventDefault: true });
-  useHotkeys("0", () => setTool("lasso"), { preventDefault: true });
+  useHotkeys("1", () => handleToolChange("select"), { preventDefault: true });
+  useHotkeys("2", () => handleToolChange("pen"), { preventDefault: true });
+  useHotkeys("3", () => handleToolChange("text"), { preventDefault: true });
+  useHotkeys("4", () => handleToolChange("highlighter"), { preventDefault: true });
+  useHotkeys("z", () => handleToolChange("laser"), { preventDefault: true });
+  useHotkeys("5", () => handleToolChange("arrow"), { preventDefault: true });
+  useHotkeys("-", () => handleToolChange("line"), { preventDefault: true });
+  useHotkeys("6", () => handleToolChange("rectangle"), { preventDefault: true });
+  useHotkeys("7", () => handleToolChange("ellipse"), { preventDefault: true });
+  useHotkeys("8", () => handleToolChange("eraser-pixel"), { preventDefault: true });
+  useHotkeys("9", () => handleToolChange("eraser-stroke"), { preventDefault: true });
+  useHotkeys("0", () => handleToolChange("lasso"), { preventDefault: true });
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
   useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
@@ -136,6 +167,18 @@ export function ClassroomHostPage() {
       toast.error(e?.response?.data?.message ?? "PDF qo'shishda xatolik");
     } finally {
       setAttaching(false);
+    }
+  };
+
+  const handleAttachBoard = async (boardId: string) => {
+    if (!id) return;
+    try {
+      await apiAttachBoardToClassroom(id, boardId);
+      hostActions.setBoardOpen(true);
+      toast.success("Doska biriktirildi");
+      setBoardAttachOpen(false);
+    } catch (e: any) {
+      toast.error(e?.response?.data?.message ?? "Doskani biriktirib bo'lmadi");
     }
   };
 
@@ -185,6 +228,26 @@ export function ClassroomHostPage() {
       toast.error(e?.response?.data?.message ?? "Yozib olishni boshlab bo'lmadi");
     }
   };
+
+  const handleToolChange = useCallback((nextTool: DrawTool) => {
+    const targetTool = nextTool === "line" ? "arrow" : nextTool;
+    setTool(targetTool);
+    if (nextTool === "line") {
+      setShapeStyle((prev) => ({
+        ...prev,
+        lineShape: "straight",
+        endArrowHead: "none",
+        startArrowHead: "none",
+      }));
+    } else if (nextTool === "arrow") {
+      setShapeStyle((prev) => ({
+        ...prev,
+        lineShape: "straight",
+        endArrowHead: "arrow",
+        startArrowHead: "none",
+      }));
+    }
+  }, []);
 
   const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
     const isSplitRight = state.boardLayout === "split" && activePane === "right";
@@ -304,7 +367,7 @@ export function ClassroomHostPage() {
               onPaneScrollChange={(pane, page, yRatio, xRatio) => hostActions.setScroll(page, yRatio, pane, xRatio)}
               onPaneZoomChange={(pane, zoom) => hostActions.setZoom(zoom, pane)}
               tool={tool}
-              onToolChange={setTool}
+              onToolChange={handleToolChange}
               color={color}
               colorNonce={colorNonce}
               onColorChange={handleColorChange}
@@ -341,6 +404,7 @@ export function ClassroomHostPage() {
               onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
               onPageChange={(page) => hostActions.setPage(page)}
               onActivePaneChange={setActivePane}
+              focusedStrokeId={focusedStrokeId}
               toolbar={
                 <ClassroomToolbar
                   tool={tool}
@@ -353,6 +417,8 @@ export function ClassroomHostPage() {
                   onRedo={() => hostActions.redo()}
                   onClear={() => hostActions.clearPage(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
                   onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
+                  onToggleHistory={() => setShowHistoryModal((prev) => !prev)}
+                  historyOpen={showHistoryModal}
                 />
               }
               toolbarActions={
@@ -396,6 +462,19 @@ export function ClassroomHostPage() {
                       {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
                   )}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (fullscreen.isFullscreen) {
+                        void fullscreen.toggle();
+                      }
+                      hostActions.setBoardOpen(false);
+                    }}
+                    title="Doskani yopish"
+                    className="flex items-center justify-center rounded-full border border-gray-100 bg-white p-1.5 text-gray-500 shadow-md transition-colors hover:bg-red-50 hover:text-red-600"
+                  >
+                    <X size={14} />
+                  </button>
                 </div>
               }
             />
@@ -451,23 +530,45 @@ export function ClassroomHostPage() {
           <ClassroomCallBarMenu
             theme={state.classroomTheme}
             items={[
-              ...(!recordingMode ? [{
+              ...(!recordingMode && state.isBoardOpen ? [{
                 key: "record",
                 label: "Yozib olish",
                 icon: <Circle size={16} className="fill-red-500 text-red-500" />,
                 onSelect: () => setRecordModalOpen(true),
               }] : []),
-              ...(!state.isBoardOpen ? [{
+              {
                 key: "add_board",
                 label: "Doska qo'shish",
-                icon: <LayoutGrid size={16} />,
-                onSelect: () => hostActions.setBoardOpen(true),
-              }] : [{
-                key: "close_board",
-                label: "Doskani yopish",
-                icon: <SquareX size={16} />,
-                onSelect: () => hostActions.setBoardOpen(false),
-              }]),
+                icon: <Presentation size={16} />,
+                subMenu: [
+                  {
+                    key: "existing_board",
+                    label: "Mavjud doskalar",
+                    icon: <FolderOpen size={16} />,
+                    onSelect: () => {
+                      setBoardAttachOpen(true);
+                    },
+                  },
+                  {
+                    key: "new_board",
+                    label: "Yangi doska",
+                    icon: <Plus size={16} />,
+                    onSelect: () => {
+                      const boardTitle = lessonTitle ?? state.pdfName ?? "Dars doskasi";
+                      void (async () => {
+                        try {
+                          const { id: newBoardId } = await apiCreateBoard(boardTitle);
+                          await handleAttachBoard(newBoardId);
+                          hostActions.setBoardOpen(true);
+                          toast.success(`Yangi doska yaratildi: "${boardTitle}"`);
+                        } catch {
+                          toast.error("Yangi doskani yaratib bo'lmadi");
+                        }
+                      })();
+                    },
+                  },
+                ],
+              },
               {
                 key: "toggle_theme",
                 label: state.classroomTheme === "dark" ? "Yorug'lik rejimi" : "Tungi rejim",
@@ -480,12 +581,12 @@ export function ClassroomHostPage() {
                 icon: <Link2 size={16} />,
                 onSelect: handleCopyLink,
               }] : []),
-              {
+              ...(state.isBoardOpen ? [{
                 key: "download",
                 label: "Yuklab olish",
                 icon: <Download size={16} />,
                 onSelect: () => setDownloadModalOpen(true),
-              },
+              }] : []),
             ]}
           />
         }
@@ -503,6 +604,13 @@ export function ClassroomHostPage() {
           submitting={downloading}
           onSelect={(mode) => void handleDownloadBoard(mode)}
           onClose={() => setDownloadModalOpen(false)}
+        />
+      )}
+
+      {boardAttachOpen && (
+        <BoardAttachModal
+          onAttachExisting={(boardId) => handleAttachBoard(boardId)}
+          onClose={() => setBoardAttachOpen(false)}
         />
       )}
 
@@ -558,6 +666,15 @@ export function ClassroomHostPage() {
             </div>
           </div>
         </div>
+      )}
+
+      {showHistoryModal && id && (
+        <WhiteboardHistoryModal
+          boardId={id}
+          onClose={() => setShowHistoryModal(false)}
+          onSelectActivity={handleSelectActivity}
+          onRestored={() => window.location.reload()}
+        />
       )}
     </div>
   );

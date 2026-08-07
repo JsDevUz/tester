@@ -7,6 +7,7 @@ import {
   Users,
   School,
   MessageCircle,
+  Presentation,
   type LucideIcon,
 } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
@@ -23,6 +24,7 @@ interface NavSection {
 }
 
 const SECTIONS: NavSection[] = [
+  { key: "boards", label: "Doskalar", icon: Presentation, path: "/boards" },
   { key: "lessons", label: "Darslar", icon: BookOpen, path: "/lessons" },
   { key: "payments", label: "To'lovlar", icon: CreditCard, path: "/payments" },
   { key: "practice", label: "Amaliyotlar", icon: ClipboardList, path: "/" },
@@ -40,6 +42,9 @@ function isRouteMatch(pathname: string, path: string) {
       pathname.startsWith("/submissions/") ||
       pathname.startsWith("/live")
     );
+  }
+  if (path === "/boards") {
+    return pathname === "/boards" || pathname.startsWith("/boards/");
   }
   if (path === "/students") {
     return pathname === "/students" || pathname.startsWith("/students/");

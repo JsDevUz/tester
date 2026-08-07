@@ -115,18 +115,18 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
   const showTruncated = totalCount > maxTiles;
   const listToDisplay: Array<{ userId: string; name: string; isMuted?: boolean; role?: string; hiddenUsersInfo?: Array<{ initials: string; bgHex: string }> }> = showTruncated
     ? [
-        ...sortedList.slice(0, maxTiles - 1),
-        {
-          userId: "others",
-          name: `Yana ${totalCount - (maxTiles - 1)} ta`,
-          role: "others",
-          isMuted: true,
-          hiddenUsersInfo: sortedList.slice(maxTiles - 1).slice(0, 2).map((u) => ({
-            initials: u.role === "host" ? "U" : getInitials(u.name),
-            bgHex: u.role === "host" ? "#4f46e5" : getAvatarColor(u.name),
-          })),
-        },
-      ]
+      ...sortedList.slice(0, maxTiles - 1),
+      {
+        userId: "others",
+        name: `Yana ${totalCount - (maxTiles - 1)} ta`,
+        role: "others",
+        isMuted: true,
+        hiddenUsersInfo: sortedList.slice(maxTiles - 1).slice(0, 2).map((u) => ({
+          initials: u.role === "host" ? "U" : getInitials(u.name),
+          bgHex: u.role === "host" ? "#4f46e5" : getAvatarColor(u.name),
+        })),
+      },
+    ]
     : sortedList;
 
   const justifyClass = listToDisplay.length > 5 ? "justify-start" : "justify-center";
@@ -150,11 +150,10 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
             <div
               key={p.userId}
               onClick={() => window.dispatchEvent(new CustomEvent("open-participants-panel"))}
-              className={`relative w-[130px] sm:w-[150px] h-full rounded-xl flex flex-col items-center justify-center p-2 shadow-sm border shrink-0 overflow-hidden cursor-pointer hover:border-indigo-500/50 ${
-                isDark
+              className={`relative w-[130px] sm:w-[150px] h-full rounded-xl flex flex-col items-center justify-center p-2  border shrink-0 overflow-hidden cursor-pointer hover:border-indigo-500/50 ${isDark
                   ? "bg-[#28292d] border-white/5 text-white"
                   : "bg-white border-gray-200/80 text-gray-800"
-              }`}
+                }`}
             >
               {/* Overlapping Avatars */}
               <div className="flex items-center justify-center -space-x-3 mb-2 group-hover:scale-105 transition-transform duration-300">
@@ -173,7 +172,7 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
                 ))}
                 {/* Fallback if empty */}
                 {hUsers.length === 0 && (
-                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold shadow-sm">
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold ">
                     <Users size={12} />
                   </div>
                 )}
@@ -181,9 +180,8 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
 
               {/* Label */}
               <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center w-[90%]">
-                <div className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold ${
-                  isDark ? "bg-black/50 text-white" : "bg-gray-100 text-gray-800"
-                }`}>
+                <div className={`px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-semibold ${isDark ? "bg-black/50 text-white" : "bg-gray-100 text-gray-800"
+                  }`}>
                   {p.name}
                 </div>
               </div>
@@ -194,7 +192,7 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
         return (
           <div
             key={p.userId}
-            className={`relative w-[130px] sm:w-[150px] h-full rounded-xl flex items-center justify-center p-2 shadow-sm border shrink-0 overflow-hidden ${isSpeaking
+            className={`relative w-[130px] sm:w-[150px] h-full rounded-xl flex items-center justify-center p-2  border shrink-0 overflow-hidden ${isSpeaking
               ? "border-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.25)] ring-1 ring-emerald-500/80"
               : isDark
                 ? "bg-[#28292d] border-white/5"
@@ -203,7 +201,7 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
           >
             {/* Small Centered Avatar */}
             <div
-              className={`flex items-center justify-center rounded-full text-white font-bold text-sm sm:text-base shadow-sm transition-transform duration-300 ease-out ${isSpeaking
+              className={`flex items-center justify-center rounded-full text-white font-bold text-sm sm:text-base  transition-transform duration-300 ease-out ${isSpeaking
                 ? `ring-2 ring-emerald-500 ring-offset-2 scale-110 ${isDark ? "ring-offset-[#28292d]" : "ring-offset-white"
                 }`
                 : "scale-100"
@@ -219,14 +217,14 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
 
             {/* Bottom Centered Label Pill */}
             <div className="absolute bottom-1.5 left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none w-[90%]">
-              <div className={`flex items-center gap-1.5 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium shadow-sm max-w-full ${isDark ? "bg-black/70 text-white" : "bg-white/95 text-gray-800 "
+              <div className={`flex items-center gap-1.5 backdrop-blur-md px-2.5 py-0.5 rounded-full text-[10px] sm:text-[11px] font-medium  max-w-full ${isDark ? "bg-black/70 text-white" : "bg-white/95 text-gray-800 "
                 }`}>
                 <span className="truncate max-w-[65px] sm:max-w-[85px]">{displayName}</span>
                 <div className={`flex items-center justify-center shrink-0 ${p.isMuted
-                    ? isDark
-                      ? "text-white/60"
-                      : "text-gray-400"
-                    : "text-emerald-500"
+                  ? isDark
+                    ? "text-white/60"
+                    : "text-gray-400"
+                  : "text-emerald-500"
                   }`}>
                   {p.isMuted ? <MicOff size={11} /> : <Mic size={11} />}
                 </div>
