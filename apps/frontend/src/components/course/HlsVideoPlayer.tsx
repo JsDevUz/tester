@@ -18,6 +18,16 @@ function extractWatermarkPhone(phone?: string | null) {
   return btoa(withoutCountryCode);
 }
 
+function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  // iPadOS 13+ reports as "MacIntel" in the UA string but is touch-capable,
+  // unlike an actual Mac - maxTouchPoints disambiguates the two.
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
+
 function quietWatermarkPosition() {
   const leftZones = [14 + Math.random() * 14, 72 + Math.random() * 14];
   const topZones = [18 + Math.random() * 12, 68 + Math.random() * 14];
@@ -316,19 +326,18 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
       // Android WebView supports element fullscreen. Because the watermark is
       // a child of the wrapper, it remains visible in the native fullscreen
-      // surface instead of being trapped in the page flow.
-      if (wrapper?.requestFullscreen) {
+      // surface instead of being trapped in the page flow. iOS Safari is
+      // explicitly excluded: Element.requestFullscreen() there renders a
+      // broken, letterboxed surface instead of a real fullscreen view - the
+      // custom fixed-position fallback below is what actually works there.
+      if (wrapper?.requestFullscreen && !isIOS()) {
         await wrapper.requestFullscreen();
         return;
       }
 
-      // Element.requestFullscreen() ataylab ishlatilmaydi: iOS Safari'da
-      // div-level fullscreen ishonchsiz (kichik letterbox holatda render
-      // qiladi yoki videoni native fullscreen controls'ga almashtirib
-      // yuboradi), UA-detection orqali faqat WebKit'ni ajratish esa turli
-      // qurilmalarda barqaror ishlamadi. Shu sabab hamma joyda bir xil,
-      // bashorat qilinadigan custom fixed-position fullscreen ishlatiladi —
-      // bu watermark overlay'ini ham ichida saqlab qoladi.
+      // Custom fixed-position fullscreen: used on iOS Safari (see above) and
+      // as the fallback anywhere Element.requestFullscreen() isn't
+      // available. Keeps the watermark overlay inside it either way.
       setIsFullscreen((current) => !current);
     } catch {
       setError('Fullscreen ochilmadi');
