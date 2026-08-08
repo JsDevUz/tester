@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, Logger } from '@nestjs/common';
 import { db } from '../db';
 import { authCodes, userTelegramLinks, users } from '../db/schema';
-import { and, eq, gt } from 'drizzle-orm';
+import { and, eq, gt, isNull } from 'drizzle-orm';
 import * as bcrypt from 'bcrypt';
 import { randomInt, randomUUID } from 'crypto';
 import { StorageService } from '../storage/storage.service';
@@ -38,12 +38,15 @@ export class TelegramService {
       });
 
       if (link) {
-        // Check if there's an active code not yet expired
+        // Check if there's an active, still-unused code - a code that was
+        // already consumed to log in shouldn't block issuing a new one just
+        // because its TTL hasn't elapsed yet.
         const existing = await db.query.authCodes.findFirst({
           where: and(
             eq(authCodes.phone, link.phone),
             eq(authCodes.purpose, 'login'),
             gt(authCodes.expiresAt, new Date()),
+            isNull(authCodes.usedAt),
           ),
         });
 
