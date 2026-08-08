@@ -733,34 +733,36 @@ function StudentCourseReader({
       className="min-h-[100dvh] select-none bg-white text-gray-900"
       onContextMenu={(e) => e.preventDefault()}
     >
-      <div className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-3 py-2.5 backdrop-blur lg:hidden">
-        <div className="flex items-center justify-between gap-2">
-          <button
-            type="button"
-            onClick={onBack}
-            className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600"
-          >
-            <ArrowLeft size={21} />
-          </button>
-          <button
-            type="button"
-            onClick={() => setMobileLessonsOpen((value) => !value)}
-            className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-gray-900"
-          >
-            <span className="truncate">Darslar Tartibi</span>
-            {mobileLessonsOpen ? (
-              <ChevronUp size={20} className="text-gray-700" />
-            ) : (
-              <ChevronDown size={20} className="text-gray-700" />
-            )}
-          </button>
-          <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
-            {progressCount} / {lessons.length}
-          </span>
+      {!activeTest && (
+        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-3 py-2.5 backdrop-blur lg:hidden">
+          <div className="flex items-center justify-between gap-2">
+            <button
+              type="button"
+              onClick={onBack}
+              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600"
+            >
+              <ArrowLeft size={21} />
+            </button>
+            <button
+              type="button"
+              onClick={() => setMobileLessonsOpen((value) => !value)}
+              className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-gray-900"
+            >
+              <span className="truncate">Darslar Tartibi</span>
+              {mobileLessonsOpen ? (
+                <ChevronUp size={20} className="text-gray-700" />
+              ) : (
+                <ChevronDown size={20} className="text-gray-700" />
+              )}
+            </button>
+            <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
+              {progressCount} / {lessons.length}
+            </span>
+          </div>
         </div>
-      </div>
+      )}
 
-      {mobileLessonsOpen && (
+      {!activeTest && mobileLessonsOpen && (
         <div className="fixed inset-0 z-40 overflow-y-auto bg-gray-50 px-3 pb-24 pt-3 lg:hidden">
           <div className="mb-3 flex items-center justify-between gap-2">
             <button

@@ -1,4 +1,16 @@
+import { useEffect, useState } from "react";
+import { Document, Page, pdfjs } from "react-pdf";
+import "react-pdf/dist/Page/AnnotationLayer.css";
+import "react-pdf/dist/Page/TextLayer.css";
 import { Download, X } from "lucide-react";
+
+// Android Chrome doesn't render PDFs inside an <iframe> at all, and iOS
+// Safari's iframe PDF view doesn't scroll reliably - rendering pages with
+// pdf.js onto canvases sidesteps both platform quirks.
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  "pdfjs-dist/build/pdf.worker.min.mjs",
+  import.meta.url,
+).toString();
 
 export function PdfViewerSheet({
   uri,
@@ -9,6 +21,20 @@ export function PdfViewerSheet({
   title: string;
   onClose: () => void;
 }) {
+  const [numPages, setNumPages] = useState<number | null>(null);
+  const [error, setError] = useState(false);
+  const [pageWidth, setPageWidth] = useState<number>(
+    Math.min(window.innerWidth - 32, 700),
+  );
+
+  useEffect(() => {
+    function handleResize() {
+      setPageWidth(Math.min(window.innerWidth - 32, 700));
+    }
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   return (
     <div
       className="fixed inset-0 z-60 flex items-end justify-center bg-black/50 sm:items-center"
@@ -40,8 +66,39 @@ export function PdfViewerSheet({
             </button>
           </div>
         </div>
-        <div className="min-h-0 flex-1 bg-gray-100">
-          <iframe src={uri} title={title} className="h-full w-full border-0" />
+        <div
+          className="min-h-0 flex-1 overflow-y-auto bg-gray-100"
+          style={{ WebkitOverflowScrolling: "touch" }}
+        >
+          {error ? (
+            <div className="flex h-full items-center justify-center px-8">
+              <p className="text-center text-sm font-semibold text-gray-400">
+                Faylni ochib bo'lmadi
+              </p>
+            </div>
+          ) : (
+            <Document
+              file={uri}
+              onLoadSuccess={({ numPages: n }) => setNumPages(n)}
+              onLoadError={() => setError(true)}
+              loading={
+                <div className="flex h-full items-center justify-center py-16">
+                  <div className="h-7 w-7 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
+                </div>
+              }
+              className="flex flex-col items-center gap-3 py-4"
+            >
+              {Array.from({ length: numPages ?? 0 }, (_, i) => (
+                <Page
+                  key={i}
+                  pageNumber={i + 1}
+                  width={pageWidth}
+                  className="overflow-hidden rounded-lg shadow-sm"
+                  renderAnnotationLayer={false}
+                />
+              ))}
+            </Document>
+          )}
         </div>
       </div>
     </div>
