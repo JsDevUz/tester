@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import Hls from 'hls.js';
 import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { apiStartVideoPlayback, apiSaveWatchProgress, apiGetWatchProgress, type WatchSegment } from '../../api/contentBlocks';
@@ -349,13 +350,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     return () => { document.body.style.overflow = ''; };
   }, [isFullscreen]);
 
-  return (
-    <>
+  const playerContent = (
     <div
       ref={wrapperRef}
-      className={`relative isolate bg-black ${
+      className={`relative bg-black ${
         isFullscreen
-          ? 'fixed inset-0 z-[99999] flex h-[100dvh] w-screen items-center justify-center rounded-none'
+          ? 'fixed inset-0 z-[999999] flex h-[100dvh] w-screen items-center justify-center rounded-none'
           : 'rounded-2xl'
       }`}
       onContextMenu={(e) => e.preventDefault()}
@@ -389,56 +389,63 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       <button
         type="button"
         onClick={toggleFullscreen}
-        className="absolute right-3 top-3 z-[9999] flex h-9 w-9 items-center justify-center rounded-full bg-black/45 text-white/80 shadow-lg backdrop-blur transition hover:bg-black/70 hover:text-white"
+        className="absolute right-3 top-3 z-[999999] flex h-9 w-9 items-center justify-center rounded-full bg-black/55 text-white/80 shadow-lg backdrop-blur transition hover:bg-black/70 hover:text-white"
         aria-label={isFullscreen ? 'Fullscreenni yopish' : 'Fullscreen ochish'}
       >
         {isFullscreen ? <Minimize2 size={17} /> : <Maximize2 size={17} />}
       </button>
       {error && <div className="bg-red-50 px-4 py-3 text-sm font-semibold text-red-500">{error}</div>}
     </div>
-    {videoDuration !== null && videoDuration > 0 && !isFullscreen && (
-      <div className="mt-2">
-        <button
-          type="button"
-          onClick={() => setProgressOpen((v) => !v)}
-          className="flex w-full items-center justify-between text-xs font-medium text-gray-500"
-        >
-          <span className="inline-flex items-center gap-1">
-            Mening video ko'rishim
-            {progressOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-          </span>
-          {watchedPercent !== null && <span>{watchedPercent}% ko'rilgan</span>}
-        </button>
-        {progressOpen && (
-          <div className="video-watch-progress-track relative mt-2 h-2.5 w-full overflow-hidden rounded-full">
-            {watchedSegments
-              .filter(
-                (s) => !liveRange || s.endSec < liveRange.startSec - 2 || s.startSec > liveRange.endSec + 2,
-              )
-              .map((seg) => (
+  );
+
+  return (
+    <>
+      {isFullscreen && typeof document !== 'undefined'
+        ? createPortal(playerContent, document.body)
+        : playerContent}
+      {videoDuration !== null && videoDuration > 0 && !isFullscreen && (
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setProgressOpen((v) => !v)}
+            className="flex w-full items-center justify-between text-xs font-medium text-gray-500"
+          >
+            <span className="inline-flex items-center gap-1">
+              Mening video ko'rishim
+              {progressOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+            </span>
+            {watchedPercent !== null && <span>{watchedPercent}% ko'rilgan</span>}
+          </button>
+          {progressOpen && (
+            <div className="video-watch-progress-track relative mt-2 h-2.5 w-full overflow-hidden rounded-full">
+              {watchedSegments
+                .filter(
+                  (s) => !liveRange || s.endSec < liveRange.startSec - 2 || s.startSec > liveRange.endSec + 2,
+                )
+                .map((seg) => (
+                  <div
+                    key={`${seg.startSec}-${seg.endSec}`}
+                    className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out"
+                    style={{
+                      left: `${(seg.startSec / videoDuration) * 100}%`,
+                      width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
+                    }}
+                  />
+                ))}
+              {liveRange && (
                 <div
-                  key={`${seg.startSec}-${seg.endSec}`}
+                  key="live"
                   className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out"
                   style={{
-                    left: `${(seg.startSec / videoDuration) * 100}%`,
-                    width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
+                    left: `${(liveRange.startSec / videoDuration) * 100}%`,
+                    width: `${((liveRange.endSec - liveRange.startSec) / videoDuration) * 100}%`,
                   }}
                 />
-              ))}
-            {liveRange && (
-              <div
-                key="live"
-                className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out"
-                style={{
-                  left: `${(liveRange.startSec / videoDuration) * 100}%`,
-                  width: `${((liveRange.endSec - liveRange.startSec) / videoDuration) * 100}%`,
-                }}
-              />
-            )}
-          </div>
-        )}
-      </div>
-    )}
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }
