@@ -1,0 +1,2 @@
+CREATE INDEX "auth_codes_phone_purpose_idx" ON "auth_codes" USING btree ("phone","purpose");--> statement-breakpoint
+CREATE INDEX "auth_codes_purpose_created_at_idx" ON "auth_codes" USING btree ("purpose","created_at" DESC NULLS LAST);

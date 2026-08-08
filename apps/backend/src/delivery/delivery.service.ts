@@ -1,4 +1,4 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments } from '../db/schema';
 import { and, eq, isNull, isNotNull, gte, lte } from 'drizzle-orm';
@@ -63,6 +63,25 @@ export class DeliveryService {
     private readonly groqService: GroqService,
     private readonly practiceMessengerService: PracticeMessengerService,
   ) {}
+
+  // Submission ID'ning o'zi maxfiy emas: u URL'da, logda yoki ulashilgan
+  // ekranda ko'rinib qolishi mumkin. Shuning uchun egalik alohida
+  // tekshiriladi — aks holda begona odam ID'ni bilsa, natijani ko'ra olardi
+  // yoki boshqa o'quvchi nomidan test topshira olardi (IDOR).
+  //
+  // userId null bo'lgan submission — bu mehmon (login qilmagan) topshiriq.
+  // Unda egalik qilib bo'ladigan hisob yo'q, shuning uchun ID'ni bilish
+  // yagona mumkin bo'lgan kirish sharti bo'lib qoladi. Login qilgan
+  // foydalanuvchining topshirig'i esa faqat o'ziga ochiq.
+  private assertSubmissionOwner(
+    submission: { userId: string | null },
+    requestUserId?: string,
+  ) {
+    if (submission.userId === null) return;
+    if (submission.userId !== requestUserId) {
+      throw new ForbiddenException('Bu topshiriq sizga tegishli emas');
+    }
+  }
 
   private async assertPinAccess(testId: string, practiceMode: boolean, userId?: string) {
     // A pin is an exam-scheduling concept: it must never gate practice access. Bail out
@@ -188,11 +207,12 @@ export class DeliveryService {
   }
 
   // Resume: return submission state if not yet submitted
-  async getSubmission(submissionId: string, practiceMode = false) {
+  async getSubmission(submissionId: string, practiceMode = false, requestUserId?: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
     if (!submission) throw new NotFoundException('Submission not found');
+    this.assertSubmissionOwner(submission, requestUserId);
 
     // Already submitted — return result (respecting showResults)
     if (submission.submittedAt) {
@@ -220,7 +240,7 @@ export class DeliveryService {
     };
   }
 
-  async getSubmissionResult(submissionId: string, practiceMode = false) {
+  async getSubmissionResult(submissionId: string, practiceMode = false, requestUserId?: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
       with: {
@@ -230,6 +250,7 @@ export class DeliveryService {
       },
     });
     if (!submission) throw new NotFoundException('Submission not found');
+    this.assertSubmissionOwner(submission, requestUserId);
     if (!submission.submittedAt) throw new BadRequestException('Submission not yet submitted');
 
     const test = await db.query.tests.findFirst({
@@ -288,9 +309,10 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }, practiceMode = false) {
+  }, practiceMode = false, requestUserId?: string) {
     const submission = await db.query.submissions.findFirst({ where: eq(submissions.id, submissionId) });
     if (!submission) throw new NotFoundException('Submission not found');
+    this.assertSubmissionOwner(submission, requestUserId);
     if (submission.submittedAt) throw new BadRequestException('Submission already submitted');
 
     const test = await db.query.tests.findFirst({
@@ -391,14 +413,15 @@ export class DeliveryService {
     questionId: string;
     selectedOptionIds: string[];
     textAnswer: string | null;
-  }>, mode?: string, violationReason?: string | null, practiceMode = false) {
+  }>, mode?: string, violationReason?: string | null, practiceMode = false, requestUserId?: string) {
     const submission = await db.query.submissions.findFirst({
       where: eq(submissions.id, submissionId),
     });
     if (!submission) throw new NotFoundException('Submission not found');
+    this.assertSubmissionOwner(submission, requestUserId);
     if (submission.submittedAt) {
       // Already submitted — return full persisted result (beacon may fire multiple times).
-      return this.getSubmissionResult(submissionId, practiceMode);
+      return this.getSubmissionResult(submissionId, practiceMode, requestUserId);
     }
 
     const test = await db.query.tests.findFirst({

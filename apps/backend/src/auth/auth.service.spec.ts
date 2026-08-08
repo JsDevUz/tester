@@ -45,11 +45,19 @@ describe('AuthService telegram auth', () => {
     return { values, returning };
   }
 
-  function mockUpdate() {
-    const where = jest.fn().mockResolvedValue(undefined);
+  // Drizzle'da .where(...) ham await qilinadigan (thenable), ham .returning()
+  // zanjirini davom ettira oladigan obyekt qaytaradi. Mock ikkalasini ham
+  // qo'llab-quvvatlashi kerak: kod tasdiqlashda `usedAt` shartli yangilanishi
+  // .returning() orqali nechta qator band qilinganini tekshiradi.
+  function mockUpdate(returningRows: unknown[] = [{ id: 'code-1' }]) {
+    const returning = jest.fn().mockResolvedValue(returningRows);
+    const where = jest.fn(() => ({
+      returning,
+      then: (resolve: (v: unknown) => unknown) => Promise.resolve(undefined).then(resolve),
+    }));
     const set = jest.fn(() => ({ where }));
     (db.update as jest.Mock).mockReturnValue({ set });
-    return { set, where };
+    return { set, where, returning };
   }
 
   it('creates a student account after verifying a Telegram registration code', async () => {
@@ -130,5 +138,39 @@ describe('AuthService telegram auth', () => {
 
     expect(result.access_token).toBe('signed-token');
     expect(result.user.phone).toBe('+998901112233');
+  });
+
+  // Kod telefon raqamisiz tekshirilgani uchun, bir vaqtda ikki xil odamda
+  // bir xil kod aktiv bo'lishi mumkin. Bunday holatda qaysi biri haqiqiy
+  // egasi ekanini bilib bo'lmaydi — hech biriga kirishga ruxsat berilmasligi
+  // kerak, aks holda foydalanuvchi BEGONA akkauntga kirib qolardi.
+  it('bir xil kod bir nechta akkauntda aktiv bolsa, kirishni rad etadi', async () => {
+    (db.query.authCodes.findMany as jest.Mock).mockResolvedValue([
+      {
+        id: 'code-1',
+        phone: '+998901112233',
+        purpose: 'login',
+        codeHash: 'hashed-code',
+        expiresAt: new Date(Date.now() + 60_000),
+        usedAt: null,
+      },
+      {
+        id: 'code-2',
+        phone: '+998907776655',
+        purpose: 'login',
+        codeHash: 'hashed-code',
+        expiresAt: new Date(Date.now() + 60_000),
+        usedAt: null,
+      },
+    ]);
+    mockUpdate();
+
+    const service = new AuthService(jwtService as any, telegramService as any, storageService as any);
+
+    await expect(service.verifyTelegramCode('123456')).rejects.toThrow(
+      "Kod noto'g'ri yoki muddati tugagan.",
+    );
+    // Noaniq holatda hech qaysi kod "ishlatilgan" deb belgilanmaydi.
+    expect(db.update as jest.Mock).not.toHaveBeenCalled();
   });
 });

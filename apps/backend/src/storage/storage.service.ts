@@ -138,6 +138,13 @@ export class StorageService {
   getPublicUrl(key: string): string {
     const clean = key.trim();
     if (!clean) return '';
+    // Allaqachon to'liq http(s) URL bo'lsa — o'zgartirmaymiz. Faqat o'z public
+    // domenimizdagi URL qayta normallashtiriladi; boshqa hostdagi URL (masalan
+    // Telegram avatari yoki tashqi CDN) o'z holicha qaytadi, aks holda uning
+    // pathi bizning domenimizga yopishtirilib, buzuq havola hosil bo'lardi.
+    if (/^https?:\/\//i.test(clean)) {
+      if (!this.publicDomain || !clean.startsWith(this.publicDomain)) return clean;
+    }
     const cleanKey = this.getKeyFromUrlOrKey(clean);
     return this.publicDomain ? `${this.publicDomain}/${cleanKey}` : cleanKey;
   }

@@ -18,6 +18,7 @@ function makeSession(overrides: Partial<ClassroomSession> = {}): ClassroomSessio
     isFree: false,
     hostUserId: 'host-1',
     hostSocketId: 'sock-host',
+    hostName: 'Ustoz Aziz',
     pdfName: 'dars.pdf',
     pdfPages: ['p1.webp', 'p2.webp', 'p3.webp'],
     currentPage: 1,

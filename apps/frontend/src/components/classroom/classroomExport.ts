@@ -1,6 +1,6 @@
 import { jsPDF } from "jspdf";
 import type { CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsStroke } from "../../api/classroom";
-import { drawStroke } from "./ClassroomPdfViewer";
+import { drawStroke } from "./classroomCanvasDraw";
 
 // Eksport uchun sahifa render kengligi — REF_WIDTH bilan bir xil bo'lishi
 // shart emas, lekin baland bo'lgani sari chiziqlar/matn sifatliroq chiqadi.

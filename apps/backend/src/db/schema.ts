@@ -37,7 +37,17 @@ export const authCodes = pgTable('auth_codes', {
   expiresAt: timestamp('expires_at', { withTimezone: true }).notNull(),
   usedAt: timestamp('used_at', { withTimezone: true }),
   createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
-});
+}, (table) => ({
+  // Har bir login/registratsiya/parol tiklash so'rovi shu jadvaldan o'qiydi.
+  // Indekssiz bu full table scan bo'lib, jadval o'sgani sayin sekinlashadi
+  // (yozuvlar hech qachon o'chirilmaydi — faqat usedAt bilan belgilanadi).
+  //
+  // phone+purpose: telefon bo'yicha tekshirish (verifyAuthCode) uchun.
+  // purpose+createdAt: telefonsiz kod qidiruvi (verifyCodeByPurpose) uchun —
+  // u purpose bo'yicha filtrlab, createdAt kamayish tartibida saralaydi.
+  phonePurposeIdx: index('auth_codes_phone_purpose_idx').on(table.phone, table.purpose),
+  purposeCreatedAtIdx: index('auth_codes_purpose_created_at_idx').on(table.purpose, table.createdAt.desc()),
+}));
 
 export const userTelegramLinks = pgTable('user_telegram_links', {
   id: uuid('id').primaryKey().defaultRandom(),

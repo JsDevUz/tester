@@ -296,23 +296,50 @@ export class AuthService {
     return this.verifyCodeByPurpose(code, 'register');
   }
 
+  // Bu oqim (Telegram login / parol tiklash kodi) telefon raqamisiz keladi —
+  // foydalanuvchi faqat botdan olgan kodni kiritadi. Shuning uchun kodni
+  // barcha aktiv yozuvlar bo'yicha qidirishga majburmiz.
+  //
+  // Xavf: agar bir vaqtda ikki xil odamning kodi bir xil bo'lsa, birinchi
+  // mos kelgan yozuv qaytarilib, foydalanuvchi BEGONA akkauntga kirib
+  // qolishi mumkin edi. Shuning uchun:
+  //  1) barcha nomzodlar tekshiriladi va bittadan ko'p moslik topilsa,
+  //     hech biri qabul qilinmaydi (noaniqlikni hech qachon taxmin qilmaymiz);
+  //  2) mos kelgan yozuv `usedAt` shartli yangilanish bilan "band" qilinadi —
+  //     bu ikki parallel so'rov bitta kodni ishlatishining oldini oladi.
   private async verifyCodeByPurpose(code: string, purpose: string) {
     const candidates = await db.query.authCodes.findMany({
       where: and(eq(authCodes.purpose, purpose), isNull(authCodes.usedAt)),
       orderBy: [desc(authCodes.createdAt)],
-      limit: 20,
+      limit: 100,
     });
 
+    const now = Date.now();
+    const matches: typeof candidates = [];
     for (const authCode of candidates) {
-      if (authCode.expiresAt.getTime() < Date.now()) continue;
-      const valid = await bcrypt.compare(code, authCode.codeHash);
-      if (!valid) continue;
-
-      await db.update(authCodes).set({ usedAt: new Date() }).where(eq(authCodes.id, authCode.id));
-      return authCode;
+      if (authCode.expiresAt.getTime() < now) continue;
+      if (await bcrypt.compare(code, authCode.codeHash)) matches.push(authCode);
     }
 
-    throw new BadRequestException("Kod noto'g'ri yoki muddati tugagan.");
+    // Bir nechta akkaunt uchun bir xil kod aktiv — qaysi biri egasi ekanini
+    // aniqlay olmaymiz, shuning uchun rad etamiz. Foydalanuvchi yangi kod oladi.
+    if (matches.length !== 1) {
+      throw new BadRequestException("Kod noto'g'ri yoki muddati tugagan.");
+    }
+
+    const [authCode] = matches;
+    // Faqat hali ishlatilmagan bo'lsa band qil — parallel so'rovda ikkinchisi
+    // bo'sh natija oladi va kod qayta ishlatilmaydi.
+    const claimed = await db
+      .update(authCodes)
+      .set({ usedAt: new Date() })
+      .where(and(eq(authCodes.id, authCode.id), isNull(authCodes.usedAt)))
+      .returning({ id: authCodes.id });
+    if (claimed.length === 0) {
+      throw new BadRequestException("Kod noto'g'ri yoki muddati tugagan.");
+    }
+
+    return authCode;
   }
 
   private createAuthResponse(user: {

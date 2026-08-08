@@ -61,7 +61,11 @@ jest.mock('../db', () => ({
       attendanceRecords: { findFirst: jest.fn() },
       freeSessionParticipants: { findFirst: jest.fn(), findMany: jest.fn().mockResolvedValue([]) },
       mediaAssets: { findFirst: jest.fn() },
-      users: { findMany: jest.fn().mockResolvedValue([]) },
+      users: {
+        findMany: jest.fn().mockResolvedValue([]),
+        // createSession host ismini shu yerdan oladi (hostName).
+        findFirst: jest.fn().mockResolvedValue({ id: 'teacher-1', displayName: 'Ustoz Aziz' }),
+      },
     },
   },
 }));
@@ -611,7 +615,9 @@ describe('sahifa va chizish', () => {
     expect(setCalls.some((c: any) => Array.isArray(c.historyEvents) && c.historyEvents.length === 1)).toBe(true);
   });
 
-  it('endSession recordingMode null bo‘lsa boardSnapshot va bo‘sh historyEvents saqlaydi', async () => {
+  // recordingMode null bo'lganda historyEvents filtrlanmaydi — to'liq ro'yxat
+  // saqlanadi (faqat 'boardAudio' rejimida navigatsiya eventlariga qisqartiriladi).
+  it('endSession recordingMode null bo‘lsa boardSnapshot va toliq historyEvents saqlaydi', async () => {
     const { service, sessionId } = await withPdf();
     const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
     service.stroke(sessionId, 'teacher-1', 1, stroke);
@@ -621,7 +627,7 @@ describe('sahifa va chizish', () => {
 
     const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
     expect(saved.boardSnapshot.strokesByPage[1]).toContainEqual(stroke);
-    expect(saved.historyEvents).toEqual([]);
+    expect(saved.historyEvents.some((e: any) => e.type === 'stroke:add')).toBe(true);
   });
 
   it('endSession board-only rejimda notebookPageStyles ni boardSnapshot ichida saqlaydi', async () => {
@@ -884,8 +890,10 @@ describe('disconnect va yakunlash', () => {
     await service.handleDisconnect('sock-h');
     expect(events.some((e) => e.event === 'host:offline')).toBe(true);
     jest.advanceTimersByTime(HOST_GRACE_MS + 1000);
-    await Promise.resolve();
-    await Promise.resolve();
+    // endSession bir nechta await'li (DB o'qish/yozish) — bitta-ikkita
+    // Promise.resolve() yetmaydi, shuning uchun barcha kutilayotgan
+    // mikrovazifalar tugaguncha navbatni bo'shatamiz.
+    await jest.runAllTimersAsync();
     expect(events.some((e) => e.event === 'session:ended')).toBe(true);
   });
 
@@ -947,13 +955,17 @@ describe('erkin (guruhsiz) dars', () => {
     expect(snap.isFree).toBe(true);
   });
 
-  it('erkin (isFree) sessiyada historyEvents umuman yozilmaydi', async () => {
+  // Erkin sessiyalar endi createFreeSession orqali class_sessions qatoriga ega
+  // bo'lgani uchun, ular ham guruh darslari kabi historyEvents yozadi — bu
+  // yozib olingan erkin darsni keyin replay qilish uchun kerak.
+  it('erkin (isFree) sessiyada ham historyEvents yoziladi', async () => {
     const { service } = makeFreeService();
     const { id } = await service.createFreeSession('teacher-1');
     service.setBoardView(id, 'teacher-1', 'single', 'notebook', 'notebook');
     const stroke = { id: 's1', tool: 'pen' as const, color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] };
     service.stroke(id, 'teacher-1', 1, stroke, 'notebook', 'left');
-    expect(service.getHistoryEventsForTests(id)).toHaveLength(0);
+    const history = service.getHistoryEventsForTests(id);
+    expect(history.map((e) => e.type)).toEqual(['board:set', 'stroke:add']);
   });
 
   it('split rejimida ikkala panelga bir xil kontent qoyishni rad etadi', async () => {
@@ -1011,15 +1023,15 @@ describe('erkin (guruhsiz) dars', () => {
     expect(mockedDb.update).not.toHaveBeenCalled();
   });
 
-  it('erkin sessiya tugaganda ham boardSnapshot DB\'ga yoziladi, davomat yozilmaydi', async () => {
+  // Yozib olinmagan erkin dars tugaganda saqlanadigan qiymatli narsa yo'q —
+  // qatori butunlay o'chiriladi (status: 'ended' qilib qoldirilmaydi).
+  // Davomat baribir yozilmaydi: erkin darsda enrollment tushunchasi yo'q.
+  it('yozib olinmagan erkin sessiya tugaganda class_sessions qatori ochiriladi', async () => {
     const { service, events } = makeFreeService();
     const { id } = await service.createFreeSession('teacher-1');
     jest.clearAllMocks(); // Clear mocks after createFreeSession to check endSession's own DB calls
     await service.endSession(id, 'teacher-1');
-    expect(mockedDb.update).toHaveBeenCalledWith(classSessions);
-    const saved = mockedDb.update.mock.results.at(-1).value.set.mock.calls[0][0];
-    expect(saved).toHaveProperty('boardSnapshot');
-    expect(saved.status).toBe('ended');
+    expect(mockedDb.delete).toHaveBeenCalledWith(classSessions);
     // davomat (attendance) uchun hech qanday insert chaqirilmagan
     expect(mockedDb.insert).not.toHaveBeenCalled();
     expect(events.some((e) => e.event === 'session:ended')).toBe(true);

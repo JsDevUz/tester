@@ -12,10 +12,12 @@ import { useClassroomTheme } from "../hooks/useClassroomTheme";
 import { useFullscreen } from "../hooks/useFullscreen";
 import {
   ClassroomPdfViewer,
-  DEFAULT_SHAPE_STYLE,
   type DrawTool,
-  type ShapeStyle,
 } from "../components/classroom/ClassroomPdfViewer";
+import {
+  DEFAULT_SHAPE_STYLE,
+  type ShapeStyle,
+} from "../components/classroom/classroomCanvasText";
 import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { StickerReactionsOverlay } from "../components/classroom/StickerReactionsOverlay";
 import { RaisedHandsControl } from "../components/classroom/RaisedHandsControl";

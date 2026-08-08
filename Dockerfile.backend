@@ -16,6 +16,11 @@ FROM node:22-alpine AS runner
 
 WORKDIR /app
 ENV NODE_ENV=production
+# Konteynerda backend shu portda tinglaydi. main.ts'dagi fallback (3001)
+# faqat lokal ishlab chiqish uchun — bu yerda PORT aniq beriladi, shunda
+# EXPOSE, docker-compose va nginx/Caddy upstream'lari bir xil portga
+# ishora qiladi.
+ENV PORT=3000
 RUN apk add --no-cache ffmpeg
 
 COPY --from=deps /app/package*.json ./

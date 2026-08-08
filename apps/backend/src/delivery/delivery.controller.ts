@@ -44,19 +44,39 @@ export class DeliveryController {
   }
 
   @Get('submissions/:id')
-  getSubmission(@Param('id') id: string, @Query('practice') practice?: string) {
-    return this.deliveryService.getSubmission(id, isPracticeMode(practice));
+  getSubmission(
+    @Param('id') id: string,
+    @Query('practice') practice?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.deliveryService.getSubmission(id, isPracticeMode(practice), this.getOptionalUserId(authorization));
   }
 
   @Get('submissions/:id/result')
-  getSubmissionResult(@Param('id') id: string, @Query('practice') practice?: string) {
-    return this.deliveryService.getSubmissionResult(id, isPracticeMode(practice));
+  getSubmissionResult(
+    @Param('id') id: string,
+    @Query('practice') practice?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.deliveryService.getSubmissionResult(id, isPracticeMode(practice), this.getOptionalUserId(authorization));
   }
 
   @Post('submissions/:id/submit')
   @HttpCode(200)
-  submitAnswers(@Param('id') id: string, @Body() dto: SubmitAnswersDto, @Query('practice') practice?: string) {
-    return this.deliveryService.submitAnswers(id, dto.answers, dto.mode, dto.violationReason, isPracticeMode(practice));
+  submitAnswers(
+    @Param('id') id: string,
+    @Body() dto: SubmitAnswersDto,
+    @Query('practice') practice?: string,
+    @Headers('authorization') authorization?: string,
+  ) {
+    return this.deliveryService.submitAnswers(
+      id,
+      dto.answers,
+      dto.mode,
+      dto.violationReason,
+      isPracticeMode(practice),
+      this.getOptionalUserId(authorization),
+    );
   }
 
   @Throttle(CHECK_THROTTLE)
@@ -66,8 +86,9 @@ export class DeliveryController {
     @Param('id') id: string,
     @Body() body: { questionId: string; selectedOptionIds: string[]; textAnswer: string | null },
     @Query('practice') practice?: string,
+    @Headers('authorization') authorization?: string,
   ) {
-    return this.deliveryService.checkAnswer(id, body, isPracticeMode(practice));
+    return this.deliveryService.checkAnswer(id, body, isPracticeMode(practice), this.getOptionalUserId(authorization));
   }
 
   private getOptionalUserId(authorization?: string) {
