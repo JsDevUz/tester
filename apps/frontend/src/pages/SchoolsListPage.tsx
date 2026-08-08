@@ -1,12 +1,22 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, UserRound } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, UserRound } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { useStudentSchoolStore } from "../stores/studentSchoolStore";
 
 export function SchoolsListPage() {
   const navigate = useNavigate();
   const { schools, loaded, error, loadSchools, selectSchool } = useStudentSchoolStore();
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+
+  function toggleExpanded(schoolId: string) {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(schoolId)) next.delete(schoolId);
+      else next.add(schoolId);
+      return next;
+    });
+  }
 
   useEffect(() => {
     void loadSchools();
@@ -46,44 +56,75 @@ export function SchoolsListPage() {
           </div>
         )}
 
+        {loaded && !error && schools.length > 0 && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {schools.map((school) => (
-            <button
-              key={school.id}
-              type="button"
-              onClick={() => openSchool(school.id)}
-              className="student-course-card flex min-h-[150px] flex-col rounded-3xl p-4 text-left sm:min-h-[185px] sm:p-5"
-            >
-              <div className="flex items-start justify-between gap-4">
-                <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
-                  {school.imageUrl ? (
-                    <img
-                      src={school.imageUrl}
-                      alt=""
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <BookOpen size={23} className="text-gray-400" />
-                  )}
+          {schools.map((school) => {
+            const expanded = expandedIds.has(school.id);
+            return (
+              <div
+                key={school.id}
+                role="button"
+                tabIndex={0}
+                onClick={() => openSchool(school.id)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" || e.key === " ") openSchool(school.id);
+                }}
+                className="student-course-card flex min-h-[150px] cursor-pointer flex-col rounded-3xl p-4 text-left sm:min-h-[185px] sm:p-5"
+              >
+                <div className="flex items-start justify-between gap-4">
+                  <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
+                    {school.imageUrl ? (
+                      <img
+                        src={school.imageUrl}
+                        alt=""
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <BookOpen size={23} className="text-gray-400" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
+                      {school.name}
+                    </p>
+                    <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                      <UserRound size={16} className="text-gray-700" />
+                      {school.studentCount}
+                    </span>
+                  </div>
                 </div>
-                <div className="min-w-0 flex-1">
-                  <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
-                    {school.name}
-                  </p>
-                  <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                    <UserRound size={16} className="text-gray-700" />
-                    {school.studentCount}
-                  </span>
-                </div>
+                {school.description && (
+                  <>
+                    <p
+                      className={`mt-3 whitespace-pre-line text-sm text-gray-500 ${expanded ? "" : "line-clamp-3"}`}
+                    >
+                      {school.description}
+                    </p>
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleExpanded(school.id);
+                      }}
+                      className="mt-1 inline-flex w-fit items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
+                    >
+                      {expanded ? (
+                        <>
+                          Kamroq <ChevronUp size={14} />
+                        </>
+                      ) : (
+                        <>
+                          Ko'proq <ChevronDown size={14} />
+                        </>
+                      )}
+                    </button>
+                  </>
+                )}
               </div>
-              {school.description && (
-                <p className="mt-3 line-clamp-3 text-sm text-gray-500">
-                  {school.description}
-                </p>
-              )}
-            </button>
-          ))}
+            );
+          })}
         </div>
+        )}
       </div>
     </StudentShell>
   );

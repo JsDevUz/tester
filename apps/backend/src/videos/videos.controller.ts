@@ -18,7 +18,7 @@ import { IsIn, IsInt, IsString, Min, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { Roles } from '../auth/roles.decorator';
+import { Public, Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
 import { VideoPlaybackService } from './video-playback.service';
 import { VideoProgressService } from './video-progress.service';
@@ -97,15 +97,21 @@ export class VideosController {
     });
   }
 
+  // These three routes are fetched by the native HLS player (react-native-video),
+  // which cannot reliably attach an Authorization header to manifest/segment/key
+  // requests. They're intentionally exempted from JwtAuthGuard/RolesGuard - auth
+  // is instead enforced by the signed, blockId-scoped, short-lived playback token
+  // (see VideoPlaybackService.verifyToken) minted once per session by /play, which
+  // itself remains behind the guard.
   @Get('videos/:blockId/manifest.m3u8')
-  @Roles('student', 'teacher', 'super')
+  @Public()
   @Header('Content-Type', 'application/vnd.apple.mpegurl')
   getManifest(@Param('blockId') blockId: string, @Query('token') token: string) {
     return this.videoPlaybackService.getManifest(blockId, token);
   }
 
   @Get('videos/:blockId/key')
-  @Roles('student', 'teacher', 'super')
+  @Public()
   async getKey(@Param('blockId') blockId: string, @Query('token') token: string, @Res() res: Response) {
     const key = await this.videoPlaybackService.getKey(blockId, token);
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -114,7 +120,7 @@ export class VideosController {
   }
 
   @Get('videos/:blockId/segments/:fileName')
-  @Roles('student', 'teacher', 'super')
+  @Public()
   @Header('Content-Type', 'video/mp2t')
   getSegment(
     @Param('blockId') blockId: string,

@@ -1,11 +1,23 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ChevronRight, Trophy, BookOpen, ThumbsUp } from "lucide-react";
+import { ChevronRight, Trophy, BookOpen, ThumbsUp, Search } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { apiGetMySubmissions, type Submission } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
 
 const PAGE_SIZE = 10;
+
+// Accepts either a bare test code or a full jamm.uz/t/<code> link (with any
+// query string) - a curator naturally shares the deep link, but this input
+// is also usable with just the trailing code.
+function extractTestCode(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  const match = trimmed.match(/\/t\/([^/?#\s]+)/);
+  if (match) return match[1];
+  if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+  return null;
+}
 
 export function StudentHistoryPage() {
   const navigate = useNavigate();
@@ -14,8 +26,16 @@ export function StudentHistoryPage() {
   const [loadingMore, setLoadingMore] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasMore, setHasMore] = useState(true);
+  const [codeInput, setCodeInput] = useState("");
   const sentinelRef = useRef<HTMLDivElement | null>(null);
   const offsetRef = useRef(0);
+
+  function openTestByCode() {
+    const code = extractTestCode(codeInput);
+    if (!code) return;
+    setCodeInput("");
+    navigate(`/t/${code}`);
+  }
 
   async function loadMore(reset = false) {
     if (reset) {
@@ -67,8 +87,33 @@ export function StudentHistoryPage() {
   return (
     <StudentShell>
       <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
+        <div className="mb-4">
+          <h1 className="text-2xl font-extrabold text-gray-900">Amaliyotlar</h1>
+          <div className="mt-4 flex items-center gap-2">
+            <input
+              value={codeInput}
+              onChange={(e) => setCodeInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") openTestByCode();
+              }}
+              placeholder="Test kodini kiriting"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="h-12 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+            />
+            <button
+              type="button"
+              onClick={openTestByCode}
+              disabled={!extractTestCode(codeInput)}
+              className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+            >
+              <Search size={19} />
+            </button>
+          </div>
+        </div>
+
         <div className="mb-3 lg:mb-4">
-          <h2 className="text-xl font-bold text-gray-900 lg:text-lg lg:text-gray-800">Amaliyotlar tarixi</h2>
+          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Amaliyotlar tarixi</h2>
         </div>
 
         {loading ? (

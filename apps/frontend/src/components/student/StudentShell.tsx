@@ -8,7 +8,6 @@ import {
 import {
   ClipboardList,
   MessageCircle,
-  Presentation,
   Radio,
   RefreshCw,
   School,
@@ -36,8 +35,8 @@ const NAV_ITEMS = [
     icon: School,
   },
   {
-    label: "Amaliyotlar tarixi",
-    shortLabel: "Tarix",
+    label: "Amaliyotlar",
+    shortLabel: "Amaliyotlar",
     path: "/history",
     icon: ClipboardList,
   },
@@ -52,12 +51,6 @@ const NAV_ITEMS = [
     shortLabel: "Jonli",
     path: "/live/join",
     icon: Radio,
-  },
-  {
-    label: "Jonli darslar",
-    shortLabel: "Darslar",
-    path: "/live-classes",
-    icon: Presentation,
   },
 ];
 
@@ -369,7 +362,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-6 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 border-t border-gray-100 bg-white px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);

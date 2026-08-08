@@ -39,6 +39,7 @@ import { apiGetOrCreatePracticeChatForCourse } from "../api/practiceMessenger";
 import type { ApiContentBlock } from "../api/contentBlocks";
 import { HlsVideoPlayer } from "../components/course/HlsVideoPlayer";
 import { ImageLightbox } from "../components/student/ImageLightbox";
+import { PdfViewerSheet } from "../components/student/PdfViewerSheet";
 import { PracticeScreen } from "../components/student/PracticeScreen";
 import { TestTaker } from "../components/test/TestTaker";
 import { schedulePageScrollReset } from "../utils/scroll";
@@ -190,6 +191,7 @@ export function MyCoursesPage() {
           </div>
         )}
 
+        {!loading && !loadError && courses.length > 0 && (
         <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
           {courses.map((c) => (
             <div
@@ -256,6 +258,7 @@ export function MyCoursesPage() {
             </div>
           ))}
         </div>
+        )}
       </div>
       {leaderboardCourse && (
         <CourseLeaderboardModal
@@ -1098,6 +1101,7 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
 function LessonBlock({ block }: { block: ApiContentBlock }) {
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
+  const [pdfSheetOpen, setPdfSheetOpen] = useState(false);
 
   if (block.type === "editor") {
     return (
@@ -1177,25 +1181,38 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
         .split(".")
         .pop()
         ?.toUpperCase() ?? "FILE";
+    const isPdf = ext === "PDF";
     return (
-      <a
-        href={block.previewUrl}
-        download={block.fileName ?? block.label ?? "fayl"}
-        className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
-      >
-        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
-          {ext.slice(0, 4)}
-        </span>
-        <span className="min-w-0 flex-1">
-          <span className="block truncate text-sm font-bold text-gray-900">
-            {block.label || block.fileName || "Fayl"}
+      <>
+        <button
+          type="button"
+          onClick={() => {
+            if (isPdf) setPdfSheetOpen(true);
+            else window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
+          }}
+          className="flex w-full items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-200"
+        >
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
+            {ext.slice(0, 4)}
           </span>
-          <span className="block text-xs font-semibold text-gray-400">
-            Yuklab olish
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-bold text-gray-900">
+              {block.label || block.fileName || "Fayl"}
+            </span>
+            <span className="block text-xs font-semibold text-gray-400">
+              {isPdf ? "Ko'rish" : "Yuklab olish"}
+            </span>
           </span>
-        </span>
-        <Download size={18} className="text-gray-400" />
-      </a>
+          <Download size={18} className="text-gray-400" />
+        </button>
+        {isPdf && pdfSheetOpen && (
+          <PdfViewerSheet
+            uri={block.previewUrl}
+            title={block.label || block.fileName || "Fayl"}
+            onClose={() => setPdfSheetOpen(false)}
+          />
+        )}
+      </>
     );
   }
 
