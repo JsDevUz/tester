@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { BookOpen, ChevronDown, ChevronUp, UserRound } from "lucide-react";
+import { BookOpen, ChevronDown, ChevronUp, Search, UserRound, X } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { useStudentSchoolStore } from "../stores/studentSchoolStore";
 
@@ -8,6 +8,8 @@ export function SchoolsListPage() {
   const navigate = useNavigate();
   const { schools, loaded, error, loadSchools, selectSchool } = useStudentSchoolStore();
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [inviteInput, setInviteInput] = useState("");
 
   function toggleExpanded(schoolId: string) {
     setExpandedIds((prev) => {
@@ -22,6 +24,25 @@ export function SchoolsListPage() {
     void loadSchools();
   }, [loadSchools]);
 
+  // Accepts either a full /school-invite/<token> link (what a school shares)
+  // or the bare token pasted on its own.
+  function extractInviteToken(input: string): string | null {
+    const trimmed = input.trim();
+    if (!trimmed) return null;
+    const match = trimmed.match(/\/school-invite\/([^/?#\s]+)/);
+    if (match) return match[1];
+    if (/^[A-Za-z0-9-]+$/.test(trimmed)) return trimmed;
+    return null;
+  }
+
+  function openInvite() {
+    const inviteToken = extractInviteToken(inviteInput);
+    if (!inviteToken) return;
+    setInviteInput("");
+    setInviteOpen(false);
+    navigate(`/school-invite/${inviteToken}`);
+  }
+
   function openSchool(schoolId: string) {
     selectSchool(schoolId);
     navigate(`/schools/${schoolId}/courses`);
@@ -30,9 +51,42 @@ export function SchoolsListPage() {
   return (
     <StudentShell>
       <div className="w-full rounded-2xl bg-white p-4 sm:p-5">
-        <h1 className="mb-4 text-lg font-bold text-gray-800">
-          Mening maktablarim
-        </h1>
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <h1 className="text-lg font-bold text-gray-800">Mening maktablarim</h1>
+          <button
+            type="button"
+            onClick={() => setInviteOpen((open) => !open)}
+            aria-label={inviteOpen ? "Yopish" : "Taklif havolasi bilan qo'shilish"}
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100"
+          >
+            {inviteOpen ? <X size={18} /> : <Search size={18} />}
+          </button>
+        </div>
+
+        {inviteOpen && (
+          <div className="mb-4 flex items-center gap-2">
+            <input
+              autoFocus
+              value={inviteInput}
+              onChange={(e) => setInviteInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") openInvite();
+              }}
+              placeholder="Taklif havolasi yoki kodi"
+              autoCapitalize="none"
+              autoCorrect="off"
+              className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+            />
+            <button
+              type="button"
+              onClick={openInvite}
+              disabled={!extractInviteToken(inviteInput)}
+              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+            >
+              <Search size={18} />
+            </button>
+          </div>
+        )}
 
         {!loaded && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 
