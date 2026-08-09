@@ -13,7 +13,7 @@ import 'dotenv/config';
     PassportModule,
     TelegramModule,
     StorageModule,
-    JwtModule.register({ secret: process.env.JWT_SECRET!, signOptions: { expiresIn: '7d' } }),
+    JwtModule.register({ secret: process.env.JWT_SECRET!, signOptions: { expiresIn: '365d' } }),
   ],
   controllers: [AuthController],
   providers: [AuthService, JwtStrategy],
