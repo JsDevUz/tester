@@ -42,16 +42,16 @@ const NAV_ITEMS = [
     icon: ClipboardList,
   },
   {
-    label: "Messenger",
-    shortLabel: "Xabarlar",
-    path: "/messenger",
-    icon: MessageCircle,
-  },
-  {
     label: "Jamm",
     shortLabel: "Jamm",
     path: "/challenges",
     icon: BookOpen,
+  },
+  {
+    label: "Messenger",
+    shortLabel: "Xabarlar",
+    path: "/messenger",
+    icon: MessageCircle,
   },
 ];
 
