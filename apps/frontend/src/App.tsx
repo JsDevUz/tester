@@ -40,6 +40,7 @@ const FreeClassHistoryPage = lazy(() => import('./pages/FreeClassHistoryPage').t
 const BoardsPage = lazy(() => import('./pages/BoardsPage').then((m) => ({ default: m.BoardsPage })));
 const BoardEditorPage = lazy(() => import('./pages/BoardEditorPage').then((m) => ({ default: m.BoardEditorPage })));
 const ChallengesHubPage = lazy(() => import('./pages/ChallengesHubPage').then((m) => ({ default: m.ChallengesHubPage })));
+const ChallengeDetailPage = lazy(() => import('./pages/ChallengeDetailPage').then((m) => ({ default: m.ChallengeDetailPage })));
 
 // Sahifa chunki yuklanayotganda ko'rsatiladi. Bo'sh (ko'rinmas) fon —
 // TopProgressBar allaqachon yuklanish holatini bildiradi, shuning uchun
@@ -71,6 +72,7 @@ const router = createBrowserRouter([
   { path: '/live/host/:pin', element: <TeacherRoute><LiveHostPage /></TeacherRoute> },
   { path: '/live/join', element: <LiveJoinPage /> },
   { path: '/challenges', element: <PrivateRoute><ChallengesHubPage /></PrivateRoute> },
+  { path: '/challenges/:id', element: <PrivateRoute><ChallengeDetailPage /></PrivateRoute> },
   { path: '/school-invite/:token', element: <SchoolInviteJoinPage /> },
   { path: '/live/play/:pin', element: <PrivateRoute><LivePlayPage /></PrivateRoute> },
   { path: '/classroom/host/:id', element: <TeacherRoute><ClassroomHostPage /></TeacherRoute> },

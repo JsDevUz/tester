@@ -154,3 +154,58 @@ export async function apiJoinChallenge(challengeId: string): Promise<{ id: strin
   const res = await client.post(`/me/challenges/${challengeId}/join`);
   return res.data;
 }
+
+export interface ApiMyChallengeBook {
+  id: string;
+  title: string;
+  totalPages: number;
+  lastPageRead: number;
+  completed: boolean;
+  pendingTest: { testId: string; slug: string | null; name: string } | null;
+}
+
+export interface ApiMyChallengeDetail {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  books: ApiMyChallengeBook[];
+}
+
+export interface ApiChallengeEvent {
+  id: string;
+  challengeBookId: string;
+  startPage: number;
+  endPage: number;
+  newWordsCount: number;
+  createdAt: string;
+  book: { id: string; title: string };
+}
+
+export async function apiGetMyChallengeDetail(challengeId: string): Promise<ApiMyChallengeDetail> {
+  const res = await client.get(`/me/challenges/${challengeId}`);
+  return res.data;
+}
+
+export async function apiAddChallengeEvent(
+  challengeId: string,
+  bookId: string,
+  data: { endPage: number; newWordsCount: number },
+): Promise<ApiChallengeEvent> {
+  const res = await client.post(`/me/challenges/${challengeId}/books/${bookId}/events`, data);
+  return res.data;
+}
+
+export async function apiGetMyChallengeHistory(challengeId: string): Promise<ApiChallengeEvent[]> {
+  const res = await client.get(`/me/challenges/${challengeId}/history`);
+  return res.data;
+}
+
+export async function apiGetMyChallengeLeaderboard(
+  challengeId: string,
+  metric: ChallengeLeaderboardMetric,
+  bookId?: string,
+): Promise<ApiChallengeLeaderboard> {
+  const res = await client.get(`/me/challenges/${challengeId}/leaderboard`, { params: { metric, bookId } });
+  return res.data;
+}

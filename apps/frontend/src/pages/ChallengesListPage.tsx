@@ -1,10 +1,12 @@
 import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { StudentShell } from '../components/student/StudentShell';
 import { apiListMyChallenges, apiJoinChallenge, type ApiStudentChallenge } from '../api/challenges';
 
 export function ChallengesListPage({ onBack }: { onBack: () => void }) {
+  const navigate = useNavigate();
   const [challenges, setChallenges] = useState<ApiStudentChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -48,7 +50,11 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
         ) : (
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
             {challenges.map((c) => (
-              <div key={c.id} className="rounded-2xl bg-white p-4">
+              <div
+                key={c.id}
+                onClick={() => c.joined && navigate(`/challenges/${c.id}`)}
+                className={`rounded-2xl bg-white p-4 ${c.joined ? 'cursor-pointer' : ''}`}
+              >
                 {c.imageUrl ? (
                   <img src={c.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" />
                 ) : (
