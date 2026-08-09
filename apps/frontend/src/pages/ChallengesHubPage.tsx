@@ -16,7 +16,7 @@ export function ChallengesHubPage() {
 
   return (
     <StudentShell>
-      <div className="p-4">
+      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
         <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Jamm</h1>
         <p className="mb-6 text-sm text-gray-400">Kurs ichidagi faolliklar</p>
 

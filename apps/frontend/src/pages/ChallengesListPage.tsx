@@ -37,7 +37,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
 
   return (
     <StudentShell>
-      <div className="p-4">
+      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
         <button
           type="button"
           onClick={onBack}
