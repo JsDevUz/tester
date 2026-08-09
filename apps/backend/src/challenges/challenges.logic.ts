@@ -1,5 +1,22 @@
 export type ChallengeLeaderboardMetric = 'overall' | 'books' | 'words' | 'speed';
 
+export interface PendingTestCheck {
+  forceNow: boolean;
+  triggerPage: number | null;
+}
+
+/**
+ * Whether a book's mandatory test is triggered at the given page mark.
+ * Shared by the read path (findOneForStudent's `pendingTest` display) and the
+ * write path (addEvent's gate) so the trigger condition can't silently diverge
+ * between the two — only the page mark they pass in differs by design (current
+ * progress for display, the newly submitted endPage for the gate).
+ */
+export function isTestTriggered<T extends PendingTestCheck>(bookTest: T | null | undefined, pageMark: number): bookTest is T {
+  if (!bookTest) return false;
+  return bookTest.forceNow || (bookTest.triggerPage !== null && pageMark >= bookTest.triggerPage);
+}
+
 export interface LeaderboardParticipant {
   id: string;
   studentId: string;

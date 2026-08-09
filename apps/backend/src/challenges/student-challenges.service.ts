@@ -5,7 +5,7 @@ import {
   challengeParticipants, challenges, groupEnrollments, groups, submissions, tests,
 } from '../db/schema';
 import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
-import { computeLeaderboard } from './challenges.logic';
+import { computeLeaderboard, isTestTriggered } from './challenges.logic';
 
 @Injectable()
 export class StudentChallengesService {
@@ -100,7 +100,7 @@ export class StudentChallengesService {
       const lastPageRead = progress?.lastPageRead ?? 0;
 
       let pendingTest: { testId: string; slug: string | null; name: string } | null = null;
-      if (book.test && (book.test.forceNow || (book.test.triggerPage !== null && lastPageRead >= book.test.triggerPage))) {
+      if (isTestTriggered(book.test, lastPageRead)) {
         const submission = await db.query.submissions.findFirst({
           where: and(eq(submissions.testId, book.test.testId), eq(submissions.userId, studentId)),
         });
@@ -130,9 +130,13 @@ export class StudentChallengesService {
     if (!book) throw new NotFoundException('Book not found');
 
     return db.transaction(async (tx) => {
+      // Lock the participant row (always exists) rather than the progress row
+      // (may not exist yet on a book's first event, where FOR UPDATE would lock nothing),
+      // so concurrent addEvent calls for the same participant serialize here.
+      await tx.select().from(challengeParticipants).where(eq(challengeParticipants.id, participant.id)).for('update');
+
       const [progress] = await tx.select().from(challengeBookProgress)
-        .where(and(eq(challengeBookProgress.challengeParticipantId, participant.id), eq(challengeBookProgress.challengeBookId, bookId)))
-        .for('update');
+        .where(and(eq(challengeBookProgress.challengeParticipantId, participant.id), eq(challengeBookProgress.challengeBookId, bookId)));
       const startPage = progress?.lastPageRead ?? 0;
 
       if (data.endPage <= startPage) {
@@ -140,7 +144,7 @@ export class StudentChallengesService {
       }
 
       const bookTest = await tx.query.challengeBookTests.findFirst({ where: eq(challengeBookTests.challengeBookId, bookId) });
-      if (bookTest && (bookTest.forceNow || (bookTest.triggerPage !== null && data.endPage > bookTest.triggerPage))) {
+      if (isTestTriggered(bookTest, data.endPage)) {
         const submission = await tx.query.submissions.findFirst({
           where: and(eq(submissions.testId, bookTest.testId), eq(submissions.userId, studentId)),
         });
@@ -162,20 +166,14 @@ export class StudentChallengesService {
         newWordsCount: data.newWordsCount ?? 0,
       }).returning();
 
-      if (progress) {
-        await tx.update(challengeBookProgress)
-          .set({ lastPageRead: data.endPage })
-          .where(eq(challengeBookProgress.id, progress.id));
-      } else {
-        await tx.insert(challengeBookProgress).values({
-          challengeParticipantId: participant.id,
-          challengeBookId: bookId,
-          lastPageRead: data.endPage,
-        }).onConflictDoUpdate({
-          target: [challengeBookProgress.challengeParticipantId, challengeBookProgress.challengeBookId],
-          set: { lastPageRead: data.endPage },
-        });
-      }
+      await tx.insert(challengeBookProgress).values({
+        challengeParticipantId: participant.id,
+        challengeBookId: bookId,
+        lastPageRead: data.endPage,
+      }).onConflictDoUpdate({
+        target: [challengeBookProgress.challengeParticipantId, challengeBookProgress.challengeBookId],
+        set: { lastPageRead: data.endPage },
+      });
 
       return event;
     });

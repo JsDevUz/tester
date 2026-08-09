@@ -33,13 +33,22 @@ function mockInsertReturning(value: unknown) {
   return { values, returning };
 }
 
-/** Mocks db.transaction(cb) to invoke cb with a tx object whose `.select().from().where().for('update')`
- *  chain resolves to `progressRows`, and whose `.query`/`.insert`/`.update` mirror the outer db mock. */
+/** Mocks db.transaction(cb) to invoke cb with a tx object. `tx.select()` is called twice by
+ *  addEvent: first `.from(challengeParticipants).where().for('update')` (the row lock, result
+ *  unused — resolves to an empty array), then `.from(challengeBookProgress).where()` (awaited
+ *  directly, resolves to `progressRows`). `.query`/`.insert`/`.update` mirror the outer db mock. */
 function mockTransaction(progressRows: unknown[]) {
-  const forUpdate = jest.fn().mockResolvedValue(progressRows);
-  const where = jest.fn(() => ({ for: forUpdate }));
-  const from = jest.fn(() => ({ where }));
-  const select = jest.fn(() => ({ from }));
+  const forUpdate = jest.fn().mockResolvedValue([]);
+  const lockWhere = jest.fn(() => ({ for: forUpdate }));
+  const progressWhere = jest.fn().mockResolvedValue(progressRows);
+
+  let call = 0;
+  const select = jest.fn(() => ({
+    from: jest.fn(() => {
+      call += 1;
+      return call === 1 ? { where: lockWhere } : { where: progressWhere };
+    }),
+  }));
 
   const tx: any = {
     query: (db as any).query,
@@ -123,12 +132,13 @@ describe('StudentChallengesService', () => {
         testId: 'test-1', triggerPage: 50, forceNow: false,
       });
       (tx.query.submissions.findFirst as jest.Mock).mockResolvedValue({ id: 'sub-1', submittedAt: new Date() });
-      const returning = jest.fn().mockResolvedValue([{ id: 'event-1', startPage: 50, endPage: 60, newWordsCount: 3 }]);
-      const values = jest.fn(() => ({ returning }));
-      (tx.insert as jest.Mock).mockReturnValue({ values });
-      const updateWhere = jest.fn().mockResolvedValue(undefined);
-      const updateSet = jest.fn(() => ({ where: updateWhere }));
-      (tx.update as jest.Mock).mockReturnValue({ set: updateSet });
+      const eventReturning = jest.fn().mockResolvedValue([{ id: 'event-1', startPage: 50, endPage: 60, newWordsCount: 3 }]);
+      const eventValues = jest.fn(() => ({ returning: eventReturning }));
+      const progressOnConflictDoUpdate = jest.fn().mockResolvedValue(undefined);
+      const progressValues = jest.fn(() => ({ onConflictDoUpdate: progressOnConflictDoUpdate }));
+      (tx.insert as jest.Mock)
+        .mockReturnValueOnce({ values: eventValues })
+        .mockReturnValueOnce({ values: progressValues });
 
       const result = await service.addEvent('challenge-1', 'book-1', 'student-1', { endPage: 60, newWordsCount: 3 });
 

@@ -43,8 +43,13 @@ export function ChallengeDetailPage() {
       navigate(`/t/${book.pendingTest.slug}`);
       return;
     }
+    const parsedEndPage = parseInt(endPage, 10);
+    if (Number.isNaN(parsedEndPage)) {
+      toast.error("Tugagan betni kiriting");
+      return;
+    }
     try {
-      await apiAddChallengeEvent(id, bookId, { endPage: parseInt(endPage, 10), newWordsCount: parseInt(newWords || '0', 10) });
+      await apiAddChallengeEvent(id, bookId, { endPage: parsedEndPage, newWordsCount: parseInt(newWords || '0', 10) });
       const refreshed = await apiGetMyChallengeDetail(id);
       setDetail(refreshed);
       setAddingBookId(null);
@@ -86,7 +91,7 @@ export function ChallengeDetailPage() {
                   <p className="text-xs text-gray-400">{book.lastPageRead}/{book.totalPages} bet</p>
                 </div>
                 <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
-                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(100, (book.lastPageRead / book.totalPages) * 100)}%` }} />
+                  <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%` }} />
                 </div>
 
                 {book.pendingTest && (
