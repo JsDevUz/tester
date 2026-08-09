@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
-import { Radio, ChevronRight } from "lucide-react";
+import { ArrowLeft, Radio, ChevronRight } from "lucide-react";
 import { useAuthStore } from "../stores/authStore";
 import { StudentShell } from "../components/student/StudentShell";
 
@@ -26,6 +26,15 @@ export function LiveJoinPage() {
     <StudentShell>
     <div className="flex min-h-[520px] flex-col overflow-hidden bg-white notranslate lg:rounded-2xl" translate="no">
       <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
+      <div className="px-6 pt-4">
+        <button
+          type="button"
+          onClick={() => navigate('/challenges')}
+          className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
+        >
+          <ArrowLeft size={14} /> Orqaga
+        </button>
+      </div>
       <form
         onSubmit={handleJoin}
         className="flex-1 flex flex-col items-center justify-center px-6"
