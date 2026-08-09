@@ -921,29 +921,20 @@ select::-ms-expand {
   background: #16181d;
 }
 
-:root[data-theme="dark"] .practice-messenger-root {
-  background-color: #181b22 !important;
-}
-
-:root[data-theme="dark"] .practice-messenger-list {
-  background-color: #1e222b;
-}
-
-:root[data-theme="dark"] .practice-messenger-thread {
-  background-color: #15181e !important;
-}
-
+:root[data-theme="dark"] .practice-messenger-root,
+:root[data-theme="dark"] .practice-messenger-list,
+:root[data-theme="dark"] .practice-messenger-thread,
 :root[data-theme="dark"] .practice-messenger-header,
 :root[data-theme="dark"] .practice-messenger-composer {
-  background-color: #1c2028 !important;
+  background-color: #24252c !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-pins {
-  background-color: #202531 !important;
+  background-color: #3a3c47 !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-pins:hover {
-  background-color: #282e3b !important;
+  background-color: #454752 !important;
 }
 
 .practice-messenger-send-button:disabled {
@@ -1205,10 +1196,7 @@ select::-ms-expand {
 :root[data-theme="dark"] .bg-gray-100\/60,
 :root[data-theme="dark"] .bg-gray-100\/70,
 :root[data-theme="dark"] .bg-gray-100\/80,
-:root[data-theme="dark"] .student-course-card,
-:root[data-theme="dark"] .practice-messenger-list,
-:root[data-theme="dark"] .practice-messenger-header,
-:root[data-theme="dark"] .practice-messenger-composer {
+:root[data-theme="dark"] .student-course-card {
   background-color: #24252c !important;
 }
 
@@ -1217,9 +1205,7 @@ select::-ms-expand {
 :root[data-theme="dark"] .bg-gray-900\/70,
 :root[data-theme="dark"] .bg-gray-900\/80,
 :root[data-theme="dark"] .bg-gray-950,
-:root[data-theme="dark"] .bg-black,
-:root[data-theme="dark"] .practice-messenger-root,
-:root[data-theme="dark"] .practice-messenger-thread {
+:root[data-theme="dark"] .bg-black {
   background-color: #15161b !important;
 }
 
@@ -1228,9 +1214,8 @@ select::-ms-expand {
 :root[data-theme="dark"] .hover\:bg-gray-100\/50:hover,
 :root[data-theme="dark"] .hover\:bg-gray-100\/70:hover,
 :root[data-theme="dark"] .hover\:bg-gray-200:hover,
-:root[data-theme="dark"] .student-course-card:hover,
-:root[data-theme="dark"] .practice-messenger-pins,
-:root[data-theme="dark"] .practice-messenger-pins:hover {
+:root[data-theme="dark"] .focus\:bg-gray-100:focus,
+:root[data-theme="dark"] .student-course-card:hover {
   background-color: #3a3c47 !important;
 }
 
@@ -1375,10 +1360,7 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .bg-gray-100\/60,
   :root:not([data-theme="light"]) .bg-gray-100\/70,
   :root:not([data-theme="light"]) .bg-gray-100\/80,
-  :root:not([data-theme="light"]) .student-course-card,
-  :root:not([data-theme="light"]) .practice-messenger-list,
-  :root:not([data-theme="light"]) .practice-messenger-header,
-  :root:not([data-theme="light"]) .practice-messenger-composer {
+  :root:not([data-theme="light"]) .student-course-card {
     background-color: #24252c !important;
   }
 
@@ -1387,9 +1369,7 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .bg-gray-900\/70,
   :root:not([data-theme="light"]) .bg-gray-900\/80,
   :root:not([data-theme="light"]) .bg-gray-950,
-  :root:not([data-theme="light"]) .bg-black,
-  :root:not([data-theme="light"]) .practice-messenger-root,
-  :root:not([data-theme="light"]) .practice-messenger-thread {
+  :root:not([data-theme="light"]) .bg-black {
     background-color: #15161b !important;
   }
 
@@ -1398,10 +1378,25 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/50:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/70:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-200:hover,
-  :root:not([data-theme="light"]) .student-course-card:hover,
-  :root:not([data-theme="light"]) .practice-messenger-pins,
-  :root:not([data-theme="light"]) .practice-messenger-pins:hover {
+  :root:not([data-theme="light"]) .focus\:bg-gray-100:focus,
+  :root:not([data-theme="light"]) .student-course-card:hover {
     background-color: #3a3c47 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-root,
+  :root:not([data-theme="light"]) .practice-messenger-list,
+  :root:not([data-theme="light"]) .practice-messenger-thread,
+  :root:not([data-theme="light"]) .practice-messenger-header,
+  :root:not([data-theme="light"]) .practice-messenger-composer {
+    background-color: #24252c !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-pins {
+    background-color: #3a3c47 !important;
+  }
+
+  :root:not([data-theme="light"]) .practice-messenger-pins:hover {
+    background-color: #454752 !important;
   }
 
   :root:not([data-theme="light"]) .bg-indigo-50,

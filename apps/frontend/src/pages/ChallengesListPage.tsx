@@ -43,7 +43,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
         {loading ? (
           <p className="text-sm text-gray-400">Yuklanmoqda...</p>
         ) : challenges.length === 0 ? (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
+          <div className="student-course-card rounded-3xl py-16 text-center text-gray-300">
             <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
             <p className="text-sm">Hozircha challenge yo'q</p>
           </div>
@@ -53,7 +53,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
               <div
                 key={c.id}
                 onClick={() => c.joined && navigate(`/challenges/${c.id}`)}
-                className={`rounded-2xl bg-white p-4 ${c.joined ? 'cursor-pointer' : ''}`}
+                className={`student-course-card rounded-3xl p-4 ${c.joined ? 'cursor-pointer' : ''}`}
               >
                 {c.imageUrl ? (
                   <img src={c.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" />
