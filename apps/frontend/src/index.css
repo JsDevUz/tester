@@ -850,6 +850,10 @@ select::-ms-expand {
   background-color: #252932;
 }
 
+.challenge-detail-input {
+  background-color: #f9fafb;
+}
+
 .hls-video-player::-webkit-media-controls-fullscreen-button {
   display: none !important;
 }
@@ -1214,9 +1218,17 @@ select::-ms-expand {
   background-color: #3a3c47 !important;
 }
 
-/* Challenge detail page (/challenges/:id) cards: always the darker shade,
-   not just on hover — unlike .student-course-card elsewhere in the app. */
+/* Challenge detail page (/challenges/:id) cards: distinctly darker than the
+   page's own bg-white wrapper (#30313a), unlike .student-course-card
+   elsewhere in the app which only darkens on hover. */
 :root[data-theme="dark"] .challenge-detail-card {
+  background-color: #24252c !important;
+}
+
+/* Inputs nested inside .challenge-detail-card need to stand out from it
+   (#24252c) rather than reuse the same shade — no color change on focus,
+   only the ring, so it never looks like it "opens up" lighter. */
+:root[data-theme="dark"] .challenge-detail-input {
   background-color: #3a3c47 !important;
 }
 
@@ -1385,6 +1397,10 @@ select::-ms-expand {
   }
 
   :root:not([data-theme="light"]) .challenge-detail-card {
+    background-color: #24252c !important;
+  }
+
+  :root:not([data-theme="light"]) .challenge-detail-input {
     background-color: #3a3c47 !important;
   }
 
