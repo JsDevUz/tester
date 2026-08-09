@@ -148,7 +148,7 @@ export function ChallengeDetailPage() {
                       type="number"
                       min={book.lastPageRead + 1}
                       placeholder="Tugagan bet"
-                      className="rounded-xl bg-gray-50 px-3 py-2 text-sm outline-none transition-colors hover:bg-gray-100 focus:bg-gray-100"
+                      className="rounded-xl bg-gray-50 px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-400"
                     />
                     <input
                       value={newWords}
@@ -156,7 +156,7 @@ export function ChallengeDetailPage() {
                       type="number"
                       min={0}
                       placeholder="Yangi lug'at soni"
-                      className="rounded-xl bg-gray-50 px-3 py-2 text-sm outline-none transition-colors hover:bg-gray-100 focus:bg-gray-100"
+                      className="rounded-xl bg-gray-50 px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-400"
                     />
                     <div className="flex gap-2">
                       <button
