@@ -69,7 +69,7 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-3 backdrop-blur-sm sm:p-6"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6"
       role="dialog"
       aria-modal="true"
       aria-label="Sozlamalar"
@@ -77,7 +77,7 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="settings-modal-surface relative flex h-[min(640px,94dvh)] w-full max-w-3xl overflow-hidden rounded-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-black/5">
+      <div className="settings-modal-surface relative flex h-[min(640px,94dvh)] w-full max-w-3xl overflow-hidden rounded-t-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-black/5 sm:rounded-2xl">
         {/* ── Sidebar: profile + section list ── */}
         <div
           className={`settings-modal-sidebar flex w-full shrink-0 flex-col border-r border-border bg-gray-50 sm:w-72 ${

@@ -1,11 +1,24 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { BookOpen, GraduationCap, Inbox, Layers, PenTool, Play, Plus, Radio, RefreshCw, Star, ThumbsUp, Users } from 'lucide-react';
-import { useCourseStore } from '../../stores/courseStore';
-import { PromptModal } from './PromptModal';
-import { DataLoadingState } from '../DataLoadingState';
-import { ActiveClassBanner } from '../classroom/ActiveClassBanner';
-import { StartClassModal } from '../classroom/StartClassModal';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import {
+  BookOpen,
+  GraduationCap,
+  Inbox,
+  Layers,
+  PenTool,
+  Play,
+  Plus,
+  Radio,
+  RefreshCw,
+  Star,
+  ThumbsUp,
+  Users,
+} from "lucide-react";
+import { useCourseStore } from "../../stores/courseStore";
+import { PromptModal } from "./PromptModal";
+import { DataLoadingState } from "../DataLoadingState";
+import { ActiveClassBanner } from "../classroom/ActiveClassBanner";
+import { StartClassModal } from "../classroom/StartClassModal";
 
 interface CourseGridProps {
   onOpenCourse: (courseId: string) => void;
@@ -13,7 +26,14 @@ interface CourseGridProps {
 
 export function CourseGrid({ onOpenCourse }: CourseGridProps) {
   const navigate = useNavigate();
-  const { courses, coursesLoading, coursesLoaded, coursesError, loadCourses, addCourse } = useCourseStore();
+  const {
+    courses,
+    coursesLoading,
+    coursesLoaded,
+    coursesError,
+    loadCourses,
+    addCourse,
+  } = useCourseStore();
   const [showModal, setShowModal] = useState(false);
   const [showStartClass, setShowStartClass] = useState(false);
 
@@ -24,7 +44,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
   }
 
   return (
-    <div className="p-6">
+    <div className="p-4">
       <ActiveClassBanner />
 
       <div className="mb-6 flex items-center justify-between gap-3">
@@ -39,7 +59,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
           </button>
           <button
             type="button"
-            onClick={() => navigate('/free-classes')}
+            onClick={() => navigate("/free-classes")}
             className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700  transition-colors hover:bg-gray-50"
           >
             <PenTool size={16} /> Erkin darslar
@@ -59,7 +79,11 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
       ) : coursesError && courses.length === 0 ? (
         <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl bg-white text-center text-gray-400">
           <p className="text-sm">{coursesError}</p>
-          <button type="button" onClick={() => void loadCourses().catch(() => undefined)} className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white">
+          <button
+            type="button"
+            onClick={() => void loadCourses().catch(() => undefined)}
+            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white"
+          >
             <RefreshCw size={14} /> Qayta urinish
           </button>
         </div>
@@ -71,8 +95,12 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
       ) : (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,420px))]">
           {courses.map((course) => {
-            const lessonCount = course.modules.reduce((sum, m) => sum + m.lessons.length, 0);
-            const groupCount = (course as { groups?: unknown[] }).groups?.length ?? 0;
+            const lessonCount = course.modules.reduce(
+              (sum, m) => sum + m.lessons.length,
+              0,
+            );
+            const groupCount =
+              (course as { groups?: unknown[] }).groups?.length ?? 0;
             const totalStars = Math.max(lessonCount * 5, 1);
 
             return (
@@ -84,8 +112,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
               >
                 <div className="flex items-center gap-2 pr-20 text-xs font-semibold">
                   <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-white">
-                    <Star size={13} fill="currentColor" />
-                    0 / {totalStars}
+                    <Star size={13} fill="currentColor" />0 / {totalStars}
                   </span>
                   <span className="inline-flex items-center gap-1 text-gray-500">
                     <Users size={14} className="text-gray-700" />
@@ -112,7 +139,11 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
 
                 <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-xs font-semibold text-gray-500">
                   <span className="inline-flex items-center gap-1">
-                    <Play size={14} className="text-gray-700" fill="currentColor" />
+                    <Play
+                      size={14}
+                      className="text-gray-700"
+                      fill="currentColor"
+                    />
                     1
                   </span>
                   <span className="inline-flex items-center gap-1">
@@ -144,7 +175,9 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
         />
       )}
 
-      {showStartClass && <StartClassModal onClose={() => setShowStartClass(false)} />}
+      {showStartClass && (
+        <StartClassModal onClose={() => setShowStartClass(false)} />
+      )}
     </div>
   );
 }

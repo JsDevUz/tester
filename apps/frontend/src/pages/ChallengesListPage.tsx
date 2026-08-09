@@ -1,9 +1,13 @@
-import { useEffect, useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, BookOpen } from 'lucide-react';
-import { toast } from 'sonner';
-import { StudentShell } from '../components/student/StudentShell';
-import { apiListMyChallenges, apiJoinChallenge, type ApiStudentChallenge } from '../api/challenges';
+import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { ArrowLeft, BookOpen } from "lucide-react";
+import { toast } from "sonner";
+import { StudentShell } from "../components/student/StudentShell";
+import {
+  apiListMyChallenges,
+  apiJoinChallenge,
+  type ApiStudentChallenge,
+} from "../api/challenges";
 
 export function ChallengesListPage({ onBack }: { onBack: () => void }) {
   const navigate = useNavigate();
@@ -12,14 +16,18 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
   const [joiningId, setJoiningId] = useState<string | null>(null);
 
   useEffect(() => {
-    void apiListMyChallenges().then(setChallenges).finally(() => setLoading(false));
+    void apiListMyChallenges()
+      .then(setChallenges)
+      .finally(() => setLoading(false));
   }, []);
 
   async function handleJoin(challengeId: string) {
     setJoiningId(challengeId);
     try {
       await apiJoinChallenge(challengeId);
-      setChallenges((prev) => prev.map((c) => (c.id === challengeId ? { ...c, joined: true } : c)));
+      setChallenges((prev) =>
+        prev.map((c) => (c.id === challengeId ? { ...c, joined: true } : c)),
+      );
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Qo'shilib bo'lmadi");
     } finally {
@@ -29,7 +37,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
 
   return (
     <StudentShell>
-      <div className="p-6">
+      <div className="p-4">
         <button
           type="button"
           onClick={onBack}
@@ -37,8 +45,12 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
         >
           <ArrowLeft size={14} /> Orqaga
         </button>
-        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Challenge-lar</h1>
-        <p className="mb-6 text-sm text-gray-400">Kurslaringizdagi kitobxonlik challenge-lari</p>
+        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">
+          Challenge-lar
+        </h1>
+        <p className="mb-6 text-sm text-gray-400">
+          Kurslaringizdagi kitobxonlik challenge-lari
+        </p>
 
         {loading ? (
           <p className="text-sm text-gray-400">Yuklanmoqda...</p>
@@ -53,19 +65,29 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
               <div
                 key={c.id}
                 onClick={() => c.joined && navigate(`/challenges/${c.id}`)}
-                className={`student-course-card rounded-3xl p-4 ${c.joined ? 'cursor-pointer' : ''}`}
+                className={`student-course-card rounded-3xl p-4 ${c.joined ? "cursor-pointer" : ""}`}
               >
                 {c.imageUrl ? (
-                  <img src={c.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" />
+                  <img
+                    src={c.imageUrl}
+                    alt=""
+                    className="mb-3 h-32 w-full rounded-xl object-cover"
+                  />
                 ) : (
                   <div className="mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-gray-100">
                     <BookOpen size={28} className="text-gray-300" />
                   </div>
                 )}
-                <p className="mb-0.5 text-xs font-medium text-gray-400">{c.courseTitle}</p>
-                <p className="mb-3 text-base font-bold text-gray-800">{c.name}</p>
+                <p className="mb-0.5 text-xs font-medium text-gray-400">
+                  {c.courseTitle}
+                </p>
+                <p className="mb-3 text-base font-bold text-gray-800">
+                  {c.name}
+                </p>
                 {c.joined ? (
-                  <span className="inline-block rounded-full bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">Qo'shilgansiz</span>
+                  <span className="inline-block rounded-full bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">
+                    Qo'shilgansiz
+                  </span>
                 ) : (
                   <button
                     type="button"

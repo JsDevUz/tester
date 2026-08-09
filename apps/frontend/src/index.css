@@ -921,7 +921,7 @@ select::-ms-expand {
 :root[data-theme="dark"] .practice-messenger-thread,
 :root[data-theme="dark"] .practice-messenger-header,
 :root[data-theme="dark"] .practice-messenger-composer {
-  background-color: #24252c !important;
+  background-color: #30313a !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-pins {
@@ -1190,7 +1190,8 @@ select::-ms-expand {
 :root[data-theme="dark"] .bg-gray-100\/50,
 :root[data-theme="dark"] .bg-gray-100\/60,
 :root[data-theme="dark"] .bg-gray-100\/70,
-:root[data-theme="dark"] .bg-gray-100\/80 {
+:root[data-theme="dark"] .bg-gray-100\/80,
+:root[data-theme="dark"] .student-course-card {
   background-color: #24252c !important;
 }
 
@@ -1359,7 +1360,8 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .bg-gray-100\/50,
   :root:not([data-theme="light"]) .bg-gray-100\/60,
   :root:not([data-theme="light"]) .bg-gray-100\/70,
-  :root:not([data-theme="light"]) .bg-gray-100\/80 {
+  :root:not([data-theme="light"]) .bg-gray-100\/80,
+  :root:not([data-theme="light"]) .student-course-card {
     background-color: #24252c !important;
   }
 
@@ -1391,7 +1393,7 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .practice-messenger-thread,
   :root:not([data-theme="light"]) .practice-messenger-header,
   :root:not([data-theme="light"]) .practice-messenger-composer {
-    background-color: #24252c !important;
+    background-color: #30313a !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-pins {
