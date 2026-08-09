@@ -101,12 +101,13 @@ export function CourseChallengesPage({
 
         <CourseSidePanel
           onBackToList={onBackToList}
-          activeFullTab="content"
+          activeFullTab="challenges"
           onSelectContent={onSelectContent}
           onSelectSettings={onSelectSettings}
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={onSelectGroups}
           onSelectClasses={onSelectClasses}
+          onSelectChallenges={() => {}}
         />
 
         {confirmDelete && (
@@ -175,12 +176,13 @@ export function CourseChallengesPage({
 
       <CourseSidePanel
         onBackToList={onBackToList}
-        activeFullTab="content"
+        activeFullTab="challenges"
         onSelectContent={onSelectContent}
         onSelectSettings={onSelectSettings}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
         onSelectClasses={onSelectClasses}
+        onSelectChallenges={() => {}}
       />
 
       {creating && <CreateChallengeModal onCreate={handleCreate} onClose={() => setCreating(false)} />}

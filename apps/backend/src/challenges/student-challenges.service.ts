@@ -70,13 +70,17 @@ export class StudentChallengesService {
 
   async join(challengeId: string, studentId: string) {
     await this.assertEnrolled(challengeId, studentId);
+
+    const [participant] = await db.insert(challengeParticipants)
+      .values({ challengeId, studentId })
+      .onConflictDoNothing()
+      .returning();
+    if (participant) return participant;
+
     const existing = await db.query.challengeParticipants.findFirst({
       where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.studentId, studentId)),
     });
-    if (existing) return existing;
-
-    const [participant] = await db.insert(challengeParticipants).values({ challengeId, studentId }).returning();
-    return participant;
+    return existing!;
   }
 
   async findOneForStudent(challengeId: string, studentId: string) {
@@ -125,52 +129,56 @@ export class StudentChallengesService {
     const book = await db.query.challengeBooks.findFirst({ where: and(eq(challengeBooks.id, bookId), eq(challengeBooks.challengeId, challengeId)) });
     if (!book) throw new NotFoundException('Book not found');
 
-    const progress = await db.query.challengeBookProgress.findFirst({
-      where: and(eq(challengeBookProgress.challengeParticipantId, participant.id), eq(challengeBookProgress.challengeBookId, bookId)),
-    });
-    const startPage = progress?.lastPageRead ?? 0;
+    return db.transaction(async (tx) => {
+      const [progress] = await tx.select().from(challengeBookProgress)
+        .where(and(eq(challengeBookProgress.challengeParticipantId, participant.id), eq(challengeBookProgress.challengeBookId, bookId)))
+        .for('update');
+      const startPage = progress?.lastPageRead ?? 0;
 
-    if (data.endPage <= startPage) {
-      throw new BadRequestException('Tugagan bet boshlagan betdan katta bo\'lishi kerak');
-    }
-
-    const bookTest = await db.query.challengeBookTests.findFirst({ where: eq(challengeBookTests.challengeBookId, bookId) });
-    if (bookTest && (bookTest.forceNow || (bookTest.triggerPage !== null && startPage >= bookTest.triggerPage))) {
-      const submission = await db.query.submissions.findFirst({
-        where: and(eq(submissions.testId, bookTest.testId), eq(submissions.userId, studentId)),
-      });
-      if (!submission?.submittedAt) {
-        const test = await db.query.tests.findFirst({ where: eq(tests.id, bookTest.testId) });
-        throw new BadRequestException({
-          message: 'Avval majburiy testni yakunlang',
-          requiredTestSlug: test?.slug,
-          requiredTestName: test?.name,
-        });
+      if (data.endPage <= startPage) {
+        throw new BadRequestException('Tugagan bet boshlagan betdan katta bo\'lishi kerak');
       }
-    }
 
-    const [event] = await db.insert(challengeEvents).values({
-      challengeParticipantId: participant.id,
-      challengeBookId: bookId,
-      startPage,
-      endPage: data.endPage,
-      newWordsCount: data.newWordsCount ?? 0,
-    }).returning();
+      const bookTest = await tx.query.challengeBookTests.findFirst({ where: eq(challengeBookTests.challengeBookId, bookId) });
+      if (bookTest && (bookTest.forceNow || (bookTest.triggerPage !== null && data.endPage > bookTest.triggerPage))) {
+        const submission = await tx.query.submissions.findFirst({
+          where: and(eq(submissions.testId, bookTest.testId), eq(submissions.userId, studentId)),
+        });
+        if (!submission?.submittedAt) {
+          const test = await tx.query.tests.findFirst({ where: eq(tests.id, bookTest.testId) });
+          throw new BadRequestException({
+            message: 'Avval majburiy testni yakunlang',
+            requiredTestSlug: test?.slug,
+            requiredTestName: test?.name,
+          });
+        }
+      }
 
-    if (progress) {
-      await db.update(challengeBookProgress)
-        .set({ lastPageRead: data.endPage })
-        .where(eq(challengeBookProgress.id, progress.id))
-        .returning();
-    } else {
-      await db.insert(challengeBookProgress).values({
+      const [event] = await tx.insert(challengeEvents).values({
         challengeParticipantId: participant.id,
         challengeBookId: bookId,
-        lastPageRead: data.endPage,
-      }).onConflictDoNothing();
-    }
+        startPage,
+        endPage: data.endPage,
+        newWordsCount: data.newWordsCount ?? 0,
+      }).returning();
 
-    return event;
+      if (progress) {
+        await tx.update(challengeBookProgress)
+          .set({ lastPageRead: data.endPage })
+          .where(eq(challengeBookProgress.id, progress.id));
+      } else {
+        await tx.insert(challengeBookProgress).values({
+          challengeParticipantId: participant.id,
+          challengeBookId: bookId,
+          lastPageRead: data.endPage,
+        }).onConflictDoUpdate({
+          target: [challengeBookProgress.challengeParticipantId, challengeBookProgress.challengeBookId],
+          set: { lastPageRead: data.endPage },
+        });
+      }
+
+      return event;
+    });
   }
 
   async history(challengeId: string, studentId: string) {
@@ -197,7 +205,7 @@ export class StudentChallengesService {
       where: inArray(challengeEvents.challengeParticipantId, participantIds),
     });
 
-    const books = metric === 'books' && !bookId
+    const books = metric === 'books'
       ? await db.query.challengeBooks.findMany({ where: eq(challengeBooks.challengeId, challengeId) })
       : [];
 

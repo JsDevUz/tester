@@ -19,6 +19,7 @@ jest.mock('../db', () => {
     },
     insert: jest.fn(),
     update: jest.fn(),
+    transaction: jest.fn(),
   };
   return { db: mockDb };
 });
@@ -26,9 +27,28 @@ jest.mock('../db', () => {
 function mockInsertReturning(value: unknown) {
   const returning = jest.fn().mockResolvedValue([value]);
   const onConflictDoNothing = jest.fn(() => ({ returning }));
-  const values = jest.fn(() => ({ returning, onConflictDoNothing }));
+  const onConflictDoUpdate = jest.fn(() => ({ returning }));
+  const values = jest.fn(() => ({ returning, onConflictDoNothing, onConflictDoUpdate }));
   (db.insert as jest.Mock).mockReturnValue({ values });
   return { values, returning };
+}
+
+/** Mocks db.transaction(cb) to invoke cb with a tx object whose `.select().from().where().for('update')`
+ *  chain resolves to `progressRows`, and whose `.query`/`.insert`/`.update` mirror the outer db mock. */
+function mockTransaction(progressRows: unknown[]) {
+  const forUpdate = jest.fn().mockResolvedValue(progressRows);
+  const where = jest.fn(() => ({ for: forUpdate }));
+  const from = jest.fn(() => ({ where }));
+  const select = jest.fn(() => ({ from }));
+
+  const tx: any = {
+    query: (db as any).query,
+    select,
+    insert: jest.fn(),
+    update: jest.fn(),
+  };
+  (db.transaction as jest.Mock).mockImplementation(async (cb: (tx: any) => Promise<unknown>) => cb(tx));
+  return tx;
 }
 
 describe('StudentChallengesService', () => {
@@ -68,31 +88,47 @@ describe('StudentChallengesService', () => {
     it('blocks a new event when a triggered mandatory test is not yet submitted', async () => {
       (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(participant);
       (db.query.challengeBooks.findFirst as jest.Mock).mockResolvedValue(book);
-      (db.query.challengeBookProgress.findFirst as jest.Mock).mockResolvedValue({ lastPageRead: 50 });
-      (db.query.challengeBookTests.findFirst as jest.Mock).mockResolvedValue({
+      const tx = mockTransaction([{ id: 'progress-1', lastPageRead: 50 }]);
+      (tx.query.challengeBookTests.findFirst as jest.Mock).mockResolvedValue({
         testId: 'test-1', triggerPage: 50, forceNow: false,
       });
-      (db.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', slug: 'ABC123', name: 'Bob 1-bob testi' });
-      (db.query.submissions.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (tx.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', slug: 'ABC123', name: 'Bob 1-bob testi' });
+      (tx.query.submissions.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       await expect(
         service.addEvent('challenge-1', 'book-1', 'student-1', { endPage: 60, newWordsCount: 3 }),
       ).rejects.toBeInstanceOf(BadRequestException);
     });
 
+    it('blocks a new event that jumps past the trigger page in one submission, even though startPage is below it', async () => {
+      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(participant);
+      (db.query.challengeBooks.findFirst as jest.Mock).mockResolvedValue(book);
+      const tx = mockTransaction([]);
+      (tx.query.challengeBookTests.findFirst as jest.Mock).mockResolvedValue({
+        testId: 'test-1', triggerPage: 50, forceNow: false,
+      });
+      (tx.query.tests.findFirst as jest.Mock).mockResolvedValue({ id: 'test-1', slug: 'ABC123', name: 'Bob 1-bob testi' });
+      (tx.query.submissions.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+      await expect(
+        service.addEvent('challenge-1', 'book-1', 'student-1', { endPage: 200, newWordsCount: 3 }),
+      ).rejects.toBeInstanceOf(BadRequestException);
+    });
+
     it('allows a new event when the mandatory test has been submitted', async () => {
       (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(participant);
       (db.query.challengeBooks.findFirst as jest.Mock).mockResolvedValue(book);
-      (db.query.challengeBookProgress.findFirst as jest.Mock).mockResolvedValue({ lastPageRead: 50 });
-      (db.query.challengeBookTests.findFirst as jest.Mock).mockResolvedValue({
+      const tx = mockTransaction([{ id: 'progress-1', lastPageRead: 50 }]);
+      (tx.query.challengeBookTests.findFirst as jest.Mock).mockResolvedValue({
         testId: 'test-1', triggerPage: 50, forceNow: false,
       });
-      (db.query.submissions.findFirst as jest.Mock).mockResolvedValue({ id: 'sub-1', submittedAt: new Date() });
-      mockInsertReturning({ id: 'event-1', startPage: 50, endPage: 60, newWordsCount: 3 });
-      const returning = jest.fn().mockResolvedValue([{ lastPageRead: 60 }]);
-      const where = jest.fn(() => ({ returning }));
-      const set = jest.fn(() => ({ where }));
-      (db.update as jest.Mock).mockReturnValue({ set });
+      (tx.query.submissions.findFirst as jest.Mock).mockResolvedValue({ id: 'sub-1', submittedAt: new Date() });
+      const returning = jest.fn().mockResolvedValue([{ id: 'event-1', startPage: 50, endPage: 60, newWordsCount: 3 }]);
+      const values = jest.fn(() => ({ returning }));
+      (tx.insert as jest.Mock).mockReturnValue({ values });
+      const updateWhere = jest.fn().mockResolvedValue(undefined);
+      const updateSet = jest.fn(() => ({ where: updateWhere }));
+      (tx.update as jest.Mock).mockReturnValue({ set: updateSet });
 
       const result = await service.addEvent('challenge-1', 'book-1', 'student-1', { endPage: 60, newWordsCount: 3 });
 

@@ -129,7 +129,9 @@ export class ChallengesService {
         const testRow = await db.query.tests.findFirst({ where: eq(tests.id, book.test.testId) });
         testName = testRow?.name ?? null;
         const submissionRows = await db.query.submissions.findMany({ where: eq(submissions.testId, book.test.testId) });
-        testSubmittedCount = submissionRows.filter((s) => s.submittedAt !== null).length;
+        testSubmittedCount = new Set(
+          submissionRows.filter((s) => s.submittedAt !== null).map((s) => s.userId),
+        ).size;
       }
 
       return {
@@ -158,7 +160,7 @@ export class ChallengesService {
       where: inArray(challengeEvents.challengeParticipantId, participantIds),
     });
 
-    const books = metric === 'books' && !bookId
+    const books = metric === 'books'
       ? await db.query.challengeBooks.findMany({ where: eq(challengeBooks.challengeId, challengeId) })
       : [];
 
