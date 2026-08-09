@@ -1,0 +1,80 @@
+import { useEffect, useState } from 'react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
+import { toast } from 'sonner';
+import { StudentShell } from '../components/student/StudentShell';
+import { apiListMyChallenges, apiJoinChallenge, type ApiStudentChallenge } from '../api/challenges';
+
+export function ChallengesListPage({ onBack }: { onBack: () => void }) {
+  const [challenges, setChallenges] = useState<ApiStudentChallenge[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [joiningId, setJoiningId] = useState<string | null>(null);
+
+  useEffect(() => {
+    void apiListMyChallenges().then(setChallenges).finally(() => setLoading(false));
+  }, []);
+
+  async function handleJoin(challengeId: string) {
+    setJoiningId(challengeId);
+    try {
+      await apiJoinChallenge(challengeId);
+      setChallenges((prev) => prev.map((c) => (c.id === challengeId ? { ...c, joined: true } : c)));
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Qo'shilib bo'lmadi");
+    } finally {
+      setJoiningId(null);
+    }
+  }
+
+  return (
+    <StudentShell>
+      <div className="p-6">
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
+        >
+          <ArrowLeft size={14} /> Orqaga
+        </button>
+        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Challenge-lar</h1>
+        <p className="mb-6 text-sm text-gray-400">Kurslaringizdagi kitobxonlik challenge-lari</p>
+
+        {loading ? (
+          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+        ) : challenges.length === 0 ? (
+          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
+            <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm">Hozircha challenge yo'q</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {challenges.map((c) => (
+              <div key={c.id} className="rounded-2xl bg-white p-4">
+                {c.imageUrl ? (
+                  <img src={c.imageUrl} alt="" className="mb-3 h-32 w-full rounded-xl object-cover" />
+                ) : (
+                  <div className="mb-3 flex h-32 w-full items-center justify-center rounded-xl bg-gray-100">
+                    <BookOpen size={28} className="text-gray-300" />
+                  </div>
+                )}
+                <p className="mb-0.5 text-xs font-medium text-gray-400">{c.courseTitle}</p>
+                <p className="mb-3 text-base font-bold text-gray-800">{c.name}</p>
+                {c.joined ? (
+                  <span className="inline-block rounded-full bg-green-100 px-3 py-1.5 text-xs font-semibold text-green-700">Qo'shilgansiz</span>
+                ) : (
+                  <button
+                    type="button"
+                    disabled={joiningId === c.id}
+                    onClick={() => void handleJoin(c.id)}
+                    className="w-full rounded-xl bg-gray-900 py-2 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+                  >
+                    Qo'shilish
+                  </button>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    </StudentShell>
+  );
+}

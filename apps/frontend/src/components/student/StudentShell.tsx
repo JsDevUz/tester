@@ -6,6 +6,7 @@ import {
   type ReactNode,
 } from "react";
 import {
+  BookOpen,
   ClipboardList,
   MessageCircle,
   Radio,
@@ -47,16 +48,15 @@ const NAV_ITEMS = [
     icon: MessageCircle,
   },
   {
-    label: "Jonli musobaqalar",
-    shortLabel: "Jonli",
-    path: "/live/join",
-    icon: Radio,
+    label: "Jamm",
+    shortLabel: "Jamm",
+    path: "/challenges",
+    icon: BookOpen,
   },
 ];
 
 function isNavActive(pathname: string, path: string) {
   if (path === "/history") return pathname === "/history" || pathname.startsWith("/history/");
-  if (path === "/live/join") return pathname.startsWith("/live/");
   if (path === "/schools") return pathname === "/schools" || pathname.startsWith("/schools/");
   return pathname === path;
 }

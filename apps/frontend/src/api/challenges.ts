@@ -133,3 +133,24 @@ export async function apiGetChallengeLeaderboard(
   const res = await client.get(`/challenges/${challengeId}/leaderboard`, { params: { metric, bookId } });
   return res.data;
 }
+
+export interface ApiStudentChallenge {
+  id: string;
+  name: string;
+  description: string;
+  imageUrl: string | null;
+  type: string;
+  courseId: string;
+  courseTitle: string;
+  joined: boolean;
+}
+
+export async function apiListMyChallenges(): Promise<ApiStudentChallenge[]> {
+  const res = await client.get('/me/challenges');
+  return res.data;
+}
+
+export async function apiJoinChallenge(challengeId: string): Promise<{ id: string }> {
+  const res = await client.post(`/me/challenges/${challengeId}/join`);
+  return res.data;
+}
