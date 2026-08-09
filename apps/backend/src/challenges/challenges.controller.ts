@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
 import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 import { ChallengesService } from './challenges.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -59,6 +59,16 @@ export class ChallengesController {
   @Get('challenges/:id/stats')
   stats(@Param('id') id: string, @Req() req: any) {
     return this.challengesService.stats(id, req.admin.id);
+  }
+
+  @Get('challenges/:id/leaderboard')
+  leaderboard(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Query('metric') metric: 'overall' | 'books' | 'words' | 'speed' = 'overall',
+    @Query('bookId') bookId?: string,
+  ) {
+    return this.challengesService.leaderboard(id, req.admin.id, metric, bookId);
   }
 
   @Patch('challenges/:id')

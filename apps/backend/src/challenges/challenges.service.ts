@@ -1,10 +1,11 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import {
-  challengeBookProgress, challengeBooks, challengeBookTests, challengeParticipants,
+  challengeBookProgress, challengeBooks, challengeBookTests, challengeEvents, challengeParticipants,
   challenges, courses, submissions, tests,
 } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
+import { computeLeaderboard, type ChallengeLeaderboardMetric } from './challenges.logic';
 
 @Injectable()
 export class ChallengesService {
@@ -141,5 +142,26 @@ export class ChallengesService {
     }));
 
     return { participantCount: participants.length, bookStats };
+  }
+
+  async leaderboard(challengeId: string, adminId: string, metric: ChallengeLeaderboardMetric, bookId?: string) {
+    await this.findOneOwned(challengeId, adminId);
+
+    const participants = await db.query.challengeParticipants.findMany({
+      where: eq(challengeParticipants.challengeId, challengeId),
+      with: { student: true },
+    });
+    if (participants.length === 0) return { entries: [] };
+
+    const participantIds = participants.map((p) => p.id);
+    const events = await db.query.challengeEvents.findMany({
+      where: inArray(challengeEvents.challengeParticipantId, participantIds),
+    });
+
+    const books = metric === 'books' && !bookId
+      ? await db.query.challengeBooks.findMany({ where: eq(challengeBooks.challengeId, challengeId) })
+      : [];
+
+    return computeLeaderboard(participants, events, books, metric, bookId, null);
   }
 }
