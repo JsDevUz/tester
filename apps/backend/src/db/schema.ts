@@ -711,3 +711,98 @@ export const attendanceRecordsRelations = relations(attendanceRecords, ({ one })
   enrollment: one(groupEnrollments, { fields: [attendanceRecords.enrollmentId], references: [groupEnrollments.id] }),
   overriddenByAdmin: one(users, { fields: [attendanceRecords.overriddenByAdminId], references: [users.id] }),
 }));
+
+export const challenges = pgTable('challenges', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  courseId: uuid('course_id').notNull().references(() => courses.id, { onDelete: 'cascade' }),
+  adminId: uuid('admin_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  description: text('description').notNull().default(''),
+  imageUrl: text('image_url'),
+  type: text('type').notNull().default('kitobxonlik'),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const challengeBooks = pgTable('challenge_books', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id').notNull().references(() => challenges.id, { onDelete: 'cascade' }),
+  title: text('title').notNull(),
+  totalPages: integer('total_pages').notNull(),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const challengeBookTests = pgTable('challenge_book_tests', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeBookId: uuid('challenge_book_id').notNull().unique().references(() => challengeBooks.id, { onDelete: 'cascade' }),
+  testId: uuid('test_id').notNull().references(() => tests.id, { onDelete: 'cascade' }),
+  triggerPage: integer('trigger_page'),
+  forceNow: boolean('force_now').notNull().default(false),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const challengeParticipants = pgTable('challenge_participants', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id').notNull().references(() => challenges.id, { onDelete: 'cascade' }),
+  studentId: uuid('student_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  joinedAt: timestamp('joined_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueChallengeStudent: uniqueIndex('challenge_participants_challenge_id_student_id_key').on(table.challengeId, table.studentId),
+}));
+
+export const challengeBookProgress = pgTable('challenge_book_progress', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeParticipantId: uuid('challenge_participant_id').notNull().references(() => challengeParticipants.id, { onDelete: 'cascade' }),
+  challengeBookId: uuid('challenge_book_id').notNull().references(() => challengeBooks.id, { onDelete: 'cascade' }),
+  lastPageRead: integer('last_page_read').notNull().default(0),
+}, (table) => ({
+  uniqueParticipantBook: uniqueIndex('challenge_book_progress_participant_id_book_id_key').on(table.challengeParticipantId, table.challengeBookId),
+}));
+
+export const challengeEvents = pgTable('challenge_events', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeParticipantId: uuid('challenge_participant_id').notNull().references(() => challengeParticipants.id, { onDelete: 'cascade' }),
+  challengeBookId: uuid('challenge_book_id').notNull().references(() => challengeBooks.id, { onDelete: 'cascade' }),
+  startPage: integer('start_page').notNull(),
+  endPage: integer('end_page').notNull(),
+  newWordsCount: integer('new_words_count').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  participantIdIdx: index('challenge_events_participant_id_idx').on(table.challengeParticipantId),
+  bookIdIdx: index('challenge_events_book_id_idx').on(table.challengeBookId),
+}));
+
+export const challengesRelations = relations(challenges, ({ one, many }) => ({
+  course: one(courses, { fields: [challenges.courseId], references: [courses.id] }),
+  books: many(challengeBooks),
+  participants: many(challengeParticipants),
+}));
+
+export const challengeBooksRelations = relations(challengeBooks, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [challengeBooks.challengeId], references: [challenges.id] }),
+  test: one(challengeBookTests, { fields: [challengeBooks.id], references: [challengeBookTests.challengeBookId] }),
+  progress: many(challengeBookProgress),
+  events: many(challengeEvents),
+}));
+
+export const challengeBookTestsRelations = relations(challengeBookTests, ({ one }) => ({
+  book: one(challengeBooks, { fields: [challengeBookTests.challengeBookId], references: [challengeBooks.id] }),
+  test: one(tests, { fields: [challengeBookTests.testId], references: [tests.id] }),
+}));
+
+export const challengeParticipantsRelations = relations(challengeParticipants, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [challengeParticipants.challengeId], references: [challenges.id] }),
+  student: one(users, { fields: [challengeParticipants.studentId], references: [users.id] }),
+  progress: many(challengeBookProgress),
+  events: many(challengeEvents),
+}));
+
+export const challengeBookProgressRelations = relations(challengeBookProgress, ({ one }) => ({
+  participant: one(challengeParticipants, { fields: [challengeBookProgress.challengeParticipantId], references: [challengeParticipants.id] }),
+  book: one(challengeBooks, { fields: [challengeBookProgress.challengeBookId], references: [challengeBooks.id] }),
+}));
+
+export const challengeEventsRelations = relations(challengeEvents, ({ one }) => ({
+  participant: one(challengeParticipants, { fields: [challengeEvents.challengeParticipantId], references: [challengeParticipants.id] }),
+  book: one(challengeBooks, { fields: [challengeEvents.challengeBookId], references: [challengeBooks.id] }),
+}));
