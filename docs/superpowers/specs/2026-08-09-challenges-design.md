@@ -6,7 +6,7 @@ Sana: 2026-08-09
 
 Kurslar ichida ustoz "Challenge" (hozircha faqat kitobxonlik turi) yarata oladigan bo'lim. Kursning barcha a'zolari (guruhlaridan qat'i nazar) challenge'ni ko'rib, unga qo'shiladi. Qo'shilgan o'quvchi challenge ichidagi kitoblardan birini tanlab, o'qish progressini ("event") qo'shadi: boshlagan/tugagan bet, yangi lug'at soni. Har bir kitobga ustoz ixtiyoriy test biriktirib, muayyan betga yetganda (yoki darhol) uni majburiy qilishi mumkin. Challenge ichida bir nechta mezon bo'yicha leaderboard bo'ladi.
 
-Shu bilan birga: JWT token amal qilish muddati 7 kundan 365 kunga oshiriladi (bajarildi — `apps/backend/src/auth/auth.module.ts`), va student navigatsiyasida "Jonli musobaqalar" o'rniga "Jamm" (Challenges) bo'limi chiqadi, "Jonli musobaqalar" esa "Amaliyotlar" sahifasi header'iga kichik tugma sifatida ko'chiriladi (ham web, ham mobile).
+Shu bilan birga: JWT token amal qilish muddati 7 kundan 365 kunga oshiriladi (bajarildi — `apps/backend/src/auth/auth.module.ts`), va student navigatsiyasida "Jonli musobaqalar" o'rniga "Jamm" bo'limi chiqadi (ham web, ham mobile). "Jonli musobaqalar" "Amaliyotlar" sahifasiga ko'chirilmaydi — buning o'rniga "Jamm" bitta hub-ekranga aylanadi: unda 3 ta karta ko'rsatiladi — **Challenge-lar** (active, kitobxonlik challenge-lar ro'yxatiga olib boradi), **Jonli Musobaqalar** (active, `/live/join`ga olib boradi), **Ovozli suhbat** (inactive, "Tez orada" belgisi bilan, bosilmaydi).
 
 ## 1. Umumiy tuzilma va qoidalar
 
@@ -125,8 +125,8 @@ Barcha yozish amallarida challenge/kitob ustozning o'z kursiga tegishli ekanligi
 
 ### Navigatsiya o'zgarishi (ikkala platforma)
 
-- **Web** (`StudentShell.tsx`): `NAV_ITEMS` da "Jonli musobaqalar" (`/live/join`, Radio) olib tashlanadi, o'rniga **"Jamm"** qo'shiladi (`/challenges`, `BookOpen` icon) — yangi `ChallengesListPage.tsx`: foydalanuvchining barcha kurslaridagi challenge'lari, qo'shilmaganlarga "Qo'shilish" tugmasi. `/history` (Amaliyotlar) sahifasi header'ining yuqori o'ng burchagiga kichik "Jonli musoba" tugmasi qo'shiladi (→ `/live/join`).
-- **Mobile** (`RootNavigator.tsx`): bottom-tab'dagi `Live` (`LiveScreen`, Radio, "Jonli") o'rniga **`Jamm`** tab qo'yiladi (`BookOpen` icon, yangi `ChallengesScreen.tsx`). `LiveScreen` endi tab emas, `Stack.Screen` sifatida qo'shiladi (`RootStackParamList`ga `Live: undefined` qo'shiladi). `HistoryScreen.tsx` header'iga o'ng tomonda "Jonli musoba" tugmasi (Radio icon) qo'shiladi — bosilsa `navigation.navigate('Live')`.
+- **Web** (`StudentShell.tsx`): `NAV_ITEMS` da "Jonli musobaqalar" (`/live/join`, Radio) olib tashlanadi, o'rniga **"Jamm"** qo'shiladi (`/challenges`, `BookOpen` icon) — yangi `ChallengesHubPage.tsx`: 3 ta karta — **Challenge-lar** (active, bosilsa shu sahifa ichida ro'yxat ko'rinadi: foydalanuvchining barcha kurslaridagi challenge'lari, qo'shilmaganlarga "Qo'shilish" tugmasi), **Jonli Musobaqalar** (active, bosilsa `/live/join`ga navigate qiladi), **Ovozli suhbat** (disabled/greyed karta, "Tez orada" badge, onClick yo'q). `/history` (Amaliyotlar) sahifasiga hech qanday o'zgarish kiritilmaydi.
+- **Mobile** (`RootNavigator.tsx`): bottom-tab'dagi `Live` (`LiveScreen`, Radio, "Jonli") o'rniga **`Jamm`** tab qo'yiladi (`BookOpen` icon, yangi `ChallengesScreen.tsx` — endi hub ekran: 3 karta, xuddi web bilan bir xil mantiq). `LiveScreen` endi tab emas, `Stack.Screen` sifatida qo'shiladi (`RootStackParamList`ga `Live: undefined` qo'shiladi, Jamm hub ichidagi "Jonli Musobaqalar" kartasi bosilsa `navigation.navigate('Live')`). `HistoryScreen.tsx`ga hech qanday o'zgarish kiritilmaydi.
 
 ### Challenge funksionalligi
 

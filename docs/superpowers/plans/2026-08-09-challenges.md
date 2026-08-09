@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Add a "Challenges" feature to courses — teachers create reading ("kitobxonlik") challenges with books, students in the course join and log reading progress, optional tests gate progress at chosen pages, and a leaderboard ranks students by multiple metrics. Also restructure student navigation on web and mobile: replace "Jonli musobaqalar" with "Jamm" (Challenges), moving live-competition access into a header button on the Amaliyotlar/History screen.
+**Goal:** Add a "Challenges" feature to courses — teachers create reading ("kitobxonlik") challenges with books, students in the course join and log reading progress, optional tests gate progress at chosen pages, and a leaderboard ranks students by multiple metrics. Also restructure student navigation on web and mobile: replace "Jonli musobaqalar" with a "Jamm" hub tab/nav-item that presents 3 entries — Challenge-lar (active), Jonli Musobaqalar (active, opens the existing live-competitions flow), and Ovozli suhbat (inactive, "Tez orada"). The Amaliyotlar/History screen is not touched.
 
-**Architecture:** New backend NestJS module `challenges` with 6 new Drizzle tables, two controllers (teacher-facing under `/courses/:courseId/challenges` and `/challenges/...`, student-facing under `/me/challenges/...`). New frontend web page (`CourseChallengesPage`) wired into the existing `CourseSidePanel`/`CoursesPage` view-state pattern, plus a new top-level `/challenges` student page aggregating challenges across all the student's courses. New mobile `ChallengesScreen` replacing the `Live` tab, with `LiveScreen` moved to the stack navigator and a header button on `HistoryScreen` to reach it.
+**Architecture:** New backend NestJS module `challenges` with 6 new Drizzle tables, two controllers (teacher-facing under `/courses/:courseId/challenges` and `/challenges/...`, student-facing under `/me/challenges/...`). New frontend web page (`CourseChallengesPage`) wired into the existing `CourseSidePanel`/`CoursesPage` view-state pattern, plus a new top-level `/challenges` student page (`ChallengesHubPage`, a 3-card hub whose "Challenge-lar" card swaps in `ChallengesListPage` in place) aggregating challenges across all the student's courses. New mobile `ChallengesScreen` replacing the `Live` tab — itself a 3-card hub mirroring the web version — with `LiveScreen` moved to the stack navigator, reachable via the hub's "Jonli Musobaqalar" card.
 
 **Tech Stack:** NestJS + Drizzle ORM + PostgreSQL (backend), React + Zustand + react-router (frontend web), React Native + React Navigation (mobile). Existing patterns: `class-validator` DTOs, `JwtAuthGuard`+`RolesGuard`+`@Roles(...)`, `req.admin.id` / `req.user.id`, Jest with `jest.mock('../db', ...)`.
 
@@ -1875,24 +1875,21 @@ git commit -m "feat(frontend): add teacher Challenges tab with book and test man
 
 ---
 
-## Task 9: Frontend web — student navigation restructure ("Jamm" + Amaliyotlar header button)
+## Task 9: Frontend web — student navigation restructure ("Jamm" hub: Challenges / Jonli Musobaqalar / Ovozli suhbat)
 
 **Files:**
 - Modify: `apps/frontend/src/components/student/StudentShell.tsx`
-- Create: `apps/frontend/src/pages/ChallengesListPage.tsx`
-- Modify: `apps/frontend/src/App.tsx` (add `/challenges` route)
-- Find and modify the Amaliyotlar/`/history` page component to add the header button (locate it first — see Step 1)
+- Create: `apps/frontend/src/pages/ChallengesHubPage.tsx` (hub screen with 3 cards)
+- Create: `apps/frontend/src/pages/ChallengesListPage.tsx` (the actual challenge list, rendered when the hub's "Challenge-lar" card is active)
+- Modify: `apps/frontend/src/App.tsx` (add `/challenges` route → `ChallengesHubPage`)
 
 **Interfaces:**
 - Consumes: `useChallengeStore` is teacher-oriented (courseId-scoped); the student list needs a new store slice. Add `students: ApiStudentChallenge[]` state directly inside `ChallengesListPage` via local `useState` + a new API function (no store needed — this is a single simple list view, consistent with how `SchoolsListPage.tsx` likely works; check it briefly for the pattern before writing).
 - Produces: `ApiStudentChallenge` type and `apiListMyChallenges`/`apiJoinChallenge` functions added to `apps/frontend/src/api/challenges.ts`.
 
-- [ ] **Step 1: Locate the Amaliyotlar (`/history`) page component**
+**Design note:** "Jonli musobaqalar" stays reachable only from inside the "Jamm" hub — it is NOT moved to the Amaliyotlar/`/history` page. Do not touch the Amaliyotlar page in this task.
 
-Run: `grep -n "path: '/history'" apps/frontend/src/App.tsx`
-Read whatever component that route renders — this is where the "Jonli musoba" header button goes.
-
-- [ ] **Step 2: Add student-facing API functions to `api/challenges.ts`**
+- [ ] **Step 1: Add student-facing API functions to `api/challenges.ts`**
 
 Append to `apps/frontend/src/api/challenges.ts`:
 
@@ -1922,7 +1919,7 @@ export async function apiJoinChallenge(challengeId: string): Promise<{ id: strin
 - [ ] **Step 3: Update `StudentShell.tsx` navigation**
 
 In `apps/frontend/src/components/student/StudentShell.tsx`:
-- Replace the `Radio` import with `BookOpen` (keep `Radio` imported too if the header button in Task's Step 1 target needs it — check before removing).
+- Replace the `Radio` import with `BookOpen` (Radio is no longer used in this file — it moves into `ChallengesHubPage.tsx`).
 - In `NAV_ITEMS`, replace:
 
 ```typescript
@@ -1947,35 +1944,83 @@ with:
 
 - Remove the `isNavActive` special case for `/live/join` (line 59: `if (path === "/live/join") return pathname.startsWith("/live/");`) since it's no longer in `NAV_ITEMS`; the default `pathname === path` branch already handles `/challenges` correctly (no `startsWith` needed since there's no `/challenges/:id` sub-route planned in this task — if `ChallengesListPage` later needs nested routes, this can be revisited, but YAGNI for now).
 
-- [ ] **Step 4: Add the "Jonli musoba" header button to the Amaliyotlar page**
+- [ ] **Step 4: Create `ChallengesHubPage.tsx`**
 
-In the component found in Step 1, add a button in its header area that navigates to `/live/join` (use `useNavigate` from `react-router-dom`, matching existing usage elsewhere in that file). Use the `Radio` icon from `lucide-react`. Example shape (adapt to the actual header JSX found in Step 1):
+This is the screen `/challenges` renders. It shows 3 cards and switches between a "hub" view and the "Challenges" list view in place (no route change — clicking the "Challenge-lar" card swaps the page body to the list from Step 5; clicking "Jonli Musobaqalar" navigates to `/live/join`; "Ovozli suhbat" is a disabled card).
 
 ```tsx
-<button
-  type="button"
-  onClick={() => navigate('/live/join')}
-  className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-200"
->
-  <Radio size={14} /> Jonli musoba
-</button>
-```
+// apps/frontend/src/pages/ChallengesHubPage.tsx
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { BookOpen, Mic, Radio } from 'lucide-react';
+import { StudentShell } from '../components/student/StudentShell';
+import { ChallengesListPage } from './ChallengesListPage';
 
-Place it top-right of the existing header row (the row containing the page title), matching the alignment already used elsewhere (e.g. `flex items-center justify-between`).
+type HubView = 'hub' | 'challenges';
+
+export function ChallengesHubPage() {
+  const [view, setView] = useState<HubView>('hub');
+  const navigate = useNavigate();
+
+  if (view === 'challenges') {
+    return <ChallengesListPage onBack={() => setView('hub')} />;
+  }
+
+  return (
+    <StudentShell>
+      <div className="p-6">
+        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Jamm</h1>
+        <p className="mb-6 text-sm text-gray-400">Kurs ichidagi faolliklar</p>
+
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+          <button
+            type="button"
+            onClick={() => setView('challenges')}
+            className="rounded-2xl bg-white p-5 text-left transition-colors hover:bg-gray-50"
+          >
+            <BookOpen size={24} className="mb-3 text-gray-700" />
+            <p className="text-sm font-bold text-gray-900">Challenge-lar</p>
+            <p className="mt-1 text-xs text-gray-400">Kitobxonlik challenge-lari</p>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate('/live/join')}
+            className="rounded-2xl bg-white p-5 text-left transition-colors hover:bg-gray-50"
+          >
+            <Radio size={24} className="mb-3 text-gray-700" />
+            <p className="text-sm font-bold text-gray-900">Jonli Musobaqalar</p>
+            <p className="mt-1 text-xs text-gray-400">Real vaqtda musobaqa</p>
+          </button>
+
+          <div className="cursor-not-allowed rounded-2xl bg-white p-5 text-left opacity-50">
+            <div className="mb-3 flex items-center justify-between">
+              <Mic size={24} className="text-gray-700" />
+              <span className="rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-500">Tez orada</span>
+            </div>
+            <p className="text-sm font-bold text-gray-900">Ovozli suhbat</p>
+            <p className="mt-1 text-xs text-gray-400">Tez orada ishga tushadi</p>
+          </div>
+        </div>
+      </div>
+    </StudentShell>
+  );
+}
+```
 
 - [ ] **Step 5: Create `ChallengesListPage.tsx`**
 
-First check `apps/frontend/src/pages/SchoolsListPage.tsx` for the list-page layout convention (header, grid/list of cards, join button per unjoined item) to match its visual style, then implement:
+First check `apps/frontend/src/pages/SchoolsListPage.tsx` for the list-page layout convention (header, grid/list of cards, join button per unjoined item) to match its visual style, then implement. This component takes an `onBack` prop (a simple back arrow/button at the top that calls it, returning to the hub view) since it now renders inside `ChallengesHubPage` rather than owning its own route:
 
 ```tsx
 // apps/frontend/src/pages/ChallengesListPage.tsx
 import { useEffect, useState } from 'react';
-import { BookOpen } from 'lucide-react';
+import { ArrowLeft, BookOpen } from 'lucide-react';
 import { toast } from 'sonner';
 import { StudentShell } from '../components/student/StudentShell';
 import { apiListMyChallenges, apiJoinChallenge, type ApiStudentChallenge } from '../api/challenges';
 
-export function ChallengesListPage() {
+export function ChallengesListPage({ onBack }: { onBack: () => void }) {
   const [challenges, setChallenges] = useState<ApiStudentChallenge[]>([]);
   const [loading, setLoading] = useState(true);
   const [joiningId, setJoiningId] = useState<string | null>(null);
@@ -1999,7 +2044,14 @@ export function ChallengesListPage() {
   return (
     <StudentShell>
       <div className="p-6">
-        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Jamm</h1>
+        <button
+          type="button"
+          onClick={onBack}
+          className="mb-4 flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
+        >
+          <ArrowLeft size={14} /> Orqaga
+        </button>
+        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Challenge-lar</h1>
         <p className="mb-6 text-sm text-gray-400">Kurslaringizdagi kitobxonlik challenge-lari</p>
 
         {loading ? (
@@ -2044,22 +2096,22 @@ export function ChallengesListPage() {
 }
 ```
 
-Adjust the wrapper (`StudentShell` usage) to match how other student pages in `App.tsx` actually wrap their content — check `SchoolsListPage.tsx`'s export to confirm whether it self-wraps in `StudentShell` or whether the router does it, and match that exactly.
+Adjust the wrapper (`StudentShell` usage) to match how other student pages in `App.tsx` actually wrap their content — check `SchoolsListPage.tsx`'s export to confirm whether it self-wraps in `StudentShell` or whether the router does it, and match that exactly. Since `ChallengesHubPage` already wraps its own `StudentShell`-rendered hub view, make sure `ChallengesListPage`'s `StudentShell` usage doesn't double-wrap (only one of the two components should own the outer `StudentShell` if `StudentShell` is meant to render once per page — check `StudentShell`'s implementation for whether nesting it is safe, and remove the inner one from whichever component would double-wrap).
 
 - [ ] **Step 6: Register the route in `App.tsx`**
 
-Add `{ path: '/challenges', element: <ChallengesListPage /> },` next to the other student routes (near `/live/join`), and import `ChallengesListPage`.
+Add `{ path: '/challenges', element: <ChallengesHubPage /> },` next to the other student routes (near `/live/join`), and import `ChallengesHubPage`. `ChallengesListPage` does NOT get its own route — it only renders inside `ChallengesHubPage`.
 
 - [ ] **Step 7: Manually verify in the browser**
 
 Run: `cd apps/frontend && npm run dev`
-Log in as a student, confirm the drawer/nav shows "Jamm" instead of "Jonli musobaqalar", clicking it lists challenges from all enrolled courses with working "Qo'shilish" buttons, and the Amaliyotlar page now has a "Jonli musoba" button that opens `/live/join`.
+Log in as a student, confirm the drawer/nav shows "Jamm" instead of "Jonli musobaqalar". Clicking "Jamm" shows 3 cards: "Challenge-lar" (clicking it swaps to the challenge list with a working "Orqaga" button and "Qo'shilish" buttons), "Jonli Musobaqalar" (clicking it navigates to `/live/join`), and "Ovozli suhbat" (greyed out, "Tez orada" badge, not clickable). Confirm the Amaliyotlar (`/history`) page is unchanged.
 
 - [ ] **Step 8: Commit**
 
 ```bash
-git add apps/frontend/src/components/student/StudentShell.tsx apps/frontend/src/pages/ChallengesListPage.tsx apps/frontend/src/App.tsx apps/frontend/src/api/challenges.ts
-git commit -m "feat(frontend): replace Jonli musobaqalar nav with Jamm challenges list"
+git add apps/frontend/src/components/student/StudentShell.tsx apps/frontend/src/pages/ChallengesHubPage.tsx apps/frontend/src/pages/ChallengesListPage.tsx apps/frontend/src/App.tsx apps/frontend/src/api/challenges.ts
+git commit -m "feat(frontend): replace Jonli musobaqalar nav with Jamm hub (challenges/live/voice)"
 ```
 
 ---
@@ -2448,13 +2500,14 @@ git commit -m "feat(mobile): add challenges API client and types"
 
 ---
 
-## Task 12: Mobile — navigation restructure (Jamm tab, Live moved to stack, History header button)
+## Task 12: Mobile — navigation restructure (Jamm hub tab, Live moved to stack)
 
 **Files:**
 - Modify: `apps/mobile/src/navigation/RootNavigator.tsx`
 - Modify: `apps/mobile/src/navigation/types.ts`
-- Modify: `apps/mobile/src/screens/HistoryScreen.tsx`
-- Create: `apps/mobile/src/screens/ChallengesScreen.tsx` (list screen, see Task 13 for full implementation — this task creates a minimal placeholder wired into navigation, Task 13 fills it in, to keep this task's diff focused on navigation)
+- Create: `apps/mobile/src/screens/ChallengesScreen.tsx` (hub screen, see Task 13 for full implementation — this task creates a minimal placeholder wired into navigation, Task 13 fills it in, to keep this task's diff focused on navigation)
+
+**Design note:** "Jonli musobaqalar" is reachable only from inside the "Jamm" tab's hub (Task 13) — do NOT add a header button to `HistoryScreen.tsx`; that screen is untouched by this plan.
 
 **Interfaces:**
 - Consumes: existing `LiveScreen`, `HistoryScreen` components.
@@ -2511,7 +2564,7 @@ export function ChallengesScreen() {
 - [ ] **Step 3: Update `RootNavigator.tsx`**
 
 - Add import: `import {ChallengesScreen} from '../screens/ChallengesScreen';`
-- Change the `icons` map: replace `Live: Radio,` with `Jamm: BookOpen,` and add `BookOpen` to the lucide import list (keep `Radio` imported — it's still used for the `Live` stack screen's header icon if needed, and for the `HistoryScreen` button in Task's Step 5... actually `Radio` is not directly rendered in `RootNavigator.tsx` itself beyond the tab icon map, so it can be removed from `RootNavigator.tsx`'s imports if unused elsewhere in that file — check with `grep -n "Radio" apps/mobile/src/navigation/RootNavigator.tsx` after the edit).
+- Change the `icons` map: replace `Live: Radio,` with `Jamm: BookOpen,` and add `BookOpen` to the lucide import list. `Radio` is no longer rendered anywhere in `RootNavigator.tsx` itself once this change lands (it moves into `ChallengesScreen.tsx`'s hub view, Task 13) — remove it from this file's imports if it becomes unused; confirm with `grep -n "Radio" apps/mobile/src/navigation/RootNavigator.tsx` after the edit.
 - Change the tab screen: replace `<Tab.Screen name="Live" component={LiveScreen} options={{title: 'Jonli'}} />` with `<Tab.Screen name="Jamm" component={ChallengesScreen} options={{title: 'Jamm'}} />`.
 - Remove the `import {LiveScreen} from '../screens/LiveScreen';` line from the top and re-add it further down since it's now used as a Stack screen (or just leave the import in place — it's still imported, only its usage site changes).
 - Add a new `Stack.Screen` inside the `<>...</>` authenticated block (alongside `Classroom`, `Chat`, etc.):
@@ -2524,39 +2577,21 @@ export function ChallengesScreen() {
 />
 ```
 
-- [ ] **Step 4: Add the header button to `HistoryScreen.tsx`**
-
-In `apps/mobile/src/screens/HistoryScreen.tsx`, import `Radio` from `lucide-react-native` (add to the existing import on line 4) and `Pressable` is already imported. Modify the header `View` (lines 72-73) to add a button:
-
-```tsx
-<View style={{paddingTop: insets.top + 20}} className="flex-row items-center justify-between bg-white px-5 pb-4 dark:bg-dark-canvas">
-  <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Amaliyotlar</Text>
-  <Pressable
-    onPress={() => navigation.navigate('Live')}
-    className="flex-row items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 dark:bg-dark-surface">
-    <Radio size={14} color={isDark ? '#a4a7b2' : '#64748b'} />
-    <Text className="text-xs font-semibold text-gray-600 dark:text-dark-ink">Jonli musoba</Text>
-  </Pressable>
-</View>
-```
-
-This replaces the original `<View style={{paddingTop: insets.top + 20}} className="bg-white px-5 pb-4 dark:bg-dark-canvas">` wrapper — keep the existing `<Text>` title element and the input row below unchanged, just adjust the wrapping `View`'s className to `flex-row items-center justify-between` and add the new `Pressable` as a sibling after the title `Text`. Note `HistoryScreen`'s `navigation` prop is typed as `NativeStackNavigationProp<RootStackParamList>` already (line 29), so `navigation.navigate('Live')` type-checks once Step 1's `RootStackParamList.Live: undefined` is in place.
-
-- [ ] **Step 5: Verify TypeScript compiles**
+- [ ] **Step 4: Verify TypeScript compiles**
 
 Run: `cd apps/mobile && npx tsc --noEmit`
 Expected: no errors.
 
-- [ ] **Step 6: Manually verify on simulator/device**
+- [ ] **Step 5: Manually verify on simulator/device**
 
 Run: `cd apps/mobile && npm run ios` (or `npm run android`)
-Confirm the bottom tab bar shows "Jamm" instead of "Jonli", tapping it shows the placeholder screen, and the Amaliyotlar tab has a working "Jonli musoba" button that opens the live-competitions screen.
+Confirm the bottom tab bar shows "Jamm" instead of "Jonli", and tapping it shows the placeholder screen. Confirm `HistoryScreen`/Amaliyotlar is unchanged.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
-git add apps/mobile/src/navigation apps/mobile/src/screens/ChallengesScreen.tsx apps/mobile/src/screens/HistoryScreen.tsx
-git commit -m "feat(mobile): replace Jonli tab with Jamm, move Live to stack with header button"
+git add apps/mobile/src/navigation apps/mobile/src/screens/ChallengesScreen.tsx
+git commit -m "feat(mobile): replace Jonli tab with Jamm, move Live to stack"
 ```
 
 ---
@@ -2579,12 +2614,14 @@ In `apps/mobile/src/navigation/types.ts`, add: `ChallengeDetail: {challengeId: s
 
 - [ ] **Step 2: Implement `ChallengesScreen.tsx`**
 
+This is now a hub screen with 3 cards, matching the web `ChallengesHubPage` design: **Challenge-lar** (active — switches this same screen to an inline challenge list), **Jonli Musobaqalar** (active — `navigation.navigate('Live')`), **Ovozli suhbat** (inactive, "Tez orada" badge, not pressable). The `view` state toggles between `'hub'` and `'challenges'` in place, the same pattern as the web version — no new route/screen for the list.
+
 ```tsx
 // apps/mobile/src/screens/ChallengesScreen.tsx
 import React, {useCallback, useEffect, useState} from 'react';
 import {FlatList, Image, Pressable, Text, View} from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {BookOpen} from 'lucide-react-native';
+import {BookOpen, Mic, Radio} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import type {RootStackParamList} from '../navigation/types';
 import type {ApiStudentChallenge} from '../types/api';
@@ -2592,10 +2629,73 @@ import {apiListMyChallenges, apiJoinChallenge} from '../api/challenges';
 import {Empty, Loading, Screen} from '../components/Ui';
 import {getApiErrorMessage} from '../lib/errors';
 
+type HubView = 'hub' | 'challenges';
+
 export function ChallengesScreen({
   navigation,
 }: {
   navigation: NativeStackNavigationProp<RootStackParamList>;
+}) {
+  const [view, setView] = useState<HubView>('hub');
+  const insets = useSafeAreaInsets();
+
+  if (view === 'challenges') {
+    return <ChallengesListView navigation={navigation} onBack={() => setView('hub')} />;
+  }
+
+  return (
+    <Screen>
+      <View style={{paddingTop: insets.top + 20}} className="bg-white px-5 pb-4 dark:bg-dark-canvas">
+        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Jamm</Text>
+      </View>
+      <View className="flex-1 gap-3 p-4">
+        <Pressable
+          onPress={() => setView('challenges')}
+          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
+            <BookOpen size={22} color="#334155" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Challenge-lar</Text>
+            <Text className="text-xs text-gray-400">Kitobxonlik challenge-lari</Text>
+          </View>
+        </Pressable>
+
+        <Pressable
+          onPress={() => navigation.navigate('Live')}
+          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
+            <Radio size={22} color="#334155" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Jonli Musobaqalar</Text>
+            <Text className="text-xs text-gray-400">Real vaqtda musobaqa</Text>
+          </View>
+        </Pressable>
+
+        <View className="flex-row items-center gap-3 rounded-2xl bg-white p-4 opacity-50 dark:bg-dark-surface">
+          <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
+            <Mic size={22} color="#334155" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Ovozli suhbat</Text>
+            <Text className="text-xs text-gray-400">Tez orada ishga tushadi</Text>
+          </View>
+          <View className="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-dark-canvas">
+            <Text className="text-[10px] font-semibold text-gray-500">Tez orada</Text>
+          </View>
+        </View>
+      </View>
+    </Screen>
+  );
+}
+
+function ChallengesListView({
+  navigation,
+  onBack,
+}: {
+  navigation: NativeStackNavigationProp<RootStackParamList>;
+  onBack: () => void;
 }) {
   const [challenges, setChallenges] = useState<ApiStudentChallenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -2636,8 +2736,13 @@ export function ChallengesScreen({
 
   return (
     <Screen>
-      <View style={{paddingTop: insets.top + 20}} className="bg-white px-5 pb-4 dark:bg-dark-canvas">
-        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Jamm</Text>
+      <View style={{paddingTop: insets.top + 20}} className="flex-row items-center gap-2 bg-white px-5 pb-4 dark:bg-dark-canvas">
+        <Pressable onPress={onBack} hitSlop={8}>
+          <Text className="text-sm font-semibold text-gray-500">{'< Orqaga'}</Text>
+        </Pressable>
+      </View>
+      <View className="bg-white px-5 pb-4 dark:bg-dark-canvas">
+        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Challenge-lar</Text>
       </View>
       {challenges.length === 0 ? (
         <Empty message="Hozircha challenge yo'q" />
@@ -2906,11 +3011,11 @@ Expected: no errors in any of the three projects.
 
 With backend running locally and a migrated DB (Task 2):
 1. As a teacher (web): create a course, add a challenge with a book (`totalPages: 100`), attach an existing test with `triggerPage: 20`.
-2. As a student (web) enrolled in that course: open "Jamm", see the challenge, join it, add an event to page 25 — confirm the mandatory test blocks submission and redirects to `/t/<slug>`.
+2. As a student (web) enrolled in that course: open "Jamm", confirm the hub shows 3 cards (Challenge-lar, Jonli Musobaqalar active; Ovozli suhbat greyed out with "Tez orada" and not clickable). Tap "Challenge-lar", see the challenge, join it, add an event to page 25 — confirm the mandatory test blocks submission and redirects to `/t/<slug>`.
 3. Complete the test, return, add the same event again — confirm it now succeeds and the book's progress bar reflects page 25/100.
 4. Check the leaderboard tab shows the student under all 4 metrics.
-5. Repeat steps 2-4 on mobile (Jamm tab → challenge detail → event → mandatory test → `TestTaker` screen → leaderboard).
-6. Confirm the Amaliyotlar/History screen's "Jonli musoba" button opens the live-competitions screen on both platforms.
+5. From the "Jamm" hub, tap "Jonli Musobaqalar" and confirm it opens the existing live-competitions flow (`/live/join`).
+6. Repeat steps 2-5 on mobile (Jamm tab → hub cards → Challenge-lar → challenge detail → event → mandatory test → `TestTaker` screen → leaderboard; separately, Jamm tab → Jonli Musobaqalar card → live screen). Confirm the Amaliyotlar/History screen is unchanged on both platforms.
 
 - [ ] **Step 4: Final commit (if any fixes were needed during verification)**
 
