@@ -1,6 +1,9 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { challengeBooks, challengeBookTests, challenges, courses, tests } from '../db/schema';
+import {
+  challengeBookProgress, challengeBooks, challengeBookTests, challengeParticipants,
+  challenges, courses, submissions, tests,
+} from '../db/schema';
 import { and, eq } from 'drizzle-orm';
 
 @Injectable()
@@ -108,5 +111,35 @@ export class ChallengesService {
   async removeBookTest(bookId: string, adminId: string) {
     await this.assertBookOwnership(bookId, adminId);
     await db.delete(challengeBookTests).where(eq(challengeBookTests.challengeBookId, bookId));
+  }
+
+  async stats(challengeId: string, adminId: string) {
+    const challenge = await this.findOneOwned(challengeId, adminId);
+
+    const participants = await db.query.challengeParticipants.findMany({ where: eq(challengeParticipants.challengeId, challengeId) });
+
+    const bookStats = await Promise.all(challenge.books.map(async (book) => {
+      const progressRows = await db.query.challengeBookProgress.findMany({ where: eq(challengeBookProgress.challengeBookId, book.id) });
+      const completedCount = progressRows.filter((p) => p.lastPageRead >= book.totalPages).length;
+
+      let testSubmittedCount: number | null = null;
+      let testName: string | null = null;
+      if (book.test) {
+        const testRow = await db.query.tests.findFirst({ where: eq(tests.id, book.test.testId) });
+        testName = testRow?.name ?? null;
+        const submissionRows = await db.query.submissions.findMany({ where: eq(submissions.testId, book.test.testId) });
+        testSubmittedCount = submissionRows.filter((s) => s.submittedAt !== null).length;
+      }
+
+      return {
+        bookId: book.id,
+        title: book.title,
+        testName,
+        completedCount,
+        testSubmittedCount,
+      };
+    }));
+
+    return { participantCount: participants.length, bookStats };
   }
 }

@@ -56,6 +56,11 @@ export class ChallengesController {
     return this.challengesService.findOneOwned(id, req.admin.id);
   }
 
+  @Get('challenges/:id/stats')
+  stats(@Param('id') id: string, @Req() req: any) {
+    return this.challengesService.stats(id, req.admin.id);
+  }
+
   @Patch('challenges/:id')
   update(@Param('id') id: string, @Req() req: any, @Body() dto: UpdateChallengeDto) {
     return this.challengesService.update(id, req.admin.id, dto);

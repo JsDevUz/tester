@@ -8,12 +8,14 @@ jest.mock('../db', () => {
       challenges: { findFirst: jest.fn() },
       groups: { findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn() },
-      challengeParticipants: { findFirst: jest.fn() },
-      challengeBooks: { findFirst: jest.fn() },
+      challengeParticipants: { findFirst: jest.fn(), findMany: jest.fn() },
+      challengeBooks: { findFirst: jest.fn(), findMany: jest.fn() },
       challengeBookTests: { findFirst: jest.fn() },
       challengeBookProgress: { findFirst: jest.fn() },
+      challengeEvents: { findMany: jest.fn() },
       submissions: { findFirst: jest.fn() },
       tests: { findFirst: jest.fn() },
+      users: { findMany: jest.fn() },
     },
     insert: jest.fn(),
     update: jest.fn(),
@@ -95,6 +97,30 @@ describe('StudentChallengesService', () => {
       const result = await service.addEvent('challenge-1', 'book-1', 'student-1', { endPage: 60, newWordsCount: 3 });
 
       expect(result).toEqual(expect.objectContaining({ id: 'event-1', startPage: 50, endPage: 60 }));
+    });
+  });
+
+  describe('leaderboard', () => {
+    it('ranks students by total pages read for the "overall" metric', async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-1' } },
+        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-2' } },
+      ]);
+      (db.query.challengeParticipants.findMany as jest.Mock).mockResolvedValue([
+        { id: 'participant-1', studentId: 'student-1', student: { id: 'student-1', displayName: 'Aziz', displayAvatarUrl: null } },
+        { id: 'participant-2', studentId: 'student-2', student: { id: 'student-2', displayName: 'Vali', displayAvatarUrl: null } },
+      ]);
+      (db.query.challengeEvents.findMany as jest.Mock).mockResolvedValue([
+        { challengeParticipantId: 'participant-1', startPage: 0, endPage: 30, newWordsCount: 2, challengeBookId: 'book-1', createdAt: new Date('2026-08-01') },
+        { challengeParticipantId: 'participant-2', startPage: 0, endPage: 10, newWordsCount: 5, challengeBookId: 'book-1', createdAt: new Date('2026-08-01') },
+      ]);
+
+      const result = await service.leaderboard('challenge-1', 'student-1', 'overall');
+
+      expect(result.entries[0]).toEqual(expect.objectContaining({ studentId: 'student-1', value: 30, rank: 1 }));
+      expect(result.entries[1]).toEqual(expect.objectContaining({ studentId: 'student-2', value: 10, rank: 2 }));
     });
   });
 });

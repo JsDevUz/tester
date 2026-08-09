@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { IsInt, Min } from 'class-validator';
 import { StudentChallengesService } from './student-challenges.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -39,5 +39,15 @@ export class StudentChallengesController {
   @Get(':id/history')
   history(@Param('id') id: string, @Req() req: any) {
     return this.studentChallengesService.history(id, req.user.id);
+  }
+
+  @Get(':id/leaderboard')
+  leaderboard(
+    @Param('id') id: string,
+    @Req() req: any,
+    @Query('metric') metric: 'overall' | 'books' | 'words' | 'speed' = 'overall',
+    @Query('bookId') bookId?: string,
+  ) {
+    return this.studentChallengesService.leaderboard(id, req.user.id, metric, bookId);
   }
 }
