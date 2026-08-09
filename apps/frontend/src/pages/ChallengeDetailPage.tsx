@@ -94,16 +94,6 @@ export function ChallengeDetailPage() {
                   <div className="h-full rounded-full bg-indigo-500" style={{ width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%` }} />
                 </div>
 
-                {book.pendingTest && (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/t/${book.pendingTest!.slug}`)}
-                    className="mb-2 w-full rounded-xl bg-amber-50 px-3 py-2 text-xs font-semibold text-amber-700"
-                  >
-                    Majburiy test: {book.pendingTest.name} — bosing
-                  </button>
-                )}
-
                 {addingBookId === book.id ? (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-xs text-gray-500">
@@ -116,12 +106,20 @@ export function ChallengeDetailPage() {
                       <button type="button" onClick={() => setAddingBookId(null)} className="rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600">Bekor</button>
                     </div>
                   </div>
+                ) : book.pendingTest ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/t/${book.pendingTest!.slug}`)}
+                    className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
+                  >
+                    <p className="text-xs font-semibold text-amber-700">Test ishlash</p>
+                    <p className="mt-0.5 text-[11px] text-amber-600">Davom etish uchun avval "{book.pendingTest.name}" testini yakunlang</p>
+                  </button>
                 ) : (
                   <button
                     type="button"
-                    disabled={!!book.pendingTest}
                     onClick={() => setAddingBookId(book.id)}
-                    className="w-full rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40"
+                    className="w-full rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-700"
                   >
                     + Yangi yozuv
                   </button>
