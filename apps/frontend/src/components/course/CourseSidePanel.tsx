@@ -6,6 +6,7 @@ import {
   Brain,
   ArrowLeft,
   Radio,
+  BookOpen,
 } from "lucide-react";
 
 interface CourseSidePanelProps {
@@ -15,11 +16,12 @@ interface CourseSidePanelProps {
   activeTab?: "content" | "settings" | "practice";
   onSelectPractice?: () => void;
   onSelectContent?: () => void;
-  activeFullTab?: "content" | "settings" | "launch" | "groups" | "classes";
+  activeFullTab?: "content" | "settings" | "launch" | "groups" | "classes" | "challenges";
   onSelectSettings?: () => void;
   onSelectLaunch?: () => void;
   onSelectGroups?: () => void;
   onSelectClasses?: () => void;
+  onSelectChallenges?: () => void;
 }
 
 interface SideTab {
@@ -60,6 +62,12 @@ const FULL_TABS: SideTab[] = [
     description: "Tarix va davomat",
     icon: Radio,
   },
+  {
+    key: "challenges",
+    label: "Challenges",
+    description: "Kitobxonlik musobaqalari",
+    icon: BookOpen,
+  },
 ];
 
 const LESSON_TABS: SideTab[] = [
@@ -89,6 +97,7 @@ export function CourseSidePanel({
   onSelectLaunch,
   onSelectGroups,
   onSelectClasses,
+  onSelectChallenges,
 }: CourseSidePanelProps) {
   const tabs = variant === "lesson" ? LESSON_TABS : FULL_TABS;
 
@@ -104,7 +113,8 @@ export function CourseSidePanel({
         key === "settings" ||
         key === "launch" ||
         key === "groups" ||
-        key === "classes"
+        key === "classes" ||
+        key === "challenges"
       );
     }
     if (key === "content") return true;
@@ -120,6 +130,7 @@ export function CourseSidePanel({
     if (key === "launch") onSelectLaunch?.();
     if (key === "groups") onSelectGroups?.();
     if (key === "classes") onSelectClasses?.();
+    if (key === "challenges") onSelectChallenges?.();
   }
 
   return (

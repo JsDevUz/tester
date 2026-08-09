@@ -27,6 +27,13 @@ export class TestsService {
     });
   }
 
+  async findAllForAdmin(adminId: string) {
+    return db.query.tests.findMany({
+      where: eq(tests.adminId, adminId),
+      orderBy: (t, { asc }) => [asc(t.name)],
+    });
+  }
+
   async findOne(id: string, adminId: string) {
     const test = await db.query.tests.findFirst({
       where: and(eq(tests.id, id), eq(tests.adminId, adminId)),

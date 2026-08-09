@@ -15,6 +15,7 @@ interface CourseContentPageProps {
   onSelectLaunch?: () => void;
   onSelectGroups?: () => void;
   onSelectClasses?: () => void;
+  onSelectChallenges?: () => void;
 }
 
 type ModalState =
@@ -27,7 +28,7 @@ type DeleteTarget =
   | { type: 'lesson'; moduleId: string; lessonId: string; title: string }
   | null;
 
-export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectClasses }: CourseContentPageProps) {
+export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectClasses, onSelectChallenges }: CourseContentPageProps) {
   const { courses, loadCourseDetails, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
@@ -228,6 +229,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={onSelectGroups}
           onSelectClasses={onSelectClasses}
+          onSelectChallenges={onSelectChallenges}
         />
       </div>
 

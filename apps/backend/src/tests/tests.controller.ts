@@ -57,6 +57,11 @@ export class TestsController {
     return this.testsService.create(req.admin.id, dto);
   }
 
+  @Get('mine')
+  findAllForAdmin(@Req() req: any) {
+    return this.testsService.findAllForAdmin(req.admin.id);
+  }
+
   @Get(':id')
   findOne(@Param('id') id: string, @Req() req: any) {
     return this.testsService.findOne(id, req.admin.id);

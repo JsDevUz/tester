@@ -122,6 +122,17 @@ export async function apiListAllTests(): Promise<AllTestsItem[]> {
   }));
 }
 
+export interface MyTestSummary {
+  id: string;
+  name: string;
+  slug: string | null;
+}
+
+export async function apiListMyTests(): Promise<MyTestSummary[]> {
+  const res = await client.get('/tests/mine');
+  return res.data;
+}
+
 export interface TestPin {
   id: string;
   testId: string;

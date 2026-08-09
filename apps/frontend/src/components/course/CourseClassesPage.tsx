@@ -18,6 +18,7 @@ interface CourseClassesPageProps {
   onSelectSettings: () => void;
   onSelectLaunch: () => void;
   onSelectGroups: () => void;
+  onSelectChallenges: () => void;
 }
 
 const STATUS_OPTIONS: Array<{ value: 'present' | 'late' | 'absent'; label: string; cls: string }> = [
@@ -37,7 +38,7 @@ function fmtDuration(startIso: string | null, endIso: string | null): string {
   return `${mins} daqiqa`;
 }
 
-export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectGroups }: CourseClassesPageProps) {
+export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectChallenges }: CourseClassesPageProps) {
   const navigate = useNavigate();
   const loadCourseDetails = useCourseStore((s) => s.loadCourseDetails);
   const course = useCourseStore((s) => s.courses.find((c) => c.id === courseId));
@@ -196,6 +197,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
         onSelectClasses={() => { }}
+        onSelectChallenges={onSelectChallenges}
       />
 
       {detail && (

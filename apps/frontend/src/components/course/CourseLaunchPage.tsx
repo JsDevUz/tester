@@ -14,6 +14,7 @@ interface CourseLaunchPageProps {
   onSelectSettings: () => void;
   onSelectGroups: () => void;
   onSelectClasses: () => void;
+  onSelectChallenges: () => void;
 }
 
 function formatPlanDateRange(plan: PricingPlan): string {
@@ -24,7 +25,7 @@ function formatPlanDateRange(plan: PricingPlan): string {
   return `${start} — ${end}`;
 }
 
-export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups, onSelectClasses }: CourseLaunchPageProps) {
+export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSelectSettings, onSelectGroups, onSelectClasses, onSelectChallenges }: CourseLaunchPageProps) {
   const { courses, loadCourseDetails, addLaunch, addPricingPlan, updatePricingPlan, removePricingPlan } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
 
@@ -167,6 +168,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
         onSelectSettings={onSelectSettings}
         onSelectGroups={onSelectGroups}
         onSelectClasses={onSelectClasses}
+        onSelectChallenges={onSelectChallenges}
         onSelectLaunch={() => {}}
       />
 
