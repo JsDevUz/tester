@@ -77,7 +77,7 @@ export function ChallengeDetailPage() {
         <h1 className="mb-1 text-2xl font-extrabold text-gray-900">{detail.name}</h1>
         <p className="mb-6 text-sm text-gray-400">{detail.description}</p>
 
-        <div className="student-course-card mb-4 flex gap-2 rounded-3xl p-2">
+        <div className="student-course-card challenge-detail-card mb-4 flex gap-2 rounded-3xl p-2">
           <button type="button" onClick={() => setTab('books')} className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ${tab === 'books' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Kitoblar</button>
           <button type="button" onClick={() => setTab('leaderboard')} className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ${tab === 'leaderboard' ? 'bg-gray-900 text-white' : 'text-gray-500'}`}>Reyting</button>
         </div>
@@ -85,7 +85,7 @@ export function ChallengeDetailPage() {
         {tab === 'books' ? (
           <div className="flex flex-col gap-3">
             {detail.books.map((book) => (
-              <div key={book.id} className="student-course-card rounded-3xl p-4">
+              <div key={book.id} className="student-course-card challenge-detail-card rounded-3xl p-4">
                 <div className="mb-2 flex items-center justify-between">
                   <p className="font-semibold text-gray-800">{book.title}</p>
                   <p className="text-xs text-gray-400">{book.lastPageRead}/{book.totalPages} bet</p>
@@ -128,7 +128,7 @@ export function ChallengeDetailPage() {
             ))}
           </div>
         ) : (
-          <div className="student-course-card rounded-3xl p-5">
+          <div className="student-course-card challenge-detail-card rounded-3xl p-5">
             <div className="mb-4 flex gap-2 overflow-x-auto">
               {METRICS.map((m) => (
                 <button

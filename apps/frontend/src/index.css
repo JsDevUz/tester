@@ -1208,12 +1208,14 @@ select::-ms-expand {
 :root[data-theme="dark"] .hover\:bg-gray-100\/50:hover,
 :root[data-theme="dark"] .hover\:bg-gray-100\/70:hover,
 :root[data-theme="dark"] .hover\:bg-gray-200:hover,
-:root[data-theme="dark"] .focus\:bg-gray-100:focus {
+:root[data-theme="dark"] .focus\:bg-gray-100:focus,
+:root[data-theme="dark"] .student-course-card:hover {
   background-color: #3a3c47 !important;
 }
 
-:root[data-theme="dark"] .student-course-card,
-:root[data-theme="dark"] .student-course-card:hover {
+/* Challenge detail page (/challenges/:id) cards: always the darker shade,
+   not just on hover — unlike .student-course-card elsewhere in the app. */
+:root[data-theme="dark"] .challenge-detail-card {
   background-color: #3a3c47 !important;
 }
 
@@ -1375,12 +1377,12 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/50:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/70:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-200:hover,
-  :root:not([data-theme="light"]) .focus\:bg-gray-100:focus {
+  :root:not([data-theme="light"]) .focus\:bg-gray-100:focus,
+  :root:not([data-theme="light"]) .student-course-card:hover {
     background-color: #3a3c47 !important;
   }
 
-  :root:not([data-theme="light"]) .student-course-card,
-  :root:not([data-theme="light"]) .student-course-card:hover {
+  :root:not([data-theme="light"]) .challenge-detail-card {
     background-color: #3a3c47 !important;
   }
 
