@@ -5,6 +5,7 @@ import { useThemeStore } from "../stores/themeStore";
 import { UserAvatar } from "./UserAvatar";
 import { AdminsSection } from "./AdminsSection";
 import { EditProfileSection } from "./EditProfileSection";
+import { ConfirmDeleteModal } from "./course/ConfirmDeleteModal";
 import { formatPhone } from "../utils/phone";
 
 interface SettingsModalProps {
@@ -47,6 +48,7 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
   const { theme, toggleTheme } = useThemeStore();
   const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
   const [activeSection, setActiveSection] = useState<SectionKey>("general");
+  const [confirmLogout, setConfirmLogout] = useState(false);
   const isSuperAdmin = admin?.role === "super";
 
   useEffect(() => {
@@ -182,13 +184,26 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
           <div className="border-t border-border p-2">
             <button
               type="button"
-              onClick={onLogout}
+              onClick={() => setConfirmLogout(true)}
               className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500"
             >
               <LogOut size={16} /> Chiqish
             </button>
           </div>
         </div>
+
+        {confirmLogout && (
+          <ConfirmDeleteModal
+            title="Tizimdan chiqmoqchimisiz?"
+            description="Hisobingizdan chiqasiz va qayta kirish uchun telefon raqamingizni tasdiqlashingiz kerak bo'ladi."
+            confirmLabel="Chiqish"
+            onConfirm={() => {
+              setConfirmLogout(false);
+              onLogout();
+            }}
+            onClose={() => setConfirmLogout(false)}
+          />
+        )}
 
         {/* ── Detail ── */}
         <div className={`flex min-w-0 flex-1 flex-col ${showDetailOnMobile ? "flex" : "hidden sm:flex"}`}>
