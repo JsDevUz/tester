@@ -843,12 +843,7 @@ select::-ms-expand {
 }
 
 :root[data-theme="dark"] .student-course-card {
-  background-color: #1c1f26;
   border: 1px solid #2a2f3a;
-}
-
-:root[data-theme="dark"] .student-course-card:hover {
-  background-color: #252932;
 }
 
 :root[data-theme="dark"] .student-course-card-icon {
@@ -1195,8 +1190,7 @@ select::-ms-expand {
 :root[data-theme="dark"] .bg-gray-100\/50,
 :root[data-theme="dark"] .bg-gray-100\/60,
 :root[data-theme="dark"] .bg-gray-100\/70,
-:root[data-theme="dark"] .bg-gray-100\/80,
-:root[data-theme="dark"] .student-course-card {
+:root[data-theme="dark"] .bg-gray-100\/80 {
   background-color: #24252c !important;
 }
 
@@ -1214,7 +1208,11 @@ select::-ms-expand {
 :root[data-theme="dark"] .hover\:bg-gray-100\/50:hover,
 :root[data-theme="dark"] .hover\:bg-gray-100\/70:hover,
 :root[data-theme="dark"] .hover\:bg-gray-200:hover,
-:root[data-theme="dark"] .focus\:bg-gray-100:focus,
+:root[data-theme="dark"] .focus\:bg-gray-100:focus {
+  background-color: #3a3c47 !important;
+}
+
+:root[data-theme="dark"] .student-course-card,
 :root[data-theme="dark"] .student-course-card:hover {
   background-color: #3a3c47 !important;
 }
@@ -1359,8 +1357,7 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .bg-gray-100\/50,
   :root:not([data-theme="light"]) .bg-gray-100\/60,
   :root:not([data-theme="light"]) .bg-gray-100\/70,
-  :root:not([data-theme="light"]) .bg-gray-100\/80,
-  :root:not([data-theme="light"]) .student-course-card {
+  :root:not([data-theme="light"]) .bg-gray-100\/80 {
     background-color: #24252c !important;
   }
 
@@ -1378,7 +1375,11 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/50:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-100\/70:hover,
   :root:not([data-theme="light"]) .hover\:bg-gray-200:hover,
-  :root:not([data-theme="light"]) .focus\:bg-gray-100:focus,
+  :root:not([data-theme="light"]) .focus\:bg-gray-100:focus {
+    background-color: #3a3c47 !important;
+  }
+
+  :root:not([data-theme="light"]) .student-course-card,
   :root:not([data-theme="light"]) .student-course-card:hover {
     background-color: #3a3c47 !important;
   }
