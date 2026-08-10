@@ -29,6 +29,7 @@ export function ChallengeDetailPage() {
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
   const [endPage, setEndPage] = useState("");
   const [newWords, setNewWords] = useState("");
+  const [requiredTest, setRequiredTest] = useState<{ bookId: string; slug: string; name: string } | null>(null);
 
   useEffect(() => {
     if (id) void apiGetMyChallengeDetail(id).then(setDetail);
@@ -52,7 +53,7 @@ export function ChallengeDetailPage() {
     if (!id) return;
     const book = detail!.books.find((b) => b.id === bookId)!;
     if (book.pendingTest) {
-      navigate(`/t/${book.pendingTest.slug}`);
+      setRequiredTest({ bookId, slug: book.pendingTest.slug!, name: book.pendingTest.name });
       return;
     }
     const parsedEndPage = parseInt(endPage, 10);
@@ -73,9 +74,9 @@ export function ChallengeDetailPage() {
       toast.success("Yozuv qo'shildi");
     } catch (error: any) {
       const requiredTestSlug = error?.response?.data?.requiredTestSlug;
+      const requiredTestName = error?.response?.data?.requiredTestName;
       if (requiredTestSlug) {
-        toast.error("Avval majburiy testni yakunlang");
-        navigate(`/t/${requiredTestSlug}`);
+        setRequiredTest({ bookId, slug: requiredTestSlug, name: requiredTestName ?? "" });
         return;
       }
       toast.error(error?.response?.data?.message ?? "Yozuv qo'shib bo'lmadi");
@@ -137,7 +138,21 @@ export function ChallengeDetailPage() {
                   />
                 </div>
 
-                {addingBookId === book.id ? (
+                {requiredTest?.bookId === book.id ? (
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/t/${requiredTest.slug}`)}
+                    className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
+                  >
+                    <p className="text-xs font-semibold text-amber-700">
+                      Test ishlash
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-amber-600">
+                      Davom etish uchun avval{requiredTest.name ? ` "${requiredTest.name}"` : ""} testini
+                      yakunlang
+                    </p>
+                  </button>
+                ) : addingBookId === book.id ? (
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-2 text-xs text-gray-500">
                       <span>Boshlagan bet: {book.lastPageRead}</span>
@@ -178,7 +193,9 @@ export function ChallengeDetailPage() {
                 ) : book.pendingTest ? (
                   <button
                     type="button"
-                    onClick={() => navigate(`/t/${book.pendingTest!.slug}`)}
+                    onClick={() =>
+                      setRequiredTest({ bookId: book.id, slug: book.pendingTest!.slug!, name: book.pendingTest!.name })
+                    }
                     className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
                   >
                     <p className="text-xs font-semibold text-amber-700">
