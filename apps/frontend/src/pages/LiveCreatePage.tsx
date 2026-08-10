@@ -51,23 +51,23 @@ export function LiveCreatePage() {
     <AppShell>
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 w-full px-6 py-6">
-          <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center justify-between gap-2 mb-6">
             <div className="flex items-center gap-2 min-w-0">
               <Radio size={20} className="text-gray-700 shrink-0" />
               <h2 className="text-lg font-bold text-gray-800 truncate">
                 Jonli musobaqalar
               </h2>
             </div>
-            <div className="flex items-center gap-3">
-            <PageSizeSelect value={pageSize} onChange={setPageSize} />
-            <button
-              onClick={() => setShowModal(true)}
-              title="Yangi jonli musobaqa yaratish"
-              className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100 shrink-0"
-            >
-              <Plus size={16} />{" "}
-              <span className="hidden sm:inline">Yangi jonli musobaqa</span>
-            </button>
+            <div className="flex items-center gap-2">
+              <PageSizeSelect value={pageSize} onChange={setPageSize} />
+              <button
+                onClick={() => setShowModal(true)}
+                title="Yangi jonli musobaqa yaratish"
+                className="flex items-center gap-1.5 text-sm bg-indigo-500 text-white p-2.5 sm:px-4 sm:py-2.5 rounded-xl font-semibold hover:bg-indigo-600 transition-colors shadow-lg shadow-indigo-100 shrink-0"
+              >
+                <Plus size={16} />{" "}
+                <span className="hidden sm:inline">Yangi jonli musobaqa</span>
+              </button>
             </div>
           </div>
 
@@ -86,12 +86,11 @@ export function LiveCreatePage() {
                 <button
                   key={s.id}
                   onClick={() => handleRowClick(s)}
-                  className="w-full bg-white rounded-2xl px-4 py-3.5 flex items-center gap-3 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
+                  className="w-full bg-white rounded-2xl px-4 py-3.5 flex items-center gap-2 hover:border-gray-300 hover:bg-gray-50 transition-all text-left"
                 >
                   <div
-                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
-                      s.mode === "team" ? "bg-purple-50" : "bg-blue-50"
-                    }`}
+                    className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${s.mode === "team" ? "bg-purple-50" : "bg-blue-50"
+                      }`}
                   >
                     {s.mode === "team" ? (
                       <Users2 size={16} className="text-purple-500" />
@@ -108,11 +107,10 @@ export function LiveCreatePage() {
                     </p>
                   </div>
                   <span
-                    className={`text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 ${
-                      s.status === "active"
+                    className={`text-xs font-medium px-2.5 py-1 rounded-lg shrink-0 ${s.status === "active"
                         ? "bg-green-50 text-green-600"
                         : "bg-gray-100 text-gray-500"
-                    }`}
+                      }`}
                   >
                     {s.status === "active" ? "Faol" : "Tugagan"}
                   </span>

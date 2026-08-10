@@ -102,7 +102,7 @@ render qilinadi, xuddi hozirgi `content`/`editor` almashinuvi kabi.
 
 ## "Tariflar" sahifasi — `CourseLaunchPage.tsx`
 
-Layout: `CourseContentPage` bilan bir xil (`flex gap-3 p-6 sm:flex-row`, chapda asosiy kontent,
+Layout: `CourseContentPage` bilan bir xil (`flex gap-2 p-6 sm:flex-row`, chapda asosiy kontent,
 o'ngda `CourseSidePanel`).
 
 **"Ishga tushirish sozlamalari" kartasi** (birinchi `Launch`, agar yo'q bo'lsa avtomatik

@@ -794,7 +794,7 @@ function ShapeStylePanel({
 
           {/* Line Thickness & Style Popover Dropdown */}
           {lineThicknessOpen && (
-            <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-xs z-50 flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-100">
+            <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-xs z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100">
               {/* Line thickness slider */}
               <div className="flex flex-col gap-1.5">
                 <div className="flex items-center justify-between font-bold text-gray-700 text-xs">
@@ -4843,7 +4843,7 @@ export function ClassroomPdfViewer({
         onScroll={handleScroll}
       >
         <div
-          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-3 py-[50px]"}`}
+          className={`flex h-full min-h-0 ${displayLayout === "split" ? "flex-row items-start gap-0" : "flex-col gap-1 sm:gap-2 py-[50px]"}`}
           style={{
             width: "100%",
             minWidth: "100%",
@@ -4890,8 +4890,8 @@ export function ClassroomPdfViewer({
                 }
                 className={
                   displayLayout === "split"
-                    ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col gap-1 sm:gap-3 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
-                    : "flex w-full flex-col gap-1 sm:gap-3"
+                    ? `flex h-full max-h-full min-h-0 min-w-0 flex-1 flex-col gap-1 sm:gap-2 ${freeToMove ? "overflow-x-auto overflow-y-auto overscroll-contain" : "overflow-hidden"}`
+                    : "flex w-full flex-col gap-1 sm:gap-2"
                 }
                 style={
                   displayLayout === "split"
@@ -4924,7 +4924,7 @@ export function ClassroomPdfViewer({
                 }
               >
                 <div
-                  className="flex shrink-0 flex-col items-center gap-1 sm:gap-3"
+                  className="flex shrink-0 flex-col items-center gap-1 sm:gap-2"
                   style={{
                     // Split rejimida daftar ham PDF kabi panel kengligiga
                     // NISBATAN (%) o'lchanadi — REF_WIDTH'ga bog'langan mutlaq

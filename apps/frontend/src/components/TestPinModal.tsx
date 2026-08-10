@@ -183,7 +183,7 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
         aria-labelledby="test-pin-modal-title"
         className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
       >
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-6 py-4">
           <h2 id="test-pin-modal-title" className="text-sm font-semibold text-gray-800 truncate">{testName} — Guruhga tayinlash</h2>
           <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" aria-label="Yopish">
             <X size={18} />
@@ -197,7 +197,7 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
               <span className="sr-only">Yuklanmoqda</span>
             </div>
           ) : loadError ? (
-            <div role="alert" className="flex flex-col items-center gap-3 py-10 text-center">
+            <div role="alert" className="flex flex-col items-center gap-2 py-10 text-center">
               <p className="text-sm text-gray-600">Tayinlash ma'lumotlarini yuklab bo'lmadi.</p>
               <button
                 type="button"

@@ -1196,7 +1196,7 @@ export function CourseLeaderboardSheet({
               data={remaining}
               keyExtractor={item => item.studentId}
               ListHeaderComponent={
-                <View className="mb-4 flex-row items-end justify-center gap-3">
+                <View className="mb-4 flex-row items-end justify-center gap-2">
                   {[topThree[1], topThree[0], topThree[2]].filter(Boolean).map(entry => (
                     <View key={entry!.studentId} className="w-24 items-center">
                       <View className="relative mb-2">
@@ -1224,7 +1224,7 @@ export function CourseLeaderboardSheet({
               }
               renderItem={({item}) => (
                 <View
-                  className={`mb-2 flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${
+                  className={`mb-2 flex-row items-center gap-2 rounded-xl px-3 py-2.5 ${
                     item.isCurrentStudent ? 'bg-white/25' : 'bg-white/15'
                   }`}>
                   <Text className="w-6 text-center text-sm font-bold text-white/80">
@@ -1613,7 +1613,7 @@ export function LessonBlock({
     return (
       <Pressable
         onPress={() => void Linking.openURL(block.previewUrl!)}
-        className="mt-3 flex-row items-center gap-3 rounded-xl bg-slate-100 px-3 py-2.5">
+        className="mt-3 flex-row items-center gap-2 rounded-xl bg-slate-100 px-3 py-2.5">
         <View className="h-10 w-10 items-center justify-center rounded-lg bg-slate-900">
           <Text className="text-[11px] font-black text-white">{ext.slice(0, 4)}</Text>
         </View>
@@ -1632,7 +1632,7 @@ export function LessonBlock({
     return (
       <Pressable
         onPress={() => onOpenLiveClassReplay(block.classSessionId!)}
-        className="mt-3 flex-row items-center gap-3 rounded-xl bg-slate-100 px-3 py-2.5">
+        className="mt-3 flex-row items-center gap-2 rounded-xl bg-slate-100 px-3 py-2.5">
         <View className="h-10 w-10 items-center justify-center rounded-lg bg-indigo-600">
           <Radio size={18} color="white" />
         </View>
@@ -1646,7 +1646,7 @@ export function LessonBlock({
   }
 
   return (
-    <View className="mt-3 flex-row items-center gap-3 rounded-xl bg-slate-50 px-4 py-4">
+    <View className="mt-3 flex-row items-center gap-2 rounded-xl bg-slate-50 px-4 py-4">
       {block.type === 'image' ? (
         <ImageIcon size={18} color="#94a3b8" />
       ) : (
@@ -1784,7 +1784,7 @@ function ImagePracticeBlockCard({
       {block.imageSubmissions.map(s => (
         <View
           key={s.id}
-          className="mb-2 flex-row items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5">
+          className="mb-2 flex-row items-center justify-between gap-2 rounded-xl bg-white px-3 py-2.5">
           <View className="min-w-0 flex-1">
             <Text className="text-xs font-bold text-ink">
               {new Date(s.submittedAt).toLocaleDateString('uz-UZ')}
@@ -1885,7 +1885,7 @@ export function PracticeScreen({
 
       {lesson.passThresholdEnabled && lesson.passThresholdPercent !== null && (
         <View className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-          <View className="flex-row items-center justify-between gap-3">
+          <View className="flex-row items-center justify-between gap-2">
             <Text className="text-sm font-bold text-ink">Minimal o'tish natijasi</Text>
             <Text className="rounded-full bg-white px-3 py-1 text-sm font-black text-indigo-600">
               {lesson.passThresholdPercent}%
@@ -1909,7 +1909,7 @@ export function PracticeScreen({
       ) : (
         lesson.practiceBlocks.map(block => (
           <View key={block.id} className="mb-4 rounded-2xl bg-slate-50 p-4">
-            <View className="mb-3 flex-row items-center justify-between gap-3">
+            <View className="mb-3 flex-row items-center justify-between gap-2">
               <Text className="flex-1 text-sm font-bold text-ink">
                 {block.type === 'image'
                   ? "Amaliyot topshirig'i"
@@ -2008,7 +2008,7 @@ export function PracticeScreen({
         </Text>
       )}
 
-      <View className="mt-5 flex-row items-center justify-between gap-3">
+      <View className="mt-5 flex-row items-center justify-between gap-2">
         <Pressable onPress={onBack} className="flex-row items-center gap-1.5 px-2 py-1.5">
           <ChevronLeft size={15} color="#64748b" />
           <Text className="text-xs font-bold text-slate-500">Darsga qaytish</Text>
@@ -2278,7 +2278,7 @@ export function CourseScreen({route, navigation}: Props) {
           <Pressable
             onPress={() => void openMessenger()}
             className="mb-5 mt-5 flex-row items-center justify-between rounded-2xl bg-slate-100 px-4 py-3">
-            <View className="flex-row items-center gap-3">
+            <View className="flex-row items-center gap-2">
               <View className="h-9 w-9 items-center justify-center rounded-full bg-slate-900">
                 <MessageCircle size={16} color="white" />
               </View>
@@ -2545,7 +2545,7 @@ export function LiveClassBanner() {
               onlineRequired: true,
             })
           }
-          className="mx-4 mt-3 flex-row items-center gap-3 rounded-2xl bg-red-50 px-4 py-3">
+          className="mx-4 mt-3 flex-row items-center gap-2 rounded-2xl bg-red-50 px-4 py-3">
           <Radio size={20} color="#ef4444" />
           <View className="min-w-0 flex-1">
             <Text numberOfLines={1} className="text-sm font-semibold text-ink">
@@ -2656,7 +2656,7 @@ export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () 
           <ScrollView contentContainerClassName="pb-8">
             <Pressable
               onPress={() => void changeAvatar()}
-              className="mb-6 items-center gap-3 self-center">
+              className="mb-6 items-center gap-2 self-center">
               <View className="h-20 w-20 items-center justify-center rounded-full bg-indigo-100">
                 <UserRound size={34} color="#6366f1" />
               </View>

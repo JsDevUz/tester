@@ -92,7 +92,7 @@ export function DeckPracticePage() {
             ]}
           />
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Rejim</p>
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="mb-6 grid grid-cols-2 gap-2">
             <Choice selected={mode === "flashcard"} onClick={() => setMode("flashcard")} icon={<Layers3 size={20} />} title="Flashcard" subtitle="Kartani suring" />
             <Choice selected={mode === "test"} onClick={() => setMode("test")} icon={<ListChecks size={20} />} title="Test" subtitle="4 variantli savol" />
           </div>
@@ -169,11 +169,14 @@ function Choice({ selected, onClick, icon, title, subtitle }: {
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-2xl p-4 text-left transition ${selected ? "bg-indigo-600 text-white shadow-sm" : "student-course-card text-gray-900 dark:text-zinc-100"}`}
+      className={`rounded-2xl p-4 text-left transition-all ${selected
+          ? "bg-indigo-600 text-white"
+          : "student-responsive-card bg-white border border-gray-200/80 text-gray-900 dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
+        }`}
     >
       <span className="mb-2 block">{icon}</span>
       <span className="block text-sm font-bold">{title}</span>
-      {subtitle && <span className="mt-1 block text-xs opacity-60">{subtitle}</span>}
+      {subtitle && <span className="mt-0.5 block text-xs opacity-60">{subtitle}</span>}
     </button>
   );
 }
@@ -232,6 +235,15 @@ function Flashcards({ words, direction, setWords, deckName }: {
     setExiting(null);
   }
 
+  if (words.length === 0) {
+    return (
+      <div className="mx-auto max-w-xl py-16 text-center text-gray-900 dark:text-zinc-100">
+        <p className="text-xl font-bold">Lug'atda so'zlar mavjud emas</p>
+        <p className="mt-2 text-sm text-gray-400">Mashq qilish uchun avval lug'atga so'zlar qo'shing</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-md">
       <div className="mb-2 text-center">
@@ -255,42 +267,36 @@ function Flashcards({ words, direction, setWords, deckName }: {
             const uid = words.findIndex((item) => item.id === word.id);
             const seed = (uid * 137 + depth * 53) % 20;
             const opacity = depth <= 1 ? 1 : Math.max(1 - (depth - 1) * 0.16, 0.15);
+            const scale = Math.max(1 - depth * 0.04, 0.85);
+            const translateY = depth * -6;
+            const rotate = (seed - 10) * 0.3;
             return (
               <div
-                key={`stack-${word.id}-${depth}`}
-                className="absolute inset-0 rounded-3xl border-2 border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800"
+                key={word.id}
+                className="absolute inset-0 rounded-[28px] border border-gray-200/80 bg-white p-7 text-center shadow-lg dark:border-zinc-700/80 dark:bg-zinc-800"
                 style={{
-                  transform: `translateY(${-depth * 6}px) scale(${1 - depth * 0.05}) rotate(${seed - 10}deg)`,
                   opacity,
-                  zIndex: 100 - depth,
-                  boxShadow: `0 ${20 - depth * 2}px ${60 - depth * 6}px rgba(15,23,42,0.16)`,
-                  transition: "transform 350ms cubic-bezier(.34,1.56,.64,1), opacity 350ms",
+                  transform: `translateY(${translateY}px) scale(${scale}) rotate(${rotate}deg)`,
+                  zIndex: 10 - depth,
                 }}
               />
             );
           })}
           <div
-            key={`top-${current.id}`}
             onPointerDown={pointerDown}
             onPointerMove={pointerMove}
             onPointerUp={pointerUp}
             onPointerCancel={pointerUp}
-            onClick={() => !dragging && Math.abs(dragX) < 5 && setRevealed(true)}
-            className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-gray-200 bg-white p-6 text-center dark:border-zinc-700 dark:bg-zinc-800 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+            onClick={() => setRevealed((v) => !v)}
+            className="absolute inset-0 flex cursor-grab flex-col items-center justify-center rounded-[28px] border border-gray-200/80 bg-white p-7 text-center shadow-2xl active:cursor-grabbing dark:border-zinc-700/80 dark:bg-zinc-800"
             style={{
-              transform: exiting === "again"
-                ? "translateX(0) translateY(90px) scale(0.6)"
-                : exiting === "known"
-                  ? "translateX(560px) rotate(20deg)"
-                  : `translateX(${dragX}px) rotate(${dragX / 14}deg)`,
-              opacity: exiting ? 0 : 1,
-              transition: dragging ? "none" : exiting ? `transform 320ms ${exiting === "again" ? "ease-in" : "ease"}, opacity 320ms ${exiting === "again" ? "ease-in" : "ease"}` : "transform 350ms cubic-bezier(.34,1.56,.64,1)",
-              zIndex: exiting === "again" ? 1 : 100,
-              boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
+              transform: `translate3d(${dragX}px, 0, 0) rotate(${dragX * 0.08}deg)`,
+              transition: dragging ? "none" : "transform 0.3s ease",
+              zIndex: 20,
             }}
           >
             {dragX > 0 && (
-              <span className="absolute right-5 top-5 rotate-[-10deg] rounded-lg border-2 border-emerald-400 px-3.5 py-1 text-sm font-extrabold tracking-[1px] text-emerald-400" style={{ opacity: Math.min(Math.abs(dragX) / 80, 1) }}>
+              <span className="absolute right-5 top-5 rotate-[-10deg] rounded-lg border-2 border-emerald-500 px-3.5 py-1 text-sm font-extrabold tracking-[1px] text-emerald-500" style={{ opacity: Math.min(dragX / 80, 1) }}>
                 BILAMAN ✓
               </span>
             )}
@@ -320,7 +326,7 @@ function Flashcards({ words, direction, setWords, deckName }: {
         className="mx-auto mt-6 flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-gray-600 shadow-sm ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-gray-900 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-white"
       >
         <RotateCcw size={16} />
-        Yangilash
+        Qayta ishlash
       </button>
     </div>
   );
@@ -338,7 +344,7 @@ function Stat({ label, value, color }: { label: string; value: number; color: st
 function Test({ words, direction, setWords }: {
   words: PracticeWord[]; direction: Direction; setWords: (words: PracticeWord[]) => void;
 }) {
-  const [queue] = useState(() => [...words].sort((a, b) => a.id.localeCompare(b.id)));
+  const [queue, setQueue] = useState(() => [...words].sort((a, b) => a.id.localeCompare(b.id)));
   const [index, setIndex] = useState(0);
   const [selected, setSelected] = useState<string | null>(null);
   const [checked, setChecked] = useState(false);
@@ -368,6 +374,9 @@ function Test({ words, direction, setWords }: {
   }, [current, direction]);
 
   function restart() {
+    const fresh = words.map((w) => ({ ...w, known: false }));
+    setWords(fresh);
+    setQueue([...fresh]);
     setIndex(0);
     setSelected(null);
     setChecked(false);
@@ -375,30 +384,39 @@ function Test({ words, direction, setWords }: {
     setResults([]);
   }
 
+  if (words.length === 0) {
+    return (
+      <div className="mx-auto max-w-xl py-16 text-center text-gray-900 dark:text-zinc-100">
+        <p className="text-xl font-bold">Lug'atda so'zlar mavjud emas</p>
+        <p className="mt-2 text-sm text-gray-400">Test ishlash uchun avval lug'atga so'zlar qo'shing</p>
+      </div>
+    );
+  }
+
   if (!current) {
     const percentage = queue.length ? Math.round((correctCount / queue.length) * 100) : 0;
     return (
-      <div className="mx-auto max-w-xl py-10 text-center text-gray-900">
-        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-indigo-50 text-indigo-500">
+      <div className="mx-auto max-w-xl py-10 text-center text-gray-900 dark:text-zinc-100">
+        <div className="mx-auto flex h-20 w-20 items-center justify-center rounded-full bg-indigo-50 text-indigo-500 dark:bg-indigo-950/40 dark:text-indigo-400">
           <Trophy size={38} />
         </div>
-        <p className="mt-5 text-sm font-semibold text-gray-400">TEST YAKUNLANDI</p>
+        <p className="mt-5 text-sm font-semibold text-gray-400 dark:text-zinc-500">TEST YAKUNLANDI</p>
         <h1 className="mt-1 text-3xl font-black">Natijangiz</h1>
-        <p className="mt-3 text-5xl font-black text-indigo-500">{percentage}%</p>
-        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-3">
-          <div className="rounded-2xl bg-emerald-50 p-4">
-            <p className="text-2xl font-black text-emerald-600">{correctCount}</p>
-            <p className="text-xs font-semibold text-emerald-700">To'g'ri</p>
+        <p className="mt-3 text-5xl font-black text-indigo-500 dark:text-indigo-400">{percentage}%</p>
+        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-2">
+          <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/30 p-4">
+            <p className="text-2xl font-black text-emerald-600 dark:text-emerald-400">{correctCount}</p>
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-300">To'g'ri</p>
           </div>
-          <div className="rounded-2xl bg-rose-50 p-4">
-            <p className="text-2xl font-black text-rose-600">{queue.length - correctCount}</p>
-            <p className="text-xs font-semibold text-rose-700">Noto'g'ri</p>
+          <div className="rounded-2xl bg-rose-50 dark:bg-rose-950/30 p-4">
+            <p className="text-2xl font-black text-rose-600 dark:text-rose-400">{queue.length - correctCount}</p>
+            <p className="text-xs font-semibold text-rose-700 dark:text-rose-300">Noto'g'ri</p>
           </div>
         </div>
         <button
           type="button"
           onClick={restart}
-          className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-indigo-100 transition hover:bg-indigo-600"
+          className="mt-7 inline-flex items-center gap-2 rounded-2xl bg-indigo-500 px-6 py-3.5 font-semibold text-white shadow-lg shadow-indigo-100 transition hover:bg-indigo-600 dark:shadow-none"
         >
           <RotateCcw size={17} /> Qayta ishlash
         </button>
@@ -443,9 +461,8 @@ function Test({ words, direction, setWords }: {
             return (
               <span
                 key={word.id}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
-                  isCurrent ? "bg-gray-900 text-white shadow-md" : result === true ? "bg-emerald-100 text-emerald-700" : result === false ? "bg-rose-100 text-rose-600" : "border border-gray-200 bg-white text-gray-400"
-                }`}
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${isCurrent ? "bg-gray-900 text-white shadow-md" : result === true ? "bg-emerald-100 text-emerald-700" : result === false ? "bg-rose-100 text-rose-600" : "border border-gray-200 bg-white text-gray-400"
+                  }`}
               >
                 {questionIndex + 1}
               </span>
@@ -460,7 +477,7 @@ function Test({ words, direction, setWords }: {
           {direction === "wordToTranslation" ? "To'g'ri tarjimani tanlang" : "To'g'ri so'zni tanlang"}
         </p>
 
-        <div className="mt-7 grid gap-3">
+        <div className="mt-7 grid gap-2">
           {options.map((option, optionIndex) => {
             const correct = option === answer;
             const chosen = option === selected;
@@ -481,7 +498,7 @@ function Test({ words, direction, setWords }: {
                 type="button"
                 disabled={checked}
                 onClick={() => setSelected(option)}
-                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
+                className={`flex w-full items-center gap-2 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
               >
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${chosen ? "bg-white/20 text-white" : checked && correct ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
                   {optionLabels[optionIndex]}

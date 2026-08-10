@@ -133,7 +133,7 @@ export function ChallengeDetailPage() {
         {tab === "books" ? (
           detail.type === "soz_yodlash" ? (
             <div className="student-course-card challenge-detail-card rounded-3xl p-4">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-4 flex items-center justify-between gap-2">
                 <div>
                   <p className="font-bold text-gray-800 dark:text-zinc-100">So'zlar</p>
                   <p className="text-xs text-gray-400 dark:text-zinc-400">{challengeWords.filter((word) => word.known).length}/{challengeWords.length} yodlangan</p>
@@ -142,13 +142,13 @@ export function ChallengeDetailPage() {
               </div>
               {challengeWords.length > 0 ? (
                 <div className="flex flex-col gap-2">
-                  <div className="grid grid-cols-[1fr_1fr_90px] items-center gap-3 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
+                  <div className="grid grid-cols-[1fr_1fr_90px] items-center gap-2 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
                     <span>So'z</span>
                     <span>Tarjima</span>
                     <span className="text-right">Holat</span>
                   </div>
                   {challengeWords.map((word) => (
-                    <div key={word.id} className="challenge-detail-input grid grid-cols-[1fr_1fr_90px] items-center gap-3 rounded-xl px-3 py-2.5">
+                    <div key={word.id} className="challenge-detail-input grid grid-cols-[1fr_1fr_90px] items-center gap-2 rounded-xl px-3 py-2.5">
                       <span className="truncate text-sm font-semibold text-gray-800 dark:text-zinc-100">{word.word}</span>
                       <span className="truncate text-sm text-gray-500 dark:text-zinc-400">{word.translation}</span>
                       <span className={`text-right text-xs font-bold ${word.known ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-zinc-500"}`}>{word.known ? "Bilaman" : "—"}</span>
@@ -160,7 +160,7 @@ export function ChallengeDetailPage() {
               )}
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {detail.books.map((book) => (
                 <div
                   key={book.id}
@@ -356,7 +356,7 @@ export function ChallengeDetailPage() {
                   <div className="flex flex-col gap-4">
                     {/* Top 3 Podium Container */}
                     <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-5 text-white shadow-xl">
-                      <div className="mt-2 flex items-end justify-center gap-3 sm:gap-6">
+                      <div className="mt-2 flex items-end justify-center gap-2 sm:gap-6">
                         {podiumOrder.map((entry) => {
                           const style =
                             rankStyles[entry.rank] ?? rankStyles[3];
@@ -402,9 +402,9 @@ export function ChallengeDetailPage() {
                         {remaining.map((entry) => (
                           <div
                             key={entry.studentId}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent
-                                ? "bg-indigo-50 dark:bg-indigo-950/40"
-                                : "challenge-detail-input"
+                            className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent
+                              ? "bg-indigo-50 dark:bg-indigo-950/40"
+                              : "challenge-detail-input"
                               }`}
                           >
                             <span className="w-6 text-center text-sm font-bold text-gray-500">

@@ -79,7 +79,7 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
       return;
     }
     if (pollRef.current) return;
-    pollRef.current = window.setInterval(() => { void reload().catch(() => {}); }, 3000);
+    pollRef.current = window.setInterval(() => { void reload().catch(() => { }); }, 3000);
     return () => {
       if (pollRef.current) { window.clearInterval(pollRef.current); pollRef.current = null; }
     };
@@ -172,7 +172,7 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
                   return (
                     <div
                       key={asset.id}
-                      className={`flex items-center gap-3 rounded-xl px-3.5 py-3 text-left transition-colors ${ready ? "bg-gray-50 hover:bg-gray-100 cursor-pointer" : "bg-gray-50"}`}
+                      className={`flex items-center gap-2 rounded-xl px-3.5 py-3 text-left transition-colors ${ready ? "bg-gray-50 hover:bg-gray-100 cursor-pointer" : "bg-gray-50"}`}
                       onClick={() => ready && onSelect(asset)}
                     >
                       <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500">

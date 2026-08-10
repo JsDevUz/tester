@@ -167,7 +167,7 @@ export function SubmissionsPage() {
           >
             <ChevronLeft size={15} /> Orqaga
           </button>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
             <h2 className="text-base sm:text-lg font-bold text-gray-800 leading-snug">{test?.name ?? "Test"} — Natijalar</h2>
             <div className="flex items-center gap-2">
               <button
@@ -202,7 +202,7 @@ export function SubmissionsPage() {
           ) : (
             <div>
               {/* Mobile sort controls */}
-              <div className="md:hidden flex items-center gap-3 mb-3 text-xs">
+              <div className="md:hidden flex items-center gap-2 mb-3 text-xs">
                 <SortButton field="submittedAt" label="Vaqt" sort={sort} dir={dir} onChange={handleSortChange} />
                 <SortButton field="score" label="Ball" sort={sort} dir={dir} onChange={handleSortChange} />
               </div>
@@ -219,7 +219,7 @@ export function SubmissionsPage() {
                     <div
                       key={sub.id}
                       onClick={() => navigate(`/submissions/${sub.id}`)}
-                      className="bg-white rounded-xl px-3.5 py-3 flex items-center gap-3 cursor-pointer active:scale-[0.99] transition-transform"
+                      className="bg-white rounded-xl px-3.5 py-3 flex items-center gap-2 cursor-pointer active:scale-[0.99] transition-transform"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">

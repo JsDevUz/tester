@@ -25,7 +25,7 @@ function OptionStudentsModal({ selected, onClose }: { selected: SelectedOption; 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="flex max-h-[70vh] w-full max-w-sm flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
           <div className="min-w-0">
             <p className="text-xs text-gray-400 truncate">{selected.questionText}</p>
             <h3 className="text-sm font-semibold text-gray-800 truncate">{selected.option.text}</h3>
@@ -71,15 +71,14 @@ function QuestionCard({
 
   return (
     <div
-      className={`rounded-2xl border p-4 ${
-        isHardest
+      className={`rounded-2xl border p-4 ${isHardest
           ? "border-red-200 bg-red-50/50"
           : isEasiest
             ? "border-green-200 bg-green-50/50"
             : "border-gray-100 bg-white"
-      }`}
+        }`}
     >
-      <div className="flex items-start justify-between gap-3 mb-3">
+      <div className="flex items-start justify-between gap-2 mb-3">
         <p className="text-sm font-semibold text-gray-800">
           {index + 1}. {q.questionText}
         </p>
@@ -195,7 +194,7 @@ export function TestStatsModal({ testId, testName, onClose }: Props) {
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-6 py-4">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-6 py-4">
           <div className="min-w-0">
             <h2 className="text-sm font-semibold text-gray-800 truncate">{testName} — Statistika</h2>
             {stats && <p className="text-xs text-gray-400 mt-0.5">{stats.totalSubmissions} ta topshirilgan natija</p>}
@@ -215,7 +214,7 @@ export function TestStatsModal({ testId, testName, onClose }: Props) {
           ) : stats.questions.length === 0 ? (
             <p className="py-8 text-center text-sm text-gray-400">Savollar topilmadi.</p>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {stats.questions.map((q, index) => (
                 <QuestionCard
                   key={q.questionId}

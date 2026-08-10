@@ -251,7 +251,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                             setSelectedActivityId(item.id);
                             if (onSelectActivity) onSelectActivity(item);
                           }}
-                          className={`flex items-center justify-between gap-3 rounded-xl p-2.5 cursor-pointer transition-all border ${isSelected
+                          className={`flex items-center justify-between gap-2 rounded-xl p-2.5 cursor-pointer transition-all border ${isSelected
                             ? "bg-indigo-50 border-indigo-300 text-indigo-950 "
                             : "bg-gray-50 border-gray-200/80 hover:bg-gray-100/80 hover:border-gray-300 text-gray-800"
                             }`}
@@ -292,7 +292,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
           )
         ) : (
           /* Versions Tab */
-          <div className="flex flex-col gap-3 pt-1">
+          <div className="flex flex-col gap-2 pt-1">
             <button
               type="button"
               onClick={() => void handleSaveCheckpoint()}
@@ -319,7 +319,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                   return (
                     <div
                       key={ver.id}
-                      className="flex items-center justify-between gap-3 rounded-xl border border-gray-200/80 bg-gray-50 p-3 transition-all hover:bg-gray-100/80"
+                      className="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-gray-50 p-3 transition-all hover:bg-gray-100/80"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">

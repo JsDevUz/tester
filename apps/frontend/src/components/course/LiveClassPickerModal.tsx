@@ -30,7 +30,7 @@ export function LiveClassPickerModal({ courseId, onSelect, onClose }: LiveClassP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-3 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
+      <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-2 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between border-b pb-2">
           <h2 className="font-semibold text-gray-800">Jonli darsni tanlang</h2>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100">

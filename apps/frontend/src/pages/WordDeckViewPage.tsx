@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { toast } from "sonner";
-import { ArrowLeft, Check, Link2, Trash2, Upload, X } from "lucide-react";
+import { ArrowLeft, Check, Link2, Play, Trash2, Upload, X } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import {
   apiListDeckWords,
@@ -58,15 +58,18 @@ export function WordDeckViewPage() {
     try {
       await apiDeleteDeckWord(deckId, wordId);
       setWords((current) => current?.filter((w) => w.id !== wordId) ?? []);
+      toast.success("So'z o'chirildi");
     } catch {
       toast.error("So'zni o'chirib bo'lmadi");
     }
   }
 
-  async function copyLink() {
+  function copyLink() {
     if (!deck) return;
-    await navigator.clipboard.writeText(`${window.location.origin}/d/${deck.slug}`);
+    const url = `${window.location.origin}/d/${deck.slug}`;
+    void navigator.clipboard.writeText(url);
     setCopied(true);
+    toast.success("Havola nusxalandi");
     setTimeout(() => setCopied(false), 1500);
   }
 
@@ -78,21 +81,31 @@ export function WordDeckViewPage() {
         <button
           type="button"
           onClick={() => navigate("/my-dictionaries")}
-          className="mb-5 flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700"
+          className="mb-5 flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         >
           <ArrowLeft size={16} /> Lug'atlar
         </button>
-        <div className="mb-6 flex items-center justify-between gap-3">
-          <h1 className="text-2xl font-extrabold text-gray-900">{deck?.name ?? "Lug'at"}</h1>
+        <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
+          <h1 className="text-2xl font-extrabold text-gray-900 dark:text-zinc-100">{deck?.name ?? "Lug'at"}</h1>
           {deck && (
-            <button
-              type="button"
-              onClick={() => void copyLink()}
-              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200"
-            >
-              {copied ? <Check size={14} /> : <Link2 size={14} />}
-              {copied ? "Nusxalandi!" : "Havola nusxalash"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => navigate(`/d/${deck.slug}`)}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-semibold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+              >
+                <Play size={13} fill="currentColor" />
+                Mashq qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => void copyLink()}
+                className="flex shrink-0 items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700 transition-colors"
+              >
+                {copied ? <Check size={14} /> : <Link2 size={14} />}
+                {copied ? "Nusxalandi!" : "Havola nusxalash"}
+              </button>
+            </div>
           )}
         </div>
 
@@ -100,7 +113,7 @@ export function WordDeckViewPage() {
           <p className="py-16 text-center text-sm text-gray-400">Yuklanmoqda...</p>
         ) : (
           <div className="rounded-2xl bg-white p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4 flex items-center justify-between gap-2">
               <h3 className="text-base font-bold text-gray-800">So'zlar</h3>
               <button type="button" onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 <Upload size={14} /> Ommaviy import
@@ -118,11 +131,16 @@ export function WordDeckViewPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {words.map((word) => (
-                  <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
-                    <span className="truncate text-sm font-semibold text-gray-800">{word.word}</span>
-                    <span className="truncate text-sm text-gray-500">{word.translation}</span>
-                    <button type="button" onClick={() => void handleDelete(word.id)} aria-label="So'zni o'chirish" className="rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500">
-                      <Trash2 size={15} />
+                  <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 rounded-2xl bg-gray-50 dark:bg-zinc-800/80 border border-gray-100 dark:border-zinc-700/60 px-4 py-3">
+                    <span className="truncate text-sm font-bold text-gray-900 dark:text-zinc-100">{word.word}</span>
+                    <span className="truncate text-sm text-gray-500 dark:text-zinc-400">{word.translation}</span>
+                    <button
+                      type="button"
+                      onClick={() => void handleDelete(word.id)}
+                      aria-label="So'zni o'chirish"
+                      className="flex h-8 w-8 items-center justify-center rounded-xl bg-red-50 text-red-500 hover:bg-red-100 hover:text-red-600 dark:bg-red-950/40 dark:text-red-400 dark:hover:bg-red-900/50 transition-colors"
+                    >
+                      <Trash2 size={16} />
                     </button>
                   </div>
                 ))}

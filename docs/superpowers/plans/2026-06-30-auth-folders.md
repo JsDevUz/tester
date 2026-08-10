@@ -1839,7 +1839,7 @@ export function AdminModal({ onSubmit, onClose }: Props) {
     <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
       <div className="bg-white rounded-2xl shadow-2xl p-6 w-80">
         <h2 className="font-semibold text-gray-800 mb-4">Add Admin</h2>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <input
             autoFocus
             value={name}

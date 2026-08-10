@@ -31,7 +31,7 @@ export function AnswerResultCard({
         }`}
     >
       {/* Question header */}
-      <div className="mb-3.5 flex items-start gap-3">
+      <div className="mb-3.5 flex items-start gap-2">
         <span className="grid h-7 w-7 shrink-0 place-items-center rounded-xl bg-gray-200/70 text-xs font-extrabold text-gray-700 dark:bg-zinc-800 dark:text-zinc-300">
           {index + 1}
         </span>
@@ -171,7 +171,7 @@ export function AnswerResultCard({
               return (
                 <div
                   key={opt.id}
-                  className="flex items-center gap-3 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-xs"
+                  className="flex items-center gap-2 rounded-2xl bg-emerald-500 px-4 py-2.5 text-sm font-bold text-white shadow-xs"
                 >
                   <Circle
                     size={14}
@@ -185,7 +185,7 @@ export function AnswerResultCard({
               return (
                 <div
                   key={opt.id}
-                  className="flex items-center gap-3 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white shadow-xs"
+                  className="flex items-center gap-2 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-bold text-white shadow-xs"
                 >
                   <Circle
                     size={14}
@@ -198,7 +198,7 @@ export function AnswerResultCard({
             return (
               <div
                 key={opt.id}
-                className="flex items-center gap-3 px-4 py-1.5 text-sm font-medium text-gray-500 dark:text-zinc-400"
+                className="flex items-center gap-2 px-4 py-1.5 text-sm font-medium text-gray-500 dark:text-zinc-400"
               >
                 <Circle
                   size={14}

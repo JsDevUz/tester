@@ -19,7 +19,7 @@ export function PracticeBlockPicker({ onPickType, disabled = false, limitText }:
       <p className="mb-3 text-center text-xs text-gray-400">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
         {TYPES.map((item) => {
           const Icon = item.icon;
           return (
@@ -28,11 +28,10 @@ export function PracticeBlockPicker({ onPickType, disabled = false, limitText }:
               type="button"
               disabled={disabled}
               onClick={() => onPickType(item.type)}
-              className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${
-                disabled
+              className={`flex flex-col items-center gap-2 rounded-2xl px-4 py-5 text-sm font-medium transition-colors ${disabled
                   ? 'cursor-not-allowed bg-gray-50 text-gray-300'
                   : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <Icon size={22} className={disabled ? 'text-gray-300' : 'text-gray-700'} />
               {item.label}

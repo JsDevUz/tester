@@ -57,7 +57,7 @@ function SliderInput({
   const current =
     value !== "" ? parseFloat(value) : Math.round((min + max) / 2);
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div className="text-center text-3xl font-bold text-gray-900">
         {current}
       </div>
@@ -184,7 +184,7 @@ function MatchingInput({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <p className="text-xs text-gray-400">
         Chap tomondagini bosing, keyin mos o'ng tomondagini bosing
       </p>
@@ -199,10 +199,10 @@ function MatchingInput({
                 type="button"
                 onClick={() => tapLeft(opt.id)}
                 className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${isPending
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : isPaired
-                      ? "bg-gray-100 border-gray-300 text-gray-700"
-                      : "bg-white border-border text-gray-700 hover:border-gray-300"
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : isPaired
+                    ? "bg-gray-100 border-gray-300 text-gray-700"
+                    : "bg-white border-border text-gray-700 hover:border-gray-300"
                   } ${locked ? "pointer-events-none" : ""}`}
               >
                 {opt.text}
@@ -220,10 +220,10 @@ function MatchingInput({
                 onClick={() => tapRight(opt.id)}
                 disabled={(!pendingLeft && !isPaired) || locked}
                 className={`px-3 py-2.5 rounded-2xl border text-left transition-colors text-sm ${isPaired
-                    ? "bg-gray-100 border-gray-300 text-gray-700"
-                    : pendingLeft
-                      ? "bg-white border-border text-gray-700 hover:border-green-400 hover:bg-green-50"
-                      : "bg-gray-50 border-border text-gray-400"
+                  ? "bg-gray-100 border-gray-300 text-gray-700"
+                  : pendingLeft
+                    ? "bg-white border-border text-gray-700 hover:border-green-400 hover:bg-green-50"
+                    : "bg-gray-50 border-border text-gray-400"
                   }`}
               >
                 {opt.text}
@@ -248,7 +248,7 @@ function ArrangeInput({
   locked?: boolean;
 }) {
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div className="min-h-14 p-3 border border-dashed border-gray-300 rounded-2xl flex flex-wrap gap-2 items-center bg-gray-50">
         {selected.length === 0 && (
           <span className="text-xs text-gray-300 px-1">
@@ -320,7 +320,7 @@ function ReorderInput({
         return (
           <div
             key={id}
-            className="flex items-center gap-3 px-4 py-3 rounded-2xl border bg-white border-border"
+            className="flex items-center gap-2 px-4 py-3 rounded-2xl border bg-white border-border"
           >
             <span className="text-gray-300 text-sm font-mono w-5 shrink-0">
               {pos + 1}.
@@ -546,7 +546,7 @@ export function LivePlayPage() {
     if (!question) return null;
     if (question.type === "open" || question.type === "fillblank") {
       return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <textarea
             id="captain-text-input"
             rows={3}
@@ -569,7 +569,7 @@ export function LivePlayPage() {
     }
     if (question.type === "slider") {
       return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <input
             id="captain-slider-input"
             type="range"
@@ -595,7 +595,7 @@ export function LivePlayPage() {
     // matching/arrange/reorder/droppin: minimal fallback — captain confirms verbally coordinated answer is out of scope
     // for this plan's UI depth; render a simple text fallback so the flow is never blocked.
     return (
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <p className="text-sm text-gray-400">
           Bu savol turi uchun ovozli kelishilgan javobni yozing (vergul bilan
           ajrating).
@@ -812,20 +812,20 @@ export function LivePlayPage() {
                           key={opt.id}
                           onClick={() => tapOption(opt.id)}
                           disabled={phase === "reveal"}
-                          className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all active:scale-[0.99] ${phase === "reveal"
-                              ? isCorrect
-                                ? "bg-green-50 border-green-300"
-                                : "bg-gray-50 border-border opacity-60"
-                              : (isTeamMode && !isCaptain ? isSuggested : isSel)
-                                ? "bg-gray-900 border-gray-900 text-white"
-                                : "bg-white border-border text-gray-800 hover:border-gray-300"
+                          className={`w-full text-left flex items-center gap-2 px-4 py-3.5 rounded-2xl border transition-all active:scale-[0.99] ${phase === "reveal"
+                            ? isCorrect
+                              ? "bg-green-50 border-green-300"
+                              : "bg-gray-50 border-border opacity-60"
+                            : (isTeamMode && !isCaptain ? isSuggested : isSel)
+                              ? "bg-gray-900 border-gray-900 text-white"
+                              : "bg-white border-border text-gray-800 hover:border-gray-300"
                             }`}
                         >
                           <span
                             className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 ${(isTeamMode && !isCaptain ? isSuggested : isSel) &&
-                                phase !== "reveal"
-                                ? "bg-white/20 text-white"
-                                : "bg-gray-100 text-gray-500"
+                              phase !== "reveal"
+                              ? "bg-white/20 text-white"
+                              : "bg-gray-100 text-gray-500"
                               }`}
                           >
                             {LABELS[i]}
@@ -917,7 +917,7 @@ export function LivePlayPage() {
 
                 {phase === "reveal" && myReveal && (
                   <div
-                    className={`rounded-2xl px-4 py-4 mb-4 flex items-center gap-3 ${myReveal.isCorrect ? "bg-green-50" : "bg-red-50"}`}
+                    className={`rounded-2xl px-4 py-4 mb-4 flex items-center gap-2 ${myReveal.isCorrect ? "bg-green-50" : "bg-red-50"}`}
                   >
                     {myReveal.isCorrect ? (
                       <CheckCircle2
@@ -1016,10 +1016,10 @@ export function LivePlayPage() {
                 <div
                   key={e.userId}
                   className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${e.rank === 1
-                      ? "bg-amber-50 border-amber-200"
-                      : e.rank <= 3
-                        ? "bg-gray-50 border-gray-200"
-                        : "bg-white border-border"
+                    ? "bg-amber-50 border-amber-200"
+                    : e.rank <= 3
+                      ? "bg-gray-50 border-gray-200"
+                      : "bg-white border-border"
                     }`}
                 >
                   <span className="font-semibold text-gray-800">

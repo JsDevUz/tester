@@ -55,7 +55,7 @@ export function CourseChallengesPage({
 
   if (selectedId && detail && detail.id === selectedId) {
     return (
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <Breadcrumb
             items={[
@@ -131,7 +131,7 @@ export function CourseChallengesPage({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb items={[{ label: 'Kurslar', onClick: onBackToList }, { label: course.title, onClick: onSelectContent }, { label: 'Challenges' }]} />
 
@@ -159,7 +159,7 @@ export function CourseChallengesPage({
                 key={c.id}
                 type="button"
                 onClick={() => setSelectedId(c.id)}
-                className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
+                className="flex w-full items-center gap-2 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 {c.imageUrl ? (
                   <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
@@ -287,7 +287,7 @@ function BooksPanel({
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {books.map((book) => (
           <div key={book.id} className="rounded-xl bg-gray-50 p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">

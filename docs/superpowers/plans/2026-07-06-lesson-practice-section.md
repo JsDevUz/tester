@@ -554,7 +554,7 @@ export function PracticeSection({
           <p className="mt-1 text-xs text-gray-400">Pastroqdan test qo'shing</p>
         </div>
       ) : (
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="mb-6 flex flex-col gap-2">
           {lesson.practiceBlocks.map((block, index) => (
             <PracticeBlockView
               key={block.id}
@@ -602,7 +602,7 @@ export function PracticeSection({
       </button>
 
       <div className="rounded-2xl border border-gray-100 bg-white p-4">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <div className="min-w-0 flex-1">
             <p className="text-sm font-semibold text-gray-800">
               Minimal o'tish balini talab qilish
@@ -777,14 +777,14 @@ Replace:
 export function CourseSidePanel({ onBackToList, variant = 'full' }: CourseSidePanelProps) {
   const tabs = variant === 'lesson' ? LESSON_TABS : FULL_TABS;
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           return (
             <div
               key={tab.key}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${
                 tab.active
                   ? 'bg-indigo-50 text-indigo-600'
                   : 'cursor-not-allowed text-gray-300'
@@ -830,7 +830,7 @@ export function CourseSidePanel({
   }
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -842,7 +842,7 @@ export function CourseSidePanel({
               role={clickable ? 'button' : undefined}
               tabIndex={clickable ? 0 : undefined}
               onClick={() => handleTabClick(tab.key)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${
                 active
                   ? 'bg-indigo-50 text-indigo-600'
                   : clickable
@@ -928,7 +928,7 @@ Replace:
 function PracticeToggleCard() {
   const [enabled, setEnabled] = useState(false);
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4">
+    <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
         <Brain size={18} />
       </div>
@@ -967,7 +967,7 @@ function PracticeToggleCard({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-4">
+    <div className="flex items-center gap-2 rounded-2xl border border-gray-100 bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
         <Brain size={18} />
       </div>
@@ -1048,7 +1048,7 @@ Replace:
         )}
 
         {lesson.blocks.length > 0 && (
-          <div className="mb-6 flex flex-col gap-3">
+          <div className="mb-6 flex flex-col gap-2">
             {lesson.blocks.map((block, index) => (
               <ContentBlockView
                 key={block.id}
@@ -1098,7 +1098,7 @@ With:
             )}
 
             {lesson.blocks.length > 0 && (
-              <div className="mb-6 flex flex-col gap-3">
+              <div className="mb-6 flex flex-col gap-2">
                 {lesson.blocks.map((block, index) => (
                   <ContentBlockView
                     key={block.id}

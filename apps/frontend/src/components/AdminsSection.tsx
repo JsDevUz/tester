@@ -55,7 +55,7 @@ export function AdminsSection({ currentAdminId }: { currentAdminId: string | nul
         {admins.map((admin) => (
           <div
             key={admin.id}
-            className="flex items-center justify-between gap-3 border-b border-border px-4 py-3 last:border-0"
+            className="flex items-center justify-between gap-2 border-b border-border px-4 py-3 last:border-0"
           >
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-gray-800">{admin.name}</p>

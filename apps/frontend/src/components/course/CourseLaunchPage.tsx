@@ -88,7 +88,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -99,7 +99,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
         />
 
         <div className="rounded-2xl bg-white p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <div>
               <h2 className="mb-1 text-lg font-bold text-gray-800">Tariflar</h2>
               <p className="text-sm text-gray-400">Bu yerda tariflarni qo'shishingiz mumkin</p>
@@ -129,7 +129,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
           ) : (
             <div className="flex flex-col gap-2">
               {launch.plans.map((plan) => (
-                <div key={plan.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5">
+                <div key={plan.id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-4 py-3.5">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-green-400" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-gray-800">{plan.name}</p>
@@ -169,7 +169,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
         onSelectGroups={onSelectGroups}
         onSelectClasses={onSelectClasses}
         onSelectChallenges={onSelectChallenges}
-        onSelectLaunch={() => {}}
+        onSelectLaunch={() => { }}
       />
 
       {modalOpen && (

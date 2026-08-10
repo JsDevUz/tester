@@ -99,7 +99,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     const pageStudents = students.slice((currentStudentPage - 1) * 7, currentStudentPage * 7);
 
     return (
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <Breadcrumb
             items={[
@@ -114,18 +114,16 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
             <button
               type="button"
               onClick={() => setInnerTab('students')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-                innerTab === 'students' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${innerTab === 'students' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               O'quvchilar
             </button>
             <button
               type="button"
               onClick={() => setInnerTab('settings')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${
-                innerTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${innerTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               Sozlamalar
             </button>
@@ -151,7 +149,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               ) : (
                 <div className="flex flex-col gap-2">
                   {pageStudents.map((m) => (
-                    <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                    <div key={m.id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3.5 py-3">
                       <UserAvatar name={m.studentName} avatarUrl={m.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(m.id)}`} />
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-semibold text-gray-800">{m.studentName}</p>
@@ -159,15 +157,14 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                       </div>
                       {m.latestPaymentStatus && (
                         <span
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${
-                            m.latestPaymentStatus === 'paid'
+                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${m.latestPaymentStatus === 'paid'
                               ? 'bg-green-100 text-green-600'
                               : m.latestPaymentStatus === 'partial'
                                 ? 'bg-amber-100 text-amber-600'
                                 : m.latestPaymentStatus === 'debt'
                                   ? 'bg-red-100 text-red-600'
                                   : 'bg-gray-200 text-gray-500'
-                          }`}
+                            }`}
                         >
                           {m.latestPaymentStatus === 'paid'
                             ? "To'landi"
@@ -185,9 +182,8 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                         type="button"
                         onClick={() => void setMemberForcedClosed(courseId, group.id, m.id, !m.forcedClosed)}
                         title={m.forcedClosed ? 'Ochish' : 'Majburiy yopish'}
-                        className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${
-                          m.forcedClosed ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                        }`}
+                        className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${m.forcedClosed ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
+                          }`}
                       >
                         {m.forcedClosed ? 'Yopiq' : 'Ochiq'}
                       </button>
@@ -217,11 +213,10 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                           key={page}
                           type="button"
                           onClick={() => setStudentPage(page)}
-                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${
-                            page === currentStudentPage
+                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${page === currentStudentPage
                               ? 'bg-gray-900 text-white'
                               : 'text-gray-500 hover:bg-gray-100'
-                          }`}
+                            }`}
                         >
                           {page}
                         </button>
@@ -264,7 +259,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   ))}
                 </select>
 
-                <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-800">Guruh chati</p>
                     <p className="text-xs text-gray-400">Alohida chat o'quvchilar va kuratorlar uchun</p>
@@ -279,7 +274,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-800">Guruh kanali</p>
                     <p className="text-xs text-gray-400">Alohida kanal, faqat maktab xodimlari yoza oladi</p>
@@ -306,7 +301,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                 ) : (
                   <div className="mb-3 flex flex-col gap-2">
                     {curators.map((m) => (
-                      <div key={m.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2">
+                      <div key={m.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
                         <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{m.studentName}</p>
                         <button
                           type="button"
@@ -346,7 +341,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                     {payments.map((p) => {
                       const member = group.members.find((m) => m.id === p.groupMemberId);
                       return (
-                        <div key={p.id} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2 text-sm">
+                        <div key={p.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm">
                           <span className="min-w-0 flex-1 truncate text-gray-700">
                             {member?.studentName ?? 'Noma\'lum'} — {new Date(p.periodMonth).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })}
                           </span>
@@ -388,7 +383,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           onSelectContent={onSelectContent}
           onSelectSettings={onSelectSettings}
           onSelectLaunch={onSelectLaunch}
-          onSelectGroups={() => {}}
+          onSelectGroups={() => { }}
           onSelectClasses={onSelectClasses}
           onSelectChallenges={onSelectChallenges}
         />
@@ -407,7 +402,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
   // ─── Holat A: guruhlar ro'yxati ────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -422,7 +417,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           <p className="mb-4 text-sm text-gray-400">
             O'quvchilarni ajratish orqali o'quv jarayonini soddalashtirish
           </p>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleCreateGroup}
@@ -492,8 +487,8 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
         activeFullTab="groups"
         onSelectContent={onSelectContent}
         onSelectLaunch={onSelectLaunch}
-        onSelectGroups={() => {}}
-          onSelectClasses={onSelectClasses}
+        onSelectGroups={() => { }}
+        onSelectClasses={onSelectClasses}
         onSelectChallenges={onSelectChallenges}
       />
     </div>

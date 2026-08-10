@@ -130,7 +130,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
   return (
     <div className="flex flex-col gap-4">
       <div className="rounded-xl border border-gray-200 bg-white/80 p-4">
-        <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="flex items-center justify-between gap-2 mb-3">
           <div>
             <h3 className="text-sm font-semibold text-gray-700">
               Namuna pattern

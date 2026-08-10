@@ -804,6 +804,11 @@ select::-ms-expand {
   background-color: #171a20;
 }
 
+:root[data-theme="dark"] input.bg-transparent,
+:root[data-theme="dark"] textarea.bg-transparent {
+  background-color: transparent !important;
+}
+
 :root[data-theme="dark"] textarea.classroom-text-editor {
   background-color: transparent !important;
 }
@@ -931,18 +936,22 @@ select::-ms-expand {
   color: #9ca3af;
 }
 
-:root[data-theme="dark"] .admin-page-surface {
-  background: #16181d;
+.practice-messenger-root,
+.practice-messenger-list {
+  background-color: #ffffff;
 }
 
-@media (min-width: 1025px) {
-  :root[data-theme="dark"] .practice-messenger-root,
-  :root[data-theme="dark"] .practice-messenger-list,
-  :root[data-theme="dark"] .practice-messenger-thread,
-  :root[data-theme="dark"] .practice-messenger-header,
-  :root[data-theme="dark"] .practice-messenger-composer {
-    background-color: #30313a !important;
-  }
+.practice-messenger-thread {
+  background-color: #f3f4f6 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-root,
+:root[data-theme="dark"] .practice-messenger-list {
+  background-color: #1e1f26 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-thread {
+  background-color: #24252c !important;
 }
 
 @media (max-width: 1024px) {
@@ -1062,6 +1071,23 @@ select::-ms-expand {
 .lesson-reader-html blockquote {
   color: #4b5563 !important;
   border-left-color: #9ca3af !important;
+}
+
+.lesson-reader-html p,
+.lesson-reader-html div,
+.lesson-reader-html .bn-block-outer,
+.lesson-reader-html .bn-block-content,
+.lesson-reader-html .bn-inline-content,
+.lesson-reader-html [data-content-type] {
+  width: fit-content !important;
+  max-width: 100% !important;
+}
+
+.lesson-reader-html iframe,
+.lesson-reader-html video,
+.lesson-reader-html table,
+.lesson-reader-html .tableWrapper {
+  width: 100% !important;
 }
 
 :root[data-theme="dark"] .course-editor blockquote,
@@ -1570,15 +1596,12 @@ select::-ms-expand {
   }
 }
 
-/* Student shell uses responsive `lg:bg-gray-50`, not covered by the generic
-   dark-mode `.bg-gray-50` selector — keep it distinct from the `.bg-white` cards. */
-@media (min-width: 64rem) {
-  :root[data-theme="dark"] .student-shell-bg {
-    background-color: #1c1d23 !important;
-  }
+/* Student shell canvas background in dark mode across all screen sizes */
+:root[data-theme="dark"] .student-shell-bg {
+  background-color: #1c1d23 !important;
 }
 
-@media (prefers-color-scheme: dark) and (min-width: 64rem) {
+@media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .student-shell-bg {
     background-color: #1c1d23 !important;
   }
@@ -1615,6 +1638,32 @@ select::-ms-expand {
   background-color: #30313a !important;
 }
 
+/* Mobile student page top header with clean white background in light mode and dark surface in dark mode */
+.student-page-header {
+  background-color: #ffffff;
+  border-bottom: 1px solid #f1f5f9;
+  padding: 1.15rem 1rem 0.95rem 1rem;
+  margin: -1rem -1rem 1.25rem -1rem;
+}
+
+:root[data-theme="dark"] .student-page-header {
+  background-color: #1e1f26 !important;
+  border-bottom-color: #272832 !important;
+}
+
+@media (min-width: 1025px) {
+  .student-page-header {
+    background-color: transparent;
+    border-bottom: none;
+    padding: 0;
+    margin: 0 0 1.25rem 0;
+  }
+  :root[data-theme="dark"] .student-page-header {
+    background-color: transparent !important;
+    border-bottom: none !important;
+  }
+}
+
 /* Student sahifalarining o'ng content paneli: tablet/mobile'da canvas bilan
    birlashadi, desktopda esa light/dark theme surface qaytadi. */
 .student-responsive-panel {
@@ -1624,32 +1673,47 @@ select::-ms-expand {
 @media (min-width: 1025px) {
   .student-responsive-panel {
     border-radius: 1rem;
-    background-color: #fff;
+    background-color: #ffffff;
   }
 
   .student-responsive-panel > .student-responsive-panel-section {
     background-color: transparent !important;
   }
 
+  .student-responsive-card,
   .student-responsive-panel .student-course-card,
   .student-responsive-panel .student-responsive-card {
-    border-color: #e2e8f0 !important;
-    background-color: #f8fafc !important;
+    border: 1px solid #e2e8f0 !important;
+    background-color: #f3f4f6 !important;
+    box-shadow: none !important;
+  }
+
+  .student-responsive-card:hover,
+  .student-responsive-panel .student-course-card:hover,
+  .student-responsive-panel .student-responsive-card:hover {
+    border-color: #cbd5e1 !important;
+    background-color: #e5e7eb !important;
+    box-shadow: none !important;
   }
 
   :root[data-theme="dark"] .student-responsive-panel {
     background-color: #30313a;
   }
 
+  :root[data-theme="dark"] .student-responsive-card,
   :root[data-theme="dark"] .student-responsive-panel .student-course-card,
   :root[data-theme="dark"] .student-responsive-panel .student-responsive-card {
     border-color: #3f414c !important;
     background-color: #24252c !important;
+    box-shadow: none !important;
   }
 
+  :root[data-theme="dark"] .student-responsive-card:hover,
   :root[data-theme="dark"] .student-responsive-panel .student-course-card:hover,
   :root[data-theme="dark"] .student-responsive-panel .student-responsive-card:hover {
+    border-color: #525462 !important;
     background-color: #292a32 !important;
+    box-shadow: none !important;
   }
 }
 

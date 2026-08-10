@@ -28,7 +28,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
         </div>
 
         <div className="px-6 pb-6 flex flex-col gap-5 mt-3">
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Radio size={17} />
             </div>
@@ -44,7 +44,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Users size={17} />
             </div>
@@ -60,7 +60,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Crown size={17} />
             </div>
@@ -79,7 +79,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Clock size={17} />
             </div>
@@ -95,7 +95,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Mic size={17} />
             </div>
@@ -112,7 +112,7 @@ export function LiveSessionInfoModal({ onClose }: { onClose: () => void }) {
             </div>
           </section>
 
-          <section className="flex gap-3">
+          <section className="flex gap-2">
             <div className="shrink-0 w-9 h-9 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
               <Trophy size={17} />
             </div>

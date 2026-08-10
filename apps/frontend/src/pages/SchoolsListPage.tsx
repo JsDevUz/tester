@@ -58,56 +58,59 @@ export function SchoolsListPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel w-full p-4 sm:p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <h1 className="text-lg font-bold text-gray-800">
-            Mening maktablarim
-          </h1>
-          <button
-            type="button"
-            onClick={() => setInviteOpen((open) => !open)}
-            aria-label={
-              inviteOpen ? "Yopish" : "Taklif havolasi bilan qo'shilish"
-            }
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 bg-indigo-600"
-          >
-            {inviteOpen ? <X size={18} /> : <Search size={18} />}
-          </button>
-        </div>
-
-        {inviteOpen && (
-          <div className="mb-4 flex items-center gap-2">
-            <input
-              autoFocus
-              value={inviteInput}
-              onChange={(e) => setInviteInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter") openInvite();
-              }}
-              placeholder="Taklif havolasi yoki kodi"
-              autoCapitalize="none"
-              autoCorrect="off"
-              className="h-11 flex-1 rounded-xl bg-white border border-gray-200 shadow-sm px-4 text-sm text-gray-900 outline-none focus:outline-none focus-visible:outline-none placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:bg-zinc-800/80 dark:border-zinc-700 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30 transition-all"
-            />
+      <div className="student-responsive-panel w-full overflow-hidden">
+        <div className="student-responsive-panel-section bg-white dark:bg-[#30313a] px-4 py-5 lg:p-5">
+          <div className="flex items-center justify-between gap-3">
+            <h1 className="text-2xl font-extrabold text-gray-900 dark:text-zinc-100">
+              Mening maktablarim
+            </h1>
             <button
               type="button"
-              onClick={openInvite}
-              disabled={!extractInviteToken(inviteInput)}
-              className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+              onClick={() => setInviteOpen((open) => !open)}
+              aria-label={
+                inviteOpen ? "Yopish" : "Taklif havolasi bilan qo'shilish"
+              }
+              className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-white transition-colors hover:bg-indigo-700 bg-indigo-600"
             >
-              <Search size={18} />
+              {inviteOpen ? <X size={18} /> : <Search size={18} />}
             </button>
           </div>
-        )}
 
-        {!loaded && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
+          {inviteOpen && (
+            <div className="mt-4 flex items-center gap-2">
+              <input
+                autoFocus
+                value={inviteInput}
+                onChange={(e) => setInviteInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") openInvite();
+                }}
+                placeholder="Taklif havolasi yoki kodi"
+                autoCapitalize="none"
+                autoCorrect="off"
+                className="h-11 flex-1 rounded-xl bg-gray-100 dark:bg-zinc-800 px-4 text-sm text-gray-900 dark:text-zinc-100 outline-none placeholder:text-gray-400"
+              />
+              <button
+                type="button"
+                onClick={openInvite}
+                disabled={!extractInviteToken(inviteInput)}
+                className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+              >
+                <Search size={18} />
+              </button>
+            </div>
+          )}
+        </div>
 
-        {loaded && error && (
-          <div className="rounded-2xl bg-red-50 p-4 text-center">
-            <p className="mb-3 text-sm text-red-600">{error}</p>
-            <button
-              type="button"
-              onClick={() => void loadSchools()}
+        <div className="student-responsive-panel-section px-4 pb-5 pt-4 lg:px-5">
+          {!loaded && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
+
+          {loaded && error && (
+            <div className="rounded-2xl bg-red-50 p-4 text-center">
+              <p className="mb-3 text-sm text-red-600">{error}</p>
+              <button
+                type="button"
+                onClick={() => void loadSchools()}
               className="rounded-xl bg-red-600 px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-red-700"
             >
               Qayta urinish
@@ -123,7 +126,7 @@ export function SchoolsListPage() {
         )}
 
         {loaded && !error && schools.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
             {schools.map((school) => {
               const expanded = expandedIds.has(school.id);
               return (
@@ -151,11 +154,11 @@ export function SchoolsListPage() {
                       )}
                     </div>
                     <div className="min-w-0 flex-1">
-                      <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
+                      <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 dark:text-zinc-100 sm:text-xl">
                         {school.name}
                       </p>
-                      <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                        <UserRound size={16} className="text-gray-700" />
+                      <span className="mt-1 inline-flex items-center gap-1.5 text-sm font-medium text-gray-900 dark:text-zinc-300">
+                        <UserRound size={16} className="text-gray-700 dark:text-zinc-400" />
                         {school.studentCount}
                       </span>
                     </div>
@@ -163,7 +166,7 @@ export function SchoolsListPage() {
                   {school.description && (
                     <>
                       <p
-                        className={`mt-3 whitespace-pre-line text-sm text-gray-500 ${expanded ? "" : "line-clamp-3"}`}
+                        className={`mt-3 whitespace-pre-line text-sm text-gray-500 dark:text-zinc-400 ${expanded ? "" : "line-clamp-3"}`}
                       >
                         {school.description}
                       </p>
@@ -192,6 +195,7 @@ export function SchoolsListPage() {
             })}
           </div>
         )}
+        </div>
       </div>
     </StudentShell>
   );

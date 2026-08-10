@@ -793,7 +793,7 @@ export function LiveCreatePage() {
             <div className="flex flex-col gap-2">
               {sessions.map((s) => (
                 <button key={s.id} onClick={() => handleRowClick(s)}
-                  className="w-full bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-3 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left">
+                  className="w-full bg-white rounded-2xl border border-gray-100 px-4 py-3.5 flex items-center gap-2 hover:border-indigo-200 hover:bg-indigo-50/30 transition-all text-left">
                   <div className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                     s.mode === 'team' ? 'bg-purple-50' : 'bg-blue-50'
                   }`}>

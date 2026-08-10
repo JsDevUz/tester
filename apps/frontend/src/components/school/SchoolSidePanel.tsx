@@ -19,7 +19,7 @@ export function SchoolSidePanel() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -30,9 +30,8 @@ export function SchoolSidePanel() {
               role="button"
               tabIndex={0}
               onClick={() => navigate(tab.path)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${
-                active ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
-              }`}
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${active ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
+                }`}
             >
               <Icon size={18} className={`shrink-0 ${active ? 'text-gray-900' : 'text-gray-400'}`} />
               <div className="min-w-0">

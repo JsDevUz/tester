@@ -125,7 +125,7 @@ export function FreeClassHistoryPage() {
             onPointerDown={(event) => { if (event.target === event.currentTarget && !deleting) setDeleteTarget(null); }}
           >
             <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Darsni o'chirish">
-              <div className="flex items-center gap-3 text-red-600">
+              <div className="flex items-center gap-2 text-red-600">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
                   <Trash2 size={20} />
                 </div>

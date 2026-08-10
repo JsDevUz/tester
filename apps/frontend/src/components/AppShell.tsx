@@ -73,9 +73,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const visibleSections =
     admin?.role === "curator"
       ? SECTIONS.filter(
-          (section) =>
-            section.key === "students" || section.key === "messenger",
-        )
+        (section) =>
+          section.key === "students" || section.key === "messenger",
+      )
       : SECTIONS;
 
   const activeSection = visibleSections.find((section) =>
@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col gap-3 bg-[#f1f5f9] p-3 lg:relative lg:flex-row"
+      className="flex flex-col gap-2 bg-[#f1f5f9] p-3 lg:relative lg:flex-row"
       style={{
         height: "100dvh",
         paddingTop: "max(12px, env(safe-area-inset-top))",
@@ -117,11 +117,10 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 key={section.key}
                 aria-label={section.label}
                 onClick={() => navigate(section.path)}
-                className={`group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${
-                  isActive
+                className={`group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${isActive
                     ? "bg-white text-gray-900"
                     : "text-gray-400 hover:bg-white/10 hover:text-white"
-                }`}
+                  }`}
               >
                 {isActive && (
                   <span className="hidden lg:block absolute -left-2 top-1/2 -translate-y-1/2 w-1 h-5 rounded-full bg-gray-900" />

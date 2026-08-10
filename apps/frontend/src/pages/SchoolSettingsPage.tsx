@@ -54,7 +54,7 @@ export function SchoolSettingsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-4 text-lg font-bold text-gray-800">Maktab sozlamalari</h1>
 
@@ -62,7 +62,7 @@ export function SchoolSettingsPage() {
             <h2 className="mb-1 text-lg font-bold text-gray-800">Maktab nomi va tavsifi</h2>
             <p className="mb-4 text-sm text-gray-400">Bu yerda maktab nomi va tavsifini tahrirlashingiz mumkin</p>
 
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex items-center gap-2">
               <div className="relative shrink-0">
                 <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-gray-100">
                   {imageUrl ? (

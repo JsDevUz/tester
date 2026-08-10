@@ -57,7 +57,7 @@ export function SchoolInvitePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-1 text-lg font-bold text-gray-800">Ro'yxatdan o'tish</h1>
           <p className="mb-4 text-sm text-gray-400">

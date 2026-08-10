@@ -92,7 +92,7 @@ export function MyTestsPage() {
         ) : folders.length === 0 ? (
           <p className="py-16 text-center text-sm text-gray-400">Hali papka yo'q. Yangisini yarating!</p>
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {folders.map((folder) => (
               <FolderCard
                 key={folder.id}

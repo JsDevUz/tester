@@ -49,7 +49,7 @@ export function RecordSessionModal({ onSelect, onClose }: Props) {
               key={mode}
               type="button"
               onClick={() => onSelect(mode)}
-              className="flex items-start gap-3 rounded-2xl border border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+              className="flex items-start gap-2 rounded-2xl border border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50"
             >
               <Icon size={18} className="mt-0.5 shrink-0 text-gray-400" />
               <div className="min-w-0">

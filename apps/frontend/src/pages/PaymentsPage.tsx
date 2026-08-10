@@ -187,33 +187,33 @@ export function PaymentsPage() {
   return (
     <AppShell>
       <div className="min-h-screen p-3 sm:p-4">
-        <div className="flex min-h-full flex-col gap-3">
+        <div className="flex min-h-full flex-col gap-2">
           <div className="rounded-2xl bg-white p-4">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-            <div>
-              <h1 className="text-lg font-bold text-gray-800">To'lovlar</h1>
-              <p className="mt-0.5 text-xs text-gray-400">
-                O'quvchilar to'lovlari, qarzdorlik va oylik tushumlar
-              </p>
+            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
+              <div>
+                <h1 className="text-lg font-bold text-gray-800">To'lovlar</h1>
+                <p className="mt-0.5 text-xs text-gray-400">
+                  O'quvchilar to'lovlari, qarzdorlik va oylik tushumlar
+                </p>
+              </div>
+              <div className="flex flex-col gap-2 sm:flex-row">
+                <button
+                  type="button"
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100"
+                >
+                  <Download size={16} />
+                  Eksport
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModalOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-600"
+                >
+                  <CreditCard size={16} />
+                  To'lov qabul qilish
+                </button>
+              </div>
             </div>
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <button
-                type="button"
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100"
-              >
-                <Download size={16} />
-                Eksport
-              </button>
-              <button
-                type="button"
-                onClick={() => setModalOpen(true)}
-                className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-600"
-              >
-                <CreditCard size={16} />
-                To'lov qabul qilish
-              </button>
-            </div>
-          </div>
           </div>
 
           <div className="flex gap-2.5 overflow-x-auto pb-1">
@@ -261,11 +261,10 @@ export function PaymentsPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${
-                      active
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${active
                         ? "bg-white text-gray-900"
                         : "text-gray-900 hover:bg-white/60"
-                    }`}
+                      }`}
                   >
                     <span>
                       {tab.label} ({count.toLocaleString("uz-UZ")})
@@ -274,57 +273,57 @@ export function PaymentsPage() {
                 );
               })}
             </div>
+          </div>
+          <div className="flex flex-wrap items-center gap-2.5">
+            <div className="relative w-fit max-w-full">
+              <Search
+                size={18}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+              />
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="O'quvchi, telefon yoki kurs bo'yicha qidirish..."
+                className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+              />
             </div>
-            <div className="flex flex-wrap items-center gap-2.5">
-              <div className="relative w-fit max-w-full">
-                <Search
-                  size={18}
-                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
-                />
-                <input
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="O'quvchi, telefon yoki kurs bo'yicha qidirish..."
-                  className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
-                />
-              </div>
-              <select
-                value={courseFilter}
-                onChange={(e) => setCourseFilter(e.target.value)}
-                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
-              >
-                <option value="">Barcha kurslar</option>
-                {courseOptions.map((title) => (
-                  <option key={title} value={title}>
-                    {title}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={monthFilter}
-                onChange={(e) => setMonthFilter(e.target.value)}
-                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
-              >
-                <option value="">Barcha oylar</option>
-                {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </select>
-              <select
-                value={yearFilter}
-                onChange={(e) => setYearFilter(e.target.value)}
-                className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
-              >
-                <option value="">Barcha yillar</option>
-                {yearOptions.map((y) => (
-                  <option key={y} value={y}>
-                    {y}
-                  </option>
-                ))}
-              </select>
-            </div>
+            <select
+              value={courseFilter}
+              onChange={(e) => setCourseFilter(e.target.value)}
+              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+            >
+              <option value="">Barcha kurslar</option>
+              {courseOptions.map((title) => (
+                <option key={title} value={title}>
+                  {title}
+                </option>
+              ))}
+            </select>
+            <select
+              value={monthFilter}
+              onChange={(e) => setMonthFilter(e.target.value)}
+              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+            >
+              <option value="">Barcha oylar</option>
+              {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
+                <option key={m} value={m}>
+                  {m}
+                </option>
+              ))}
+            </select>
+            <select
+              value={yearFilter}
+              onChange={(e) => setYearFilter(e.target.value)}
+              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+            >
+              <option value="">Barcha yillar</option>
+              {yearOptions.map((y) => (
+                <option key={y} value={y}>
+                  {y}
+                </option>
+              ))}
+            </select>
+          </div>
 
           <div className="hidden overflow-x-auto rounded-2xl bg-white md:block">
             <table className="w-full min-w-[920px] text-left">
@@ -417,10 +416,10 @@ export function PaymentsPage() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 md:hidden">
+          <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 md:hidden">
             {filtered.map((row) => (
               <div key={row.id} className="rounded-2xl bg-gray-50 p-3">
-                <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-gray-800">
                       {row.studentName}
@@ -429,7 +428,7 @@ export function PaymentsPage() {
                   </div>
                   <StatusBadge status={row.status} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <PaymentInfo label="Kurs" value={row.courseTitle} />
                   <PaymentInfo label="Guruh" value={row.groupName} />
                   <PaymentInfo label="Oy" value={formatMonthLabel(row.periodMonth)} />
@@ -512,25 +511,23 @@ function SummaryCard({
         ? highlighted
           ? "bg-white/20 text-white"
           : "bg-amber-50 text-amber-600"
-      : highlighted
-        ? "bg-white/20 text-white"
-        : tone === "neutral"
-          ? "bg-gray-100 text-gray-500"
-          : "bg-green-50 text-green-600";
+        : highlighted
+          ? "bg-white/20 text-white"
+          : tone === "neutral"
+            ? "bg-gray-100 text-gray-500"
+            : "bg-green-50 text-green-600";
 
   return (
     <div
-      className={`min-w-40 flex-1 rounded-2xl p-2.5 ${
-        highlighted
+      className={`min-w-40 flex-1 rounded-2xl p-2.5 ${highlighted
           ? "bg-gray-900 text-white"
           : "bg-white text-gray-900"
-      }`}
+        }`}
     >
       <div className="mb-4 flex items-center justify-between gap-2">
         <p
-          className={`text-xs font-semibold ${
-            highlighted ? "text-white" : "text-gray-700"
-          }`}
+          className={`text-xs font-semibold ${highlighted ? "text-white" : "text-gray-700"
+            }`}
         >
           {title}
         </p>
@@ -695,7 +692,7 @@ function PaymentModal({
             <X size={18} />
           </button>
         </div>
-        <div className="grid gap-3 px-6 pb-6 sm:grid-cols-2">
+        <div className="grid gap-2 px-6 pb-6 sm:grid-cols-2">
           <Field label="Kutilayotgan to'lov" className="sm:col-span-2">
             <div className="rounded-2xl bg-gray-50 p-1.5">
               <div className="relative mb-1.5">
@@ -711,7 +708,7 @@ function PaymentModal({
                 />
               </div>
               <div className="max-h-36 overflow-y-auto">
-                <label className="mb-1 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-white">
+                <label className="mb-1 flex cursor-pointer items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-white">
                   <input
                     type="checkbox"
                     checked={allVisibleSelected}
@@ -732,9 +729,8 @@ function PaymentModal({
                   return (
                     <label
                       key={row.id}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
-                        selected ? "bg-gray-100 text-gray-900" : "hover:bg-white"
-                      }`}
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${selected ? "bg-gray-100 text-gray-900" : "hover:bg-white"
+                        }`}
                     >
                       <input type="checkbox" checked={selected} onChange={() => setSelectedIds((current) => selected ? current.filter((id) => id !== row.id) : [...current, row.id])} className="h-4 w-4 accent-indigo-500" />
                       <div className="min-w-0 flex-1">
@@ -778,9 +774,8 @@ function PaymentModal({
               onChange={(event) => setAmount(event.target.value.replace(/[^\d\s]/g, ""))}
               disabled={payFullAmount}
               placeholder={payFullAmount ? "Tarif bo'yicha avtomatik hisoblanadi" : "300000"}
-              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
-                amountTooHigh ? "ring-1 ring-red-400" : ""
-              }`}
+              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none disabled:cursor-not-allowed disabled:opacity-50 ${amountTooHigh ? "ring-1 ring-red-400" : ""
+                }`}
             />
             {!payFullAmount && amountTooHigh && (
               <p className="mt-1 text-xs text-red-500">
@@ -793,9 +788,8 @@ function PaymentModal({
               value={discount}
               onChange={(event) => setDiscount(event.target.value.replace(/[^\d\s]/g, ""))}
               placeholder="0"
-              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none ${
-                discountTooHigh ? "ring-1 ring-red-400" : ""
-              }`}
+              className={`w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none ${discountTooHigh ? "ring-1 ring-red-400" : ""
+                }`}
             />
             {discountTooHigh && (
               <p className="mt-1 text-xs text-red-500">
@@ -825,7 +819,7 @@ function PaymentModal({
             />
           </Field>
           <Field label="Chek rasmi (ixtiyoriy)" className="sm:col-span-2">
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
+            <label className="flex cursor-pointer items-center gap-2 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
               <input type="file" accept="image/*" className="hidden" onChange={handlePickReceipt} />
               <Paperclip size={16} className="shrink-0 text-gray-400" />
               <span className="min-w-0 flex-1 truncate">

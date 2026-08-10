@@ -220,8 +220,8 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
     >
       <div className="flex w-full max-h-[92dvh] flex-col overflow-hidden rounded-t-3xl bg-white sm:max-w-lg sm:rounded-3xl">
         {/* Profile header */}
-        <div className="flex items-start justify-between gap-3 px-6 pb-4 pt-6">
-          <div className="flex min-w-0 items-center gap-3">
+        <div className="flex items-start justify-between gap-2 px-6 pb-4 pt-6">
+          <div className="flex min-w-0 items-center gap-2">
             <UserAvatar name={studentName} avatarUrl={studentAvatarUrl} className={`h-14 w-14 rounded-full text-lg font-bold ${paletteFor(studentId)}`} />
             <div className="min-w-0">
               <h2 className="truncate text-lg font-bold text-gray-900">{studentName}</h2>
@@ -234,50 +234,50 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
 
           <div className="flex shrink-0 items-center gap-1.5">
             {canManageCourses && (
-            <div className="relative">
-              <button
-                type="button"
-                onClick={() => setActionsOpen((v) => !v)}
-                className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
-                aria-label="Harakatlar"
-              >
-                <MoreVertical size={18} />
-              </button>
-              {actionsOpen && (
-                <>
-                  <div className="fixed inset-0 z-10" onClick={() => setActionsOpen(false)} />
-                  <div className="absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/5">
-                    <button
-                      type="button"
-                      onClick={() => {
-                        setActionsOpen(false);
-                        setEnrollFlowOpen(true);
-                      }}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      <GraduationCap size={16} className="text-gray-600" />
-                      Kursga qo'shish
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setActionsOpen(false); setNameDraft(studentName); setEditingName(true); setSaveError(null); }}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      <Pencil size={16} className="text-gray-600" />
-                      Ismni tahrirlash
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => { setActionsOpen(false); setPasswordDraft(''); setEditingPassword(true); setPasswordError(null); }}
-                      className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
-                    >
-                      <KeyRound size={16} className="text-gray-600" />
-                      Parolni o'zgartirish
-                    </button>
-                  </div>
-                </>
-              )}
-            </div>
+              <div className="relative">
+                <button
+                  type="button"
+                  onClick={() => setActionsOpen((v) => !v)}
+                  className="flex h-9 w-9 items-center justify-center rounded-xl text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600"
+                  aria-label="Harakatlar"
+                >
+                  <MoreVertical size={18} />
+                </button>
+                {actionsOpen && (
+                  <>
+                    <div className="fixed inset-0 z-10" onClick={() => setActionsOpen(false)} />
+                    <div className="absolute right-0 top-11 z-20 w-56 overflow-hidden rounded-2xl bg-white py-1.5 shadow-lg ring-1 ring-black/5">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setActionsOpen(false);
+                          setEnrollFlowOpen(true);
+                        }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <GraduationCap size={16} className="text-gray-600" />
+                        Kursga qo'shish
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setActionsOpen(false); setNameDraft(studentName); setEditingName(true); setSaveError(null); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <Pencil size={16} className="text-gray-600" />
+                        Ismni tahrirlash
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => { setActionsOpen(false); setPasswordDraft(''); setEditingPassword(true); setPasswordError(null); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-gray-50"
+                      >
+                        <KeyRound size={16} className="text-gray-600" />
+                        Parolni o'zgartirish
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
             )}
             <button
               type="button"
@@ -435,7 +435,7 @@ function EnrollStudentModal({
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <div className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-sm sm:rounded-3xl">
-        <div className="mb-4 flex items-center justify-between gap-3">
+        <div className="mb-4 flex items-center justify-between gap-2">
           <h2 className="text-lg font-bold text-gray-900">Kursga qo'shish</h2>
           <button
             type="button"
@@ -447,7 +447,7 @@ function EnrollStudentModal({
           </button>
         </div>
 
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <SelectRow
             label="Kurs"
             value={courseId}

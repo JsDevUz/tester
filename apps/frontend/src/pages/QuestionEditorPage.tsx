@@ -102,24 +102,24 @@ function InlineQuestionCard({
           <span className="text-sm text-gray-800">{q.text}</span>
           <span
             className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${q.type === "single"
-                ? "bg-blue-100 text-blue-600"
-                : q.type === "multi"
-                  ? "bg-purple-100 text-purple-600"
-                  : q.type === "arrange"
-                    ? "bg-amber-100 text-amber-600"
-                    : q.type === "truefalse"
-                      ? "bg-green-100 text-green-600"
-                      : q.type === "reorder"
-                        ? "bg-orange-100 text-orange-600"
-                        : q.type === "matching"
-                          ? "bg-cyan-100 text-cyan-600"
-                          : q.type === "fillblank"
-                            ? "bg-pink-100 text-pink-600"
-                            : q.type === "slider"
-                              ? "bg-sky-100 text-sky-600"
-                              : q.type === "droppin"
-                                ? "bg-lime-100 text-lime-600"
-                                : "bg-gray-100 text-gray-500"
+              ? "bg-blue-100 text-blue-600"
+              : q.type === "multi"
+                ? "bg-purple-100 text-purple-600"
+                : q.type === "arrange"
+                  ? "bg-amber-100 text-amber-600"
+                  : q.type === "truefalse"
+                    ? "bg-green-100 text-green-600"
+                    : q.type === "reorder"
+                      ? "bg-orange-100 text-orange-600"
+                      : q.type === "matching"
+                        ? "bg-cyan-100 text-cyan-600"
+                        : q.type === "fillblank"
+                          ? "bg-pink-100 text-pink-600"
+                          : q.type === "slider"
+                            ? "bg-sky-100 text-sky-600"
+                            : q.type === "droppin"
+                              ? "bg-lime-100 text-lime-600"
+                              : "bg-gray-100 text-gray-500"
               }`}
           >
             {q.type === "single"
@@ -392,7 +392,7 @@ export function QuestionEditorPage() {
           </div>
 
           {questions.length > 0 && (
-            <div className="mt-6 flex flex-col gap-3">
+            <div className="mt-6 flex flex-col gap-2">
               <h3 className="text-sm font-medium text-gray-700">
                 Savollar ({questions.length})
               </h3>

@@ -78,7 +78,7 @@ export function ChallengeWordPracticePage() {
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">
             Rejim
           </p>
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="mb-6 grid grid-cols-2 gap-2">
             <Choice
               selected={mode === "flashcard"}
               onClick={() => setMode("flashcard")}
@@ -482,7 +482,7 @@ function Test({
         <p className="mt-3 text-5xl font-black text-indigo-500">
           {percentage}%
         </p>
-        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-3">
+        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-2">
           <div className="rounded-2xl bg-emerald-50 p-4">
             <p className="text-2xl font-black text-emerald-600">
               {correctCount}
@@ -565,15 +565,14 @@ function Test({
             return (
               <span
                 key={word.id}
-                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${
-                  isCurrent
+                className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-sm font-semibold ${isCurrent
                     ? "bg-gray-900 text-white shadow-md"
                     : result === true
                       ? "bg-emerald-100 text-emerald-700"
                       : result === false
                         ? "bg-rose-100 text-rose-600"
                         : "border border-gray-200 bg-white text-gray-400"
-                }`}
+                  }`}
               >
                 {questionIndex + 1}
               </span>
@@ -592,7 +591,7 @@ function Test({
             : "To'g'ri so'zni tanlang"}
         </p>
 
-        <div className="mt-7 grid gap-3">
+        <div className="mt-7 grid gap-2">
           {options.map((option, optionIndex) => {
             const correct = option === answer;
             const chosen = option === selected;
@@ -611,7 +610,7 @@ function Test({
                 type="button"
                 disabled={checked}
                 onClick={() => setSelected(option)}
-                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
+                className={`flex w-full items-center gap-2 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
               >
                 <span
                   className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${chosen || (checked && correct) ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}

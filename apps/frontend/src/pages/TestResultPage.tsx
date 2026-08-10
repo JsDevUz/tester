@@ -45,9 +45,8 @@ function TestResultBody({
     <>
       <div className="text-center mb-8">
         <div
-          className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 ${
-            isGood ? "bg-green-50" : isMid ? "bg-amber-50" : "bg-red-50"
-          }`}
+          className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 ${isGood ? "bg-green-50" : isMid ? "bg-amber-50" : "bg-red-50"
+            }`}
         >
           {isGood ? (
             <Trophy size={40} className="text-green-400" />
@@ -58,9 +57,8 @@ function TestResultBody({
           )}
         </div>
         <p
-          className={`text-5xl font-black mb-1 ${
-            isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"
-          }`}
+          className={`text-5xl font-black mb-1 ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"
+            }`}
         >
           {pct}%
         </p>
@@ -70,20 +68,19 @@ function TestResultBody({
       </div>
 
       {/* Answers list */}
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {result.answers.map((a, i) => (
           <div
             key={a.questionId}
-            className={`rounded-2xl border px-4 py-4 ${
-              a.isCorrect === true
+            className={`rounded-2xl border px-4 py-4 ${a.isCorrect === true
                 ? "border-green-100 bg-green-50/50"
                 : a.isCorrect === false
                   ? "border-red-100 bg-red-50/50"
                   : "border-border bg-gray-50/50"
-            }`}
+              }`}
           >
             {/* Question header */}
-            <div className="flex items-start gap-3 mb-3">
+            <div className="flex items-start gap-2 mb-3">
               <span className="w-6 h-6 rounded-lg bg-white text-xs font-bold text-gray-500 flex items-center justify-center shrink-0 mt-0.5">
                 {i + 1}
               </span>
@@ -263,11 +260,10 @@ function TestResultBody({
                   {a.options.map((opt, pos) => (
                     <div
                       key={opt.id}
-                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${
-                        a.isCorrect === false
+                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${a.isCorrect === false
                           ? "bg-emerald-500 text-white"
                           : "bg-green-100/70 text-green-700 font-medium"
-                      }`}
+                        }`}
                     >
                       <span
                         className={`font-mono ${a.isCorrect === false ? "text-white/70" : "text-green-500"}`}
@@ -286,13 +282,12 @@ function TestResultBody({
                   return (
                     <div
                       key={opt.id}
-                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${
-                        opt.isCorrectOption
+                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${opt.isCorrectOption
                           ? "bg-emerald-500 text-white font-medium"
                           : selected
                             ? "bg-rose-500 text-white"
                             : "text-gray-400"
-                      }`}
+                        }`}
                     >
                       <Circle
                         size={8}
@@ -374,7 +369,7 @@ export function TestResultView({
           setResult(res);
           localStorage.removeItem(`test-draft:${sid}`);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, [submissionId, isPractice]);
 

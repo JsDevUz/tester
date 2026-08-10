@@ -43,28 +43,30 @@ export function MyDictionariesPage() {
   return (
     <StudentShell>
       <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-6">
-        <button
-          type="button"
-          onClick={() => navigate("/jamm")}
-          className="mb-5 flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700"
-        >
-          <ArrowLeft size={16} /> Orqaga
-        </button>
-        <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Mening lug'atlarim</h1>
-        <p className="mb-6 text-sm text-gray-400">So'z-tarjima lug'atlaringizni tuzing va ulashing</p>
+        <div className="student-page-header">
+          <button
+            type="button"
+            onClick={() => navigate("/jamm")}
+            className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          >
+            <ArrowLeft size={16} /> Orqaga
+          </button>
+          <h1 className="mb-1 text-2xl font-extrabold text-gray-900 dark:text-zinc-100">Mening lug'atlarim</h1>
+          <p className="text-sm text-gray-400 dark:text-zinc-400">So'z-tarjima lug'atlaringizni tuzing va ulashing</p>
+        </div>
 
         <div className="mb-6 flex gap-2">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
             placeholder="Yangi lug'at nomi"
-            className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+            className="flex-1 rounded-2xl bg-gray-50 border border-gray-200/80 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
           />
           <button
             type="button"
             disabled={!newName.trim() || creating}
             onClick={() => void handleCreate()}
-            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white disabled:bg-gray-200"
+            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-50 transition-all"
           >
             <Plus size={16} /> Yaratish
           </button>
@@ -79,13 +81,13 @@ export function MyDictionariesPage() {
             {decks.map((deck) => (
               <div
                 key={deck.id}
-                onClick={() => navigate(`/d/${deck.slug}`)}
-                className="group relative flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-4 hover:bg-gray-50 transition-colors"
+                onClick={() => navigate(`/my-dictionaries/${deck.id}`)}
+                className="student-responsive-card group relative flex cursor-pointer items-center gap-3 rounded-2xl bg-white border border-gray-200/80 p-4 transition-all hover:border-gray-300 dark:bg-zinc-800 dark:border-zinc-700 dark:hover:border-zinc-600"
               >
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-500">
+                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-400">
                   <Languages size={18} />
                 </div>
-                <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800">{deck.name}</p>
+                <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800 dark:text-zinc-100">{deck.name}</p>
               </div>
             ))}
           </div>

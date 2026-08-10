@@ -82,7 +82,7 @@ export function EditProfileSection() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col items-center gap-3 sm:flex-row sm:items-center">
+      <div className="flex flex-col items-center gap-2 sm:flex-row sm:items-center">
         <div className="relative shrink-0">
           <UserAvatar
             name={admin?.name}

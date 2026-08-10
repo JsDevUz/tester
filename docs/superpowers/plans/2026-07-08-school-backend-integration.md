@@ -692,7 +692,7 @@ export function SchoolSettingsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-4 text-lg font-bold text-gray-800">Maktab sozlamalari</h1>
 
@@ -776,9 +776,9 @@ export function SchoolStaffPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h1 className="text-lg font-bold text-gray-800">Mening xodimlarim</h1>
             <button
               type="button"
@@ -799,7 +799,7 @@ export function SchoolStaffPage() {
               {staff.map((s) => {
                 const badge = ROLE_BADGE[s.role];
                 return (
-                  <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
+                  <div key={s.id} className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3.5">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${paletteFor(s.id)}`}>
                       {initials(s.name)}
                     </div>
@@ -917,7 +917,7 @@ export function AddStaffModal({ onSearch, onConfirm, onClose }: AddStaffModalPro
               {results.map((s) => (
                 <label
                   key={s.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2.5 hover:bg-gray-50"
                 >
                   <input
                     type="radio"
@@ -1010,7 +1010,7 @@ export function SchoolInvitePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-1 text-lg font-bold text-gray-800">Ro'yxatdan o'tish</h1>
           <p className="mb-4 text-sm text-gray-400">

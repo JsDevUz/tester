@@ -133,7 +133,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
   if (containerSize.width > 0 && containerSize.height > 0) {
     const W = containerSize.width;
     const H = containerSize.height;
-    const gap = 12; // gap-3 is 12px
+    const gap = 12; // gap-2 is 12px
     const tileWidth = (W - (colsCount - 1) * gap) / colsCount;
 
     // Account for CSS constraints: min-h-[160px] sm:min-h-[220px] max-h-[360px]
@@ -188,7 +188,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
       className={`flex-1 w-full h-full flex flex-col items-center px-4 pt-4 pb-28 sm:px-4 sm:pt-8 sm:pb-32 overflow-y-auto select-none transition-colors duration-250 ${isDark ? "bg-[#18191c]" : "bg-gray-100"
         }`}
     >
-      <div className={`grid gap-3 sm:gap-3 w-full ${gridColsClass} justify-center items-center my-auto`}>
+      <div className={`grid gap-2 sm:gap-2 w-full ${gridColsClass} justify-center items-center my-auto`}>
         {listToDisplay.map((p) => {
           const isSpeaking = speakingUserIds.has(p.userId) || (p.name && speakingUserIds.has(p.name));
           const isMe = p.userId === myUserId || p.userId === "me" || (myUserName && p.name === myUserName);

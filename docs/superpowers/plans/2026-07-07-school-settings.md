@@ -320,7 +320,7 @@ export function SchoolSidePanel() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="rounded-2xl bg-white p-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
@@ -331,7 +331,7 @@ export function SchoolSidePanel() {
               role="button"
               tabIndex={0}
               onClick={() => navigate(tab.path)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${
                 active ? 'bg-indigo-50 text-indigo-600' : 'text-gray-500 hover:bg-gray-50'
               }`}
             >
@@ -368,7 +368,7 @@ export function SchoolSettingsPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-4 text-lg font-bold text-gray-800">Maktab sozlamalari</h1>
 
@@ -572,9 +572,9 @@ export function SchoolStaffPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h1 className="text-lg font-bold text-gray-800">Mening xodimlarim</h1>
             <button
               type="button"
@@ -595,7 +595,7 @@ export function SchoolStaffPage() {
               {staff.map((s) => {
                 const badge = ROLE_BADGE[s.role];
                 return (
-                  <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
+                  <div key={s.id} className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3.5">
                     <div className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full text-sm font-bold ${paletteFor(s.id)}`}>
                       {initials(s.name)}
                     </div>
@@ -693,7 +693,7 @@ export function SchoolInvitePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <h1 className="mb-1 text-lg font-bold text-gray-800">Ro'yxatdan o'tish</h1>
           <p className="mb-4 text-sm text-gray-400">

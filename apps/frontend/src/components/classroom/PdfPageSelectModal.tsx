@@ -84,7 +84,7 @@ export function PdfPageSelectModal({ asset, onConfirm, onBack, onClose, submitti
           {!pages ? (
             <p className="py-10 text-center text-sm text-gray-400">Sahifalar yuklanmoqda...</p>
           ) : (
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
               {pages.map((url, idx) => {
                 const pageNumber = idx + 1;
                 const isSelected = selected.has(pageNumber);
@@ -93,15 +93,13 @@ export function PdfPageSelectModal({ asset, onConfirm, onBack, onClose, submitti
                     key={pageNumber}
                     type="button"
                     onClick={() => toggle(pageNumber)}
-                    className={`group relative overflow-hidden rounded-xl border-2 transition-colors ${
-                      isSelected ? "border-indigo-500" : "border-transparent hover:border-gray-200"
-                    }`}
+                    className={`group relative overflow-hidden rounded-xl border-2 transition-colors ${isSelected ? "border-indigo-500" : "border-transparent hover:border-gray-200"
+                      }`}
                   >
                     <img src={url} alt={`Sahifa ${pageNumber}`} className="aspect-3/4 w-full bg-gray-100 object-cover" />
                     <span
-                      className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${
-                        isSelected ? "bg-indigo-600 text-white" : "bg-white/90 text-gray-400 ring-1 ring-gray-200"
-                      }`}
+                      className={`absolute right-1.5 top-1.5 flex h-5 w-5 items-center justify-center rounded-full text-[10px] font-bold ${isSelected ? "bg-indigo-600 text-white" : "bg-white/90 text-gray-400 ring-1 ring-gray-200"
+                        }`}
                     >
                       {isSelected ? <Check size={12} /> : pageNumber}
                     </span>
@@ -115,7 +113,7 @@ export function PdfPageSelectModal({ asset, onConfirm, onBack, onClose, submitti
           )}
         </div>
 
-        <div className="flex items-center justify-between gap-3 border-t border-gray-100 p-5">
+        <div className="flex items-center justify-between gap-2 border-t border-gray-100 p-5">
           <button type="button" onClick={onBack} className="text-sm font-medium text-gray-500 hover:text-gray-700">
             ← Boshqa fayl
           </button>

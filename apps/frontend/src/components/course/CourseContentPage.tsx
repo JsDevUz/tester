@@ -98,7 +98,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex h-full min-h-0 flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1 overflow-y-auto sm:h-full">
         <Breadcrumb
           items={[
@@ -114,7 +114,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
             Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz, nashr qilishingiz yoki
             o'chirishingiz mumkin.
           </p>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setModal({ type: 'newModule' })}
@@ -185,11 +185,10 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                             type="button"
                             onClick={() => void toggleLessonStatus(courseId, module.id, lesson.id)}
                             title={lesson.status === 'published' ? "E'lon qilingan — bosib qoralamaga o'tkazish" : "Qoralama — bosib e'lon qilish"}
-                            className={`shrink-0 rounded-lg p-1.5 transition-colors ${
-                              lesson.status === 'published'
+                            className={`shrink-0 rounded-lg p-1.5 transition-colors ${lesson.status === 'published'
                                 ? 'text-green-500 hover:bg-green-50'
                                 : 'text-gray-300 hover:bg-gray-100 hover:text-gray-400'
-                            }`}
+                              }`}
                           >
                             {lesson.status === 'published' ? <Eye size={15} /> : <EyeOff size={15} />}
                           </button>
@@ -224,7 +223,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
         <CourseSidePanel
           onBackToList={onBackToList}
           activeFullTab="content"
-          onSelectContent={() => {}}
+          onSelectContent={() => { }}
           onSelectSettings={onSelectSettings}
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={onSelectGroups}

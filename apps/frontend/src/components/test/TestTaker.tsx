@@ -56,13 +56,13 @@ function SortableItem({
     <div
       ref={setNodeRef}
       style={{ transform: CSS.Transform.toString(verticalTransform), transition }}
-      className={`flex w-full min-w-0 max-w-full items-center gap-3 overflow-hidden px-4 py-3 rounded-2xl border select-none ${isDragging
-          ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
-          : result === "correct"
-            ? "border-emerald-500 bg-emerald-500 text-white"
-            : result === "incorrect"
-              ? "border-rose-500 bg-rose-500 text-white"
-              : "bg-white border-border"
+      className={`flex w-full min-w-0 max-w-full items-center gap-2 overflow-hidden px-4 py-3 rounded-2xl border select-none ${isDragging
+        ? "bg-gray-50 border-gray-400 shadow-lg z-50 opacity-90"
+        : result === "correct"
+          ? "border-emerald-500 bg-emerald-500 text-white"
+          : result === "incorrect"
+            ? "border-rose-500 bg-rose-500 text-white"
+            : "bg-white border-border"
         }`}
     >
       <span
@@ -145,7 +145,7 @@ function ReorderQuestion({
             return opt ? (
               <div
                 key={`correct-${id}`}
-                className="flex items-center gap-3 rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3 text-white"
+                className="flex items-center gap-2 rounded-2xl border border-emerald-500 bg-emerald-500 px-4 py-3 text-white"
               >
                 <span className="w-5 shrink-0 font-mono text-sm text-white/70">{pos + 1}.</span>
                 <span className="min-w-0 flex-1 break-words">{opt.text}</span>
@@ -312,7 +312,7 @@ function MatchingQuestion({
   }
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <p className="text-xs text-gray-400">
         Chap tomondagini bosing, keyin mos o'ng tomondagini bosing
       </p>
@@ -357,10 +357,10 @@ function MatchingQuestion({
                 onClick={() => tapLeft(opt.id)}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
                 className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${isPending
-                    ? "bg-gray-900 text-white border-gray-900"
-                    : isPaired
-                      ? "bg-gray-100 border-gray-400 text-gray-800"
-                      : "bg-white border-border text-gray-700 hover:border-gray-300"
+                  ? "bg-gray-900 text-white border-gray-900"
+                  : isPaired
+                    ? "bg-gray-100 border-gray-400 text-gray-800"
+                    : "bg-white border-border text-gray-700 hover:border-gray-300"
                   } ${locked ? "pointer-events-none" : ""}`}
               >
                 {opt.text}
@@ -381,10 +381,10 @@ function MatchingQuestion({
                 disabled={(!pendingLeft && !isPaired) || locked}
                 style={{ fontSize: "var(--q-fs, 14px)" }}
                 className={`relative z-10 min-w-0 break-words px-3 py-2.5 rounded-2xl border text-left transition-colors ${isPaired
-                    ? "bg-gray-100 border-gray-400 text-gray-800"
-                    : pendingLeft
-                      ? "bg-white border-gray-400 text-gray-700 hover:bg-gray-50"
-                      : "bg-gray-50 border-border text-gray-400"
+                  ? "bg-gray-100 border-gray-400 text-gray-800"
+                  : pendingLeft
+                    ? "bg-white border-gray-400 text-gray-700 hover:bg-gray-50"
+                    : "bg-gray-50 border-border text-gray-400"
                   }`}
               >
                 {opt.text}
@@ -428,13 +428,13 @@ function SliderQuestion({
   const current =
     value !== "" ? parseFloat(value) : Math.round((min + max) / 2);
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div
         className={`text-center text-3xl font-bold ${feedback?.isCorrect === true
-            ? "text-emerald-600"
-            : feedback?.isCorrect === false
-              ? "text-rose-600"
-              : "text-gray-900"
+          ? "text-emerald-600"
+          : feedback?.isCorrect === false
+            ? "text-rose-600"
+            : "text-gray-900"
           }`}
       >
         {current}
@@ -448,10 +448,10 @@ function SliderQuestion({
         disabled={locked}
         onChange={(e) => onChange(e.target.value)}
         className={`w-full h-2 cursor-pointer disabled:opacity-100 ${feedback?.isCorrect === true
-            ? "accent-emerald-500"
-            : feedback?.isCorrect === false
-              ? "accent-rose-500"
-              : "accent-gray-900"
+          ? "accent-emerald-500"
+          : feedback?.isCorrect === false
+            ? "accent-rose-500"
+            : "accent-gray-900"
           }`}
       />
       <div className="flex justify-between text-xs text-gray-400">
@@ -518,10 +518,10 @@ function DropPinQuestion({
           >
             <div
               className={`w-6 h-6 rounded-full border border-white shadow-lg flex items-center justify-center ${feedback?.isCorrect === true
-                  ? "bg-emerald-500"
-                  : feedback?.isCorrect === false
-                    ? "bg-rose-500"
-                    : "bg-indigo-500"
+                ? "bg-emerald-500"
+                : feedback?.isCorrect === false
+                  ? "bg-rose-500"
+                  : "bg-indigo-500"
                 }`}
             >
               <div className="w-2 h-2 rounded-full bg-white" />
@@ -1118,7 +1118,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
     const feedback = feedbackMap[q.id];
     const locked = isPerQuestion && !!feedback;
     const correctIds = new Set(feedback?.correctOptionIds ?? []);
-    const gap = inCard ? "gap-2.5" : "gap-3";
+    const gap = inCard ? "gap-2.5" : "gap-2";
 
     if (q.type === "slider")
       return (
@@ -1159,10 +1159,10 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             placeholder="Javobingizni yozing..."
             readOnly={locked}
             className={`w-full rounded-2xl border px-4 py-3.5 outline-none transition-colors ${feedback?.isCorrect === true
-                ? "border-emerald-500 bg-emerald-500 text-white"
-                : feedback?.isCorrect === false
-                  ? "border-rose-500 bg-rose-500 text-white"
-                  : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
+              ? "border-emerald-500 bg-emerald-500 text-white"
+              : feedback?.isCorrect === false
+                ? "border-rose-500 bg-rose-500 text-white"
+                : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
               }`}
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
@@ -1187,10 +1187,10 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
             placeholder="Javobingizni yozing..."
             readOnly={locked}
             className={`w-full resize-none rounded-2xl border px-4 py-3.5 outline-none transition-colors ${feedback?.isCorrect === true
-                ? "border-emerald-500 bg-emerald-500 text-white"
-                : feedback?.isCorrect === false
-                  ? "border-rose-500 bg-rose-500 text-white"
-                  : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
+              ? "border-emerald-500 bg-emerald-500 text-white"
+              : feedback?.isCorrect === false
+                ? "border-rose-500 bg-rose-500 text-white"
+                : "border-border bg-gray-50 focus:border-gray-400 focus:bg-white"
               }`}
             style={{ fontSize: "var(--q-fs, 16px)" }}
           />
@@ -1217,7 +1217,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
 
     if (q.type === "truefalse")
       return (
-        <div className="flex gap-3">
+        <div className="flex gap-2">
           {q.options.map((opt) => {
             const checked = selected.includes(opt.id);
             const isTrue = opt.text === "To'g'ri";
@@ -1272,7 +1272,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
         q.options.some((o) => isArabicText(o.text)) || isArabicText(q.text);
       const correctSeq = feedback?.correctOptionIds ?? [];
       return (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <div
             dir={rtl ? "rtl" : "ltr"}
             className="min-h-14 p-3 border border-dashed border-gray-300 rounded-2xl flex flex-wrap gap-2 items-center bg-gray-50"
@@ -1296,10 +1296,10 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                   onClick={() => arrangeRemove(q.id, id)}
                   style={{ fontSize: "var(--q-fs, 14px)" }}
                   className={`px-3.5 py-2 rounded-xl  transition-all active:scale-95 ${result === "correct"
-                      ? "bg-emerald-500 text-white"
-                      : result === "incorrect"
-                        ? "bg-rose-500 text-white"
-                        : "bg-gray-900 text-white hover:bg-gray-800"
+                    ? "bg-emerald-500 text-white"
+                    : result === "incorrect"
+                      ? "bg-rose-500 text-white"
+                      : "bg-gray-900 text-white hover:bg-gray-800"
                     }`}
                 >
                   {opt.text}
@@ -1383,14 +1383,14 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
               onClick={() =>
                 toggleOption(q.id, opt.id, q.type as "single" | "multi")
               }
-              className={`w-full text-left flex items-center gap-3 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${cardClass} ${locked ? "pointer-events-none" : ""}`}
+              className={`w-full text-left flex items-center gap-2 px-4 py-3.5 rounded-2xl border transition-all duration-150 active:scale-[0.99] ${cardClass} ${locked ? "pointer-events-none" : ""}`}
             >
               <span
                 className={`w-7 h-7 rounded-xl flex items-center justify-center text-xs font-bold shrink-0 transition-colors ${checked
-                    ? "bg-white/20 text-white"
-                    : unselectedButCorrect
-                      ? "bg-emerald-100 text-emerald-700"
-                      : "bg-gray-100 text-gray-500"
+                  ? "bg-white/20 text-white"
+                  : unselectedButCorrect
+                    ? "bg-emerald-100 text-emerald-700"
+                    : "bg-gray-100 text-gray-500"
                   }`}
               >
                 {label}
@@ -1487,7 +1487,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
           )}
         </div>
 
-        <div className="flex-1 flex items-center justify-end gap-3">
+        <div className="flex-1 flex items-center justify-end gap-2">
           {/* Sound toggle */}
           <button
             onClick={() => setSoundEnabled((s) => !s)}
@@ -1552,16 +1552,16 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                 disabled={!jumpable}
                 onClick={() => jumpable && setCurrentIdx(i)}
                 className={`w-9 h-9 shrink-0 rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${isCurrent
-                    ? "bg-gray-900 text-white shadow-md"
-                    : checkedQ
-                      ? feedbackMap[q.id].isCorrect
-                        ? "bg-green-100 text-green-700"
-                        : "bg-red-100 text-red-600"
-                      : answered
-                        ? "bg-gray-200 text-gray-700"
-                        : jumpable
-                          ? "bg-white border border-border text-gray-500"
-                          : "bg-gray-100 text-gray-300"
+                  ? "bg-gray-900 text-white shadow-md"
+                  : checkedQ
+                    ? feedbackMap[q.id].isCorrect
+                      ? "bg-green-100 text-green-700"
+                      : "bg-red-100 text-red-600"
+                    : answered
+                      ? "bg-gray-200 text-gray-700"
+                      : jumpable
+                        ? "bg-white border border-border text-gray-500"
+                        : "bg-gray-100 text-gray-300"
                   }`}
               >
                 {i + 1}
@@ -1599,16 +1599,16 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                         : undefined
                     }
                     className={`aspect-square rounded-xl text-sm font-semibold flex items-center justify-center transition-colors ${isCurrent
-                        ? "bg-gray-900 text-white shadow-md"
-                        : checkedQ
-                          ? feedbackMap[q.id].isCorrect
-                            ? "bg-green-100 text-green-700 hover:bg-green-200"
-                            : "bg-red-100 text-red-600 hover:bg-red-200"
-                          : answered
-                            ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
-                            : jumpable
-                              ? "bg-white text-gray-500 hover:border-gray-300"
-                              : "bg-gray-100 text-gray-300 cursor-not-allowed"
+                      ? "bg-gray-900 text-white shadow-md"
+                      : checkedQ
+                        ? feedbackMap[q.id].isCorrect
+                          ? "bg-green-100 text-green-700 hover:bg-green-200"
+                          : "bg-red-100 text-red-600 hover:bg-red-200"
+                        : answered
+                          ? "bg-gray-200 text-gray-700 hover:bg-gray-300"
+                          : jumpable
+                            ? "bg-white text-gray-500 hover:border-gray-300"
+                            : "bg-gray-100 text-gray-300 cursor-not-allowed"
                       }`}
                   >
                     {i + 1}
@@ -1678,7 +1678,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
                       <div className="h-px bg-gray-100 mx-3 lg:mx-8" />
 
                       {/* ── Options zone ── */}
-                      <div className="px-3 lg:px-8 pt-5 pb-6 flex flex-col gap-3">
+                      <div className="px-3 lg:px-8 pt-5 pb-6 flex flex-col gap-2">
                         {renderQuestionBody(currentQ, true)}
                       </div>
                     </div>
@@ -1688,12 +1688,12 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
 
             {/* ── BOTTOM BUTTONS ── */}
             <div
-              className="shrink-0 px-4 lg:px-8 pt-3 pb-4 bg-white border-t border-border flex gap-3"
+              className="shrink-0 px-4 lg:px-8 pt-3 pb-4 bg-white border-t border-border flex gap-2"
               style={{
                 paddingBottom: "max(16px, env(safe-area-inset-bottom))",
               }}
             >
-              <div className="lg:max-w-3xl lg:mx-auto flex gap-3 w-full">
+              <div className="lg:max-w-3xl lg:mx-auto flex gap-2 w-full">
                 {isPerQuestion ? (
                   isChecked ? (
                     isLast ? (

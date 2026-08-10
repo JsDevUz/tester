@@ -52,7 +52,7 @@ export function SubmissionDetailPage() {
             <ChevronLeft size={16} /> Natijalar
           </button>
 
-          <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-between gap-3 mb-4">
+          <div className="bg-white rounded-2xl px-5 py-4 flex items-center justify-between gap-2 mb-4">
             <div className="min-w-0">
               <p className="text-base font-bold text-gray-900 truncate">
                 {detail.studentName}
@@ -86,7 +86,7 @@ export function SubmissionDetailPage() {
           )}
 
           {/* Answers */}
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {detail.answers.map((a, i) => (
               <AnswerResultCard key={a.questionId} answer={a} index={i} />
             ))}

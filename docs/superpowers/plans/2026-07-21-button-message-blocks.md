@@ -1326,7 +1326,7 @@ Replace with:
   }
 ```
 
-Note: the grid layout is `grid-cols-2 gap-3 sm:grid-cols-5` — going from 5 to 6 items will wrap to a second row on `sm:grid-cols-5` screens (6 items in a 5-column grid = 1 item on its own second row) and stay 3 rows of 2 on mobile's `grid-cols-2`. This is a pre-existing responsive grid, not something this task needs to change — 6 items still lay out correctly, just with a slightly uneven last row on `sm:` breakpoints, which is a cosmetic detail to verify visually in Step 7's manual QA, not a code change.
+Note: the grid layout is `grid-cols-2 gap-2 sm:grid-cols-5` — going from 5 to 6 items will wrap to a second row on `sm:grid-cols-5` screens (6 items in a 5-column grid = 1 item on its own second row) and stay 3 rows of 2 on mobile's `grid-cols-2`. This is a pre-existing responsive grid, not something this task needs to change — 6 items still lay out correctly, just with a slightly uneven last row on `sm:` breakpoints, which is a cosmetic detail to verify visually in Step 7's manual QA, not a code change.
 
 - [ ] **Step 2: Wire the new picker callbacks in `LessonEditorView.tsx`**
 
@@ -1650,7 +1650,7 @@ Directly after it, add:
 
 ```tsx
           {block.type === 'button' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-center rounded-xl bg-gray-50 py-6">
                 <a
                   href={block.buttonUrl || undefined}
@@ -1698,7 +1698,7 @@ Directly after it, add:
                 Yangi tabda ochish
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="mb-1.5 text-sm text-gray-500">Tugma rangi</p>
                   <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
@@ -1738,7 +1738,7 @@ Directly after it, add:
           )}
 
           {block.type === 'message' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <p className="text-xs text-gray-400">
                 Yuboruvchi: kurator (yoki biriktirilmagan bo'lsa ustoz) avtomatik ko'rsatiladi
               </p>
@@ -1846,7 +1846,7 @@ In `apps/frontend/src/pages/MyCoursesPage.tsx`, `LessonBlock` (starting at line 
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
+    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
       {block.type === "image" ? (
         <ImageIcon size={18} />
       ) : (

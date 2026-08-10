@@ -52,7 +52,7 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
 
   return (
     <div className="rounded-2xl bg-white p-5">
-      <div className="mb-4 flex items-center justify-between gap-3">
+      <div className="mb-4 flex items-center justify-between gap-2">
         <h3 className="text-base font-bold text-gray-800">So'zlar</h3>
         <button type="button" onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200">
           <Upload size={14} /> Ommaviy import
@@ -68,7 +68,7 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
       {words.length === 0 ? <p className="py-8 text-center text-sm text-gray-300">Hali so'z yo'q</p> : (
         <div className="flex flex-col gap-2">
           {words.map((word) => (
-            <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
+            <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 rounded-xl bg-gray-50 px-3.5 py-2.5">
               <span className="truncate text-sm font-semibold text-gray-800">{word.word}</span>
               <span className="truncate text-sm text-gray-500">{word.translation}</span>
               <button type="button" onClick={() => void handleDelete(word.id)} aria-label="So'zni o'chirish" className="rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"><Trash2 size={15} /></button>

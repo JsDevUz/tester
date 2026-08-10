@@ -134,7 +134,7 @@ export function CourseSidePanel({
   }
 
   return (
-    <div className="sticky top-6 self-start flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="sticky top-6 self-start flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
         {tabs.map((tab) => {
           const Icon = tab.icon;
@@ -146,13 +146,12 @@ export function CourseSidePanel({
               role={clickable ? "button" : undefined}
               tabIndex={clickable ? 0 : undefined}
               onClick={() => handleTabClick(tab.key)}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${
-                active
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${active
                   ? "bg-gray-100 text-gray-900"
                   : clickable
                     ? "cursor-pointer text-gray-500 hover:bg-gray-50"
                     : "cursor-not-allowed text-gray-300"
-              }`}
+                }`}
             >
               <Icon
                 size={18}

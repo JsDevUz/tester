@@ -24,7 +24,7 @@ function PracticeToggleCard({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center gap-3 rounded-2xl bg-white p-4">
+    <div className="flex items-center gap-2 rounded-2xl bg-white p-4">
       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
         <Brain size={18} />
       </div>
@@ -42,9 +42,8 @@ function PracticeToggleCard({
         className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${enabled ? "bg-gray-900" : "bg-gray-200"}`}
       >
         <span
-          className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-            enabled ? "translate-x-5" : "translate-x-0.5"
-          }`}
+          className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"
+            }`}
         />
       </button>
     </div>
@@ -216,7 +215,7 @@ export function LessonEditorView({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 lg:flex-row">
+    <div className="flex flex-col gap-2 p-6 lg:flex-row">
       <div className="min-w-0 flex-1">
         <div className="mx-auto min-w-0 max-w-5xl">
           <Breadcrumb
@@ -227,7 +226,7 @@ export function LessonEditorView({
               { label: lesson.title },
             ]}
           />
-          <div className="mb-6 flex items-center justify-between gap-3">
+          <div className="mb-6 flex items-center justify-between gap-2">
             <div className="min-w-0 flex-1">
               <input
                 value={lesson.title}
@@ -286,7 +285,7 @@ export function LessonEditorView({
               )}
 
               {lesson.blocks.length > 0 && (
-                <div className="mb-6 flex flex-col gap-3">
+                <div className="mb-6 flex flex-col gap-2">
                   {lesson.blocks.map((block, index) => (
                     <ContentBlockView
                       key={block.id}

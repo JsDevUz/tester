@@ -1,6 +1,6 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments } from '../db/schema';
+import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments, users } from '../db/schema';
 import { and, eq, isNull, isNotNull, gte, lte } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
 import { PRACTICE_ATTEMPT_LIMIT } from '../practice-blocks/practice-blocks.service';
@@ -615,7 +615,14 @@ export class DeliveryService {
     }
 
     if (practiceMode) {
-      await this.practiceMessengerService.createTestSubmissionMessage(updatedSubmission.id);
+      // "Mening testlarim" orqali o'quvchi yaratgan testlar uchun Messenger'ga
+      // avtomatik natija xabari yuborilmasin — bu integratsiya faqat o'qituvchi
+      // biriktirgan amaliyot testlariga tegishli, chunki faqat o'sha holatda
+      // xabar oluvchi haqiqiy o'qituvchi bo'ladi.
+      const testOwner = await db.query.users.findFirst({ where: eq(users.id, test.adminId) });
+      if (testOwner?.role !== 'student') {
+        await this.practiceMessengerService.createTestSubmissionMessage(updatedSubmission.id);
+      }
     }
 
     // Only return answer breakdown if showResults === 'immediately' or 'per_question'

@@ -42,7 +42,7 @@ export function BoardActivityModal({ boardId, onClose }: Props) {
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
               <Activity size={18} />
             </div>
@@ -63,7 +63,7 @@ export function BoardActivityModal({ boardId, onClose }: Props) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex flex-col gap-3 py-4">
+            <div className="flex flex-col gap-2 py-4">
               {Array.from({ length: 4 }).map((_, i) => (
                 <div key={i} className="h-14 animate-pulse rounded-xl bg-gray-100" />
               ))}
@@ -76,7 +76,7 @@ export function BoardActivityModal({ boardId, onClose }: Props) {
           ) : (
             <div className="relative pl-4 border-l-2 border-indigo-100 space-y-4">
               {activities.map((act) => (
-                <div key={act.id} className="relative flex items-start gap-3">
+                <div key={act.id} className="relative flex items-start gap-2">
                   <div className="absolute -left-[23px] top-1 flex h-4 w-4 items-center justify-center rounded-full bg-indigo-600 ring-4 ring-white">
                     <span className="h-1.5 w-1.5 rounded-full bg-white" />
                   </div>

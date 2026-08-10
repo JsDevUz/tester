@@ -1296,7 +1296,7 @@ to:
                 </p>
                 <div className="flex flex-col gap-2">
                   {withoutGroupRows.map((r) => (
-                    <div key={r.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
+                    <div key={r.id} className="flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3.5 py-2.5">
                       <div className="min-w-0">
                         <p className="truncate text-sm font-semibold text-gray-800">{r.name}</p>
                         <p className="text-xs text-gray-400">{r.phone ?? ""}</p>

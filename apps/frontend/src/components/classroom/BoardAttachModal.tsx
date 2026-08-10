@@ -92,7 +92,7 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
       <div className="flex max-h-[85vh] w-full max-w-2xl flex-col overflow-hidden rounded-3xl border border-gray-200 bg-white text-gray-900 shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 bg-gray-50/80 px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-indigo-50 text-indigo-600 border border-indigo-100 ">
               <Presentation size={20} />
             </div>
@@ -136,37 +136,33 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
                   <div
                     key={b.id}
                     onClick={() => setSelectedBoardId(b.id)}
-                    className={`group flex items-center justify-between py-3 px-3 rounded-xl transition-all duration-150 cursor-pointer select-none border ${
-                      isSelected
+                    className={`group flex items-center justify-between py-3 px-3 rounded-xl transition-all duration-150 cursor-pointer select-none border ${isSelected
                         ? "border-indigo-500 bg-indigo-50 dark:bg-indigo-950/70 ring-1 ring-indigo-400/50 shadow-sm"
                         : "border-transparent hover:bg-gray-100/70 dark:hover:bg-zinc-800/60"
-                    }`}
+                      }`}
                   >
                     {/* Left: Presentation Icon + Title + Subtitle */}
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
                       <div
-                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${
-                          isSelected
+                        className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors ${isSelected
                             ? "bg-indigo-600 text-white shadow-xs"
                             : "bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-500/20"
-                        }`}
+                          }`}
                       >
                         <Presentation size={18} />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <span
-                          className={`text-sm truncate transition-colors ${
-                            isSelected
+                          className={`text-sm truncate transition-colors ${isSelected
                               ? "font-bold text-indigo-950 dark:text-indigo-200"
                               : "font-semibold text-gray-900 dark:text-white group-hover:text-indigo-600 dark:group-hover:text-indigo-400"
-                          }`}
+                            }`}
                         >
                           {b.title ?? "Untitled"}
                         </span>
                         <span
-                          className={`text-xs truncate ${
-                            isSelected ? "text-indigo-700 dark:text-indigo-300/80 font-medium" : "text-gray-500 dark:text-zinc-400"
-                          }`}
+                          className={`text-xs truncate ${isSelected ? "text-indigo-700 dark:text-indigo-300/80 font-medium" : "text-gray-500 dark:text-zinc-400"
+                            }`}
                         >
                           Modified by JSDEV, {modifiedStr}
                         </span>
@@ -176,36 +172,32 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
                     {/* Right: Date, Owner, Selection Check */}
                     <div className="flex items-center gap-6 shrink-0">
                       <span
-                        className={`text-xs w-16 text-right hidden sm:inline-block ${
-                          isSelected ? "text-indigo-800 dark:text-indigo-300 font-semibold" : "text-gray-500 dark:text-zinc-400 font-normal"
-                        }`}
+                        className={`text-xs w-16 text-right hidden sm:inline-block ${isSelected ? "text-indigo-800 dark:text-indigo-300 font-semibold" : "text-gray-500 dark:text-zinc-400 font-normal"
+                          }`}
                       >
                         {modifiedStr}
                       </span>
 
                       <span
-                        className={`text-xs w-24 text-right hidden md:inline-block ${
-                          isSelected ? "text-indigo-800/90 dark:text-indigo-300/80 font-medium" : "text-gray-400 dark:text-zinc-500 font-normal"
-                        }`}
+                        className={`text-xs w-24 text-right hidden md:inline-block ${isSelected ? "text-indigo-800/90 dark:text-indigo-300/80 font-medium" : "text-gray-400 dark:text-zinc-500 font-normal"
+                          }`}
                       >
                         {createdStr}
                       </span>
 
                       <span
-                        className={`text-xs uppercase tracking-wider w-14 text-right hidden sm:inline-block ${
-                          isSelected ? "text-indigo-900 dark:text-indigo-200 font-bold" : "text-gray-500 dark:text-zinc-400 font-medium"
-                        }`}
+                        className={`text-xs uppercase tracking-wider w-14 text-right hidden sm:inline-block ${isSelected ? "text-indigo-900 dark:text-indigo-200 font-bold" : "text-gray-500 dark:text-zinc-400 font-medium"
+                          }`}
                       >
                         JSDEV
                       </span>
 
                       {/* Selection Check Circle */}
                       <div
-                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${
-                          isSelected
+                        className={`flex h-5 w-5 items-center justify-center rounded-full border transition-all ${isSelected
                             ? "border-indigo-600 bg-indigo-600 text-white shadow-sm"
                             : "border-gray-300 dark:border-zinc-700 bg-gray-100 dark:bg-zinc-800/60 text-transparent group-hover:border-gray-400 dark:group-hover:border-zinc-500"
-                        }`}
+                          }`}
                       >
                         <Check size={12} strokeWidth={3} />
                       </div>
@@ -226,7 +218,7 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
         </div>
 
         {/* Footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
+        <div className="flex items-center justify-end gap-2 border-t border-gray-100 bg-gray-50/50 px-6 py-4">
           <button
             type="button"
             onClick={onClose}

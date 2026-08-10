@@ -318,7 +318,7 @@ Replace [PracticeSection.tsx:76-114](apps/frontend/src/components/course/Practic
 ```typescript
 {lesson.practiceBlocks.some((b) => b.type === 'test') ? (
   <div className="rounded-2xl border border-gray-100 bg-white p-4">
-    <div className="flex items-center gap-3">
+    <div className="flex items-center gap-2">
       <div className="min-w-0 flex-1">
         <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
         <p className="text-xs text-gray-400">Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars o'tilmagan hisoblanadi</p>
@@ -461,7 +461,7 @@ In the blocks list render, update [PracticeSection.tsx:48-66](apps/frontend/src/
     <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
   </div>
 ) : (
-  <div className="mb-6 flex flex-col gap-3">
+  <div className="mb-6 flex flex-col gap-2">
     {lesson.practiceBlocks.map((block, index) => (
       <PracticeBlockView
         key={block.id}

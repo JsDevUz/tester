@@ -998,10 +998,10 @@ Replace with:
 Find the mobile card list:
 
 ```typescript
-          <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 md:hidden">
+          <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 md:hidden">
             {filtered.map((row) => (
               <div key={row.id} className="rounded-2xl bg-gray-50 p-3">
-                <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-gray-800">
                       {row.student}
@@ -1010,7 +1010,7 @@ Find the mobile card list:
                   </div>
                   <StatusBadge status={row.status} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <PaymentInfo label="Kurs" value={row.course} />
                   <PaymentInfo label="Guruh" value={row.group} />
                   <PaymentInfo label="Oy" value={row.month} />
@@ -1024,10 +1024,10 @@ Find the mobile card list:
 Replace with:
 
 ```typescript
-          <div className="flex flex-col gap-3 rounded-2xl bg-white p-3 md:hidden">
+          <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 md:hidden">
             {filtered.map((row) => (
               <div key={row.id} className="rounded-2xl bg-gray-50 p-3">
-                <div className="mb-3 flex items-start justify-between gap-3">
+                <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="min-w-0">
                     <p className="truncate text-sm font-bold text-gray-800">
                       {row.studentName}
@@ -1036,7 +1036,7 @@ Replace with:
                   </div>
                   <StatusBadge status={row.status} />
                 </div>
-                <div className="grid grid-cols-2 gap-3 text-xs">
+                <div className="grid grid-cols-2 gap-2 text-xs">
                   <PaymentInfo label="Kurs" value={row.courseTitle} />
                   <PaymentInfo label="Guruh" value={row.groupName} />
                   <PaymentInfo label="Oy" value={formatMonthLabel(row.periodMonth)} />
@@ -1226,7 +1226,7 @@ function PaymentModal({
             <X size={18} />
           </button>
         </div>
-        <div className="grid gap-3 px-6 pb-6 sm:grid-cols-2">
+        <div className="grid gap-2 px-6 pb-6 sm:grid-cols-2">
           <Field label="O'quvchi" className="sm:col-span-2">
             <div className="rounded-2xl bg-gray-50 p-1.5">
               <div className="relative mb-1.5">
@@ -1252,7 +1252,7 @@ function PaymentModal({
                         setSelectedPhone(student.phone);
                         setStudentQuery(student.student);
                       }}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
                         selected ? "bg-indigo-50 text-indigo-600" : "hover:bg-white"
                       }`}
                     >
@@ -1448,7 +1448,7 @@ function PaymentModal({
             <X size={18} />
           </button>
         </div>
-        <div className="grid gap-3 px-6 pb-6 sm:grid-cols-2">
+        <div className="grid gap-2 px-6 pb-6 sm:grid-cols-2">
           <Field label="Kutilayotgan to'lov" className="sm:col-span-2">
             <div className="rounded-2xl bg-gray-50 p-1.5">
               <div className="relative mb-1.5">
@@ -1471,7 +1471,7 @@ function PaymentModal({
                       key={row.id}
                       type="button"
                       onClick={() => setSelectedId(row.id)}
-                      className={`flex w-full items-center gap-3 rounded-xl px-3 py-2 text-left transition-colors ${
+                      className={`flex w-full items-center gap-2 rounded-xl px-3 py-2 text-left transition-colors ${
                         selected ? "bg-indigo-50 text-indigo-600" : "hover:bg-white"
                       }`}
                     >
@@ -1529,7 +1529,7 @@ function PaymentModal({
             />
           </Field>
           <Field label="Chek rasmi (ixtiyoriy)" className="sm:col-span-2">
-            <label className="flex cursor-pointer items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
+            <label className="flex cursor-pointer items-center gap-2 rounded-2xl bg-gray-50 px-4 py-3 text-sm text-gray-500 hover:bg-gray-100">
               <input type="file" accept="image/*" className="hidden" onChange={handlePickReceipt} />
               <Paperclip size={16} className="shrink-0 text-gray-400" />
               <span className="min-w-0 flex-1 truncate">

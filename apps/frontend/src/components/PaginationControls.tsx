@@ -24,7 +24,7 @@ interface PaginationControlsProps {
 export function PaginationControls({ page, pageCount, pageSize, onPageChange, onPageSizeChange }: PaginationControlsProps) {
   const currentPage = Math.min(page, pageCount);
   return (
-    <div className="flex w-full flex-wrap items-center justify-between gap-3 px-4 py-3 sm:px-6">
+    <div className="flex w-full flex-wrap items-center justify-between gap-2 px-4 py-3 sm:px-6">
       <PageSizeSelect value={pageSize} onChange={onPageSizeChange} />
       <div className="ml-auto flex items-center gap-1.5">
         <button type="button" onClick={() => onPageChange(Math.max(1, currentPage - 1))} disabled={currentPage === 1} className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30" aria-label="Oldingi sahifa">

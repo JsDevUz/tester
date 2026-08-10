@@ -57,9 +57,8 @@ function DraggablePlayerChip({
           ? { transform: `translate3d(${transform.x}px, ${transform.y}px, 0)` }
           : undefined
       }
-      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium select-none ${
-        isDragging ? "opacity-30" : ""
-      } ${isCaptain ? "bg-amber-50 text-amber-700" : "bg-gray-50 text-gray-700"}`}
+      className={`flex items-center gap-1.5 px-3 py-2 rounded-xl text-sm font-medium select-none ${isDragging ? "opacity-30" : ""
+        } ${isCaptain ? "bg-amber-50 text-amber-700" : "bg-gray-50 text-gray-700"}`}
     >
       <button
         type="button"
@@ -97,13 +96,12 @@ function DroppableTeamColumn({
   return (
     <div
       ref={setNodeRef}
-      className={`rounded-2xl border p-4 transition-colors h-full flex flex-col ${
-        isOver
+      className={`rounded-2xl border p-4 transition-colors h-full flex flex-col ${isOver
           ? "border-gray-400 bg-gray-100"
           : highlight
             ? "border-red-200 bg-red-50/50"
             : "border-border"
-      }`}
+        }`}
     >
       {children}
     </div>
@@ -226,17 +224,17 @@ export function LiveHostPage() {
   }, [pin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   function handleStart() {
-    getLiveSocket().emit("host:start", { pin, token }, () => {});
+    getLiveSocket().emit("host:start", { pin, token }, () => { });
   }
   function handleEnd() {
-    getLiveSocket().emit("host:end", { pin, token }, () => {});
+    getLiveSocket().emit("host:end", { pin, token }, () => { });
   }
   function handleCreateTeam() {
     if (!newTeamName.trim()) return;
     getLiveSocket().emit(
       "host:createTeam",
       { pin, token, name: newTeamName.trim() },
-      () => {},
+      () => { },
     );
     setNewTeamName("");
   }
@@ -244,7 +242,7 @@ export function LiveHostPage() {
     getLiveSocket().emit(
       "host:assignPlayer",
       { pin, token, userId, teamId },
-      () => {},
+      () => { },
     );
   }
   function handleSetCaptain(teamId: string, userId: string) {
@@ -257,7 +255,7 @@ export function LiveHostPage() {
     );
   }
   function handleRemoveTeam(teamId: string) {
-    getLiveSocket().emit("host:removeTeam", { pin, token, teamId }, () => {});
+    getLiveSocket().emit("host:removeTeam", { pin, token, teamId }, () => { });
   }
   function handleStartTeamGame() {
     getLiveSocket().emit("host:startTeam", { pin, token }, (res: any) => {
@@ -400,7 +398,7 @@ export function LiveHostPage() {
                 <Users size={14} /> {players.length} o'yinchi
               </span>
             </div>
-            <div className="flex items-center gap-3 mb-6">
+            <div className="flex items-center gap-2 mb-6">
               <p className="text-sm font-semibold text-gray-700">PIN:</p>
               <p className="text-3xl font-black text-gray-900 tracking-[0.15em]">
                 {pin}
@@ -563,13 +561,12 @@ export function LiveHostPage() {
                 return (
                   <div
                     key={opt.id}
-                    className={`px-4 py-3.5 rounded-2xl border flex items-center gap-3 ${
-                      phase === "reveal"
+                    className={`px-4 py-3.5 rounded-2xl border flex items-center gap-2 ${phase === "reveal"
                         ? isCorrect
                           ? "bg-green-50 border-green-300"
                           : "bg-gray-50 border-border opacity-60"
                         : "bg-white border-border"
-                    }`}
+                      }`}
                   >
                     <span className="w-7 h-7 rounded-xl bg-gray-100 text-gray-500 text-xs font-bold flex items-center justify-center shrink-0">
                       {["A", "B", "C", "D", "E", "F", "G", "H"][i]}
@@ -630,13 +627,12 @@ export function LiveHostPage() {
             {leaderboard.map((e) => (
               <div
                 key={e.userId}
-                className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${
-                  e.rank === 1
+                className={`flex items-center justify-between px-4 py-3 rounded-2xl border ${e.rank === 1
                     ? "bg-amber-50 border-amber-200"
                     : e.rank <= 3
                       ? "bg-gray-100 border-gray-200"
                       : "bg-white border-border"
-                }`}
+                  }`}
               >
                 <span className="font-semibold text-gray-800">
                   {e.rank}. {e.name}

@@ -297,21 +297,19 @@ export function ClassroomToolbar({
             key={c}
             type="button"
             onClick={() => onColorChange(c)}
-            className={`h-4 w-4 rounded-full border transition-transform ${
-              color.toLowerCase() === c.toLowerCase()
+            className={`h-4 w-4 rounded-full border transition-transform ${color.toLowerCase() === c.toLowerCase()
                 ? "scale-125 border-gray-900 ring-2 ring-indigo-500/40"
                 : "border-gray-300 hover:scale-110"
-            }`}
+              }`}
             style={{ backgroundColor: c }}
             title={`Rang: ${c}`}
           />
         ))}
         <label
-          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-gray-300 transition-transform hover:scale-110 overflow-hidden ${
-            !COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
+          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-gray-300 transition-transform hover:scale-110 overflow-hidden ${!COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
               ? "ring-2 ring-indigo-500/40 scale-125"
               : ""
-          }`}
+            }`}
           style={{
             background:
               "conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)",
@@ -456,7 +454,7 @@ export function ClassroomToolbar({
             aria-modal="true"
             aria-label="Yordam va shortcutlar"
           >
-            <div className="flex items-center justify-between gap-3">
+            <div className="flex items-center justify-between gap-2">
               <h2 className="text-base font-semibold text-gray-900">Yordam va shortcutlar</h2>
               <button
                 type="button"

@@ -1262,7 +1262,7 @@ export function CourseChallengeWordsPanel({
           {words.map((w) => (
             <div
               key={w.id}
-              className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5"
+              className="flex items-center justify-between gap-2 rounded-xl bg-gray-50 px-3.5 py-2.5"
             >
               <span className="text-sm font-semibold text-gray-800">
                 {w.word}
@@ -1475,7 +1475,7 @@ In `apps/frontend/src/pages/ChallengeDetailPage.tsx`, wrap the `tab === 'books'`
       </button>
     </div>
   ) : (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       {/* ...existing book-mapping JSX unchanged... */}
     </div>
   )
@@ -1583,7 +1583,7 @@ export function ChallengeWordPracticePage() {
           <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
             Rejim
           </p>
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="mb-6 grid grid-cols-2 gap-2">
             <button
               type="button"
               onClick={() => setMode("flashcard")}
@@ -1605,7 +1605,7 @@ export function ChallengeWordPracticePage() {
           <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
             Yo'nalish
           </p>
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
             <button
               type="button"
               onClick={() => setDirection("wordToTranslation")}
@@ -2228,10 +2228,10 @@ export function ChallengesScreen({
           Jamm
         </Text>
       </View>
-      <View className="flex-1 gap-3 p-4">
+      <View className="flex-1 gap-2 p-4">
         <Pressable
           onPress={() => setView("challenges")}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface"
+          className="flex-row items-center gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface"
         >
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <BookOpen size={22} color="#334155" />
@@ -2246,7 +2246,7 @@ export function ChallengesScreen({
 
         <Pressable
           onPress={() => navigation.navigate("Live")}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface"
+          className="flex-row items-center gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface"
         >
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <Radio size={22} color="#334155" />
@@ -2259,7 +2259,7 @@ export function ChallengesScreen({
           </View>
         </Pressable>
 
-        <View className="flex-row items-center gap-3 rounded-2xl bg-white p-4 opacity-50 dark:bg-dark-surface">
+        <View className="flex-row items-center gap-2 rounded-2xl bg-white p-4 opacity-50 dark:bg-dark-surface">
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <Mic size={22} color="#334155" />
           </View>
@@ -2464,7 +2464,7 @@ export function ChallengesListView({
             <Pressable
               onPress={() => void handlePress(item)}
               disabled={joiningId === item.id}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-3 dark:bg-dark-surface"
+              className="flex-row items-center gap-2 rounded-2xl bg-white p-3 dark:bg-dark-surface"
             >
               {item.imageUrl ? (
                 <Image
@@ -2754,7 +2754,7 @@ export function ChallengeDetailScreen({ route, navigation }: Props) {
               {entries.map((entry) => (
                 <View
                   key={entry.studentId}
-                  className={`flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "bg-gray-50 dark:bg-dark-canvas"}`}
+                  className={`flex-row items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "bg-gray-50 dark:bg-dark-canvas"}`}
                 >
                   <Text className="w-6 text-center text-sm font-bold text-gray-500">
                     {entry.rank}
@@ -2881,7 +2881,7 @@ export function ChallengeWordPracticeScreen({ route }: Props) {
             <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">
               Rejim
             </Text>
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-2">
               <Pressable
                 onPress={() => setMode("flashcard")}
                 className={`flex-1 rounded-2xl p-4 ${mode === "flashcard" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}
@@ -2909,7 +2909,7 @@ export function ChallengeWordPracticeScreen({ route }: Props) {
             <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">
               Yo'nalish
             </Text>
-            <View className="gap-3">
+            <View className="gap-2">
               <Pressable
                 onPress={() => setDirection("wordToTranslation")}
                 className={`rounded-2xl p-4 ${direction === "wordToTranslation" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}

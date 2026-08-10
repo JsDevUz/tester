@@ -138,7 +138,7 @@ export function StudentHistoryPage() {
               <p className="text-sm">Hali ishlangan testlar yo'q.</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {submissions.map((s) => {
                 const pct = s.total
                   ? Math.round(((s.score ?? 0) / s.total) * 100)
@@ -149,14 +149,14 @@ export function StudentHistoryPage() {
                   <button
                     key={s.id}
                     onClick={() => navigate(`/history/${s.id}`)}
-                    className="student-responsive-card flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-all hover:bg-gray-50 active:scale-[0.99]"
+                    className="student-responsive-card flex w-full items-center gap-2 rounded-2xl bg-white p-4 text-left transition-all hover:bg-gray-50 active:scale-[0.99]"
                   >
                     <div
                       className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isGood
-                          ? "bg-green-50"
-                          : isMid
-                            ? "bg-amber-50"
-                            : "bg-red-50"
+                        ? "bg-green-50"
+                        : isMid
+                          ? "bg-amber-50"
+                          : "bg-red-50"
                         }`}
                     >
                       {isGood ? (

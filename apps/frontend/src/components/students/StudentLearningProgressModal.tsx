@@ -121,7 +121,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
       onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
     >
       <section className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-2xl sm:rounded-2xl" aria-modal="true" role="dialog" aria-label="O'quvchi o'zlashtirishi">
-        <div className="flex items-start justify-between gap-3 border-b border-gray-100 px-4 py-3.5 sm:px-5">
+        <div className="flex items-start justify-between gap-2 border-b border-gray-100 px-4 py-3.5 sm:px-5">
           {progress ? (
             <div className="flex min-w-0 items-center gap-2.5">
               <UserAvatar name={progress.student.name} avatarUrl={progress.student.avatarUrl} className="h-10 w-10 rounded-full bg-violet-100 text-sm font-semibold text-violet-600" />
@@ -155,7 +155,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                     <p className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-gray-700"><Clock3 size={13} style={{ color: 'var(--color-gray-900)' }} />{formatDateTime(progress.lastActivityAt)}</p>
                   </div>
                 </div>
-                <div className="mt-3 flex items-center justify-between gap-3 text-xs">
+                <div className="mt-3 flex items-center justify-between gap-2 text-xs">
                   <span className="font-medium text-gray-600">Jarayon</span>
                   <span className="font-semibold text-[var(--color-gray-900)]">{progress.lessonsCompleted}/{progress.lessonsTotal} dars · {progress.progressPercent}%</span>
                 </div>
@@ -165,7 +165,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
               </div>
 
               <div className="mt-4">
-                <div className="mb-2 flex items-center justify-between gap-3">
+                <div className="mb-2 flex items-center justify-between gap-2">
                   <div>
                     <p className="text-sm font-semibold text-gray-800">Darslar</p>
                     <p className="text-[11px] text-gray-400">Tamomlangan darslar, joriy dars va video ko‘rish tarixi</p>
@@ -206,7 +206,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                             <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
                               {lesson.videoBlocks.map((video) => (
                                 <div key={video.id} className="rounded-lg bg-gray-50 px-2.5 py-2">
-                                  <div className="flex items-center justify-between gap-3">
+                                  <div className="flex items-center justify-between gap-2">
                                     <p className="flex min-w-0 items-center gap-1.5 text-xs font-semibold text-gray-700"><Video size={14} className="shrink-0" style={{ color: 'var(--color-gray-900)' }} /><span className="truncate">{video.label}</span></p>
                                     <span className="shrink-0 text-xs font-bold text-[var(--color-gray-900)]">{video.watchedPercent ?? 0}%</span>
                                   </div>
@@ -233,7 +233,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                             <div className="mt-2 space-y-1.5 border-t border-gray-100 pt-2">
                               <p className="text-[11px] font-semibold text-gray-500">Amaliyotlar</p>
                               {lesson.practiceBlocks.map((practiceBlock) => (
-                                <button type="button" key={practiceBlock.id} onClick={() => { setSelectedPractice({ lessonTitle: lesson.title, practiceBlock }); setScoreDraft(''); setEditingGrade(false); setEditingTestSubmissionId(null); }} className="flex w-full items-center justify-between gap-3 rounded-lg bg-gray-50 px-2.5 py-2 text-left transition-colors hover:bg-gray-100">
+                                <button type="button" key={practiceBlock.id} onClick={() => { setSelectedPractice({ lessonTitle: lesson.title, practiceBlock }); setScoreDraft(''); setEditingGrade(false); setEditingTestSubmissionId(null); }} className="flex w-full items-center justify-between gap-2 rounded-lg bg-gray-50 px-2.5 py-2 text-left transition-colors hover:bg-gray-100">
                                   <p className="flex min-w-0 items-center gap-1.5 text-[11px] font-medium text-gray-700"><ClipboardCheck size={13} className="shrink-0" style={{ color: 'var(--color-gray-900)' }} /><span className="truncate">{practiceBlock.title}</span></p>
                                   {practiceBlock.maxScore !== null ? (
                                     <span className="inline-flex shrink-0 items-center gap-1 text-[11px] font-semibold text-amber-500"><Star size={12} fill="currentColor" />{practiceBlock.earnedScore ?? 0}/{practiceBlock.maxScore}</span>
@@ -255,7 +255,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
       {selectedPractice && (
         <div className="fixed inset-0 z-60 flex items-center justify-center bg-black/45 p-4" onClick={(event) => { if (event.target === event.currentTarget) setSelectedPractice(null); }}>
           <section className="max-h-[90dvh] w-full max-w-xl overflow-y-auto rounded-3xl bg-white p-5 shadow-2xl sm:p-6" aria-modal="true" role="dialog" aria-label="Amaliyot tafsilotlari">
-            <div className="flex items-start justify-between gap-3">
+            <div className="flex items-start justify-between gap-2">
               <div>
                 <p className="text-xs font-medium text-gray-400">{selectedPractice.lessonTitle}</p>
                 <h3 className="mt-0.5 text-base font-bold text-gray-900">{selectedPractice.practiceBlock.title}</h3>
@@ -268,7 +268,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                 {selectedPractice.practiceBlock.imageSubmissions.length === 0 ? (
                   <p className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">O‘quvchi hali rasm yubormagan.</p>
                 ) : (
-                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
                     {selectedPractice.practiceBlock.imageSubmissions.map((submission) => (
                       <button key={submission.id} type="button" onClick={() => setFullscreenImage({ imageUrl: submission.imageUrl, submittedAt: submission.submittedAt })} className="group overflow-hidden rounded-2xl border border-gray-100 bg-gray-50 text-left transition hover:border-gray-300 hover:">
                         <img src={submission.imageUrl} alt="O‘quvchi yuborgan topshiriq" className="aspect-square w-full object-cover transition duration-200 group-hover:scale-[1.02]" />
@@ -329,7 +329,7 @@ export function StudentLearningProgressModal({ studentId, courseId, onClose }: S
                   <p className="rounded-2xl bg-gray-50 px-4 py-8 text-center text-sm text-gray-400">O‘quvchi bu testni hali ishlamagan.</p>
                 ) : selectedPractice.practiceBlock.submissions.map((submission, index) => (
                   <div key={submission.id} className="rounded-2xl bg-gray-50 px-4 py-3">
-                    <div className="flex items-center justify-between gap-3">
+                    <div className="flex items-center justify-between gap-2">
                       <div>
                         <p className="text-sm font-bold text-gray-800">Urinish {selectedPractice.practiceBlock.submissions.length - index}</p>
                         <p className="mt-0.5 text-xs text-gray-400">{formatDateTime(submission.submittedAt)} · {submission.score}/{submission.total} to‘g‘ri</p>

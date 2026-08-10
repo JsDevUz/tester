@@ -83,7 +83,7 @@ export function StudentSubmissionDetailPage() {
             )}
 
             {canShowAnswers && (
-              <div className="flex flex-col gap-3.5 pb-8">
+              <div className="flex flex-col gap-2.5 pb-8">
                 {detail.answers.map((answer, index) => (
                   <AnswerResultCard
                     key={answer.questionId}

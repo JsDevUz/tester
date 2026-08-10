@@ -223,7 +223,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={messengerViewportStyle}
-      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-[#f1f5f9] lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-[#f1f5f9] dark:bg-[#1c1d23] lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
     >
       <div
         aria-hidden="true"
@@ -240,17 +240,17 @@ export function StudentShell({ children }: { children: ReactNode }) {
         />
       </div>
       <div
-        className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-3 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}
+        className={`mx-auto grid w-full max-w-none grid-cols-1 lg:grid-cols-[18rem_minmax(0,1fr)] lg:gap-2 ${isMessenger ? "h-full min-h-0 items-stretch" : "lg:min-h-[calc(100vh-2rem)]"}`}
       >
         <aside
-          className={`hidden w-full shrink-0 flex-col gap-3 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}
+          className={`hidden w-full shrink-0 flex-col gap-2 ${isMessenger ? "lg:flex lg:self-stretch" : "lg:sticky lg:top-4 lg:flex lg:self-start"}`}
         >
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
             className="rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
           >
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <UserAvatar
                 name={admin?.name}
                 avatarUrl={admin?.avatarUrl}
@@ -276,9 +276,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   key={item.path}
                   type="button"
                   onClick={() => navigate(item.path)}
-                  className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${active
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-700 hover:bg-gray-50"
+                  className={`inline-flex shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${active
+                    ? "bg-indigo-50 text-indigo-600"
+                    : "text-gray-700 hover:bg-gray-50"
                     }`}
                 >
                   <span className="relative">
@@ -300,7 +300,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
             <button
               type="button"
               onClick={() => setProfileOpen(true)}
-              className="inline-flex w-full shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
+              className="inline-flex w-full shrink-0 items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-50"
             >
               <Settings size={20} className="text-gray-400" />
               <span>Sozlamalar</span>
@@ -317,7 +317,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 key={s.id}
                 type="button"
                 onClick={() => navigate(`/classroom/${s.id}`)}
-                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
+                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
               >
                 <Radio
                   size={20}
@@ -342,7 +342,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
                 key={pin.testId}
                 type="button"
                 onClick={() => navigate(`/t/${pin.slug}`)}
-                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-3 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
+                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
               >
                 <Radio
                   size={20}

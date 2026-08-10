@@ -35,7 +35,7 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -74,7 +74,7 @@ export function CourseSettingsPage({ courseId, onBackToList, onSelectContent, on
         onBackToList={onBackToList}
         activeFullTab="settings"
         onSelectContent={onSelectContent}
-        onSelectSettings={() => {}}
+        onSelectSettings={() => { }}
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
         onSelectClasses={onSelectClasses}

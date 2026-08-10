@@ -109,7 +109,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
           <p className="mt-1 text-xs text-gray-400">Pastroqdan blok qo'shing</p>
         </div>
       ) : (
-        <div className="mb-6 flex flex-col gap-3">
+        <div className="mb-6 flex flex-col gap-2">
           {lesson.practiceBlocks.map((block, index) => (
             <PracticeBlockView
               key={block.id}
@@ -144,7 +144,7 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
 
       {lesson.practiceBlocks.some((b) => b.type === 'test') ? (
         <div className="rounded-2xl bg-white p-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-800">Minimal o'tish balini talab qilish</p>
               <p className="text-xs text-gray-400">Yoqilsa, o'quvchi belgilangan foizdan kam ball to'plasa dars o'tilmagan hisoblanadi</p>
@@ -158,14 +158,12 @@ export function PracticeSection({ courseId, moduleId, lessonId }: PracticeSectio
                   percent: nextEnabled && lesson.passThresholdPercent == null ? 70 : lesson.passThresholdPercent,
                 });
               }}
-              className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${
-                lesson.passThresholdEnabled ? 'bg-gray-900' : 'bg-gray-200'
-              }`}
+              className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${lesson.passThresholdEnabled ? 'bg-gray-900' : 'bg-gray-200'
+                }`}
             >
               <span
-                className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${
-                  lesson.passThresholdEnabled ? 'translate-x-5' : 'translate-x-0.5'
-                }`}
+                className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${lesson.passThresholdEnabled ? 'translate-x-5' : 'translate-x-0.5'
+                  }`}
               />
             </button>
           </div>

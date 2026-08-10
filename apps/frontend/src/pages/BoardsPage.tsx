@@ -114,7 +114,7 @@ export function BoardsPage() {
         {/* Header Section */}
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Mening doskalarim</h1>
             </div>
             <p className="mt-1 text-xs text-gray-500">
@@ -171,7 +171,7 @@ export function BoardsPage() {
                     className="group flex items-center justify-between py-3.5 px-3 rounded-xl hover:bg-gray-50/90 transition-all duration-150 cursor-pointer select-none"
                   >
                     {/* Left: Icon + Title + Subtitle */}
-                    <div className="flex items-center gap-3.5 min-w-0 flex-1 pr-4">
+                    <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
                       <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100/80">
                         <Presentation size={18} />
                       </div>
@@ -298,7 +298,7 @@ export function BoardsPage() {
           onPointerDown={(e) => { if (e.target === e.currentTarget && !creating) setShowCreateModal(false); }}
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4">
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
                 <Presentation size={20} />
               </div>
@@ -352,7 +352,7 @@ export function BoardsPage() {
           onPointerDown={(e) => { if (e.target === e.currentTarget && !deleting) setDeleteTarget(null); }}
         >
           <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4">
-            <div className="flex items-center gap-3 text-red-600">
+            <div className="flex items-center gap-2 text-red-600">
               <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
                 <Trash2 size={20} />
               </div>

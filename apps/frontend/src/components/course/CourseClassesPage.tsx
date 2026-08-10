@@ -131,7 +131,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
   };
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -202,8 +202,8 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
 
       {detail && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-          <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-3 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
-            <div className="flex flex-col gap-3">
+          <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-2 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
+            <div className="flex flex-col gap-2">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0 flex-1">
                   <h2 className="font-semibold text-gray-800">{detail.title ?? "Jonli dars"} — Davomat</h2>
@@ -243,7 +243,7 @@ export function CourseClassesPage({ courseId, onBackToList, onSelectContent, onS
               ) : (
                 <div className="flex flex-col divide-y divide-gray-100">
                   {detail.attendance.map((a) => (
-                    <div key={a.id} className="flex items-center gap-3 py-2.5">
+                    <div key={a.id} className="flex items-center gap-2 py-2.5">
                       <div className="min-w-0 flex-1">
                         <p className="truncate text-sm font-medium text-gray-800">
                           {a.name}

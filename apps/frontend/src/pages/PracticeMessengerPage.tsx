@@ -10,6 +10,7 @@ import {
   Loader2,
   Maximize2,
   MessageCircle,
+  MoreVertical,
   Pencil,
   Pin,
   Reply,
@@ -638,86 +639,100 @@ function PracticeMessengerContent() {
   }
 
   return (
-    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden max-[1024px]:bg-transparent min-[1025px]:bg-white lg:rounded-2xl">
-      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
+    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden bg-[#f1f5f9] max-[1024px]:bg-[#f1f5f9] lg:rounded-2xl border border-gray-200/60 dark:bg-zinc-950 dark:border-zinc-800">
+      {activeMessageActionsId && (
+        <div
+          className="fixed inset-0 z-40 bg-transparent"
+          onClick={() => setActiveMessageActionsId(null)}
+        />
+      )}
+      <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[360px_minmax(0,1fr)]">
         <aside
-          className={`practice-messenger-list min-h-0 flex-col lg:flex lg:border-r ${mobileThreadOpen ? "hidden" : "flex"}`}
+          className={`practice-messenger-list min-h-0 flex-col bg-[#f1f5f9] dark:bg-zinc-950 lg:flex lg:border-r lg:border-gray-200/60 dark:lg:border-zinc-800/60 ${mobileThreadOpen ? "hidden" : "flex"}`}
         >
-          <div className="border-b border-gray-200/80 p-3">
-            <label className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 shadow-sm px-3 py-2.5 text-gray-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 dark:bg-zinc-800/60 dark:border-zinc-700 dark:focus-within:ring-indigo-900/40 transition-all">
-              <Search size={17} className="shrink-0 text-gray-400 dark:text-zinc-400" />
+          <div className="bg-white border-b border-gray-100 p-3 sm:p-4 dark:bg-zinc-900 dark:border-zinc-800">
+            <label className="flex items-center gap-2.5 rounded-2xl bg-gray-50 border border-gray-200/60 px-4 py-2.5 text-gray-400 focus-within:bg-white focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 dark:bg-zinc-800/80 dark:border-zinc-700/80 transition-all">
+              <Search
+                size={18}
+                className="shrink-0 text-gray-400 dark:text-zinc-400"
+              />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Qidirish"
-                className="min-w-0 flex-1 !bg-transparent text-sm text-gray-800 dark:text-zinc-100 outline-none placeholder:text-gray-400 dark:placeholder:text-zinc-500"
+                className="min-w-0 flex-1 bg-transparent text-sm font-medium text-gray-900 dark:text-zinc-100 outline-none placeholder:text-gray-400 dark:placeholder:text-zinc-500"
               />
             </label>
           </div>
-          <div className="max-h-64 flex-1 overflow-y-auto lg:max-h-none">
+          <div className="max-h-64 flex-1 overflow-y-auto lg:max-h-none p-3 sm:p-4">
             {loading ? (
               <div className="flex justify-center py-12 text-gray-400">
                 <Loader2 className="animate-spin" size={24} />
               </div>
             ) : visibleChats.length === 0 ? (
-              <div className="px-5 py-12 text-center text-sm text-gray-400">
-                Hali amalyot chati yo‘q.
+              <div className="px-4 py-12 text-center text-xs text-gray-400">
+                {query.trim()
+                  ? "Bunday amaliyot chati topilmadi"
+                  : "Hali amaliyot chati yo‘q."}
               </div>
             ) : (
-              visibleChats.map((chat) => {
-                const active = chat.id === selectedId;
-                return (
-                  <button
-                    key={chat.id}
-                    type="button"
-                    onClick={() => {
-                      setSelectedId(chat.id);
-                      setMobileThreadOpen(true);
-                    }}
-                    className={`flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors ${active ? "practice-messenger-chat-active" : "hover:bg-gray-50"}`}
-                  >
-                    <UserAvatar
-                      name={
-                        admin?.id === chat.student.id
-                          ? chat.curator.name
-                          : chat.student.name
-                      }
-                      avatarUrl={
-                        admin?.id === chat.student.id
-                          ? chat.curator.avatarUrl
-                          : chat.student.avatarUrl
-                      }
-                      className="practice-messenger-avatar h-11 w-11 rounded-full text-sm font-bold"
-                    />
-                    <span className="min-w-0 flex-1">
-                      <span className="flex items-center justify-between gap-2">
-                        <span className="truncate text-sm font-bold text-gray-900">
-                          {admin?.id === chat.student.id
-                            ? chat.curator.name
-                            : chat.student.name}
-                        </span>
-                        <span className="shrink-0 text-[11px] text-gray-400">
-                          {chat.lastMessage
-                            ? formatDateTime(chat.lastMessage.createdAt)
-                            : ""}
-                        </span>
-                      </span>
-                      <span className="mt-0.5 block truncate text-xs text-gray-500">
-                        {previewText(chat)}
-                      </span>
-                      <span className="mt-1 block truncate text-[11px] text-gray-400">
-                        {chat.courseTitle} · {chat.groupName}
-                      </span>
-                    </span>
-                  </button>
-                );
-              })
+              <div className="flex flex-col gap-2">
+                {visibleChats.map((chat) => {
+                  const active = chat.id === selectedId;
+                  const partnerName =
+                    admin?.id === chat.student.id
+                      ? chat.curator.name
+                      : chat.student.name;
+                  const partnerAvatar =
+                    admin?.id === chat.student.id
+                      ? chat.curator.avatarUrl
+                      : chat.student.avatarUrl;
+                  return (
+                    <button
+                      key={chat.id}
+                      type="button"
+                      onClick={() => {
+                        setSelectedId(chat.id);
+                        setMobileThreadOpen(true);
+                      }}
+                      className={`student-responsive-card group relative flex w-full items-center gap-2.5 rounded-[20px] bg-white p-3 text-left transition-all border border-gray-200/60 dark:bg-zinc-900 dark:border-zinc-800 ${active
+                          ? "border-gray-300 dark:border-zinc-700"
+                          : "hover:border-gray-300"
+                        }`}
+                    >
+                      <UserAvatar
+                        name={partnerName}
+                        avatarUrl={partnerAvatar}
+                        className="h-12 w-12 shrink-0 rounded-full text-sm font-bold"
+                      />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between gap-2">
+                          <p className="truncate text-sm font-extrabold text-gray-900 dark:text-white">
+                            {partnerName}
+                          </p>
+                          {chat.lastMessage && (
+                            <span className="shrink-0 text-[11px] font-medium text-gray-400">
+                              {formatDateTime(chat.lastMessage.createdAt)}
+                            </span>
+                          )}
+                        </div>
+                        <p className="mt-0.5 truncate text-[11px] font-medium text-gray-400 dark:text-zinc-400">
+                          {chat.courseTitle} · {chat.groupName}
+                        </p>
+                        <p className="mt-1 truncate text-xs font-semibold text-gray-600 dark:text-zinc-300">
+                          {previewText(chat)}
+                        </p>
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
             )}
           </div>
         </aside>
 
         <section
-          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-transparent lg:flex ${mobileThreadOpen ? "flex" : "hidden"}`}
+          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-[#f3f4f6] dark:bg-zinc-900 lg:flex ${mobileThreadOpen ? "flex" : "hidden"}`}
         >
           {!selectedChat ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-gray-400">
@@ -772,7 +787,7 @@ function PracticeMessengerContent() {
                 <button
                   type="button"
                   onClick={focusPreviousPinnedMessage}
-                  className="practice-messenger-pins flex items-center gap-3 border-b border-gray-100 bg-white px-5 py-2.5 text-left transition-colors hover:bg-gray-50"
+                  className="practice-messenger-pins flex items-center gap-2 border-b border-gray-100 bg-white px-5 py-2.5 text-left transition-colors hover:bg-gray-50"
                   title="Oldingi qadalgan amaliyotga o‘tish"
                 >
                   <span className="practice-messenger-accent-icon flex h-8 w-8 shrink-0 items-center justify-center rounded-lg">
@@ -874,7 +889,7 @@ function PracticeMessengerContent() {
                                     current === message.id ? null : message.id,
                                   );
                                 }}
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${own
+                                className={`practice-message-bubble group relative max-w-[92%] px-4 py-2.5 sm:max-w-[78%] ${own
                                     ? practiceMessage
                                       ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
                                       : "practice-message-own rounded-[22px] rounded-br-[6px]"
@@ -884,41 +899,87 @@ function PracticeMessengerContent() {
                                 {!message.deletedAt && (
                                   <div
                                     onClick={(event) => event.stopPropagation()}
-                                    className={`absolute right-2 top-1 z-10 flex items-center rounded-lg border border-gray-100 bg-white p-0.5  transition-opacity sm:bottom-full sm:top-auto sm:mb-1 sm:pointer-events-auto sm:opacity-0 sm:after:absolute sm:after:left-0 sm:after:top-full sm:after:h-1 sm:after:w-full sm:after:content-[''] sm:group-hover:opacity-100 sm:focus-within:opacity-100 ${activeMessageActionsId === message.id ? "pointer-events-auto opacity-100" : "pointer-events-none opacity-0"}`}
+                                    className="absolute top-1.5 right-2 z-50"
                                   >
                                     <button
                                       type="button"
-                                      onClick={() => startReply(message)}
-                                      className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                                      aria-label="Xabarga javob berish"
-                                      title="Javob berish"
+                                      onClick={() =>
+                                        setActiveMessageActionsId((current) =>
+                                          current === message.id
+                                            ? null
+                                            : message.id,
+                                        )
+                                      }
+                                      className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${own
+                                          ? "text-white/80 hover:bg-white/20 hover:text-white"
+                                          : "text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:text-zinc-300 dark:hover:bg-zinc-700/60"
+                                        } ${activeMessageActionsId === message.id
+                                          ? "opacity-100 bg-black/20"
+                                          : "opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
+                                        }`}
+                                      aria-label="Amallar"
                                     >
-                                      <Reply size={14} />
+                                      <MoreVertical size={15} />
                                     </button>
-                                    {canManage && (
-                                      <>
-                                        <button
-                                          type="button"
-                                          onClick={() => startEditing(message)}
-                                          className="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 hover:text-gray-900"
-                                          aria-label="Xabarni tahrirlash"
-                                          title="Tahrirlash"
-                                        >
-                                          <Pencil size={14} />
-                                        </button>
+
+                                    {activeMessageActionsId === message.id && (
+                                      <div
+                                        className={`absolute top-full mt-1.5 z-50 w-44 rounded-2xl bg-white p-1.5 shadow-xl border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 ${own ? "right-0" : "left-0"
+                                          }`}
+                                      >
                                         <button
                                           type="button"
                                           onClick={() => {
                                             setActiveMessageActionsId(null);
-                                            setMessagePendingDelete(message);
+                                            startReply(message);
                                           }}
-                                          className="rounded-md p-1.5 text-gray-500 hover:bg-red-50 hover:text-red-600"
-                                          aria-label="Xabarni o‘chirish"
-                                          title="O‘chirish"
+                                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700/60 transition-colors"
                                         >
-                                          <Trash2 size={14} />
+                                          <Reply
+                                            size={15}
+                                            className="text-gray-400 dark:text-zinc-400"
+                                          />
+                                          <span>Javob berish</span>
                                         </button>
-                                      </>
+
+                                        {canManage && (
+                                          <>
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setActiveMessageActionsId(null);
+                                                startEditing(message);
+                                              }}
+                                              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700/60 transition-colors"
+                                            >
+                                              <Pencil
+                                                size={15}
+                                                className="text-gray-400 dark:text-zinc-400"
+                                              />
+                                              <span>Tahrirlash</span>
+                                            </button>
+
+                                            <div className="my-1 h-px bg-gray-100 dark:bg-zinc-700/60" />
+
+                                            <button
+                                              type="button"
+                                              onClick={() => {
+                                                setActiveMessageActionsId(null);
+                                                setMessagePendingDelete(
+                                                  message,
+                                                );
+                                              }}
+                                              className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 transition-colors"
+                                            >
+                                              <Trash2
+                                                size={15}
+                                                className="text-red-500 dark:text-red-400"
+                                              />
+                                              <span>O‘chirish</span>
+                                            </button>
+                                          </>
+                                        )}
+                                      </div>
                                     )}
                                   </div>
                                 )}
@@ -1044,7 +1105,7 @@ function PracticeMessengerContent() {
                                               </button>
                                             </div>
                                           ) : (
-                                            <div className="mt-2 flex items-center justify-between gap-3">
+                                            <div className="mt-2 flex items-center justify-between gap-2">
                                               <p className="inline-flex items-center gap-1 text-sm font-bold text-amber-500">
                                                 <Star
                                                   size={14}
@@ -1173,7 +1234,7 @@ function PracticeMessengerContent() {
                                                 )}
                                               </div>
                                             ) : (
-                                              <div className="mt-3 flex items-center justify-between gap-3">
+                                              <div className="mt-3 flex items-center justify-between gap-2">
                                                 <p className="text-sm font-bold text-green-600">
                                                   {gradedImage?.score} /{" "}
                                                   {maxScore} yulduz berildi
@@ -1226,7 +1287,7 @@ function PracticeMessengerContent() {
                 className="practice-messenger-composer border-t border-gray-100 bg-white p-2 sm:p-3"
               >
                 {(replyingTo || editingMessage) && (
-                  <div className="practice-messenger-replying mx-auto mb-2 flex w-full max-w-4xl items-center gap-3 rounded-xl border-l-4 px-3 py-2 text-xs text-gray-600">
+                  <div className="practice-messenger-replying mx-auto mb-2 flex w-full max-w-4xl items-center gap-2 rounded-xl border-l-4 px-3 py-2 text-xs text-gray-600">
                     <div className="min-w-0 flex-1">
                       <p className="practice-messenger-replying-title font-bold">
                         {editingMessage
@@ -1370,7 +1431,7 @@ function PracticeMessengerContent() {
                   <Loader2 className="animate-spin" size={24} />
                 </div>
               ) : testDetail?.answers.length ? (
-                <div className="flex flex-col gap-3">
+                <div className="flex flex-col gap-2">
                   {testDetail.answers.map((answer, index) => (
                     <AnswerResultCard
                       key={answer.questionId}

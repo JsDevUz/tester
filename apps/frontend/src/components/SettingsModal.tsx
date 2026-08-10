@@ -1,10 +1,19 @@
-import { useEffect, useState } from "react";
-import { ChevronLeft, ChevronRight, LogOut, Moon, Phone, Settings, ShieldCheck, User, X } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import {
+  LogOut,
+  Moon,
+  Phone,
+  Smartphone,
+  Sun,
+  X,
+} from "lucide-react";
+import { toast } from "sonner";
 import type { Admin } from "../api/auth";
+import { apiChangePassword, apiUpdateProfile } from "../api/auth";
+import { apiUploadMedia } from "../api/questions";
+import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { UserAvatar } from "./UserAvatar";
-import { AdminsSection } from "./AdminsSection";
-import { EditProfileSection } from "./EditProfileSection";
 import { ConfirmDeleteModal } from "./course/ConfirmDeleteModal";
 import { formatPhone } from "../utils/phone";
 
@@ -14,8 +23,6 @@ interface SettingsModalProps {
   onLogout: () => void;
 }
 
-type SectionKey = "general" | "profile" | "admins";
-
 const ROLE_LABELS: Record<Admin["role"], string> = {
   student: "O'quvchi",
   teacher: "O'qituvchi",
@@ -23,31 +30,23 @@ const ROLE_LABELS: Record<Admin["role"], string> = {
   super: "Super admin",
 };
 
-function Switch({ checked, onChange, label }: { checked: boolean; onChange: () => void; label: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={onChange}
-      className={`relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors ${checked ? "bg-indigo-500" : "bg-gray-200"
-        }`}
-    >
-      <span
-        className={`absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0"
-          }`}
-      />
-    </button>
-  );
-}
-
 export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) {
-  const { theme, toggleTheme } = useThemeStore();
-  const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
-  const [activeSection, setActiveSection] = useState<SectionKey | null>(null);
+  const setAdmin = useAuthStore((s) => s.setAdmin);
+  const { themeMode, setTheme } = useThemeStore();
   const [confirmLogout, setConfirmLogout] = useState(false);
-  const isSuperAdmin = admin?.role === "super";
+
+  // Profile Edit State
+  const [name, setName] = useState(admin?.name ?? "");
+  const [savingName, setSavingName] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // Password Change State
+  const [currentPassword, setCurrentPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [savingPassword, setSavingPassword] = useState(false);
+
+  const nameChanged = name.trim() !== (admin?.name ?? "").trim();
 
   useEffect(() => {
     const originalOverflow = document.body.style.overflow;
@@ -62,14 +61,67 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
     };
   }, [onClose]);
 
-  function openSection(section: SectionKey) {
-    setActiveSection(section);
-    setShowDetailOnMobile(true);
+  async function handleSaveName() {
+    if (!nameChanged || savingName) return;
+    setSavingName(true);
+    try {
+      const updated = await apiUpdateProfile({ name: name.trim() });
+      setAdmin(updated);
+      toast.success("Ism yangilandi");
+    } catch {
+      toast.error("Ismni yangilab bo'lmadi");
+    } finally {
+      setSavingName(false);
+    }
+  }
+
+  async function handleAvatarChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    if (!file.type.startsWith("image/")) {
+      toast.error("Faqat rasm fayllari qabul qilinadi");
+      return;
+    }
+    setUploadingAvatar(true);
+    try {
+      const { url } = await apiUploadMedia(file, "avatars");
+      const updated = await apiUpdateProfile({ avatarUrl: url });
+      setAdmin(updated);
+      toast.success("Rasm yangilandi");
+    } catch {
+      toast.error("Rasmni yuklab bo'lmadi");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  }
+
+  async function handleChangePassword() {
+    if (savingPassword) return;
+    if (!currentPassword) {
+      toast.error("Joriy parolni kiriting");
+      return;
+    }
+    if (newPassword.length < 6) {
+      toast.error("Yangi parol kamida 6 ta belgidan iborat bo'lishi kerak");
+      return;
+    }
+    setSavingPassword(true);
+    try {
+      await apiChangePassword(currentPassword, newPassword);
+      setCurrentPassword("");
+      setNewPassword("");
+      toast.success("Parol yangilandi");
+    } catch (error: any) {
+      toast.error(error?.response?.data?.message ?? "Parolni yangilab bo'lmadi");
+    } finally {
+      setSavingPassword(false);
+    }
   }
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 backdrop-blur-sm sm:items-center sm:p-6"
+      className="fixed inset-0 z-[100] flex items-end justify-center bg-black/60 backdrop-blur-sm sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-label="Sozlamalar"
@@ -77,173 +129,196 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
         if (event.target === event.currentTarget) onClose();
       }}
     >
-      <div className="settings-modal-surface relative flex h-[min(640px,94dvh)] w-full max-w-3xl overflow-hidden rounded-t-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-black/5 sm:rounded-2xl">
-        {/* ── Sidebar: profile + section list ── */}
-        <div
-          className={`settings-modal-sidebar flex w-full shrink-0 flex-col border-r border-border bg-gray-50 sm:w-72 ${showDetailOnMobile ? "hidden sm:flex" : "flex"
-            }`}
-        >
-          <div className="flex items-center justify-between px-4 py-4">
-            <h2 className="text-base font-semibold">Sozlamalar</h2>
+      {confirmLogout && (
+        <ConfirmDeleteModal
+          title="Tizimdan chiqmoqchimisiz?"
+          description="Hisobingizdan chiqasiz va qayta kirish uchun telefon raqamingizni tasdiqlashingiz kerak bo'ladi."
+          confirmLabel="Chiqish"
+          onConfirm={() => {
+            setConfirmLogout(false);
+            onLogout();
+          }}
+          onClose={() => setConfirmLogout(false)}
+        />
+      )}
+
+      <div className="relative flex max-h-[92dvh] w-full max-w-md flex-col overflow-hidden rounded-t-[32px] bg-white text-gray-900 shadow-2xl dark:bg-zinc-900 dark:text-zinc-100 sm:rounded-[32px]">
+        {/* Top pull indicator for mobile */}
+        <div className="pt-3 pb-1 sm:hidden">
+          <div className="mx-auto h-1.5 w-12 rounded-full bg-gray-200 dark:bg-zinc-700" />
+        </div>
+
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 pt-3 pb-2 sm:pt-5">
+          <h2 className="text-xl font-bold text-gray-900 dark:text-white">
+            Sozlamalar
+          </h2>
+          <button
+            type="button"
+            aria-label="Yopish"
+            onClick={onClose}
+            className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100 text-gray-500 transition-colors hover:bg-gray-200 hover:text-gray-900 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700 dark:hover:text-white"
+          >
+            <X size={18} />
+          </button>
+        </div>
+
+        {/* Scrollable Content */}
+        <div className="min-h-0 flex-1 overflow-y-auto px-5 pb-8 pt-2">
+          {/* Avatar Section */}
+          <div className="flex flex-col items-center justify-center mb-3">
+            <div className="relative">
+              <UserAvatar
+                name={admin?.name}
+                avatarUrl={admin?.avatarUrl}
+                className="h-20 w-20 rounded-full border-2 border-white shadow-sm dark:border-zinc-800"
+              />
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={handleAvatarChange}
+              />
+            </div>
             <button
               type="button"
-              aria-label="Yopish"
-              onClick={onClose}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:hidden"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={uploadingAvatar}
+              className="mt-2 text-xs font-semibold text-indigo-600 hover:text-indigo-700 dark:text-indigo-400 disabled:opacity-50"
             >
-              <X size={16} />
+              {uploadingAvatar ? "Rasm yuklanmoqda..." : "Rasmni almashtirish"}
             </button>
           </div>
 
-          <div className="flex items-center gap-3 border-b border-border px-4 pb-4">
-            <UserAvatar
-              name={admin?.name}
-              avatarUrl={admin?.avatarUrl}
-              className="h-11 w-12 shrink-0 rounded-full bg-gray-900 text-base font-semibold text-white"
+          {/* Contact Details */}
+          <div className="mb-4 flex flex-col gap-0.5 text-xs text-gray-400 dark:text-zinc-500">
+            {admin?.phone && (
+              <span className="inline-flex items-center gap-1.5">
+                <Phone size={12} className="text-gray-400" /> {formatPhone(admin.phone)}
+              </span>
+            )}
+            <span>{admin?.role ? ROLE_LABELS[admin.role] : "O'quvchi"}</span>
+          </div>
+
+          {/* Name Section */}
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-bold text-gray-600 dark:text-zinc-300">
+              Ism
+            </label>
+            <input
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+              placeholder="Ismingiz"
+              className="h-12 w-full rounded-2xl border border-gray-200/80 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700/80 dark:bg-zinc-800 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-zinc-800 dark:focus:ring-indigo-500/20"
             />
-            <div className="min-w-0">
-              <p className="truncate text-sm font-semibold">{admin?.name ?? "Foydalanuvchi"}</p>
-              <div className="mt-0.5 flex flex-col gap-0.5 text-xs text-gray-400">
-                {admin?.phone && (
-                  <span className="inline-flex items-center gap-1.5">
-                    <Phone size={11} /> {formatPhone(admin.phone)}
-                  </span>
-                )}
-                {admin?.role && <span>{ROLE_LABELS[admin.role]}</span>}
-              </div>
+            <button
+              type="button"
+              onClick={handleSaveName}
+              disabled={!nameChanged || savingName}
+              className={`mt-2 h-11 w-full rounded-2xl text-sm font-bold transition-colors ${
+                nameChanged
+                  ? "bg-indigo-600 text-white hover:bg-indigo-700"
+                  : "bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-500"
+              } disabled:cursor-not-allowed disabled:opacity-60`}
+            >
+              {savingName ? "Saqlanmoqda..." : "Ismni saqlash"}
+            </button>
+          </div>
+
+          {/* Theme Section */}
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-bold text-gray-600 dark:text-zinc-300">
+              Mavzu
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setTheme("light")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-xs font-bold transition-all ${
+                  themeMode === "light"
+                    ? "border-2 border-indigo-500 bg-indigo-50/60 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400"
+                    : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                }`}
+              >
+                <Sun size={18} />
+                <span>Yorug'</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("dark")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-xs font-bold transition-all ${
+                  themeMode === "dark"
+                    ? "border-2 border-indigo-500 bg-indigo-50/60 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400"
+                    : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                }`}
+              >
+                <Moon size={18} />
+                <span>Qorong'u</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setTheme("system")}
+                className={`flex flex-col items-center justify-center gap-1.5 rounded-2xl py-3 text-xs font-bold transition-all ${
+                  themeMode === "system"
+                    ? "border-2 border-indigo-500 bg-indigo-50/60 text-indigo-600 dark:bg-indigo-950/40 dark:text-indigo-400"
+                    : "border border-gray-200 bg-white text-gray-500 hover:bg-gray-50 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-400"
+                }`}
+              >
+                <Smartphone size={18} />
+                <span>Tizim</span>
+              </button>
             </div>
           </div>
 
-          <nav className="flex-1 overflow-y-auto p-2">
+          {/* Password Change Section */}
+          <div className="mb-4">
+            <label className="mb-1.5 block text-xs font-bold text-gray-600 dark:text-zinc-300">
+              Joriy parol
+            </label>
+            <input
+              type="password"
+              value={currentPassword}
+              onChange={(e) => setCurrentPassword(e.target.value)}
+              autoComplete="current-password"
+              placeholder="••••••••"
+              className="h-12 w-full rounded-2xl border border-gray-200/80 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700/80 dark:bg-zinc-800 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-zinc-800 dark:focus:ring-indigo-500/20"
+            />
+            <label className="mt-3 mb-1.5 block text-xs font-bold text-gray-600 dark:text-zinc-300">
+              Yangi parol
+            </label>
+            <input
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              autoComplete="new-password"
+              placeholder="••••••••"
+              className="h-12 w-full rounded-2xl border border-gray-200/80 bg-gray-50 px-4 text-sm font-semibold text-gray-900 outline-none transition-all focus:border-indigo-500 focus:bg-white focus:ring-2 focus:ring-indigo-500/20 dark:border-zinc-700/80 dark:bg-zinc-800 dark:text-white dark:focus:border-indigo-500 dark:focus:bg-zinc-800 dark:focus:ring-indigo-500/20"
+            />
             <button
               type="button"
-              onClick={() => openSection("profile")}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "profile"
-                  ? "bg-indigo-500 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-                }`}
+              onClick={handleChangePassword}
+              disabled={savingPassword || !currentPassword || !newPassword}
+              className={`mt-3 h-12 w-full rounded-2xl text-sm font-bold transition-colors ${
+                currentPassword && newPassword
+                  ? "bg-[#0f172a] text-white hover:bg-black dark:bg-indigo-600 dark:text-white dark:hover:bg-indigo-500"
+                  : "bg-gray-100 text-gray-400 dark:bg-zinc-800 dark:text-zinc-500"
+              } disabled:cursor-not-allowed disabled:opacity-60`}
             >
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "profile" ? "bg-white/15" : "bg-gray-200"
-                  }`}
-              >
-                <User size={15} />
-              </span>
-              Profile
-              <ChevronRight size={15} className="ml-auto text-gray-300 sm:hidden" />
-            </button>
-
-            <button
-              type="button"
-              onClick={() => openSection("general")}
-              className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "general"
-                  ? "bg-indigo-500 text-white"
-                  : "text-gray-700 hover:bg-gray-100"
-                }`}
-            >
-              <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "general" ? "bg-white/15" : "bg-gray-200"
-                  }`}
-              >
-                <Settings size={15} />
-              </span>
-              General
-              <ChevronRight size={15} className="ml-auto text-gray-300 sm:hidden" />
-            </button>
-
-            {isSuperAdmin && (
-              <button
-                type="button"
-                onClick={() => openSection("admins")}
-                className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "admins"
-                    ? "bg-indigo-500 text-white"
-                    : "text-gray-700 hover:bg-gray-100"
-                  }`}
-              >
-                <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "admins" ? "bg-white/15" : "bg-gray-200"
-                    }`}
-                >
-                  <ShieldCheck size={15} />
-                </span>
-                Adminlar
-                <ChevronRight size={15} className="ml-auto text-gray-300 sm:hidden" />
-              </button>
-            )}
-          </nav>
-
-          <div className="border-t border-border p-2">
-            <button
-              type="button"
-              onClick={() => setConfirmLogout(true)}
-              className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500"
-            >
-              <LogOut size={16} /> Chiqish
-            </button>
-          </div>
-        </div>
-
-        {confirmLogout && (
-          <ConfirmDeleteModal
-            title="Tizimdan chiqmoqchimisiz?"
-            description="Hisobingizdan chiqasiz va qayta kirish uchun telefon raqamingizni tasdiqlashingiz kerak bo'ladi."
-            confirmLabel="Chiqish"
-            onConfirm={() => {
-              setConfirmLogout(false);
-              onLogout();
-            }}
-            onClose={() => setConfirmLogout(false)}
-          />
-        )}
-
-        {/* ── Detail ── */}
-        <div className={`flex min-w-0 flex-1 flex-col ${showDetailOnMobile ? "flex" : "hidden sm:flex"}`}>
-          <div className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-4 sm:px-6">
-            <button
-              type="button"
-              aria-label="Orqaga"
-              onClick={() => setShowDetailOnMobile(false)}
-              className="flex h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:hidden"
-            >
-              <ChevronLeft size={17} />
-            </button>
-            <h3 className="text-base font-semibold">
-              {(activeSection ?? "general") === "profile"
-                ? "Profile"
-                : (activeSection ?? "general") === "general"
-                  ? "General Settings"
-                  : "Adminlar"}
-            </h3>
-            <button
-              type="button"
-              aria-label="Yopish"
-              onClick={onClose}
-              className="ml-auto hidden h-7 w-7 items-center justify-center rounded-full text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-700 sm:flex"
-            >
-              <X size={16} />
+              {savingPassword ? "Yangilanmoqda..." : "Parolni yangilash"}
             </button>
           </div>
 
-          <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {(activeSection ?? "general") === "profile" ? (
-              <EditProfileSection />
-            ) : (activeSection ?? "general") === "general" ? (
-              <>
-                <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
-                  Appearance
-                </p>
-                <div className="overflow-hidden rounded-xl bg-gray-50">
-                  <div className="flex items-center gap-3 px-4 py-3.5">
-                    <Moon size={16} className="shrink-0 text-gray-400" />
-                    <span className="flex-1 text-sm text-gray-700">Dark Mode</span>
-                    <Switch checked={theme === "dark"} onChange={toggleTheme} label="Dark mode almashtirish" />
-                  </div>
-                </div>
-              </>
-            ) : (
-              <AdminsSection currentAdminId={admin?.id ?? null} />
-            )}
-          </div>
+          {/* Logout Button */}
+          <button
+            type="button"
+            onClick={() => setConfirmLogout(true)}
+            className="mt-4 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-red-50 text-sm font-bold text-red-500 transition-colors hover:bg-red-100 dark:bg-red-950/30 dark:text-red-400 dark:hover:bg-red-900/40"
+          >
+            <LogOut size={18} />
+            <span>Chiqish</span>
+          </button>
         </div>
       </div>
     </div>

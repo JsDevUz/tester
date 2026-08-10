@@ -347,7 +347,7 @@ export function QuestionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl flex flex-col gap-3"
+      className="max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl flex flex-col gap-2"
     >
       <textarea
         value={text}
@@ -655,7 +655,7 @@ export function QuestionForm({
       )}
 
       {type === "reorder" && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           <p className="text-xs text-gray-500 flex items-center gap-1">
             <GripHorizontal size={12} /> To'g'ri tartibni kiriting (o'quvchi
             aralashtirilib beriladi)
@@ -724,7 +724,7 @@ export function QuestionForm({
       )}
 
       {type === "arrange" && (
-        <div className="flex flex-col gap-3">
+        <div className="flex flex-col gap-2">
           {/* Correct tokens in order */}
           <div>
             <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">

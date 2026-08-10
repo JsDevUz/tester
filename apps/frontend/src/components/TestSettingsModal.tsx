@@ -88,7 +88,7 @@ export function TestSettingsModal({
               className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 resize-none"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="hasTimeLimit"
@@ -136,7 +136,7 @@ export function TestSettingsModal({
           </div>
           <div className="flex flex-col gap-2">
             <label
-              className={`flex items-center gap-3 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}
+              className={`flex items-center gap-2 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}
             >
               <input
                 type="checkbox"
@@ -147,7 +147,7 @@ export function TestSettingsModal({
               />
               Savollarni birin-ketin ko'rsatish{isPerQuestion && " (avtomatik)"}
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={shuffleQuestions}
@@ -156,7 +156,7 @@ export function TestSettingsModal({
               />
               Savollar tartibini aralashtirish
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={shuffleOptions}
@@ -165,7 +165,7 @@ export function TestSettingsModal({
               />
               Javob variantlarini aralashtirish
             </label>
-            <label className={`flex items-center gap-3 text-sm cursor-pointer ${onceOnly ? "text-gray-400" : "text-gray-700"}`}>
+            <label className={`flex items-center gap-2 text-sm cursor-pointer ${onceOnly ? "text-gray-400" : "text-gray-700"}`}>
               <input
                 type="checkbox"
                 checked={onceOnly ? true : requireAuth}
@@ -175,7 +175,7 @@ export function TestSettingsModal({
               />
               Faqat ro'yxatdan o'tganlar uchun{onceOnly && " (avtomatik)"}
             </label>
-            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={autoCompleteOnLeave}
@@ -190,7 +190,7 @@ export function TestSettingsModal({
                 </span>
               </span>
             </label>
-            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={onceOnly}
@@ -208,7 +208,7 @@ export function TestSettingsModal({
             </label>
           </div>
           <div>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer mb-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer mb-2">
               <input
                 type="checkbox"
                 checked={hasDeadline}

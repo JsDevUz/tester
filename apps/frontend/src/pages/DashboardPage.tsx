@@ -41,7 +41,7 @@ export function DashboardPage() {
     <AppShell>
       <div className="min-h-screen flex flex-col">
         <div className="flex-1 w-full p-6 pb-10">
-          <div className="flex items-center justify-between gap-3 mb-6">
+          <div className="flex items-center justify-between gap-2 mb-6">
             <h2 className="text-xl font-bold text-gray-800">Papkalar</h2>
             <div className="flex items-center gap-2">
               <button
@@ -69,7 +69,7 @@ export function DashboardPage() {
               <button type="button" onClick={() => void fetchFolders().catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
             </div>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-2">
               {folders.map((folder) => (
                 <FolderCard
                   key={folder.id}

@@ -62,7 +62,7 @@ export function StudentTestSettingsModal({ folderId, onSubmit, onClose, initial,
               className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 resize-none"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input type="checkbox" id="hasTimeLimit" checked={hasTimeLimit} onChange={(e) => setHasTimeLimit(e.target.checked)} className="w-4 h-4" />
             <label htmlFor="hasTimeLimit" className="text-sm text-gray-700">Vaqt chegarasi</label>
             {hasTimeLimit && (
@@ -87,19 +87,19 @@ export function StudentTestSettingsModal({ folderId, onSubmit, onClose, initial,
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <label className={`flex items-center gap-3 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}>
+            <label className={`flex items-center gap-2 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}>
               <input type="checkbox" checked={oneByOne} disabled={isPerQuestion} onChange={(e) => setOneByOne(e.target.checked)} className="w-4 h-4" />
               Savollarni birin-ketin ko'rsatish{isPerQuestion && " (avtomatik)"}
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQuestions(e.target.checked)} className="w-4 h-4" />
               Savollar tartibini aralashtirish
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleOptions(e.target.checked)} className="w-4 h-4" />
               Javob variantlarini aralashtirish
             </label>
-            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={autoCompleteOnLeave} onChange={(e) => setAutoCompleteOnLeave(e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
                 Testdan chiqilganda avtomatik yakunlash

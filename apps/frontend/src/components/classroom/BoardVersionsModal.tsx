@@ -58,7 +58,7 @@ export function BoardVersionsModal({ boardId, onClose, onRestored }: Props) {
       <div className="flex max-h-[80vh] w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-gray-100 px-6 py-4">
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
               <History size={18} />
             </div>
@@ -80,7 +80,7 @@ export function BoardVersionsModal({ boardId, onClose, onRestored }: Props) {
         {/* Body */}
         <div className="flex-1 overflow-y-auto p-6">
           {loading ? (
-            <div className="flex flex-col gap-3 py-4">
+            <div className="flex flex-col gap-2 py-4">
               {Array.from({ length: 3 }).map((_, i) => (
                 <div key={i} className="h-20 animate-pulse rounded-xl bg-gray-100" />
               ))}
@@ -91,13 +91,13 @@ export function BoardVersionsModal({ boardId, onClose, onRestored }: Props) {
               <p className="text-sm font-medium text-gray-700">Versiyalar tarixi topilmadi</p>
             </div>
           ) : (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {versions.map((ver) => {
                 const isRestoring = restoringId === ver.id;
                 return (
                   <div
                     key={ver.id}
-                    className="flex items-center justify-between gap-3 rounded-xl border border-gray-100 bg-gray-50/50 p-4 transition-all hover:bg-white hover:shadow-md hover:border-indigo-100"
+                    className="flex items-center justify-between gap-2 rounded-xl border border-gray-100 bg-gray-50/50 p-4 transition-all hover:bg-white hover:shadow-md hover:border-indigo-100"
                   >
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-2">

@@ -192,9 +192,9 @@ export function StudentsPage() {
   return (
     <AppShell>
       <div className="min-h-screen p-3 sm:p-4">
-        <div className="flex min-h-full flex-col gap-3">
+        <div className="flex min-h-full flex-col gap-2">
           <div className="rounded-2xl bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
+            <div className="flex flex-wrap items-start justify-between gap-2">
               <div>
                 <h1 className="text-lg sm:text-xl font-bold text-gray-800">{title}</h1>
                 <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{subtitle}</p>
@@ -254,7 +254,7 @@ export function StudentsPage() {
                   <div className="md:hidden flex flex-col gap-2">
                     {enrollmentPageItems.map((e) => (
                       <button type="button" onClick={() => setProgressTarget(e)} key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-gray-50">
-                        <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-2">
                           <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(e.studentId)}`} />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
@@ -311,7 +311,7 @@ export function StudentsPage() {
                         {enrollmentPageItems.map((e) => (
                           <tr key={`${e.studentId}-${e.courseId}`} onClick={() => setProgressTarget(e)} className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5">
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                 <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(e.studentId)}`} />
                                 <div className="min-w-0">
                                   <div className="flex items-center gap-2 min-w-0">
@@ -376,7 +376,7 @@ export function StudentsPage() {
                         key={u.id}
                         type="button"
                         onClick={() => setProfileTarget({ id: u.id, name: u.name, telegramName: u.telegramName, phone: u.phone, avatarUrl: u.avatarUrl })}
-                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-3 text-left transition-colors hover:bg-gray-50"
+                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-2 text-left transition-colors hover:bg-gray-50"
                       >
                         <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(u.id)}`} />
                         <div className="flex-1 min-w-0">
@@ -413,7 +413,7 @@ export function StudentsPage() {
                             className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5"
                           >
                             <td className="px-5 py-4">
-                              <div className="flex items-center gap-3">
+                              <div className="flex items-center gap-2">
                                 <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(u.id)}`} />
                                 <div className="min-w-0">
                                   <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>

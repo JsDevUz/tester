@@ -86,7 +86,7 @@ export function TakeTestEntryPage() {
           setLoggedInName(me.name);
           setName(me.name);
         })
-        .catch(() => {});
+        .catch(() => { });
     }
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -347,7 +347,7 @@ export function TakeTestEntryPage() {
 
             {!token && (
               <div className="mt-5 rounded-2xl border border-border bg-gray-50 p-4">
-                <div className="flex items-start gap-3">
+                <div className="flex items-start gap-2">
                   <div className="w-9 h-9 shrink-0 rounded-xl bg-white border border-border flex items-center justify-center text-gray-500">
                     <UserRoundCheck size={18} />
                   </div>

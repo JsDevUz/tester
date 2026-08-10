@@ -13,7 +13,7 @@ export function DataLoadingState({
     <div
       role="status"
       aria-live="polite"
-      className={`flex min-h-40 flex-col items-center justify-center gap-3 rounded-2xl bg-white text-gray-400 ${className}`}
+      className={`flex min-h-40 flex-col items-center justify-center gap-2 rounded-2xl bg-white text-gray-400 ${className}`}
     >
       <LoaderCircle size={28} className="animate-spin text-indigo-500" />
       <p className="text-sm font-medium">{label}</p>

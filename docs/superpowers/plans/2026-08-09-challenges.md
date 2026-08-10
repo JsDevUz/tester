@@ -1520,7 +1520,7 @@ export function CourseChallengesPage({
 
   if (selectedId && detail && detail.id === selectedId) {
     return (
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <Breadcrumb
             items={[
@@ -1592,7 +1592,7 @@ export function CourseChallengesPage({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb items={[{ label: 'Kurslar', onClick: onBackToList }, { label: course.title, onClick: onSelectContent }, { label: 'Challenges' }]} />
 
@@ -1620,7 +1620,7 @@ export function CourseChallengesPage({
                 key={c.id}
                 type="button"
                 onClick={() => setSelectedId(c.id)}
-                className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
+                className="flex w-full items-center gap-2 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 {c.imageUrl ? (
                   <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
@@ -1746,7 +1746,7 @@ function BooksPanel({
         </button>
       </div>
 
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         {books.map((book) => (
           <div key={book.id} className="rounded-xl bg-gray-50 p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">
@@ -1972,7 +1972,7 @@ export function ChallengesHubPage() {
         <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Jamm</h1>
         <p className="mb-6 text-sm text-gray-400">Kurs ichidagi faolliklar</p>
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-3">
           <button
             type="button"
             onClick={() => setView('challenges')}
@@ -2062,7 +2062,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
             <p className="text-sm">Hozircha challenge yo'q</p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
             {challenges.map((c) => (
               <div key={c.id} className="rounded-2xl bg-white p-4">
                 {c.imageUrl ? (
@@ -2270,7 +2270,7 @@ export function ChallengeDetailPage() {
         </div>
 
         {tab === 'books' ? (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {detail.books.map((book) => (
               <div key={book.id} className="rounded-2xl bg-white p-4">
                 <div className="mb-2 flex items-center justify-between">
@@ -2332,7 +2332,7 @@ export function ChallengeDetailPage() {
             </div>
             <div className="flex flex-col gap-2">
               {entries.map((entry) => (
-                <div key={entry.studentId} className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-indigo-50' : 'bg-gray-50'}`}>
+                <div key={entry.studentId} className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-indigo-50' : 'bg-gray-50'}`}>
                   <span className="w-6 text-center text-sm font-bold text-gray-500">{entry.rank}</span>
                   <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">{entry.studentName}</p>
                   <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
@@ -2648,10 +2648,10 @@ export function ChallengesScreen({
       <View style={{paddingTop: insets.top + 20}} className="bg-white px-5 pb-4 dark:bg-dark-canvas">
         <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Jamm</Text>
       </View>
-      <View className="flex-1 gap-3 p-4">
+      <View className="flex-1 gap-2 p-4">
         <Pressable
           onPress={() => setView('challenges')}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          className="flex-row items-center gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <BookOpen size={22} color="#334155" />
           </View>
@@ -2663,7 +2663,7 @@ export function ChallengesScreen({
 
         <Pressable
           onPress={() => navigation.navigate('Live')}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          className="flex-row items-center gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <Radio size={22} color="#334155" />
           </View>
@@ -2673,7 +2673,7 @@ export function ChallengesScreen({
           </View>
         </Pressable>
 
-        <View className="flex-row items-center gap-3 rounded-2xl bg-white p-4 opacity-50 dark:bg-dark-surface">
+        <View className="flex-row items-center gap-2 rounded-2xl bg-white p-4 opacity-50 dark:bg-dark-surface">
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <Mic size={22} color="#334155" />
           </View>
@@ -2755,7 +2755,7 @@ function ChallengesListView({
             <Pressable
               onPress={() => void handlePress(item)}
               disabled={joiningId === item.id}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-3 dark:bg-dark-surface">
+              className="flex-row items-center gap-2 rounded-2xl bg-white p-3 dark:bg-dark-surface">
               {item.imageUrl ? (
                 <Image source={{uri: item.imageUrl}} className="h-11 w-12 rounded-xl" />
               ) : (
@@ -2941,7 +2941,7 @@ export function ChallengeDetailScreen({route, navigation}: Props) {
             </View>
             <View className="gap-2">
               {entries.map(entry => (
-                <View key={entry.studentId} className={`flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-indigo-50' : 'bg-gray-50 dark:bg-dark-canvas'}`}>
+                <View key={entry.studentId} className={`flex-row items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-indigo-50' : 'bg-gray-50 dark:bg-dark-canvas'}`}>
                   <Text className="w-6 text-center text-sm font-bold text-gray-500">{entry.rank}</Text>
                   <Text numberOfLines={1} className="min-w-0 flex-1 text-sm font-semibold text-ink dark:text-dark-ink">{entry.studentName}</Text>
                   <View className="flex-row items-center gap-1 rounded-full bg-amber-100 px-2 py-1">

@@ -75,7 +75,7 @@ export function AddStaffModal({ onSearch, onConfirm, onClose }: AddStaffModalPro
               {results.map((s) => (
                 <label
                   key={s.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2.5 hover:bg-gray-50"
                 >
                   <input
                     type="radio"

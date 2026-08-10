@@ -89,7 +89,7 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
       <p className="text-center text-xs text-gray-400 mb-3">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {BLOCK_ITEMS.map((item) => {
           const Icon = item.icon;
           const isDisabled = disabled || item.disabled;
@@ -99,18 +99,16 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
               type="button"
               disabled={isDisabled}
               onClick={() => handleClick(item)}
-              className={`group flex flex-col items-center gap-2.5 rounded-2xl px-4 py-5 text-sm font-medium transition-all duration-200 ${
-                isDisabled
+              className={`group flex flex-col items-center gap-2.5 rounded-2xl px-4 py-5 text-sm font-medium transition-all duration-200 ${isDisabled
                   ? 'cursor-not-allowed bg-gray-50/60 text-gray-300'
                   : 'bg-white text-gray-600 hover:bg-gray-50'
-              }`}
+                }`}
             >
               <span
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${
-                  isDisabled
+                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${isDisabled
                     ? 'bg-gray-100 text-gray-300'
                     : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'
-                }`}
+                  }`}
               >
                 <Icon size={20} />
               </span>

@@ -43,7 +43,7 @@ export function PdfViewerSheet({
       }}
     >
       <div className="flex h-[95vh] w-full flex-col overflow-hidden rounded-t-3xl bg-white sm:h-[90vh] sm:max-w-3xl sm:rounded-3xl">
-        <div className="flex items-center justify-between gap-3 border-b border-gray-100 px-5 py-4">
+        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-5 py-4">
           <h2 className="min-w-0 flex-1 truncate text-base font-bold text-gray-900">
             {title}
           </h2>
@@ -97,7 +97,7 @@ export function PdfViewerSheet({
                   <div className="h-7 w-7 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
                 </div>
               }
-              className="flex flex-col items-center gap-3 py-4"
+              className="flex flex-col items-center gap-2 py-4"
             >
               {Array.from({ length: numPages ?? 0 }, (_, i) => (
                 <Page

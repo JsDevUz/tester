@@ -2567,7 +2567,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         <div className="flex flex-col gap-5">
           {lesson.practiceBlocks.map((block) => (
             <div key={block.id} className="rounded-2xl bg-gray-50 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-gray-900">{block.testName ?? 'Test tanlanmagan'}</p>
                 {block.maxScore !== null && (
                   <span className="shrink-0 rounded-full bg-white px-2.5 py-1 text-xs font-bold text-amber-500">

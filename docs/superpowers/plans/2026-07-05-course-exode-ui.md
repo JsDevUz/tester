@@ -179,14 +179,14 @@ const TABS: SideTab[] = [
 
 export function CourseSidePanel({ onBackToList }: CourseSidePanelProps) {
   return (
-    <div className="flex w-full shrink-0 flex-col gap-3 sm:w-72">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
       <div className="rounded-2xl border border-gray-100 bg-white p-2">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           return (
             <div
               key={tab.key}
-              className={`flex items-center gap-3 rounded-xl px-3 py-3 text-left text-sm ${
+              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${
                 tab.active
                   ? "bg-indigo-50 text-indigo-600"
                   : "cursor-not-allowed text-gray-300"
@@ -275,7 +275,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
 
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-gray-800">Kurslar</h2>
         <button
           type="button"
@@ -292,7 +292,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
           <p className="text-sm">Hali kurs yaratilmagan</p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 lg:grid-cols-3">
           {courses.map((course) => {
             const lessonCount = course.modules.reduce(
               (sum, m) => sum + m.lessons.length,
@@ -303,7 +303,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
                 key={course.id}
                 type="button"
                 onClick={() => onOpenCourse(course.id)}
-                className="flex flex-col gap-3 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
+                className="flex flex-col gap-2 rounded-2xl border border-gray-100 bg-white p-4 text-left transition-colors hover:border-indigo-200 hover:bg-indigo-50/30"
               >
                 <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-indigo-50 text-indigo-500">
                   <GraduationCap size={20} />
@@ -437,7 +437,7 @@ export function CourseContentPage({
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -453,7 +453,7 @@ export function CourseContentPage({
             Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz,
             nashr qilishingiz yoki o'chirishingiz mumkin.
           </p>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={() => setModal({ type: "newModule" })}
@@ -694,7 +694,7 @@ Replace:
 ```tsx
   return (
     <div className="p-6">
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-2">
 ```
 
 With:
@@ -710,7 +710,7 @@ With:
           { label: lesson.title },
         ]}
       />
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-2">
 ```
 
 - [ ] **Step 4: Verify the build**

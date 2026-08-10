@@ -86,7 +86,7 @@ export function StartClassModal({ onClose }: Props) {
           type="button"
           disabled={startingFree || starting !== null}
           onClick={() => void handleStartFree()}
-          className="flex items-center gap-3 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-left hover:bg-indigo-100/80 hover:border-indigo-200 transition-all disabled:opacity-50 group"
+          className="flex items-center gap-2 rounded-2xl border border-indigo-100 bg-indigo-50/70 p-3.5 text-left hover:bg-indigo-100/80 hover:border-indigo-200 transition-all disabled:opacity-50 group"
         >
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white  group-hover:bg-indigo-700 transition-colors">
             <Link2 size={16} />

@@ -88,8 +88,8 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
             <div className="relative">
               <div className="w-32 h-32 rounded-full bg-[#4fc3f7]/20 flex items-center justify-center border-2 border-[#4fc3f7]/30">
                 <svg viewBox="0 0 80 80" width="80" height="80" fill="none">
-                  <circle cx="40" cy="30" r="16" fill="#4fc3f7" opacity="0.85"/>
-                  <ellipse cx="40" cy="68" rx="26" ry="18" fill="#4fc3f7" opacity="0.85"/>
+                  <circle cx="40" cy="30" r="16" fill="#4fc3f7" opacity="0.85" />
+                  <ellipse cx="40" cy="68" rx="26" ry="18" fill="#4fc3f7" opacity="0.85" />
                 </svg>
               </div>
             </div>
@@ -106,7 +106,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
 
           {/* Input area */}
           <form
-            className="px-6 py-5 flex flex-col gap-3"
+            className="px-6 py-5 flex flex-col gap-2"
             onSubmit={(e) => {
               e.preventDefault();
               const trimmed = guestNameInput.trim();

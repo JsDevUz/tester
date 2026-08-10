@@ -1587,7 +1587,7 @@ export function TestSettingsModal({
               className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-400 resize-none"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input
               type="checkbox"
               id="hasTimeLimit"
@@ -1626,7 +1626,7 @@ export function TestSettingsModal({
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={oneByOne}
@@ -1635,7 +1635,7 @@ export function TestSettingsModal({
               />
               Show questions one by one
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={shuffleQuestions}
@@ -1644,7 +1644,7 @@ export function TestSettingsModal({
               />
               Shuffle question order
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input
                 type="checkbox"
                 checked={shuffleOptions}
@@ -1655,7 +1655,7 @@ export function TestSettingsModal({
             </label>
           </div>
           <div>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer mb-2">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer mb-2">
               <input
                 type="checkbox"
                 checked={hasDeadline}
@@ -1759,7 +1759,7 @@ export function QuestionForm({ onSubmit }: Props) {
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-3"
+      className="bg-white rounded-2xl border border-gray-100 p-4 flex flex-col gap-2"
     >
       <textarea
         value={text}
@@ -2134,7 +2134,7 @@ export function QuestionEditorPage() {
         )}
 
         {questions.length > 0 && (
-          <div className="mt-6 flex flex-col gap-3">
+          <div className="mt-6 flex flex-col gap-2">
             <h3 className="text-sm font-medium text-gray-700">
               Questions ({questions.length})
             </h3>

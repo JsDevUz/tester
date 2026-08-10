@@ -573,7 +573,7 @@ export function MyTestsScreen({ navigation }: Props) {
       </View>
 
       {creating && (
-        <View className="m-4 gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+        <View className="m-4 gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
           <TextInput
             autoFocus
             value={newName}
@@ -602,11 +602,11 @@ export function MyTestsScreen({ navigation }: Props) {
         <FlatList
           data={folders}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="gap-3 p-4"
+          contentContainerClassName="gap-2 p-4"
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate('MyTestFolder', { folderId: item.id, folderName: item.name })}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-4 active:opacity-70 dark:bg-dark-surface"
+              className="flex-row items-center gap-2 rounded-2xl bg-white p-4 active:opacity-70 dark:bg-dark-surface"
             >
               <View style={{ backgroundColor: item.color }} className="h-11 w-11 items-center justify-center rounded-xl">
                 <FileText size={20} color="#ffffff" />
@@ -759,7 +759,7 @@ export function MyTestFolderScreen({ route, navigation }: Props) {
       </View>
 
       {creating && (
-        <View className="m-4 gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+        <View className="m-4 gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
           <TextInput
             autoFocus
             value={name}
@@ -785,7 +785,7 @@ export function MyTestFolderScreen({ route, navigation }: Props) {
         <FlatList
           data={tests}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="gap-3 p-4"
+          contentContainerClassName="gap-2 p-4"
           renderItem={({ item }) => (
             <View className="rounded-2xl bg-white p-4 dark:bg-dark-surface">
               <Text className="font-bold text-ink dark:text-dark-ink">{item.name}</Text>
@@ -1016,7 +1016,7 @@ export function TrueFalseTypeEditor({
   onChange: (value: 'true' | 'false') => void;
 }) {
   return (
-    <View className="flex-row gap-3">
+    <View className="flex-row gap-2">
       <Pressable
         onPress={() => onChange('true')}
         className={`flex-1 items-center rounded-xl py-3 ${value === 'true' ? 'bg-emerald-500' : 'bg-gray-100 dark:bg-dark-canvas'}`}
@@ -1161,7 +1161,7 @@ export function MyTestQuestionEditorScreen({ route }: Props) {
   return (
     <Screen>
       <ScrollView contentContainerClassName="gap-4 p-4">
-        <View className="gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+        <View className="gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
           <ScrollView horizontal showsHorizontalScrollIndicator={false}>
             <View className="flex-row gap-2">
               {TYPES.map((t) => (
@@ -1203,7 +1203,7 @@ export function MyTestQuestionEditorScreen({ route }: Props) {
         </View>
 
         {test.questions.map((question, index) => (
-          <View key={question.id} className="flex-row items-start gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          <View key={question.id} className="flex-row items-start gap-2 rounded-2xl bg-white p-4 dark:bg-dark-surface">
             <Text className="w-6 text-xs font-bold text-gray-400">{index + 1}.</Text>
             <Text className="flex-1 text-sm text-ink dark:text-dark-ink">{question.text}</Text>
             <Pressable onPress={() => confirmDeleteQuestion(question)} className="h-8 w-8 items-center justify-center">
@@ -1430,7 +1430,7 @@ export function ArrangeTypeEditor({
   }
 
   return (
-    <View className="gap-3">
+    <View className="gap-2">
       <ReorderTypeEditor tokens={correctTokens} onChange={onChangeTokens} />
       <Text className="text-xs text-gray-400">Chalg'ituvchi variantlar (ixtiyoriy):</Text>
       {distractors.map((d, index) => (
@@ -2118,11 +2118,11 @@ export function MyDictionariesScreen({ navigation }: Props) {
         <FlatList
           data={decks}
           keyExtractor={(item) => item.id}
-          contentContainerClassName="gap-3 p-4"
+          contentContainerClassName="gap-2 p-4"
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate('WordDeck', { deckId: item.id, deckName: item.name })}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-4 active:opacity-70 dark:bg-dark-surface"
+              className="flex-row items-center gap-2 rounded-2xl bg-white p-4 active:opacity-70 dark:bg-dark-surface"
             >
               <View className="h-11 w-11 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-950/40">
                 <Languages size={20} color="#f59e0b" />
@@ -2429,7 +2429,7 @@ export function WordDeckScreen({ route, navigation }: Props) {
           keyExtractor={(item) => item.id}
           contentContainerClassName="gap-2 px-4 pb-4"
           renderItem={({ item }) => (
-            <View className="flex-row items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5 dark:bg-dark-canvas">
+            <View className="flex-row items-center gap-2 rounded-xl bg-gray-50 px-3.5 py-2.5 dark:bg-dark-canvas">
               <Text numberOfLines={1} className="flex-1 text-sm font-semibold text-ink dark:text-dark-ink">{item.word}</Text>
               <Text numberOfLines={1} className="flex-1 text-sm text-gray-500 dark:text-gray-400">{item.translation}</Text>
               <Pressable onPress={() => confirmDeleteWord(item)} className="h-7 w-7 items-center justify-center">
@@ -2601,7 +2601,7 @@ export function DeckPracticeScreen({ route }: Props) {
           </View>
           <View>
             <Text className="mb-2 text-xs font-bold uppercase text-gray-400">Rejim</Text>
-            <View className="flex-row gap-3">
+            <View className="flex-row gap-2">
               <SelectCard selected={mode === 'flashcard'} title="Flashcard" icon={<Layers3 size={20} color={mode === 'flashcard' ? '#ffffff' : '#4f46e5'} />} onPress={() => setMode('flashcard')} />
               <SelectCard selected={mode === 'test'} title="Test" icon={<ListChecks size={20} color={mode === 'test' ? '#ffffff' : '#4f46e5'} />} onPress={() => setMode('test')} />
             </View>
@@ -2619,7 +2619,7 @@ export function DeckPracticeScreen({ route }: Props) {
 
 function SelectCard({ selected, title, icon, onPress }: { selected: boolean; title: string; icon?: React.ReactNode; onPress: () => void }) {
   return (
-    <Pressable onPress={onPress} className={`flex-1 flex-row items-center gap-3 rounded-2xl p-4 ${selected ? 'bg-indigo-600' : 'bg-white dark:bg-dark-surface'}`}>
+    <Pressable onPress={onPress} className={`flex-1 flex-row items-center gap-2 rounded-2xl p-4 ${selected ? 'bg-indigo-600' : 'bg-white dark:bg-dark-surface'}`}>
       {icon}
       <Text className={`font-bold ${selected ? 'text-white' : 'text-ink dark:text-dark-ink'}`}>{title}</Text>
     </Pressable>
@@ -2866,7 +2866,7 @@ function Test({ words, direction, setWords }: { words: PracticeWord[]; direction
                 btnBg = 'bg-indigo-600 border-indigo-600'; textColor = 'text-white font-bold';
               }
               return (
-                <Pressable key={`${option}-${optionIndex}`} disabled={checked} onPress={() => setSelected(option)} className={`flex-row items-center gap-3 rounded-2xl border px-4 py-3.5 ${btnBg}`}>
+                <Pressable key={`${option}-${optionIndex}`} disabled={checked} onPress={() => setSelected(option)} className={`flex-row items-center gap-2 rounded-2xl border px-4 py-3.5 ${btnBg}`}>
                   <Text className="w-7 text-xs font-bold text-gray-500">{optionLabels[optionIndex]}</Text>
                   <Text className={`flex-1 text-sm font-semibold ${textColor}`}>{option}</Text>
                   {checked && correct && <Check size={18} color="#ffffff" />}

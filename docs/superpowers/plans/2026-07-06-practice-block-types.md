@@ -198,7 +198,7 @@ export function PracticeBlockPicker({ onPickType }: PracticeBlockPickerProps) {
       <p className="mb-3 text-center text-xs text-gray-400">
         Yangi blok qo'shish
       </p>
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
         {TYPES.map((item) => {
           const Icon = item.icon;
           return (

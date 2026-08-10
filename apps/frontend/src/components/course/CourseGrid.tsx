@@ -47,7 +47,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
     <div className="p-4">
       <ActiveClassBanner />
 
-      <div className="mb-6 flex items-center justify-between gap-3">
+      <div className="mb-6 flex items-center justify-between gap-2">
         <h2 className="text-lg font-bold text-gray-800">Kurslar</h2>
         <div className="flex items-center gap-2">
           <button
@@ -77,7 +77,7 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
       {coursesLoading && !coursesLoaded ? (
         <DataLoadingState label="Kurslar yuklanmoqda..." className="min-h-64" />
       ) : coursesError && courses.length === 0 ? (
-        <div className="flex min-h-64 flex-col items-center justify-center gap-3 rounded-2xl bg-white text-center text-gray-400">
+        <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-2xl bg-white text-center text-gray-400">
           <p className="text-sm">{coursesError}</p>
           <button
             type="button"

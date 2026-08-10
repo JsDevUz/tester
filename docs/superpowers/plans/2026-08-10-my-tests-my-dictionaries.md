@@ -1001,7 +1001,7 @@ export function MyTestsPage() {
         ) : folders.length === 0 ? (
           <p className="py-16 text-center text-sm text-gray-400">Hali papka yo'q. Yangisini yarating!</p>
         ) : (
-          <div className="flex flex-wrap gap-3">
+          <div className="flex flex-wrap gap-2">
             {folders.map((folder) => (
               <FolderCard
                 key={folder.id}
@@ -1282,7 +1282,7 @@ export function StudentTestSettingsModal({ folderId, onSubmit, onClose, initial,
               className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 resize-none"
             />
           </div>
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <input type="checkbox" id="hasTimeLimit" checked={hasTimeLimit} onChange={(e) => setHasTimeLimit(e.target.checked)} className="w-4 h-4" />
             <label htmlFor="hasTimeLimit" className="text-sm text-gray-700">Vaqt chegarasi</label>
             {hasTimeLimit && (
@@ -1307,19 +1307,19 @@ export function StudentTestSettingsModal({ folderId, onSubmit, onClose, initial,
             </select>
           </div>
           <div className="flex flex-col gap-2">
-            <label className={`flex items-center gap-3 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}>
+            <label className={`flex items-center gap-2 text-sm cursor-pointer ${isPerQuestion ? "text-gray-400" : "text-gray-700"}`}>
               <input type="checkbox" checked={oneByOne} disabled={isPerQuestion} onChange={(e) => setOneByOne(e.target.checked)} className="w-4 h-4" />
               Savollarni birin-ketin ko'rsatish{isPerQuestion && " (avtomatik)"}
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleQuestions} onChange={(e) => setShuffleQuestions(e.target.checked)} className="w-4 h-4" />
               Savollar tartibini aralashtirish
             </label>
-            <label className="flex items-center gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={shuffleOptions} onChange={(e) => setShuffleOptions(e.target.checked)} className="w-4 h-4" />
               Javob variantlarini aralashtirish
             </label>
-            <label className="flex items-start gap-3 text-sm text-gray-700 cursor-pointer">
+            <label className="flex items-start gap-2 text-sm text-gray-700 cursor-pointer">
               <input type="checkbox" checked={autoCompleteOnLeave} onChange={(e) => setAutoCompleteOnLeave(e.target.checked)} className="w-4 h-4 mt-0.5 shrink-0" />
               <span>
                 Testdan chiqilganda avtomatik yakunlash
@@ -2349,12 +2349,12 @@ export function MyDictionariesPage() {
         ) : decks.length === 0 ? (
           <p className="py-16 text-center text-sm text-gray-400">Hali lug'at yo'q. Yangisini yarating!</p>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
             {decks.map((deck) => (
               <div
                 key={deck.id}
                 onClick={() => navigate(`/my-dictionaries/${deck.id}`)}
-                className="group relative flex cursor-pointer items-center gap-3 rounded-2xl bg-white p-4 hover:bg-gray-50"
+                className="group relative flex cursor-pointer items-center gap-2 rounded-2xl bg-white p-4 hover:bg-gray-50"
               >
                 <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-500">
                   <Languages size={18} />
@@ -2509,7 +2509,7 @@ export function WordDeckViewPage() {
         >
           <ArrowLeft size={16} /> Lug'atlar
         </button>
-        <div className="mb-6 flex items-center justify-between gap-3">
+        <div className="mb-6 flex items-center justify-between gap-2">
           <h1 className="text-2xl font-extrabold text-gray-900">{deck?.name ?? "Lug'at"}</h1>
           {deck && (
             <button
@@ -2527,7 +2527,7 @@ export function WordDeckViewPage() {
           <p className="py-16 text-center text-sm text-gray-400">Yuklanmoqda...</p>
         ) : (
           <div className="rounded-2xl bg-white p-5">
-            <div className="mb-4 flex items-center justify-between gap-3">
+            <div className="mb-4 flex items-center justify-between gap-2">
               <h3 className="text-base font-bold text-gray-800">So'zlar</h3>
               <button type="button" onClick={() => setImportOpen(true)} className="flex items-center gap-1.5 rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600 hover:bg-gray-200">
                 <Upload size={14} /> Ommaviy import
@@ -2545,7 +2545,7 @@ export function WordDeckViewPage() {
             ) : (
               <div className="flex flex-col gap-2">
                 {words.map((word) => (
-                  <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
+                  <div key={word.id} className="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] items-center gap-2 rounded-xl bg-gray-50 px-3.5 py-2.5">
                     <span className="truncate text-sm font-semibold text-gray-800">{word.word}</span>
                     <span className="truncate text-sm text-gray-500">{word.translation}</span>
                     <button type="button" onClick={() => void handleDelete(word.id)} aria-label="So'zni o'chirish" className="rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500">
@@ -2739,7 +2739,7 @@ export function DeckPracticePage() {
             ]}
           />
           <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-400">Rejim</p>
-          <div className="mb-6 grid grid-cols-2 gap-3">
+          <div className="mb-6 grid grid-cols-2 gap-2">
             <Choice selected={mode === "flashcard"} onClick={() => setMode("flashcard")} icon={<Layers3 size={20} />} title="Flashcard" subtitle="Kartani suring" />
             <Choice selected={mode === "test"} onClick={() => setMode("test")} icon={<ListChecks size={20} />} title="Test" subtitle="4 variantli savol" />
           </div>
@@ -2991,7 +2991,7 @@ function Test({ words, direction, setWords }: {
         <p className="mt-5 text-sm font-semibold text-gray-400">TEST YAKUNLANDI</p>
         <h1 className="mt-1 text-3xl font-black">Natijangiz</h1>
         <p className="mt-3 text-5xl font-black text-indigo-500">{percentage}%</p>
-        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-3">
+        <div className="mx-auto mt-6 grid max-w-sm grid-cols-2 gap-2">
           <div className="rounded-2xl bg-emerald-50 p-4">
             <p className="text-2xl font-black text-emerald-600">{correctCount}</p>
             <p className="text-xs font-semibold text-emerald-700">To'g'ri</p>
@@ -3066,7 +3066,7 @@ function Test({ words, direction, setWords }: {
           {direction === "wordToTranslation" ? "To'g'ri tarjimani tanlang" : "To'g'ri so'zni tanlang"}
         </p>
 
-        <div className="mt-7 grid gap-3">
+        <div className="mt-7 grid gap-2">
           {options.map((option, optionIndex) => {
             const correct = option === answer;
             const chosen = option === selected;
@@ -3087,7 +3087,7 @@ function Test({ words, direction, setWords }: {
                 type="button"
                 disabled={checked}
                 onClick={() => setSelected(option)}
-                className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
+                className={`flex w-full items-center gap-2 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
               >
                 <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${chosen ? "bg-white/20 text-white" : checked && correct ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}>
                   {optionLabels[optionIndex]}

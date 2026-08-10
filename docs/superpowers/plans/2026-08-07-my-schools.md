@@ -838,7 +838,7 @@ export function SchoolsListPage() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+        <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
           {schools.map((school) => (
             <button
               key={school.id}
@@ -1168,7 +1168,7 @@ Insert the upload UI inside the "Maktab nomi va tavsifi" card, above the
 "Maktab nomi" label:
 
 ```tsx
-            <div className="mb-4 flex items-center gap-3">
+            <div className="mb-4 flex items-center gap-2">
               <div className="relative shrink-0">
                 <div className="grid h-16 w-16 place-items-center overflow-hidden rounded-2xl bg-gray-100">
                   {imageUrl ? (

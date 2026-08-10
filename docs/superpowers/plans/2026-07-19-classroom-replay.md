@@ -1660,7 +1660,7 @@ export function ClassroomReplayPage() {
 
   return (
     <div className="flex h-[100dvh] flex-col bg-gray-100">
-      <div className="flex items-center gap-3 border-b border-gray-200 bg-white px-4 py-3">
+      <div className="flex items-center gap-2 border-b border-gray-200 bg-white px-4 py-3">
         <button type="button" onClick={() => navigate(-1)} className="rounded-full p-2 hover:bg-gray-100">
           <ArrowLeft size={18} />
         </button>
@@ -1701,7 +1701,7 @@ export function ClassroomReplayPage() {
         </div>
       </div>
 
-      <div className="flex items-center gap-3 border-t border-gray-200 bg-white px-4 py-3">
+      <div className="flex items-center gap-2 border-t border-gray-200 bg-white px-4 py-3">
         <button
           type="button"
           onClick={() => (replay.isPlaying ? replay.pause() : replay.play())}
@@ -2215,7 +2215,7 @@ export function LiveClassPickerModal({ courseId, onSelect, onClose }: LiveClassP
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-3 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
+      <div className="flex max-h-[80vh] w-full max-w-lg flex-col gap-2 overflow-hidden rounded-2xl bg-white p-6 shadow-xl">
         <div className="flex items-center justify-between">
           <h2 className="font-semibold text-gray-800">Jonli darsni tanlang</h2>
           <button type="button" onClick={onClose} className="rounded-xl p-2 text-gray-400 hover:bg-gray-100">
@@ -2234,7 +2234,7 @@ export function LiveClassPickerModal({ courseId, onSelect, onClose }: LiveClassP
                   key={s.id}
                   type="button"
                   onClick={() => onSelect(s.id)}
-                  className="flex items-center gap-3 px-2 py-3 text-left hover:bg-gray-50"
+                  className="flex items-center gap-2 px-2 py-3 text-left hover:bg-gray-50"
                 >
                   <span className="text-sm font-medium text-gray-800">{fmtDate(s.startedAt)}</span>
                   <span className="flex items-center gap-1 text-xs text-gray-400">
@@ -2490,7 +2490,7 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
     <button
       type="button"
       onClick={() => navigate(`/classroom-history/${classSessionId}/replay`)}
-      className="flex items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
+      className="flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2.5 transition-colors hover:bg-gray-200"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
         <Radio size={18} />

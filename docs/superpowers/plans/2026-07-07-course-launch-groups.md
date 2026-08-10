@@ -782,7 +782,7 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose }: CreatePri
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="mb-1.5 text-sm text-gray-500">Narx (UZS)</p>
               <input
@@ -807,7 +807,7 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose }: CreatePri
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="mb-1.5 text-sm text-gray-500">Boshlanish sanasi</p>
               <input
@@ -891,7 +891,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
   }
 
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -905,7 +905,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
           <h2 className="mb-1 text-lg font-bold text-gray-800">Ishga tushirish sozlamalari</h2>
           <p className="mb-4 text-sm text-gray-400">Bu yerda ishga tushirish sozlamalarini o'zgartirishingiz mumkin.</p>
 
-          <div className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5">
+          <div className="flex items-center gap-2 rounded-2xl bg-gray-50 px-4 py-3.5">
             <div className="min-w-0 flex-1">
               <p className="text-sm font-semibold text-gray-800">
                 {launch.active ? 'Ishga tushirish sotuvda' : 'Ishga tushirish sotuvda emas'}
@@ -946,7 +946,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
         </div>
 
         <div className="rounded-2xl bg-white p-5">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <div>
               <h2 className="mb-1 text-lg font-bold text-gray-800">Tariflar</h2>
               <p className="text-sm text-gray-400">Bu yerda tariflarni qo'shishingiz mumkin</p>
@@ -969,7 +969,7 @@ export function CourseLaunchPage({ courseId, onBackToList, onSelectContent, onSe
           ) : (
             <div className="flex flex-col gap-2">
               {launch.plans.map((plan) => (
-                <div key={plan.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-4 py-3.5">
+                <div key={plan.id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-4 py-3.5">
                   <span className="h-2 w-2 shrink-0 rounded-full bg-green-400" />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold text-gray-800">{plan.name}</p>
@@ -1100,7 +1100,7 @@ export function AddStudentToGroupModal({ alreadyInGroup, onConfirm, onClose }: A
               {filtered.map((s) => (
                 <label
                   key={s.id}
-                  className="flex cursor-pointer items-center gap-3 rounded-xl px-2 py-2.5 hover:bg-gray-50"
+                  className="flex cursor-pointer items-center gap-2 rounded-xl px-2 py-2.5 hover:bg-gray-50"
                 >
                   <input
                     type="checkbox"
@@ -1226,7 +1226,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     const groupStudents = MOCK_STUDENTS.filter((s) => group.studentIds.includes(s.id));
 
     return (
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
           <Breadcrumb
             items={[
@@ -1260,7 +1260,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
           {innerTab === 'students' ? (
             <div className="rounded-2xl bg-white p-5">
-              <div className="mb-4 flex items-center justify-between gap-3">
+              <div className="mb-4 flex items-center justify-between gap-2">
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
                   <span className="inline-flex items-center justify-center rounded-full bg-indigo-100 px-2 py-0.5 text-xs font-bold text-indigo-600">
@@ -1287,7 +1287,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
               ) : (
                 <div className="flex flex-col gap-2">
                   {groupStudents.map((s) => (
-                    <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-gray-50 px-3.5 py-3">
+                    <div key={s.id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3.5 py-3">
                       <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xs font-bold ${paletteFor(s.id)}`}>
                         {initials(s.name)}
                       </div>
@@ -1319,7 +1319,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
                 />
 
-                <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-800">Guruh chati</p>
                     <p className="text-xs text-gray-400">Alohida chat o'quvchilar va kuratorlar uchun</p>
@@ -1337,7 +1337,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                   </button>
                 </div>
 
-                <div className="flex items-center gap-3 py-2">
+                <div className="flex items-center gap-2 py-2">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-semibold text-gray-800">Guruh kanali</p>
                     <p className="text-xs text-gray-400">Alohida kanal, faqat maktab xodimlari yoza oladi</p>
@@ -1377,7 +1377,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
                       const curator = curators.find((c) => c.id === curatorId);
                       if (!curator) return null;
                       return (
-                        <div key={curatorId} className="flex items-center gap-3 rounded-xl bg-gray-50 px-3 py-2">
+                        <div key={curatorId} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
                           <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{curator.name}</p>
                           <button
                             type="button"
@@ -1462,7 +1462,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
 
   // ─── Holat A: guruhlar ro'yxati ────────────────────────────────────
   return (
-    <div className="flex flex-col gap-3 p-6 sm:flex-row">
+    <div className="flex flex-col gap-2 p-6 sm:flex-row">
       <div className="min-w-0 flex-1">
         <Breadcrumb
           items={[
@@ -1477,7 +1477,7 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
           <p className="mb-4 text-sm text-gray-400">
             O'quvchilarni ajratish orqali o'quv jarayonini soddalashtirish
           </p>
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={handleCreateGroup}

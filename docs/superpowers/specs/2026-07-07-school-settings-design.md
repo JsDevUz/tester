@@ -116,7 +116,7 @@ sahifa, orqaga qaytish AppShell navigatsiyasi orqali).
 
 ## Sahifalar
 
-Barchasi `apps/frontend/src/pages/` papkasida, layout: `flex gap-3 p-6
+Barchasi `apps/frontend/src/pages/` papkasida, layout: `flex gap-2 p-6
 sm:flex-row` (chapda asosiy kontent, o'ngda `SchoolSidePanel`) —
 `CourseSettingsPage` bilan bir xil pattern, lekin `AppShell` bilan o'raladi
 (mustaqil sahifa, `CoursesPage`ning ichki view'i emas).

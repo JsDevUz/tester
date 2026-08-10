@@ -5,9 +5,9 @@ const STATUS_LABEL: Record<
   CsParticipant["status"],
   { text: string; dotCls: string; badgeCls: string }
 > = {
-  present: { text: "keldi",      dotCls: "bg-emerald-500", badgeCls: "bg-emerald-500/15 text-emerald-600" },
-  late:    { text: "kech keldi", dotCls: "bg-amber-500",   badgeCls: "bg-amber-500/15  text-amber-600"   },
-  absent:  { text: "yo'q",       dotCls: "bg-gray-400",    badgeCls: "bg-gray-400/15   text-gray-500"    },
+  present: { text: "keldi", dotCls: "bg-emerald-500", badgeCls: "bg-emerald-500/15 text-emerald-600" },
+  late: { text: "kech keldi", dotCls: "bg-amber-500", badgeCls: "bg-amber-500/15  text-amber-600" },
+  absent: { text: "yo'q", dotCls: "bg-gray-400", badgeCls: "bg-gray-400/15   text-gray-500" },
 };
 
 const AVATAR_HEX = [
@@ -67,11 +67,11 @@ export function ClassroomParticipants({
   const onlineCount = participants.filter((p) => p.online).length;
 
   // Theme tokens
-  const nameCls     = isDark ? "text-white"     : "text-gray-900";
-  const nameOffCls  = isDark ? "text-white/40"  : "text-gray-400";
-  const rowHover    = isDark ? "hover:bg-white/5"  : "hover:bg-gray-50";
-  const speakBg     = isDark ? "bg-indigo-500/20"  : "bg-indigo-50";
-  const emptyCls    = isDark ? "text-white/40"  : "text-gray-400";
+  const nameCls = isDark ? "text-white" : "text-gray-900";
+  const nameOffCls = isDark ? "text-white/40" : "text-gray-400";
+  const rowHover = isDark ? "hover:bg-white/5" : "hover:bg-gray-50";
+  const speakBg = isDark ? "bg-indigo-500/20" : "bg-indigo-50";
+  const emptyCls = isDark ? "text-white/40" : "text-gray-400";
 
   // Host presence/audio status
   const hostSpeaking = isHost
@@ -96,7 +96,7 @@ export function ClassroomParticipants({
         {hostOnline && (
           <div className="flex flex-col gap-0.5 border-b pb-2 mb-2 border-gray-100 dark:border-white/10">
             <div
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${hostSpeaking ? speakBg : ""}`}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${hostSpeaking ? speakBg : ""}`}
             >
               {/* Avatar */}
               <div className="relative shrink-0">
@@ -132,11 +132,10 @@ export function ClassroomParticipants({
               {/* Mic status indicator */}
               <div className="flex items-center justify-center shrink-0">
                 <div
-                  className={`p-1 shrink-0 ${
-                    hostMuted
+                  className={`p-1 shrink-0 ${hostMuted
                       ? "text-gray-400 dark:text-white/30"
                       : "text-emerald-500"
-                  }`}
+                    }`}
                   title={hostMuted ? "Mikrofon o'chirilgan" : "Mikrofon yoqilgan"}
                 >
                   {hostMuted ? <MicOff size={14} /> : <Mic size={14} />}
@@ -153,16 +152,16 @@ export function ClassroomParticipants({
         )}
 
         {sorted.map((p) => {
-          const status  = STATUS_LABEL[p.status];
+          const status = STATUS_LABEL[p.status];
           const speaking = speakingUserIds.has(p.userId) || (p.name && speakingUserIds.has(p.name));
           const isMuted = !unmutedUserIds.has(p.userId) && !(p.name && unmutedUserIds.has(p.name));
           const reaction = userReactions?.[p.userId];
-          const initial  = p.name.charAt(0).toUpperCase() || "?";
+          const initial = p.name.charAt(0).toUpperCase() || "?";
 
           return (
             <div
               key={p.userId}
-              className={`flex items-center gap-3 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${speaking ? speakBg : ""}`}
+              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${speaking ? speakBg : ""}`}
             >
               {/* Avatar */}
               <div className="relative shrink-0">
@@ -174,9 +173,8 @@ export function ClassroomParticipants({
                 </div>
                 {/* Online dot */}
                 <span
-                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${
-                    isDark ? "ring-[#202124]" : "ring-white"
-                  } ${p.online ? "bg-emerald-500" : "bg-gray-400"}`}
+                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isDark ? "ring-[#202124]" : "ring-white"
+                    } ${p.online ? "bg-emerald-500" : "bg-gray-400"}`}
                 />
               </div>
 
@@ -213,22 +211,20 @@ export function ClassroomParticipants({
                       type="button"
                       disabled={isMuted}
                       onClick={() => onMute?.(p.userId)}
-                      className={`p-1 rounded-lg transition-colors shrink-0 ${
-                        isMuted
+                      className={`p-1 rounded-lg transition-colors shrink-0 ${isMuted
                           ? "text-gray-400 dark:text-white/30 cursor-not-allowed"
                           : "text-emerald-500 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20"
-                      }`}
+                        }`}
                       title={isMuted ? "Mikrofon o'chirilgan" : "Mikrofonni o'chirish"}
                     >
                       {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
                     </button>
                   ) : (
                     <div
-                      className={`p-1 shrink-0 ${
-                        isMuted
+                      className={`p-1 shrink-0 ${isMuted
                           ? "text-gray-400 dark:text-white/30"
                           : "text-emerald-500"
-                      }`}
+                        }`}
                       title={isMuted ? "Mikrofon o'chirilgan" : "Mikrofon yoqilgan"}
                     >
                       {isMuted ? <MicOff size={14} /> : <Mic size={14} />}
@@ -243,9 +239,8 @@ export function ClassroomParticipants({
 
       {/* Mic hint for students */}
       {!isHost && (
-        <div className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] border-t ${
-          isDark ? "border-white/10 text-white/30" : "border-gray-100 text-gray-400"
-        }`}>
+        <div className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] border-t ${isDark ? "border-white/10 text-white/30" : "border-gray-100 text-gray-400"
+          }`}>
           <Mic size={11} />
           Gapirish uchun mikrofon tugmasini yoqing
         </div>

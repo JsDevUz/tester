@@ -74,7 +74,7 @@ function ImagePracticeBlockCard({
         <div className="mb-3 flex flex-col gap-2">
           <p className="text-xs font-bold text-gray-500">Sizning yuklamalaringiz</p>
           {block.imageSubmissions.map((s) => (
-            <div key={s.id} className="flex items-center justify-between gap-3 rounded-xl bg-white px-3 py-2.5">
+            <div key={s.id} className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2.5">
               <div className="min-w-0">
                 <a href={s.imageUrl} target="_blank" rel="noreferrer" className="text-xs font-bold text-gray-800 hover:underline">
                   {new Date(s.submittedAt).toLocaleDateString('uz-UZ')}
@@ -149,7 +149,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
 
       {lesson.passThresholdEnabled && lesson.passThresholdPercent !== null && (
         <div className="mb-6 rounded-2xl border border-indigo-100 bg-indigo-50 px-4 py-3">
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-2">
             <span className="text-sm font-bold text-gray-800">Minimal o‘tish natijasi</span>
             <span className="shrink-0 rounded-full bg-white px-3 py-1 text-sm font-black text-indigo-600">
               {lesson.passThresholdPercent}%
@@ -172,7 +172,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         <div className="flex flex-col gap-5">
           {lesson.practiceBlocks.map((block) => (
             <div key={block.id} className="rounded-2xl bg-gray-50 p-4">
-              <div className="mb-3 flex items-center justify-between gap-3">
+              <div className="mb-3 flex items-center justify-between gap-2">
                 <p className="text-sm font-bold text-gray-900">
                   {block.type === 'image' ? 'Amaliyot topshirig\'i' : block.type === 'oral' ? 'Jonli savol-javob' : (block.testName ?? 'Test tanlanmagan')}
                 </p>
@@ -259,7 +259,7 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
         </p>
       )}
 
-      <div className="mt-5 flex items-center justify-between gap-3">
+      <div className="mt-5 flex items-center justify-between gap-2">
         <button type="button" onClick={onBack} className="inline-flex items-center gap-1.5 rounded-lg px-2 py-1.5 text-xs font-bold text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-800">
           <ChevronLeft size={15} /> Darsga qaytish
         </button>
@@ -268,11 +268,10 @@ export function PracticeScreen({ lesson, onBack, onStartPractice, onViewSubmissi
             type="button"
             onClick={onNext}
             disabled={!canComplete}
-            className={`rounded-lg px-3 py-2 text-xs font-bold text-white ${
-              canComplete
+            className={`rounded-lg px-3 py-2 text-xs font-bold text-white ${canComplete
                 ? 'bg-[var(--color-indigo-500)]'
                 : 'cursor-not-allowed bg-gray-200 text-gray-400'
-            }`}
+              }`}
           >
             Keyingi darsga o'tish
           </button>

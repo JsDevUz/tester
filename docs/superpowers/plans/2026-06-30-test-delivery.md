@@ -1226,7 +1226,7 @@ export function TakeTestEntryPage() {
             </span>
           )}
         </div>
-        <form onSubmit={handleStart} className="flex flex-col gap-3">
+        <form onSubmit={handleStart} className="flex flex-col gap-2">
           <input
             autoFocus value={name} onChange={(e) => setName(e.target.value)}
             placeholder="Ismingizni kiriting"
@@ -1465,9 +1465,9 @@ export function TestResultPage() {
               <p className="text-4xl font-bold text-indigo-600">{result.score} / {result.total}</p>
               <p className="text-sm text-gray-400 mt-1">{pct}% to'g'ri</p>
             </div>
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {result.answers.map((a, i) => (
-                <div key={a.questionId} className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm ${
+                <div key={a.questionId} className={`flex items-center gap-2 px-4 py-3 rounded-xl text-sm ${
                   a.isCorrect === true ? 'bg-green-50 text-green-700' :
                   a.isCorrect === false ? 'bg-red-50 text-red-600' :
                   'bg-gray-50 text-gray-500'
@@ -1546,7 +1546,7 @@ export function SubmissionsPage() {
         </div>
 
         {shareLink && (
-          <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-3 mb-4">
+          <div className="bg-white rounded-xl border border-gray-100 px-4 py-3 flex items-center gap-2 mb-4">
             <span className="text-xs text-gray-400 flex-1 truncate">{shareLink}</span>
             <button onClick={copyLink} className="text-xs text-indigo-500 hover:text-indigo-700 shrink-0">
               📋 Nusxalash
@@ -1557,7 +1557,7 @@ export function SubmissionsPage() {
         {submissions.length === 0 ? (
           <p className="text-gray-400 text-sm text-center mt-8">Hali natijalar yo'q.</p>
         ) : (
-          <div className="flex flex-col gap-3">
+          <div className="flex flex-col gap-2">
             {submissions.map((sub) => (
               <div key={sub.id}
                 onClick={() => navigate(`/submissions/${sub.id}`)}

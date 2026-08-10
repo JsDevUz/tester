@@ -55,9 +55,9 @@ export function SchoolStaffPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-3 p-6 sm:flex-row">
+      <div className="flex flex-col gap-2 p-6 sm:flex-row">
         <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between gap-3">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <h1 className="text-lg font-bold text-gray-800">Mening xodimlarim</h1>
             <button
               type="button"
@@ -93,7 +93,7 @@ export function SchoolStaffPage() {
               {pageStaff.map((s) => {
                 const badge = ROLE_BADGE[s.role];
                 return (
-                  <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5">
+                  <div key={s.id} className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3.5">
                     <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(s.id)}`} />
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-semibold text-gray-800">{s.name}</p>

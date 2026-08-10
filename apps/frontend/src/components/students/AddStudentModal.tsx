@@ -82,7 +82,7 @@ export function AddStudentModal({ onClose, onSubmit }: AddStudentModalProps) {
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
           <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ism" maxLength={120} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
           <input value={phone} onChange={(event) => setPhone(maskUzPhone(event.target.value))} placeholder="+998 XX XXX XX XX" maxLength={17} inputMode="tel" autoComplete="tel" className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
           <div className="relative">

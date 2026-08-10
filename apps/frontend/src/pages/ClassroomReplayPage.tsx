@@ -274,7 +274,7 @@ export function ClassroomReplayPage() {
 
       {showTimeline && (
         <div onPointerMove={revealControls} onTouchStart={revealControls} className={`absolute inset-x-0 bottom-0 z-20 flex items-center justify-center px-3 bg-black-950 pb-3 transition-transform duration-300 ${controlsVisible ? "translate-y-0" : "translate-y-full"}`}>
-          <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-3xl border border-black-300 bg-black px-2.5 py-1.5 text-white shadow-2xl  sm:gap-3 sm:px-3">
+          <div className="flex w-[min(86vw,56rem)] items-center gap-1.5 rounded-3xl border border-black-300 bg-black px-2.5 py-1.5 text-white shadow-2xl  sm:gap-2 sm:px-3">
             <span className="hidden shrink-0 items-center gap-1.5 rounded-lg bg-white px-2.5 py-1 text-[10px] font-bold tracking-wide sm:flex"><span className="h-1.5 w-1.5 rounded-full bg-white" /> REPLAY</span>
             <button
               type="button"

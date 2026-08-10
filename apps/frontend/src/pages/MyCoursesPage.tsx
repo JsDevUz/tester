@@ -160,7 +160,7 @@ export function MyCoursesPage() {
     <StudentShell>
       <div className="student-responsive-panel w-full p-4 sm:p-5">
         {schoolId ? (
-          <div className="mb-4 flex items-center gap-3">
+          <div className="mb-4 flex items-center gap-2">
             <button
               type="button"
               onClick={() => navigate("/schools")}
@@ -196,7 +196,7 @@ export function MyCoursesPage() {
         )}
 
         {!loading && !loadError && courses.length > 0 && (
-          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
             {courses.map((c) => (
               <div
                 key={`${c.courseId}-${c.groupName}`}
@@ -209,7 +209,7 @@ export function MyCoursesPage() {
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
-                      <div className="mb-3 flex flex-wrap items-center gap-3">
+                      <div className="mb-3 flex flex-wrap items-center gap-2">
                         {c.starsMax > 0 && (
                           <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-2 text-sm font-bold text-white">
                             <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-gray-900">
@@ -329,7 +329,7 @@ function CourseLeaderboardModal({
         aria-modal="true"
         aria-label="Kurs peshqadamlari"
       >
-        <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start justify-between gap-2">
           <div>
             <p className="text-xs font-medium text-white/70">
               {course.courseTitle}
@@ -401,7 +401,7 @@ function CourseLeaderboardModal({
               {remaining.map((entry) => (
                 <div
                   key={entry.studentId}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-white/25 ring-1 ring-white/50" : "bg-white/15"}`}
+                  className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-white/25 ring-1 ring-white/50" : "bg-white/15"}`}
                 >
                   <span className="w-6 text-center text-sm font-bold text-white/80">
                     {entry.rank}
@@ -847,7 +847,7 @@ function StudentCourseReader({
           </div>
 
           <div className="mb-3 rounded-2xl bg-white p-3 sm:mb-4">
-            <div className="mb-2.5 flex items-center justify-between gap-3">
+            <div className="mb-2.5 flex items-center justify-between gap-2">
               <span className="text-xs font-bold text-gray-900">Jarayon</span>
               <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-[11px] font-bold text-white">
                 {progressCount} / {lessons.length}
@@ -861,7 +861,7 @@ function StudentCourseReader({
             </div>
           </div>
 
-          <div className="-mx-3 flex max-w-[100vw] gap-2 overflow-x-auto px-3 pb-1 sm:gap-3 lg:mx-0 lg:max-w-none lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
+          <div className="-mx-3 flex max-w-[100vw] gap-2 overflow-x-auto px-3 pb-1 sm:gap-2 lg:mx-0 lg:max-w-none lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
             {course.modules.map((module, moduleIndex) => (
               <div key={module.id} className="contents lg:block">
                 <div className="mb-2 hidden items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-gray-400 lg:flex">
@@ -1010,7 +1010,7 @@ function LessonReader({
         onClick={onOpenMessenger}
         className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl hover:bg-gray-200"
       >
-        <span className="flex min-w-0 items-center gap-3">
+        <span className="flex min-w-0 items-center gap-2">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white sm:h-9 sm:w-9">
             <MessageCircle size={16} />
           </span>
@@ -1045,7 +1045,7 @@ function LessonReader({
         )}
       </div>
 
-      <div className="mt-8 flex items-center justify-between gap-3 sm:mt-10 sm:gap-4">
+      <div className="mt-8 flex items-center justify-between gap-2 sm:mt-10 sm:gap-4">
         <button
           type="button"
           onClick={onPrev}
@@ -1062,8 +1062,8 @@ function LessonReader({
           }}
           disabled={!hasPractice && blockedByThreshold}
           className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${!hasPractice && blockedByThreshold
-              ? "cursor-not-allowed bg-gray-200 text-gray-400"
-              : "bg-[var(--color-indigo-500)]"
+            ? "cursor-not-allowed bg-gray-200 text-gray-400"
+            : "bg-[var(--color-indigo-500)]"
             }`}
         >
           {hasPractice
@@ -1088,7 +1088,7 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
     <button
       type="button"
       onClick={() => navigate(`/classroom-history/${classSessionId}/replay`)}
-      className="flex w-full items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-200"
+      className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
     >
       <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
         <Radio size={18} />
@@ -1114,7 +1114,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
     return (
       <>
         <div
-          className="lesson-reader-html max-w-full overflow-hidden text-sm leading-7 text-gray-900 sm:text-base [&_*]:max-w-full [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
+          className="lesson-reader-html max-w-full overflow-hidden text-sm leading-7 text-gray-900 sm:text-base [&_p]:w-fit [&_p]:max-w-full [&_div]:w-fit [&_div]:max-w-full [&_.bn-block-outer]:w-fit [&_.bn-block-content]:w-fit [&_[data-content-type]]:w-fit [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
           dangerouslySetInnerHTML={{ __html: block.html ?? "" }}
           onClick={(e) => {
             const target = e.target as HTMLElement;
@@ -1198,7 +1198,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
             else
               window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
           }}
-          className="flex w-full items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-200"
+          className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
         >
           <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
             {ext.slice(0, 4)}
@@ -1280,7 +1280,7 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
   }
 
   return (
-    <div className="flex items-center gap-3 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
+    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
       {block.type === "image" ? (
         <ImageIcon size={18} />
       ) : (

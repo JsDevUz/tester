@@ -91,7 +91,7 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose, initialPlan
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="mb-1.5 text-sm text-gray-500">Narx (UZS)</p>
               <input
@@ -116,7 +116,7 @@ export function CreatePricingPlanModal({ groups, onConfirm, onClose, initialPlan
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-2 gap-2">
             <div>
               <p className="mb-1.5 text-sm text-gray-500">Boshlanish sanasi</p>
               <input

@@ -1315,7 +1315,7 @@ with:
 block.processingStatus === 'ready' && block.hlsMasterKey ? (
   <HlsVideoPlayer blockId={block.id} />
 ) : block.processingStatus === 'failed' ? (
-  <div className="flex w-full flex-col items-center gap-3 py-8 text-center">
+  <div className="flex w-full flex-col items-center gap-2 py-8 text-center">
     <p className="text-sm font-semibold text-red-500">Video tayyorlanmadi</p>
     <p className="max-w-sm text-xs text-gray-400">{block.errorMessage ?? 'Qayta urinib ko\'ring'}</p>
     {onRetryVideo && (
@@ -1325,7 +1325,7 @@ block.processingStatus === 'ready' && block.hlsMasterKey ? (
     )}
   </div>
 ) : (
-  <div className="flex w-full flex-col items-center gap-3 py-8 text-center">
+  <div className="flex w-full flex-col items-center gap-2 py-8 text-center">
     <div className="h-8 w-8 animate-spin rounded-full border border-indigo-100 border-t-indigo-500" />
     <p className="text-sm font-semibold text-gray-700">
       {uploadProgress ? `Yuklanmoqda ${uploadProgress}%` : 'Video tayyorlanmoqda...'}

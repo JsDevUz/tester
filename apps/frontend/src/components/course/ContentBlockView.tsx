@@ -119,7 +119,7 @@ export function ContentBlockView({
       {!collapsed && (
         <div className="px-4 py-4">
           {block.type === 'editor' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <div>
                 <p className="mb-1.5 text-sm text-gray-500">Blok sarlavhasi</p>
                 <input
@@ -141,7 +141,7 @@ export function ContentBlockView({
           )}
 
           {block.type === 'button' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <div className="flex items-center justify-center rounded-xl bg-gray-50 py-6">
                 <a
                   href={block.buttonUrl || undefined}
@@ -189,7 +189,7 @@ export function ContentBlockView({
                 Yangi tabda ochish
               </label>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-2 gap-2">
                 <div>
                   <p className="mb-1.5 text-sm text-gray-500">Tugma rangi</p>
                   <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
@@ -229,7 +229,7 @@ export function ContentBlockView({
           )}
 
           {block.type === 'message' && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               <p className="text-xs text-gray-400">
                 Yuboruvchi: kurator (yoki biriktirilmagan bo'lsa ustoz) avtomatik ko'rsatiladi
               </p>
@@ -283,7 +283,7 @@ export function ContentBlockView({
           )}
 
           {(block.type === 'video' || block.type === 'image' || block.type === 'file') && (
-            <div className="flex flex-col gap-3">
+            <div className="flex flex-col gap-2">
               {block.type === 'video' && (
                 <div>
                   <p className="mb-1.5 text-sm text-gray-500">Videoni yuklang yoki havolani ko'rsating</p>
@@ -309,7 +309,7 @@ export function ContentBlockView({
                   block.processingStatus === 'pending' ||
                   block.processingStatus === 'processing') && (
                   <div className="rounded-2xl bg-gray-100 px-4 py-5">
-                    <div className="flex items-center gap-3">
+                    <div className="flex items-center gap-2">
                       <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-white text-gray-700">
                         <Loader2 size={18} className="animate-spin" />
                       </div>
@@ -379,7 +379,7 @@ export function ContentBlockView({
                       <a
                         href={block.previewUrl}
                         download={block.fileName ?? block.label ?? "fayl"}
-                        className="flex w-full items-center justify-between gap-3 rounded-xl bg-white px-4 py-5 text-sm font-semibold text-gray-700"
+                        className="flex w-full items-center justify-between gap-2 rounded-xl bg-white px-4 py-5 text-sm font-semibold text-gray-700"
                         onClick={(e) => e.stopPropagation()}
                       >
                         <span className="flex min-w-0 items-center gap-2">

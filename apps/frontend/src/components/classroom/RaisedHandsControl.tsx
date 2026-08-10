@@ -179,7 +179,7 @@ export function RaisedHandsControl({ raisedHands, onLowerAll, onLowerUser, readO
                       key={item.userId}
                       className={`flex items-center justify-between rounded-xl px-3 py-2.5 transition-colors ${rowHoverCls}`}
                     >
-                      <div className="flex items-center gap-3 min-w-0">
+                      <div className="flex items-center gap-2 min-w-0">
                         <div
                           className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white"
                           style={{ backgroundColor: getAvatarColor(item.userName) }}

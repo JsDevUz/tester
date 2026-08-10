@@ -132,7 +132,7 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
   const justifyClass = listToDisplay.length > 5 ? "justify-start" : "justify-center";
 
   return (
-    <div className={`w-full px-4 py-2 flex items-center ${justifyClass} gap-3 overflow-x-auto select-none h-[84px] sm:h-[96px] shrink-0 transition-colors duration-250 ${isDark ? "bg-gray-50 border-white/5" : "bg-gray-50 border-gray-200/80"
+    <div className={`w-full px-4 py-2 flex items-center ${justifyClass} gap-2 overflow-x-auto select-none h-[84px] sm:h-[96px] shrink-0 transition-colors duration-250 ${isDark ? "bg-gray-50 border-white/5" : "bg-gray-50 border-gray-200/80"
       }`}>
       {listToDisplay.map((p) => {
         const isSpeaking = speakingUserIds.has(p.userId) || (p.name && speakingUserIds.has(p.name));
@@ -151,8 +151,8 @@ export const ClassroomTopParticipantBar: React.FC<Props> = ({
               key={p.userId}
               onClick={() => window.dispatchEvent(new CustomEvent("open-participants-panel"))}
               className={`relative w-[130px] sm:w-[150px] h-full rounded-xl flex flex-col items-center justify-center p-2  border shrink-0 overflow-hidden cursor-pointer hover:border-indigo-500/50 ${isDark
-                  ? "bg-[#28292d] border-white/5 text-white"
-                  : "bg-white border-gray-200/80 text-gray-800"
+                ? "bg-[#28292d] border-white/5 text-white"
+                : "bg-white border-gray-200/80 text-gray-800"
                 }`}
             >
               {/* Overlapping Avatars */}

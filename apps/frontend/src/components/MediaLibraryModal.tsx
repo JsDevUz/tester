@@ -101,22 +101,20 @@ export function MediaLibraryModal({
           <button
             type="button"
             onClick={() => setTab("library")}
-            className={`rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors ${
-              tab === "library"
+            className={`rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors ${tab === "library"
                 ? "border-b-2 border-gray-900 text-gray-900"
                 : "text-gray-400 hover:text-gray-600"
-            }`}
+              }`}
           >
             Kutubxonadan tanlash
           </button>
           <button
             type="button"
             onClick={() => setTab("upload")}
-            className={`rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors ${
-              tab === "upload"
+            className={`rounded-t-lg px-3 py-2 text-xs font-semibold transition-colors ${tab === "upload"
                 ? "border-b-2 border-gray-900 text-gray-900"
                 : "text-gray-400 hover:text-gray-600"
-            }`}
+              }`}
           >
             Yangi yuklash
           </button>
@@ -165,7 +163,7 @@ export function MediaLibraryModal({
                     key={asset.id}
                     type="button"
                     onClick={() => onSelect(asset.url)}
-                    className="flex items-center gap-3 rounded-xl bg-gray-50 px-3.5 py-3 text-left transition-colors hover:bg-gray-100"
+                    className="flex items-center gap-2 rounded-xl bg-gray-50 px-3.5 py-3 text-left transition-colors hover:bg-gray-100"
                   >
                     <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500">
                       <Icon size={16} />
@@ -183,7 +181,7 @@ export function MediaLibraryModal({
               </div>
             )
           ) : (
-            <div className="flex flex-col items-center justify-center gap-3 py-14 text-center">
+            <div className="flex flex-col items-center justify-center gap-2 py-14 text-center">
               <input
                 ref={fileInputRef}
                 type="file"

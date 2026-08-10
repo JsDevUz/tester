@@ -27,19 +27,23 @@ export function FolderCard({ folder, testCount, onClick, onEdit, onDelete }: Pro
       className="group relative flex flex-col items-center gap-2.5 p-3 rounded-2xl cursor-pointer hover:bg-black/5 active:scale-95 select-none transition-all duration-100"
       style={{ width: 140 }}
     >
-      {/* Action buttons — visible on hover */}
-      <div className="absolute top-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity z-10">
+      {/* Action buttons — always visible on mobile, hover on desktop */}
+      <div className="absolute -top-1 -right-1 flex gap-1.5 opacity-100 max-[1024px]:opacity-100 min-[1025px]:opacity-0 min-[1025px]:group-hover:opacity-100 transition-opacity z-10">
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm  text-gray-500 hover:text-gray-900 hover:bg-white transition-colors"
+          className="w-7.5 h-7.5 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-200 text-gray-600 hover:text-gray-900 hover:bg-gray-50 transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-200"
+          title="Tahrirlash"
         >
-          <Pencil size={12} />
+          <Pencil size={14} />
         </button>
         <button
+          type="button"
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="w-6 h-6 flex items-center justify-center rounded-lg bg-white/80 backdrop-blur-sm  text-gray-500 hover:text-red-500 hover:bg-white transition-colors"
+          className="w-7.5 h-7.5 flex items-center justify-center rounded-full bg-white shadow-sm border border-gray-200 text-red-500 hover:text-red-600 hover:bg-rose-50 transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:hover:bg-rose-950/40"
+          title="O'chirish"
         >
-          <Trash2 size={12} />
+          <Trash2 size={14} />
         </button>
       </div>
 
