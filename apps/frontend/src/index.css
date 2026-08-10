@@ -1220,8 +1220,10 @@ select::-ms-expand {
 
 /* Challenge detail page (/challenges/:id) cards: distinctly darker than the
    page's own bg-white wrapper (#30313a), unlike .student-course-card
-   elsewhere in the app which only darkens on hover. */
-:root[data-theme="dark"] .challenge-detail-card {
+   elsewhere in the app which only darkens on hover. Also pinned on :hover
+   (matching .student-course-card:hover's specificity) so it never lightens. */
+:root[data-theme="dark"] .challenge-detail-card,
+:root[data-theme="dark"] .challenge-detail-card:hover {
   background-color: #24252c !important;
 }
 
@@ -1396,7 +1398,8 @@ select::-ms-expand {
     background-color: #3a3c47 !important;
   }
 
-  :root:not([data-theme="light"]) .challenge-detail-card {
+  :root:not([data-theme="light"]) .challenge-detail-card,
+  :root:not([data-theme="light"]) .challenge-detail-card:hover {
     background-color: #24252c !important;
   }
 

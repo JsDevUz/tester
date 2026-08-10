@@ -128,7 +128,7 @@ export function ChallengeDetailPage() {
                     {book.lastPageRead}/{book.totalPages} bet
                   </p>
                 </div>
-                <div className="mb-3 h-2 w-full overflow-hidden rounded-full bg-gray-100">
+                <div className="challenge-detail-input mb-3 h-2 w-full overflow-hidden rounded-full">
                   <div
                     className="h-full rounded-full bg-indigo-500"
                     style={{
@@ -169,7 +169,7 @@ export function ChallengeDetailPage() {
                       <button
                         type="button"
                         onClick={() => setAddingBookId(null)}
-                        className="rounded-xl bg-gray-100 px-3 py-2 text-xs font-semibold text-gray-600"
+                        className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-semibold text-gray-600"
                       >
                         Bekor
                       </button>
@@ -193,7 +193,7 @@ export function ChallengeDetailPage() {
                   <button
                     type="button"
                     onClick={() => setAddingBookId(book.id)}
-                    className="w-full rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-700"
+                    className="challenge-detail-input w-full rounded-xl py-2 text-xs font-semibold text-gray-700"
                   >
                     + Yangi yozuv
                   </button>
@@ -209,7 +209,7 @@ export function ChallengeDetailPage() {
                   key={m.key}
                   type="button"
                   onClick={() => setMetric(m.key)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${metric === m.key ? "bg-gray-900 text-white" : "bg-gray-100 text-gray-500"}`}
+                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${metric === m.key ? "bg-gray-900 text-white" : "challenge-detail-input text-gray-500"}`}
                 >
                   {m.label}
                 </button>
@@ -219,7 +219,7 @@ export function ChallengeDetailPage() {
               {entries.map((entry) => (
                 <div
                   key={entry.studentId}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "bg-gray-50"}`}
+                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "challenge-detail-input"}`}
                 >
                   <span className="w-6 text-center text-sm font-bold text-gray-500">
                     {entry.rank}
