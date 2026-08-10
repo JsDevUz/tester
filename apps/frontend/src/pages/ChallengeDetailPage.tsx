@@ -1,8 +1,10 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Trophy } from "lucide-react";
+import { ArrowLeft, Star } from "lucide-react";
 import { toast } from "sonner";
 import { StudentShell } from "../components/student/StudentShell";
+import { SegmentedControl } from "../components/student/SegmentedControl";
+import { UserAvatar } from "../components/UserAvatar";
 import {
   apiGetMyChallengeDetail,
   apiAddChallengeEvent,
@@ -50,13 +52,18 @@ export function ChallengeDetailPage() {
   }, [id, tab, metric, detail]);
 
   useEffect(() => {
-    if (id && detail?.type === "soz_yodlash") void apiListMyChallengeWords(id).then(setChallengeWords);
+    if (id && detail?.type === "soz_yodlash")
+      void apiListMyChallengeWords(id)
+        .then(setChallengeWords)
+        .catch(() => toast.error("So'zlarni yuklab bo'lmadi"));
   }, [id, detail?.type]);
 
   if (!detail || !id)
     return (
       <StudentShell>
-        <p className="p-6 text-sm text-gray-400">Yuklanmoqda...</p>
+        <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
+          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+        </div>
       </StudentShell>
     );
 
@@ -96,10 +103,10 @@ export function ChallengeDetailPage() {
 
   return (
     <StudentShell>
-      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
+      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
         <button
           type="button"
-          onClick={() => navigate("/challenges")}
+          onClick={() => navigate("/challanges")}
           className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-gray-500"
         >
           <ArrowLeft size={16} /> Jamm
@@ -110,43 +117,44 @@ export function ChallengeDetailPage() {
         </h1>
         <p className="mb-6 text-sm text-gray-400">{detail.description}</p>
 
-        <div className="student-course-card challenge-detail-card mb-4 flex gap-2 rounded-3xl p-2">
-          <button
-            type="button"
-            onClick={() => setTab("books")}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ${tab === "books" ? "bg-gray-900 text-white" : "text-gray-500"}`}
-          >
-            {detail.type === "soz_yodlash" ? "So'zlar" : "Kitoblar"}
-          </button>
-          <button
-            type="button"
-            onClick={() => setTab("leaderboard")}
-            className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ${tab === "leaderboard" ? "bg-gray-900 text-white" : "text-gray-500"}`}
-          >
-            Reyting
-          </button>
-        </div>
+        <SegmentedControl
+          value={tab}
+          onChange={setTab}
+          className="mb-4"
+          options={[
+            { value: "books", label: detail.type === "soz_yodlash" ? "So'zlar" : "Kitoblar" },
+            { value: "leaderboard", label: "Reyting" },
+          ]}
+        />
 
         {tab === "books" ? (
           detail.type === "soz_yodlash" ? (
             <div className="student-course-card challenge-detail-card rounded-3xl p-4">
               <div className="mb-4 flex items-center justify-between gap-3">
                 <div>
-                  <p className="font-bold text-gray-800">So'zlar</p>
-                  <p className="text-xs text-gray-400">{challengeWords.filter((word) => word.known).length}/{challengeWords.length} yodlangan</p>
+                  <p className="font-bold text-gray-800 dark:text-zinc-100">So'zlar</p>
+                  <p className="text-xs text-gray-400 dark:text-zinc-400">{challengeWords.filter((word) => word.known).length}/{challengeWords.length} yodlangan</p>
                 </div>
-                <button type="button" onClick={() => navigate(`/challenges/${id}/practice`)} className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white">Mashq qilish</button>
+                <button type="button" onClick={() => navigate(`/challanges/${id}/practice`)} className="rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700">Mashq qilish</button>
               </div>
-              <div className="flex flex-col gap-2">
-                {challengeWords.map((word) => (
-                  <div key={word.id} className="challenge-detail-input grid grid-cols-[1fr_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5">
-                    <span className="truncate text-sm font-semibold text-gray-800">{word.word}</span>
-                    <span className="truncate text-sm text-gray-500">{word.translation}</span>
-                    <span className={`text-xs font-bold ${word.known ? "text-green-600" : "text-gray-300"}`}>{word.known ? "Bilaman" : "—"}</span>
+              {challengeWords.length > 0 ? (
+                <div className="flex flex-col gap-2">
+                  <div className="grid grid-cols-[1fr_1fr_90px] items-center gap-3 px-3 py-1 text-[11px] font-extrabold uppercase tracking-wider text-gray-400 dark:text-zinc-500">
+                    <span>So'z</span>
+                    <span>Tarjima</span>
+                    <span className="text-right">Holat</span>
                   </div>
-                ))}
-                {challengeWords.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Hali so'z yo'q</p>}
-              </div>
+                  {challengeWords.map((word) => (
+                    <div key={word.id} className="challenge-detail-input grid grid-cols-[1fr_1fr_90px] items-center gap-3 rounded-xl px-3 py-2.5">
+                      <span className="truncate text-sm font-semibold text-gray-800 dark:text-zinc-100">{word.word}</span>
+                      <span className="truncate text-sm text-gray-500 dark:text-zinc-400">{word.translation}</span>
+                      <span className={`text-right text-xs font-bold ${word.known ? "text-emerald-600 dark:text-emerald-400" : "text-gray-400 dark:text-zinc-500"}`}>{word.known ? "Bilaman" : "—"}</span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="py-8 text-center text-sm text-gray-400">Hali so'z yo'q</p>
+              )}
             </div>
           ) : (
           <div className="flex flex-col gap-3">
@@ -195,7 +203,7 @@ export function ChallengeDetailPage() {
                       type="number"
                       min={book.lastPageRead + 1}
                       placeholder="Tugagan bet"
-                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-400"
+                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
                     />
                     <input
                       value={newWords}
@@ -203,13 +211,13 @@ export function ChallengeDetailPage() {
                       type="number"
                       min={0}
                       placeholder="Yangi lug'at soni"
-                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-400"
+                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
                     />
                     <div className="flex gap-2">
                       <button
                         type="button"
                         onClick={() => void handleSubmitEvent(book.id)}
-                        className="flex-1 rounded-xl bg-gray-900 py-2 text-xs font-semibold text-white"
+                        className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
                       >
                         Saqlash
                       </button>
@@ -242,7 +250,7 @@ export function ChallengeDetailPage() {
                   <button
                     type="button"
                     onClick={() => setAddingBookId(book.id)}
-                    className="challenge-detail-input w-full rounded-xl py-2 text-xs font-semibold text-gray-700"
+                    className="w-full rounded-xl bg-indigo-50/80 py-2.5 text-xs font-bold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
                   >
                     + Yangi yozuv
                   </button>
@@ -252,42 +260,158 @@ export function ChallengeDetailPage() {
           </div>
           )
         ) : (
-          <div className="student-course-card challenge-detail-card rounded-3xl p-3">
-            {detail.type !== "soz_yodlash" && <div className="mb-4 flex gap-2 overflow-x-auto">
-              {METRICS.map((m) => (
-                <button
-                  key={m.key}
-                  type="button"
-                  onClick={() => setMetric(m.key)}
-                  className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${metric === m.key ? "bg-gray-900 text-white" : "challenge-detail-input text-gray-500"}`}
-                >
-                  {m.label}
-                </button>
-              ))}
-            </div>}
-            <div className="flex flex-col gap-2">
-              {entries.map((entry) => (
-                <div
-                  key={entry.studentId}
-                  className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "challenge-detail-input"}`}
-                >
-                  <span className="w-6 text-center text-sm font-bold text-gray-500">
-                    {entry.rank}
-                  </span>
-                  <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800">
-                    {entry.studentName}
-                  </p>
-                  <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700">
-                    <Trophy size={12} /> {entry.value}
-                  </span>
-                </div>
-              ))}
-              {entries.length === 0 && (
-                <p className="py-8 text-center text-sm text-gray-400">
-                  Hali reyting yo'q
-                </p>
-              )}
-            </div>
+          <div className="flex flex-col gap-4">
+            {detail.type !== "soz_yodlash" && (
+              <div className="flex gap-2 overflow-x-auto">
+                {METRICS.map((m) => (
+                  <button
+                    key={m.key}
+                    type="button"
+                    onClick={() => setMetric(m.key)}
+                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
+                      metric === m.key
+                        ? "bg-indigo-600 text-white shadow-sm"
+                        : "challenge-detail-input text-gray-500"
+                    }`}
+                  >
+                    {m.label}
+                  </button>
+                ))}
+              </div>
+            )}
+
+            {entries.length === 0 ? (
+              <div className="student-course-card challenge-detail-card rounded-3xl p-8 text-center text-sm text-gray-400">
+                Hali reyting yo'q
+              </div>
+            ) : (
+              (() => {
+                const topThree = entries.slice(0, 3);
+                const remaining = entries.slice(3);
+                const podiumOrder =
+                  topThree.length > 1
+                    ? [topThree[1], topThree[0], topThree[2]].filter(Boolean)
+                    : topThree;
+
+                const rankStyles: Record<
+                  number,
+                  {
+                    podium: string;
+                    avatarBg: string;
+                    avatarSize: string;
+                    ring: string;
+                  }
+                > = {
+                  1: {
+                    podium:
+                      "h-28 sm:h-32 bg-amber-400 text-white text-3xl font-black rounded-t-2xl shadow-md",
+                    avatarBg: "bg-amber-400",
+                    avatarSize: "h-14 w-14 sm:h-16 sm:w-16",
+                    ring: "border-2 border-amber-300 ring-4 ring-amber-400/30",
+                  },
+                  2: {
+                    podium:
+                      "h-20 sm:h-24 bg-slate-300 text-white text-2xl font-black rounded-t-2xl shadow-md",
+                    avatarBg: "bg-slate-400",
+                    avatarSize: "h-12 w-12 sm:h-14 sm:w-14",
+                    ring: "border-2 border-slate-200",
+                  },
+                  3: {
+                    podium:
+                      "h-16 sm:h-20 bg-orange-300 text-white text-xl font-black rounded-t-2xl shadow-md",
+                    avatarBg: "bg-orange-400",
+                    avatarSize: "h-11 w-11 sm:h-12 sm:w-12",
+                    ring: "border-2 border-orange-300",
+                  },
+                };
+
+                return (
+                  <div className="flex flex-col gap-4">
+                    {/* Top 3 Podium Container */}
+                    <div className="rounded-3xl bg-gradient-to-br from-indigo-600 via-indigo-700 to-purple-800 p-5 text-white shadow-xl">
+                      <div className="mt-2 flex items-end justify-center gap-3 sm:gap-6">
+                        {podiumOrder.map((entry) => {
+                          const style =
+                            rankStyles[entry.rank] ?? rankStyles[3];
+                          return (
+                            <div
+                              key={entry.studentId}
+                              className="flex w-1/3 max-w-[130px] flex-col items-center"
+                            >
+                              <div className="relative mb-2">
+                                <UserAvatar
+                                  name={entry.studentName}
+                                  avatarUrl={entry.studentAvatarUrl}
+                                  className={`${style.avatarSize} rounded-full text-sm font-bold text-white shadow-lg ${style.ring} ${style.avatarBg}`}
+                                />
+                                <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-extrabold text-gray-900 shadow">
+                                  {entry.rank}
+                                </span>
+                              </div>
+                              <p className="w-full truncate text-center text-xs font-bold text-white">
+                                {entry.studentName}
+                              </p>
+                              <p className="mt-1.5 inline-flex items-center gap-1 rounded-full bg-white/20 px-2.5 py-0.5 text-xs font-extrabold text-amber-200 backdrop-blur-xs">
+                                <Star
+                                  size={12}
+                                  className="fill-amber-300 text-amber-300"
+                                />{" "}
+                                {entry.value}
+                              </p>
+                              <div
+                                className={`mt-3 flex w-full items-center justify-center ${style.podium}`}
+                              >
+                                {entry.rank}
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* 4-o'rindan boshlab ro'yxat */}
+                    {remaining.length > 0 ? (
+                      <div className="student-course-card challenge-detail-card flex flex-col gap-2 rounded-3xl p-3">
+                        {remaining.map((entry) => (
+                          <div
+                            key={entry.studentId}
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
+                              entry.isCurrentStudent
+                                ? "bg-indigo-50 dark:bg-indigo-950/40"
+                                : "challenge-detail-input"
+                            }`}
+                          >
+                            <span className="w-6 text-center text-sm font-bold text-gray-500">
+                              {entry.rank}
+                            </span>
+                            <UserAvatar
+                              name={entry.studentName}
+                              avatarUrl={entry.studentAvatarUrl}
+                              className="h-8 w-8 rounded-full bg-indigo-100 text-xs font-bold text-indigo-700 dark:bg-zinc-700 dark:text-zinc-200"
+                            />
+                            <p className="min-w-0 flex-1 truncate text-sm font-semibold text-gray-800 dark:text-zinc-100">
+                              {entry.studentName}
+                              {entry.isCurrentStudent && (
+                                <span className="ml-1 text-xs text-indigo-600 dark:text-indigo-400">
+                                  (Siz)
+                                </span>
+                              )}
+                            </p>
+                            <span className="flex items-center gap-1 rounded-full bg-amber-100 px-2 py-1 text-xs font-bold text-amber-700 dark:bg-amber-400/10 dark:text-amber-400">
+                              <Star
+                                size={12}
+                                className="fill-amber-400 text-amber-400"
+                              />{" "}
+                              {entry.value}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                    ) : null}
+                  </div>
+                );
+              })()
+            )}
           </div>
         )}
       </div>

@@ -60,6 +60,34 @@ describe('StudentChallengeWordsService', () => {
       .resolves.toEqual({ wordId: 'word-1', known: true });
   });
 
+  it('overwrites a previously known word back to unknown on a wrong answer or left swipe', async () => {
+    enrolled();
+    (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue({ id: 'participant-1' });
+    (db.query.challengeWords.findFirst as jest.Mock).mockResolvedValue({ id: 'word-1' });
+    const returning = jest.fn().mockResolvedValue([{ challengeWordId: 'word-1', known: false }]);
+    const onConflictDoUpdate = jest.fn(() => ({ returning }));
+    const values = jest.fn(() => ({ onConflictDoUpdate }));
+    (db.insert as jest.Mock).mockReturnValue({ values });
+
+    await expect(service.setProgress('challenge-1', 'word-1', 'student-1', false))
+      .resolves.toEqual({ wordId: 'word-1', known: false });
+
+    expect(values).toHaveBeenCalledWith(expect.objectContaining({ known: false }));
+    expect(onConflictDoUpdate).toHaveBeenCalledWith(
+      expect.objectContaining({ set: expect.objectContaining({ known: false }) }),
+    );
+  });
+
+  it('rejects setting progress for a word that does not belong to this challenge', async () => {
+    enrolled();
+    (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue({ id: 'participant-1' });
+    (db.query.challengeWords.findFirst as jest.Mock).mockResolvedValue(undefined);
+
+    await expect(service.setProgress('challenge-1', 'word-from-other-challenge', 'student-1', true))
+      .rejects.toBeInstanceOf(NotFoundException);
+    expect(db.insert as jest.Mock).not.toHaveBeenCalled();
+  });
+
   it('ranks participants by known word count', async () => {
     enrolled();
     (db.query.challengeParticipants.findMany as jest.Mock).mockResolvedValue([
