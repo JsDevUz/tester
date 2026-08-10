@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, Focus, Mic, Radio } from "lucide-react";
+import { BookOpen, FileText, Focus, Languages, Mic, Radio } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 
 export function ChallengesHubPage() {
@@ -19,7 +19,7 @@ export function ChallengesHubPage() {
             onClick={() => navigate("/challanges")}
             className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
           >
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <BookOpen size={22} className="text-indigo-500" />
             </div>
             <div className="min-w-0">
@@ -33,7 +33,7 @@ export function ChallengesHubPage() {
             onClick={() => navigate("/live/join")}
             className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
           >
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <Radio size={22} className="text-red-500" />
             </div>
             <div className="min-w-0">
@@ -44,8 +44,36 @@ export function ChallengesHubPage() {
             </div>
           </button>
 
+          <button
+            type="button"
+            onClick={() => navigate("/my-tests")}
+            className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
+          >
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
+              <FileText size={22} className="text-emerald-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-950">Mening testlarim</p>
+              <p className="mt-1 text-xs text-gray-500">O'z testlaringizni tuzing</p>
+            </div>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => navigate("/my-dictionaries")}
+            className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
+          >
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
+              <Languages size={22} className="text-amber-500" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-gray-950">Mening lug'atlarim</p>
+              <p className="mt-1 text-xs text-gray-500">O'z lug'atlaringizni tuzing</p>
+            </div>
+          </button>
+
           <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <Mic size={22} className="text-gray-700" />
             </div>
             <div className="min-w-0 flex-1">
@@ -60,7 +88,7 @@ export function ChallengesHubPage() {
           </div>
 
           <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <Focus size={22} className="text-gray-700" />
             </div>
             <div className="min-w-0 flex-1">

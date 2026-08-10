@@ -1623,9 +1623,9 @@ export function CourseChallengesPage({
                 className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 {c.imageUrl ? (
-                  <img src={c.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
+                  <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
                     <BookOpen size={20} className="text-gray-400" />
                   </div>
                 )}
@@ -2757,9 +2757,9 @@ function ChallengesListView({
               disabled={joiningId === item.id}
               className="flex-row items-center gap-3 rounded-2xl bg-white p-3 dark:bg-dark-surface">
               {item.imageUrl ? (
-                <Image source={{uri: item.imageUrl}} className="h-12 w-12 rounded-xl" />
+                <Image source={{uri: item.imageUrl}} className="h-11 w-12 rounded-xl" />
               ) : (
-                <View className="h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
+                <View className="h-11 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
                   <BookOpen size={20} color="#94a3b8" />
                 </View>
               )}

@@ -196,8 +196,8 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
             type="button"
             onClick={() => setActiveTab("activity")}
             className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${activeTab === "activity"
-                ? "bg-white text-gray-900 "
-                : "text-gray-500 hover:text-gray-900"
+              ? "bg-white text-gray-900 "
+              : "text-gray-500 hover:text-gray-900"
               }`}
           >
             Activity
@@ -206,8 +206,8 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
             type="button"
             onClick={() => setActiveTab("versions")}
             className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${activeTab === "versions"
-                ? "bg-white text-gray-900 "
-                : "text-gray-500 hover:text-gray-900"
+              ? "bg-white text-gray-900 "
+              : "text-gray-500 hover:text-gray-900"
               }`}
           >
             Versions
@@ -220,7 +220,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
         {loading ? (
           <div className="flex flex-col gap-2.5 py-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-12 animate-pulse rounded-xl bg-gray-100" />
+              <div key={i} className="h-11 animate-pulse rounded-xl bg-gray-100" />
             ))}
           </div>
         ) : activeTab === "activity" ? (
@@ -252,8 +252,8 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                             if (onSelectActivity) onSelectActivity(item);
                           }}
                           className={`flex items-center justify-between gap-3 rounded-xl p-2.5 cursor-pointer transition-all border ${isSelected
-                              ? "bg-indigo-50 border-indigo-300 text-indigo-950 "
-                              : "bg-gray-50 border-gray-200/80 hover:bg-gray-100/80 hover:border-gray-300 text-gray-800"
+                            ? "bg-indigo-50 border-indigo-300 text-indigo-950 "
+                            : "bg-gray-50 border-gray-200/80 hover:bg-gray-100/80 hover:border-gray-300 text-gray-800"
                             }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">

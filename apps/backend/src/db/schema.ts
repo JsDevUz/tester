@@ -836,3 +836,33 @@ export const challengeWordProgressRelations = relations(challengeWordProgress, (
   participant: one(challengeParticipants, { fields: [challengeWordProgress.challengeParticipantId], references: [challengeParticipants.id] }),
   word: one(challengeWords, { fields: [challengeWordProgress.challengeWordId], references: [challengeWords.id] }),
 }));
+
+export const wordDecks = pgTable('word_decks', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  ownerId: uuid('owner_id').notNull().references(() => users.id, { onDelete: 'cascade' }),
+  name: text('name').notNull(),
+  slug: varchar('slug', { length: 8 }).notNull().unique(),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  ownerIdIdx: index('word_decks_owner_id_idx').on(table.ownerId),
+}));
+
+export const deckWords = pgTable('deck_words', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  deckId: uuid('deck_id').notNull().references(() => wordDecks.id, { onDelete: 'cascade' }),
+  word: text('word').notNull(),
+  translation: text('translation').notNull(),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  deckIdIdx: index('deck_words_deck_id_idx').on(table.deckId),
+}));
+
+export const wordDecksRelations = relations(wordDecks, ({ one, many }) => ({
+  owner: one(users, { fields: [wordDecks.ownerId], references: [users.id] }),
+  words: many(deckWords),
+}));
+
+export const deckWordsRelations = relations(deckWords, ({ one }) => ({
+  deck: one(wordDecks, { fields: [deckWords.deckId], references: [wordDecks.id] }),
+}));

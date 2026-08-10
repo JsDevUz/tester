@@ -1063,7 +1063,7 @@ In `apps/frontend/src/pages/ChallengesHubPage.tsx`, add `FileText` and `Language
             onClick={() => navigate("/my-tests")}
             className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
           >
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <FileText size={22} className="text-emerald-500" />
             </div>
             <div className="min-w-0">
@@ -1077,7 +1077,7 @@ In `apps/frontend/src/pages/ChallengesHubPage.tsx`, add `FileText` and `Language
             onClick={() => navigate("/my-dictionaries")}
             className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-colors"
           >
-            <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+            <div className="student-course-card-icon grid h-11 w-12 shrink-0 place-items-center rounded-2xl">
               <Languages size={22} className="text-amber-500" />
             </div>
             <div className="min-w-0">

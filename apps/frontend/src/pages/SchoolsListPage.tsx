@@ -69,7 +69,7 @@ export function SchoolsListPage() {
             aria-label={
               inviteOpen ? "Yopish" : "Taklif havolasi bilan qo'shilish"
             }
-            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100"
+            className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-gray-500 transition-colors hover:bg-gray-100 bg-indigo-600"
           >
             {inviteOpen ? <X size={18} /> : <Search size={18} />}
           </button>
@@ -87,7 +87,7 @@ export function SchoolsListPage() {
               placeholder="Taklif havolasi yoki kodi"
               autoCapitalize="none"
               autoCorrect="off"
-              className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+              className="h-11 flex-1 rounded-xl bg-white border border-gray-200 shadow-sm px-4 text-sm text-gray-900 outline-none focus:outline-none focus-visible:outline-none placeholder:text-gray-400 focus:border-indigo-500 focus:ring-2 focus:ring-indigo-100 dark:bg-zinc-800/80 dark:border-zinc-700 dark:text-white dark:placeholder:text-zinc-500 dark:focus:border-indigo-500 dark:focus:ring-indigo-500/30 transition-all"
             />
             <button
               type="button"

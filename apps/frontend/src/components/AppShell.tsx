@@ -89,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col gap-3 bg-gray-100 p-3 lg:relative lg:flex-row"
+      className="flex flex-col gap-3 bg-[#f1f5f9] p-3 lg:relative lg:flex-row"
       style={{
         height: "100dvh",
         paddingTop: "max(12px, env(safe-area-inset-top))",
@@ -157,7 +157,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </div>
 
-      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-gray-100 rounded-2xl overflow-y-auto">
+      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-[#f1f5f9] rounded-2xl overflow-y-auto">
         {children}
       </div>
 

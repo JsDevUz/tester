@@ -2469,10 +2469,10 @@ export function ChallengesListView({
               {item.imageUrl ? (
                 <Image
                   source={{ uri: item.imageUrl }}
-                  className="h-12 w-12 rounded-xl"
+                  className="h-11 w-12 rounded-xl"
                 />
               ) : (
-                <View className="h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
+                <View className="h-11 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
                   <BookOpen size={20} color="#94a3b8" />
                 </View>
               )}

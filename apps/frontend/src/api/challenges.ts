@@ -125,12 +125,21 @@ export async function apiGetChallengeStats(challengeId: string): Promise<ApiChal
   return res.data;
 }
 
+export type ChallengeTimeframe = 'all' | 'daily' | 'weekly' | 'monthly';
+
 export async function apiGetChallengeLeaderboard(
   challengeId: string,
   metric: ChallengeLeaderboardMetric,
+  timeframe?: ChallengeTimeframe,
   bookId?: string,
 ): Promise<ApiChallengeLeaderboard> {
-  const res = await client.get(`/challenges/${challengeId}/leaderboard`, { params: { metric, bookId } });
+  const res = await client.get(`/challenges/${challengeId}/leaderboard`, {
+    params: {
+      metric,
+      timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined,
+      bookId: bookId && bookId !== 'all' ? bookId : undefined,
+    },
+  });
   return res.data;
 }
 
@@ -205,8 +214,15 @@ export async function apiGetMyChallengeHistory(challengeId: string): Promise<Api
 export async function apiGetMyChallengeLeaderboard(
   challengeId: string,
   metric: ChallengeLeaderboardMetric,
+  timeframe?: ChallengeTimeframe,
   bookId?: string,
 ): Promise<ApiChallengeLeaderboard> {
-  const res = await client.get(`/me/challenges/${challengeId}/leaderboard`, { params: { metric, bookId } });
+  const res = await client.get(`/me/challenges/${challengeId}/leaderboard`, {
+    params: {
+      metric,
+      timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined,
+      bookId: bookId && bookId !== 'all' ? bookId : undefined,
+    },
+  });
   return res.data;
 }

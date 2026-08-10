@@ -31,14 +31,12 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
       aria-checked={checked}
       aria-label={label}
       onClick={onChange}
-      className={`relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors ${
-        checked ? "bg-indigo-500" : "bg-gray-200"
-      }`}
+      className={`relative h-[26px] w-[46px] shrink-0 rounded-full transition-colors ${checked ? "bg-indigo-500" : "bg-gray-200"
+        }`}
     >
       <span
-        className={`absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full bg-white shadow transition-transform ${
-          checked ? "translate-x-5" : "translate-x-0"
-        }`}
+        className={`absolute left-0.5 top-0.5 h-5.5 w-5.5 rounded-full bg-white shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0"
+          }`}
       />
     </button>
   );
@@ -47,7 +45,7 @@ function Switch({ checked, onChange, label }: { checked: boolean; onChange: () =
 export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) {
   const { theme, toggleTheme } = useThemeStore();
   const [showDetailOnMobile, setShowDetailOnMobile] = useState(false);
-  const [activeSection, setActiveSection] = useState<SectionKey>("general");
+  const [activeSection, setActiveSection] = useState<SectionKey | null>(null);
   const [confirmLogout, setConfirmLogout] = useState(false);
   const isSuperAdmin = admin?.role === "super";
 
@@ -82,9 +80,8 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
       <div className="settings-modal-surface relative flex h-[min(640px,94dvh)] w-full max-w-3xl overflow-hidden rounded-t-2xl bg-white text-gray-900 shadow-2xl ring-1 ring-black/5 sm:rounded-2xl">
         {/* ── Sidebar: profile + section list ── */}
         <div
-          className={`settings-modal-sidebar flex w-full shrink-0 flex-col border-r border-border bg-gray-50 sm:w-72 ${
-            showDetailOnMobile ? "hidden sm:flex" : "flex"
-          }`}
+          className={`settings-modal-sidebar flex w-full shrink-0 flex-col border-r border-border bg-gray-50 sm:w-72 ${showDetailOnMobile ? "hidden sm:flex" : "flex"
+            }`}
         >
           <div className="flex items-center justify-between px-4 py-4">
             <h2 className="text-base font-semibold">Sozlamalar</h2>
@@ -102,7 +99,7 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
             <UserAvatar
               name={admin?.name}
               avatarUrl={admin?.avatarUrl}
-              className="h-12 w-12 shrink-0 rounded-full bg-gray-900 text-base font-semibold text-white"
+              className="h-11 w-12 shrink-0 rounded-full bg-gray-900 text-base font-semibold text-white"
             />
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold">{admin?.name ?? "Foydalanuvchi"}</p>
@@ -121,16 +118,14 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
             <button
               type="button"
               onClick={() => openSection("profile")}
-              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                activeSection === "profile"
+              className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "profile"
                   ? "bg-indigo-500 text-white"
                   : "text-gray-700 hover:bg-gray-100"
-              }`}
+                }`}
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                  activeSection === "profile" ? "bg-white/15" : "bg-gray-200"
-                }`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "profile" ? "bg-white/15" : "bg-gray-200"
+                  }`}
               >
                 <User size={15} />
               </span>
@@ -141,16 +136,14 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
             <button
               type="button"
               onClick={() => openSection("general")}
-              className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                activeSection === "general"
+              className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "general"
                   ? "bg-indigo-500 text-white"
                   : "text-gray-700 hover:bg-gray-100"
-              }`}
+                }`}
             >
               <span
-                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                  activeSection === "general" ? "bg-white/15" : "bg-gray-200"
-                }`}
+                className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "general" ? "bg-white/15" : "bg-gray-200"
+                  }`}
               >
                 <Settings size={15} />
               </span>
@@ -162,16 +155,14 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
               <button
                 type="button"
                 onClick={() => openSection("admins")}
-                className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
-                  activeSection === "admins"
+                className={`mt-1 flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${activeSection === "admins"
                     ? "bg-indigo-500 text-white"
                     : "text-gray-700 hover:bg-gray-100"
-                }`}
+                  }`}
               >
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${
-                    activeSection === "admins" ? "bg-white/15" : "bg-gray-200"
-                  }`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg ${activeSection === "admins" ? "bg-white/15" : "bg-gray-200"
+                    }`}
                 >
                   <ShieldCheck size={15} />
                 </span>
@@ -217,9 +208,9 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
               <ChevronLeft size={17} />
             </button>
             <h3 className="text-base font-semibold">
-              {activeSection === "profile"
+              {(activeSection ?? "general") === "profile"
                 ? "Profile"
-                : activeSection === "general"
+                : (activeSection ?? "general") === "general"
                   ? "General Settings"
                   : "Adminlar"}
             </h3>
@@ -234,9 +225,9 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
           </div>
 
           <div className="min-h-0 flex-1 overflow-y-auto px-4 py-5 sm:px-6">
-            {activeSection === "profile" ? (
+            {(activeSection ?? "general") === "profile" ? (
               <EditProfileSection />
-            ) : activeSection === "general" ? (
+            ) : (activeSection ?? "general") === "general" ? (
               <>
                 <p className="mb-2 px-1 text-[11px] font-semibold uppercase tracking-wide text-gray-400">
                   Appearance

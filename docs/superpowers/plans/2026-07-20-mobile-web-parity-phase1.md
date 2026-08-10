@@ -2677,7 +2677,7 @@ export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () 
             <TextInput
               value={name}
               onChangeText={setName}
-              className="mb-2 h-12 rounded-xl border border-slate-200 px-3 text-sm text-ink"
+              className="mb-2 h-11 rounded-xl border border-slate-200 px-3 text-sm text-ink"
             />
             <Pressable
               onPress={() => void saveName()}
@@ -2693,14 +2693,14 @@ export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () 
               value={currentPassword}
               onChangeText={setCurrentPassword}
               secureTextEntry
-              className="mb-2 h-12 rounded-xl border border-slate-200 px-3 text-sm text-ink"
+              className="mb-2 h-11 rounded-xl border border-slate-200 px-3 text-sm text-ink"
             />
             <Text className="mb-1.5 text-xs font-bold text-slate-500">Yangi parol</Text>
             <TextInput
               value={newPassword}
               onChangeText={setNewPassword}
               secureTextEntry
-              className="mb-2 h-12 rounded-xl border border-slate-200 px-3 text-sm text-ink"
+              className="mb-2 h-11 rounded-xl border border-slate-200 px-3 text-sm text-ink"
             />
             <Pressable
               onPress={() => void savePassword()}

@@ -111,7 +111,7 @@ export function CourseChallengesPage({
           onSelectLaunch={onSelectLaunch}
           onSelectGroups={onSelectGroups}
           onSelectClasses={onSelectClasses}
-          onSelectChallenges={() => {}}
+          onSelectChallenges={() => { }}
         />
 
         {confirmDelete && (
@@ -162,9 +162,9 @@ export function CourseChallengesPage({
                 className="flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
               >
                 {c.imageUrl ? (
-                  <img src={c.imageUrl} alt="" className="h-12 w-12 shrink-0 rounded-xl object-cover" />
+                  <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
                 ) : (
-                  <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
+                  <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
                     <BookOpen size={20} className="text-gray-400" />
                   </div>
                 )}
@@ -186,7 +186,7 @@ export function CourseChallengesPage({
         onSelectLaunch={onSelectLaunch}
         onSelectGroups={onSelectGroups}
         onSelectClasses={onSelectClasses}
-        onSelectChallenges={() => {}}
+        onSelectChallenges={() => { }}
       />
 
       {creating && <CreateChallengeModal onCreate={handleCreate} onClose={() => setCreating(false)} />}

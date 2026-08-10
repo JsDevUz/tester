@@ -344,33 +344,32 @@ export function ContentBlockView({
                       />
                     </div>
                   </div>
-              )}
+                )}
 
               {!block.embedUrl &&
                 (block.type === 'video' || block.type === 'file') &&
                 block.processingStatus === 'failed' && (
-                <div className="rounded-2xl bg-red-50 px-4 py-5 text-center">
-                  <p className="text-sm font-semibold text-red-500">
-                    {block.type === 'video' ? 'Video tayyorlashda xatolik yuz berdi' : 'Fayl yuklashda xatolik yuz berdi'}
-                  </p>
-                  {block.errorMessage && <p className="mt-1 text-xs text-red-400">{block.errorMessage}</p>}
-                  {block.type === 'video' && onRetryVideo && (
-                    <button
-                      type="button"
-                      onClick={onRetryVideo}
-                      className="mt-4 rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white"
-                    >
-                      Qayta urinish
-                    </button>
-                  )}
-                </div>
-              )}
+                  <div className="rounded-2xl bg-red-50 px-4 py-5 text-center">
+                    <p className="text-sm font-semibold text-red-500">
+                      {block.type === 'video' ? 'Video tayyorlashda xatolik yuz berdi' : 'Fayl yuklashda xatolik yuz berdi'}
+                    </p>
+                    {block.errorMessage && <p className="mt-1 text-xs text-red-400">{block.errorMessage}</p>}
+                    {block.type === 'video' && onRetryVideo && (
+                      <button
+                        type="button"
+                        onClick={onRetryVideo}
+                        className="mt-4 rounded-xl bg-red-500 px-4 py-2 text-sm font-semibold text-white"
+                      >
+                        Qayta urinish
+                      </button>
+                    )}
+                  </div>
+                )}
 
               {!block.embedUrl && block.type !== 'video' && block.processingStatus !== 'uploading' && (
                 <label
-                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-gray-100 ${
-                    block.previewUrl ? 'p-2' : 'py-10'
-                  }`}
+                  className={`flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 transition-colors hover:bg-gray-100 ${block.previewUrl ? 'p-2' : 'py-10'
+                    }`}
                 >
                   <input type="file" accept={accept} className="hidden" onChange={handleFileInputChange} />
                   {block.previewUrl ? (
@@ -391,7 +390,7 @@ export function ContentBlockView({
                       </a>
                     )
                   ) : (
-                    <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
+                    <span className="flex h-11 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
                       <Plus size={22} />
                     </span>
                   )}
@@ -401,7 +400,7 @@ export function ContentBlockView({
               {!block.embedUrl && block.type === 'video' && !block.processingStatus && (
                 <label className="flex cursor-pointer flex-col items-center justify-center gap-2 rounded-2xl bg-gray-50 py-10 transition-colors hover:bg-gray-100">
                   <input type="file" accept={accept} className="hidden" onChange={handleFileInputChange} />
-                  <span className="flex h-12 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
+                  <span className="flex h-11 w-12 items-center justify-center rounded-full bg-gray-900 text-white">
                     <Plus size={22} />
                   </span>
                 </label>

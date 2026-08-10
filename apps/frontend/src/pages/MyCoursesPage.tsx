@@ -297,7 +297,7 @@ function CourseLeaderboardModal({
         if (active)
           setError(
             requestError?.response?.data?.message ??
-              "Reytingni yuklab bo‘lmadi.",
+            "Reytingni yuklab bo‘lmadi.",
           );
       })
       .finally(() => {
@@ -374,7 +374,7 @@ function CourseLeaderboardModal({
                         <UserAvatar
                           name={entry.studentName}
                           avatarUrl={entry.studentAvatarUrl}
-                          className={`h-12 w-12 rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`}
+                          className={`h-11 w-12 rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`}
                         />
                         <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-gray-800">
                           {entry.rank}
@@ -486,7 +486,7 @@ function StudentCourseReader({
   function refreshCourseSilently() {
     return apiGetMyCourseDetail(courseId)
       .then(setCourse)
-      .catch(() => {});
+      .catch(() => { });
   }
 
   const lessons = useMemo(
@@ -610,20 +610,18 @@ function StudentCourseReader({
         disabled={locked}
         className={
           mobile
-            ? `flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-                locked
-                  ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
-                  : active
-                    ? "border-gray-900 bg-white text-gray-900"
-                    : "border-transparent bg-white text-gray-900 hover:border-gray-300"
-              }`
-            : `flex w-full items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors ${
-                locked
-                  ? "cursor-not-allowed border-transparent text-gray-300 opacity-70"
-                  : active
-                    ? "border-gray-900 text-gray-900"
-                    : "border-transparent text-gray-900 hover:border-gray-300"
-              }`
+            ? `flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${locked
+              ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
+              : active
+                ? "border-gray-900 bg-white text-gray-900"
+                : "border-transparent bg-white text-gray-900 hover:border-gray-300"
+            }`
+            : `flex w-full items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors ${locked
+              ? "cursor-not-allowed border-transparent text-gray-300 opacity-70"
+              : active
+                ? "border-gray-900 text-gray-900"
+                : "border-transparent text-gray-900 hover:border-gray-300"
+            }`
         }
       >
         <div
@@ -881,9 +879,8 @@ function StudentCourseReader({
         </aside>
 
         <main
-          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${
-            activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
-          }`}
+          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
+            }`}
         >
           {selected && activeTest ? (
             <TestTaker
@@ -1064,11 +1061,10 @@ function LessonReader({
             else void onNext();
           }}
           disabled={!hasPractice && blockedByThreshold}
-          className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${
-            !hasPractice && blockedByThreshold
+          className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${!hasPractice && blockedByThreshold
               ? "cursor-not-allowed bg-gray-200 text-gray-400"
               : "bg-[var(--color-indigo-500)]"
-          }`}
+            }`}
         >
           {hasPractice
             ? "Amaliyot"

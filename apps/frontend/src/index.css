@@ -935,12 +935,25 @@ select::-ms-expand {
   background: #16181d;
 }
 
-:root[data-theme="dark"] .practice-messenger-root,
-:root[data-theme="dark"] .practice-messenger-list,
-:root[data-theme="dark"] .practice-messenger-thread,
-:root[data-theme="dark"] .practice-messenger-header,
-:root[data-theme="dark"] .practice-messenger-composer {
-  background-color: #30313a !important;
+@media (min-width: 1025px) {
+  :root[data-theme="dark"] .practice-messenger-root,
+  :root[data-theme="dark"] .practice-messenger-list,
+  :root[data-theme="dark"] .practice-messenger-thread,
+  :root[data-theme="dark"] .practice-messenger-header,
+  :root[data-theme="dark"] .practice-messenger-composer {
+    background-color: #30313a !important;
+  }
+}
+
+@media (max-width: 1024px) {
+  .practice-messenger-root,
+  .practice-messenger-list {
+    background-color: transparent !important;
+  }
+  :root[data-theme="dark"] .practice-messenger-root,
+  :root[data-theme="dark"] .practice-messenger-list {
+    background-color: transparent !important;
+  }
 }
 
 :root[data-theme="dark"] .practice-messenger-pins {
@@ -1422,12 +1435,14 @@ select::-ms-expand {
     background-color: #3a3c47 !important;
   }
 
-  :root:not([data-theme="light"]) .practice-messenger-root,
-  :root:not([data-theme="light"]) .practice-messenger-list,
-  :root:not([data-theme="light"]) .practice-messenger-thread,
-  :root:not([data-theme="light"]) .practice-messenger-header,
-  :root:not([data-theme="light"]) .practice-messenger-composer {
-    background-color: #30313a !important;
+  @media (min-width: 1025px) {
+    :root:not([data-theme="light"]) .practice-messenger-root,
+    :root:not([data-theme="light"]) .practice-messenger-list,
+    :root:not([data-theme="light"]) .practice-messenger-thread,
+    :root:not([data-theme="light"]) .practice-messenger-header,
+    :root:not([data-theme="light"]) .practice-messenger-composer {
+      background-color: #30313a !important;
+    }
   }
 
   :root:not([data-theme="light"]) .practice-messenger-pins {

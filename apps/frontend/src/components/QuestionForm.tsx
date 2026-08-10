@@ -111,6 +111,7 @@ interface Props {
   initial?: InitialValues;
   submitLabel?: string;
   onCancel?: () => void;
+  hideAiTypes?: boolean;
 }
 
 const BACKEND =
@@ -120,7 +121,7 @@ function mediaUrl(url: string) {
   return url.startsWith("http") ? url : `${BACKEND}${url}`;
 }
 
-const TYPE_LABELS: Record<string, string> = {
+const ALL_TYPE_LABELS: Record<string, string> = {
   single: "Yagona tanlov",
   multi: "Ko'p tanlov",
   open: "Ochiq javob",
@@ -138,6 +139,7 @@ export function QuestionForm({
   initial,
   submitLabel,
   onCancel,
+  hideAiTypes = false,
 }: Props) {
   const [text, setText] = useState(initial?.text ?? "");
   const [type, setType] = useState<
@@ -345,7 +347,7 @@ export function QuestionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="bg-white rounded-2xl p-4 flex flex-col gap-3"
+      className="max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl flex flex-col gap-3"
     >
       <textarea
         value={text}
@@ -356,10 +358,10 @@ export function QuestionForm({
         className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 resize-none"
       />
 
-      {/* Media */}
-      <div className="flex items-center gap-2 flex-wrap">
+      {/* Media & Type selector */}
+      <div className="flex items-center gap-2 flex-nowrap overflow-x-auto py-0.5">
         {imageUrl ? (
-          <div className="relative group inline-block">
+          <div className="relative group inline-block shrink-0">
             <img
               src={mediaUrl(imageUrl)}
               alt=""
@@ -377,13 +379,13 @@ export function QuestionForm({
           <button
             type="button"
             onClick={() => setMediaModal("image")}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0"
           >
             <Image size={13} /> Rasm
           </button>
         )}
         {audioUrl ? (
-          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200">
+          <div className="flex items-center gap-2 bg-gray-100 rounded-lg px-3 py-1.5 border border-gray-200 shrink-0">
             <Music size={13} className="text-gray-700 shrink-0" />
             <audio src={mediaUrl(audioUrl)} controls className="h-7" />
             <button
@@ -398,13 +400,29 @@ export function QuestionForm({
           <button
             type="button"
             onClick={() => setMediaModal("audio")}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-400 hover:border-gray-400 hover:text-gray-700 transition-colors"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0"
           >
             <Music size={13} /> Audio
           </button>
         )}
+
+        {/* Type select */}
+        <select
+          value={type}
+          onChange={(e) => setType(e.target.value as any)}
+          className="text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-700 bg-white font-semibold outline-none cursor-pointer hover:border-gray-400 focus:ring-2 focus:ring-indigo-500 transition-colors shrink-0"
+        >
+          {Object.entries(ALL_TYPE_LABELS)
+            .filter(([k]) => !hideAiTypes || k !== "open")
+            .map(([k, label]) => (
+              <option key={k} value={k}>
+                {label}
+              </option>
+            ))}
+        </select>
+
         {uploadError && (
-          <span className="text-xs text-red-500">{uploadError}</span>
+          <span className="text-xs text-red-500 shrink-0">{uploadError}</span>
         )}
       </div>
       {mediaModal && (
@@ -420,33 +438,6 @@ export function QuestionForm({
         />
       )}
 
-      {/* Type selector */}
-      <div className="flex gap-2 flex-wrap">
-        {(
-          [
-            "single",
-            "multi",
-            "open",
-            "arrange",
-            "truefalse",
-            "reorder",
-            "matching",
-            "fillblank",
-            "slider",
-            "droppin",
-          ] as const
-        ).map((t) => (
-          <button
-            key={t}
-            type="button"
-            onClick={() => setType(t)}
-            className={`text-xs px-3 py-1 rounded-full border transition-colors ${type === t ? "bg-gray-900 text-white border-gray-900" : "border-border text-gray-500 hover:border-gray-300"}`}
-          >
-            {TYPE_LABELS[t]}
-          </button>
-        ))}
-      </div>
-
       {/* Options by type */}
       {type === "truefalse" && (
         <div className="flex flex-col gap-2">
@@ -456,8 +447,8 @@ export function QuestionForm({
               type="button"
               onClick={() => setTfCorrect("true")}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "true"
-                  ? "bg-green-500 text-white border-green-500"
-                  : "border-border text-gray-500 hover:border-green-300 hover:text-green-600"
+                ? "bg-green-500 text-white border-green-500"
+                : "border-border text-gray-500 hover:border-green-300 hover:text-green-600"
                 }`}
             >
               ✓ To'g'ri
@@ -466,8 +457,8 @@ export function QuestionForm({
               type="button"
               onClick={() => setTfCorrect("false")}
               className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "false"
-                  ? "bg-red-400 text-white border-red-400"
-                  : "border-border text-gray-500 hover:border-red-300 hover:text-red-500"
+                ? "bg-red-400 text-white border-red-400"
+                : "border-border text-gray-500 hover:border-red-300 hover:text-red-500"
                 }`}
             >
               ✗ Noto'g'ri

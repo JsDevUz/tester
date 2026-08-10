@@ -174,6 +174,7 @@ function Flashcards({
   const [dragging, setDragging] = useState(false);
   const [exiting, setExiting] = useState<"known" | "again" | null>(null);
   const [resetting, setResetting] = useState(false);
+  const [repeatCount, setRepeatCount] = useState(0);
   const startX = useRef(0);
   const current = deck[0];
 
@@ -181,6 +182,9 @@ function Flashcards({
     if (!current || exiting) return;
     const swiped = current;
     const previousKnown = swiped.known;
+    if (!known) {
+      setRepeatCount((count) => count + 1);
+    }
     setExiting(known ? "known" : "again");
     setWords(
       words.map((word) => (word.id === swiped.id ? { ...word, known } : word)),
@@ -246,6 +250,7 @@ function Flashcards({
       setRevealed(false);
       setDragX(0);
       setExiting(null);
+      setRepeatCount(0);
       toast.success("Flashcard qayta boshlandi");
     } catch {
       toast.error("Flashcardni reset qilib bo'lmadi");
@@ -267,8 +272,8 @@ function Flashcards({
       <div className="mx-auto mb-6 mt-4 flex w-fit gap-7 text-center">
         <Stat
           label="TAKRORLASH"
-          value={words.length}
-          color="text-gray-500 dark:text-zinc-400"
+          value={repeatCount}
+          color="text-rose-500 dark:text-rose-400"
         />
         <Stat
           label="QOLGAN"
@@ -444,20 +449,14 @@ function Test({
         (value, position, all) =>
           value !== answer && all.indexOf(value) === position,
       );
-    const shuffled = [...pool];
-    for (let i = shuffled.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
-    }
-    const distractors = shuffled.slice(0, 3);
-    const combined = [answer, ...distractors];
-    for (let i = combined.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [combined[i], combined[j]] = [combined[j], combined[i]];
-    }
-    return combined;
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [current, direction]);
+    const sortedPool = [...pool].sort((a, b) =>
+      `${current.id}:${a}`.localeCompare(`${current.id}:${b}`),
+    );
+    const distractors = sortedPool.slice(0, 3);
+    return [answer, ...distractors].sort((a, b) =>
+      `${current.id}:${a}`.localeCompare(`${current.id}:${b}`),
+    );
+  }, [current, direction, words]);
 
   function restart() {
     setIndex(0);
@@ -598,13 +597,11 @@ function Test({
             const correct = option === answer;
             const chosen = option === selected;
             const state = checked
-              ? chosen && correct
+              ? correct
                 ? "border-emerald-500 bg-emerald-500 text-white"
                 : chosen
                   ? "border-rose-500 bg-rose-500 text-white"
-                  : correct
-                    ? "border-2 border-emerald-500 bg-white text-emerald-700"
-                    : "border-gray-200 bg-white text-gray-400"
+                  : "border-gray-200 bg-white text-gray-400"
               : chosen
                 ? "border-gray-900 bg-gray-900 text-white shadow-md"
                 : "border-gray-200 bg-white text-gray-800 hover:border-gray-300 hover:bg-gray-50";
@@ -617,22 +614,16 @@ function Test({
                 className={`flex w-full items-center gap-3 rounded-2xl border px-4 py-3.5 text-left transition-all duration-150 active:scale-[0.99] ${state}`}
               >
                 <span
-                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${chosen ? "bg-white/20 text-white" : checked && correct ? "bg-emerald-100 text-emerald-700" : "bg-gray-100 text-gray-500"}`}
+                  className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-xl text-xs font-bold ${chosen || (checked && correct) ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}
                 >
                   {optionLabels[optionIndex]}
                 </span>
                 <span className="font-semibold leading-snug">{option}</span>
-                {checked && chosen && correct && (
-                  <Check size={18} className="ml-auto shrink-0" />
+                {checked && correct && (
+                  <Check size={18} className="ml-auto shrink-0 text-white" />
                 )}
                 {checked && chosen && !correct && (
-                  <X size={18} className="ml-auto shrink-0" />
-                )}
-                {checked && !chosen && correct && (
-                  <Check
-                    size={18}
-                    className="ml-auto shrink-0 text-emerald-600"
-                  />
+                  <X size={18} className="ml-auto shrink-0 text-white" />
                 )}
               </button>
             );

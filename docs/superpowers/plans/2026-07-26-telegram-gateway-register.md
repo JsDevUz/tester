@@ -912,7 +912,7 @@ In the JSX, the current top-level structure branches on `forgotMode` first, then
                     inputMode="numeric"
                     autoComplete={index === 0 ? "one-time-code" : "off"}
                     aria-label={`Ro'yxatdan o'tish kodi raqami ${index + 1}`}
-                    className="login-code-input h-12 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
+                    className="login-code-input h-11 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
                   />
                 ))}
               </div>

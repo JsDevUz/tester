@@ -219,7 +219,7 @@ export function LoginPage() {
                     inputMode="numeric"
                     autoComplete={index === 0 ? "one-time-code" : "off"}
                     aria-label={`Tiklash kodi raqami ${index + 1}`}
-                    className="login-code-input h-12 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
+                    className="login-code-input h-11 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
                   />
                 ))}
               </div>
@@ -266,7 +266,7 @@ export function LoginPage() {
                   inputMode="numeric"
                   autoComplete={index === 0 ? "one-time-code" : "off"}
                   aria-label={`Kod raqami ${index + 1}`}
-                  className="login-code-input h-12 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
+                  className="login-code-input h-11 w-9 rounded-xl border text-center text-xl font-semibold outline-none transition"
                 />
               ))}
             </div>

@@ -101,13 +101,13 @@ export function StudentHistoryPage() {
               placeholder="Test kodini kiriting"
               autoCapitalize="none"
               autoCorrect="off"
-              className="h-12 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+              className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
             />
             <button
               type="button"
               onClick={openTestByCode}
               disabled={!extractTestCode(codeInput)}
-              className="grid h-12 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+              className="grid h-11 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
             >
               <Search size={19} />
             </button>
@@ -152,13 +152,12 @@ export function StudentHistoryPage() {
                     className="student-responsive-card flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-all hover:bg-gray-50 active:scale-[0.99]"
                   >
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
-                        isGood
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isGood
                           ? "bg-green-50"
                           : isMid
                             ? "bg-amber-50"
                             : "bg-red-50"
-                      }`}
+                        }`}
                     >
                       {isGood ? (
                         <Trophy size={18} className="text-green-400" />

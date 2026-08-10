@@ -12,6 +12,7 @@ import {
   type ApiMyChallengeDetail,
   type ApiChallengeLeaderboardEntry,
   type ChallengeLeaderboardMetric,
+  type ChallengeTimeframe,
 } from "../api/challenges";
 import {
   apiGetMyChallengeWordLeaderboard,
@@ -19,11 +20,11 @@ import {
   type ApiStudentChallengeWord,
 } from "../api/challenge-words";
 
-const METRICS: { key: ChallengeLeaderboardMetric; label: string }[] = [
-  { key: "overall", label: "Umumiy" },
-  { key: "books", label: "Kitoblar" },
-  { key: "words", label: "Lug'at" },
-  { key: "speed", label: "Tezlik" },
+const TIMEFRAMES: { key: ChallengeTimeframe; label: string }[] = [
+  { key: "all", label: "Umumiy" },
+  { key: "daily", label: "Kunlik" },
+  { key: "weekly", label: "Haftalik" },
+  { key: "monthly", label: "Oylik" },
 ];
 
 export function ChallengeDetailPage() {
@@ -32,6 +33,8 @@ export function ChallengeDetailPage() {
   const [detail, setDetail] = useState<ApiMyChallengeDetail | null>(null);
   const [tab, setTab] = useState<"books" | "leaderboard">("books");
   const [metric, setMetric] = useState<ChallengeLeaderboardMetric>("overall");
+  const [timeframe, setTimeframe] = useState<ChallengeTimeframe>("all");
+  const [selectedBookId, setSelectedBookId] = useState<string>("all");
   const [entries, setEntries] = useState<ApiChallengeLeaderboardEntry[]>([]);
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
   const [endPage, setEndPage] = useState("");
@@ -46,10 +49,10 @@ export function ChallengeDetailPage() {
   useEffect(() => {
     if (!id || tab !== "leaderboard" || !detail) return;
     const request = detail.type === "soz_yodlash"
-      ? apiGetMyChallengeWordLeaderboard(id)
-      : apiGetMyChallengeLeaderboard(id, metric);
+      ? apiGetMyChallengeWordLeaderboard(id, timeframe)
+      : apiGetMyChallengeLeaderboard(id, metric, timeframe, selectedBookId);
     void request.then((result) => setEntries(result.entries));
-  }, [id, tab, metric, detail]);
+  }, [id, tab, metric, timeframe, selectedBookId, detail]);
 
   useEffect(() => {
     if (id && detail?.type === "soz_yodlash")
@@ -157,128 +160,152 @@ export function ChallengeDetailPage() {
               )}
             </div>
           ) : (
-          <div className="flex flex-col gap-3">
-            {detail.books.map((book) => (
-              <div
-                key={book.id}
-                className="student-course-card challenge-detail-card rounded-3xl p-3"
-              >
-                <div className="mb-2 flex items-center justify-between">
-                  <p className="font-semibold text-gray-800">{book.title}</p>
-                  <p className="text-xs text-gray-400">
-                    {book.lastPageRead}/{book.totalPages} bet
-                  </p>
-                </div>
-                <div className="challenge-detail-input mb-3 h-2 w-full overflow-hidden rounded-full">
-                  <div
-                    className="h-full rounded-full bg-indigo-500"
-                    style={{
-                      width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%`,
-                    }}
-                  />
-                </div>
-
-                {requiredTest?.bookId === book.id ? (
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/t/${requiredTest.slug}`)}
-                    className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
-                  >
-                    <p className="text-xs font-semibold text-amber-700">
-                      Test ishlash
+            <div className="flex flex-col gap-3">
+              {detail.books.map((book) => (
+                <div
+                  key={book.id}
+                  className="student-course-card challenge-detail-card rounded-3xl p-3"
+                >
+                  <div className="mb-2 flex items-center justify-between">
+                    <p className="font-semibold text-gray-800">{book.title}</p>
+                    <p className="text-xs text-gray-400">
+                      {book.lastPageRead}/{book.totalPages} bet
                     </p>
-                    <p className="mt-0.5 text-[11px] text-amber-600">
-                      Davom etish uchun avval{requiredTest.name ? ` "${requiredTest.name}"` : ""} testini
-                      yakunlang
-                    </p>
-                  </button>
-                ) : addingBookId === book.id ? (
-                  <div className="flex flex-col gap-2">
-                    <div className="flex items-center gap-2 text-xs text-gray-500">
-                      <span>Boshlagan bet: {book.lastPageRead}</span>
-                    </div>
-                    <input
-                      value={endPage}
-                      onChange={(e) => setEndPage(e.target.value)}
-                      type="number"
-                      min={book.lastPageRead + 1}
-                      placeholder="Tugagan bet"
-                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
-                    />
-                    <input
-                      value={newWords}
-                      onChange={(e) => setNewWords(e.target.value)}
-                      type="number"
-                      min={0}
-                      placeholder="Yangi lug'at soni"
-                      className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        type="button"
-                        onClick={() => void handleSubmitEvent(book.id)}
-                        className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
-                      >
-                        Saqlash
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setAddingBookId(null)}
-                        className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-semibold text-gray-600"
-                      >
-                        Bekor
-                      </button>
-                    </div>
                   </div>
-                ) : book.pendingTest ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setRequiredTest({ bookId: book.id, slug: book.pendingTest!.slug!, name: book.pendingTest!.name })
-                    }
-                    className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
-                  >
-                    <p className="text-xs font-semibold text-amber-700">
-                      Test ishlash
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-amber-600">
-                      Davom etish uchun avval "{book.pendingTest.name}" testini
-                      yakunlang
-                    </p>
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => setAddingBookId(book.id)}
-                    className="w-full rounded-xl bg-indigo-50/80 py-2.5 text-xs font-bold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
-                  >
-                    + Yangi yozuv
-                  </button>
-                )}
-              </div>
-            ))}
-          </div>
-          )
-        ) : (
+                  <div className="challenge-detail-input mb-3 h-2 w-full overflow-hidden rounded-full">
+                    <div
+                      className="h-full rounded-full bg-indigo-500"
+                      style={{
+                        width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%`,
+                      }}
+                    />
+                  </div>
+
+                  {requiredTest?.bookId === book.id ? (
+                    <button
+                      type="button"
+                      onClick={() => navigate(`/t/${requiredTest.slug}`)}
+                      className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
+                    >
+                      <p className="text-xs font-semibold text-amber-700">
+                        Test ishlash
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-amber-600">
+                        Davom etish uchun avval{requiredTest.name ? ` "${requiredTest.name}"` : ""} testini
+                        yakunlang
+                      </p>
+                    </button>
+                  ) : addingBookId === book.id ? (
+                    <div className="flex flex-col gap-2">
+                      <div className="flex items-center gap-2 text-xs text-gray-500">
+                        <span>Boshlagan bet: {book.lastPageRead}</span>
+                      </div>
+                      <input
+                        value={endPage}
+                        onChange={(e) => setEndPage(e.target.value)}
+                        type="number"
+                        min={book.lastPageRead + 1}
+                        placeholder="Tugagan bet"
+                        className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
+                      />
+                      <input
+                        value={newWords}
+                        onChange={(e) => setNewWords(e.target.value)}
+                        type="number"
+                        min={0}
+                        placeholder="Yangi lug'at soni"
+                        className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
+                      />
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void handleSubmitEvent(book.id)}
+                          className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
+                        >
+                          Saqlash
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => setAddingBookId(null)}
+                          className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-semibold text-gray-600"
+                        >
+                          Bekor
+                        </button>
+                      </div>
+                    </div>
+                  ) : book.pendingTest ? (
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setRequiredTest({ bookId: book.id, slug: book.pendingTest!.slug!, name: book.pendingTest!.name })
+                      }
+                      className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
+                    >
+                      <p className="text-xs font-semibold text-amber-700">
+                        Test ishlash
+                      </p>
+                      <p className="mt-0.5 text-[11px] text-amber-600">
+                        Davom etish uchun avval "{book.pendingTest.name}" testini
+                        yakunlang
+                      </p>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => setAddingBookId(book.id)}
+                      className="w-full rounded-xl bg-indigo-50/80 py-2.5 text-xs font-bold text-indigo-600 transition-colors hover:bg-indigo-100 dark:bg-indigo-950/40 dark:text-indigo-300 dark:hover:bg-indigo-900/50"
+                    >
+                      + Yangi yozuv
+                    </button>
+                  )}
+                </div>
+              ))}
+            </div>
+          )) : (
           <div className="flex flex-col gap-4">
-            {detail.type !== "soz_yodlash" && (
-              <div className="flex gap-2 overflow-x-auto">
-                {METRICS.map((m) => (
-                  <button
-                    key={m.key}
-                    type="button"
-                    onClick={() => setMetric(m.key)}
-                    className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-semibold ${
-                      metric === m.key
-                        ? "bg-indigo-600 text-white shadow-sm"
-                        : "challenge-detail-input text-gray-500"
-                    }`}
-                  >
-                    {m.label}
-                  </button>
+            <div className="flex flex-wrap items-center gap-2 mb-1 sm:flex-nowrap">
+              {/* Turi select (for Kitobxonlik: Umumiy / Kitob / Lug'at) */}
+              {detail.type !== "soz_yodlash" && (
+                <select
+                  value={metric}
+                  onChange={(e) => setMetric(e.target.value as ChallengeLeaderboardMetric)}
+                  className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-bold text-gray-700 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="overall">Umumiy</option>
+                  <option value="books">Kitob</option>
+                  <option value="words">Lug'at</option>
+                </select>
+              )}
+
+              {/* Timeframe select */}
+              <select
+                value={timeframe}
+                onChange={(e) => setTimeframe(e.target.value as ChallengeTimeframe)}
+                className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-bold text-gray-700 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+              >
+                {TIMEFRAMES.map((t) => (
+                  <option key={t.key} value={t.key}>
+                    {t.label}
+                  </option>
                 ))}
-              </div>
-            )}
+              </select>
+
+              {/* Book Name select */}
+              {detail.type !== "soz_yodlash" && detail.books.length > 0 && (
+                <select
+                  value={selectedBookId}
+                  onChange={(e) => setSelectedBookId(e.target.value)}
+                  className="challenge-detail-input max-w-[160px] truncate rounded-xl px-3 py-2 text-xs font-bold text-gray-700 dark:text-zinc-200 outline-none focus:ring-2 focus:ring-indigo-500 cursor-pointer"
+                >
+                  <option value="all">Barcha kitoblar</option>
+                  {detail.books.map((b) => (
+                    <option key={b.id} value={b.id}>
+                      {b.title}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
 
             {entries.length === 0 ? (
               <div className="student-course-card challenge-detail-card rounded-3xl p-8 text-center text-sm text-gray-400">
@@ -313,14 +340,14 @@ export function ChallengeDetailPage() {
                     podium:
                       "h-20 sm:h-24 bg-slate-300 text-white text-2xl font-black rounded-t-2xl shadow-md",
                     avatarBg: "bg-slate-400",
-                    avatarSize: "h-12 w-12 sm:h-14 sm:w-14",
+                    avatarSize: "h-11 w-12 sm:h-14 sm:w-14",
                     ring: "border-2 border-slate-200",
                   },
                   3: {
                     podium:
                       "h-16 sm:h-20 bg-orange-300 text-white text-xl font-black rounded-t-2xl shadow-md",
                     avatarBg: "bg-orange-400",
-                    avatarSize: "h-11 w-11 sm:h-12 sm:w-12",
+                    avatarSize: "h-11 w-11 sm:h-11 sm:w-12",
                     ring: "border-2 border-orange-300",
                   },
                 };
@@ -375,11 +402,10 @@ export function ChallengeDetailPage() {
                         {remaining.map((entry) => (
                           <div
                             key={entry.studentId}
-                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${
-                              entry.isCurrentStudent
+                            className={`flex items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent
                                 ? "bg-indigo-50 dark:bg-indigo-950/40"
                                 : "challenge-detail-input"
-                            }`}
+                              }`}
                           >
                             <span className="w-6 text-center text-sm font-bold text-gray-500">
                               {entry.rank}

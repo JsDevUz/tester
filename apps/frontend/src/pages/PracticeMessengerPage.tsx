@@ -296,10 +296,10 @@ function PracticeMessengerContent() {
         current.map((message) =>
           message.id === payload.id
             ? {
-                ...message,
-                content: payload.content,
-                editedAt: payload.editedAt ?? new Date().toISOString(),
-              }
+              ...message,
+              content: payload.content,
+              editedAt: payload.editedAt ?? new Date().toISOString(),
+            }
             : message,
         ),
       );
@@ -310,11 +310,11 @@ function PracticeMessengerContent() {
         current.map((message) =>
           message.id === payload.id
             ? {
-                ...message,
-                content: "",
-                deletedAt: payload.deletedAt ?? new Date().toISOString(),
-                editedAt: null,
-              }
+              ...message,
+              content: "",
+              deletedAt: payload.deletedAt ?? new Date().toISOString(),
+              editedAt: null,
+            }
             : message,
         ),
       );
@@ -429,10 +429,10 @@ function PracticeMessengerContent() {
           current.map((item) =>
             item.id === editingMessage.id
               ? {
-                  ...item,
-                  content: messageContent,
-                  editedAt: new Date().toISOString(),
-                }
+                ...item,
+                content: messageContent,
+                editedAt: new Date().toISOString(),
+              }
               : item,
           ),
         );
@@ -638,19 +638,19 @@ function PracticeMessengerContent() {
   }
 
   return (
-    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden bg-white lg:rounded-2xl">
+    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden max-[1024px]:bg-transparent min-[1025px]:bg-white lg:rounded-2xl">
       <div className="grid min-h-0 flex-1 overflow-hidden lg:grid-cols-[340px_minmax(0,1fr)]">
         <aside
-          className={`practice-messenger-list min-h-0 flex-col border-b border-gray-100 lg:flex lg:border-b-0 lg:border-r ${mobileThreadOpen ? "hidden" : "flex"}`}
+          className={`practice-messenger-list min-h-0 flex-col lg:flex lg:border-r ${mobileThreadOpen ? "hidden" : "flex"}`}
         >
-          <div className="border-b border-gray-100 p-3">
-            <label className="flex items-center gap-2 rounded-xl bg-gray-100 px-3 py-2.5 text-gray-400">
-              <Search size={17} />
+          <div className="border-b border-gray-200/80 p-3">
+            <label className="flex items-center gap-2 rounded-xl bg-white border border-gray-200 shadow-sm px-3 py-2.5 text-gray-400 focus-within:border-indigo-500 focus-within:ring-2 focus-within:ring-indigo-100 dark:bg-zinc-800/60 dark:border-zinc-700 dark:focus-within:ring-indigo-900/40 transition-all">
+              <Search size={17} className="shrink-0 text-gray-400 dark:text-zinc-400" />
               <input
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Qidirish"
-                className="min-w-0 flex-1 bg-gray-100 text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                className="min-w-0 flex-1 !bg-transparent text-sm text-gray-800 dark:text-zinc-100 outline-none placeholder:text-gray-400 dark:placeholder:text-zinc-500"
               />
             </label>
           </div>
@@ -717,7 +717,7 @@ function PracticeMessengerContent() {
         </aside>
 
         <section
-          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-gray-50/50 lg:flex ${mobileThreadOpen ? "flex" : "hidden"}`}
+          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-transparent lg:flex ${mobileThreadOpen ? "flex" : "hidden"}`}
         >
           {!selectedChat ? (
             <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-gray-400">
@@ -821,12 +821,12 @@ function PracticeMessengerContent() {
                         const startsDateGroup =
                           index === 0 ||
                           messageDateKey(message.createdAt) !==
-                            messageDateKey(messages[index - 1].createdAt);
+                          messageDateKey(messages[index - 1].createdAt);
                         const practiceMessage = message.type !== "text";
                         const maxScore = Number(
                           message.practice?.maxScore ??
-                            message.metadata.maxScore ??
-                            0,
+                          message.metadata.maxScore ??
+                          0,
                         );
                         const gradedImage = message.imageSubmissions.find(
                           (image) =>
@@ -874,13 +874,12 @@ function PracticeMessengerContent() {
                                     current === message.id ? null : message.id,
                                   );
                                 }}
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${
-                                  own
+                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${own
                                     ? practiceMessage
                                       ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
                                       : "practice-message-own rounded-[22px] rounded-br-[6px]"
                                     : "practice-message-incoming rounded-[22px] rounded-bl-[6px]"
-                                }`}
+                                  }`}
                               >
                                 {!message.deletedAt && (
                                   <div
@@ -1005,7 +1004,7 @@ function PracticeMessengerContent() {
                                                   max={maxScore}
                                                   value={
                                                     scoreByMessage[
-                                                      message.id
+                                                    message.id
                                                     ] ?? ""
                                                   }
                                                   onChange={(event) =>
@@ -1056,10 +1055,10 @@ function PracticeMessengerContent() {
                                                 / {maxScore}
                                                 {message.testSubmission
                                                   ?.scoreOverridden && (
-                                                  <span className="text-[10px] font-medium text-gray-400">
-                                                    qo‘lda
-                                                  </span>
-                                                )}
+                                                    <span className="text-[10px] font-medium text-gray-400">
+                                                      qo‘lda
+                                                    </span>
+                                                  )}
                                               </p>
                                               <button
                                                 type="button"
@@ -1129,7 +1128,7 @@ function PracticeMessengerContent() {
                                                   <input
                                                     value={
                                                       scoreByMessage[
-                                                        message.id
+                                                      message.id
                                                       ] ?? ""
                                                     }
                                                     onChange={(event) =>

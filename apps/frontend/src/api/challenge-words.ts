@@ -48,6 +48,13 @@ export async function apiSetChallengeWordProgress(challengeId: string, wordId: s
   return (await client.post(`/me/challenges/${challengeId}/words/${wordId}/progress`, { known })).data;
 }
 
-export async function apiGetMyChallengeWordLeaderboard(challengeId: string): Promise<{ entries: ApiChallengeWordLeaderboardEntry[] }> {
-  return (await client.get(`/me/challenges/${challengeId}/words/leaderboard`)).data;
+export async function apiGetMyChallengeWordLeaderboard(
+  challengeId: string,
+  timeframe?: string,
+): Promise<{ entries: ApiChallengeWordLeaderboardEntry[] }> {
+  return (
+    await client.get(`/me/challenges/${challengeId}/words/leaderboard`, {
+      params: { timeframe: timeframe && timeframe !== 'all' ? timeframe : undefined },
+    })
+  ).data;
 }

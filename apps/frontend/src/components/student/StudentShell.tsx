@@ -142,7 +142,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
     const load = () => {
       apiActiveClassSessions()
         .then(setLiveClassSessions)
-        .catch(() => {});
+        .catch(() => { });
     };
     load();
     const timer = window.setInterval(load, 60_000);
@@ -208,9 +208,9 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const messengerViewportStyle: CSSProperties | undefined =
     isMessenger && messengerViewport
       ? {
-          height: `${messengerViewport.height}px`,
-          top: `${messengerViewport.offsetTop}px`,
-        }
+        height: `${messengerViewport.height}px`,
+        top: `${messengerViewport.offsetTop}px`,
+      }
       : undefined;
   const messengerKeyboardOpen = !!messengerViewport?.keyboardOpen;
 
@@ -223,7 +223,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={messengerViewportStyle}
-      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-gray-100 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-[#f1f5f9] lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
     >
       <div
         aria-hidden="true"
@@ -254,7 +254,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
               <UserAvatar
                 name={admin?.name}
                 avatarUrl={admin?.avatarUrl}
-                className="h-12 w-12 rounded-full bg-yellow-300 text-base font-bold text-white"
+                className="h-11 w-12 rounded-full bg-yellow-300 text-base font-bold text-white"
               />
               <div className="min-w-0">
                 <p className="truncate text-base font-semibold text-gray-900">
@@ -276,11 +276,10 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   key={item.path}
                   type="button"
                   onClick={() => navigate(item.path)}
-                  className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${
-                    active
+                  className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${active
                       ? "bg-indigo-50 text-indigo-600"
                       : "text-gray-700 hover:bg-gray-50"
-                  }`}
+                    }`}
                 >
                   <span className="relative">
                     <Icon
@@ -379,9 +378,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   setProfileOpen(false);
                   navigate(item.path);
                 }}
-                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
-                  active ? "text-indigo-600" : "text-gray-500"
-                }`}
+                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${active ? "text-indigo-600" : "text-gray-500"
+                  }`}
               >
                 <span className="relative">
                   <Icon
@@ -399,9 +397,8 @@ export function StudentShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={() => setProfileOpen(true)}
-            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
-              profileOpen ? "bg-gray-100 text-gray-900" : "text-gray-500"
-            }`}
+            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${profileOpen ? "bg-gray-100 text-gray-900" : "text-gray-500"
+              }`}
           >
             <UserRound
               size={19}

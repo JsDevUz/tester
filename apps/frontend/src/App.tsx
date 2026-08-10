@@ -144,6 +144,24 @@ const ChallengesHubPage = lazy(() =>
     default: m.ChallengesHubPage,
   })),
 );
+const MyTestsPage = lazy(() =>
+  import("./pages/MyTestsPage").then((m) => ({ default: m.MyTestsPage })),
+);
+const MyTestFolderViewPage = lazy(() =>
+  import("./pages/MyTestFolderViewPage").then((m) => ({ default: m.MyTestFolderViewPage })),
+);
+const MyTestQuestionEditorPage = lazy(() =>
+  import("./pages/MyTestQuestionEditorPage").then((m) => ({ default: m.MyTestQuestionEditorPage })),
+);
+const MyDictionariesPage = lazy(() =>
+  import("./pages/MyDictionariesPage").then((m) => ({ default: m.MyDictionariesPage })),
+);
+const WordDeckViewPage = lazy(() =>
+  import("./pages/WordDeckViewPage").then((m) => ({ default: m.WordDeckViewPage })),
+);
+const DeckPracticePage = lazy(() =>
+  import("./pages/DeckPracticePage").then((m) => ({ default: m.DeckPracticePage })),
+);
 const ChallengesListPage = lazy(() =>
   import("./pages/ChallengesListPage").then((m) => ({
     default: m.ChallengesListPage,
@@ -258,6 +276,54 @@ const router = createBrowserRouter([
     element: (
       <PrivateRoute>
         <ChallengesHubPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/my-tests",
+    element: (
+      <PrivateRoute>
+        <MyTestsPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/my-tests/:id",
+    element: (
+      <PrivateRoute>
+        <MyTestFolderViewPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/my-tests/tests/:id/edit",
+    element: (
+      <PrivateRoute>
+        <MyTestQuestionEditorPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/my-dictionaries",
+    element: (
+      <PrivateRoute>
+        <MyDictionariesPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/my-dictionaries/:id",
+    element: (
+      <PrivateRoute>
+        <WordDeckViewPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/d/:slug",
+    element: (
+      <PrivateRoute>
+        <DeckPracticePage />
       </PrivateRoute>
     ),
   },

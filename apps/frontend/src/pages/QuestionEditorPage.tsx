@@ -4,6 +4,7 @@ import { Check, Circle, Pencil, Trash2, X, Image, Music } from "lucide-react";
 import { AppShell } from "../components/AppShell";
 import { QuestionForm } from "../components/QuestionForm";
 import { BulkImportTab } from "../components/BulkImportTab";
+import { SegmentedControl } from "../components/student/SegmentedControl";
 import { useQuestionStore } from "../stores/questionStore";
 import { apiGetTest } from "../api/tests";
 import type { TestDetail } from "../api/tests";
@@ -100,8 +101,7 @@ function InlineQuestionCard({
           <span className="text-xs text-gray-400 mr-2">{index + 1}.</span>
           <span className="text-sm text-gray-800">{q.text}</span>
           <span
-            className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${
-              q.type === "single"
+            className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${q.type === "single"
                 ? "bg-blue-100 text-blue-600"
                 : q.type === "multi"
                   ? "bg-purple-100 text-purple-600"
@@ -120,7 +120,7 @@ function InlineQuestionCard({
                               : q.type === "droppin"
                                 ? "bg-lime-100 text-lime-600"
                                 : "bg-gray-100 text-gray-500"
-            }`}
+              }`}
           >
             {q.type === "single"
               ? "Yagona"
@@ -353,7 +353,7 @@ export function QuestionEditorPage() {
   return (
     <AppShell>
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 p-6 w-full bg-white rounded-2xl">
+        <div className="flex-1 p-3 w-full max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => navigate(`/folders/${test?.folderId}`)}
@@ -370,17 +370,15 @@ export function QuestionEditorPage() {
             </span>
           </div>
 
-          <div className="flex gap-1 mb-4 bg-white rounded-xl p-1 w-fit">
-            {(["manual", "bulk"] as const).map((t) => (
-              <button
-                key={t}
-                onClick={() => setTab(t)}
-                className={`text-sm px-4 py-1.5 rounded-lg transition-colors ${tab === t ? "bg-gray-900 text-white" : "text-gray-500 hover:text-gray-700"}`}
-              >
-                {t === "manual" ? "Qo'lda kiritish" : "Ommaviy import"}
-              </button>
-            ))}
-          </div>
+          <SegmentedControl
+            value={tab}
+            onChange={setTab}
+            className="mb-5 max-w-xs"
+            options={[
+              { value: "manual", label: "Qo'lda kiritish" },
+              { value: "bulk", label: "Ommaviy import" },
+            ]}
+          />
 
           <div>
             {tab === "manual" ? (

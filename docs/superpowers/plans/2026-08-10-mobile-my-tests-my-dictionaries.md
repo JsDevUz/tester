@@ -2105,7 +2105,7 @@ export function MyDictionariesScreen({ navigation }: Props) {
           <Pressable
             disabled={!newName.trim() || creating}
             onPress={() => void handleCreate()}
-            className="h-12 w-12 items-center justify-center rounded-xl bg-indigo-600 disabled:opacity-40"
+            className="h-11 w-12 items-center justify-center rounded-xl bg-indigo-600 disabled:opacity-40"
           >
             <Plus size={20} color="#ffffff" />
           </Pressable>
