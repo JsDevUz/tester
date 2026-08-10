@@ -11,6 +11,11 @@ import {
   type ApiChallengeLeaderboardEntry,
   type ChallengeLeaderboardMetric,
 } from "../api/challenges";
+import {
+  apiGetMyChallengeWordLeaderboard,
+  apiListMyChallengeWords,
+  type ApiStudentChallengeWord,
+} from "../api/challenge-words";
 
 const METRICS: { key: ChallengeLeaderboardMetric; label: string }[] = [
   { key: "overall", label: "Umumiy" },
@@ -30,17 +35,23 @@ export function ChallengeDetailPage() {
   const [endPage, setEndPage] = useState("");
   const [newWords, setNewWords] = useState("");
   const [requiredTest, setRequiredTest] = useState<{ bookId: string; slug: string; name: string } | null>(null);
+  const [challengeWords, setChallengeWords] = useState<ApiStudentChallengeWord[]>([]);
 
   useEffect(() => {
     if (id) void apiGetMyChallengeDetail(id).then(setDetail);
   }, [id]);
 
   useEffect(() => {
-    if (id && tab === "leaderboard")
-      void apiGetMyChallengeLeaderboard(id, metric).then((r) =>
-        setEntries(r.entries),
-      );
-  }, [id, tab, metric]);
+    if (!id || tab !== "leaderboard" || !detail) return;
+    const request = detail.type === "soz_yodlash"
+      ? apiGetMyChallengeWordLeaderboard(id)
+      : apiGetMyChallengeLeaderboard(id, metric);
+    void request.then((result) => setEntries(result.entries));
+  }, [id, tab, metric, detail]);
+
+  useEffect(() => {
+    if (id && detail?.type === "soz_yodlash") void apiListMyChallengeWords(id).then(setChallengeWords);
+  }, [id, detail?.type]);
 
   if (!detail || !id)
     return (
@@ -105,7 +116,7 @@ export function ChallengeDetailPage() {
             onClick={() => setTab("books")}
             className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold ${tab === "books" ? "bg-gray-900 text-white" : "text-gray-500"}`}
           >
-            Kitoblar
+            {detail.type === "soz_yodlash" ? "So'zlar" : "Kitoblar"}
           </button>
           <button
             type="button"
@@ -117,6 +128,27 @@ export function ChallengeDetailPage() {
         </div>
 
         {tab === "books" ? (
+          detail.type === "soz_yodlash" ? (
+            <div className="student-course-card challenge-detail-card rounded-3xl p-4">
+              <div className="mb-4 flex items-center justify-between gap-3">
+                <div>
+                  <p className="font-bold text-gray-800">So'zlar</p>
+                  <p className="text-xs text-gray-400">{challengeWords.filter((word) => word.known).length}/{challengeWords.length} yodlangan</p>
+                </div>
+                <button type="button" onClick={() => navigate(`/challenges/${id}/practice`)} className="rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white">Mashq qilish</button>
+              </div>
+              <div className="flex flex-col gap-2">
+                {challengeWords.map((word) => (
+                  <div key={word.id} className="challenge-detail-input grid grid-cols-[1fr_1fr_auto] items-center gap-3 rounded-xl px-3 py-2.5">
+                    <span className="truncate text-sm font-semibold text-gray-800">{word.word}</span>
+                    <span className="truncate text-sm text-gray-500">{word.translation}</span>
+                    <span className={`text-xs font-bold ${word.known ? "text-green-600" : "text-gray-300"}`}>{word.known ? "Bilaman" : "—"}</span>
+                  </div>
+                ))}
+                {challengeWords.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Hali so'z yo'q</p>}
+              </div>
+            </div>
+          ) : (
           <div className="flex flex-col gap-3">
             {detail.books.map((book) => (
               <div
@@ -218,9 +250,10 @@ export function ChallengeDetailPage() {
               </div>
             ))}
           </div>
+          )
         ) : (
           <div className="student-course-card challenge-detail-card rounded-3xl p-3">
-            <div className="mb-4 flex gap-2 overflow-x-auto">
+            {detail.type !== "soz_yodlash" && <div className="mb-4 flex gap-2 overflow-x-auto">
               {METRICS.map((m) => (
                 <button
                   key={m.key}
@@ -231,7 +264,7 @@ export function ChallengeDetailPage() {
                   {m.label}
                 </button>
               ))}
-            </div>
+            </div>}
             <div className="flex flex-col gap-2">
               {entries.map((entry) => (
                 <div

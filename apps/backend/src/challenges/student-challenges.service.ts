@@ -119,7 +119,7 @@ export class StudentChallengesService {
       };
     }));
 
-    return { id: challenge.id, name: challenge.name, description: challenge.description, imageUrl: challenge.imageUrl, books: results };
+    return { id: challenge.id, name: challenge.name, description: challenge.description, imageUrl: challenge.imageUrl, type: challenge.type, books: results };
   }
 
   async addEvent(challengeId: string, bookId: string, studentId: string, data: { endPage: number; newWordsCount: number }) {

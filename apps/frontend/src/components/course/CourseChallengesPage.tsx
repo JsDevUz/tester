@@ -9,6 +9,7 @@ import { Breadcrumb } from './Breadcrumb';
 import { CourseSidePanel } from './CourseSidePanel';
 import { ConfirmDeleteModal } from './ConfirmDeleteModal';
 import type { ApiChallengeBook } from '../../api/challenges';
+import { CourseChallengeWordsPanel } from './CourseChallengeWordsPanel';
 
 interface CourseChallengesPageProps {
   courseId: string;
@@ -26,7 +27,7 @@ export function CourseChallengesPage({
   const { courses } = useCourseStore();
   const {
     challengesByCourse, detail, loadChallenges, createChallenge, loadChallengeDetail,
-    deleteChallenge, addBook, updateBook, deleteBook, setBookTest, removeBookTest,
+    deleteChallenge, addBook, deleteBook, setBookTest, removeBookTest,
   } = useChallengeStore();
   const course = courses.find((c) => c.id === courseId);
   const challenges = challengesByCourse[courseId] ?? [];
@@ -42,9 +43,9 @@ export function CourseChallengesPage({
 
   if (!course) return null;
 
-  async function handleCreate(name: string, description: string, imageUrl: string) {
+  async function handleCreate(name: string, description: string, imageUrl: string, type: string) {
     try {
-      const challenge = await createChallenge(courseId, { name, description, imageUrl });
+      const challenge = await createChallenge(courseId, { name, description, imageUrl, type });
       setCreating(false);
       setSelectedId(challenge.id);
     } catch (error: any) {
@@ -70,15 +71,18 @@ export function CourseChallengesPage({
             <p className="text-sm text-gray-400">{detail.description || 'Tavsif kiritilmagan'}</p>
           </div>
 
-          <BooksPanel
-            books={detail.books}
-            allTests={allTests}
-            onAddBook={(title, totalPages) => void addBook(detail.id, { title, totalPages })}
-            onUpdateBook={(bookId, data) => void updateBook(detail.id, bookId, data)}
-            onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
-            onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
-            onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
-          />
+          {detail.type === 'soz_yodlash' ? (
+            <CourseChallengeWordsPanel challengeId={detail.id} />
+          ) : (
+            <BooksPanel
+              books={detail.books}
+              allTests={allTests}
+              onAddBook={(title, totalPages) => void addBook(detail.id, { title, totalPages })}
+              onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
+              onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
+              onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
+            />
+          )}
 
           <div className="mt-4 rounded-2xl bg-white p-5">
             <button
@@ -190,10 +194,11 @@ export function CourseChallengesPage({
   );
 }
 
-function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, description: string, imageUrl: string) => void; onClose: () => void }) {
+function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, description: string, imageUrl: string, type: string) => void; onClose: () => void }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [imageUrl, setImageUrl] = useState('');
+  const [type, setType] = useState('kitobxonlik');
   const [uploading, setUploading] = useState(false);
 
   async function handleImageChange(e: React.ChangeEvent<HTMLInputElement>) {
@@ -222,8 +227,9 @@ function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, 
         </div>
 
         <label className="mb-1.5 block text-sm text-gray-500">Turi</label>
-        <select disabled value="kitobxonlik" className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm text-gray-500 outline-none">
+        <select value={type} onChange={(event) => setType(event.target.value)} className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm text-gray-500 outline-none">
           <option value="kitobxonlik">Kitobxonlik</option>
+          <option value="soz_yodlash">So'z yodlash</option>
         </select>
 
         <label className="mb-1.5 block text-sm text-gray-500">Nomi</label>
@@ -241,7 +247,7 @@ function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, 
         <button
           type="button"
           disabled={!name.trim()}
-          onClick={() => onCreate(name.trim(), description.trim(), imageUrl)}
+          onClick={() => onCreate(name.trim(), description.trim(), imageUrl, type)}
           className="w-full rounded-2xl bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-200"
         >
           Yaratish
@@ -252,12 +258,11 @@ function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, 
 }
 
 function BooksPanel({
-  books, allTests, onAddBook, onUpdateBook, onDeleteBook, onSetTest, onRemoveTest,
+  books, allTests, onAddBook, onDeleteBook, onSetTest, onRemoveTest,
 }: {
   books: ApiChallengeBook[];
   allTests: MyTestSummary[];
   onAddBook: (title: string, totalPages: number) => void;
-  onUpdateBook: (bookId: string, data: Partial<{ title: string; totalPages: number }>) => void;
   onDeleteBook: (bookId: string) => void;
   onSetTest: (bookId: string, data: { testId: string; triggerPage?: number; forceNow?: boolean }) => void;
   onRemoveTest: (bookId: string) => void;

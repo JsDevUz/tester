@@ -204,6 +204,13 @@
       "when": 1786280553977,
       "tag": "0028_graceful_electro",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1786346595315,
+      "tag": "0029_late_dragon_lord",
+      "breakpoints": true
     }
   ]
 }

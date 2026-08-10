@@ -1,7 +1,7 @@
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import {
-  challengeBookProgress, challengeBooks, challengeBookTests, challengeEvents, challengeParticipants,
+  challengeBookProgress, challengeBooks, challengeBookTests, challengeEvents, challengeParticipants, challengeWordProgress,
   challenges, courses, submissions, tests,
 } from '../db/schema';
 import { and, eq, inArray } from 'drizzle-orm';
@@ -63,13 +63,13 @@ export class ChallengesService {
       where: eq(challengeBooks.id, bookId),
       with: { challenge: true },
     });
-    if (!book || book.challenge.adminId !== adminId) throw new NotFoundException('Book not found');
+    if (!book || book.challenge.adminId !== adminId || book.challenge.type !== 'kitobxonlik') throw new NotFoundException('Book not found');
     return book;
   }
 
   async addBook(challengeId: string, adminId: string, data: { title: string; totalPages: number }) {
     const challenge = await db.query.challenges.findFirst({ where: and(eq(challenges.id, challengeId), eq(challenges.adminId, adminId)) });
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    if (!challenge || challenge.type !== 'kitobxonlik') throw new NotFoundException('Challenge not found');
 
     const existing = await db.query.challengeBooks.findMany({ where: eq(challengeBooks.challengeId, challengeId) });
     const [book] = await db.insert(challengeBooks).values({
@@ -147,7 +147,7 @@ export class ChallengesService {
   }
 
   async leaderboard(challengeId: string, adminId: string, metric: ChallengeLeaderboardMetric, bookId?: string) {
-    await this.findOneOwned(challengeId, adminId);
+    const challenge = await this.findOneOwned(challengeId, adminId);
 
     const participants = await db.query.challengeParticipants.findMany({
       where: eq(challengeParticipants.challengeId, challengeId),
@@ -156,6 +156,23 @@ export class ChallengesService {
     if (participants.length === 0) return { entries: [] };
 
     const participantIds = participants.map((p) => p.id);
+    if (challenge.type === 'soz_yodlash') {
+      const progress = await db.query.challengeWordProgress.findMany({
+        where: inArray(challengeWordProgress.challengeParticipantId, participantIds),
+      });
+      const counts = new Map<string, number>();
+      for (const row of progress) if (row.known) counts.set(row.challengeParticipantId, (counts.get(row.challengeParticipantId) ?? 0) + 1);
+      return {
+        entries: participants.map((participant) => ({
+          studentId: participant.studentId,
+          studentName: participant.student.displayName,
+          studentAvatarUrl: participant.student.displayAvatarUrl,
+          value: counts.get(participant.id) ?? 0,
+          isCurrentStudent: false,
+        })).sort((a, b) => b.value - a.value || a.studentName.localeCompare(b.studentName, 'uz'))
+          .map((entry, index) => ({ ...entry, rank: index + 1 })),
+      };
+    }
     const events = await db.query.challengeEvents.findMany({
       where: inArray(challengeEvents.challengeParticipantId, participantIds),
     });

@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Put, Query, Req, UseGuards } from '@nestjs/common';
-import { IsBoolean, IsInt, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
+import { IsBoolean, IsIn, IsInt, IsOptional, IsString, IsUUID, Min, MinLength } from 'class-validator';
 import { ChallengesService } from './challenges.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
@@ -9,14 +9,14 @@ class CreateChallengeDto {
   @IsString() @MinLength(1) name: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() imageUrl?: string;
-  @IsOptional() @IsString() type?: string;
+  @IsOptional() @IsIn(['kitobxonlik', 'soz_yodlash']) type?: string;
 }
 
 class UpdateChallengeDto {
   @IsOptional() @IsString() @MinLength(1) name?: string;
   @IsOptional() @IsString() description?: string;
   @IsOptional() @IsString() imageUrl?: string;
-  @IsOptional() @IsString() type?: string;
+  @IsOptional() @IsIn(['kitobxonlik', 'soz_yodlash']) type?: string;
 }
 
 class AddBookDto {

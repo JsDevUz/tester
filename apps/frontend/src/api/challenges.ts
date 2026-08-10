@@ -169,6 +169,7 @@ export interface ApiMyChallengeDetail {
   name: string;
   description: string;
   imageUrl: string | null;
+  type: string;
   books: ApiMyChallengeBook[];
 }
 

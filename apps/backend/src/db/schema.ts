@@ -775,6 +775,7 @@ export const challengeEvents = pgTable('challenge_events', {
 export const challengesRelations = relations(challenges, ({ one, many }) => ({
   course: one(courses, { fields: [challenges.courseId], references: [courses.id] }),
   books: many(challengeBooks),
+  words: many(challengeWords),
   participants: many(challengeParticipants),
 }));
 
@@ -805,4 +806,33 @@ export const challengeBookProgressRelations = relations(challengeBookProgress, (
 export const challengeEventsRelations = relations(challengeEvents, ({ one }) => ({
   participant: one(challengeParticipants, { fields: [challengeEvents.challengeParticipantId], references: [challengeParticipants.id] }),
   book: one(challengeBooks, { fields: [challengeEvents.challengeBookId], references: [challengeBooks.id] }),
+}));
+
+export const challengeWords = pgTable('challenge_words', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeId: uuid('challenge_id').notNull().references(() => challenges.id, { onDelete: 'cascade' }),
+  word: text('word').notNull(),
+  translation: text('translation').notNull(),
+  orderIndex: integer('order_index').notNull().default(0),
+  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+});
+
+export const challengeWordProgress = pgTable('challenge_word_progress', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  challengeParticipantId: uuid('challenge_participant_id').notNull().references(() => challengeParticipants.id, { onDelete: 'cascade' }),
+  challengeWordId: uuid('challenge_word_id').notNull().references(() => challengeWords.id, { onDelete: 'cascade' }),
+  known: boolean('known').notNull().default(false),
+  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
+}, (table) => ({
+  uniqueParticipantWord: uniqueIndex('challenge_word_progress_participant_id_word_id_key').on(table.challengeParticipantId, table.challengeWordId),
+}));
+
+export const challengeWordsRelations = relations(challengeWords, ({ one, many }) => ({
+  challenge: one(challenges, { fields: [challengeWords.challengeId], references: [challenges.id] }),
+  progress: many(challengeWordProgress),
+}));
+
+export const challengeWordProgressRelations = relations(challengeWordProgress, ({ one }) => ({
+  participant: one(challengeParticipants, { fields: [challengeWordProgress.challengeParticipantId], references: [challengeParticipants.id] }),
+  word: one(challengeWords, { fields: [challengeWordProgress.challengeWordId], references: [challengeWords.id] }),
 }));
