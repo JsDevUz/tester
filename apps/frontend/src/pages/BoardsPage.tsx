@@ -115,9 +115,9 @@ export function BoardsPage() {
         <div className="mb-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <div className="flex items-center gap-2">
-              <h1 className="text-2xl font-bold text-gray-900 tracking-tight">Mening doskalarim</h1>
+              <h1 className="text-2xl font-bold text-gray-900 dark:text-zinc-100 tracking-tight">Mening doskalarim</h1>
             </div>
-            <p className="mt-1 text-xs text-gray-500">
+            <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
               Chizmalar va doskalaringiz ro'yxati
             </p>
           </div>
@@ -125,7 +125,7 @@ export function BoardsPage() {
           <button
             type="button"
             onClick={() => { setNewTitle(""); setShowCreateModal(true); }}
-            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white  hover:bg-indigo-700 active:scale-95 transition-all w-fit"
+            className="flex items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 active:scale-95 transition-all w-fit"
           >
             <Plus size={16} />
             <span>Yangi doska</span>
@@ -136,22 +136,22 @@ export function BoardsPage() {
         {loading ? (
           <div className="space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className="animate-pulse rounded-2xl bg-gray-100 h-16 w-full" />
+              <div key={i} className="animate-pulse rounded-2xl bg-gray-100 dark:bg-zinc-800 h-16 w-full" />
             ))}
           </div>
         ) : boards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-28 text-center">
-            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-50">
-              <Presentation size={36} className="text-indigo-500" />
+            <div className="mb-4 flex h-20 w-20 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-950/50">
+              <Presentation size={36} className="text-indigo-500 dark:text-indigo-400" />
             </div>
-            <h2 className="text-lg font-bold text-gray-800 mb-1">Hali doskalar yo'q</h2>
-            <p className="text-sm text-gray-400 mb-6 max-w-xs">
+            <h2 className="text-lg font-bold text-gray-800 dark:text-zinc-100 mb-1">Hali doskalar yo'q</h2>
+            <p className="text-sm text-gray-400 dark:text-zinc-400 mb-6 max-w-xs">
               Yangi doska yarating — PDF, daftar va chizma vositalari bilan ishlang
             </p>
             <button
               type="button"
               onClick={() => { setNewTitle(""); setShowCreateModal(true); }}
-              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white  hover:bg-indigo-700 transition-all"
+              className="flex items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-700 transition-all"
             >
               <Plus size={16} />
               Birinchi doskani yarating
@@ -159,7 +159,7 @@ export function BoardsPage() {
           </div>
         ) : (
           <div className="w-full overflow-hidden">
-            <div className="divide-y divide-gray-100/80">
+            <div className="flex flex-col gap-2.5">
               {boards.slice(0, displayCount).map((board) => {
                 const modifiedStr = fmtShortMonthDay(board.startedAt);
                 const createdStr = fmtShortDate(board.startedAt);
@@ -168,20 +168,20 @@ export function BoardsPage() {
                   <div
                     key={board.id}
                     onClick={() => navigate(`/boards/${board.id}`)}
-                    className="group flex items-center justify-between py-3.5 px-3 rounded-xl hover:bg-gray-50/90 transition-all duration-150 cursor-pointer select-none"
+                    className="group flex items-center justify-between py-3.5 px-4 rounded-2xl bg-white dark:bg-[#30313a] border border-gray-100 dark:border-zinc-700/60 shadow-sm hover:bg-gray-50 dark:hover:bg-[#383944] transition-all duration-150 cursor-pointer select-none"
                   >
                     {/* Left: Icon + Title + Subtitle */}
-                    <div className="flex items-center gap-2.5 min-w-0 flex-1 pr-4">
-                      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-indigo-50 text-indigo-600 border border-indigo-100/80">
-                        <Presentation size={18} />
+                    <div className="flex items-center gap-3 min-w-0 flex-1 pr-4">
+                      <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-50 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400 border border-indigo-100/80 dark:border-indigo-800/40">
+                        <Presentation size={20} />
                       </div>
                       <div className="flex flex-col min-w-0">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-gray-900 text-sm truncate group-hover:text-indigo-600 transition-colors">
+                          <span className="font-bold text-gray-900 dark:text-zinc-100 text-sm truncate group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                             {board.title ?? "Untitled"}
                           </span>
                         </div>
-                        <span className="text-xs text-gray-400 truncate">
+                        <span className="text-xs text-gray-400 dark:text-zinc-400 truncate">
                           Modified by JSDEV, {modifiedStr}
                         </span>
                       </div>
@@ -190,17 +190,17 @@ export function BoardsPage() {
                     {/* Right Columns: Dates, Author, Star, Actions */}
                     <div className="flex items-center gap-8 sm:gap-12 shrink-0">
                       {/* Last Modified Date */}
-                      <span className="text-xs font-normal text-gray-400 w-16 text-right hidden md:inline-block">
+                      <span className="text-xs font-normal text-gray-400 dark:text-zinc-400 w-16 text-right hidden md:inline-block">
                         {modifiedStr}
                       </span>
 
                       {/* Created Date */}
-                      <span className="text-xs font-normal text-gray-400 w-24 text-right hidden lg:inline-block">
+                      <span className="text-xs font-normal text-gray-400 dark:text-zinc-400 w-24 text-right hidden lg:inline-block">
                         {createdStr}
                       </span>
 
                       {/* Owner / Author */}
-                      <span className="text-xs font-medium text-gray-500 uppercase tracking-wider w-14 text-right hidden sm:inline-block">
+                      <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider w-14 text-right hidden sm:inline-block">
                         JSDEV
                       </span>
 
@@ -224,7 +224,7 @@ export function BoardsPage() {
                             });
                             setMenuOpenBoardId(board.id);
                           }}
-                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-all"
+                          className="flex h-8 w-8 items-center justify-center rounded-lg text-gray-400 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-700 hover:text-gray-700 dark:hover:text-zinc-200 transition-all"
                         >
                           <MoreVertical size={16} />
                         </button>
@@ -237,7 +237,7 @@ export function BoardsPage() {
 
             {/* Sentinel for Infinite Scroll */}
             {displayCount < boards.length && (
-              <div ref={sentinelRef} className="flex items-center justify-center py-6 text-xs font-semibold text-indigo-600 gap-2">
+              <div ref={sentinelRef} className="flex items-center justify-center py-6 text-xs font-semibold text-indigo-600 dark:text-indigo-400 gap-2">
                 <Loader2 size={18} className="animate-spin" />
                 <span>Ko'proq doskalar yuklanmoqda...</span>
               </div>
@@ -252,7 +252,7 @@ export function BoardsPage() {
         if (!board) return null;
         return (
           <div
-            className="fixed z-50 w-44 overflow-hidden rounded-xl border border-gray-100 bg-white p-1.5 shadow-xl"
+            className="fixed z-50 w-44 overflow-hidden rounded-xl border border-gray-100 dark:border-zinc-700 bg-white dark:bg-[#30313a] p-1.5 shadow-xl"
             style={{
               right: window.innerWidth - menuAnchor.x,
               ...(menuAnchor.above
@@ -270,7 +270,7 @@ export function BoardsPage() {
                 void navigator.clipboard.writeText(shareUrl);
                 toast.success("Ko'rish havolasi nusxalandi");
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-gray-700 hover:bg-gray-50 transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors"
             >
               <Link2 size={14} />
               <span>Havolani nusxalash</span>
@@ -282,7 +282,7 @@ export function BoardsPage() {
                 setMenuAnchor(null);
                 setDeleteTarget(board);
               }}
-              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-red-600 hover:bg-red-50 transition-colors"
+              className="flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-left text-xs font-medium text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors"
             >
               <Trash2 size={14} />
               <span>O'chirish</span>
@@ -297,15 +297,15 @@ export function BoardsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onPointerDown={(e) => { if (e.target === e.currentTarget && !creating) setShowCreateModal(false); }}
         >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#30313a] border border-gray-100 dark:border-zinc-700/60 p-6 shadow-xl flex flex-col gap-4">
             <div className="flex items-center gap-2">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 text-indigo-600">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-100 dark:bg-indigo-950/50 text-indigo-600 dark:text-indigo-400">
                 <Presentation size={20} />
               </div>
-              <h2 className="font-semibold text-gray-900">Yangi doska yaratish</h2>
+              <h2 className="font-semibold text-gray-900 dark:text-zinc-100">Yangi doska yaratish</h2>
             </div>
             <div>
-              <label className="block text-xs font-semibold text-gray-500 mb-1">
+              <label className="block text-xs font-semibold text-gray-500 dark:text-zinc-400 mb-1">
                 Doska nomi (ixtiyoriy)
               </label>
               <input
@@ -315,7 +315,7 @@ export function BoardsPage() {
                 onKeyDown={(e) => { if (e.key === "Enter" && !creating) void handleCreate(); }}
                 placeholder="Masalan: AI Playground"
                 autoFocus
-                className="w-full rounded-xl border border-gray-200 bg-gray-50 px-3 py-2 text-sm text-gray-800 focus:border-indigo-500 focus:bg-white focus:outline-none"
+                className="w-full rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 px-3 py-2 text-sm text-gray-800 dark:text-zinc-100 focus:border-indigo-500 focus:bg-white dark:focus:bg-zinc-800 focus:outline-none"
               />
             </div>
             <div className="flex justify-end gap-2">
@@ -323,7 +323,7 @@ export function BoardsPage() {
                 type="button"
                 onClick={() => setShowCreateModal(false)}
                 disabled={creating}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50"
               >
                 Bekor qilish
               </button>
@@ -351,14 +351,14 @@ export function BoardsPage() {
           className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4"
           onPointerDown={(e) => { if (e.target === e.currentTarget && !deleting) setDeleteTarget(null); }}
         >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl flex flex-col gap-4">
-            <div className="flex items-center gap-2 text-red-600">
-              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-[#30313a] border border-gray-100 dark:border-zinc-700/60 p-6 shadow-xl flex flex-col gap-4">
+            <div className="flex items-center gap-2 text-red-600 dark:text-red-400">
+              <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-100 dark:bg-red-950/50">
                 <Trash2 size={20} />
               </div>
-              <h3 className="font-semibold text-gray-900">Doskani o'chirish</h3>
+              <h3 className="font-semibold text-gray-900 dark:text-zinc-100">Doskani o'chirish</h3>
             </div>
-            <p className="text-sm text-gray-600">
+            <p className="text-sm text-gray-600 dark:text-zinc-300">
               <span className="font-semibold">"{deleteTarget.title ?? "Nomsiz doska"}"</span> ni
               va uning barcha chizmalarini o'chirib tashlamoqchimisiz? Bu amalni qaytarib bo'lmaydi.
             </p>
@@ -367,7 +367,7 @@ export function BoardsPage() {
                 type="button"
                 onClick={() => setDeleteTarget(null)}
                 disabled={deleting}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 dark:text-zinc-400 hover:bg-gray-100 dark:hover:bg-zinc-800 disabled:opacity-50"
               >
                 Bekor qilish
               </button>

@@ -9,6 +9,7 @@ import {
   X,
 } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import { useStudentSchoolStore } from "../stores/studentSchoolStore";
 
 export function SchoolsListPage() {
@@ -100,6 +101,10 @@ export function SchoolsListPage() {
               </button>
             </div>
           )}
+        </div>
+
+        <div className="px-4 pt-3.5 lg:px-5">
+          <StudentActiveBanners />
         </div>
 
         <div className="student-responsive-panel-section px-4 pb-5 pt-4 lg:px-5">

@@ -9,7 +9,6 @@ import {
   BookOpen,
   ClipboardList,
   MessageCircle,
-  Radio,
   RefreshCw,
   School,
   Settings,
@@ -22,11 +21,6 @@ import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessen
 import { UserAvatar } from "../UserAvatar";
 import { SettingsModal } from "../SettingsModal";
 import { formatPhone } from "../../utils/phone";
-import {
-  apiActiveClassSessions,
-  type ActiveClassSession,
-} from "../../api/classroom";
-import { apiActiveTestPins, type ActiveTestPin } from "../../api/submissions";
 
 const NAV_ITEMS = [
   {
@@ -80,10 +74,6 @@ export function StudentShell({ children }: { children: ReactNode }) {
   const [refreshing, setRefreshing] = useState(false);
   const pullStartYRef = useRef<number | null>(null);
   const pullDistanceRef = useRef(0);
-  const [liveClassSessions, setLiveClassSessions] = useState<
-    ActiveClassSession[]
-  >([]);
-  const [activeTestPins, setActiveTestPins] = useState<ActiveTestPin[]>([]);
   const profileContact = admin?.phone ? formatPhone(admin.phone) : "Profil";
   const isInnerPage =
     location.pathname.startsWith("/history/") ||
@@ -136,34 +126,6 @@ export function StudentShell({ children }: { children: ReactNode }) {
       window.removeEventListener("touchcancel", finishPull);
     };
   }, [refreshing]);
-
-  // Aktiv jonli dars bor-yo'qligini davriy tekshiramiz (banner uchun)
-  useEffect(() => {
-    const load = () => {
-      apiActiveClassSessions()
-        .then(setLiveClassSessions)
-        .catch(() => { });
-    };
-    load();
-    const timer = window.setInterval(load, 60_000);
-    return () => window.clearInterval(timer);
-  }, []);
-
-  useEffect(() => {
-    if (isMessenger) {
-      setActiveTestPins([]);
-      return;
-    }
-
-    const load = () => {
-      apiActiveTestPins()
-        .then(setActiveTestPins)
-        .catch(() => setActiveTestPins([]));
-    };
-    load();
-    const timer = window.setInterval(load, 60_000);
-    return () => window.clearInterval(timer);
-  }, [isMessenger]);
 
   const viewportBaselineRef = useRef(0);
   const [messengerViewport, setMessengerViewport] = useState<{
@@ -311,56 +273,6 @@ export function StudentShell({ children }: { children: ReactNode }) {
         <main
           className={`student-main-content min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}
         >
-          {!isMessenger &&
-            liveClassSessions.map((s) => (
-              <button
-                key={s.id}
-                type="button"
-                onClick={() => navigate(`/classroom/${s.id}`)}
-                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
-              >
-                <Radio
-                  size={20}
-                  className="shrink-0 text-red-500 motion-safe:animate-pulse"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-gray-900">
-                    Jonli dars ketmoqda — {s.courseName}
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Darsga kirish uchun bosing
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">
-                  Kirish
-                </span>
-              </button>
-            ))}
-          {!isMessenger &&
-            activeTestPins.map((pin) => (
-              <button
-                key={pin.testId}
-                type="button"
-                onClick={() => navigate(`/t/${pin.slug}`)}
-                className="mx-4 mt-4 flex w-[calc(100%-2rem)] items-center gap-2 rounded-2xl bg-red-50 px-4 py-3 text-left transition-colors hover:bg-red-100 lg:mx-0 lg:mt-0 lg:mb-3 lg:w-full"
-              >
-                <Radio
-                  size={20}
-                  className="shrink-0 text-red-500 motion-safe:animate-pulse"
-                />
-                <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-semibold text-gray-900">
-                    Imtihon boshlandi — {pin.testName}
-                  </span>
-                  <span className="block text-xs text-gray-500">
-                    Kirish uchun bosing
-                  </span>
-                </span>
-                <span className="shrink-0 rounded-xl bg-red-500 px-3 py-1.5 text-xs font-bold text-white">
-                  Kirish
-                </span>
-              </button>
-            ))}
           {children}
         </main>
       </div>

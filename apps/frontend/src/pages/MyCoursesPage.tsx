@@ -25,6 +25,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import {
   apiGetMyCourseDetail,
   apiGetMyCourseLeaderboard,
@@ -176,6 +177,8 @@ export function MyCoursesPage() {
             Mening kurslarim
           </h1>
         )}
+
+        <StudentActiveBanners className="mb-4" />
 
         {loading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
 

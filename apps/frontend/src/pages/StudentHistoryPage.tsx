@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChevronRight, Trophy, BookOpen, ThumbsUp, Search } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import { apiGetMySubmissions, type Submission } from "../api/submissions";
 import { formatDateTime } from "../utils/date";
 
@@ -112,6 +113,10 @@ export function StudentHistoryPage() {
               <Search size={19} />
             </button>
           </div>
+        </div>
+
+        <div className="px-4 pt-3.5 lg:px-5">
+          <StudentActiveBanners />
         </div>
 
         <div className="student-responsive-panel-section px-4 pb-5 pt-4 lg:px-5">

@@ -889,17 +889,15 @@ function PracticeMessengerContent() {
                                     current === message.id ? null : message.id,
                                   );
                                 }}
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 py-2.5 sm:max-w-[78%] ${own
-                                    ? practiceMessage
-                                      ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
-                                      : "practice-message-own rounded-[22px] rounded-br-[6px]"
-                                    : "practice-message-incoming rounded-[22px] rounded-bl-[6px]"
-                                  }`}
+                                className={`practice-message-bubble group relative max-w-[92%] py-2.5 sm:max-w-[78%] ${own
+                                      ? "practice-message-own rounded-2xl rounded-br-md pl-4 pr-7"
+                                      : "practice-message-incoming rounded-2xl rounded-bl-md pl-7 pr-4"
+                                    }`}
                               >
                                 {!message.deletedAt && (
                                   <div
                                     onClick={(event) => event.stopPropagation()}
-                                    className="absolute top-1.5 right-2 z-50"
+                                    className={`absolute top-1.5 z-50 ${own ? "right-1.5" : "left-1.5"}`}
                                   >
                                     <button
                                       type="button"
@@ -912,14 +910,14 @@ function PracticeMessengerContent() {
                                       }
                                       className={`flex h-6 w-6 items-center justify-center rounded-full transition-all ${own
                                           ? "text-white/80 hover:bg-white/20 hover:text-white"
-                                          : "text-gray-500 hover:bg-gray-200/60 hover:text-gray-800 dark:text-zinc-300 dark:hover:bg-zinc-700/60"
+                                          : "text-gray-400 hover:bg-black/10 hover:text-gray-800 dark:text-zinc-400 dark:hover:bg-white/10 dark:hover:text-zinc-100"
                                         } ${activeMessageActionsId === message.id
                                           ? "opacity-100 bg-black/20"
                                           : "opacity-80 sm:opacity-0 sm:group-hover:opacity-100"
                                         }`}
                                       aria-label="Amallar"
                                     >
-                                      <MoreVertical size={15} />
+                                      <MoreVertical size={14} />
                                     </button>
 
                                     {activeMessageActionsId === message.id && (

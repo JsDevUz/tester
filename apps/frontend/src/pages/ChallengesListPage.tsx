@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { ArrowLeft, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import {
   apiListMyChallenges,
   apiJoinChallenge,
@@ -51,6 +52,8 @@ export function ChallengesListPage() {
         <p className="mb-6 text-sm text-gray-400">
           Kurslaringizdagi challenge-lari
         </p>
+
+        <StudentActiveBanners className="mb-6" />
 
         {loading ? (
           <p className="text-sm text-gray-400">Yuklanmoqda...</p>

@@ -189,34 +189,23 @@
   }
 }
 
-/* Practice messenger bubbles — compact Telegram-style message flow. */
+/* Practice messenger bubbles */
 .practice-message-bubble {
-  isolation: isolate;
-}
-
-.practice-message-bubble::after {
-  position: absolute;
-  bottom: 0;
-  z-index: -1;
-  width: 14px;
-  height: 14px;
-  background: inherit;
-  content: "";
-}
-
-.practice-message-incoming::after {
-  left: -6px;
-  clip-path: polygon(100% 0, 100% 100%, 0 100%);
+  position: relative;
 }
 
 .practice-message-incoming {
-  background-color: #f1f1f2 !important;
-  color: #18181b !important;
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  border: none !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .practice-message-own {
-  background-color: #18181b !important;
-  color: #fff !important;
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
 }
 
 .practice-messenger-chat-active {
@@ -226,229 +215,237 @@
 .practice-messenger-avatar,
 .practice-messenger-accent-icon,
 .practice-messenger-primary {
-  background-color: #18181b !important;
+  background-color: #4f46e5 !important;
   color: #fff !important;
 }
 
 .practice-messenger-primary:hover {
-  background-color: #27272a !important;
+  background-color: #4338ca !important;
 }
 
 .practice-message-incoming .practice-messenger-result {
-  background-color: #18181b !important;
-  color: #fff !important;
+  background-color: #f1f5f9 !important;
+  color: #0f172a !important;
 }
 
 .practice-message-own .practice-messenger-result {
-  background-color: #fff !important;
-  color: #18181b !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 .practice-message-reply-incoming {
-  border-color: #18181b !important;
-  background-color: #fff !important;
-  color: #52525b !important;
+  border-color: #6366f1 !important;
+  background-color: #f8fafc !important;
+  color: #475569 !important;
 }
 
 .practice-message-reply-incoming>p:first-child {
-  color: #18181b !important;
+  color: #4f46e5 !important;
 }
 
 .practice-messenger-highlighted {
-  background-color: rgb(24 24 27 / 0.1) !important;
-  box-shadow: 0 0 0 2px rgb(24 24 27 / 0.35);
+  background-color: rgb(79 70 229 / 0.15) !important;
+  box-shadow: 0 0 0 2px rgb(79 70 229 / 0.5);
 }
 
 .practice-messenger-replying {
-  border-color: #18181b !important;
-  background-color: #f1f1f2 !important;
+  border-color: #6366f1 !important;
+  background-color: #f1f5f9 !important;
 }
 
 .practice-messenger-replying-title {
-  color: #18181b !important;
-}
-
-.practice-message-own::after {
-  right: -6px;
-  clip-path: polygon(0 0, 100% 100%, 0 100%);
+  color: #4f46e5 !important;
 }
 
 .practice-message-date span {
-  background: rgb(248 250 252 / 0.86);
-  box-shadow: 0 1px 5px rgb(15 23 42 / 0.06);
+  background: rgb(248 250 252 / 0.9);
+  color: #64748b !important;
+  border: none !important;
+  box-shadow: 0 1px 4px rgb(15 23 42 / 0.05);
 }
 
 :root[data-theme="dark"] .practice-message-incoming {
-  background-color: #30313a !important;
-  color: #f4f7fb !important;
+  background-color: #2b2d39 !important;
+  border: none !important;
+  color: #f8fafc !important;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
 }
 
 :root[data-theme="dark"] .practice-message-own {
-  background-color: #3a3c47 !important;
-  color: #f4f4f5 !important;
+  background-color: #4f46e5 !important;
+  border: none !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
 }
 
 :root[data-theme="dark"] .practice-messenger-chat-active {
-  background-color: #3a3c47 !important;
+  background-color: #30313a !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-avatar,
 :root[data-theme="dark"] .practice-messenger-accent-icon,
 :root[data-theme="dark"] .practice-messenger-primary {
-  background-color: #f4f4f5 !important;
-  color: #18181b !important;
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-primary:hover {
-  background-color: #fff !important;
+  background-color: #4338ca !important;
 }
 
 :root[data-theme="dark"] .practice-message-incoming .practice-messenger-result {
-  background-color: #f4f4f5 !important;
-  color: #18181b !important;
+  background-color: #1e1f26 !important;
+  color: #f8fafc !important;
 }
 
 :root[data-theme="dark"] .practice-message-own .practice-messenger-result {
-  background-color: #18181b !important;
-  color: #fff !important;
+  background-color: rgba(255, 255, 255, 0.2) !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .practice-message-reply-incoming {
-  border-color: #f4f4f5 !important;
-  background-color: #24252c !important;
-  color: #c7c9d1 !important;
+  border-color: #818cf8 !important;
+  background-color: #1e1f26 !important;
+  color: #cbd5e1 !important;
 }
 
 :root[data-theme="dark"] .practice-message-reply-incoming>p:first-child {
-  color: #f4f4f5 !important;
+  color: #818cf8 !important;
 }
 
 :root[data-theme="dark"] .practice-message-reply-incoming>p:last-child {
-  color: #c7c9d1 !important;
+  color: #cbd5e1 !important;
 }
 
 :root[data-theme="dark"] .practice-message-own .practice-message-reply-own {
-  background-color: rgb(0 0 0 / 0.2) !important;
-  border-color: rgb(255 255 255 / 0.75) !important;
-  color: #f4f4f5 !important;
+  background-color: rgba(255, 255, 255, 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.9) !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .practice-message-own .practice-message-reply-own p {
-  color: #f4f4f5 !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-highlighted {
-  background-color: rgb(255 255 255 / 0.1) !important;
-  box-shadow: 0 0 0 2px rgb(255 255 255 / 0.38);
+  background-color: rgb(79 70 229 / 0.25) !important;
+  box-shadow: 0 0 0 2px rgb(99 102 241 / 0.6);
 }
 
 :root[data-theme="dark"] .practice-messenger-replying {
-  border-color: #f4f4f5 !important;
-  background-color: #30313a !important;
+  border-color: #818cf8 !important;
+  background-color: #2b2d39 !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-replying-title {
-  color: #f4f4f5 !important;
+  color: #818cf8 !important;
 }
 
 :root[data-theme="dark"] .practice-message-date span {
-  background: rgb(21 22 27 / 0.82);
-  color: #eef2f7 !important;
+  background: rgb(30 31 38 / 0.85);
+  color: #94a3b8 !important;
+  border: none !important;
   box-shadow: none;
 }
 
 :root[data-theme="dark"] .practice-message-reply-own {
-  background-color: rgb(255 255 255 / 0.14) !important;
-  border-color: rgb(255 255 255 / 0.92) !important;
-  color: #f4f7fb !important;
+  background-color: rgb(255 255 255 / 0.15) !important;
+  border-color: rgba(255, 255, 255, 0.92) !important;
+  color: #ffffff !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .practice-message-incoming {
-    background-color: #30313a !important;
-    color: #f4f7fb !important;
+    background-color: #2b2d39 !important;
+    border: none !important;
+    color: #f8fafc !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
   }
 
   :root:not([data-theme="light"]) .practice-message-own {
-    background-color: #3a3c47 !important;
-    color: #f4f4f5 !important;
+    background-color: #4f46e5 !important;
+    border: none !important;
+    color: #ffffff !important;
+    box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
   }
 
   :root:not([data-theme="light"]) .practice-messenger-chat-active {
-    background-color: #3a3c47 !important;
+    background-color: #30313a !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-avatar,
   :root:not([data-theme="light"]) .practice-messenger-accent-icon,
   :root:not([data-theme="light"]) .practice-messenger-primary {
-    background-color: #f4f4f5 !important;
-    color: #18181b !important;
+    background-color: #4f46e5 !important;
+    color: #ffffff !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-primary:hover {
-    background-color: #fff !important;
+    background-color: #4338ca !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-incoming .practice-messenger-result {
-    background-color: #f4f4f5 !important;
-    color: #18181b !important;
+    background-color: #1e1f26 !important;
+    color: #f8fafc !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-own .practice-messenger-result {
-    background-color: #18181b !important;
-    color: #fff !important;
+    background-color: rgba(255, 255, 255, 0.2) !important;
+    color: #ffffff !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-reply-incoming {
-    border-color: #f4f4f5 !important;
-    background-color: #24252c !important;
-    color: #c7c9d1 !important;
+    border-color: #818cf8 !important;
+    background-color: #1e1f26 !important;
+    color: #cbd5e1 !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-reply-incoming>p:first-child {
-    color: #f4f4f5 !important;
+    color: #818cf8 !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-reply-incoming>p:last-child {
-    color: #c7c9d1 !important;
+    color: #cbd5e1 !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own {
-    background-color: rgb(0 0 0 / 0.2) !important;
-    border-color: rgb(255 255 255 / 0.75) !important;
-    color: #f4f4f5 !important;
+    background-color: rgba(255, 255, 255, 0.15) !important;
+    border-color: rgba(255, 255, 255, 0.9) !important;
+    color: #ffffff !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own p {
-    color: #f4f4f5 !important;
+    color: #ffffff !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-highlighted {
-    background-color: rgb(255 255 255 / 0.1) !important;
-    box-shadow: 0 0 0 2px rgb(255 255 255 / 0.38);
+    background-color: rgb(79 70 229 / 0.25) !important;
+    box-shadow: 0 0 0 2px rgb(99 102 241 / 0.6);
   }
 
   :root:not([data-theme="light"]) .practice-messenger-replying {
-    border-color: #f4f4f5 !important;
-    background-color: #30313a !important;
+    border-color: #818cf8 !important;
+    background-color: #2b2d39 !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-replying-title {
-    color: #f4f4f5 !important;
+    color: #818cf8 !important;
   }
 
   :root:not([data-theme="light"]) .practice-message-date span {
-    background: rgb(21 22 27 / 0.82);
-    color: #eef2f7 !important;
+    background: rgb(30 31 38 / 0.85);
+    color: #94a3b8 !important;
+    border: none !important;
     box-shadow: none;
   }
 
   :root:not([data-theme="light"]) .practice-message-reply-own {
-    background-color: rgb(255 255 255 / 0.14) !important;
+    background-color: rgb(255 255 255 / 0.15) !important;
     border-color: rgb(255 255 255 / 0.92) !important;
-    color: #f4f7fb !important;
+    color: #ffffff !important;
   }
 }
+
 
 html {
   touch-action: pan-x pan-y;
@@ -667,6 +664,7 @@ select::-ms-expand {
   color: #e8eaed;
 }
 
+:root[data-theme="dark"] .bg-\[\#f1f5f9\],
 :root[data-theme="dark"] .bg-\[\#f6f6f6\],
 :root[data-theme="dark"] .bg-gray-50,
 :root[data-theme="dark"] .bg-gray-50\/30,
@@ -675,7 +673,7 @@ select::-ms-expand {
 :root[data-theme="dark"] .bg-gray-50\/60,
 :root[data-theme="dark"] .bg-gray-100,
 :root[data-theme="dark"] .bg-gray-100\/80 {
-  background-color: #171a20 !important;
+  background-color: #1b1c22 !important;
 }
 
 :root[data-theme="dark"] .hover\:bg-gray-50:hover,

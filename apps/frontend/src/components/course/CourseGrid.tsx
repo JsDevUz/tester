@@ -48,26 +48,26 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
       <ActiveClassBanner />
 
       <div className="mb-6 flex items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-gray-800">Kurslar</h2>
+        <h2 className="text-lg font-bold text-gray-800 dark:text-zinc-100">Kurslar</h2>
         <div className="flex items-center gap-2">
           <button
             type="button"
             onClick={() => setShowStartClass(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-100 transition-colors hover:bg-red-600"
+            className="flex items-center gap-1.5 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-100 dark:shadow-none transition-colors hover:bg-red-600"
           >
             <Radio size={16} /> Jonli dars
           </button>
           <button
             type="button"
             onClick={() => navigate("/free-classes")}
-            className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700  transition-colors hover:bg-gray-50"
+            className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-700"
           >
             <PenTool size={16} /> Erkin darslar
           </button>
           <button
             type="button"
             onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 transition-colors hover:bg-indigo-600"
+            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 dark:shadow-none transition-colors hover:bg-indigo-600"
           >
             <Plus size={16} /> Yangi kurs
           </button>

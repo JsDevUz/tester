@@ -1,6 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { BookOpen, FileText, Focus, Languages, Mic, Radio } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 
 export function ChallengesHubPage() {
   const navigate = useNavigate();
@@ -15,7 +16,11 @@ export function ChallengesHubPage() {
           </p>
         </div>
 
-        <div className="student-responsive-panel-section px-4 pb-6 pt-4 lg:p-6">
+        <div className="px-4 lg:px-6">
+          <StudentActiveBanners />
+        </div>
+
+        <div className="student-responsive-panel-section px-4 pb-6 pt-4 lg:pt-0">
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             <button
               type="button"

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, Plus, Languages } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import {
   apiFetchWordDecks,
   apiCreateWordDeck,
@@ -24,15 +25,18 @@ export function MyDictionariesPage() {
     }
   }
 
-  useEffect(() => { void load(); }, []);
+  useEffect(() => {
+    void load();
+  }, []);
 
   async function handleCreate() {
-    if (!newName.trim() || creating) return;
+    if (!newName.trim()) return;
     setCreating(true);
     try {
-      await apiCreateWordDeck(newName.trim());
+      const created = await apiCreateWordDeck(newName.trim());
       setNewName("");
-      void load();
+      setDecks((prev) => [created, ...(prev ?? [])]);
+      toast.success("Lug'at yaratildi");
     } catch {
       toast.error("Lug'at yaratib bo'lmadi");
     } finally {
@@ -54,6 +58,8 @@ export function MyDictionariesPage() {
           <h1 className="mb-1 text-2xl font-extrabold text-gray-900 dark:text-zinc-100">Mening lug'atlarim</h1>
           <p className="text-sm text-gray-400 dark:text-zinc-400">So'z-tarjima lug'atlaringizni tuzing va ulashing</p>
         </div>
+
+        <StudentActiveBanners className="mb-5" />
 
         <div className="mb-6 flex gap-2">
           <input

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { ArrowLeft, FolderPlus } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
+import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import { FolderCard } from "../components/FolderCard";
 import { NewFolderModal } from "../components/NewFolderModal";
 import {
@@ -86,6 +87,8 @@ export function MyTestsPage() {
             <FolderPlus size={16} />
           </button>
         </div>
+
+        <StudentActiveBanners className="mb-6" />
 
         {!folders ? (
           <p className="py-16 text-center text-sm text-gray-400">Yuklanmoqda...</p>

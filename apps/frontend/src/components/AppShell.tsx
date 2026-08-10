@@ -89,14 +89,14 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col gap-2 bg-[#f1f5f9] p-3 lg:relative lg:flex-row"
+      className="flex flex-col gap-2 bg-[#f1f5f9] dark:bg-[#1b1c22] p-3 lg:relative lg:flex-row"
       style={{
         height: "100dvh",
         paddingTop: "max(12px, env(safe-area-inset-top))",
         paddingBottom: "max(12px, env(safe-area-inset-bottom))",
       }}
     >
-      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 rounded-2xl flex flex-row lg:flex-col items-center justify-around lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto lg:z-10">
+      <div className="order-2 lg:order-1 shrink-0 bg-gray-900 dark:bg-[#20242c] rounded-2xl flex flex-row lg:flex-col items-center justify-around lg:justify-start px-2 lg:px-0 lg:py-4 lg:w-16 h-16 lg:h-auto lg:z-10">
         <button
           onClick={() => navigate("/")}
           className="hidden lg:block mb-6 shrink-0"
@@ -118,7 +118,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
                 aria-label={section.label}
                 onClick={() => navigate(section.path)}
                 className={`group relative w-11 h-11 lg:w-full lg:aspect-square lg:h-auto rounded-xl flex items-center justify-center transition-colors duration-150 focus:outline-none focus-visible:outline-none focus-visible:ring-0 ${isActive
-                    ? "bg-white text-gray-900"
+                    ? "bg-white text-gray-900 dark:bg-zinc-800 dark:text-zinc-100"
                     : "text-gray-400 hover:bg-white/10 hover:text-white"
                   }`}
               >
@@ -156,7 +156,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
         </button>
       </div>
 
-      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-[#f1f5f9] rounded-2xl overflow-y-auto">
+      <div className="order-1 lg:order-3 flex-1 min-w-0 min-h-0 bg-[#f1f5f9] dark:bg-[#1b1c22] rounded-2xl overflow-y-auto">
         {children}
       </div>
 
