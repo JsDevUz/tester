@@ -151,10 +151,14 @@ function PracticeMessengerContent() {
       setChats(result.chats);
       setSelectedId((current) => {
         if (requestedCourseId) {
-          const matching = result.chats.find((chat) => chat.courseId === requestedCourseId);
+          const matching = result.chats.find(
+            (chat) => chat.courseId === requestedCourseId,
+          );
           if (matching) return matching.id;
         }
-        return current && result.chats.some((chat) => chat.id === current) ? current : null;
+        return current && result.chats.some((chat) => chat.id === current)
+          ? current
+          : null;
       });
     } catch (error: any) {
       toast.error(
@@ -256,38 +260,64 @@ function PracticeMessengerContent() {
         return;
       }
       setMessages((current) => {
-        if (current.some((message) => message.id === payload.id)) return current;
-        const sender = current.find((message) => message.sender.id === payload.senderId)?.sender
-          ?? { id: payload.senderId, name: "Foydalanuvchi", avatarUrl: null };
-        return [...current, {
-          id: payload.id,
-          sender,
-          type: "text",
-          content: payload.content,
-          createdAt: payload.createdAt,
-          editedAt: payload.editedAt ?? null,
-          deletedAt: payload.deletedAt ?? null,
-          replyTo: null,
-          metadata: {},
-          practice: null,
-          testSubmission: null,
-          imageSubmission: null,
-          imageSubmissions: [],
-        }];
+        if (current.some((message) => message.id === payload.id))
+          return current;
+        const sender = current.find(
+          (message) => message.sender.id === payload.senderId,
+        )?.sender ?? {
+          id: payload.senderId,
+          name: "Foydalanuvchi",
+          avatarUrl: null,
+        };
+        return [
+          ...current,
+          {
+            id: payload.id,
+            sender,
+            type: "text",
+            content: payload.content,
+            createdAt: payload.createdAt,
+            editedAt: payload.editedAt ?? null,
+            deletedAt: payload.deletedAt ?? null,
+            replyTo: null,
+            metadata: {},
+            practice: null,
+            testSubmission: null,
+            imageSubmission: null,
+            imageSubmissions: [],
+          },
+        ];
       });
     }
     socket.on("new_message", handleNewMessage);
     socket.on("message_updated", (payload: PracticeMessengerSocketPayload) => {
       if (selectedIdRef.current !== payload.chatId) return;
-      setMessages((current) => current.map((message) => message.id === payload.id
-        ? { ...message, content: payload.content, editedAt: payload.editedAt ?? new Date().toISOString() }
-        : message));
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === payload.id
+            ? {
+                ...message,
+                content: payload.content,
+                editedAt: payload.editedAt ?? new Date().toISOString(),
+              }
+            : message,
+        ),
+      );
     });
     socket.on("message_deleted", (payload: PracticeMessengerSocketPayload) => {
       if (selectedIdRef.current !== payload.chatId) return;
-      setMessages((current) => current.map((message) => message.id === payload.id
-        ? { ...message, content: "", deletedAt: payload.deletedAt ?? new Date().toISOString(), editedAt: null }
-        : message));
+      setMessages((current) =>
+        current.map((message) =>
+          message.id === payload.id
+            ? {
+                ...message,
+                content: "",
+                deletedAt: payload.deletedAt ?? new Date().toISOString(),
+                editedAt: null,
+              }
+            : message,
+        ),
+      );
     });
     return () => {
       socket.off("new_message", handleNewMessage);
@@ -395,12 +425,24 @@ function PracticeMessengerContent() {
           editingMessage.id,
           draft,
         );
-        setMessages((current) => current.map((item) => item.id === editingMessage.id
-          ? { ...item, content: messageContent, editedAt: new Date().toISOString() }
-          : item));
+        setMessages((current) =>
+          current.map((item) =>
+            item.id === editingMessage.id
+              ? {
+                  ...item,
+                  content: messageContent,
+                  editedAt: new Date().toISOString(),
+                }
+              : item,
+          ),
+        );
         toast.success("Xabar tahrirlandi");
       } else {
-        createdMessage = await apiSendPracticeMessage(selectedChat.id, messageContent, replyingTo?.id);
+        createdMessage = await apiSendPracticeMessage(
+          selectedChat.id,
+          messageContent,
+          replyingTo?.id,
+        );
       }
       setDraft("");
       setReplyingTo(null);
@@ -409,18 +451,28 @@ function PracticeMessengerContent() {
       if (sendingNewMessage) scrollToBottomAfterRenderRef.current = true;
       if (sendingNewMessage) {
         const currentAdmin = admin;
-        setMessages((current) => [...current, {
-          id: createdMessage?.id ?? crypto.randomUUID(),
-          sender: { id: currentAdmin?.id ?? "", name: currentAdmin?.name ?? "Siz", avatarUrl: currentAdmin?.avatarUrl ?? null },
-          type: "text",
-          content: messageContent,
-          createdAt: createdMessage?.createdAt ?? new Date().toISOString(),
-          editedAt: null,
-          deletedAt: null,
-          replyTo: null,
-          metadata: {}, practice: null, testSubmission: null,
-          imageSubmission: null, imageSubmissions: [],
-        }]);
+        setMessages((current) => [
+          ...current,
+          {
+            id: createdMessage?.id ?? crypto.randomUUID(),
+            sender: {
+              id: currentAdmin?.id ?? "",
+              name: currentAdmin?.name ?? "Siz",
+              avatarUrl: currentAdmin?.avatarUrl ?? null,
+            },
+            type: "text",
+            content: messageContent,
+            createdAt: createdMessage?.createdAt ?? new Date().toISOString(),
+            editedAt: null,
+            deletedAt: null,
+            replyTo: null,
+            metadata: {},
+            practice: null,
+            testSubmission: null,
+            imageSubmission: null,
+            imageSubmissions: [],
+          },
+        ]);
       }
       const refreshLayout = () => {
         window.scrollTo(0, 0);
@@ -469,7 +521,9 @@ function PracticeMessengerContent() {
       toast.success("Xabar o‘chirildi");
       setMessagePendingDelete(null);
       if (editingMessage?.id === message.id) cancelMessageAction();
-      setMessages((current) => current.filter((item) => item.id !== message.id));
+      setMessages((current) =>
+        current.filter((item) => item.id !== message.id),
+      );
     } catch (error: any) {
       toast.error(
         error?.response?.data?.message ?? "Xabarni o‘chirib bo‘lmadi",
@@ -542,9 +596,7 @@ function PracticeMessengerContent() {
       if (selectedChat)
         await Promise.all([loadChat(selectedChat.id), loadChats()]);
     } catch (error: any) {
-      toast.error(
-        error?.response?.data?.message ?? "Yulduzni saqlab bo‘lmadi",
-      );
+      toast.error(error?.response?.data?.message ?? "Yulduzni saqlab bo‘lmadi");
     }
   }
 
@@ -598,7 +650,7 @@ function PracticeMessengerContent() {
                 value={query}
                 onChange={(event) => setQuery(event.target.value)}
                 placeholder="Qidirish"
-                className="min-w-0 flex-1 bg-transparent text-sm text-gray-800 outline-none placeholder:text-gray-400"
+                className="min-w-0 flex-1 bg-gray-100 text-sm text-gray-800 outline-none placeholder:text-gray-400"
               />
             </label>
           </div>
@@ -625,8 +677,16 @@ function PracticeMessengerContent() {
                     className={`flex w-full gap-3 border-b border-gray-50 px-4 py-3 text-left transition-colors ${active ? "practice-messenger-chat-active" : "hover:bg-gray-50"}`}
                   >
                     <UserAvatar
-                      name={admin?.id === chat.student.id ? chat.curator.name : chat.student.name}
-                      avatarUrl={admin?.id === chat.student.id ? chat.curator.avatarUrl : chat.student.avatarUrl}
+                      name={
+                        admin?.id === chat.student.id
+                          ? chat.curator.name
+                          : chat.student.name
+                      }
+                      avatarUrl={
+                        admin?.id === chat.student.id
+                          ? chat.curator.avatarUrl
+                          : chat.student.avatarUrl
+                      }
                       className="practice-messenger-avatar h-11 w-11 rounded-full text-sm font-bold"
                     />
                     <span className="min-w-0 flex-1">
@@ -694,8 +754,16 @@ function PracticeMessengerContent() {
                   </div>
                 </div>
                 <UserAvatar
-                  name={isCurator ? selectedChat.student.name : selectedChat.curator.name}
-                  avatarUrl={isCurator ? selectedChat.student.avatarUrl : selectedChat.curator.avatarUrl}
+                  name={
+                    isCurator
+                      ? selectedChat.student.name
+                      : selectedChat.curator.name
+                  }
+                  avatarUrl={
+                    isCurator
+                      ? selectedChat.student.avatarUrl
+                      : selectedChat.curator.avatarUrl
+                  }
                   className="practice-messenger-avatar h-9 w-9 rounded-full text-xs font-bold"
                 />
               </header>
@@ -753,12 +821,12 @@ function PracticeMessengerContent() {
                         const startsDateGroup =
                           index === 0 ||
                           messageDateKey(message.createdAt) !==
-                          messageDateKey(messages[index - 1].createdAt);
+                            messageDateKey(messages[index - 1].createdAt);
                         const practiceMessage = message.type !== "text";
                         const maxScore = Number(
                           message.practice?.maxScore ??
-                          message.metadata.maxScore ??
-                          0,
+                            message.metadata.maxScore ??
+                            0,
                         );
                         const gradedImage = message.imageSubmissions.find(
                           (image) =>
@@ -806,12 +874,13 @@ function PracticeMessengerContent() {
                                     current === message.id ? null : message.id,
                                   );
                                 }}
-                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${own
+                                className={`practice-message-bubble group relative max-w-[92%] px-4 pb-2.5  sm:max-w-[78%] ${activeMessageActionsId === message.id ? "pt-9 sm:pt-2.5" : "pt-2.5"} ${
+                                  own
                                     ? practiceMessage
                                       ? "practice-message-own rounded-[22px] rounded-br-[6px] bg-gray-800 text-gray-50"
                                       : "practice-message-own rounded-[22px] rounded-br-[6px]"
                                     : "practice-message-incoming rounded-[22px] rounded-bl-[6px]"
-                                  }`}
+                                }`}
                               >
                                 {!message.deletedAt && (
                                   <div
@@ -915,7 +984,8 @@ function PracticeMessengerContent() {
                                             Natijalarni ko‘rish
                                           </span>
                                           <span className="text-sm font-bold">
-                                            {message.testSubmission?.score ?? 0} /{" "}
+                                            {message.testSubmission?.score ?? 0}{" "}
+                                            /{" "}
                                             {message.testSubmission?.total ?? 0}
                                           </span>
                                         </button>
@@ -934,13 +1004,18 @@ function PracticeMessengerContent() {
                                                   min={0}
                                                   max={maxScore}
                                                   value={
-                                                    scoreByMessage[message.id] ?? ""
+                                                    scoreByMessage[
+                                                      message.id
+                                                    ] ?? ""
                                                   }
                                                   onChange={(event) =>
-                                                    setScoreByMessage((state) => ({
-                                                      ...state,
-                                                      [message.id]: event.target.value,
-                                                    }))
+                                                    setScoreByMessage(
+                                                      (state) => ({
+                                                        ...state,
+                                                        [message.id]:
+                                                          event.target.value,
+                                                      }),
+                                                    )
                                                   }
                                                   className="mt-1 block w-full rounded-lg border border-gray-200 bg-gray-50 px-2.5 py-2 text-sm font-bold text-gray-900 outline-none focus:border-gray-900"
                                                 />
@@ -948,7 +1023,9 @@ function PracticeMessengerContent() {
                                               <button
                                                 type="button"
                                                 onClick={() =>
-                                                  void gradeTestPractice(message)
+                                                  void gradeTestPractice(
+                                                    message,
+                                                  )
                                                 }
                                                 className="practice-messenger-primary rounded-lg px-3 py-2 text-xs font-bold"
                                               >
@@ -957,7 +1034,9 @@ function PracticeMessengerContent() {
                                               <button
                                                 type="button"
                                                 onClick={() =>
-                                                  cancelEditingImageGrade(message.id)
+                                                  cancelEditingImageGrade(
+                                                    message.id,
+                                                  )
                                                 }
                                                 className="flex h-8 w-8 items-center justify-center rounded-lg border border-gray-200 text-gray-500"
                                                 aria-label="Bekor qilish"
@@ -968,9 +1047,15 @@ function PracticeMessengerContent() {
                                           ) : (
                                             <div className="mt-2 flex items-center justify-between gap-3">
                                               <p className="inline-flex items-center gap-1 text-sm font-bold text-amber-500">
-                                                <Star size={14} fill="currentColor" />
-                                                {message.testSubmission?.practiceScore ?? 0} / {maxScore}
-                                                {message.testSubmission?.scoreOverridden && (
+                                                <Star
+                                                  size={14}
+                                                  fill="currentColor"
+                                                />
+                                                {message.testSubmission
+                                                  ?.practiceScore ?? 0}{" "}
+                                                / {maxScore}
+                                                {message.testSubmission
+                                                  ?.scoreOverridden && (
                                                   <span className="text-[10px] font-medium text-gray-400">
                                                     qo‘lda
                                                   </span>
@@ -1044,7 +1129,7 @@ function PracticeMessengerContent() {
                                                   <input
                                                     value={
                                                       scoreByMessage[
-                                                      message.id
+                                                        message.id
                                                       ] ?? ""
                                                     }
                                                     onChange={(event) =>
@@ -1199,10 +1284,7 @@ function PracticeMessengerContent() {
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center"
           onClick={(event) => {
-            if (
-              event.target === event.currentTarget &&
-              !deletingMessage
-            ) {
+            if (event.target === event.currentTarget && !deletingMessage) {
               setMessagePendingDelete(null);
             }
           }}

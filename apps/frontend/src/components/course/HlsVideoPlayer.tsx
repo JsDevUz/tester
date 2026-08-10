@@ -45,6 +45,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const admin = useAuthStore((s) => s.admin);
   const [error, setError] = useState<string | null>(null);
   const [isFullscreen, setIsFullscreen] = useState(false);
+  const [fullscreenTop, setFullscreenTop] = useState(0);
+  const nativeFullscreenRef = useRef(false);
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
   const [videoContentBox, setVideoContentBox] = useState<{ left: number; top: number; width: number; height: number } | null>(null);
@@ -65,9 +67,15 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
   useEffect(() => {
     if (!isFullscreen) return;
-    const previous = document.body.style.overflow;
+    const previousBodyOverflow = document.body.style.overflow;
+    const previousHtmlOverflow = document.documentElement.style.overflow;
+    setFullscreenTop(window.scrollY);
     document.body.style.overflow = 'hidden';
-    return () => { document.body.style.overflow = previous; };
+    document.documentElement.style.overflow = 'hidden';
+    return () => {
+      document.body.style.overflow = previousBodyOverflow;
+      document.documentElement.style.overflow = previousHtmlOverflow;
+    };
   }, [isFullscreen]);
 
   useEffect(() => {
@@ -104,7 +112,13 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     const syncFullscreen = () => {
       const fullscreenDocument = document as Document & { webkitFullscreenElement?: Element | null };
       const fullscreenElement = document.fullscreenElement ?? fullscreenDocument.webkitFullscreenElement;
-      setIsFullscreen(fullscreenElement === wrapperRef.current);
+      if (fullscreenElement === wrapperRef.current) {
+        nativeFullscreenRef.current = true;
+        setIsFullscreen(true);
+      } else if (nativeFullscreenRef.current) {
+        nativeFullscreenRef.current = false;
+        setIsFullscreen(false);
+      }
     };
 
     // Video native fullscreen'ga o'zi (masalan yashirilgan native fullscreen
@@ -345,19 +359,20 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     }
   };
 
-  useEffect(() => {
-    document.body.style.overflow = isFullscreen ? 'hidden' : '';
-    return () => { document.body.style.overflow = ''; };
-  }, [isFullscreen]);
-
   const playerContent = (
     <div
       ref={wrapperRef}
       className={`relative bg-black ${
         isFullscreen
-          ? 'fixed inset-0 z-[999999] flex h-[100dvh] w-screen items-center justify-center rounded-none'
+          ? 'absolute left-0 z-[999999] flex w-full items-center justify-center rounded-none'
           : 'rounded-2xl'
       }`}
+      style={isFullscreen ? {
+        top: fullscreenTop,
+        width: '100vw',
+        height: '100dvh',
+        minHeight: '-webkit-fill-available',
+      } : undefined}
       onContextMenu={(e) => e.preventDefault()}
     >
       <video

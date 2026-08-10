@@ -1,6 +1,8 @@
 @import "tailwindcss";
 @import "katex/dist/katex.min.css";
 
+@custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
+
 /* Global Scrollbar Hider — barcha elementlardagi scrollbarlarni butunlay yashirish */
 * {
   -ms-overflow-style: none !important;
@@ -75,7 +77,20 @@
 }
 
 @theme {
-  --color-border: #d7d8d9;
+  /* Mobile light theme bilan bir xil asosiy palette. */
+  --color-gray-50: #f8fafc;
+  --color-gray-100: #f1f5f9;
+  --color-gray-200: #e2e8f0;
+  --color-gray-300: #cbd5e1;
+  --color-gray-400: #94a3b8;
+  --color-gray-500: #64748b;
+  --color-gray-600: #475569;
+  --color-gray-700: #334155;
+  --color-gray-800: #1e293b;
+  --color-gray-900: #111827;
+  --color-gray-950: #020617;
+  --color-indigo-500: #6366f1;
+  --color-border: #e2e8f0;
 }
 
 /* Public test entry card uses responsive `lg:bg-white`, which is not covered by
@@ -131,16 +146,16 @@
 }
 
 .theme-primary-button {
-  background-color: #18181b !important;
+  background-color: #6366f1 !important;
   color: #fff !important;
 }
 
 .theme-primary-button:hover {
-  background-color: #27272a !important;
+  background-color: #4f46e5 !important;
 }
 
 .students-tab-active {
-  background-color: #18181b !important;
+  background-color: #6366f1 !important;
   color: #fff !important;
 }
 
@@ -443,7 +458,8 @@ html {
 body {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
-  background: #f6f6f6;
+  background: #f1f5f9;
+  color: #111827;
 }
 
 select {
@@ -612,7 +628,6 @@ select::-ms-expand {
     border-color: #2a2f3a !important;
   }
 
-  :root:not([data-theme="light"]) .,
   :root:not([data-theme="light"]) .shadow-lg,
   :root:not([data-theme="light"]) .shadow-xl,
   :root:not([data-theme="light"]) .shadow-2xl {
@@ -776,7 +791,6 @@ select::-ms-expand {
   border-color: #2a2f3a !important;
 }
 
-:root[data-theme="dark"] .,
 :root[data-theme="dark"] .shadow-lg,
 :root[data-theme="dark"] .shadow-xl,
 :root[data-theme="dark"] .shadow-2xl {
@@ -831,15 +845,16 @@ select::-ms-expand {
 }
 
 .student-course-card {
-  background-color: #e7f4ff;
+  border: 1px solid #e2e8f0;
+  background-color: #fff;
 }
 
 .student-course-card:hover {
-  background-color: #deefff;
+  background-color: #f8fafc;
 }
 
 .student-course-card-icon {
-  background-color: rgb(255 255 255 / 0.55);
+  background-color: #f1f5f9;
 }
 
 :root[data-theme="dark"] .student-course-card {
@@ -851,7 +866,7 @@ select::-ms-expand {
 }
 
 .challenge-detail-input {
-  background-color: #f9fafb;
+  background-color: #ffffff;
 }
 
 .hls-video-player::-webkit-media-controls-fullscreen-button {
@@ -1564,5 +1579,95 @@ select::-ms-expand {
 @media (max-width: 639px) and (orientation: portrait) {
   .classroom-replay-viewer-with-player .bottom-3 {
     bottom: 5.75rem;
+  }
+}
+
+/* StudentShell bir ustunli mobile/tablet layoutga o'tganda sahifaning tashqi oq
+   wrapperini canvas bilan birlashtiramiz. Faqat main'ning bevosita bolasi
+   nishonga olinadi — ichki kartalar, modallar va input surface'lari oq qoladi. */
+@media (max-width: 1024px) {
+  .student-main-content > .bg-white {
+    background-color: transparent !important;
+  }
+}
+
+/* Mobile dark palette bilan bir xil card hierarchy:
+   canvas #1b1c22 -> card #30313a -> secondary surface #24252c. */
+:root[data-theme="dark"] .student-course-card,
+:root[data-theme="dark"] .challenge-detail-card,
+:root[data-theme="dark"] .challenge-detail-card:hover {
+  border-color: #454752 !important;
+  background-color: #30313a !important;
+}
+
+/* Student sahifalarining o'ng content paneli: tablet/mobile'da canvas bilan
+   birlashadi, desktopda esa light/dark theme surface qaytadi. */
+.student-responsive-panel {
+  background-color: transparent;
+}
+
+@media (min-width: 1025px) {
+  .student-responsive-panel {
+    border-radius: 1rem;
+    background-color: #fff;
+  }
+
+  .student-responsive-panel > .student-responsive-panel-section {
+    background-color: transparent !important;
+  }
+
+  .student-responsive-panel .student-course-card,
+  .student-responsive-panel .student-responsive-card {
+    border-color: #e2e8f0 !important;
+    background-color: #f8fafc !important;
+  }
+
+  :root[data-theme="dark"] .student-responsive-panel {
+    background-color: #30313a;
+  }
+
+  :root[data-theme="dark"] .student-responsive-panel .student-course-card,
+  :root[data-theme="dark"] .student-responsive-panel .student-responsive-card {
+    border-color: #3f414c !important;
+    background-color: #24252c !important;
+  }
+
+  :root[data-theme="dark"] .student-responsive-panel .student-course-card:hover,
+  :root[data-theme="dark"] .student-responsive-panel .student-responsive-card:hover {
+    background-color: #292a32 !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) and (min-width: 1025px) {
+  :root:not([data-theme="light"]) .student-responsive-panel {
+    background-color: #30313a;
+  }
+
+  :root:not([data-theme="light"])
+    .student-responsive-panel
+    .student-course-card,
+  :root:not([data-theme="light"])
+    .student-responsive-panel
+    .student-responsive-card {
+    border-color: #3f414c !important;
+    background-color: #24252c !important;
+  }
+
+  :root:not([data-theme="light"])
+    .student-responsive-panel
+    .student-course-card:hover,
+  :root:not([data-theme="light"])
+    .student-responsive-panel
+    .student-responsive-card:hover {
+    background-color: #292a32 !important;
+  }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) .student-course-card,
+  :root:not([data-theme="light"]) .challenge-detail-card,
+  :root:not([data-theme="light"]) .challenge-detail-card:hover {
+    border-color: #454752 !important;
+    background-color: #30313a !important;
   }
 }

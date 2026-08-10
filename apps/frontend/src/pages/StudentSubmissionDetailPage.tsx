@@ -33,10 +33,10 @@ export function StudentSubmissionDetailPage() {
 
   return (
     <StudentShell>
-      <main className="mx-auto w-full max-w-3xl px-4 pb-6 pt-5 lg:px-0 lg:pb-0 lg:pt-0">
+      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
         <button
           onClick={() => navigate(-1)}
-          className="mb-5 inline-flex items-center gap-1.5 text-sm font-medium text-gray-700 transition-colors hover:text-gray-700 lg:mb-4"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
         >
           <ChevronLeft size={16} />
           Natijalar
@@ -44,31 +44,31 @@ export function StudentSubmissionDetailPage() {
 
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
           </div>
         )}
 
         {error && (
-          <p className="text-center text-sm text-red-400 py-12">
+          <p className="py-12 text-center text-sm text-red-400">
             Natija topilmadi.
           </p>
         )}
 
         {detail && (
           <>
-            <section className="bg-white rounded-2xl px-5 py-4 mb-4">
-              <p className="text-lg font-bold text-gray-900">
+            <section className="student-course-card challenge-detail-card mb-4 rounded-3xl p-5">
+              <p className="text-xl font-extrabold text-gray-900 dark:text-zinc-100">
                 {detail.testName ?? "Test"}
               </p>
-              <p className="text-sm text-gray-400 mt-1">
+              <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-zinc-400">
                 {detail.score} / {detail.total} ball · {pct}%
               </p>
             </section>
 
             {!canShowAnswers && (
-              <section className="bg-white rounded-2xlflex flex-col items-center text-center py-12 px-5">
-                <Clock size={32} className="text-gray-300 mb-3" />
-                <p className="text-sm text-gray-500">
+              <section className="student-course-card challenge-detail-card flex flex-col items-center p-8 text-center rounded-3xl">
+                <Clock size={32} className="mb-3 text-gray-300 dark:text-zinc-600" />
+                <p className="text-sm font-medium text-gray-500 dark:text-zinc-400">
                   {detail.showResults === "after_deadline"
                     ? "Natijalar muddat tugagandan keyin ochiladi."
                     : "Natijalar yashirin."}
@@ -77,13 +77,13 @@ export function StudentSubmissionDetailPage() {
             )}
 
             {canShowAnswers && detail.answers.length === 0 && (
-              <p className="text-center text-sm text-gray-400 py-8">
+              <p className="py-8 text-center text-sm text-gray-400">
                 Javoblar topilmadi.
               </p>
             )}
 
             {canShowAnswers && (
-              <div className="flex flex-col gap-3 pb-8">
+              <div className="flex flex-col gap-3.5 pb-8">
                 {detail.answers.map((answer, index) => (
                   <AnswerResultCard
                     key={answer.questionId}
@@ -95,7 +95,7 @@ export function StudentSubmissionDetailPage() {
             )}
           </>
         )}
-      </main>
+      </div>
     </StudentShell>
   );
 }

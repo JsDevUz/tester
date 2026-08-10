@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 import { Document, Page, pdfjs } from "react-pdf";
 import "react-pdf/dist/Page/AnnotationLayer.css";
 import "react-pdf/dist/Page/TextLayer.css";
-import { Download, X } from "lucide-react";
+import { Download, ExternalLink, X } from "lucide-react";
 
 // Android Chrome doesn't render PDFs inside an <iframe> at all, and iOS
 // Safari's iframe PDF view doesn't scroll reliably - rendering pages with
@@ -56,6 +56,15 @@ export function PdfViewerSheet({
             >
               <Download size={18} />
             </a>
+            <a
+              href={uri}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="grid h-9 w-9 place-items-center rounded-xl text-gray-500 hover:bg-gray-100"
+              aria-label="Yangi oynada ochish"
+            >
+              <ExternalLink size={18} />
+            </a>
             <button
               type="button"
               onClick={onClose}
@@ -71,11 +80,13 @@ export function PdfViewerSheet({
           style={{ WebkitOverflowScrolling: "touch" }}
         >
           {error ? (
-            <div className="flex h-full items-center justify-center px-8">
-              <p className="text-center text-sm font-semibold text-gray-400">
-                Faylni ochib bo'lmadi
-              </p>
-            </div>
+            // pdf.js cross-origin PDF'ni (ayniqsa iOS Safari'da) CORS sabab
+            // o'qiy olmasa, brauzerning o'z PDF rendereriga qaytamiz.
+            <iframe
+              src={uri}
+              title={title}
+              className="h-full min-h-[70dvh] w-full border-0 bg-white"
+            />
           ) : (
             <Document
               file={uri}

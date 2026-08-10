@@ -28,7 +28,12 @@ const SECTIONS: NavSection[] = [
   { key: "lessons", label: "Darslar", icon: BookOpen, path: "/lessons" },
   { key: "payments", label: "To'lovlar", icon: CreditCard, path: "/payments" },
   { key: "practice", label: "Amaliyotlar", icon: ClipboardList, path: "/" },
-  { key: "messenger", label: "Messenger", icon: MessageCircle, path: "/messenger" },
+  {
+    key: "messenger",
+    label: "Messenger",
+    icon: MessageCircle,
+    path: "/messenger",
+  },
   { key: "students", label: "O'quvchilar", icon: Users, path: "/students" },
   { key: "school", label: "Mening Maktabim", icon: School, path: "/school" },
 ];
@@ -60,12 +65,17 @@ export function AppShell({ children }: { children: React.ReactNode }) {
   const location = useLocation();
   const { admin, logout } = useAuthStore();
   const [profileOpen, setProfileOpen] = useState(false);
-  const hasUnreadMessages = usePracticeMessengerStore((s) => s.unreadChatIds.size > 0);
+  const hasUnreadMessages = usePracticeMessengerStore(
+    (s) => s.unreadChatIds.size > 0,
+  );
   usePracticeMessengerNotifications();
 
   const visibleSections =
     admin?.role === "curator"
-      ? SECTIONS.filter((section) => section.key === "students" || section.key === "messenger")
+      ? SECTIONS.filter(
+          (section) =>
+            section.key === "students" || section.key === "messenger",
+        )
       : SECTIONS;
 
   const activeSection = visibleSections.find((section) =>
@@ -79,7 +89,7 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className="flex flex-col lg:flex-row gap-3 bg-[#f6f6f6] p-3 lg:relative"
+      className="flex flex-col gap-3 bg-gray-100 p-3 lg:relative lg:flex-row"
       style={{
         height: "100dvh",
         paddingTop: "max(12px, env(safe-area-inset-top))",
@@ -136,7 +146,11 @@ export function AppShell({ children }: { children: React.ReactNode }) {
           aria-label={admin?.name ?? "Profil"}
           className="group relative w-9 h-9 lg:w-9 lg:h-9 rounded-full bg-gray-900 text-white text-sm font-semibold flex items-center justify-center shrink-0 overflow-hidden focus:outline-none focus-visible:outline-none focus-visible:ring-0"
         >
-          <UserAvatar name={admin?.name} avatarUrl={admin?.avatarUrl} className="h-full w-full rounded-full" />
+          <UserAvatar
+            name={admin?.name}
+            avatarUrl={admin?.avatarUrl}
+            className="h-full w-full rounded-full"
+          />
           <span className="app-shell-tooltip pointer-events-none absolute left-full top-1/2 z-50 ml-3 hidden -translate-y-1/2 whitespace-nowrap rounded-lg px-2.5 py-1.5 text-xs font-medium opacity-0 shadow-lg shadow-gray-900/15 transition-all duration-150 group-hover:translate-x-1 group-hover:opacity-100 lg:block">
             {admin?.name ?? "Profil"}
           </span>

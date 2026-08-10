@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import {
   apiListChallenges, apiCreateChallenge, apiUpdateChallenge, apiDeleteChallenge,
-  apiGetChallenge, apiAddChallengeBook, apiUpdateChallengeBook, apiDeleteChallengeBook,
+  apiGetChallenge, apiAddChallengeBook, apiDeleteChallengeBook,
   apiSetChallengeBookTest, apiRemoveChallengeBookTest,
   type ApiChallenge, type ApiChallengeDetail,
 } from '../api/challenges';
@@ -16,7 +16,6 @@ interface ChallengeStoreState {
   updateChallenge: (courseId: string, challengeId: string, data: Partial<{ name: string; description: string; imageUrl: string; type: string }>) => Promise<void>;
   deleteChallenge: (courseId: string, challengeId: string) => Promise<void>;
   addBook: (challengeId: string, data: { title: string; totalPages: number }) => Promise<void>;
-  updateBook: (challengeId: string, bookId: string, data: Partial<{ title: string; totalPages: number }>) => Promise<void>;
   deleteBook: (challengeId: string, bookId: string) => Promise<void>;
   setBookTest: (challengeId: string, bookId: string, data: { testId: string; triggerPage?: number; forceNow?: boolean }) => Promise<void>;
   removeBookTest: (challengeId: string, bookId: string) => Promise<void>;
@@ -76,11 +75,6 @@ export const useChallengeStore = create<ChallengeStoreState>((set, get) => ({
 
   async addBook(challengeId, data) {
     await apiAddChallengeBook(challengeId, data);
-    await get().loadChallengeDetail(challengeId);
-  },
-
-  async updateBook(challengeId, bookId, data) {
-    await apiUpdateChallengeBook(bookId, data);
     await get().loadChallengeDetail(challengeId);
   },
 

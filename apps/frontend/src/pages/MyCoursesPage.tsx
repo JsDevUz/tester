@@ -129,7 +129,9 @@ export function MyCoursesPage() {
     return apiGetMyCourses(schoolId)
       .then(setCourses)
       .catch(() => {
-        setLoadError("Kurslarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
+        setLoadError(
+          "Kurslarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+        );
       })
       .finally(() => setLoading(false));
   }
@@ -156,7 +158,7 @@ export function MyCoursesPage() {
 
   return (
     <StudentShell>
-      <div className="w-full  rounded-2xl bg-white p-4 sm:p-5">
+      <div className="student-responsive-panel w-full p-4 sm:p-5">
         {schoolId ? (
           <div className="mb-4 flex items-center gap-3">
             <button
@@ -180,7 +182,9 @@ export function MyCoursesPage() {
         {!loading && loadError && courses.length === 0 && (
           <div className="rounded-2xl bg-white py-16 text-center text-gray-400">
             <p className="mx-auto max-w-xs text-sm leading-6">{loadError}</p>
-            <p className="mt-3 text-xs text-gray-300">Yangilash uchun yuqoridan pastga torting</p>
+            <p className="mt-3 text-xs text-gray-300">
+              Yangilash uchun yuqoridan pastga torting
+            </p>
           </div>
         )}
 
@@ -192,72 +196,72 @@ export function MyCoursesPage() {
         )}
 
         {!loading && !loadError && courses.length > 0 && (
-        <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
-          {courses.map((c) => (
-            <div
-              key={`${c.courseId}-${c.groupName}`}
-              className="student-course-card flex min-h-[150px] flex-col rounded-3xl p-4 sm:min-h-[185px] sm:p-5"
-            >
-              <button
-                type="button"
-                onClick={() => setSelectedCourseId(c.courseId)}
-                className="flex flex-1 w-full flex-col justify-between gap-6 text-left"
+          <div className="grid grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3">
+            {courses.map((c) => (
+              <div
+                key={`${c.courseId}-${c.groupName}`}
+                className="student-course-card flex min-h-[150px] flex-col rounded-3xl p-4 sm:min-h-[185px] sm:p-5"
               >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="min-w-0 flex-1">
-                    <div className="mb-3 flex flex-wrap items-center gap-3">
-                      {c.starsMax > 0 && (
-                        <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-2 text-sm font-bold text-white">
-                          <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-gray-900">
-                            <Star size={13} fill="currentColor" />
+                <button
+                  type="button"
+                  onClick={() => setSelectedCourseId(c.courseId)}
+                  className="flex flex-1 w-full flex-col justify-between gap-6 text-left"
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="min-w-0 flex-1">
+                      <div className="mb-3 flex flex-wrap items-center gap-3">
+                        {c.starsMax > 0 && (
+                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-2 text-sm font-bold text-white">
+                            <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-gray-900">
+                              <Star size={13} fill="currentColor" />
+                            </span>
+                            {c.starsEarned} / {c.starsMax}
                           </span>
-                          {c.starsEarned} / {c.starsMax}
+                        )}
+                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
+                          <UserRound size={16} className="text-gray-700" />
+                          {c.studentCount}
                         </span>
-                      )}
-                      <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                        <UserRound size={16} className="text-gray-700" />
-                        {c.studentCount}
-                      </span>
+                      </div>
+
+                      <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
+                        {c.courseTitle}
+                      </p>
                     </div>
 
-                    <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
-                      {c.courseTitle}
-                    </p>
+                    <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
+                      <BookOpen size={23} className="text-gray-400" />
+                    </div>
                   </div>
 
-                  <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
-                    <BookOpen size={23} className="text-gray-400" />
-                  </div>
-                </div>
+                  <div>
+                    <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-medium text-gray-950 sm:text-sm">
+                      <Zap size={16} />
+                      <span className="shrink-0">
+                        {c.lessonsCompleted} / {c.lessonsTotal}
+                      </span>
+                      <span className="shrink-0">•</span>
+                      <span className="shrink-0">{c.progressPercent}%</span>
+                    </div>
 
-                <div>
-                  <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-medium text-gray-950 sm:text-sm">
-                    <Zap size={16} />
-                    <span className="shrink-0">
-                      {c.lessonsCompleted} / {c.lessonsTotal}
-                    </span>
-                    <span className="shrink-0">•</span>
-                    <span className="shrink-0">{c.progressPercent}%</span>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
+                      <div
+                        className="h-full rounded-full bg-[var(--color-indigo-500)]"
+                        style={{ width: `${c.progressPercent}%` }}
+                      />
+                    </div>
                   </div>
-
-                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
-                    <div
-                      className="h-full rounded-full bg-[var(--color-indigo-500)]"
-                      style={{ width: `${c.progressPercent}%` }}
-                    />
-                  </div>
-                </div>
-              </button>
-              <button
-                type="button"
-                onClick={() => setLeaderboardCourse(c)}
-                className="mt-3 inline-flex w-fit shrink-0 self-start items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
-              >
-                <Trophy size={14} className="text-amber-500" /> Peshqadamlar
-              </button>
-            </div>
-          ))}
-        </div>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLeaderboardCourse(c)}
+                  className="mt-3 inline-flex w-fit shrink-0 self-start items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                >
+                  <Trophy size={14} className="text-amber-500" /> Peshqadamlar
+                </button>
+              </div>
+            ))}
+          </div>
         )}
       </div>
       {leaderboardCourse && (
@@ -462,7 +466,8 @@ function StudentCourseReader({
           if (!allLessons[i].completed) break;
           resumeIndex = i + 1;
         }
-        const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
+        const resumeLesson =
+          allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
         setSelectedLessonId(resumeLesson?.id ?? null);
       })
       .catch((err) => {
@@ -1061,8 +1066,8 @@ function LessonReader({
           disabled={!hasPractice && blockedByThreshold}
           className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${
             !hasPractice && blockedByThreshold
-              ? 'cursor-not-allowed bg-gray-200 text-gray-400'
-              : 'bg-[var(--color-indigo-500)]'
+              ? "cursor-not-allowed bg-gray-200 text-gray-400"
+              : "bg-[var(--color-indigo-500)]"
           }`}
         >
           {hasPractice
@@ -1093,8 +1098,12 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
         <Radio size={18} />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-bold text-gray-900">Jonli dars</span>
-        <span className="block text-xs font-semibold text-gray-400">Yozuvni ko'rish</span>
+        <span className="block truncate text-sm font-bold text-gray-900">
+          Jonli dars
+        </span>
+        <span className="block text-xs font-semibold text-gray-400">
+          Yozuvni ko'rish
+        </span>
       </span>
     </button>
   );
@@ -1190,7 +1199,8 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
           type="button"
           onClick={() => {
             if (isPdf) setPdfSheetOpen(true);
-            else window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
+            else
+              window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
           }}
           className="flex w-full items-center gap-3 rounded-xl bg-gray-100 px-3 py-2.5 text-left transition-colors hover:bg-gray-200"
         >
@@ -1253,14 +1263,21 @@ function LessonBlock({ block }: { block: ApiContentBlock }) {
             avatarUrl={block.messageSender.avatarUrl}
             className="h-8 w-8 rounded-full text-xs font-bold"
           />
-          <span className="text-xs font-bold text-gray-600">{block.messageSender.name}</span>
+          <span className="text-xs font-bold text-gray-600">
+            {block.messageSender.name}
+          </span>
         </div>
         <div className="flex flex-col gap-1.5">
-          {[...lines].sort((a, b) => a.orderIndex - b.orderIndex).map((line) => (
-            <div key={line.id} className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-sm text-gray-800">
-              {line.text}
-            </div>
-          ))}
+          {[...lines]
+            .sort((a, b) => a.orderIndex - b.orderIndex)
+            .map((line) => (
+              <div
+                key={line.id}
+                className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-sm text-gray-800"
+              >
+                {line.text}
+              </div>
+            ))}
         </div>
       </div>
     );

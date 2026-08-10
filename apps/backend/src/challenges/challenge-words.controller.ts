@@ -1,5 +1,5 @@
 import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString, MinLength } from 'class-validator';
+import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
@@ -16,7 +16,7 @@ class UpdateWordDto {
 }
 
 class BulkImportDto {
-  @IsString() text: string;
+  @IsString() @MaxLength(100_000) text: string;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)

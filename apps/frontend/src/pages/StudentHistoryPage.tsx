@@ -53,7 +53,9 @@ export function StudentHistoryPage() {
       offsetRef.current += rows.length;
       if (rows.length < PAGE_SIZE) setHasMore(false);
     } catch {
-      setError("Ma'lumotlarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.");
+      setError(
+        "Ma'lumotlarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+      );
       if (!reset) setHasMore(false);
     } finally {
       setLoading(false);
@@ -86,8 +88,8 @@ export function StudentHistoryPage() {
 
   return (
     <StudentShell>
-      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
-        <div className="mb-4">
+      <div className="student-responsive-panel w-full overflow-hidden">
+        <div className="student-responsive-panel-section bg-white px-4 py-5 lg:p-5">
           <h1 className="text-2xl font-extrabold text-gray-900">Amaliyotlar</h1>
           <div className="mt-4 flex items-center gap-2">
             <input
@@ -112,92 +114,98 @@ export function StudentHistoryPage() {
           </div>
         </div>
 
-        <div className="mb-3 lg:mb-4">
-          <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">Amaliyotlar tarixi</h2>
-        </div>
+        <div className="student-responsive-panel-section px-4 pb-5 pt-4 lg:px-5">
+          <div className="mb-3 lg:mb-4">
+            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+              Amaliyotlar tarixi
+            </h2>
+          </div>
 
-        {loading ? (
-          <div className="flex justify-center py-12">
-            <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
-          </div>
-        ) : error && submissions.length === 0 ? (
-          <div className="py-16 text-center text-gray-400">
-            <p className="mx-auto max-w-xs text-sm leading-6">{error}</p>
-            <p className="mt-3 text-xs text-gray-300">Yangilash uchun yuqoridan pastga torting</p>
-          </div>
-        ) : submissions.length === 0 ? (
-          <div className="text-center py-16 text-gray-400">
-            <BookOpen size={36} className="mx-auto mb-3 opacity-30" />
-            <p className="text-sm">Hali ishlangan testlar yo'q.</p>
-          </div>
-        ) : (
-          <div className="flex flex-col lg:gap-2">
-            {submissions.map((s) => {
-              const pct = s.total
-                ? Math.round(((s.score ?? 0) / s.total) * 100)
-                : 0;
-              const isGood = pct >= 70;
-              const isMid = pct >= 40 && pct < 70;
-              return (
-                <button
-                  key={s.id}
-                  onClick={() => navigate(`/history/${s.id}`)}
-                  className="flex w-full items-center gap-3 border-b border-gray-100 bg-white py-3 text-left transition-all active:bg-gray-50 lg:rounded-2xl lg:border-b-0 lg:px-4 lg:py-4 lg:hover:bg-gray-50 lg:active:scale-[0.99]"
-                >
-                  <div
-                    className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl lg:h-10 lg:w-10 ${
-                      isGood
-                        ? "bg-green-50"
-                        : isMid
-                          ? "bg-amber-50"
-                          : "bg-red-50"
-                    }`}
+          {loading ? (
+            <div className="flex justify-center py-12">
+              <div className="h-7 w-7 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
+            </div>
+          ) : error && submissions.length === 0 ? (
+            <div className="py-16 text-center text-gray-400">
+              <p className="mx-auto max-w-xs text-sm leading-6">{error}</p>
+              <p className="mt-3 text-xs text-gray-300">
+                Yangilash uchun yuqoridan pastga torting
+              </p>
+            </div>
+          ) : submissions.length === 0 ? (
+            <div className="py-16 text-center text-gray-400">
+              <BookOpen size={36} className="mx-auto mb-3 opacity-30" />
+              <p className="text-sm">Hali ishlangan testlar yo'q.</p>
+            </div>
+          ) : (
+            <div className="flex flex-col gap-3">
+              {submissions.map((s) => {
+                const pct = s.total
+                  ? Math.round(((s.score ?? 0) / s.total) * 100)
+                  : 0;
+                const isGood = pct >= 70;
+                const isMid = pct >= 40 && pct < 70;
+                return (
+                  <button
+                    key={s.id}
+                    onClick={() => navigate(`/history/${s.id}`)}
+                    className="student-responsive-card flex w-full items-center gap-3 rounded-2xl bg-white p-4 text-left transition-all hover:bg-gray-50 active:scale-[0.99]"
                   >
-                    {isGood ? (
-                      <Trophy size={18} className="text-green-400" />
-                    ) : isMid ? (
-                      <ThumbsUp size={18} className="text-amber-400" />
-                    ) : (
-                      <BookOpen size={18} className="text-red-300" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="truncate text-[15px] font-semibold text-gray-900 lg:text-sm lg:text-gray-800">
-                      {s.testName ?? "Test"}
-                    </p>
-                    <p className="mt-0.5 text-xs text-gray-400">
-                      {s.submittedAt
-                        ? formatDateTime(s.submittedAt)
-                        : "Topshirilmagan"}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-2 shrink-0">
-                    <div className="text-right">
-                      <p
-                        className={`text-base font-bold lg:text-sm ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
-                      >
-                        {pct}%
+                    <div
+                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${
+                        isGood
+                          ? "bg-green-50"
+                          : isMid
+                            ? "bg-amber-50"
+                            : "bg-red-50"
+                      }`}
+                    >
+                      {isGood ? (
+                        <Trophy size={18} className="text-green-400" />
+                      ) : isMid ? (
+                        <ThumbsUp size={18} className="text-amber-400" />
+                      ) : (
+                        <BookOpen size={18} className="text-red-300" />
+                      )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="truncate text-[15px] font-bold text-gray-900">
+                        {s.testName ?? "Test"}
                       </p>
-                      <p className="text-xs text-gray-400">
-                        {s.score ?? 0}/{s.total ?? 0}
+                      <p className="mt-0.5 text-xs text-gray-400">
+                        {s.submittedAt
+                          ? formatDateTime(s.submittedAt)
+                          : "Topshirilmagan"}
                       </p>
                     </div>
-                    <ChevronRight size={16} className="text-gray-300" />
-                  </div>
-                </button>
-              );
-            })}
+                    <div className="flex items-center gap-2 shrink-0">
+                      <div className="text-right">
+                        <p
+                          className={`text-base font-bold lg:text-sm ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
+                        >
+                          {pct}%
+                        </p>
+                        <p className="text-xs text-gray-400">
+                          {s.score ?? 0}/{s.total ?? 0}
+                        </p>
+                      </div>
+                      <ChevronRight size={16} className="text-gray-300" />
+                    </div>
+                  </button>
+                );
+              })}
 
-            <div ref={sentinelRef} className="py-2 flex justify-center">
-              {loadingMore && (
-                <div className="w-6 h-6 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
-              )}
-              {!hasMore && submissions.length > 0 && (
-                <p className="text-xs text-gray-300">Hammasi yuklandi</p>
-              )}
+              <div ref={sentinelRef} className="flex justify-center py-2">
+                {loadingMore && (
+                  <div className="h-6 w-6 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
+                )}
+                {!hasMore && submissions.length > 0 && (
+                  <p className="text-xs text-gray-300">Hammasi yuklandi</p>
+                )}
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </StudentShell>
   );

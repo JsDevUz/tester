@@ -19,3 +19,6 @@ apps/frontend/ios/
 apps/frontend/assets/
 apps/frontend/.env.capacitor
 apps/frontend/capacitor.config.ts
+
+# Superpowers brainstorming companion scratch (demo HTML, server pid/log/state) — ephemeral, never tracked.
+.superpowers/brainstorm/

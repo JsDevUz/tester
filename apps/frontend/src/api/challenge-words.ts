@@ -36,10 +36,6 @@ export async function apiBulkImportChallengeWords(challengeId: string, text: str
   return (await client.post(`/challenges/${challengeId}/words/bulk`, { text })).data;
 }
 
-export async function apiUpdateChallengeWord(challengeId: string, wordId: string, data: Partial<{ word: string; translation: string }>): Promise<ApiChallengeWord> {
-  return (await client.patch(`/challenges/${challengeId}/words/${wordId}`, data)).data;
-}
-
 export async function apiDeleteChallengeWord(challengeId: string, wordId: string): Promise<void> {
   await client.delete(`/challenges/${challengeId}/words/${wordId}`);
 }

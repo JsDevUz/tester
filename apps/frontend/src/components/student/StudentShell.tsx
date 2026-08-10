@@ -44,7 +44,7 @@ const NAV_ITEMS = [
   {
     label: "Jamm",
     shortLabel: "Jamm",
-    path: "/challenges",
+    path: "/jamm",
     icon: BookOpen,
   },
   {
@@ -56,8 +56,13 @@ const NAV_ITEMS = [
 ];
 
 function isNavActive(pathname: string, path: string) {
-  if (path === "/history") return pathname === "/history" || pathname.startsWith("/history/");
-  if (path === "/schools") return pathname === "/schools" || pathname.startsWith("/schools/");
+  if (path === "/history")
+    return pathname === "/history" || pathname.startsWith("/history/");
+  if (path === "/schools")
+    return pathname === "/schools" || pathname.startsWith("/schools/");
+  if (path === "/jamm") {
+    return pathname === "/jamm" || pathname.startsWith("/challanges");
+  }
   return pathname === path;
 }
 
@@ -218,7 +223,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={messengerViewportStyle}
-      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-white lg:bg-gray-50 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-gray-100 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
     >
       <div
         aria-hidden="true"
@@ -273,14 +278,14 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   onClick={() => navigate(item.path)}
                   className={`inline-flex shrink-0 items-center gap-3 rounded-xl px-3.5 py-2.5 text-sm font-semibold transition-colors lg:w-full ${
                     active
-                      ? "bg-gray-100 text-gray-900"
+                      ? "bg-indigo-50 text-indigo-600"
                       : "text-gray-700 hover:bg-gray-50"
                   }`}
                 >
                   <span className="relative">
                     <Icon
                       size={20}
-                      className={active ? "text-gray-900" : "text-gray-400"}
+                      className={active ? "text-indigo-600" : "text-gray-400"}
                     />
                     {item.path === "/messenger" && hasUnreadMessages && (
                       <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
@@ -305,7 +310,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
         </aside>
 
         <main
-          className={`min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}
+          className={`student-main-content min-w-0 flex-1 lg:rounded-none ${isMessenger ? "min-h-0 overflow-hidden" : ""}`}
         >
           {!isMessenger &&
             liveClassSessions.map((s) => (
@@ -375,13 +380,13 @@ export function StudentShell({ children }: { children: ReactNode }) {
                   navigate(item.path);
                 }}
                 className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-semibold transition-colors ${
-                  active ? "bg-gray-100 text-gray-900" : "text-gray-500"
+                  active ? "text-indigo-600" : "text-gray-500"
                 }`}
               >
                 <span className="relative">
                   <Icon
                     size={19}
-                    className={active ? "text-gray-900" : "text-gray-400"}
+                    className={active ? "text-indigo-600" : "text-gray-400"}
                   />
                   {item.path === "/messenger" && hasUnreadMessages && (
                     <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />

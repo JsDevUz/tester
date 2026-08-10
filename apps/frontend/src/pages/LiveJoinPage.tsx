@@ -24,12 +24,12 @@ export function LiveJoinPage() {
 
   return (
     <StudentShell>
-    <div className="flex min-h-[520px] flex-col overflow-hidden bg-white notranslate lg:rounded-2xl" translate="no">
+      <div className="student-responsive-panel flex min-h-[520px] flex-col overflow-hidden notranslate min-[1025px]:rounded-2xl" translate="no">
       <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
       <div className="px-6 pt-4">
         <button
           type="button"
-          onClick={() => navigate('/challenges')}
+          onClick={() => navigate('/jamm')}
           className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
         >
           <ArrowLeft size={14} /> Orqaga

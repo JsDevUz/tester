@@ -9,7 +9,7 @@ import {
   type ApiStudentChallenge,
 } from "../api/challenges";
 
-export function ChallengesListPage({ onBack }: { onBack: () => void }) {
+export function ChallengesListPage() {
   const navigate = useNavigate();
   const [challenges, setChallenges] = useState<ApiStudentChallenge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -37,10 +37,10 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
 
   return (
     <StudentShell>
-      <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
+      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
         <button
           type="button"
-          onClick={onBack}
+          onClick={() => navigate("/jamm")}
           className="mb-4 flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
         >
           <ArrowLeft size={14} /> Orqaga
@@ -49,7 +49,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
           Challenge-lar
         </h1>
         <p className="mb-6 text-sm text-gray-400">
-          Kurslaringizdagi kitobxonlik challenge-lari
+          Kurslaringizdagi challenge-lari
         </p>
 
         {loading ? (
@@ -64,7 +64,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
             {challenges.map((c) => (
               <div
                 key={c.id}
-                onClick={() => c.joined && navigate(`/challenges/${c.id}`)}
+                onClick={() => c.joined && navigate(`/challanges/${c.id}`)}
                 className={`student-course-card rounded-3xl p-4 ${c.joined ? "cursor-pointer" : ""}`}
               >
                 {c.imageUrl ? (
@@ -93,7 +93,7 @@ export function ChallengesListPage({ onBack }: { onBack: () => void }) {
                     type="button"
                     disabled={joiningId === c.id}
                     onClick={() => void handleJoin(c.id)}
-                    className="w-full rounded-xl bg-gray-900 py-2 text-xs font-semibold text-white transition-colors hover:bg-gray-800 disabled:opacity-50"
+                    className="w-full rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700 disabled:opacity-50"
                   >
                     Qo'shilish
                   </button>

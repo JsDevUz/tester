@@ -21,14 +21,14 @@ export function SubmissionDetailPage() {
 
   if (error)
     return (
-      <div className="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <p className="text-red-400">Natija topilmadi.</p>
       </div>
     );
 
   if (!detail)
     return (
-      <div className="min-h-screen bg-[#f6f6f6] flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-gray-100">
         <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
       </div>
     );

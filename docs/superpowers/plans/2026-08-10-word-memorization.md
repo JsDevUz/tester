@@ -14,7 +14,7 @@
 - A challenge's `type` determines which child entity it owns: `'kitobxonlik'` → `challengeBooks`; `'soz_yodlash'` → `challengeWords`. A single challenge never has both.
 - Every word has exactly one shared `known: boolean` state per participant (`challengeWordProgress`), written immediately (no batching) by either Flashcard swipes or Test answers — never two separate states.
 - Right-swipe (Flashcard) or a correct Test answer → `known = true`. Left-swipe (Flashcard) or a wrong Test answer → `known = false`, even overwriting a prior `known = true`.
-- Bulk word import parses `"word - translation"` lines (` - ` separator); malformed lines are skipped, not rejected — the import reports `{ added, skipped }` counts.
+- Bulk word import parses `"word - translation"` lines (`-` separator); malformed lines are skipped, not rejected — the import reports `{ added, skipped }` counts.
 - Test-mode wrong-answer choices are drawn only from words within the same challenge, never from other challenges.
 - The leaderboard metric for `soz_yodlash` challenges is a single fixed metric (count of `known = true` rows) — no metric selector, unlike kitobxonlik's four metrics.
 - No new mandatory-test gating logic for `soz_yodlash` — that concept is kitobxonlik-specific (`challengeBookTests`) and does not apply here.
@@ -26,10 +26,12 @@
 ## Task 1: Drizzle schema — challengeWords and challengeWordProgress tables
 
 **Files:**
+
 - Modify: `apps/backend/src/db/schema.ts`
 - Test: none (schema-only; validated via Task 2's migration and Task 3/4's service tests)
 
 **Interfaces:**
+
 - Consumes: `challenges`, `challengeParticipants` tables (already exist in `schema.ts`).
 - Produces: Drizzle tables `challengeWords`, `challengeWordProgress`, plus their `relations()` exports — later tasks import these from `../db/schema`.
 
@@ -38,34 +40,61 @@
 Append after the `challengeEventsRelations` block at the end of `apps/backend/src/db/schema.ts` (the file currently ends around line 808 with `challengeEventsRelations` — append immediately after it, following the same style as the existing `challengeBooks`/`challengeBookProgress` tables just above):
 
 ```typescript
-export const challengeWords = pgTable('challenge_words', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  challengeId: uuid('challenge_id').notNull().references(() => challenges.id, { onDelete: 'cascade' }),
-  word: text('word').notNull(),
-  translation: text('translation').notNull(),
-  orderIndex: integer('order_index').notNull().default(0),
-  createdAt: timestamp('created_at', { withTimezone: true }).defaultNow(),
+export const challengeWords = pgTable("challenge_words", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  challengeId: uuid("challenge_id")
+    .notNull()
+    .references(() => challenges.id, { onDelete: "cascade" }),
+  word: text("word").notNull(),
+  translation: text("translation").notNull(),
+  orderIndex: integer("order_index").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).defaultNow(),
 });
 
-export const challengeWordProgress = pgTable('challenge_word_progress', {
-  id: uuid('id').primaryKey().defaultRandom(),
-  challengeParticipantId: uuid('challenge_participant_id').notNull().references(() => challengeParticipants.id, { onDelete: 'cascade' }),
-  challengeWordId: uuid('challenge_word_id').notNull().references(() => challengeWords.id, { onDelete: 'cascade' }),
-  known: boolean('known').notNull().default(false),
-  updatedAt: timestamp('updated_at', { withTimezone: true }).defaultNow(),
-}, (table) => ({
-  uniqueParticipantWord: uniqueIndex('challenge_word_progress_participant_id_word_id_key').on(table.challengeParticipantId, table.challengeWordId),
-}));
+export const challengeWordProgress = pgTable(
+  "challenge_word_progress",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    challengeParticipantId: uuid("challenge_participant_id")
+      .notNull()
+      .references(() => challengeParticipants.id, { onDelete: "cascade" }),
+    challengeWordId: uuid("challenge_word_id")
+      .notNull()
+      .references(() => challengeWords.id, { onDelete: "cascade" }),
+    known: boolean("known").notNull().default(false),
+    updatedAt: timestamp("updated_at", { withTimezone: true }).defaultNow(),
+  },
+  (table) => ({
+    uniqueParticipantWord: uniqueIndex(
+      "challenge_word_progress_participant_id_word_id_key",
+    ).on(table.challengeParticipantId, table.challengeWordId),
+  }),
+);
 
-export const challengeWordsRelations = relations(challengeWords, ({ one, many }) => ({
-  challenge: one(challenges, { fields: [challengeWords.challengeId], references: [challenges.id] }),
-  progress: many(challengeWordProgress),
-}));
+export const challengeWordsRelations = relations(
+  challengeWords,
+  ({ one, many }) => ({
+    challenge: one(challenges, {
+      fields: [challengeWords.challengeId],
+      references: [challenges.id],
+    }),
+    progress: many(challengeWordProgress),
+  }),
+);
 
-export const challengeWordProgressRelations = relations(challengeWordProgress, ({ one }) => ({
-  participant: one(challengeParticipants, { fields: [challengeWordProgress.challengeParticipantId], references: [challengeParticipants.id] }),
-  word: one(challengeWords, { fields: [challengeWordProgress.challengeWordId], references: [challengeWords.id] }),
-}));
+export const challengeWordProgressRelations = relations(
+  challengeWordProgress,
+  ({ one }) => ({
+    participant: one(challengeParticipants, {
+      fields: [challengeWordProgress.challengeParticipantId],
+      references: [challengeParticipants.id],
+    }),
+    word: one(challengeWords, {
+      fields: [challengeWordProgress.challengeWordId],
+      references: [challengeWords.id],
+    }),
+  }),
+);
 ```
 
 Also add a `words: many(challengeWords)` entry to the existing `challengesRelations` block (find `export const challengesRelations = relations(challenges, ({ one, many }) => ({` — it currently has `course`, `books`, `participants`; add `words: many(challengeWords),` alongside `books: many(challengeBooks),`).
@@ -87,10 +116,12 @@ git commit -m "feat(backend): add challengeWords and challengeWordProgress schem
 ## Task 2: Generate and apply the Drizzle migration
 
 **Files:**
+
 - Create: `apps/backend/drizzle/migrations/<timestamp>_*.sql` (auto-generated)
 - Modify: `apps/backend/drizzle/migrations/meta/_journal.json` (auto-generated)
 
 **Interfaces:**
+
 - Consumes: schema from Task 1.
 - Produces: applied DB tables that Task 3/4's services can query against. Tests in those tasks mock `db`, so this task only needs to succeed against whatever DB is configured for local dev — if no DB is reachable, still generate the SQL file (this does not require a live connection) and skip the apply step, noting it must run before deploy.
 
@@ -120,12 +151,14 @@ git commit -m "chore(backend): generate migration for challengeWords tables"
 ## Task 3: Backend — teacher-facing word CRUD and bulk import
 
 **Files:**
+
 - Create: `apps/backend/src/challenges/challenge-words.service.ts`
 - Create: `apps/backend/src/challenges/challenge-words.controller.ts`
 - Create: `apps/backend/src/challenges/challenge-words.service.spec.ts`
 - Modify: `apps/backend/src/challenges/challenges.module.ts` (register new service/controller)
 
 **Interfaces:**
+
 - Consumes: `db` from `../db`, `challenges`, `challengeWords` tables from Task 1.
 - Produces (used by Task 4 and frontend):
   - `ChallengeWordsService.list(challengeId: string, adminId: string): Promise<ChallengeWord[]>`
@@ -138,11 +171,11 @@ git commit -m "chore(backend): generate migration for challengeWords tables"
 
 ```typescript
 // apps/backend/src/challenges/challenge-words.service.spec.ts
-import { NotFoundException } from '@nestjs/common';
-import { ChallengeWordsService } from './challenge-words.service';
-import { db } from '../db';
+import { NotFoundException } from "@nestjs/common";
+import { ChallengeWordsService } from "./challenge-words.service";
+import { db } from "../db";
 
-jest.mock('../db', () => {
+jest.mock("../db", () => {
   const mockDb: any = {
     query: {
       challenges: { findFirst: jest.fn() },
@@ -162,59 +195,85 @@ function mockInsertReturning(value: unknown) {
   return { values, returning };
 }
 
-describe('ChallengeWordsService', () => {
+describe("ChallengeWordsService", () => {
   const service = new ChallengeWordsService();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('addWord', () => {
-    it('adds a word to a challenge the admin owns', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', adminId: 'admin-1' });
+  describe("addWord", () => {
+    it("adds a word to a challenge the admin owns", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        adminId: "admin-1",
+      });
       (db.query.challengeWords.findMany as jest.Mock).mockResolvedValue([]);
-      mockInsertReturning({ id: 'word-1', challengeId: 'challenge-1', word: 'apple', translation: 'olma' });
+      mockInsertReturning({
+        id: "word-1",
+        challengeId: "challenge-1",
+        word: "apple",
+        translation: "olma",
+      });
 
-      const result = await service.addWord('challenge-1', 'admin-1', { word: 'apple', translation: 'olma' });
+      const result = await service.addWord("challenge-1", "admin-1", {
+        word: "apple",
+        translation: "olma",
+      });
 
-      expect(result).toEqual(expect.objectContaining({ id: 'word-1', word: 'apple' }));
+      expect(result).toEqual(
+        expect.objectContaining({ id: "word-1", word: "apple" }),
+      );
     });
 
-    it('throws NotFoundException when the admin does not own the challenge', async () => {
+    it("throws NotFoundException when the admin does not own the challenge", async () => {
       (db.query.challenges.findFirst as jest.Mock).mockResolvedValue(undefined);
 
       await expect(
-        service.addWord('challenge-1', 'admin-1', { word: 'apple', translation: 'olma' }),
+        service.addWord("challenge-1", "admin-1", {
+          word: "apple",
+          translation: "olma",
+        }),
       ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
-  describe('bulkImport', () => {
+  describe("bulkImport", () => {
     it('parses "word - translation" lines, skipping malformed ones, and reports counts', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', adminId: 'admin-1' });
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        adminId: "admin-1",
+      });
       (db.query.challengeWords.findMany as jest.Mock).mockResolvedValue([]);
-      const returning = jest.fn().mockResolvedValue([{ id: 'word-x' }]);
+      const returning = jest.fn().mockResolvedValue([{ id: "word-x" }]);
       const values = jest.fn(() => ({ returning }));
       (db.insert as jest.Mock).mockReturnValue({ values });
 
-      const text = 'apple - olma\nbook - kitob\nthis line is broken\nchair - stul';
-      const result = await service.bulkImport('challenge-1', 'admin-1', text);
+      const text =
+        "apple - olma\nbook - kitob\nthis line is broken\nchair - stul";
+      const result = await service.bulkImport("challenge-1", "admin-1", text);
 
       expect(result).toEqual({ added: 3, skipped: 1 });
     });
 
-    it('throws NotFoundException when the admin does not own the challenge', async () => {
+    it("throws NotFoundException when the admin does not own the challenge", async () => {
       (db.query.challenges.findFirst as jest.Mock).mockResolvedValue(undefined);
 
-      await expect(service.bulkImport('challenge-1', 'admin-1', 'apple - olma')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.bulkImport("challenge-1", "admin-1", "apple - olma"),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
-  describe('removeWord', () => {
-    it('throws NotFoundException when the word does not belong to the admin', async () => {
-      (db.query.challengeWords.findFirst as jest.Mock).mockResolvedValue(undefined);
+  describe("removeWord", () => {
+    it("throws NotFoundException when the word does not belong to the admin", async () => {
+      (db.query.challengeWords.findFirst as jest.Mock).mockResolvedValue(
+        undefined,
+      );
 
-      await expect(service.removeWord('word-1', 'admin-1')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.removeWord("word-1", "admin-1"),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 });
@@ -229,16 +288,21 @@ Expected: FAIL — `Cannot find module './challenge-words.service'`.
 
 ```typescript
 // apps/backend/src/challenges/challenge-words.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db';
-import { challengeWords, challenges } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { db } from "../db";
+import { challengeWords, challenges } from "../db/schema";
+import { and, eq } from "drizzle-orm";
 
 @Injectable()
 export class ChallengeWordsService {
   private async assertChallengeOwnership(challengeId: string, adminId: string) {
-    const challenge = await db.query.challenges.findFirst({ where: and(eq(challenges.id, challengeId), eq(challenges.adminId, adminId)) });
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    const challenge = await db.query.challenges.findFirst({
+      where: and(
+        eq(challenges.id, challengeId),
+        eq(challenges.adminId, adminId),
+      ),
+    });
+    if (!challenge) throw new NotFoundException("Challenge not found");
     return challenge;
   }
 
@@ -247,7 +311,8 @@ export class ChallengeWordsService {
       where: eq(challengeWords.id, wordId),
       with: { challenge: true },
     });
-    if (!word || word.challenge.adminId !== adminId) throw new NotFoundException('Word not found');
+    if (!word || word.challenge.adminId !== adminId)
+      throw new NotFoundException("Word not found");
     return word;
   }
 
@@ -259,29 +324,43 @@ export class ChallengeWordsService {
     });
   }
 
-  async addWord(challengeId: string, adminId: string, data: { word: string; translation: string }) {
+  async addWord(
+    challengeId: string,
+    adminId: string,
+    data: { word: string; translation: string },
+  ) {
     await this.assertChallengeOwnership(challengeId, adminId);
-    const existing = await db.query.challengeWords.findMany({ where: eq(challengeWords.challengeId, challengeId) });
-    const [word] = await db.insert(challengeWords).values({
-      challengeId,
-      word: data.word,
-      translation: data.translation,
-      orderIndex: existing.length,
-    }).returning();
+    const existing = await db.query.challengeWords.findMany({
+      where: eq(challengeWords.challengeId, challengeId),
+    });
+    const [word] = await db
+      .insert(challengeWords)
+      .values({
+        challengeId,
+        word: data.word,
+        translation: data.translation,
+        orderIndex: existing.length,
+      })
+      .returning();
     return word;
   }
 
   async bulkImport(challengeId: string, adminId: string, text: string) {
     await this.assertChallengeOwnership(challengeId, adminId);
-    const existing = await db.query.challengeWords.findMany({ where: eq(challengeWords.challengeId, challengeId) });
+    const existing = await db.query.challengeWords.findMany({
+      where: eq(challengeWords.challengeId, challengeId),
+    });
     let orderIndex = existing.length;
 
-    const lines = text.split('\n').map((line) => line.trim()).filter((line) => line.length > 0);
+    const lines = text
+      .split("\n")
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0);
     let added = 0;
     let skipped = 0;
 
     for (const line of lines) {
-      const separatorIndex = line.indexOf(' - ');
+      const separatorIndex = line.indexOf(" - ");
       if (separatorIndex === -1) {
         skipped++;
         continue;
@@ -292,7 +371,9 @@ export class ChallengeWordsService {
         skipped++;
         continue;
       }
-      await db.insert(challengeWords).values({ challengeId, word, translation, orderIndex });
+      await db
+        .insert(challengeWords)
+        .values({ challengeId, word, translation, orderIndex });
       orderIndex++;
       added++;
     }
@@ -300,9 +381,17 @@ export class ChallengeWordsService {
     return { added, skipped };
   }
 
-  async updateWord(wordId: string, adminId: string, data: Partial<{ word: string; translation: string }>) {
+  async updateWord(
+    wordId: string,
+    adminId: string,
+    data: Partial<{ word: string; translation: string }>,
+  ) {
     await this.assertWordOwnership(wordId, adminId);
-    const [word] = await db.update(challengeWords).set(data).where(eq(challengeWords.id, wordId)).returning();
+    const [word] = await db
+      .update(challengeWords)
+      .set(data)
+      .where(eq(challengeWords.id, wordId))
+      .returning();
     return word;
   }
 
@@ -322,12 +411,23 @@ Expected: PASS (5 tests).
 
 ```typescript
 // apps/backend/src/challenges/challenge-words.controller.ts
-import { Body, Controller, Delete, Get, HttpCode, Param, Patch, Post, Req, UseGuards } from '@nestjs/common';
-import { IsOptional, IsString, MinLength } from 'class-validator';
-import { ChallengeWordsService } from './challenge-words.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  Param,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+import { IsOptional, IsString, MinLength } from "class-validator";
+import { ChallengeWordsService } from "./challenge-words.service";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 
 class AddWordDto {
   @IsString() @MinLength(1) word: string;
@@ -344,34 +444,42 @@ class BulkImportDto {
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('teacher', 'super')
-@Controller('challenges/:id/words')
+@Roles("teacher", "super")
+@Controller("challenges/:id/words")
 export class ChallengeWordsController {
   constructor(private challengeWordsService: ChallengeWordsService) {}
 
   @Get()
-  list(@Param('id') id: string, @Req() req: any) {
+  list(@Param("id") id: string, @Req() req: any) {
     return this.challengeWordsService.list(id, req.admin.id);
   }
 
   @Post()
-  addWord(@Param('id') id: string, @Req() req: any, @Body() dto: AddWordDto) {
+  addWord(@Param("id") id: string, @Req() req: any, @Body() dto: AddWordDto) {
     return this.challengeWordsService.addWord(id, req.admin.id, dto);
   }
 
-  @Post('bulk')
-  bulkImport(@Param('id') id: string, @Req() req: any, @Body() dto: BulkImportDto) {
+  @Post("bulk")
+  bulkImport(
+    @Param("id") id: string,
+    @Req() req: any,
+    @Body() dto: BulkImportDto,
+  ) {
     return this.challengeWordsService.bulkImport(id, req.admin.id, dto.text);
   }
 
-  @Patch(':wordId')
-  updateWord(@Param('wordId') wordId: string, @Req() req: any, @Body() dto: UpdateWordDto) {
+  @Patch(":wordId")
+  updateWord(
+    @Param("wordId") wordId: string,
+    @Req() req: any,
+    @Body() dto: UpdateWordDto,
+  ) {
     return this.challengeWordsService.updateWord(wordId, req.admin.id, dto);
   }
 
-  @Delete(':wordId')
+  @Delete(":wordId")
   @HttpCode(204)
-  removeWord(@Param('wordId') wordId: string, @Req() req: any) {
+  removeWord(@Param("wordId") wordId: string, @Req() req: any) {
     return this.challengeWordsService.removeWord(wordId, req.admin.id);
   }
 }
@@ -381,19 +489,29 @@ export class ChallengeWordsController {
 
 ```typescript
 // apps/backend/src/challenges/challenges.module.ts
-import { Module } from '@nestjs/common';
-import { ChallengesController } from './challenges.controller';
-import { StudentChallengesController } from './student-challenges.controller';
-import { ChallengesService } from './challenges.service';
-import { StudentChallengesService } from './student-challenges.service';
-import { ChallengeWordsController } from './challenge-words.controller';
-import { ChallengeWordsService } from './challenge-words.service';
-import { StudentChallengeWordsController } from './student-challenge-words.controller';
-import { StudentChallengeWordsService } from './student-challenge-words.service';
+import { Module } from "@nestjs/common";
+import { ChallengesController } from "./challenges.controller";
+import { StudentChallengesController } from "./student-challenges.controller";
+import { ChallengesService } from "./challenges.service";
+import { StudentChallengesService } from "./student-challenges.service";
+import { ChallengeWordsController } from "./challenge-words.controller";
+import { ChallengeWordsService } from "./challenge-words.service";
+import { StudentChallengeWordsController } from "./student-challenge-words.controller";
+import { StudentChallengeWordsService } from "./student-challenge-words.service";
 
 @Module({
-  controllers: [ChallengesController, StudentChallengesController, ChallengeWordsController, StudentChallengeWordsController],
-  providers: [ChallengesService, StudentChallengesService, ChallengeWordsService, StudentChallengeWordsService],
+  controllers: [
+    ChallengesController,
+    StudentChallengesController,
+    ChallengeWordsController,
+    StudentChallengeWordsController,
+  ],
+  providers: [
+    ChallengesService,
+    StudentChallengesService,
+    ChallengeWordsService,
+    StudentChallengeWordsService,
+  ],
 })
 export class ChallengesModule {}
 ```
@@ -412,11 +530,13 @@ git commit -m "feat(backend): add teacher-facing challenge word CRUD and bulk im
 ## Task 4: Backend — student-facing word progress and leaderboard
 
 **Files:**
+
 - Create: `apps/backend/src/challenges/student-challenge-words.service.ts`
 - Create: `apps/backend/src/challenges/student-challenge-words.controller.ts`
 - Create: `apps/backend/src/challenges/student-challenge-words.service.spec.ts`
 
 **Interfaces:**
+
 - Consumes: `db`, `challengeWords`, `challengeWordProgress` tables from Task 1; `groups`/`groupEnrollments`/`challengeParticipants` from `../db/schema` (existing) — mirrors the enrollment-gating pattern already in `student-challenges.service.ts`.
 - Produces (used by Task 6 frontend):
   - `StudentChallengeWordsService.listWords(challengeId: string, studentId: string): Promise<{ id: string; word: string; translation: string; known: boolean }[]>`
@@ -427,11 +547,11 @@ git commit -m "feat(backend): add teacher-facing challenge word CRUD and bulk im
 
 ```typescript
 // apps/backend/src/challenges/student-challenge-words.service.spec.ts
-import { NotFoundException } from '@nestjs/common';
-import { StudentChallengeWordsService } from './student-challenge-words.service';
-import { db } from '../db';
+import { NotFoundException } from "@nestjs/common";
+import { StudentChallengeWordsService } from "./student-challenge-words.service";
+import { db } from "../db";
 
-jest.mock('../db', () => {
+jest.mock("../db", () => {
   const mockDb: any = {
     query: {
       challenges: { findFirst: jest.fn() },
@@ -454,96 +574,196 @@ function mockInsertReturning(value: unknown) {
   return { values, returning };
 }
 
-describe('StudentChallengeWordsService', () => {
+describe("StudentChallengeWordsService", () => {
   const service = new StudentChallengeWordsService();
 
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  describe('listWords', () => {
-    it('throws NotFoundException when the student is not enrolled in the challenge course', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
-      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
+  describe("listWords", () => {
+    it("throws NotFoundException when the student is not enrolled in the challenge course", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        courseId: "course-1",
+      });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([
+        { id: "group-1", courseId: "course-1" },
+      ]);
       (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([]);
 
-      await expect(service.listWords('challenge-1', 'student-1')).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.listWords("challenge-1", "student-1"),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
 
-    it('returns words with the participant\'s known state', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
-      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
-      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
-        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-1' } },
+    it("returns words with the participant's known state", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        courseId: "course-1",
+      });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([
+        { id: "group-1", courseId: "course-1" },
       ]);
-      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue({ id: 'participant-1', challengeId: 'challenge-1', studentId: 'student-1' });
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        {
+          groupId: "group-1",
+          removedAt: null,
+          schoolMember: { studentId: "student-1" },
+        },
+      ]);
+      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(
+        {
+          id: "participant-1",
+          challengeId: "challenge-1",
+          studentId: "student-1",
+        },
+      );
       (db.query.challengeWords.findMany as jest.Mock).mockResolvedValue([
-        { id: 'word-1', word: 'apple', translation: 'olma' },
-        { id: 'word-2', word: 'book', translation: 'kitob' },
+        { id: "word-1", word: "apple", translation: "olma" },
+        { id: "word-2", word: "book", translation: "kitob" },
       ]);
       (db.query.challengeWordProgress.findMany as jest.Mock).mockResolvedValue([
-        { challengeWordId: 'word-1', known: true },
+        { challengeWordId: "word-1", known: true },
       ]);
 
-      const result = await service.listWords('challenge-1', 'student-1');
+      const result = await service.listWords("challenge-1", "student-1");
 
       expect(result).toEqual([
-        { id: 'word-1', word: 'apple', translation: 'olma', known: true },
-        { id: 'word-2', word: 'book', translation: 'kitob', known: false },
+        { id: "word-1", word: "apple", translation: "olma", known: true },
+        { id: "word-2", word: "book", translation: "kitob", known: false },
       ]);
     });
   });
 
-  describe('setProgress', () => {
-    it('writes known state immediately for an enrolled, joined student', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
-      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
-      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
-        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-1' } },
+  describe("setProgress", () => {
+    it("writes known state immediately for an enrolled, joined student", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        courseId: "course-1",
+      });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([
+        { id: "group-1", courseId: "course-1" },
       ]);
-      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue({ id: 'participant-1', challengeId: 'challenge-1', studentId: 'student-1' });
-      mockInsertReturning({ challengeWordId: 'word-1', known: true });
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        {
+          groupId: "group-1",
+          removedAt: null,
+          schoolMember: { studentId: "student-1" },
+        },
+      ]);
+      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(
+        {
+          id: "participant-1",
+          challengeId: "challenge-1",
+          studentId: "student-1",
+        },
+      );
+      mockInsertReturning({ challengeWordId: "word-1", known: true });
 
-      const result = await service.setProgress('challenge-1', 'word-1', 'student-1', true);
+      const result = await service.setProgress(
+        "challenge-1",
+        "word-1",
+        "student-1",
+        true,
+      );
 
-      expect(result).toEqual(expect.objectContaining({ wordId: 'word-1', known: true }));
+      expect(result).toEqual(
+        expect.objectContaining({ wordId: "word-1", known: true }),
+      );
     });
 
-    it('throws NotFoundException when the student has not joined the challenge', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
-      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
-      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
-        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-1' } },
+    it("throws NotFoundException when the student has not joined the challenge", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        courseId: "course-1",
+      });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([
+        { id: "group-1", courseId: "course-1" },
       ]);
-      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(undefined);
+      (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
+        {
+          groupId: "group-1",
+          removedAt: null,
+          schoolMember: { studentId: "student-1" },
+        },
+      ]);
+      (db.query.challengeParticipants.findFirst as jest.Mock).mockResolvedValue(
+        undefined,
+      );
 
-      await expect(service.setProgress('challenge-1', 'word-1', 'student-1', true)).rejects.toBeInstanceOf(NotFoundException);
+      await expect(
+        service.setProgress("challenge-1", "word-1", "student-1", true),
+      ).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 
-  describe('leaderboard', () => {
-    it('ranks participants by count of known words', async () => {
-      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({ id: 'challenge-1', courseId: 'course-1' });
-      (db.query.groups.findMany as jest.Mock).mockResolvedValue([{ id: 'group-1', courseId: 'course-1' }]);
+  describe("leaderboard", () => {
+    it("ranks participants by count of known words", async () => {
+      (db.query.challenges.findFirst as jest.Mock).mockResolvedValue({
+        id: "challenge-1",
+        courseId: "course-1",
+      });
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([
+        { id: "group-1", courseId: "course-1" },
+      ]);
       (db.query.groupEnrollments.findMany as jest.Mock).mockResolvedValue([
-        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-1' } },
-        { groupId: 'group-1', removedAt: null, schoolMember: { studentId: 'student-2' } },
+        {
+          groupId: "group-1",
+          removedAt: null,
+          schoolMember: { studentId: "student-1" },
+        },
+        {
+          groupId: "group-1",
+          removedAt: null,
+          schoolMember: { studentId: "student-2" },
+        },
       ]);
       (db.query.challengeParticipants.findMany as jest.Mock).mockResolvedValue([
-        { id: 'participant-1', studentId: 'student-1', student: { id: 'student-1', displayName: 'Aziz', displayAvatarUrl: null } },
-        { id: 'participant-2', studentId: 'student-2', student: { id: 'student-2', displayName: 'Vali', displayAvatarUrl: null } },
+        {
+          id: "participant-1",
+          studentId: "student-1",
+          student: {
+            id: "student-1",
+            displayName: "Aziz",
+            displayAvatarUrl: null,
+          },
+        },
+        {
+          id: "participant-2",
+          studentId: "student-2",
+          student: {
+            id: "student-2",
+            displayName: "Vali",
+            displayAvatarUrl: null,
+          },
+        },
       ]);
       (db.query.challengeWordProgress.findMany as jest.Mock).mockResolvedValue([
-        { challengeParticipantId: 'participant-1', known: true },
-        { challengeParticipantId: 'participant-1', known: true },
-        { challengeParticipantId: 'participant-2', known: true },
-        { challengeParticipantId: 'participant-2', known: false },
+        { challengeParticipantId: "participant-1", known: true },
+        { challengeParticipantId: "participant-1", known: true },
+        { challengeParticipantId: "participant-2", known: true },
+        { challengeParticipantId: "participant-2", known: false },
       ]);
 
-      const result = await service.leaderboard('challenge-1', 'student-1');
+      const result = await service.leaderboard("challenge-1", "student-1");
 
-      expect(result.entries[0]).toEqual(expect.objectContaining({ studentId: 'student-1', value: 2, rank: 1, isCurrentStudent: true }));
-      expect(result.entries[1]).toEqual(expect.objectContaining({ studentId: 'student-2', value: 1, rank: 2, isCurrentStudent: false }));
+      expect(result.entries[0]).toEqual(
+        expect.objectContaining({
+          studentId: "student-1",
+          value: 2,
+          rank: 1,
+          isCurrentStudent: true,
+        }),
+      );
+      expect(result.entries[1]).toEqual(
+        expect.objectContaining({
+          studentId: "student-2",
+          value: 1,
+          rank: 2,
+          isCurrentStudent: false,
+        }),
+      );
     });
   });
 });
@@ -558,39 +778,56 @@ Expected: FAIL — `Cannot find module './student-challenge-words.service'`.
 
 ```typescript
 // apps/backend/src/challenges/student-challenge-words.service.ts
-import { Injectable, NotFoundException } from '@nestjs/common';
-import { db } from '../db';
+import { Injectable, NotFoundException } from "@nestjs/common";
+import { db } from "../db";
 import {
-  challengeParticipants, challengeWordProgress, challengeWords, challenges, groupEnrollments, groups,
-} from '../db/schema';
-import { and, eq, inArray, isNull } from 'drizzle-orm';
+  challengeParticipants,
+  challengeWordProgress,
+  challengeWords,
+  challenges,
+  groupEnrollments,
+  groups,
+} from "../db/schema";
+import { and, eq, inArray, isNull } from "drizzle-orm";
 
 @Injectable()
 export class StudentChallengeWordsService {
   private async findEnrolledStudentIds(courseId: string): Promise<Set<string>> {
-    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, courseId) });
+    const courseGroups = await db.query.groups.findMany({
+      where: eq(groups.courseId, courseId),
+    });
     const groupIds = courseGroups.map((g) => g.id);
     if (groupIds.length === 0) return new Set();
     const enrollments = await db.query.groupEnrollments.findMany({
-      where: and(inArray(groupEnrollments.groupId, groupIds), isNull(groupEnrollments.removedAt)),
+      where: and(
+        inArray(groupEnrollments.groupId, groupIds),
+        isNull(groupEnrollments.removedAt),
+      ),
       with: { schoolMember: true },
     });
     return new Set(enrollments.map((e) => e.schoolMember.studentId));
   }
 
   private async assertEnrolled(challengeId: string, studentId: string) {
-    const challenge = await db.query.challenges.findFirst({ where: eq(challenges.id, challengeId) });
-    if (!challenge) throw new NotFoundException('Challenge not found');
+    const challenge = await db.query.challenges.findFirst({
+      where: eq(challenges.id, challengeId),
+    });
+    if (!challenge) throw new NotFoundException("Challenge not found");
     const enrolledIds = await this.findEnrolledStudentIds(challenge.courseId);
-    if (!enrolledIds.has(studentId)) throw new NotFoundException('Challenge not found');
+    if (!enrolledIds.has(studentId))
+      throw new NotFoundException("Challenge not found");
     return challenge;
   }
 
   private async requireParticipant(challengeId: string, studentId: string) {
     const participant = await db.query.challengeParticipants.findFirst({
-      where: and(eq(challengeParticipants.challengeId, challengeId), eq(challengeParticipants.studentId, studentId)),
+      where: and(
+        eq(challengeParticipants.challengeId, challengeId),
+        eq(challengeParticipants.studentId, studentId),
+      ),
     });
-    if (!participant) throw new NotFoundException('Siz bu challenge-ga qo\'shilmagansiz');
+    if (!participant)
+      throw new NotFoundException("Siz bu challenge-ga qo'shilmagansiz");
     return participant;
   }
 
@@ -605,7 +842,9 @@ export class StudentChallengeWordsService {
     const progressRows = await db.query.challengeWordProgress.findMany({
       where: eq(challengeWordProgress.challengeParticipantId, participant.id),
     });
-    const knownByWordId = new Map(progressRows.map((p) => [p.challengeWordId, p.known]));
+    const knownByWordId = new Map(
+      progressRows.map((p) => [p.challengeWordId, p.known]),
+    );
 
     return words.map((w) => ({
       id: w.id,
@@ -615,18 +854,30 @@ export class StudentChallengeWordsService {
     }));
   }
 
-  async setProgress(challengeId: string, wordId: string, studentId: string, known: boolean) {
+  async setProgress(
+    challengeId: string,
+    wordId: string,
+    studentId: string,
+    known: boolean,
+  ) {
     await this.assertEnrolled(challengeId, studentId);
     const participant = await this.requireParticipant(challengeId, studentId);
 
-    const [row] = await db.insert(challengeWordProgress).values({
-      challengeParticipantId: participant.id,
-      challengeWordId: wordId,
-      known,
-    }).onConflictDoUpdate({
-      target: [challengeWordProgress.challengeParticipantId, challengeWordProgress.challengeWordId],
-      set: { known, updatedAt: new Date() },
-    }).returning();
+    const [row] = await db
+      .insert(challengeWordProgress)
+      .values({
+        challengeParticipantId: participant.id,
+        challengeWordId: wordId,
+        known,
+      })
+      .onConflictDoUpdate({
+        target: [
+          challengeWordProgress.challengeParticipantId,
+          challengeWordProgress.challengeWordId,
+        ],
+        set: { known, updatedAt: new Date() },
+      })
+      .returning();
 
     return { wordId: row.challengeWordId, known: row.known };
   }
@@ -642,13 +893,19 @@ export class StudentChallengeWordsService {
 
     const participantIds = participants.map((p) => p.id);
     const progressRows = await db.query.challengeWordProgress.findMany({
-      where: inArray(challengeWordProgress.challengeParticipantId, participantIds),
+      where: inArray(
+        challengeWordProgress.challengeParticipantId,
+        participantIds,
+      ),
     });
 
     const knownCountByParticipant = new Map<string, number>();
     for (const row of progressRows) {
       if (!row.known) continue;
-      knownCountByParticipant.set(row.challengeParticipantId, (knownCountByParticipant.get(row.challengeParticipantId) ?? 0) + 1);
+      knownCountByParticipant.set(
+        row.challengeParticipantId,
+        (knownCountByParticipant.get(row.challengeParticipantId) ?? 0) + 1,
+      );
     }
 
     const scored = participants.map((participant) => ({
@@ -661,7 +918,11 @@ export class StudentChallengeWordsService {
 
     return {
       entries: scored
-        .sort((a, b) => b.value - a.value || a.studentName.localeCompare(b.studentName, 'uz'))
+        .sort(
+          (a, b) =>
+            b.value - a.value ||
+            a.studentName.localeCompare(b.studentName, "uz"),
+        )
         .map((entry, index) => ({ ...entry, rank: index + 1 })),
     };
   }
@@ -677,41 +938,61 @@ Expected: PASS (5 tests).
 
 ```typescript
 // apps/backend/src/challenges/student-challenge-words.controller.ts
-import { Body, Controller, Get, Param, Post, Req, UseGuards } from '@nestjs/common';
-import { IsBoolean } from 'class-validator';
-import { StudentChallengeWordsService } from './student-challenge-words.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
-import { RolesGuard } from '../auth/roles.guard';
-import { Roles } from '../auth/roles.decorator';
+import {
+  Body,
+  Controller,
+  Get,
+  Param,
+  Post,
+  Req,
+  UseGuards,
+} from "@nestjs/common";
+import { IsBoolean } from "class-validator";
+import { StudentChallengeWordsService } from "./student-challenge-words.service";
+import { JwtAuthGuard } from "../auth/jwt-auth.guard";
+import { RolesGuard } from "../auth/roles.guard";
+import { Roles } from "../auth/roles.decorator";
 
 class SetProgressDto {
   @IsBoolean() known: boolean;
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
-@Roles('student')
-@Controller('me/challenges/:id/words')
+@Roles("student")
+@Controller("me/challenges/:id/words")
 export class StudentChallengeWordsController {
-  constructor(private studentChallengeWordsService: StudentChallengeWordsService) {}
+  constructor(
+    private studentChallengeWordsService: StudentChallengeWordsService,
+  ) {}
 
   @Get()
-  listWords(@Param('id') id: string, @Req() req: any) {
+  listWords(@Param("id") id: string, @Req() req: any) {
     return this.studentChallengeWordsService.listWords(id, req.user.id);
   }
 
-  @Post(':wordId/progress')
-  setProgress(@Param('id') id: string, @Param('wordId') wordId: string, @Req() req: any, @Body() dto: SetProgressDto) {
-    return this.studentChallengeWordsService.setProgress(id, wordId, req.user.id, dto.known);
+  @Post(":wordId/progress")
+  setProgress(
+    @Param("id") id: string,
+    @Param("wordId") wordId: string,
+    @Req() req: any,
+    @Body() dto: SetProgressDto,
+  ) {
+    return this.studentChallengeWordsService.setProgress(
+      id,
+      wordId,
+      req.user.id,
+      dto.known,
+    );
   }
 
-  @Get('leaderboard')
-  leaderboard(@Param('id') id: string, @Req() req: any) {
+  @Get("leaderboard")
+  leaderboard(@Param("id") id: string, @Req() req: any) {
     return this.studentChallengeWordsService.leaderboard(id, req.user.id);
   }
 }
 ```
 
-Note the route order: `@Get('leaderboard')` must be registered — NestJS matches routes in declaration order within a controller, and `leaderboard` here is a static segment on a *different* controller path (`me/challenges/:id/words/leaderboard`) than `:wordId/progress` (`me/challenges/:id/words/:wordId/progress`), so there's no ambiguity between them; both can be declared in either order safely.
+Note the route order: `@Get('leaderboard')` must be registered — NestJS matches routes in declaration order within a controller, and `leaderboard` here is a static segment on a _different_ controller path (`me/challenges/:id/words/leaderboard`) than `:wordId/progress` (`me/challenges/:id/words/:wordId/progress`), so there's no ambiguity between them; both can be declared in either order safely.
 
 - [ ] **Step 6: Run the full challenges test suite**
 
@@ -735,11 +1016,13 @@ git commit -m "feat(backend): add student-facing word progress and leaderboard e
 ## Task 5: Frontend web — word memorization API client and teacher management UI
 
 **Files:**
+
 - Create: `apps/frontend/src/api/challenge-words.ts`
 - Create: `apps/frontend/src/components/course/CourseChallengeWordsPanel.tsx`
 - Modify: `apps/frontend/src/components/course/CourseChallengesPage.tsx` (branch on `type`, add type select to create modal)
 
 **Interfaces:**
+
 - Consumes: `client` from `./client` (existing axios instance).
 - Produces: `ApiChallengeWord`, `ApiStudentChallengeWord`, `ApiChallengeWordLeaderboardEntry` types and `apiListChallengeWords`, `apiAddChallengeWord`, `apiBulkImportChallengeWords`, `apiUpdateChallengeWord`, `apiDeleteChallengeWord` (teacher) functions in `api/challenge-words.ts`, consumed by this task's UI and Task 6's student UI.
 
@@ -747,7 +1030,7 @@ git commit -m "feat(backend): add student-facing word progress and leaderboard e
 
 ```typescript
 // apps/frontend/src/api/challenge-words.ts
-import client from './client';
+import client from "./client";
 
 export interface ApiChallengeWord {
   id: string;
@@ -757,7 +1040,9 @@ export interface ApiChallengeWord {
   orderIndex: number;
 }
 
-export async function apiListChallengeWords(challengeId: string): Promise<ApiChallengeWord[]> {
+export async function apiListChallengeWords(
+  challengeId: string,
+): Promise<ApiChallengeWord[]> {
   const res = await client.get(`/challenges/${challengeId}/words`);
   return res.data;
 }
@@ -774,7 +1059,9 @@ export async function apiBulkImportChallengeWords(
   challengeId: string,
   text: string,
 ): Promise<{ added: number; skipped: number }> {
-  const res = await client.post(`/challenges/${challengeId}/words/bulk`, { text });
+  const res = await client.post(`/challenges/${challengeId}/words/bulk`, {
+    text,
+  });
   return res.data;
 }
 
@@ -797,7 +1084,9 @@ export interface ApiStudentChallengeWord {
   known: boolean;
 }
 
-export async function apiListMyChallengeWords(challengeId: string): Promise<ApiStudentChallengeWord[]> {
+export async function apiListMyChallengeWords(
+  challengeId: string,
+): Promise<ApiStudentChallengeWord[]> {
   const res = await client.get(`/me/challenges/${challengeId}/words`);
   return res.data;
 }
@@ -807,7 +1096,10 @@ export async function apiSetChallengeWordProgress(
   wordId: string,
   known: boolean,
 ): Promise<{ wordId: string; known: boolean }> {
-  const res = await client.post(`/me/challenges/${challengeId}/words/${wordId}/progress`, { known });
+  const res = await client.post(
+    `/me/challenges/${challengeId}/words/${wordId}/progress`,
+    { known },
+  );
   return res.data;
 }
 
@@ -823,7 +1115,9 @@ export interface ApiChallengeWordLeaderboardEntry {
 export async function apiGetMyChallengeWordLeaderboard(
   challengeId: string,
 ): Promise<{ entries: ApiChallengeWordLeaderboardEntry[] }> {
-  const res = await client.get(`/me/challenges/${challengeId}/words/leaderboard`);
+  const res = await client.get(
+    `/me/challenges/${challengeId}/words/leaderboard`,
+  );
   return res.data;
 }
 ```
@@ -836,11 +1130,17 @@ export async function apiUpdateChallengeWord(
   wordId: string,
   data: Partial<{ word: string; translation: string }>,
 ): Promise<ApiChallengeWord> {
-  const res = await client.patch(`/challenges/${challengeId}/words/${wordId}`, data);
+  const res = await client.patch(
+    `/challenges/${challengeId}/words/${wordId}`,
+    data,
+  );
   return res.data;
 }
 
-export async function apiDeleteChallengeWord(challengeId: string, wordId: string): Promise<void> {
+export async function apiDeleteChallengeWord(
+  challengeId: string,
+  wordId: string,
+): Promise<void> {
   await client.delete(`/challenges/${challengeId}/words/${wordId}`);
 }
 ```
@@ -858,19 +1158,26 @@ First read `apps/frontend/src/components/course/CourseChallengesPage.tsx`'s exis
 
 ```tsx
 // apps/frontend/src/components/course/CourseChallengeWordsPanel.tsx
-import { useState } from 'react';
-import { Trash2, Upload } from 'lucide-react';
-import { toast } from 'sonner';
+import { useState } from "react";
+import { Trash2, Upload } from "lucide-react";
+import { toast } from "sonner";
 import {
-  apiListChallengeWords, apiAddChallengeWord, apiBulkImportChallengeWords,
-  apiDeleteChallengeWord, type ApiChallengeWord,
-} from '../../api/challenge-words';
+  apiListChallengeWords,
+  apiAddChallengeWord,
+  apiBulkImportChallengeWords,
+  apiDeleteChallengeWord,
+  type ApiChallengeWord,
+} from "../../api/challenge-words";
 
-export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string }) {
+export function CourseChallengeWordsPanel({
+  challengeId,
+}: {
+  challengeId: string;
+}) {
   const [words, setWords] = useState<ApiChallengeWord[]>([]);
   const [loaded, setLoaded] = useState(false);
-  const [newWord, setNewWord] = useState('');
-  const [newTranslation, setNewTranslation] = useState('');
+  const [newWord, setNewWord] = useState("");
+  const [newTranslation, setNewTranslation] = useState("");
   const [importOpen, setImportOpen] = useState(false);
 
   async function load() {
@@ -881,16 +1188,23 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
 
   if (!loaded) {
     void load();
-    return <div className="rounded-2xl bg-white p-5 text-sm text-gray-400">Yuklanmoqda...</div>;
+    return (
+      <div className="rounded-2xl bg-white p-5 text-sm text-gray-400">
+        Yuklanmoqda...
+      </div>
+    );
   }
 
   async function handleAdd() {
     if (!newWord.trim() || !newTranslation.trim()) return;
     try {
-      const word = await apiAddChallengeWord(challengeId, { word: newWord.trim(), translation: newTranslation.trim() });
+      const word = await apiAddChallengeWord(challengeId, {
+        word: newWord.trim(),
+        translation: newTranslation.trim(),
+      });
       setWords((prev) => [...prev, word]);
-      setNewWord('');
-      setNewTranslation('');
+      setNewWord("");
+      setNewTranslation("");
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "So'z qo'shib bo'lmadi");
     }
@@ -919,8 +1233,18 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
       </div>
 
       <div className="mb-4 flex gap-2">
-        <input value={newWord} onChange={(e) => setNewWord(e.target.value)} placeholder="So'z" className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" />
-        <input value={newTranslation} onChange={(e) => setNewTranslation(e.target.value)} placeholder="Tarjima" className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" />
+        <input
+          value={newWord}
+          onChange={(e) => setNewWord(e.target.value)}
+          placeholder="So'z"
+          className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+        />
+        <input
+          value={newTranslation}
+          onChange={(e) => setNewTranslation(e.target.value)}
+          placeholder="Tarjima"
+          className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
+        />
         <button
           type="button"
           disabled={!newWord.trim() || !newTranslation.trim()}
@@ -936,10 +1260,21 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
       ) : (
         <div className="flex flex-col gap-2">
           {words.map((w) => (
-            <div key={w.id} className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5">
-              <span className="text-sm font-semibold text-gray-800">{w.word}</span>
-              <span className="min-w-0 flex-1 truncate text-sm text-gray-500">{w.translation}</span>
-              <button type="button" onClick={() => void handleDelete(w.id)} className="shrink-0 rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500">
+            <div
+              key={w.id}
+              className="flex items-center justify-between gap-3 rounded-xl bg-gray-50 px-3.5 py-2.5"
+            >
+              <span className="text-sm font-semibold text-gray-800">
+                {w.word}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-gray-500">
+                {w.translation}
+              </span>
+              <button
+                type="button"
+                onClick={() => void handleDelete(w.id)}
+                className="shrink-0 rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500"
+              >
                 <Trash2 size={15} />
               </button>
             </div>
@@ -962,22 +1297,28 @@ export function CourseChallengeWordsPanel({ challengeId }: { challengeId: string
 }
 
 function BulkImportModal({
-  challengeId, onImported, onClose,
+  challengeId,
+  onImported,
+  onClose,
 }: {
   challengeId: string;
   onImported: (added: number) => void;
   onClose: () => void;
 }) {
-  const [text, setText] = useState('');
+  const [text, setText] = useState("");
   const [importing, setImporting] = useState(false);
 
   async function handleImport() {
     if (!text.trim()) return;
     setImporting(true);
     try {
-      const { added, skipped } = await apiBulkImportChallengeWords(challengeId, text);
+      const { added, skipped } = await apiBulkImportChallengeWords(
+        challengeId,
+        text,
+      );
       onImported(added);
-      if (skipped > 0) toast.error(`${skipped} qator noto'g'ri formatda, o'tkazib yuborildi`);
+      if (skipped > 0)
+        toast.error(`${skipped} qator noto'g'ri formatda, o'tkazib yuborildi`);
       onClose();
     } catch (error: any) {
       toast.error(error?.response?.data?.message ?? "Import qilib bo'lmadi");
@@ -989,13 +1330,17 @@ function BulkImportModal({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
       <div className="w-full max-w-lg rounded-2xl bg-white p-6">
-        <h3 className="mb-1 text-base font-bold text-gray-800">Ommaviy import</h3>
-        <p className="mb-4 text-xs text-gray-400">Har qatorda: <code>so'z - tarjima</code></p>
+        <h3 className="mb-1 text-base font-bold text-gray-800">
+          Ommaviy import
+        </h3>
+        <p className="mb-4 text-xs text-gray-400">
+          Har qatorda: <code>so'z - tarjima</code>
+        </p>
         <textarea
           value={text}
           onChange={(e) => setText(e.target.value)}
           rows={8}
-          placeholder={'apple - olma\nbook - kitob'}
+          placeholder={"apple - olma\nbook - kitob"}
           className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
         />
         <div className="flex gap-2">
@@ -1007,7 +1352,11 @@ function BulkImportModal({
           >
             Import qilish
           </button>
-          <button type="button" onClick={onClose} className="rounded-2xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-600">
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-2xl bg-gray-100 px-5 py-3 text-sm font-semibold text-gray-600"
+          >
             Bekor
           </button>
         </div>
@@ -1025,19 +1374,23 @@ In `apps/frontend/src/components/course/CourseChallengesPage.tsx`:
 2. In the detail view (the block starting `if (selectedId && detail && detail.id === selectedId) {`), replace the single `<BooksPanel ... />` call with a conditional:
 
 ```tsx
-{detail.type === 'soz_yodlash' ? (
-  <CourseChallengeWordsPanel challengeId={detail.id} />
-) : (
-  <BooksPanel
-    books={detail.books}
-    allTests={allTests}
-    onAddBook={(title, totalPages) => void addBook(detail.id, { title, totalPages })}
-    onUpdateBook={(bookId, data) => void updateBook(detail.id, bookId, data)}
-    onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
-    onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
-    onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
-  />
-)}
+{
+  detail.type === "soz_yodlash" ? (
+    <CourseChallengeWordsPanel challengeId={detail.id} />
+  ) : (
+    <BooksPanel
+      books={detail.books}
+      allTests={allTests}
+      onAddBook={(title, totalPages) =>
+        void addBook(detail.id, { title, totalPages })
+      }
+      onUpdateBook={(bookId, data) => void updateBook(detail.id, bookId, data)}
+      onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
+      onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
+      onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
+    />
+  );
+}
 ```
 
 3. In the `CreateChallengeModal` function, replace the disabled single-option `<select>` with a real, controlled select offering both types:
@@ -1077,11 +1430,13 @@ git commit -m "feat(frontend): add teacher word management UI for soz_yodlash ch
 ## Task 6: Frontend web — student word practice (Flashcard and Test modes)
 
 **Files:**
+
 - Create: `apps/frontend/src/pages/ChallengeWordPracticePage.tsx`
 - Modify: `apps/frontend/src/pages/ChallengeDetailPage.tsx` (branch on `type`, add "Mashq qilish" entry point)
 - Modify: `apps/frontend/src/App.tsx` (add `/challenges/:id/practice` route)
 
 **Interfaces:**
+
 - Consumes: `apiListMyChallengeWords`, `apiSetChallengeWordProgress`, `apiGetMyChallengeWordLeaderboard`, `ApiStudentChallengeWord` from Task 5's `api/challenge-words.ts`.
 - Produces: fully working student flashcard/test practice flow.
 
@@ -1147,10 +1502,14 @@ useEffect(() => {
 // With a type-aware version:
 useEffect(() => {
   if (!id || tab !== "leaderboard") return;
-  if (detail?.type === 'soz_yodlash') {
-    void apiGetMyChallengeWordLeaderboard(id).then((r) => setEntries(r.entries));
+  if (detail?.type === "soz_yodlash") {
+    void apiGetMyChallengeWordLeaderboard(id).then((r) =>
+      setEntries(r.entries),
+    );
   } else {
-    void apiGetMyChallengeLeaderboard(id, metric).then((r) => setEntries(r.entries));
+    void apiGetMyChallengeLeaderboard(id, metric).then((r) =>
+      setEntries(r.entries),
+    );
   }
 }, [id, tab, metric, detail?.type]);
 ```
@@ -1165,16 +1524,18 @@ This page has three states: mode/direction selection, Flashcard practice, Test p
 
 ```tsx
 // apps/frontend/src/pages/ChallengeWordPracticePage.tsx
-import { useEffect, useMemo, useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft } from 'lucide-react';
-import { StudentShell } from '../components/student/StudentShell';
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
+import { ArrowLeft } from "lucide-react";
+import { StudentShell } from "../components/student/StudentShell";
 import {
-  apiListMyChallengeWords, apiSetChallengeWordProgress, type ApiStudentChallengeWord,
-} from '../api/challenge-words';
+  apiListMyChallengeWords,
+  apiSetChallengeWordProgress,
+  type ApiStudentChallengeWord,
+} from "../api/challenge-words";
 
-type Mode = 'flashcard' | 'test';
-type Direction = 'wordToTranslation' | 'translationToWord';
+type Mode = "flashcard" | "test";
+type Direction = "wordToTranslation" | "translationToWord";
 
 export function ChallengeWordPracticePage() {
   const { id } = useParams<{ id: string }>();
@@ -1194,37 +1555,69 @@ export function ChallengeWordPracticePage() {
   }
 
   if (!words) {
-    return <StudentShell><p className="p-6 text-sm text-gray-400">Yuklanmoqda...</p></StudentShell>;
+    return (
+      <StudentShell>
+        <p className="p-6 text-sm text-gray-400">Yuklanmoqda...</p>
+      </StudentShell>
+    );
   }
 
   if (!mode || !direction) {
     return (
       <StudentShell>
         <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
-          <button type="button" onClick={backToDetail} className="mb-6 flex items-center gap-1.5 text-sm font-semibold text-gray-500">
+          <button
+            type="button"
+            onClick={backToDetail}
+            className="mb-6 flex items-center gap-1.5 text-sm font-semibold text-gray-500"
+          >
             <ArrowLeft size={16} /> Orqaga
           </button>
-          <h1 className="mb-1 text-2xl font-extrabold text-gray-900">Mashq turi</h1>
-          <p className="mb-6 text-sm text-gray-400">Rejim va yo'nalishni tanlang</p>
+          <h1 className="mb-1 text-2xl font-extrabold text-gray-900">
+            Mashq turi
+          </h1>
+          <p className="mb-6 text-sm text-gray-400">
+            Rejim va yo'nalishni tanlang
+          </p>
 
-          <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Rejim</p>
+          <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
+            Rejim
+          </p>
           <div className="mb-6 grid grid-cols-2 gap-3">
-            <button type="button" onClick={() => setMode('flashcard')} className={`rounded-2xl p-4 text-left ${mode === 'flashcard' ? 'bg-gray-900 text-white' : 'student-course-card'}`}>
+            <button
+              type="button"
+              onClick={() => setMode("flashcard")}
+              className={`rounded-2xl p-4 text-left ${mode === "flashcard" ? "bg-gray-900 text-white" : "student-course-card"}`}
+            >
               <p className="text-sm font-bold">Flashcard</p>
               <p className="mt-1 text-xs opacity-70">Kartani suring</p>
             </button>
-            <button type="button" onClick={() => setMode('test')} className={`rounded-2xl p-4 text-left ${mode === 'test' ? 'bg-gray-900 text-white' : 'student-course-card'}`}>
+            <button
+              type="button"
+              onClick={() => setMode("test")}
+              className={`rounded-2xl p-4 text-left ${mode === "test" ? "bg-gray-900 text-white" : "student-course-card"}`}
+            >
               <p className="text-sm font-bold">Test</p>
               <p className="mt-1 text-xs opacity-70">4 variantli savol</p>
             </button>
           </div>
 
-          <p className="mb-2 text-xs font-semibold uppercase text-gray-400">Yo'nalish</p>
+          <p className="mb-2 text-xs font-semibold uppercase text-gray-400">
+            Yo'nalish
+          </p>
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <button type="button" onClick={() => setDirection('wordToTranslation')} className={`rounded-2xl p-4 text-left ${direction === 'wordToTranslation' ? 'bg-gray-900 text-white' : 'student-course-card'}`}>
+            <button
+              type="button"
+              onClick={() => setDirection("wordToTranslation")}
+              className={`rounded-2xl p-4 text-left ${direction === "wordToTranslation" ? "bg-gray-900 text-white" : "student-course-card"}`}
+            >
               <p className="text-sm font-bold">So'z → Tarjima</p>
             </button>
-            <button type="button" onClick={() => setDirection('translationToWord')} className={`rounded-2xl p-4 text-left ${direction === 'translationToWord' ? 'bg-gray-900 text-white' : 'student-course-card'}`}>
+            <button
+              type="button"
+              onClick={() => setDirection("translationToWord")}
+              className={`rounded-2xl p-4 text-left ${direction === "translationToWord" ? "bg-gray-900 text-white" : "student-course-card"}`}
+            >
               <p className="text-sm font-bold">Tarjima → So'z</p>
             </button>
           </div>
@@ -1232,7 +1625,9 @@ export function ChallengeWordPracticePage() {
           <button
             type="button"
             disabled={!mode || !direction}
-            onClick={() => { /* both are already set via state above; this button is unreachable while either is null per the render guard, kept for clarity */ }}
+            onClick={() => {
+              /* both are already set via state above; this button is unreachable while either is null per the render guard, kept for clarity */
+            }}
             className="mt-6 hidden"
           />
         </div>
@@ -1243,13 +1638,30 @@ export function ChallengeWordPracticePage() {
   return (
     <StudentShell>
       <div className="bg-white px-4 py-5 lg:rounded-2xl lg:p-5">
-        <button type="button" onClick={() => { setMode(null); setDirection(null); }} className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-gray-500">
+        <button
+          type="button"
+          onClick={() => {
+            setMode(null);
+            setDirection(null);
+          }}
+          className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-gray-500"
+        >
           <ArrowLeft size={16} /> Orqaga
         </button>
-        {mode === 'flashcard' ? (
-          <FlashcardPractice challengeId={id} words={words} direction={direction} onWordsChange={setWords} />
+        {mode === "flashcard" ? (
+          <FlashcardPractice
+            challengeId={id}
+            words={words}
+            direction={direction}
+            onWordsChange={setWords}
+          />
         ) : (
-          <TestPractice challengeId={id} words={words} direction={direction} onWordsChange={setWords} />
+          <TestPractice
+            challengeId={id}
+            words={words}
+            direction={direction}
+            onWordsChange={setWords}
+          />
         )}
       </div>
     </StudentShell>
@@ -1265,14 +1677,19 @@ Append to the same file (`ChallengeWordPracticePage.tsx`):
 
 ```tsx
 function FlashcardPractice({
-  challengeId, words, direction, onWordsChange,
+  challengeId,
+  words,
+  direction,
+  onWordsChange,
 }: {
   challengeId: string;
   words: ApiStudentChallengeWord[];
   direction: Direction;
   onWordsChange: (words: ApiStudentChallengeWord[]) => void;
 }) {
-  const [deck, setDeck] = useState(() => words.map((w) => ({ ...w, uid: w.id })));
+  const [deck, setDeck] = useState(() =>
+    words.map((w) => ({ ...w, uid: w.id })),
+  );
   const [revealed, setRevealed] = useState(false);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
@@ -1290,7 +1707,9 @@ function FlashcardPractice({
       // best-effort: local state still advances even if the write fails, matching
       // the spec's "no batching, immediate write" intent without blocking the UI
     }
-    onWordsChange(words.map((w) => (w.id === current.id ? { ...w, known } : w)));
+    onWordsChange(
+      words.map((w) => (w.id === current.id ? { ...w, known } : w)),
+    );
     setDeck((prev) => {
       const [head, ...rest] = prev;
       return known ? rest : [...rest, head];
@@ -1300,11 +1719,11 @@ function FlashcardPractice({
 
   function onPointerDown(e: React.MouseEvent | React.TouchEvent) {
     setDragging(true);
-    startXRef.current = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    startXRef.current = "touches" in e ? e.touches[0].clientX : e.clientX;
   }
   function onPointerMove(e: React.MouseEvent | React.TouchEvent) {
     if (!dragging) return;
-    const x = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const x = "touches" in e ? e.touches[0].clientX : e.clientX;
     setDragX(x - startXRef.current);
   }
   function onPointerUp() {
@@ -1321,13 +1740,17 @@ function FlashcardPractice({
     return (
       <div className="flex flex-col items-center py-16">
         <p className="text-lg font-bold text-gray-900">🎉 Tugadi!</p>
-        <p className="mt-1 text-sm text-gray-400">Barcha so'zlar "bilaman" holatida</p>
+        <p className="mt-1 text-sm text-gray-400">
+          Barcha so'zlar "bilaman" holatida
+        </p>
       </div>
     );
   }
 
-  const front = direction === 'wordToTranslation' ? current.word : current.translation;
-  const back = direction === 'wordToTranslation' ? current.translation : current.word;
+  const front =
+    direction === "wordToTranslation" ? current.word : current.translation;
+  const back =
+    direction === "wordToTranslation" ? current.translation : current.word;
 
   return (
     <div className="flex flex-col items-center">
@@ -1342,12 +1765,19 @@ function FlashcardPractice({
           <div
             key={w.uid}
             className="student-course-card absolute inset-0 rounded-3xl"
-            style={{ transform: `scale(${1 - (i + 1) * 0.05}) translateY(${(i + 1) * 8}px)`, zIndex: 10 - i }}
+            style={{
+              transform: `scale(${1 - (i + 1) * 0.05}) translateY(${(i + 1) * 8}px)`,
+              zIndex: 10 - i,
+            }}
           />
         ))}
         <div
           className="student-course-card challenge-detail-card absolute inset-0 flex cursor-grab flex-col items-center justify-center rounded-3xl p-6"
-          style={{ transform: `translateX(${dragX}px) rotate(${dragX / 14}deg)`, transition: dragging ? 'none' : 'transform 0.3s ease', zIndex: 20 }}
+          style={{
+            transform: `translateX(${dragX}px) rotate(${dragX / 14}deg)`,
+            transition: dragging ? "none" : "transform 0.3s ease",
+            zIndex: 20,
+          }}
           onMouseDown={onPointerDown}
           onMouseMove={onPointerMove}
           onMouseUp={onPointerUp}
@@ -1361,7 +1791,9 @@ function FlashcardPractice({
           {revealed ? (
             <p className="mt-4 text-lg text-gray-500">{back}</p>
           ) : (
-            <p className="mt-4 text-[10px] tracking-wide text-gray-300">JAVOBNI KO'RSATISH</p>
+            <p className="mt-4 text-[10px] tracking-wide text-gray-300">
+              JAVOBNI KO'RSATISH
+            </p>
           )}
         </div>
       </div>
@@ -1375,14 +1807,24 @@ function FlashcardPractice({
 Append to the same file:
 
 ```tsx
-function pickWrongOptions(words: ApiStudentChallengeWord[], correctId: string, direction: Direction, count: number): string[] {
-  const pool = words.filter((w) => w.id !== correctId).map((w) => (direction === 'wordToTranslation' ? w.translation : w.word));
+function pickWrongOptions(
+  words: ApiStudentChallengeWord[],
+  correctId: string,
+  direction: Direction,
+  count: number,
+): string[] {
+  const pool = words
+    .filter((w) => w.id !== correctId)
+    .map((w) => (direction === "wordToTranslation" ? w.translation : w.word));
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
 
 function TestPractice({
-  challengeId, words, direction, onWordsChange,
+  challengeId,
+  words,
+  direction,
+  onWordsChange,
 }: {
   challengeId: string;
   words: ApiStudentChallengeWord[];
@@ -1397,7 +1839,8 @@ function TestPractice({
   const current = queue[index];
   const options = useMemo(() => {
     if (!current) return [];
-    const correctAnswer = direction === 'wordToTranslation' ? current.translation : current.word;
+    const correctAnswer =
+      direction === "wordToTranslation" ? current.translation : current.word;
     const wrongCount = Math.min(3, words.length - 1);
     const wrongs = pickWrongOptions(words, current.id, direction, wrongCount);
     return [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
@@ -1406,13 +1849,17 @@ function TestPractice({
   if (!current) {
     return (
       <div className="flex flex-col items-center py-16">
-        <p className="text-lg font-bold text-gray-900">Natija: {correctCount}/{queue.length} to'g'ri</p>
+        <p className="text-lg font-bold text-gray-900">
+          Natija: {correctCount}/{queue.length} to'g'ri
+        </p>
       </div>
     );
   }
 
-  const question = direction === 'wordToTranslation' ? current.word : current.translation;
-  const correctAnswer = direction === 'wordToTranslation' ? current.translation : current.word;
+  const question =
+    direction === "wordToTranslation" ? current.word : current.translation;
+  const correctAnswer =
+    direction === "wordToTranslation" ? current.translation : current.word;
 
   async function handleSelect(option: string) {
     if (selected) return;
@@ -1424,7 +1871,9 @@ function TestPractice({
     } catch {
       // best-effort — same rationale as FlashcardPractice's commitSwipe
     }
-    onWordsChange(words.map((w) => (w.id === current.id ? { ...w, known } : w)));
+    onWordsChange(
+      words.map((w) => (w.id === current.id ? { ...w, known } : w)),
+    );
     setTimeout(() => {
       setSelected(null);
       setIndex((i) => i + 1);
@@ -1433,16 +1882,18 @@ function TestPractice({
 
   return (
     <div className="flex flex-col items-center">
-      <p className="mb-1 text-xs text-gray-400">{index + 1} / {queue.length}</p>
+      <p className="mb-1 text-xs text-gray-400">
+        {index + 1} / {queue.length}
+      </p>
       <p className="mb-6 text-2xl font-extrabold text-gray-900">{question}</p>
       <div className="grid w-full max-w-[400px] grid-cols-1 gap-2.5">
         {options.map((option) => {
           const isCorrect = option === correctAnswer;
           const isSelected = option === selected;
-          let colorClass = 'student-course-card';
+          let colorClass = "student-course-card";
           if (selected) {
-            if (isCorrect) colorClass = 'bg-green-100 text-green-700';
-            else if (isSelected) colorClass = 'bg-red-100 text-red-700';
+            if (isCorrect) colorClass = "bg-green-100 text-green-700";
+            else if (isSelected) colorClass = "bg-red-100 text-red-700";
           }
           return (
             <button
@@ -1488,11 +1939,13 @@ git commit -m "feat(frontend): add student Flashcard/Test practice flow for soz_
 ## Task 7: Mobile — challenges API client and types (both challenge kinds)
 
 **Files:**
+
 - Create: `apps/mobile/src/api/challenges.ts`
 - Create: `apps/mobile/src/api/challenge-words.ts`
 - Modify: `apps/mobile/src/types/api.ts` (add challenge + word types)
 
 **Interfaces:**
+
 - Consumes: `api` axios instance from `../lib/api` (confirmed export: `export const api = axios.create(...)`).
 - Produces: `ApiStudentChallenge`, `ApiMyChallengeDetail`, `ApiMyChallengeBook`, `ApiChallengeEvent`, `ApiChallengeLeaderboardEntry`, `ApiStudentChallengeWord`, `ApiChallengeWordLeaderboardEntry` types in `types/api.ts`; API functions in `api/challenges.ts` and `api/challenge-words.ts`, consumed by Task 9/10/11's screens.
 
@@ -1518,7 +1971,7 @@ export type ApiMyChallengeBook = {
   totalPages: number;
   lastPageRead: number;
   completed: boolean;
-  pendingTest: {testId: string; slug: string; name: string} | null;
+  pendingTest: { testId: string; slug: string; name: string } | null;
 };
 
 export type ApiMyChallengeDetail = {
@@ -1537,10 +1990,11 @@ export type ApiChallengeEvent = {
   endPage: number;
   newWordsCount: number;
   createdAt: string;
-  book: {id: string; title: string};
+  book: { id: string; title: string };
 };
 
-export type ChallengeLeaderboardMetric = 'overall' | 'books' | 'words' | 'speed';
+export type ChallengeLeaderboardMetric =
+  "overall" | "books" | "words" | "speed";
 
 export type ApiChallengeLeaderboardEntry = {
   studentId: string;
@@ -1565,23 +2019,30 @@ export type ApiChallengeWordLeaderboardEntry = ApiChallengeLeaderboardEntry;
 
 ```typescript
 // apps/mobile/src/api/challenges.ts
-import {api} from '../lib/api';
+import { api } from "../lib/api";
 import type {
-  ApiChallengeEvent, ApiChallengeLeaderboardEntry, ApiMyChallengeDetail,
-  ApiStudentChallenge, ChallengeLeaderboardMetric,
-} from '../types/api';
+  ApiChallengeEvent,
+  ApiChallengeLeaderboardEntry,
+  ApiMyChallengeDetail,
+  ApiStudentChallenge,
+  ChallengeLeaderboardMetric,
+} from "../types/api";
 
 export async function apiListMyChallenges(): Promise<ApiStudentChallenge[]> {
-  const res = await api.get('/me/challenges');
+  const res = await api.get("/me/challenges");
   return res.data;
 }
 
-export async function apiJoinChallenge(challengeId: string): Promise<{id: string}> {
+export async function apiJoinChallenge(
+  challengeId: string,
+): Promise<{ id: string }> {
   const res = await api.post(`/me/challenges/${challengeId}/join`);
   return res.data;
 }
 
-export async function apiGetMyChallengeDetail(challengeId: string): Promise<ApiMyChallengeDetail> {
+export async function apiGetMyChallengeDetail(
+  challengeId: string,
+): Promise<ApiMyChallengeDetail> {
   const res = await api.get(`/me/challenges/${challengeId}`);
   return res.data;
 }
@@ -1589,13 +2050,18 @@ export async function apiGetMyChallengeDetail(challengeId: string): Promise<ApiM
 export async function apiAddChallengeEvent(
   challengeId: string,
   bookId: string,
-  data: {endPage: number; newWordsCount: number},
+  data: { endPage: number; newWordsCount: number },
 ): Promise<ApiChallengeEvent> {
-  const res = await api.post(`/me/challenges/${challengeId}/books/${bookId}/events`, data);
+  const res = await api.post(
+    `/me/challenges/${challengeId}/books/${bookId}/events`,
+    data,
+  );
   return res.data;
 }
 
-export async function apiGetMyChallengeHistory(challengeId: string): Promise<ApiChallengeEvent[]> {
+export async function apiGetMyChallengeHistory(
+  challengeId: string,
+): Promise<ApiChallengeEvent[]> {
   const res = await api.get(`/me/challenges/${challengeId}/history`);
   return res.data;
 }
@@ -1604,8 +2070,10 @@ export async function apiGetChallengeLeaderboard(
   challengeId: string,
   metric: ChallengeLeaderboardMetric,
   bookId?: string,
-): Promise<{entries: ApiChallengeLeaderboardEntry[]}> {
-  const res = await api.get(`/me/challenges/${challengeId}/leaderboard`, {params: {metric, bookId}});
+): Promise<{ entries: ApiChallengeLeaderboardEntry[] }> {
+  const res = await api.get(`/me/challenges/${challengeId}/leaderboard`, {
+    params: { metric, bookId },
+  });
   return res.data;
 }
 ```
@@ -1614,10 +2082,15 @@ export async function apiGetChallengeLeaderboard(
 
 ```typescript
 // apps/mobile/src/api/challenge-words.ts
-import {api} from '../lib/api';
-import type {ApiChallengeWordLeaderboardEntry, ApiStudentChallengeWord} from '../types/api';
+import { api } from "../lib/api";
+import type {
+  ApiChallengeWordLeaderboardEntry,
+  ApiStudentChallengeWord,
+} from "../types/api";
 
-export async function apiListMyChallengeWords(challengeId: string): Promise<ApiStudentChallengeWord[]> {
+export async function apiListMyChallengeWords(
+  challengeId: string,
+): Promise<ApiStudentChallengeWord[]> {
   const res = await api.get(`/me/challenges/${challengeId}/words`);
   return res.data;
 }
@@ -1626,14 +2099,17 @@ export async function apiSetChallengeWordProgress(
   challengeId: string,
   wordId: string,
   known: boolean,
-): Promise<{wordId: string; known: boolean}> {
-  const res = await api.post(`/me/challenges/${challengeId}/words/${wordId}/progress`, {known});
+): Promise<{ wordId: string; known: boolean }> {
+  const res = await api.post(
+    `/me/challenges/${challengeId}/words/${wordId}/progress`,
+    { known },
+  );
   return res.data;
 }
 
 export async function apiGetMyChallengeWordLeaderboard(
   challengeId: string,
-): Promise<{entries: ApiChallengeWordLeaderboardEntry[]}> {
+): Promise<{ entries: ApiChallengeWordLeaderboardEntry[] }> {
   const res = await api.get(`/me/challenges/${challengeId}/words/leaderboard`);
   return res.data;
 }
@@ -1658,6 +2134,7 @@ git commit -m "feat(mobile): add challenges and challenge-words API clients and 
 ## Task 8: Mobile — navigation restructure (Jamm hub tab, Live moved to stack)
 
 **Files:**
+
 - Modify: `apps/mobile/src/navigation/RootNavigator.tsx`
 - Modify: `apps/mobile/src/navigation/types.ts`
 - Create: `apps/mobile/src/screens/ChallengesScreen.tsx` (hub screen; Task 9 fills in the "Challenge-lar" list view this hub switches to)
@@ -1665,6 +2142,7 @@ git commit -m "feat(mobile): add challenges and challenge-words API clients and 
 **Design note:** "Jonli musobaqalar" is reachable only from inside the "Jamm" tab's hub — do NOT add a header button to `HistoryScreen.tsx`; that screen is untouched by this plan.
 
 **Interfaces:**
+
 - Consumes: existing `LiveScreen`, `HistoryScreen` components.
 - Produces: `TabParamList` with `Jamm` replacing `Live`; `RootStackParamList` with `Live: undefined` and `ChallengeDetail`/`ChallengeWordPractice` added (the latter two consumed by Task 9/10).
 
@@ -1675,18 +2153,27 @@ git commit -m "feat(mobile): add challenges and challenge-words API clients and 
 export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
-  Courses: {schoolId: string; schoolName: string};
-  Course: {courseId: string; title: string};
-  Web: {path: string; title: string; onlineRequired?: boolean};
-  Chat: {chatId: string; title: string};
-  Classroom: {sessionId: string};
+  Courses: { schoolId: string; schoolName: string };
+  Course: { courseId: string; title: string };
+  Web: { path: string; title: string; onlineRequired?: boolean };
+  Chat: { chatId: string; title: string };
+  Classroom: { sessionId: string };
   Live: undefined;
-  ChallengeDetail: {challengeId: string; title: string};
-  ChallengeWordPractice: {challengeId: string; title: string};
-  SubmissionDetail: {submissionId: string; title: string; source?: 'me' | 'practice'};
-  SchoolInvite: {token: string};
-  TestTaker: {slug: string; title: string; practiceMode: boolean; submissionId?: string};
-  TestResult: {submissionId: string; title: string; practiceMode: boolean};
+  ChallengeDetail: { challengeId: string; title: string };
+  ChallengeWordPractice: { challengeId: string; title: string };
+  SubmissionDetail: {
+    submissionId: string;
+    title: string;
+    source?: "me" | "practice";
+  };
+  SchoolInvite: { token: string };
+  TestTaker: {
+    slug: string;
+    title: string;
+    practiceMode: boolean;
+    submissionId?: string;
+  };
+  TestResult: { submissionId: string; title: string; practiceMode: boolean };
 };
 export type TabParamList = {
   Schools: undefined;
@@ -1703,55 +2190,71 @@ This is the final hub implementation (not a placeholder) — 3 cards matching th
 
 ```tsx
 // apps/mobile/src/screens/ChallengesScreen.tsx
-import React, {useState} from 'react';
-import {Pressable, Text, View} from 'react-native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {BookOpen, Mic, Radio} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import type {RootStackParamList} from '../navigation/types';
-import {Screen} from '../components/Ui';
-import {ChallengesListView} from './ChallengesListView';
+import React, { useState } from "react";
+import { Pressable, Text, View } from "react-native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BookOpen, Mic, Radio } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { RootStackParamList } from "../navigation/types";
+import { Screen } from "../components/Ui";
+import { ChallengesListView } from "./ChallengesListView";
 
-type HubView = 'hub' | 'challenges';
+type HubView = "hub" | "challenges";
 
 export function ChallengesScreen({
   navigation,
 }: {
   navigation: NativeStackNavigationProp<RootStackParamList>;
 }) {
-  const [view, setView] = useState<HubView>('hub');
+  const [view, setView] = useState<HubView>("hub");
   const insets = useSafeAreaInsets();
 
-  if (view === 'challenges') {
-    return <ChallengesListView navigation={navigation} onBack={() => setView('hub')} />;
+  if (view === "challenges") {
+    return (
+      <ChallengesListView
+        navigation={navigation}
+        onBack={() => setView("hub")}
+      />
+    );
   }
 
   return (
     <Screen>
-      <View style={{paddingTop: insets.top + 20}} className="bg-white px-5 pb-4 dark:bg-dark-canvas">
-        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Jamm</Text>
+      <View
+        style={{ paddingTop: insets.top + 20 }}
+        className="bg-white px-5 pb-4 dark:bg-dark-canvas"
+      >
+        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">
+          Jamm
+        </Text>
       </View>
       <View className="flex-1 gap-3 p-4">
         <Pressable
-          onPress={() => setView('challenges')}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          onPress={() => setView("challenges")}
+          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface"
+        >
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <BookOpen size={22} color="#334155" />
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Challenge-lar</Text>
-            <Text className="text-xs text-gray-400">Kitobxonlik va so'z yodlash</Text>
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">
+              Challenge-lar
+            </Text>
+            <Text className="text-xs text-gray-400">Turli topshiriqlar</Text>
           </View>
         </Pressable>
 
         <Pressable
-          onPress={() => navigation.navigate('Live')}
-          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface">
+          onPress={() => navigation.navigate("Live")}
+          className="flex-row items-center gap-3 rounded-2xl bg-white p-4 dark:bg-dark-surface"
+        >
           <View className="h-11 w-11 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
             <Radio size={22} color="#334155" />
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Jonli Musobaqalar</Text>
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">
+              Jonli Musobaqalar
+            </Text>
             <Text className="text-xs text-gray-400">Real vaqtda musobaqa</Text>
           </View>
         </Pressable>
@@ -1761,11 +2264,17 @@ export function ChallengesScreen({
             <Mic size={22} color="#334155" />
           </View>
           <View className="min-w-0 flex-1">
-            <Text className="text-sm font-bold text-ink dark:text-dark-ink">Ovozli suhbat</Text>
-            <Text className="text-xs text-gray-400">Tez orada ishga tushadi</Text>
+            <Text className="text-sm font-bold text-ink dark:text-dark-ink">
+              Ovozli suhbat
+            </Text>
+            <Text className="text-xs text-gray-400">
+              Tez orada ishga tushadi
+            </Text>
           </View>
           <View className="rounded-full bg-gray-100 px-2 py-0.5 dark:bg-dark-canvas">
-            <Text className="text-[10px] font-semibold text-gray-500">Tez orada</Text>
+            <Text className="text-[10px] font-semibold text-gray-500">
+              Tez orada
+            </Text>
           </View>
         </View>
       </View>
@@ -1780,11 +2289,11 @@ Task 9 replaces this file's body with the real challenge list. This task only ne
 
 ```tsx
 // apps/mobile/src/screens/ChallengesListView.tsx
-import React from 'react';
-import {Text, View} from 'react-native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import type {RootStackParamList} from '../navigation/types';
-import {Screen} from '../components/Ui';
+import React from "react";
+import { Text, View } from "react-native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation/types";
+import { Screen } from "../components/Ui";
 
 export function ChallengesListView({
   onBack,
@@ -1795,7 +2304,9 @@ export function ChallengesListView({
   return (
     <Screen>
       <View className="flex-1 items-center justify-center p-6">
-        <Text onPress={onBack} className="text-ink dark:text-dark-ink">Challenge-lar (placeholder)</Text>
+        <Text onPress={onBack} className="text-ink dark:text-dark-ink">
+          Challenge-lar (placeholder)
+        </Text>
       </View>
     </Screen>
   );
@@ -1815,7 +2326,7 @@ Read the current file first (`apps/mobile/src/navigation/RootNavigator.tsx`) to 
 <Stack.Screen
   name="Live"
   component={LiveScreen}
-  options={{title: 'Jonli musobaqalar'}}
+  options={{ title: "Jonli musobaqalar" }}
 />
 ```
 
@@ -1845,11 +2356,13 @@ git commit -m "feat(mobile): replace Jonli tab with Jamm hub, move Live to stack
 ## Task 9: Mobile — ChallengesListView (real list) and ChallengeDetailScreen (kitobxonlik)
 
 **Files:**
+
 - Modify: `apps/mobile/src/screens/ChallengesListView.tsx` (replace placeholder with the real list)
 - Create: `apps/mobile/src/screens/ChallengeDetailScreen.tsx`
 - Modify: `apps/mobile/src/navigation/RootNavigator.tsx` (register `ChallengeDetail` stack screen)
 
 **Interfaces:**
+
 - Consumes: API functions from Task 7 (`api/challenges.ts`), `Screen`/`Loading`/`Empty` from `../components/Ui`, `getApiErrorMessage` from `../lib/errors`.
 - Produces: fully working mobile student flow for kitobxonlik challenges, mirroring the web `ChallengesListPage.tsx`/`ChallengeDetailPage.tsx`.
 
@@ -1857,16 +2370,16 @@ git commit -m "feat(mobile): replace Jonli tab with Jamm hub, move Live to stack
 
 ```tsx
 // apps/mobile/src/screens/ChallengesListView.tsx
-import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, Image, Pressable, Text, View} from 'react-native';
-import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {BookOpen} from 'lucide-react-native';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
-import type {RootStackParamList} from '../navigation/types';
-import type {ApiStudentChallenge} from '../types/api';
-import {apiListMyChallenges, apiJoinChallenge} from '../api/challenges';
-import {Empty, Loading, Screen} from '../components/Ui';
-import {getApiErrorMessage} from '../lib/errors';
+import React, { useCallback, useEffect, useState } from "react";
+import { FlatList, Image, Pressable, Text, View } from "react-native";
+import type { NativeStackNavigationProp } from "@react-navigation/native-stack";
+import { BookOpen } from "lucide-react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
+import type { RootStackParamList } from "../navigation/types";
+import type { ApiStudentChallenge } from "../types/api";
+import { apiListMyChallenges, apiJoinChallenge } from "../api/challenges";
+import { Empty, Loading, Screen } from "../components/Ui";
+import { getApiErrorMessage } from "../lib/errors";
 
 export function ChallengesListView({
   navigation,
@@ -1898,7 +2411,9 @@ export function ChallengesListView({
       setJoiningId(item.id);
       try {
         await apiJoinChallenge(item.id);
-        setChallenges(prev => prev.map(c => (c.id === item.id ? {...c, joined: true} : c)));
+        setChallenges((prev) =>
+          prev.map((c) => (c.id === item.id ? { ...c, joined: true } : c)),
+        );
       } catch (err) {
         console.warn(getApiErrorMessage(err, "Qo'shilib bo'lmadi"));
         return;
@@ -1906,10 +2421,16 @@ export function ChallengesListView({
         setJoiningId(null);
       }
     }
-    if (item.type === 'soz_yodlash') {
-      navigation.navigate('ChallengeWordPractice', {challengeId: item.id, title: item.name});
+    if (item.type === "soz_yodlash") {
+      navigation.navigate("ChallengeWordPractice", {
+        challengeId: item.id,
+        title: item.name,
+      });
     } else {
-      navigation.navigate('ChallengeDetail', {challengeId: item.id, title: item.name});
+      navigation.navigate("ChallengeDetail", {
+        challengeId: item.id,
+        title: item.name,
+      });
     }
   }
 
@@ -1917,40 +2438,60 @@ export function ChallengesListView({
 
   return (
     <Screen>
-      <View style={{paddingTop: insets.top + 20}} className="flex-row items-center gap-2 bg-white px-5 pb-4 dark:bg-dark-canvas">
+      <View
+        style={{ paddingTop: insets.top + 20 }}
+        className="flex-row items-center gap-2 bg-white px-5 pb-4 dark:bg-dark-canvas"
+      >
         <Pressable onPress={onBack} hitSlop={8}>
-          <Text className="text-sm font-semibold text-gray-500">{'< Orqaga'}</Text>
+          <Text className="text-sm font-semibold text-gray-500">
+            {"< Orqaga"}
+          </Text>
         </Pressable>
       </View>
       <View className="bg-white px-5 pb-4 dark:bg-dark-canvas">
-        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Challenge-lar</Text>
+        <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">
+          Challenge-lar
+        </Text>
       </View>
       {challenges.length === 0 ? (
         <Empty message="Hozircha challenge yo'q" />
       ) : (
         <FlatList
           data={challenges}
-          keyExtractor={item => item.id}
-          contentContainerStyle={{padding: 16, gap: 10}}
-          renderItem={({item}) => (
+          keyExtractor={(item) => item.id}
+          contentContainerStyle={{ padding: 16, gap: 10 }}
+          renderItem={({ item }) => (
             <Pressable
               onPress={() => void handlePress(item)}
               disabled={joiningId === item.id}
-              className="flex-row items-center gap-3 rounded-2xl bg-white p-3 dark:bg-dark-surface">
+              className="flex-row items-center gap-3 rounded-2xl bg-white p-3 dark:bg-dark-surface"
+            >
               {item.imageUrl ? (
-                <Image source={{uri: item.imageUrl}} className="h-12 w-12 rounded-xl" />
+                <Image
+                  source={{ uri: item.imageUrl }}
+                  className="h-12 w-12 rounded-xl"
+                />
               ) : (
                 <View className="h-12 w-12 items-center justify-center rounded-xl bg-gray-100 dark:bg-dark-canvas">
                   <BookOpen size={20} color="#94a3b8" />
                 </View>
               )}
               <View className="min-w-0 flex-1">
-                <Text numberOfLines={1} className="text-xs text-gray-400">{item.courseTitle}</Text>
-                <Text numberOfLines={1} className="text-base font-bold text-ink dark:text-dark-ink">{item.name}</Text>
+                <Text numberOfLines={1} className="text-xs text-gray-400">
+                  {item.courseTitle}
+                </Text>
+                <Text
+                  numberOfLines={1}
+                  className="text-base font-bold text-ink dark:text-dark-ink"
+                >
+                  {item.name}
+                </Text>
               </View>
               {!item.joined && (
                 <View className="rounded-full bg-gray-900 px-3 py-1.5">
-                  <Text className="text-xs font-semibold text-white">Qo'shilish</Text>
+                  <Text className="text-xs font-semibold text-white">
+                    Qo'shilish
+                  </Text>
                 </View>
               )}
             </Pressable>
@@ -1968,34 +2509,42 @@ Check `Empty` from `../components/Ui` accepts a `message` prop (confirmed earlie
 
 ```tsx
 // apps/mobile/src/screens/ChallengeDetailScreen.tsx
-import React, {useCallback, useEffect, useState} from 'react';
-import {ScrollView, Text, TextInput, View, Pressable} from 'react-native';
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import {Trophy} from 'lucide-react-native';
-import type {RootStackParamList} from '../navigation/types';
-import type {ApiChallengeLeaderboardEntry, ApiMyChallengeDetail, ChallengeLeaderboardMetric} from '../types/api';
-import {apiAddChallengeEvent, apiGetChallengeLeaderboard, apiGetMyChallengeDetail} from '../api/challenges';
-import {Loading, Screen} from '../components/Ui';
-import {getApiErrorMessage} from '../lib/errors';
+import React, { useCallback, useEffect, useState } from "react";
+import { ScrollView, Text, TextInput, View, Pressable } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import { Trophy } from "lucide-react-native";
+import type { RootStackParamList } from "../navigation/types";
+import type {
+  ApiChallengeLeaderboardEntry,
+  ApiMyChallengeDetail,
+  ChallengeLeaderboardMetric,
+} from "../types/api";
+import {
+  apiAddChallengeEvent,
+  apiGetChallengeLeaderboard,
+  apiGetMyChallengeDetail,
+} from "../api/challenges";
+import { Loading, Screen } from "../components/Ui";
+import { getApiErrorMessage } from "../lib/errors";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ChallengeDetail'>;
+type Props = NativeStackScreenProps<RootStackParamList, "ChallengeDetail">;
 
-const METRICS: {key: ChallengeLeaderboardMetric; label: string}[] = [
-  {key: 'overall', label: 'Umumiy'},
-  {key: 'books', label: 'Kitoblar'},
-  {key: 'words', label: "Lug'at"},
-  {key: 'speed', label: 'Tezlik'},
+const METRICS: { key: ChallengeLeaderboardMetric; label: string }[] = [
+  { key: "overall", label: "Umumiy" },
+  { key: "books", label: "Kitoblar" },
+  { key: "words", label: "Lug'at" },
+  { key: "speed", label: "Tezlik" },
 ];
 
-export function ChallengeDetailScreen({route, navigation}: Props) {
-  const {challengeId} = route.params;
+export function ChallengeDetailScreen({ route, navigation }: Props) {
+  const { challengeId } = route.params;
   const [detail, setDetail] = useState<ApiMyChallengeDetail | null>(null);
-  const [tab, setTab] = useState<'books' | 'leaderboard'>('books');
-  const [metric, setMetric] = useState<ChallengeLeaderboardMetric>('overall');
+  const [tab, setTab] = useState<"books" | "leaderboard">("books");
+  const [metric, setMetric] = useState<ChallengeLeaderboardMetric>("overall");
   const [entries, setEntries] = useState<ApiChallengeLeaderboardEntry[]>([]);
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
-  const [endPage, setEndPage] = useState('');
-  const [newWords, setNewWords] = useState('');
+  const [endPage, setEndPage] = useState("");
+  const [newWords, setNewWords] = useState("");
   const [error, setError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -2008,39 +2557,49 @@ export function ChallengeDetailScreen({route, navigation}: Props) {
   }, [load]);
 
   useEffect(() => {
-    if (tab === 'leaderboard') {
-      void apiGetChallengeLeaderboard(challengeId, metric).then(r => setEntries(r.entries));
+    if (tab === "leaderboard") {
+      void apiGetChallengeLeaderboard(challengeId, metric).then((r) =>
+        setEntries(r.entries),
+      );
     }
   }, [challengeId, tab, metric]);
 
   if (!detail) return <Loading />;
 
   async function submitEvent(bookId: string) {
-    const book = detail!.books.find(b => b.id === bookId)!;
+    const book = detail!.books.find((b) => b.id === bookId)!;
     if (book.pendingTest) {
-      navigation.navigate('TestTaker', {slug: book.pendingTest.slug, title: book.pendingTest.name, practiceMode: false});
+      navigation.navigate("TestTaker", {
+        slug: book.pendingTest.slug,
+        title: book.pendingTest.name,
+        practiceMode: false,
+      });
       return;
     }
     const parsedEndPage = parseInt(endPage, 10);
     if (Number.isNaN(parsedEndPage)) {
-      setError('Tugagan betni kiriting');
+      setError("Tugagan betni kiriting");
       return;
     }
     try {
       await apiAddChallengeEvent(challengeId, bookId, {
         endPage: parsedEndPage,
-        newWordsCount: parseInt(newWords || '0', 10),
+        newWordsCount: parseInt(newWords || "0", 10),
       });
       await load();
       setAddingBookId(null);
-      setEndPage('');
-      setNewWords('');
+      setEndPage("");
+      setNewWords("");
       setError(null);
     } catch (err: any) {
       const requiredTestSlug = err?.response?.data?.requiredTestSlug;
       const requiredTestName = err?.response?.data?.requiredTestName;
       if (requiredTestSlug) {
-        navigation.navigate('TestTaker', {slug: requiredTestSlug, title: requiredTestName ?? 'Test', practiceMode: false});
+        navigation.navigate("TestTaker", {
+          slug: requiredTestSlug,
+          title: requiredTestName ?? "Test",
+          practiceMode: false,
+        });
         return;
       }
       setError(getApiErrorMessage(err, "Yozuv qo'shib bo'lmadi"));
@@ -2049,96 +2608,176 @@ export function ChallengeDetailScreen({route, navigation}: Props) {
 
   return (
     <Screen>
-      <ScrollView contentContainerStyle={{padding: 16, gap: 12}}>
+      <ScrollView contentContainerStyle={{ padding: 16, gap: 12 }}>
         <View className="flex-row gap-2 rounded-2xl bg-white p-1.5 dark:bg-dark-surface">
-          <Pressable onPress={() => setTab('books')} className={`flex-1 items-center rounded-xl py-2.5 ${tab === 'books' ? 'bg-gray-900' : ''}`}>
-            <Text className={`text-sm font-semibold ${tab === 'books' ? 'text-white' : 'text-gray-500'}`}>Kitoblar</Text>
+          <Pressable
+            onPress={() => setTab("books")}
+            className={`flex-1 items-center rounded-xl py-2.5 ${tab === "books" ? "bg-gray-900" : ""}`}
+          >
+            <Text
+              className={`text-sm font-semibold ${tab === "books" ? "text-white" : "text-gray-500"}`}
+            >
+              Kitoblar
+            </Text>
           </Pressable>
-          <Pressable onPress={() => setTab('leaderboard')} className={`flex-1 items-center rounded-xl py-2.5 ${tab === 'leaderboard' ? 'bg-gray-900' : ''}`}>
-            <Text className={`text-sm font-semibold ${tab === 'leaderboard' ? 'text-white' : 'text-gray-500'}`}>Reyting</Text>
+          <Pressable
+            onPress={() => setTab("leaderboard")}
+            className={`flex-1 items-center rounded-xl py-2.5 ${tab === "leaderboard" ? "bg-gray-900" : ""}`}
+          >
+            <Text
+              className={`text-sm font-semibold ${tab === "leaderboard" ? "text-white" : "text-gray-500"}`}
+            >
+              Reyting
+            </Text>
           </Pressable>
         </View>
 
-        {tab === 'books' ? (
-          detail.books.map(book => (
-            <View key={book.id} className="rounded-2xl bg-white p-4 dark:bg-dark-surface">
+        {tab === "books" ? (
+          detail.books.map((book) => (
+            <View
+              key={book.id}
+              className="rounded-2xl bg-white p-4 dark:bg-dark-surface"
+            >
               <View className="mb-2 flex-row items-center justify-between">
-                <Text className="font-semibold text-ink dark:text-dark-ink">{book.title}</Text>
-                <Text className="text-xs text-gray-400">{book.lastPageRead}/{book.totalPages} bet</Text>
+                <Text className="font-semibold text-ink dark:text-dark-ink">
+                  {book.title}
+                </Text>
+                <Text className="text-xs text-gray-400">
+                  {book.lastPageRead}/{book.totalPages} bet
+                </Text>
               </View>
               <View className="mb-3 h-2 w-full overflow-hidden rounded-full bg-gray-100 dark:bg-dark-canvas">
-                <View className="h-full rounded-full bg-indigo-500" style={{width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%`}} />
+                <View
+                  className="h-full rounded-full bg-indigo-500"
+                  style={{
+                    width: `${Math.min(100, (book.lastPageRead / (book.totalPages || 1)) * 100)}%`,
+                  }}
+                />
               </View>
 
               {book.pendingTest && (
                 <Pressable
-                  onPress={() => navigation.navigate('TestTaker', {slug: book.pendingTest!.slug, title: book.pendingTest!.name, practiceMode: false})}
-                  className="mb-2 rounded-xl bg-amber-50 px-3 py-2">
-                  <Text className="text-xs font-semibold text-amber-700">Test ishlash</Text>
-                  <Text className="mt-0.5 text-[11px] text-amber-600">Davom etish uchun avval "{book.pendingTest.name}" testini yakunlang</Text>
+                  onPress={() =>
+                    navigation.navigate("TestTaker", {
+                      slug: book.pendingTest!.slug,
+                      title: book.pendingTest!.name,
+                      practiceMode: false,
+                    })
+                  }
+                  className="mb-2 rounded-xl bg-amber-50 px-3 py-2"
+                >
+                  <Text className="text-xs font-semibold text-amber-700">
+                    Test ishlash
+                  </Text>
+                  <Text className="mt-0.5 text-[11px] text-amber-600">
+                    Davom etish uchun avval "{book.pendingTest.name}" testini
+                    yakunlang
+                  </Text>
                 </Pressable>
               )}
 
-              {!book.pendingTest && (addingBookId === book.id ? (
-                <View className="gap-2">
-                  <Text className="text-xs text-gray-500">Boshlagan bet: {book.lastPageRead}</Text>
-                  <TextInput
-                    value={endPage}
-                    onChangeText={setEndPage}
-                    keyboardType="number-pad"
-                    placeholder="Tugagan bet"
-                    className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm dark:bg-dark-canvas dark:text-dark-ink"
-                  />
-                  <TextInput
-                    value={newWords}
-                    onChangeText={setNewWords}
-                    keyboardType="number-pad"
-                    placeholder="Yangi lug'at soni"
-                    className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm dark:bg-dark-canvas dark:text-dark-ink"
-                  />
-                  {error && <Text className="text-xs text-red-500">{error}</Text>}
-                  <View className="flex-row gap-2">
-                    <Pressable onPress={() => void submitEvent(book.id)} className="flex-1 items-center rounded-xl bg-gray-900 py-2.5">
-                      <Text className="text-xs font-semibold text-white">Saqlash</Text>
-                    </Pressable>
-                    <Pressable onPress={() => { setAddingBookId(null); setError(null); }} className="rounded-xl bg-gray-100 px-4 py-2.5 dark:bg-dark-canvas">
-                      <Text className="text-xs font-semibold text-gray-600 dark:text-dark-ink">Bekor</Text>
-                    </Pressable>
+              {!book.pendingTest &&
+                (addingBookId === book.id ? (
+                  <View className="gap-2">
+                    <Text className="text-xs text-gray-500">
+                      Boshlagan bet: {book.lastPageRead}
+                    </Text>
+                    <TextInput
+                      value={endPage}
+                      onChangeText={setEndPage}
+                      keyboardType="number-pad"
+                      placeholder="Tugagan bet"
+                      className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm dark:bg-dark-canvas dark:text-dark-ink"
+                    />
+                    <TextInput
+                      value={newWords}
+                      onChangeText={setNewWords}
+                      keyboardType="number-pad"
+                      placeholder="Yangi lug'at soni"
+                      className="rounded-xl bg-gray-50 px-3 py-2.5 text-sm dark:bg-dark-canvas dark:text-dark-ink"
+                    />
+                    {error && (
+                      <Text className="text-xs text-red-500">{error}</Text>
+                    )}
+                    <View className="flex-row gap-2">
+                      <Pressable
+                        onPress={() => void submitEvent(book.id)}
+                        className="flex-1 items-center rounded-xl bg-gray-900 py-2.5"
+                      >
+                        <Text className="text-xs font-semibold text-white">
+                          Saqlash
+                        </Text>
+                      </Pressable>
+                      <Pressable
+                        onPress={() => {
+                          setAddingBookId(null);
+                          setError(null);
+                        }}
+                        className="rounded-xl bg-gray-100 px-4 py-2.5 dark:bg-dark-canvas"
+                      >
+                        <Text className="text-xs font-semibold text-gray-600 dark:text-dark-ink">
+                          Bekor
+                        </Text>
+                      </Pressable>
+                    </View>
                   </View>
-                </View>
-              ) : (
-                <Pressable
-                  onPress={() => setAddingBookId(book.id)}
-                  className="items-center rounded-xl bg-gray-100 py-2.5 dark:bg-dark-canvas">
-                  <Text className="text-xs font-semibold text-gray-700 dark:text-dark-ink">+ Yangi yozuv</Text>
-                </Pressable>
-              ))}
+                ) : (
+                  <Pressable
+                    onPress={() => setAddingBookId(book.id)}
+                    className="items-center rounded-xl bg-gray-100 py-2.5 dark:bg-dark-canvas"
+                  >
+                    <Text className="text-xs font-semibold text-gray-700 dark:text-dark-ink">
+                      + Yangi yozuv
+                    </Text>
+                  </Pressable>
+                ))}
             </View>
           ))
         ) : (
           <View className="rounded-2xl bg-white p-4 dark:bg-dark-surface">
             <View className="mb-3 flex-row gap-2">
-              {METRICS.map(m => (
+              {METRICS.map((m) => (
                 <Pressable
                   key={m.key}
                   onPress={() => setMetric(m.key)}
-                  className={`rounded-full px-3 py-1.5 ${metric === m.key ? 'bg-gray-900' : 'bg-gray-100 dark:bg-dark-canvas'}`}>
-                  <Text className={`text-xs font-semibold ${metric === m.key ? 'text-white' : 'text-gray-500'}`}>{m.label}</Text>
+                  className={`rounded-full px-3 py-1.5 ${metric === m.key ? "bg-gray-900" : "bg-gray-100 dark:bg-dark-canvas"}`}
+                >
+                  <Text
+                    className={`text-xs font-semibold ${metric === m.key ? "text-white" : "text-gray-500"}`}
+                  >
+                    {m.label}
+                  </Text>
                 </Pressable>
               ))}
             </View>
             <View className="gap-2">
-              {entries.map(entry => (
-                <View key={entry.studentId} className={`flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? 'bg-indigo-50' : 'bg-gray-50 dark:bg-dark-canvas'}`}>
-                  <Text className="w-6 text-center text-sm font-bold text-gray-500">{entry.rank}</Text>
-                  <Text numberOfLines={1} className="min-w-0 flex-1 text-sm font-semibold text-ink dark:text-dark-ink">{entry.studentName}</Text>
+              {entries.map((entry) => (
+                <View
+                  key={entry.studentId}
+                  className={`flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-indigo-50" : "bg-gray-50 dark:bg-dark-canvas"}`}
+                >
+                  <Text className="w-6 text-center text-sm font-bold text-gray-500">
+                    {entry.rank}
+                  </Text>
+                  <Text
+                    numberOfLines={1}
+                    className="min-w-0 flex-1 text-sm font-semibold text-ink dark:text-dark-ink"
+                  >
+                    {entry.studentName}
+                  </Text>
                   <View className="flex-row items-center gap-1 rounded-full bg-amber-100 px-2 py-1">
                     <Trophy size={12} color="#b45309" />
-                    <Text className="text-xs font-bold text-amber-700">{entry.value}</Text>
+                    <Text className="text-xs font-bold text-amber-700">
+                      {entry.value}
+                    </Text>
                   </View>
                 </View>
               ))}
-              {entries.length === 0 && <Text className="py-8 text-center text-sm text-gray-400">Hali reyting yo'q</Text>}
+              {entries.length === 0 && (
+                <Text className="py-8 text-center text-sm text-gray-400">
+                  Hali reyting yo'q
+                </Text>
+              )}
             </View>
           </View>
         )}
@@ -2156,7 +2795,7 @@ Add the import (`import {ChallengeDetailScreen} from '../screens/ChallengeDetail
 <Stack.Screen
   name="ChallengeDetail"
   component={ChallengeDetailScreen}
-  options={({route}) => ({title: route.params.title})}
+  options={({ route }) => ({ title: route.params.title })}
 />
 ```
 
@@ -2182,10 +2821,12 @@ git commit -m "feat(mobile): add real challenges list and kitobxonlik detail scr
 ## Task 10: Mobile — word memorization practice screens (Flashcard and Test)
 
 **Files:**
+
 - Create: `apps/mobile/src/screens/ChallengeWordPracticeScreen.tsx`
 - Modify: `apps/mobile/src/navigation/RootNavigator.tsx` (register `ChallengeWordPractice` stack screen)
 
 **Interfaces:**
+
 - Consumes: API functions from Task 7's `api/challenge-words.ts`, `ApiStudentChallengeWord`/`ApiChallengeWordLeaderboardEntry` types.
 - Produces: fully working mobile student flow for `soz_yodlash` challenges, mirroring the web `ChallengeWordPracticePage.tsx`'s Flashcard/Test mechanics using React Native `Animated`/gesture handling instead of DOM mouse/touch events.
 
@@ -2198,20 +2839,26 @@ This app may already depend on `react-native-gesture-handler` and/or `react-nati
 
 ```tsx
 // apps/mobile/src/screens/ChallengeWordPracticeScreen.tsx
-import React, {useEffect, useMemo, useRef, useState} from 'react';
-import {Animated, PanResponder, Pressable, Text, View} from 'react-native';
-import type {NativeStackScreenProps} from '@react-navigation/native-stack';
-import type {RootStackParamList} from '../navigation/types';
-import type {ApiStudentChallengeWord} from '../types/api';
-import {apiListMyChallengeWords, apiSetChallengeWordProgress} from '../api/challenge-words';
-import {Loading, Screen} from '../components/Ui';
+import React, { useEffect, useMemo, useRef, useState } from "react";
+import { Animated, PanResponder, Pressable, Text, View } from "react-native";
+import type { NativeStackScreenProps } from "@react-navigation/native-stack";
+import type { RootStackParamList } from "../navigation/types";
+import type { ApiStudentChallengeWord } from "../types/api";
+import {
+  apiListMyChallengeWords,
+  apiSetChallengeWordProgress,
+} from "../api/challenge-words";
+import { Loading, Screen } from "../components/Ui";
 
-type Props = NativeStackScreenProps<RootStackParamList, 'ChallengeWordPractice'>;
-type Mode = 'flashcard' | 'test';
-type Direction = 'wordToTranslation' | 'translationToWord';
+type Props = NativeStackScreenProps<
+  RootStackParamList,
+  "ChallengeWordPractice"
+>;
+type Mode = "flashcard" | "test";
+type Direction = "wordToTranslation" | "translationToWord";
 
-export function ChallengeWordPracticeScreen({route}: Props) {
-  const {challengeId} = route.params;
+export function ChallengeWordPracticeScreen({ route }: Props) {
+  const { challengeId } = route.params;
   const [words, setWords] = useState<ApiStudentChallengeWord[] | null>(null);
   const [mode, setMode] = useState<Mode | null>(null);
   const [direction, setDirection] = useState<Direction | null>(null);
@@ -2226,28 +2873,62 @@ export function ChallengeWordPracticeScreen({route}: Props) {
     return (
       <Screen>
         <View className="flex-1 gap-6 p-5">
-          <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">Mashq turi</Text>
+          <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">
+            Mashq turi
+          </Text>
 
           <View>
-            <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">Rejim</Text>
+            <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">
+              Rejim
+            </Text>
             <View className="flex-row gap-3">
-              <Pressable onPress={() => setMode('flashcard')} className={`flex-1 rounded-2xl p-4 ${mode === 'flashcard' ? 'bg-gray-900' : 'bg-white dark:bg-dark-surface'}`}>
-                <Text className={`text-sm font-bold ${mode === 'flashcard' ? 'text-white' : 'text-ink dark:text-dark-ink'}`}>Flashcard</Text>
+              <Pressable
+                onPress={() => setMode("flashcard")}
+                className={`flex-1 rounded-2xl p-4 ${mode === "flashcard" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${mode === "flashcard" ? "text-white" : "text-ink dark:text-dark-ink"}`}
+                >
+                  Flashcard
+                </Text>
               </Pressable>
-              <Pressable onPress={() => setMode('test')} className={`flex-1 rounded-2xl p-4 ${mode === 'test' ? 'bg-gray-900' : 'bg-white dark:bg-dark-surface'}`}>
-                <Text className={`text-sm font-bold ${mode === 'test' ? 'text-white' : 'text-ink dark:text-dark-ink'}`}>Test</Text>
+              <Pressable
+                onPress={() => setMode("test")}
+                className={`flex-1 rounded-2xl p-4 ${mode === "test" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${mode === "test" ? "text-white" : "text-ink dark:text-dark-ink"}`}
+                >
+                  Test
+                </Text>
               </Pressable>
             </View>
           </View>
 
           <View>
-            <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">Yo'nalish</Text>
+            <Text className="mb-2 text-xs font-semibold uppercase text-gray-400">
+              Yo'nalish
+            </Text>
             <View className="gap-3">
-              <Pressable onPress={() => setDirection('wordToTranslation')} className={`rounded-2xl p-4 ${direction === 'wordToTranslation' ? 'bg-gray-900' : 'bg-white dark:bg-dark-surface'}`}>
-                <Text className={`text-sm font-bold ${direction === 'wordToTranslation' ? 'text-white' : 'text-ink dark:text-dark-ink'}`}>So'z → Tarjima</Text>
+              <Pressable
+                onPress={() => setDirection("wordToTranslation")}
+                className={`rounded-2xl p-4 ${direction === "wordToTranslation" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${direction === "wordToTranslation" ? "text-white" : "text-ink dark:text-dark-ink"}`}
+                >
+                  So'z → Tarjima
+                </Text>
               </Pressable>
-              <Pressable onPress={() => setDirection('translationToWord')} className={`rounded-2xl p-4 ${direction === 'translationToWord' ? 'bg-gray-900' : 'bg-white dark:bg-dark-surface'}`}>
-                <Text className={`text-sm font-bold ${direction === 'translationToWord' ? 'text-white' : 'text-ink dark:text-dark-ink'}`}>Tarjima → So'z</Text>
+              <Pressable
+                onPress={() => setDirection("translationToWord")}
+                className={`rounded-2xl p-4 ${direction === "translationToWord" ? "bg-gray-900" : "bg-white dark:bg-dark-surface"}`}
+              >
+                <Text
+                  className={`text-sm font-bold ${direction === "translationToWord" ? "text-white" : "text-ink dark:text-dark-ink"}`}
+                >
+                  Tarjima → So'z
+                </Text>
               </Pressable>
             </View>
           </View>
@@ -2256,15 +2937,28 @@ export function ChallengeWordPracticeScreen({route}: Props) {
     );
   }
 
-  return mode === 'flashcard' ? (
-    <FlashcardPractice challengeId={challengeId} words={words} direction={direction} onWordsChange={setWords} />
+  return mode === "flashcard" ? (
+    <FlashcardPractice
+      challengeId={challengeId}
+      words={words}
+      direction={direction}
+      onWordsChange={setWords}
+    />
   ) : (
-    <TestPractice challengeId={challengeId} words={words} direction={direction} onWordsChange={setWords} />
+    <TestPractice
+      challengeId={challengeId}
+      words={words}
+      direction={direction}
+      onWordsChange={setWords}
+    />
   );
 }
 
 function FlashcardPractice({
-  challengeId, words, direction, onWordsChange,
+  challengeId,
+  words,
+  direction,
+  onWordsChange,
 }: {
   challengeId: string;
   words: ApiStudentChallengeWord[];
@@ -2275,18 +2969,23 @@ function FlashcardPractice({
   const [revealed, setRevealed] = useState(false);
   const pan = useRef(new Animated.ValueXY()).current;
 
-  const knownCount = words.filter(w => w.known).length;
+  const knownCount = words.filter((w) => w.known).length;
   const current = deck[0];
 
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => Math.abs(gesture.dx) > 5,
-      onPanResponderMove: Animated.event([null, {dx: pan.x}], {useNativeDriver: false}),
+      onPanResponderMove: Animated.event([null, { dx: pan.x }], {
+        useNativeDriver: false,
+      }),
       onPanResponderRelease: (_, gesture) => {
         if (Math.abs(gesture.dx) > 35) {
           void commitSwipe(gesture.dx > 0);
         } else {
-          Animated.spring(pan, {toValue: {x: 0, y: 0}, useNativeDriver: false}).start();
+          Animated.spring(pan, {
+            toValue: { x: 0, y: 0 },
+            useNativeDriver: false,
+          }).start();
         }
       },
     }),
@@ -2300,28 +2999,39 @@ function FlashcardPractice({
     } catch {
       // best-effort — see web ChallengeWordPracticePage's commitSwipe for rationale
     }
-    onWordsChange(words.map(w => (w.id === current.id ? {...w, known} : w)));
-    setDeck(prev => {
+    onWordsChange(
+      words.map((w) => (w.id === current.id ? { ...w, known } : w)),
+    );
+    setDeck((prev) => {
       const [head, ...rest] = prev;
       return known ? rest : [...rest, head];
     });
-    pan.setValue({x: 0, y: 0});
+    pan.setValue({ x: 0, y: 0 });
   }
 
   if (!current) {
     return (
       <Screen>
         <View className="flex-1 items-center justify-center gap-1">
-          <Text className="text-lg font-bold text-ink dark:text-dark-ink">🎉 Tugadi!</Text>
-          <Text className="text-sm text-gray-400">Barcha so'zlar "bilaman" holatida</Text>
+          <Text className="text-lg font-bold text-ink dark:text-dark-ink">
+            🎉 Tugadi!
+          </Text>
+          <Text className="text-sm text-gray-400">
+            Barcha so'zlar "bilaman" holatida
+          </Text>
         </View>
       </Screen>
     );
   }
 
-  const front = direction === 'wordToTranslation' ? current.word : current.translation;
-  const back = direction === 'wordToTranslation' ? current.translation : current.word;
-  const rotate = pan.x.interpolate({inputRange: [-200, 0, 200], outputRange: ['-15deg', '0deg', '15deg']});
+  const front =
+    direction === "wordToTranslation" ? current.word : current.translation;
+  const back =
+    direction === "wordToTranslation" ? current.translation : current.word;
+  const rotate = pan.x.interpolate({
+    inputRange: [-200, 0, 200],
+    outputRange: ["-15deg", "0deg", "15deg"],
+  });
 
   return (
     <Screen>
@@ -2337,19 +3047,36 @@ function FlashcardPractice({
             <View
               key={w.id}
               className="absolute inset-0 rounded-3xl bg-white dark:bg-dark-surface"
-              style={{transform: [{scale: 1 - (i + 1) * 0.05}, {translateY: (i + 1) * 8}], zIndex: 10 - i}}
+              style={{
+                transform: [
+                  { scale: 1 - (i + 1) * 0.05 },
+                  { translateY: (i + 1) * 8 },
+                ],
+                zIndex: 10 - i,
+              }}
             />
           ))}
           <Animated.View
             {...panResponder.panHandlers}
-            style={{transform: [{translateX: pan.x}, {rotate}], zIndex: 20}}
-            className="absolute inset-0 items-center justify-center rounded-3xl bg-white p-6 dark:bg-dark-surface">
-            <Pressable onPress={() => setRevealed(r => !r)} className="items-center">
-              <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">{front}</Text>
+            style={{
+              transform: [{ translateX: pan.x }, { rotate }],
+              zIndex: 20,
+            }}
+            className="absolute inset-0 items-center justify-center rounded-3xl bg-white p-6 dark:bg-dark-surface"
+          >
+            <Pressable
+              onPress={() => setRevealed((r) => !r)}
+              className="items-center"
+            >
+              <Text className="text-2xl font-extrabold text-ink dark:text-dark-ink">
+                {front}
+              </Text>
               {revealed ? (
                 <Text className="mt-4 text-lg text-gray-500">{back}</Text>
               ) : (
-                <Text className="mt-4 text-[10px] tracking-wide text-gray-300">JAVOBNI KO'RSATISH</Text>
+                <Text className="mt-4 text-[10px] tracking-wide text-gray-300">
+                  JAVOBNI KO'RSATISH
+                </Text>
               )}
             </Pressable>
           </Animated.View>
@@ -2359,14 +3086,24 @@ function FlashcardPractice({
   );
 }
 
-function pickWrongOptions(words: ApiStudentChallengeWord[], correctId: string, direction: Direction, count: number): string[] {
-  const pool = words.filter(w => w.id !== correctId).map(w => (direction === 'wordToTranslation' ? w.translation : w.word));
+function pickWrongOptions(
+  words: ApiStudentChallengeWord[],
+  correctId: string,
+  direction: Direction,
+  count: number,
+): string[] {
+  const pool = words
+    .filter((w) => w.id !== correctId)
+    .map((w) => (direction === "wordToTranslation" ? w.translation : w.word));
   const shuffled = [...pool].sort(() => Math.random() - 0.5);
   return shuffled.slice(0, count);
 }
 
 function TestPractice({
-  challengeId, words, direction, onWordsChange,
+  challengeId,
+  words,
+  direction,
+  onWordsChange,
 }: {
   challengeId: string;
   words: ApiStudentChallengeWord[];
@@ -2381,7 +3118,8 @@ function TestPractice({
   const current = queue[index];
   const options = useMemo(() => {
     if (!current) return [];
-    const correctAnswer = direction === 'wordToTranslation' ? current.translation : current.word;
+    const correctAnswer =
+      direction === "wordToTranslation" ? current.translation : current.word;
     const wrongCount = Math.min(3, words.length - 1);
     const wrongs = pickWrongOptions(words, current.id, direction, wrongCount);
     return [correctAnswer, ...wrongs].sort(() => Math.random() - 0.5);
@@ -2391,53 +3129,66 @@ function TestPractice({
     return (
       <Screen>
         <View className="flex-1 items-center justify-center">
-          <Text className="text-lg font-bold text-ink dark:text-dark-ink">Natija: {correctCount}/{queue.length} to'g'ri</Text>
+          <Text className="text-lg font-bold text-ink dark:text-dark-ink">
+            Natija: {correctCount}/{queue.length} to'g'ri
+          </Text>
         </View>
       </Screen>
     );
   }
 
-  const question = direction === 'wordToTranslation' ? current.word : current.translation;
-  const correctAnswer = direction === 'wordToTranslation' ? current.translation : current.word;
+  const question =
+    direction === "wordToTranslation" ? current.word : current.translation;
+  const correctAnswer =
+    direction === "wordToTranslation" ? current.translation : current.word;
 
   async function handleSelect(option: string) {
     if (selected) return;
     setSelected(option);
     const known = option === correctAnswer;
-    if (known) setCorrectCount(c => c + 1);
+    if (known) setCorrectCount((c) => c + 1);
     try {
       await apiSetChallengeWordProgress(challengeId, current.id, known);
     } catch {
       // best-effort — see web TestPractice's handleSelect for rationale
     }
-    onWordsChange(words.map(w => (w.id === current.id ? {...w, known} : w)));
+    onWordsChange(
+      words.map((w) => (w.id === current.id ? { ...w, known } : w)),
+    );
     setTimeout(() => {
       setSelected(null);
-      setIndex(i => i + 1);
+      setIndex((i) => i + 1);
     }, 700);
   }
 
   return (
     <Screen>
       <View className="flex-1 items-center p-5">
-        <Text className="mb-1 text-xs text-gray-400">{index + 1} / {queue.length}</Text>
-        <Text className="mb-6 text-2xl font-extrabold text-ink dark:text-dark-ink">{question}</Text>
+        <Text className="mb-1 text-xs text-gray-400">
+          {index + 1} / {queue.length}
+        </Text>
+        <Text className="mb-6 text-2xl font-extrabold text-ink dark:text-dark-ink">
+          {question}
+        </Text>
         <View className="w-full max-w-[400px] gap-2.5">
-          {options.map(option => {
+          {options.map((option) => {
             const isCorrect = option === correctAnswer;
             const isSelected = option === selected;
-            let bgClass = 'bg-white dark:bg-dark-surface';
+            let bgClass = "bg-white dark:bg-dark-surface";
             if (selected) {
-              if (isCorrect) bgClass = 'bg-green-100';
-              else if (isSelected) bgClass = 'bg-red-100';
+              if (isCorrect) bgClass = "bg-green-100";
+              else if (isSelected) bgClass = "bg-red-100";
             }
             return (
               <Pressable
                 key={option}
                 disabled={!!selected}
                 onPress={() => void handleSelect(option)}
-                className={`rounded-2xl p-4 ${bgClass}`}>
-                <Text className="text-sm font-semibold text-ink dark:text-dark-ink">{option}</Text>
+                className={`rounded-2xl p-4 ${bgClass}`}
+              >
+                <Text className="text-sm font-semibold text-ink dark:text-dark-ink">
+                  {option}
+                </Text>
               </Pressable>
             );
           })}
@@ -2456,7 +3207,7 @@ Add the import (`import {ChallengeWordPracticeScreen} from '../screens/Challenge
 <Stack.Screen
   name="ChallengeWordPractice"
   component={ChallengeWordPracticeScreen}
-  options={({route}) => ({title: route.params.title})}
+  options={({ route }) => ({ title: route.params.title })}
 />
 ```
 
@@ -2496,6 +3247,7 @@ Expected: no errors in any of the three projects.
 - [ ] **Step 3: Manual end-to-end walkthrough (web)**
 
 With backend running locally and a migrated DB (Task 2):
+
 1. As a teacher: create a course, create a challenge with type "So'z yodlash", add 5 words manually, then bulk-import a mix of valid/malformed lines and confirm the added/skipped counts match.
 2. As a student enrolled in that course: open "Jamm" → "Challenge-lar", join the word challenge, open it, tap "Mashq qilish", pick Flashcard + So'z→Tarjima.
 3. Swipe right on 2 words (known), swipe left on 1 word (confirm it returns to the back of the deck, not lost).
@@ -2506,6 +3258,7 @@ With backend running locally and a migrated DB (Task 2):
 - [ ] **Step 4: Manual end-to-end walkthrough (mobile)**
 
 With the backend reachable from the device/simulator:
+
 1. Jamm tab → Challenge-lar → open the same `soz_yodlash` challenge created in Step 3.
 2. Repeat the Flashcard swipe and Test mode checks from Step 3.
 3. Separately, open a `kitobxonlik` challenge and confirm the book/event/leaderboard flow still works (this validates the mobile kitobxonlik rebuild from Tasks 8-9 alongside the new word-memorization screens).
