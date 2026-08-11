@@ -3499,7 +3499,12 @@ function ClassroomPdfPage({
           />
           {textEditor && (
             <div
-              className="absolute z-30 flex flex-col justify-center"
+              // justify-start: canvas render originY'ni qutining TEPASI
+              // deb hisoblaydi (classroomCanvasDraw.ts) — justify-center
+              // bo'lganda esa tahrirlash paytida ko'ringan joy bilan
+              // saqlangandan keyingi joy mos kelmay, matn "tepaga sakrab
+              // qolganday" tuyulardi.
+              className="absolute z-30 flex flex-col justify-start"
               style={{
                 left: `${textEditor.x * 100}%`,
                 top: `${textEditor.y * 100}%`,

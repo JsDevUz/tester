@@ -23,6 +23,10 @@ export interface ShapeStyle {
   endArrowHead?: string;
 }
 
+// endArrowHead/startArrowHead ataylab berilmagan: ular asbobga qarab
+// (arrow → "arrow", line → "none") stroke saqlanayotganda to'ldiriladi.
+// Bu yerda "arrow" deb qat'iy belgilansa, "line" asbobi ham shu qiymatni
+// meros qilib olib, to'g'ri chiziq o'q bo'lib chizilardi.
 export const DEFAULT_SHAPE_STYLE: ShapeStyle = {
   backgroundColor: "transparent",
   fillStyle: "solid",
@@ -30,8 +34,6 @@ export const DEFAULT_SHAPE_STYLE: ShapeStyle = {
   edges: "sharp",
   opacity: 100,
   lineShape: "straight",
-  startArrowHead: "none",
-  endArrowHead: "arrow",
 };
 
 let measureCtx: CanvasRenderingContext2D | null = null;

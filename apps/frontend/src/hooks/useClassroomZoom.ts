@@ -159,6 +159,34 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   const applyZoomAnchoredRef = useRef(applyZoomAnchored);
   applyZoomAnchoredRef.current = applyZoomAnchored;
 
+  // Trackpad pinch va wheel sekundiga o'nlab event chiqaradi. Har biri
+  // alohida setState qilsa, har sahifaning canvas bitmap'i (canvas.width
+  // yozilishi GPU texture'ni qaytadan ajratadi) qayta yaratilib to'liq
+  // qayta chiziladi — bu asosiy thread'ni bloklab, kuchsizroq mashinada
+  // butun brauzer qotib qolganday tuyuladi. Bir freym ichida kelgan
+  // eventlarni birlashtirib, faqat oxirgi (eng yangi) zoom qiymatini
+  // qo'llaymiz.
+  const pendingZoomRef = useRef<{ zoom: number; x: number; y: number } | null>(null);
+  const zoomFrameRef = useRef<number | null>(null);
+  const scheduleZoom = useCallback((next: number, x: number, y: number) => {
+    pendingZoomRef.current = { zoom: next, x, y };
+    if (zoomFrameRef.current !== null) return;
+    zoomFrameRef.current = window.requestAnimationFrame(() => {
+      zoomFrameRef.current = null;
+      const pending = pendingZoomRef.current;
+      pendingZoomRef.current = null;
+      if (pending) applyZoomAnchoredRef.current(pending.zoom, pending.x, pending.y);
+    });
+  }, []);
+  const scheduleZoomRef = useRef(scheduleZoom);
+  scheduleZoomRef.current = scheduleZoom;
+  useEffect(
+    () => () => {
+      if (zoomFrameRef.current !== null) window.cancelAnimationFrame(zoomFrameRef.current);
+    },
+    [],
+  );
+
   // scrollRef — useRef bo'lgani uchun uning .current DOM elementi
   // almashganda (masalan split/single board rejimi orasida almashinganda)
   // pastdagi useEffect'lar QAYTA ISHGA TUSHMAYDI, chunki ref obyektining
@@ -187,7 +215,11 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       }
       e.preventDefault();
       if (!freeToMoveRef.current) return;
-      applyZoomAnchoredRef.current(localZoomRef.current - e.deltaY * 0.01, e.clientX, e.clientY);
+      // Baza — hali qo'llanmagan (pending) qiymat bo'lsa o'sha, aks holda
+      // joriy zoom. Aks holda bitta freym ichidagi ketma-ket wheel eventlar
+      // bir xil eski bazadan hisoblanib, zoom sezilarli sekinlashardi.
+      const base = pendingZoomRef.current?.zoom ?? localZoomRef.current;
+      scheduleZoomRef.current(base - e.deltaY * 0.01, e.clientX, e.clientY);
     };
     el.addEventListener("wheel", onNativeWheel, { passive: false });
     return () => el.removeEventListener("wheel", onNativeWheel);
@@ -233,7 +265,7 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
       const [a, b] = [e.touches[0], e.touches[1]];
       const distance = Math.hypot(a.clientX - b.clientX, a.clientY - b.clientY);
       const { distance: startDistance, zoom: startZoom, cx, cy } = pinchStartRef.current;
-      applyZoomAnchoredRef.current(startZoom * (distance / startDistance), cx, cy);
+      scheduleZoomRef.current(startZoom * (distance / startDistance), cx, cy);
     };
     const onNativeTouchEnd = (e: TouchEvent) => {
       if (e.touches.length < 2) pinchStartRef.current = null;
