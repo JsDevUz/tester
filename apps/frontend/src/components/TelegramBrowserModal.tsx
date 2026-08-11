@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { Compass, X } from "lucide-react";
+import { Compass } from "lucide-react";
 import { isTelegramInAppBrowser, openInSystemBrowser } from "../utils/inAppBrowser";
 
 // Telegram ichida aniqlanganda darhol (foydalanuvchi hech narsa bosmasdan)
@@ -7,46 +7,27 @@ import { isTelegramInAppBrowser, openInSystemBrowser } from "../utils/inAppBrows
 // chunki sahifa shu zahoti tark etiladi. Modal faqat FALLBACK sifatida
 // qoladi: agar auto-redirect biror sabab bilan ishlamasa (masalan WebView
 // user-gesture'siz maxsus sxemalarni bloklasa), foydalanuvchida qo'lda
-// urinish uchun tugma qoladi.
+// urinish uchun tugma qoladi. Ataylab YOPISH imkoni yo'q (X tugmasi,
+// Escape, backdrop-click) — bu holatda sayt Telegram ichida to'liq
+// ishlamaydi, shuning uchun foydalanuvchi tashqi brauzerga o'tishdan
+// boshqa yo'l bilan davom eta olmasligi kerak.
 export function TelegramBrowserModal() {
-  const [dismissed, setDismissed] = useState(false);
   const [shouldShow] = useState(() => isTelegramInAppBrowser());
 
   useEffect(() => {
     if (shouldShow) openInSystemBrowser();
   }, [shouldShow]);
 
-  useEffect(() => {
-    if (!shouldShow) return;
-    function handleKeyDown(event: KeyboardEvent) {
-      if (event.key === "Escape") setDismissed(true);
-    }
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
-  }, [shouldShow]);
-
-  if (!shouldShow || dismissed) return null;
+  if (!shouldShow) return null;
 
   return (
-    <div
-      className="fixed inset-0 z-[9999] flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm"
-      onClick={(e) => { if (e.target === e.currentTarget) setDismissed(true); }}
-    >
+    <div className="fixed inset-0 z-9999 flex items-center justify-center bg-black/40 p-4 backdrop-blur-sm">
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="telegram-browser-modal-title"
         className="relative w-full max-w-sm rounded-2xl bg-white p-6 text-center shadow-2xl dark:bg-dark-surface"
       >
-        <button
-          type="button"
-          onClick={() => setDismissed(true)}
-          aria-label="Yopish"
-          className="absolute right-3 top-3 rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100 dark:text-dark-ink/60 dark:hover:bg-dark-surface-2"
-        >
-          <X size={18} />
-        </button>
-
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-500/10">
           <Compass size={28} className="text-indigo-500" />
         </div>
