@@ -25,8 +25,12 @@ function drawHead(
   ctx.setLineDash([]);
   ctx.fillStyle = ctx.strokeStyle;
 
-  // Head size calculation relative to headLen, ensuring high visibility
-  const len = Math.max(headLen, 14);
+  // headLen chaqiruvchida allaqachon (w / REF_WIDTH) bilan masshtablangan —
+  // bu yerda "14"px kabi masshtablanmagan minimal qiymat bilan cheklansa,
+  // kichikroq ekranda (masalan talaba tomonida, w kamroq bo'lganda) shu
+  // qat'iy piksel qiymat headLen'dan katta bo'lib qolib, o'q uchi chiziqqa
+  // nisbatan real proportsiyasidan kattaroq ko'rinardi.
+  const len = headLen;
 
   if (type === "arrow" || type === "open") {
     ctx.beginPath();
@@ -393,18 +397,17 @@ export function drawStroke(
     const boxHeight =
       (s.textBoxHeight ?? Math.max(lineHeight, lines.length * lineHeight)) *
       (w / REF_WIDTH);
-    // textBaseline:"top" shrift ustidagi taxminiy "leading/2" masofasi bilan
-    // ishlaydi — bu haqiqiy shriftga qarab (Georgia, Comic Sans va h.k. turli
-    // ascent nisbatiga ega) farq qilib, matn tahrirlashda ko'ringan joydan
-    // saqlangandan keyin bir oz yuqoriroqqa chiqib qolardi. Shrift metrikasi
-    // (actualBoundingBoxAscent) bilan har bir qatorning haqiqiy tepasini
-    // aniq hisoblab, "alphabetic" baseline'ga moslab chizamiz — bu <textarea>
-    // ichida ko'ringan qator boshlanish nuqtasi bilan har qanday shrift/
-    // o'lchamda bir xil natija beradi.
+    // <textarea> (tahrirlash paytida ko'rinadigan holat) matn tepasini
+    // brauzerning CSS line-box hisobi (fontBoundingBoxAscent — shriftning
+    // TO'LIQ em-box ascent'i, line-height/vertical metrics'da ishlatiladigan
+    // xuddi shu qiymat) bo'yicha joylashtiradi. actualBoundingBoxAscent esa
+    // faqat chizilgan glyphning haqiqiy piksel balandligi — harfga qarab
+    // o'zgarib turadi va em-box ascent'dan farq qiladi. Ilgari shu farq
+    // sabab saqlangandan keyin (canvas) matn tahrirlashda ko'ringan joydan
+    // pastroqqa "sakrab tushardi".
     const measureLine = lines.find((line) => line.trim().length > 0) ?? "M";
-    const ascent =
-      ctx.measureText(measureLine).actualBoundingBoxAscent ||
-      renderedFontSize * 0.8;
+    const metrics = ctx.measureText(measureLine);
+    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? renderedFontSize * 0.8;
     const lineTopOffset = (lineHeight - renderedFontSize) / 2 + ascent;
     const align = s.textAlign ?? "left";
     const lineX = (line: string) => {
