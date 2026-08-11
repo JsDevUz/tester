@@ -397,18 +397,19 @@ export function drawStroke(
     const boxHeight =
       (s.textBoxHeight ?? Math.max(lineHeight, lines.length * lineHeight)) *
       (w / REF_WIDTH);
-    // <textarea> (tahrirlash paytida ko'rinadigan holat) matn tepasini
-    // brauzerning CSS line-box hisobi (fontBoundingBoxAscent — shriftning
-    // TO'LIQ em-box ascent'i, line-height/vertical metrics'da ishlatiladigan
-    // xuddi shu qiymat) bo'yicha joylashtiradi. actualBoundingBoxAscent esa
-    // faqat chizilgan glyphning haqiqiy piksel balandligi — harfga qarab
-    // o'zgarib turadi va em-box ascent'dan farq qiladi. Ilgari shu farq
-    // sabab saqlangandan keyin (canvas) matn tahrirlashda ko'ringan joydan
-    // pastroqqa "sakrab tushardi".
+    // Matn har doim box balandligining VERTIKAL MARKAZIDA chiziladi — box
+    // (textBoxHeight) qator soniga qarab matn balandligidan katta bo'lishi
+    // mumkin (masalan qo'lda resize qilingan yoki eski qiymat), shrift/
+    // brauzer ascent metrikasiga tayanib tepadan hisoblash esa (avvalgi
+    // yondashuv) turli shrift/brauzerlarda tahrirlashda ko'ringan joydan
+    // farqli chiqib, saqlangach matn tepaga yoki pastga "sakrab" ketardi.
+    // Markazlash bu nomuvofiqlikni umuman yo'q qiladi.
     const measureLine = lines.find((line) => line.trim().length > 0) ?? "M";
     const metrics = ctx.measureText(measureLine);
     const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? renderedFontSize * 0.8;
-    const lineTopOffset = (lineHeight - renderedFontSize) / 2 + ascent;
+    const textBlockHeight = lines.length * lineHeight;
+    const blockTop = (boxHeight - textBlockHeight) / 2;
+    const lineTopOffset = blockTop + (lineHeight - renderedFontSize) / 2 + ascent;
     const align = s.textAlign ?? "left";
     const lineX = (line: string) => {
       if (align === "left") return 0;
