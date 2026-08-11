@@ -8,7 +8,7 @@ import { Toaster } from "sonner";
 import { PrivateRoute } from "./components/PrivateRoute";
 import { TeacherRoute } from "./components/TeacherRoute";
 import { TopProgressBar } from "./components/TopProgressBar";
-import { TelegramBrowserBanner } from "./components/TelegramBrowserBanner";
+import { TelegramBrowserModal } from "./components/TelegramBrowserModal";
 import { useAuthStore } from "./stores/authStore";
 
 // Har bir sahifa alohida chunk sifatida yuklanadi — boshlang'ich bundle
@@ -518,7 +518,7 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <>
-      <TelegramBrowserBanner />
+      <TelegramBrowserModal />
       <TopProgressBar />
       <Suspense fallback={<RouteFallback />}>
         <RouterProvider router={router} />
