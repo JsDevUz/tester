@@ -431,7 +431,7 @@ export function ClassroomHostPage() {
                       <span className="tabular-nums">{formatElapsed(elapsedMs)}</span>
                     </div>
                   )}
-                  {fullscreen.isFullscreen && (
+                  {fullscreen.isFullscreen ? (
                     <>
                       <RaisedHandsControl
                         raisedHands={state.raisedHands ?? []}
@@ -453,7 +453,32 @@ export function ClassroomHostPage() {
                         hostName={admin?.name || "Ustoz"}
                       />
                     </>
+                  ) : (
+                    <>
+                      {(state.raisedHands?.length ?? 0) > 0 && (
+                        <RaisedHandsControl
+                          raisedHands={state.raisedHands ?? []}
+                          onLowerAll={lowerAllHands}
+                          onLowerUser={lowerUserHand}
+                          theme={state.classroomTheme}
+                        />
+                      )}
+                      <ParticipantsPanelToggle
+                        participants={state.participants}
+                        speakingUserIds={voice.speakingUserIds}
+                        unmutedUserIds={voice.unmutedUserIds}
+                        isHost
+                        myUserId={admin?.id ?? null}
+                        onMute={(uid) => void handleMute(uid)}
+                        userReactions={state.userReactions}
+                        compact
+                        theme={state.classroomTheme}
+                        hostOnline={true}
+                        hostName={admin?.name || "Ustoz"}
+                      />
+                    </>
                   )}
+
                   {fullscreen.supported && (
                     <button
                       type="button"

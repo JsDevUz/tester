@@ -1,5 +1,5 @@
 import { useNavigate } from "react-router-dom";
-import { BookOpen, FileText, Focus, Languages, Mic, Radio } from "lucide-react";
+import { BookOpen, CheckCircle2, FileText, Focus, Languages, Mic, Radio } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 
@@ -82,6 +82,21 @@ export function ChallengesHubPage() {
 
             <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
               <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
+                <CheckCircle2 size={22} className="text-gray-700 dark:text-zinc-400" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">ODAT</p>
+                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                  Kun tartibingizni rejalashtiring
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
+                Tez kunda
+              </span>
+            </div>
+
+            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
+              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
                 <Mic size={22} className="text-gray-700 dark:text-zinc-400" />
               </div>
               <div className="min-w-0 flex-1">
@@ -115,3 +130,4 @@ export function ChallengesHubPage() {
     </StudentShell>
   );
 }
+

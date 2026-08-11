@@ -248,6 +248,8 @@ export function strokeBoundingBox(stroke: CsStroke): {
   }
   const xs = stroke.points.filter((_, i) => i % 2 === 0);
   const ys = stroke.points.filter((_, i) => i % 2 === 1);
+  if (stroke.controlX !== undefined) xs.push(stroke.controlX);
+  if (stroke.controlY !== undefined) ys.push(stroke.controlY);
   return {
     left: Math.min(...xs),
     top: Math.min(...ys),
@@ -320,8 +322,33 @@ export function findStrokesInLasso(strokes: CsStroke[], polygon: number[]): stri
     )
       continue;
     const [cx, cy] = strokeCentroid(stroke);
-    if (pointInPolygon(cx, cy, polygon)) ids.push(stroke.id);
+    let hit = pointInPolygon(cx, cy, polygon);
+    if (!hit) {
+      for (let i = 0; i < stroke.points.length; i += 2) {
+        if (pointInPolygon(stroke.points[i], stroke.points[i + 1], polygon)) {
+          hit = true;
+          break;
+        }
+      }
+    }
+    if (!hit && stroke.controlX !== undefined && stroke.controlY !== undefined) {
+      if (pointInPolygon(stroke.controlX, stroke.controlY, polygon)) {
+        hit = true;
+      }
+    }
+    if (!hit && (stroke.tool === "line" || stroke.tool === "arrow") && stroke.lineShape === "curved") {
+      const [x0, y0, x1, y1] = stroke.points;
+      const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
+      const ctrlY = stroke.controlY ?? (y0 + y1) / 2;
+      const midX = 0.25 * x0 + 0.5 * ctrlX + 0.25 * x1;
+      const midY = 0.25 * y0 + 0.5 * ctrlY + 0.25 * y1;
+      if (pointInPolygon(midX, midY, polygon)) {
+        hit = true;
+      }
+    }
+    if (hit) ids.push(stroke.id);
   }
   return ids;
 }
+
 

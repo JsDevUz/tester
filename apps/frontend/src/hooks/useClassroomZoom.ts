@@ -78,64 +78,64 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
   const resetZoomTo1 = useCallback(() => setLocalZoom(1), []);
   const syncZoomToHost = useCallback(() => setLocalZoom(hostZoom), [hostZoom]);
 
-  // Zoom o'zgarganda sichqoncha/pinch markazi ekranda bir joyda qolishi
-  // uchun: eski va yangi zoom nisbatiga qarab scroll pozitsiyasini qayta
-  // hisoblaymiz (anchor — konteyner ichidagi piksel nuqta). MUHIM: yangi
-  // scrollLeft/Top qiymati shu yerda DARHOL o'rnatilmaydi — chunki bu payt
-  // konteyner CSS kengligi (width: zoom*100%) hali ESKI zoom asosida
-  // (DOM/layout hali yangilanmagan), scroll'ni shu asosda o'rnatish anchor
-  // nuqtaning asta-sekin chetga "drift" qilib ketishiga olib kelardi.
-  // Buning o'rniga anchor+eski scroll holati ref'ga yoziladi, haqiqiy
-  // scrollLeft/Top esa pastdagi useLayoutEffect'da — zoom DOM'ga to'liq
-  // qo'llanib, konteyner haqiqiy yangi kengligiga ega bo'lgandan KEYIN —
-  // qo'llaniladi.
-  const pendingAnchorRef = useRef<{ anchorClientX: number; anchorClientY: number } | null>(null);
+  // Zoom o'zgarganda sichqoncha/pinch markazi ekranda aynan bir joyda qolishi
+  // uchun (Excalidraw/Miro/Figma kabi focused zoom):
+  // Anchor nuqtasi (cursorClientX, cursorClientY) va zoom o'zgarishidan
+  // oldingi haqiqiy scroll holati ref'ga yoziladi.
+  const pendingAnchorRef = useRef<{
+    anchorClientX: number;
+    anchorClientY: number;
+    prevZoom: number;
+    nextZoom: number;
+    prevScrollLeft: number;
+    prevScrollTop: number;
+  } | null>(null);
+
   const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
     const clamped = clampZoom(next);
     const prevZoom = localZoomRef.current;
     if (clamped === prevZoom) return;
+    const scrollEl = scrollRef.current;
+    if (scrollEl) {
+      pendingAnchorRef.current = {
+        anchorClientX,
+        anchorClientY,
+        prevZoom,
+        nextZoom: clamped,
+        prevScrollLeft: scrollEl.scrollLeft,
+        prevScrollTop: scrollEl.scrollTop,
+      };
+    }
     localZoomRef.current = clamped;
-    pendingAnchorRef.current = { anchorClientX, anchorClientY };
     setLocalZoom(clamped);
     if (isHost) onZoomChange?.(clamped);
-  }, [isHost, onZoomChange]);
+  }, [isHost, onZoomChange, scrollRef]);
 
-  // MUHIM: ratio endi zoom/prevZoom (state qiymatlari) orqali emas, balki
-  // DOM'ning HOZIRGI (layout allaqachon qo'llangan) scrollWidth/clientWidth
-  // nisbatidan orqaga hisoblanadi — bu safe-center flex-markazlash yoki
-  // boshqa CSS ta'siridagi haqiqiy piksel kengligini aks ettiradi, prevZoom
-  // asosidagi nazariy hisoblash esa (agar width flex/align-items:safe center
-  // orqali markazlangan bo'lsa) chetlarga "borib qaytish" (silkinish)
-  // ko'rinishiga olib kelardi — zoom darajasidan qat'i nazar bir xil kuchda,
-  // chunki xato margin/markazlash effektidan emas, noto'g'ri anchor formula
-  // taxminidan kelib chiqqan edi.
-  const prevScrollWidthRef = useRef<number | null>(null);
-  const prevScrollHeightRef = useRef<number | null>(null);
   useLayoutEffect(() => {
     const pending = pendingAnchorRef.current;
     const scrollEl = scrollRef.current;
     pendingAnchorRef.current = null;
-    const prevScrollWidth = prevScrollWidthRef.current;
-    const prevScrollHeight = prevScrollHeightRef.current;
-    prevScrollWidthRef.current = scrollEl?.scrollWidth ?? null;
-    prevScrollHeightRef.current = scrollEl?.scrollHeight ?? null;
-    if (!pending || !scrollEl || prevScrollWidth === null || prevScrollHeight === null) return;
-    const { anchorClientX, anchorClientY } = pending;
+    if (!pending || !scrollEl) return;
+    const { anchorClientX, anchorClientY, prevZoom, nextZoom, prevScrollLeft, prevScrollTop } = pending;
     const rect = scrollEl.getBoundingClientRect();
     const localX = anchorClientX - rect.left;
     const localY = anchorClientY - rect.top;
-    const ratioX = prevScrollWidth > 0 ? scrollEl.scrollWidth / prevScrollWidth : 1;
-    const ratioY = prevScrollHeight > 0 ? scrollEl.scrollHeight / prevScrollHeight : 1;
-    const newScrollLeft = (scrollEl.scrollLeft + localX) * ratioX - localX;
-    const newScrollTop = (scrollEl.scrollTop + localY) * ratioY - localY;
+    const ratio = nextZoom / prevZoom;
+
+    // Har bir sahifaning kengligi va balandligi to'g'ridan-to'g'ri zoom'ga proporsional.
+    // Tepada 50px (py-[50px]) xavfsiz bo'shliq mavjud.
+    const topPadding = 50;
+    const newScrollLeft = (prevScrollLeft + localX) * ratio - localX;
+    const newScrollTop = topPadding + (prevScrollTop + localY - topPadding) * ratio - localY;
+
     suppressScrollDetectRef.current = true;
-    scrollEl.scrollLeft = newScrollLeft;
-    scrollEl.scrollTop = newScrollTop;
-    prevScrollWidthRef.current = scrollEl.scrollWidth;
-    prevScrollHeightRef.current = scrollEl.scrollHeight;
-    window.setTimeout(() => { suppressScrollDetectRef.current = false; }, 50);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
+    scrollEl.scrollLeft = Math.max(0, newScrollLeft);
+    scrollEl.scrollTop = Math.max(0, newScrollTop);
+    window.setTimeout(() => {
+      suppressScrollDetectRef.current = false;
+    }, 50);
+  }, [zoom, suppressScrollDetectRef, scrollRef]);
+
 
   // Tugmalar (+/-/reset) uchun: aniq anchor nuqta yo'q, shuning uchun
   // ko'rinadigan oyna markazini anchor sifatida olamiz.
@@ -214,13 +214,17 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
         return;
       }
       e.preventDefault();
+      e.stopPropagation();
       if (!freeToMoveRef.current) return;
       // Baza — hali qo'llanmagan (pending) qiymat bo'lsa o'sha, aks holda
-      // joriy zoom. Aks holda bitta freym ichidagi ketma-ket wheel eventlar
-      // bir xil eski bazadan hisoblanib, zoom sezilarli sekinlashardi.
+      // joriy zoom.
       const base = pendingZoomRef.current?.zoom ?? localZoomRef.current;
-      scheduleZoomRef.current(base - e.deltaY * 0.01, e.clientX, e.clientY);
+      // Excalidraw / Miro / Figma kabi silliq eksponentsial fokuslangan zoom:
+      const delta = Math.max(-80, Math.min(80, e.deltaY));
+      const factor = Math.exp(-delta * 0.005);
+      scheduleZoomRef.current(base * factor, e.clientX, e.clientY);
     };
+
     el.addEventListener("wheel", onNativeWheel, { passive: false });
     return () => el.removeEventListener("wheel", onNativeWheel);
   }, [zoomNode]);

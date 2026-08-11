@@ -2069,6 +2069,14 @@ function ClassroomPdfPage({
           nextPoints.push(x, y);
         }
         stroke.points = nextPoints;
+        if (original.controlX !== undefined && original.controlY !== undefined) {
+          const [cx, cy] = remap(original.controlX, original.controlY);
+          stroke.controlX = cx;
+          stroke.controlY = cy;
+        } else if (original.controlX !== undefined) {
+          const [cx] = remap(original.controlX, 0);
+          stroke.controlX = cx;
+        }
         // Chiziq qalinligi (stroke.width) avval geometriya bilan birga
         // o'zgarmasdi — natijada shape/arrow/pen kichraytirilganda chiziq
         // avvalgi (endi nomutanosib qalin) yo'g'onligicha qolib ketardi.
@@ -2149,15 +2157,11 @@ function ClassroomPdfPage({
       updateSelectedShape({ points: nextPts });
     } else if (endpoint === "mid") {
       if (shape === "curved") {
-        const initOnCurveX = 0.25 * initPts[0] + 0.5 * (initControlX ?? (initPts[0] + initPts[2]) / 2) + 0.25 * initPts[2];
-        const initOnCurveY = 0.25 * initPts[1] + 0.5 * (initControlY ?? (initPts[1] + initPts[3]) / 2) + 0.25 * initPts[3];
-        const curOnCurveX = Math.max(0.01, Math.min(0.99, initOnCurveX + dx));
-        const curOnCurveY = Math.max(0.01, Math.min(0.99, initOnCurveY + dy));
-        const nextCtrlX = 2 * curOnCurveX - 0.5 * (initPts[0] + initPts[2]);
-        const nextCtrlY = 2 * curOnCurveY - 0.5 * (initPts[1] + initPts[3]);
+        const nextCtrlX = Math.max(0, Math.min(1, (initControlX ?? 0.5) + dx * 2));
+        const nextCtrlY = Math.max(0, Math.min(1, (initControlY ?? 0.5) + dy * 2));
         updateSelectedShape({ controlX: nextCtrlX, controlY: nextCtrlY });
       } else if (shape === "elbow") {
-        const nextCtrlX = Math.max(0.01, Math.min(0.99, (initControlX ?? (initPts[0] + initPts[2]) / 2) + dx));
+        const nextCtrlX = Math.max(0, Math.min(1, (initControlX ?? 0.5) + dx));
         updateSelectedShape({ controlX: nextCtrlX });
       } else {
         // straight: move entire line
@@ -2189,7 +2193,12 @@ function ClassroomPdfPage({
         stroke.textBoxWidth = measured.width + 8;
         stroke.textBoxHeight = measured.height;
       }
-      commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
+      commitGroupStroke({
+        ...stroke,
+        points: [...stroke.points],
+        ...(stroke.controlX !== undefined ? { controlX: stroke.controlX } : {}),
+        ...(stroke.controlY !== undefined ? { controlY: stroke.controlY } : {}),
+      }, groupId);
     }
   };
 
@@ -2213,7 +2222,12 @@ function ClassroomPdfPage({
       startStrokes: new Map(
         selectedGroupStrokes.map((s) => [
           s.id,
-          { ...s, points: [...s.points] },
+          {
+            ...s,
+            points: [...s.points],
+            ...(s.controlX !== undefined ? { controlX: s.controlX } : {}),
+            ...(s.controlY !== undefined ? { controlY: s.controlY } : {}),
+          },
         ]),
       ),
     };
@@ -2296,6 +2310,14 @@ function ClassroomPdfPage({
           nextPoints.push(x, y);
         }
         stroke.points = nextPoints;
+        if (original.controlX !== undefined && original.controlY !== undefined) {
+          const [cx, cy] = rotatePoint(original.controlX, original.controlY);
+          stroke.controlX = cx;
+          stroke.controlY = cy;
+        } else if (original.controlX !== undefined) {
+          const [cx] = rotatePoint(original.controlX, (original.points[1] + original.points[3]) / 2);
+          stroke.controlX = cx;
+        }
       }
     }
     forceRedraw((v) => v + 1);
@@ -2309,7 +2331,12 @@ function ClassroomPdfPage({
     rotatingGroupRef.current = null;
     const groupId = crypto.randomUUID();
     for (const stroke of selectedGroupStrokes) {
-      commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
+      commitGroupStroke({
+        ...stroke,
+        points: [...stroke.points],
+        ...(stroke.controlX !== undefined ? { controlX: stroke.controlX } : {}),
+        ...(stroke.controlY !== undefined ? { controlY: stroke.controlY } : {}),
+      }, groupId);
     }
   };
 
@@ -3275,7 +3302,13 @@ function ClassroomPdfPage({
       const groupId = crypto.randomUUID();
       for (const stroke of strokes) {
         if (ids.has(stroke.id))
-          commitGroupStroke({ ...stroke, points: [...stroke.points] }, groupId);
+          commitGroupStroke({
+            ...stroke,
+            points: [...stroke.points],
+            ...(stroke.controlX !== undefined ? { controlX: stroke.controlX } : {}),
+            ...(stroke.controlY !== undefined ? { controlY: stroke.controlY } : {}),
+          }, groupId);
+
       }
       forceRedraw((n) => n + 1);
       return;

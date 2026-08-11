@@ -251,7 +251,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
               strokeWidth={3}
               toolbarActions={
                 <div className="flex items-center gap-1.5">
-                  {fullscreen.isFullscreen && (
+                  {fullscreen.isFullscreen ? (
                     <>
                       <RaisedHandsControl
                         raisedHands={state.raisedHands ?? []}
@@ -273,7 +273,32 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
                         hostName="Ustoz"
                       />
                     </>
+                  ) : (
+                    <>
+                      {(state.raisedHands?.length ?? 0) > 0 && (
+                        <RaisedHandsControl
+                          raisedHands={state.raisedHands ?? []}
+                          onLowerAll={() => { }}
+                          onLowerUser={() => { }}
+                          readOnly
+                          theme={state.classroomTheme}
+                        />
+                      )}
+                      <ParticipantsPanelToggle
+                        participants={state.participants}
+                        speakingUserIds={voice.speakingUserIds}
+                        unmutedUserIds={voice.unmutedUserIds}
+                        isHost={false}
+                        myUserId={myUserId}
+                        userReactions={state.userReactions}
+                        compact
+                        theme={state.classroomTheme}
+                        hostOnline={state.hostOnline}
+                        hostName="Ustoz"
+                      />
+                    </>
                   )}
+
                   {fullscreen.supported && (
                     <button
                       type="button"

@@ -246,6 +246,18 @@ export class AuthService {
     if (!user) throw new BadRequestException('Foydalanuvchi topilmadi.');
     const passwordHash = await bcrypt.hash(newPassword, 10);
     await db.update(users).set({ passwordHash }).where(eq(users.id, user.id));
+    // Foydalanuvchi keyinchalik (masalan boshqa qurilmada) shu login/parolni
+    // eslab qolishi uchun bot orqali yuboriladi — mavjud sendCredentialsToPhone
+    // (register/verifyPasswordReset yo'llarida ham ishlatiladigan) qayta
+    // ishlatiladi. Bu xabar login oqimini bloklamasin: agar Telegram kontakt
+    // bog'lanmagan bo'lsa (kutilmagan holat, chunki foydalanuvchi shu reset
+    // kodini aynan bot orqali olgan edi) yoki Telegram API vaqtincha
+    // ishlamasa ham, foydalanuvchi baribir yangi parol bilan kirgan bo'ladi.
+    try {
+      await this.telegramService.sendCredentialsToPhone(user.phone, newPassword);
+    } catch {
+      // xabar yuborilmasa ham parol allaqachon yangilangan — jim o'tkazamiz.
+    }
     return this.createAuthResponse({
       id: user.id,
       displayName: user.displayName,
