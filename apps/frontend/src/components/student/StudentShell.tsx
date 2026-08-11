@@ -18,6 +18,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuthStore } from "../../stores/authStore";
 import { usePracticeMessengerStore } from "../../stores/practiceMessengerStore";
 import { usePracticeMessengerNotifications } from "../../hooks/usePracticeMessengerNotifications";
+import { useLiveClassNotifications } from "../../hooks/useLiveClassNotifications";
 import { UserAvatar } from "../UserAvatar";
 import { SettingsModal } from "../SettingsModal";
 import { formatPhone } from "../../utils/phone";
@@ -67,6 +68,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
     (s) => s.unreadChatIds.size > 0,
   );
   usePracticeMessengerNotifications();
+  useLiveClassNotifications();
   const location = useLocation();
   const navigate = useNavigate();
   const [profileOpen, setProfileOpen] = useState(false);

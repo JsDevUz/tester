@@ -49,4 +49,14 @@ export class PracticeMessengerGateway implements OnGatewayConnection, OnGatewayD
   notifyMessageEvent(event: 'message_updated' | 'message_deleted', recipientUserIds: string[], payload: unknown) {
     for (const userId of recipientUserIds) this.server.to(userRoom(userId)).emit(event, payload);
   }
+
+  // Umumiy metod — boshqa modullar (masalan ClassroomModule, "jonli dars
+  // boshlandi" bildirishnomasi uchun) shu mavjud user:<userId> xona-
+  // infratuzilmasini qayta ishlatishi uchun. Foydalanuvchi biror sessiya/
+  // chatga "join" qilmasdan turib ham (faqat ilova ochiq bo'lsa) xabar oladi.
+  notifyUsers(recipientUserIds: string[], event: string, payload: unknown) {
+    for (const userId of new Set(recipientUserIds)) {
+      this.server.to(userRoom(userId)).emit(event, payload);
+    }
+  }
 }

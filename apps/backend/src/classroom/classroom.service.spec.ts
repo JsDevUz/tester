@@ -121,6 +121,7 @@ async function setup(mediaLibrary = makeFakeMediaLibrary(), recordingService = m
     { get: () => undefined } as any,
     mediaLibrary as any,
     recordingService as any,
+    { notifyUsers: jest.fn() } as any,
   );
   const { b, events } = makeFakeBroadcaster();
   service.setBroadcaster(b);
@@ -159,7 +160,7 @@ describe('createSession', () => {
   });
 
   it('begona ustoz uchun taqiqlanadi', async () => {
-    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any, makeFakeRecordingService() as any);
+    const service = new ClassroomService({} as any, { get: () => undefined } as any, makeFakeMediaLibrary() as any, makeFakeRecordingService() as any, { notifyUsers: jest.fn() } as any);
     setupDbForCreate();
     await expect(service.createSession('c-1', 'boshqa-teacher', 'teacher')).rejects.toThrow();
   });
@@ -933,6 +934,7 @@ describe('erkin (guruhsiz) dars', () => {
       { get: () => undefined } as any,
       makeFakeMediaLibrary() as any,
       recordingService as any,
+    { notifyUsers: jest.fn() } as any,
     );
     const { b, events } = makeFakeBroadcaster();
     service.setBroadcaster(b);
@@ -1151,6 +1153,7 @@ describe('myFreeSessionHistory', () => {
       { get: () => undefined } as any,
       makeFakeMediaLibrary() as any,
       makeFakeRecordingService() as any,
+    { notifyUsers: jest.fn() } as any,
     );
   }
 
@@ -1206,6 +1209,7 @@ describe('myClassSessions', () => {
       { get: () => undefined } as any,
       makeFakeMediaLibrary() as any,
       makeFakeRecordingService() as any,
+    { notifyUsers: jest.fn() } as any,
     );
   }
 

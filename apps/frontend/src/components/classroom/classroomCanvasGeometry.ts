@@ -227,6 +227,19 @@ export function eraseNearPoint(
     }));
 }
 
+function getQuadraticBezierExtrema(p0: number, p1: number, p2: number): number[] {
+  const points = [p0, p2];
+  const denom = p0 - 2 * p1 + p2;
+  if (denom !== 0) {
+    const t = (p0 - p1) / denom;
+    if (t > 0 && t < 1) {
+      const val = (1 - t) * (1 - t) * p0 + 2 * (1 - t) * t * p1 + t * t * p2;
+      points.push(val);
+    }
+  }
+  return points;
+}
+
 // Har qanday turdagi stroke (qalam/marker/strelka/shape/matn) uchun
 // normalizatsiyalangan (0..1) bounding box — lasso tanlovi va guruh
 // ko'chirish/o'lchamini o'zgartirish uchun bir xil interfeys kerak.
@@ -246,10 +259,35 @@ export function strokeBoundingBox(stroke: CsStroke): {
       bottom: stroke.points[1] + h,
     };
   }
+  if ((stroke.tool === "line" || stroke.tool === "arrow") && stroke.points.length >= 4) {
+    const [x0, y0, x1, y1] = stroke.points;
+    const shape = stroke.lineShape ?? "straight";
+    if (shape === "curved") {
+      const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
+      const ctrlY = stroke.controlY ?? (y0 + y1) / 2;
+      const xs = getQuadraticBezierExtrema(x0, ctrlX, x1);
+      const ys = getQuadraticBezierExtrema(y0, ctrlY, y1);
+      return {
+        left: Math.min(...xs),
+        top: Math.min(...ys),
+        right: Math.max(...xs),
+        bottom: Math.max(...ys),
+      };
+    }
+    if (shape === "elbow") {
+      const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
+      const xs = [x0, x1, ctrlX];
+      const ys = [y0, y1];
+      return {
+        left: Math.min(...xs),
+        top: Math.min(...ys),
+        right: Math.max(...xs),
+        bottom: Math.max(...ys),
+      };
+    }
+  }
   const xs = stroke.points.filter((_, i) => i % 2 === 0);
   const ys = stroke.points.filter((_, i) => i % 2 === 1);
-  if (stroke.controlX !== undefined) xs.push(stroke.controlX);
-  if (stroke.controlY !== undefined) ys.push(stroke.controlY);
   return {
     left: Math.min(...xs),
     top: Math.min(...ys),
@@ -257,6 +295,7 @@ export function strokeBoundingBox(stroke: CsStroke): {
     bottom: Math.max(...ys),
   };
 }
+
 
 function strokeCentroid(stroke: CsStroke): [number, number] {
   const box = strokeBoundingBox(stroke);

@@ -10,6 +10,7 @@ import { db } from '../db';
 import { attendanceRecords, classSessions, contentBlocks, courses, freeSessionParticipants, groupEnrollments, groups, mediaAssets, schoolMembers, users } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { MediaLibraryService } from '../upload/media-library.service';
+import { PracticeMessengerGateway } from '../practice-messenger/practice-messenger.gateway';
 import { ClassroomRecordingService } from './classroom-recording.service';
 import {
   addStroke, applyPageInsertInverse, applyPageRemoveInverse, applyStrokeAddInverse, applyStrokeEraseInverse,
@@ -40,6 +41,7 @@ export class ClassroomService implements OnModuleInit {
     private readonly config: ConfigService,
     private readonly mediaLibrary: MediaLibraryService,
     private readonly recording: ClassroomRecordingService,
+    private readonly notifications: PracticeMessengerGateway,
   ) {}
 
   setBroadcaster(b: ClassroomBroadcaster) {
@@ -145,6 +147,17 @@ export class ClassroomService implements OnModuleInit {
       rightZoom: 1,
       scroll: null,
       rightScroll: null,
+    });
+
+    // Talaba hali darsga "join" qilmagan (masalan kurslar ro'yxatida yoki
+    // boshqa sahifada) bo'lsa ham, real-time "jonli dars boshlandi"
+    // bildirishnomasi olishi uchun — PracticeMessengerGateway'ning
+    // user:<userId> xona-infratuzilmasi orqali (u ilova ochilganda avtomatik
+    // ulanadi, aniq join kerak emas).
+    this.notifications.notifyUsers([...participants.keys()], 'liveSession:started', {
+      sessionId: row.id,
+      courseId,
+      courseName: course.title,
     });
 
     return { id: row.id };
@@ -840,6 +853,13 @@ export class ClassroomService implements OnModuleInit {
       scroll: null,
       rightScroll: null,
     });
+
+    this.notifications.notifyUsers([...participants.keys()], 'liveSession:started', {
+      sessionId: row.id,
+      courseId,
+      courseName: course.title,
+    });
+
     return { id: row.id };
   }
 
@@ -1312,6 +1332,11 @@ export class ClassroomService implements OnModuleInit {
     }
 
     this.broadcaster.toRoom(sessionId, 'session:ended', {});
+    // Sessiyaga hali qo'shilmagan (masalan boshqa sahifada turgan) talabalar
+    // uchun ham — "jonli dars boshlandi" bildirishnomasi endi eskirganini
+    // bildirish uchun global signal (liveSession:started bilan bir xil
+    // user:<userId> infratuzilmasi orqali).
+    this.notifications.notifyUsers([...s.participants.keys()], 'liveSession:ended', { sessionId });
     this.sessions.delete(sessionId);
   }
 
