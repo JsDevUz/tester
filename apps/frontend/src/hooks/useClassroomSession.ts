@@ -284,6 +284,26 @@ export function useClassroomSession(
     socket.emit(event, { sessionId: sessionIdRef.current, token: localStorage.getItem("token"), ...payload });
   }, []);
 
+  // Shape/matn sudralganda (resize/rotate/control-point) pointermove sekundiga
+  // o'nlab marta otiladi. Har biri to'liq socket.emit qilsa, tarmoq/asosiy
+  // thread bosimi ostida keyingi pointermove eventlari "orqada qolib" chiziq
+  // sichqonchadan lag bilan ergashadi (silkinib ko'rinadi). Local setState
+  // (optimistik, silliq vizual feedback uchun) HAR chaqiruvda darhol
+  // bajariladi — faqat SOCKET EMIT bir freym ichida koalessiya qilinadi,
+  // faqat oxirgi (eng yangi) qiymat yuboriladi.
+  const pendingEmitRef = useRef<Map<string, { event: string; payload: Record<string, unknown> }>>(new Map());
+  const emitFrameRef = useRef<number | null>(null);
+  const emitHostThrottled = useCallback((coalesceKey: string, event: string, payload: Record<string, unknown> = {}) => {
+    pendingEmitRef.current.set(coalesceKey, { event, payload });
+    if (emitFrameRef.current !== null) return;
+    emitFrameRef.current = window.requestAnimationFrame(() => {
+      emitFrameRef.current = null;
+      const pending = pendingEmitRef.current;
+      pendingEmitRef.current = new Map();
+      for (const { event: ev, payload: pl } of pending.values()) emitHost(ev, pl);
+    });
+  }, [emitHost]);
+
   const hostActions = {
     setPage: (page: number) => emitHost("host:setPage", { page }),
     // Optimistik: local ekranga darhol qo'shiladi (socket round-trip'ni
@@ -309,7 +329,7 @@ export function useClassroomSession(
         const next = (source[page] ?? []).map((stroke) => stroke.id === strokeId ? { ...stroke, points: moveStrokePoints(stroke, x, y) } : stroke);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:moveStroke", { page, strokeId, x, y, pane, mode, groupId });
+      emitHostThrottled(`moveStroke:${strokeId}`, "host:moveStroke", { page, strokeId, x, y, pane, mode, groupId });
     },
     updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => {
@@ -318,7 +338,7 @@ export function useClassroomSession(
         const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:updateTextStroke", { page, stroke, pane, mode, groupId });
+      emitHostThrottled(`updateTextStroke:${stroke.id}`, "host:updateTextStroke", { page, stroke, pane, mode, groupId });
     },
     updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => {
@@ -327,7 +347,7 @@ export function useClassroomSession(
         const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
         return { ...s, [key]: { ...source, [page]: next } };
       });
-      emitHost("host:updateShapeStroke", { page, stroke, pane, mode, groupId });
+      emitHostThrottled(`updateShapeStroke:${stroke.id}`, "host:updateShapeStroke", { page, stroke, pane, mode, groupId });
     },
     // MUHIM: bu yerda optimistik local o'zgartirish YO'Q — "forward"/"backward"
     // amallari (undo/erase/move'dan farqli) ID bo'yicha idempotent emas, balki
