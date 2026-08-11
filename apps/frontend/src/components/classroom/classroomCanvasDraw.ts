@@ -388,7 +388,12 @@ export function drawStroke(
     const referenceFontSize = s.fontSize ?? Math.max(14, s.width * 6);
     const renderedFontSize = Math.max(1, referenceFontSize * (w / REF_WIDTH));
     ctx.font = `${s.fontWeight ?? 600} ${renderedFontSize}px ${getFontFamilyString(s.fontFamily)}`;
-    ctx.textBaseline = "alphabetic";
+    // "top" baseline: fillText'ning y koordinatasi to'g'ridan-to'g'ri
+    // qatorning TEPASI bo'ladi — shrift ascent/em-box metrikasiga (brauzer/
+    // shriftga qarab keskin farq qilib, matnni kutilganidan ancha pastroqqa
+    // "itarib yuborgan") tayanmaydi. Bu web platform bazaviy tekshiruvi
+    // (Baseline) bo'yicha keng qo'llab-quvvatlanadi.
+    ctx.textBaseline = "top";
     const lineHeight = renderedFontSize * 1.25;
     const boxWidth = (s.textBoxWidth ?? 320) * (w / REF_WIDTH);
     const lines = wrapTextLines(ctx, s.text, boxWidth);
@@ -399,17 +404,10 @@ export function drawStroke(
       (w / REF_WIDTH);
     // Matn har doim box balandligining VERTIKAL MARKAZIDA chiziladi — box
     // (textBoxHeight) qator soniga qarab matn balandligidan katta bo'lishi
-    // mumkin (masalan qo'lda resize qilingan yoki eski qiymat), shrift/
-    // brauzer ascent metrikasiga tayanib tepadan hisoblash esa (avvalgi
-    // yondashuv) turli shrift/brauzerlarda tahrirlashda ko'ringan joydan
-    // farqli chiqib, saqlangach matn tepaga yoki pastga "sakrab" ketardi.
-    // Markazlash bu nomuvofiqlikni umuman yo'q qiladi.
-    const measureLine = lines.find((line) => line.trim().length > 0) ?? "M";
-    const metrics = ctx.measureText(measureLine);
-    const ascent = metrics.fontBoundingBoxAscent ?? metrics.actualBoundingBoxAscent ?? renderedFontSize * 0.8;
+    // mumkin (masalan qo'lda resize qilingan yoki eski qiymat).
     const textBlockHeight = lines.length * lineHeight;
     const blockTop = (boxHeight - textBlockHeight) / 2;
-    const lineTopOffset = blockTop + (lineHeight - renderedFontSize) / 2 + ascent;
+    const lineTopOffset = blockTop + (lineHeight - renderedFontSize) / 2;
     const align = s.textAlign ?? "left";
     const lineX = (line: string) => {
       if (align === "left") return 0;
