@@ -245,6 +245,7 @@ export class ClassroomService implements OnModuleInit {
       courseName: null,
       title: cleanTitle,
       isFree: true,
+      isBoard: true,
       hostUserId: teacherId,
       hostSocketId: null,
       hostName,
@@ -1322,6 +1323,22 @@ export class ClassroomService implements OnModuleInit {
     };
     const updatedRecordings = [...existingRecordings, newRecordingEntry];
 
+    // Persistent doska oddiy erkin dars emas: endSession tasodifan chaqirilsa
+    // ham qatorni o'chirmaymiz, faqat oxirgi holatini saqlaymiz.
+    if (s.isBoard || dbRow?.isBoard === true) {
+      await this.createBoardVersionCheckpoint(sessionId);
+      await db.update(classSessions)
+        .set({
+          boardSnapshot,
+          pdfName: s.pdfName,
+          pdfPages: s.pdfPages,
+          historyEvents: s.historyEvents ?? [],
+        })
+        .where(eq(classSessions.id, sessionId));
+      this.sessions.delete(sessionId);
+      return;
+    }
+
     await this.createBoardVersionCheckpoint(sessionId);
 
     const hasRecording = s.recordingMode != null;
@@ -1335,7 +1352,9 @@ export class ClassroomService implements OnModuleInit {
           .where(eq(classSessions.id, s.attachedBoardId));
       }
       await db.delete(classSessions)
-        .where(eq(classSessions.id, sessionId));
+        // Defense-in-depth: runtime flag noto'g'ri yoki eski Redis state bo'lsa
+        // ham persistent board qatori SQL darajasida o'chirilmaydi.
+        .where(and(eq(classSessions.id, sessionId), eq(classSessions.isBoard, false)));
     } else {
       // Recording bor yoki guruh darsi → saqla
       await db.update(classSessions)
@@ -1493,6 +1512,14 @@ export class ClassroomService implements OnModuleInit {
         // Ustoz chiqib ketsa, doskani va uning yangi seans versiyasini DB ga saqlaymiz:
         void this.createBoardVersionCheckpoint(s.id).catch(() => {});
         void this.persistBoardSnapshot(s.id).catch(() => {});
+        const persistentBoard = s.isBoard || !!(await db.query.classSessions.findFirst({
+          where: and(eq(classSessions.id, s.id), eq(classSessions.isBoard, true)),
+          columns: { id: true },
+        }));
+        if (persistentBoard) {
+          s.isBoard = true;
+          return;
+        }
         if (!s.hostDisconnectTimer) {
           s.hostDisconnectTimer = setTimeout(() => {
             void this.withSession(s.id, () => this.endSession(s.id, null)).catch(() => {});
@@ -2701,6 +2728,7 @@ export class ClassroomService implements OnModuleInit {
       title: row.title ?? null,
       attachedBoardId: row.attachedBoardId ?? null,
       isFree,
+      isBoard: row.isBoard === true,
       hostUserId: row.teacherId ?? row.course?.adminId ?? '',
       hostSocketId: null,
       hostName: row.teacher?.displayName ?? row.course?.owner?.displayName ?? "Ustoz",

@@ -875,6 +875,22 @@ describe('scroll (sahifa-nisbiy scroll sinxronizatsiyasi)', () => {
 });
 
 describe('disconnect va yakunlash', () => {
+  it('persistent doska hosti uzilganda doska yakunlanmaydi va o\'chirilmaydi', async () => {
+    jest.useFakeTimers();
+    const { service, events, sessionId } = await setup();
+    const board = (service as any).sessions.get(sessionId);
+    board.isFree = true;
+    board.isBoard = true;
+    service.hostJoin(sessionId, 'teacher-1', 'sock-board');
+
+    await service.handleDisconnect('sock-board');
+    jest.advanceTimersByTime(HOST_GRACE_MS + 1000);
+    await jest.runAllTimersAsync();
+
+    expect(events.some((e) => e.event === 'session:ended')).toBe(false);
+    expect(mockedDb.delete).not.toHaveBeenCalled();
+  });
+
   it('oquvchi uzilsa presence:update va interval yopiladi', async () => {
     const { service, events, sessionId } = await setup();
     await service.studentJoin(sessionId, 'stu-1', 'sock-1');

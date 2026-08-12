@@ -124,6 +124,8 @@ export interface ClassroomSession {
   courseId: string | null;
   courseName: string | null;
   isFree: boolean;
+  // /boards dagi persistent doska oddiy erkin jonli dars emas.
+  isBoard?: boolean;
   title?: string | null;
   attachedBoardId?: string | null;
   hostUserId: string;
