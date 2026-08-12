@@ -18,8 +18,17 @@ interface VoiceState {
   activeAudioInputId: string | null;
 }
 
+function setsAreEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
 export function useClassroomVoice(sessionId: string | undefined, startMuted: boolean, guestName?: string) {
   const roomRef = useRef<Room | null>(null);
+  const isTogglingMicRef = useRef(false);
   const [state, setState] = useState<VoiceState>({
     voiceAvailable: true,
     connected: false,
@@ -48,7 +57,15 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
   useEffect(() => {
     if (!sessionId) return;
     let cancelled = false;
-    const room = new Room();
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      audioCaptureDefaults: {
+        autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
     roomRef.current = room;
 
     const updateUnmuted = () => {
@@ -69,7 +86,10 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
           }
         }
       }
-      setState((s) => ({ ...s, unmutedUserIds: unmuted }));
+      setState((s) => {
+        if (setsAreEqual(s.unmutedUserIds, unmuted)) return s;
+        return { ...s, unmutedUserIds: unmuted };
+      });
     };
 
     room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
@@ -80,23 +100,31 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
           set.add(speaker.name);
         }
       }
-      setState((s) => ({ ...s, speakingUserIds: set }));
+      setState((s) => {
+        if (setsAreEqual(s.speakingUserIds, set)) return s;
+        return { ...s, speakingUserIds: set };
+      });
     });
+
     room.on(RoomEvent.LocalTrackPublished, () => {
       setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
       updateUnmuted();
     });
     room.on(RoomEvent.LocalTrackUnpublished, () => {
+      setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
       updateUnmuted();
     });
-    // Ustoz majburiy mute qilganda ham holat yangilansin
+    // Ustoz majburiy mute qilganda yoki track o'zgarganda holat yangilansin
     room.on(RoomEvent.TrackMuted, (_pub, participant) => {
       if (participant === room.localParticipant) {
         setState((s) => ({ ...s, micEnabled: false }));
       }
       updateUnmuted();
     });
-    room.on(RoomEvent.TrackUnmuted, () => {
+    room.on(RoomEvent.TrackUnmuted, (_pub, participant) => {
+      if (participant === room.localParticipant) {
+        setState((s) => ({ ...s, micEnabled: true }));
+      }
       updateUnmuted();
     });
     room.on(RoomEvent.ParticipantConnected, () => {
@@ -106,6 +134,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       updateUnmuted();
     });
     room.on(RoomEvent.Connected, () => {
+      setState((s) => ({ ...s, connected: true }));
       updateUnmuted();
     });
     room.on(RoomEvent.Disconnected, () => {
@@ -116,6 +145,10 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     // kelganda audio elementga ulanadi, ketganda tozalanadi.
     room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
       if (track.kind !== Track.Kind.Audio) return;
+      document.querySelectorAll(`audio[data-livekit-participant="${participant.identity}"]`).forEach((existing) => {
+        pendingAudioElsRef.current.delete(existing as HTMLMediaElement);
+        existing.remove();
+      });
       const el = track.attach();
       el.dataset.livekitParticipant = participant.identity;
       el.autoplay = true;
@@ -185,14 +218,19 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       void room.disconnect();
       document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());
     };
-  }, [sessionId, startMuted, guestName]);
+  }, [sessionId, startMuted, guestName, refreshAudioInputs]);
 
   const toggleMic = useCallback(async () => {
     const room = roomRef.current;
-    if (!room) return;
+    if (!room || isTogglingMicRef.current) return;
+    if (room.state !== "connected") {
+      console.warn("LiveKit xonasiga hali ulanmagan:", room.state);
+      return;
+    }
+    isTogglingMicRef.current = true;
     const next = !room.localParticipant.isMicrophoneEnabled;
     try {
-      await room.localParticipant.setMicrophoneEnabled(next);
+      // Optimistic state update for instant UI feedback
       setState((s) => {
         const unmuted = new Set(s.unmutedUserIds);
         if (next) {
@@ -208,10 +246,19 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
         }
         return { ...s, micEnabled: next, unmutedUserIds: unmuted };
       });
+
+      await room.localParticipant.setMicrophoneEnabled(next);
+      if (next) {
+        void refreshAudioInputs(room);
+      }
     } catch (e) {
       console.error("Mikrofonni almashtirib bo'lmadi:", e);
+      // Rollback to actual participant mic state on failure
+      setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
+    } finally {
+      isTogglingMicRef.current = false;
     }
-  }, []);
+  }, [refreshAudioInputs]);
 
   // "Ovozni yoqish" tugmasi bosilganda — user gesture ichida chaqirilgani
   // uchun brauzer endi pleybackka ruxsat beradi.
@@ -250,3 +297,4 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
 
   return { ...state, toggleMic, unlockAudio, switchAudioInput, getLocalAudioStream };
 }
+

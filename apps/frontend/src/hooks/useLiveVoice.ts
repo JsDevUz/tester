@@ -16,12 +16,21 @@ interface VoiceState {
   activeAudioInputId: string | null;
 }
 
+function setsAreEqual(a: Set<string>, b: Set<string>): boolean {
+  if (a.size !== b.size) return false;
+  for (const item of a) {
+    if (!b.has(item)) return false;
+  }
+  return true;
+}
+
 // useClassroomVoice bilan bir xil LiveKit integratsiya patterni — jonli
 // musobaqa (pin bo'yicha) uchun. Ikkalasi alohida saqlanadi (klassrum va
 // live musobaqa turli backend endpoint/room nomlanishiga ega), lekin
 // mantiq bir xil: token olish, xonaga ulanish, mikrofon/ovoz boshqaruvi.
 export function useLiveVoice(pin: string | undefined, startMuted: boolean) {
   const roomRef = useRef<Room | null>(null);
+  const isTogglingMicRef = useRef(false);
   const [state, setState] = useState<VoiceState>({
     voiceAvailable: true,
     connected: false,
@@ -47,13 +56,28 @@ export function useLiveVoice(pin: string | undefined, startMuted: boolean) {
   useEffect(() => {
     if (!pin) return;
     let cancelled = false;
-    const room = new Room();
+    const room = new Room({
+      adaptiveStream: true,
+      dynacast: true,
+      audioCaptureDefaults: {
+        autoGainControl: true,
+        echoCancellation: true,
+        noiseSuppression: true,
+      },
+    });
     roomRef.current = room;
 
     room.on(RoomEvent.ActiveSpeakersChanged, (speakers) => {
-      setState((s) => ({ ...s, speakingUserIds: new Set(speakers.map((p) => p.identity)) }));
+      const set = new Set(speakers.map((p) => p.identity));
+      setState((s) => {
+        if (setsAreEqual(s.speakingUserIds, set)) return s;
+        return { ...s, speakingUserIds: set };
+      });
     });
     room.on(RoomEvent.LocalTrackPublished, () => {
+      setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
+    });
+    room.on(RoomEvent.LocalTrackUnpublished, () => {
       setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
     });
     room.on(RoomEvent.TrackMuted, (_pub, participant) => {
@@ -61,11 +85,20 @@ export function useLiveVoice(pin: string | undefined, startMuted: boolean) {
         setState((s) => ({ ...s, micEnabled: false }));
       }
     });
+    room.on(RoomEvent.TrackUnmuted, (_pub, participant) => {
+      if (participant === room.localParticipant) {
+        setState((s) => ({ ...s, micEnabled: true }));
+      }
+    });
     room.on(RoomEvent.Disconnected, () => {
       setState((s) => ({ ...s, connected: false }));
     });
     room.on(RoomEvent.TrackSubscribed, (track: RemoteTrack, _pub: RemoteTrackPublication, participant: RemoteParticipant) => {
       if (track.kind !== Track.Kind.Audio) return;
+      document.querySelectorAll(`audio[data-livekit-participant="${participant.identity}"]`).forEach((existing) => {
+        pendingAudioElsRef.current.delete(existing as HTMLMediaElement);
+        existing.remove();
+      });
       const el = track.attach();
       el.dataset.livekitParticipant = participant.identity;
       el.autoplay = true;
@@ -112,19 +145,30 @@ export function useLiveVoice(pin: string | undefined, startMuted: boolean) {
       void room.disconnect();
       document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());
     };
-  }, [pin, startMuted]);
+  }, [pin, startMuted, refreshAudioInputs]);
 
   const toggleMic = useCallback(async () => {
     const room = roomRef.current;
-    if (!room) return;
+    if (!room || isTogglingMicRef.current) return;
+    if (room.state !== "connected") {
+      console.warn("LiveKit xonasiga hali ulanmagan:", room.state);
+      return;
+    }
+    isTogglingMicRef.current = true;
     const next = !room.localParticipant.isMicrophoneEnabled;
     try {
-      await room.localParticipant.setMicrophoneEnabled(next);
       setState((s) => ({ ...s, micEnabled: next }));
+      await room.localParticipant.setMicrophoneEnabled(next);
+      if (next) {
+        void refreshAudioInputs(room);
+      }
     } catch (e) {
       console.error("Mikrofonni almashtirib bo'lmadi:", e);
+      setState((s) => ({ ...s, micEnabled: room.localParticipant.isMicrophoneEnabled }));
+    } finally {
+      isTogglingMicRef.current = false;
     }
-  }, []);
+  }, [refreshAudioInputs]);
 
   const unlockAudio = useCallback(() => {
     for (const el of pendingAudioElsRef.current) {
@@ -147,3 +191,4 @@ export function useLiveVoice(pin: string | undefined, startMuted: boolean) {
 
   return { ...state, toggleMic, unlockAudio, switchAudioInput };
 }
+
