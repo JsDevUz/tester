@@ -1,7 +1,7 @@
 # Tashqi Caddy sayt konfiguratsiyalari
 
-Production `.env` ichida `CADDY_SITES_DIR=/opt/caddy/sites` bo'ladi. Shu sabab
-bu katalog tester Git repodan va uning deploylaridan mustaqil ishlaydi.
+Production gateway `/opt/caddy` ichida alohida Docker Compose loyiha sifatida
+ishlaydi. Shu sabab Caddy va bu katalog tester deploylaridan mustaqil.
 
 Yangi loyiha qo'shish uchun serverda `/opt/caddy/sites/loyiha.caddy` fayl yarating:
 
@@ -14,7 +14,7 @@ loyiha.example.com {
 So'ng konfiguratsiyani tekshirib, uzilishsiz reload qiling:
 
 ```bash
-cd /opt/tester
+cd /opt/caddy
 docker compose exec caddy caddy validate --config /etc/caddy/Caddyfile
 docker compose exec caddy caddy reload --config /etc/caddy/Caddyfile
 ```
