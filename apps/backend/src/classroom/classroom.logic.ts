@@ -611,6 +611,7 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
     })),
     startedAt: session.startedAtMs,
     hostOnline: session.hostSocketId !== null,
+    hostUserId: session.hostUserId,
     hostName: session.hostName,
     zoom: session.zoom,
     rightZoom: session.rightZoom ?? session.zoom,

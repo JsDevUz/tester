@@ -21,6 +21,7 @@ export interface ClassroomState {
   rightStrokesByPage: Record<number, CsStroke[]>;
   participants: CsParticipant[];
   hostOnline: boolean;
+  hostUserId?: string | null;
   hostName?: string | null;
   pointer: CsPointer | null;
   zoom: number;
@@ -48,7 +49,7 @@ export interface ClassroomState {
 const INITIAL: ClassroomState = {
   joined: false, error: null, ended: false,
   pdfName: null, pages: [], currentPage: 1,
-  strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, hostName: null, pointer: null, zoom: 1, scroll: null,
+  strokesByPage: {}, rightStrokesByPage: {}, participants: [], hostOnline: false, hostUserId: null, hostName: null, pointer: null, zoom: 1, scroll: null,
   isFree: false, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", rightScroll: null, rightZoom: 1, splitRatio: 0.5, notebookPageCount: 1, isBoardOpen: false, classroomTheme: useThemeStore.getState().theme,
   notebookPageStyles: {},
   notebookPageOrientations: {},
@@ -130,7 +131,7 @@ export function useClassroomSession(
             pdfName: snap.pdfName, pages: snap.pages, currentPage: snap.currentPage,
             strokesByPage: snap.strokesByPage ?? {},
             rightStrokesByPage: snap.rightStrokesByPage ?? {},
-            participants: snap.participants, hostOnline: snap.hostOnline, hostName: snap.hostName, pointer: null,
+            participants: snap.participants, hostOnline: snap.hostOnline, hostUserId: snap.hostUserId ?? null, hostName: snap.hostName, pointer: null,
             zoom: snap.zoom ?? 1, scroll: snap.scroll ?? null, isFree: snap.isFree,
             rightScroll: snap.rightScroll ?? null, rightZoom: snap.rightZoom ?? snap.zoom ?? 1,
             splitRatio: snap.splitRatio ?? 0.5,

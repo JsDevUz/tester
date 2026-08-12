@@ -242,6 +242,7 @@ export interface ClassroomSnapshot {
   participants: Array<{ userId: string; name: string; online: boolean; status: AttendanceStatus }>;
   startedAt: number;
   hostOnline: boolean;
+  hostUserId: string;
   hostName: string;
   zoom: number;
   rightZoom: number;

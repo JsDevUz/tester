@@ -207,6 +207,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
           theme={state.classroomTheme}
           isHost={false}
           hostOnline={state.hostOnline}
+          hostUserId={state.hostUserId}
           hostName={state.hostName || "Ustoz"}
         />
       ) : (
@@ -221,6 +222,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
               theme={state.classroomTheme}
               isHost={false}
               hostOnline={state.hostOnline}
+              hostUserId={state.hostUserId}
               hostName={state.hostName || "Ustoz"}
             />
           )}
@@ -270,6 +272,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
                         compact
                         theme={state.classroomTheme}
                         hostOnline={state.hostOnline}
+                        hostUserId={state.hostUserId}
                         hostName="Ustoz"
                       />
                     </>
@@ -294,6 +297,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
                         compact
                         theme={state.classroomTheme}
                         hostOnline={state.hostOnline}
+                        hostUserId={state.hostUserId}
                         hostName="Ustoz"
                       />
                     </>
@@ -336,6 +340,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
             compact
             theme={state.classroomTheme}
             hostOnline={state.hostOnline}
+            hostUserId={state.hostUserId}
             hostName={state.hostName || "Ustoz"}
             hidden={true}
           />

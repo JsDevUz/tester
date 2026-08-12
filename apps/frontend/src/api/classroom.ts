@@ -392,6 +392,7 @@ export interface CsSnapshot {
   participants: CsParticipant[];
   startedAt: number;
   hostOnline: boolean;
+  hostUserId?: string;
   hostName: string;
   zoom: number;
   rightZoom?: number;

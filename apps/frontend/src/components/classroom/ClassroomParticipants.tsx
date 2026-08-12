@@ -31,13 +31,14 @@ interface Props {
   bare?: boolean;
   theme?: "light" | "dark";
   hostOnline?: boolean;
+  hostUserId?: string | null;
   hostName?: string;
 }
 
 export function ClassroomParticipants({
   participants, speakingUserIds, unmutedUserIds = new Set(), isHost, myUserId,
   onMute, userReactions, bare = false, theme = "light",
-  hostOnline = false, hostName = "Ustoz",
+  hostOnline = false, hostUserId = null, hostName = "Ustoz",
 }: Props) {
   const isDark = theme === "dark";
 
@@ -76,10 +77,10 @@ export function ClassroomParticipants({
   // Host presence/audio status
   const hostSpeaking = isHost
     ? (speakingUserIds.has(myUserId || "") || (hostName && speakingUserIds.has(hostName)))
-    : (speakingUserIds.has("host") || speakingUserIds.has("teacher") || (hostName && speakingUserIds.has(hostName)));
+    : ((hostUserId && speakingUserIds.has(hostUserId)) || speakingUserIds.has("host") || speakingUserIds.has("teacher") || (hostName && speakingUserIds.has(hostName)));
   const hostMuted = isHost
     ? (!unmutedUserIds.has(myUserId || "") && !(hostName && unmutedUserIds.has(hostName)))
-    : (!unmutedUserIds.has("host") && !unmutedUserIds.has("teacher") && !(hostName && unmutedUserIds.has(hostName)));
+    : (!(hostUserId && unmutedUserIds.has(hostUserId)) && !unmutedUserIds.has("host") && !unmutedUserIds.has("teacher") && !(hostName && unmutedUserIds.has(hostName)));
 
   return (
     <div className={bare ? "flex flex-col min-h-0" : ""}>

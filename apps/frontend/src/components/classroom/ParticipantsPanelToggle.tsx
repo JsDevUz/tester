@@ -15,6 +15,7 @@ interface Props {
   compact?: boolean;
   theme?: "light" | "dark";
   hostOnline?: boolean;
+  hostUserId?: string | null;
   hostName?: string;
   hidden?: boolean;
 }
@@ -22,7 +23,7 @@ interface Props {
 export function ParticipantsPanelToggle({
   participants, speakingUserIds, unmutedUserIds = new Set(), isHost, myUserId,
   onMute, userReactions, theme = "light",
-  hostOnline = false, hostName = "Ustoz",
+  hostOnline = false, hostUserId = null, hostName = "Ustoz",
   hidden = false,
 }: Props) {
   const [open, setOpen] = useState(false);
@@ -154,6 +155,7 @@ export function ParticipantsPanelToggle({
                 bare
                 theme={theme}
                 hostOnline={hostOnline}
+                hostUserId={hostUserId}
                 hostName={hostName}
               />
             </div>

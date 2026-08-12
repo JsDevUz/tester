@@ -34,6 +34,7 @@ interface Props {
   theme?: "light" | "dark";
   isHost?: boolean;
   hostOnline?: boolean;
+  hostUserId?: string | null;
   hostName?: string;
 }
 
@@ -46,6 +47,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
   theme = "light",
   isHost = false,
   hostOnline = false,
+  hostUserId = null,
   hostName = "Ustoz",
 }) => {
   const isDark = theme === "dark";
@@ -55,9 +57,13 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
   const listToRender: Array<{ userId: string; name: string; isMuted?: boolean; role?: string }> = [
     // Prepend teacher/ustoz tile if online
     ...(hostOnline ? [{
-      userId: "host",
+      userId: hostUserId || "host",
       name: hostName || "Ustoz",
-      isMuted: !unmutedUserIds.has("host") && !unmutedUserIds.has("teacher") && !(hostName && unmutedUserIds.has(hostName)),
+      isMuted:
+        !(hostUserId && unmutedUserIds.has(hostUserId)) &&
+        !unmutedUserIds.has("host") &&
+        !unmutedUserIds.has("teacher") &&
+        !(hostName && unmutedUserIds.has(hostName)),
       role: "host",
     }] : []),
     // Prepend current user (me) if not host and not already in participants
