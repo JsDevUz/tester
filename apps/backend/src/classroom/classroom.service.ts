@@ -1323,6 +1323,36 @@ export class ClassroomService implements OnModuleInit {
     };
     const updatedRecordings = [...existingRecordings, newRecordingEntry];
 
+    // Jonli darsga mavjud persistent doska biriktirilgan bo'lsa, yakuniy
+    // holatni dars turidan (guruh/erkin, recording bor/yo'q) qat'i nazar
+    // asl doskaga yozamiz. Debounced autosave hali ishlashga ulgurmasdan
+    // session o'chirilsa timer endi sessionni topa olmaydi; shu sabab end
+    // oqimida bu write majburiy bo'lishi kerak.
+    if (s.attachedBoardId) {
+      await db.update(classSessions)
+        .set({
+          boardSnapshot,
+          pdfName: s.pdfName,
+          pdfPages: s.pdfPages,
+        })
+        .where(eq(classSessions.id, s.attachedBoardId));
+
+      const attachedBoard = this.sessions.get(s.attachedBoardId);
+      if (attachedBoard) {
+        attachedBoard.pdfName = s.pdfName;
+        attachedBoard.pdfPages = s.pdfPages;
+        attachedBoard.boardMode = s.boardMode;
+        attachedBoard.boardLayout = s.boardLayout;
+        attachedBoard.leftBoardMode = s.leftBoardMode;
+        attachedBoard.rightBoardMode = s.rightBoardMode;
+        attachedBoard.strokesByPage = new Map(s.strokesByPage);
+        if (s.strokesByMode) attachedBoard.strokesByMode = new Map(s.strokesByMode);
+        attachedBoard.notebookPageCount = s.notebookPageCount;
+        attachedBoard.notebookPageStyles = s.notebookPageStyles;
+        attachedBoard.notebookPageOrientations = s.notebookPageOrientations;
+      }
+    }
+
     // Persistent doska oddiy erkin dars emas: endSession tasodifan chaqirilsa
     // ham qatorni o'chirmaymiz, faqat oxirgi holatini saqlaymiz.
     if (s.isBoard || dbRow?.isBoard === true) {
@@ -1345,12 +1375,6 @@ export class ClassroomService implements OnModuleInit {
 
     if (s.isFree && !hasRecording) {
       // Erkin dars + yozib olish yo'q → sessiyani o'chir
-      // Doska MUSTAQIL entity — uning statusini o'zgartirmaymiz, faqat oxirgi snapshotni saqlaymiz
-      if (s.attachedBoardId) {
-        await db.update(classSessions)
-          .set({ boardSnapshot })
-          .where(eq(classSessions.id, s.attachedBoardId));
-      }
       await db.delete(classSessions)
         // Defense-in-depth: runtime flag noto'g'ri yoki eski Redis state bo'lsa
         // ham persistent board qatori SQL darajasida o'chirilmaydi.
@@ -1379,6 +1403,11 @@ export class ClassroomService implements OnModuleInit {
     // bildirish uchun global signal (liveSession:started bilan bir xil
     // user:<userId> infratuzilmasi orqali).
     this.notifications.notifyUsers([...s.participants.keys()], 'liveSession:ended', { sessionId });
+    const pendingPersist = this.persistDebounceTimers.get(sessionId);
+    if (pendingPersist) {
+      clearTimeout(pendingPersist);
+      this.persistDebounceTimers.delete(sessionId);
+    }
     this.sessions.delete(sessionId);
   }
 
