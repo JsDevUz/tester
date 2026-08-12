@@ -61,6 +61,5 @@
     reverse_proxy host.docker.internal:7880
 }
 
-kitobbot.jamm.uz {
-    reverse_proxy kitob-bot:3000
-}
+# Boshqa loyihalar tester repodan mustaqil boshqariladi.
+import /etc/caddy/sites/*.caddy

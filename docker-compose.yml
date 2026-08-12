@@ -108,6 +108,7 @@ services:
       LIVEKIT_DOMAIN: ${LIVEKIT_DOMAIN:-}
     volumes:
       - ./docker/Caddyfile:/etc/caddy/Caddyfile:ro
+      - ${CADDY_SITES_DIR:-./docker/caddy-sites}:/etc/caddy/sites:ro
       - caddy_data:/data
       - caddy_config:/config
     # Caddy bridge tarmog'ida, livekit esa network_mode: host'da ishlaydi —
@@ -187,7 +188,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["npm", "run", "db:migrate", "--workspace=apps/backend"]
+    entrypoint: ["npm"]
+    command: ["run", "db:migrate", "--workspace=apps/backend"]
 
   seed:
     build:
@@ -203,7 +205,8 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    command: ["npm", "run", "seed", "--workspace=apps/backend"]
+    entrypoint: ["npm"]
+    command: ["run", "seed", "--workspace=apps/backend"]
 
 volumes:
   postgres_data:

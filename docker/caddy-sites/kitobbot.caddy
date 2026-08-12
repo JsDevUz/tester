@@ -1,0 +1,3 @@
+kitobbot.jamm.uz {
+    reverse_proxy kitob-bot:3000
+}
