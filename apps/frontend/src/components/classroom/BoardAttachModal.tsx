@@ -4,6 +4,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { apiListBoards, type BoardItem } from "../../api/boards";
+import { useAuthStore } from "../../stores/authStore";
 
 interface Props {
   onAttachExisting: (boardId: string) => Promise<void>;
@@ -25,6 +26,7 @@ function fmtShortDate(iso: string | null | undefined): string {
 const PAGE_SIZE = 12;
 
 export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
+  const ownerName = useAuthStore((s) => s.admin?.name?.trim() || "O'qituvchi");
   const [boards, setBoards] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -164,7 +166,7 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
                           className={`text-xs truncate ${isSelected ? "text-indigo-700 dark:text-indigo-300/80 font-medium" : "text-gray-500 dark:text-zinc-400"
                             }`}
                         >
-                          Modified by JSDEV, {modifiedStr}
+                          Modified by {ownerName}, {modifiedStr}
                         </span>
                       </div>
                     </div>
@@ -189,7 +191,7 @@ export function BoardAttachModal({ onAttachExisting, onClose }: Props) {
                         className={`text-xs uppercase tracking-wider w-14 text-right hidden sm:inline-block ${isSelected ? "text-indigo-900 dark:text-indigo-200 font-bold" : "text-gray-500 dark:text-zinc-400 font-medium"
                           }`}
                       >
-                        JSDEV
+                        {ownerName}
                       </span>
 
                       {/* Selection Check Circle */}

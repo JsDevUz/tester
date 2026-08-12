@@ -6,6 +6,7 @@ import {
 import { toast } from "sonner";
 import { AppShell } from "../components/AppShell";
 import { apiListBoards, apiCreateBoard, apiDeleteBoard, type BoardItem } from "../api/boards";
+import { useAuthStore } from "../stores/authStore";
 
 function fmtShortDate(iso: string | null | undefined): string {
   if (!iso) return "May 1, 2026";
@@ -23,6 +24,7 @@ const PAGE_SIZE = 15;
 
 export function BoardsPage() {
   const navigate = useNavigate();
+  const ownerName = useAuthStore((s) => s.admin?.name?.trim() || "O'qituvchi");
   const [boards, setBoards] = useState<BoardItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [creating, setCreating] = useState(false);
@@ -182,7 +184,7 @@ export function BoardsPage() {
                           </span>
                         </div>
                         <span className="text-xs text-gray-400 dark:text-zinc-400 truncate">
-                          Modified by JSDEV, {modifiedStr}
+                          Modified by {ownerName}, {modifiedStr}
                         </span>
                       </div>
                     </div>
@@ -201,7 +203,7 @@ export function BoardsPage() {
 
                       {/* Owner / Author */}
                       <span className="text-xs font-semibold text-gray-500 dark:text-zinc-400 uppercase tracking-wider w-14 text-right hidden sm:inline-block">
-                        JSDEV
+                        {ownerName}
                       </span>
 
                       {/* Menu Actions */}
