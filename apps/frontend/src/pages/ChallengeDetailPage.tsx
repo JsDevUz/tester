@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { ArrowLeft, Star } from "lucide-react";
+import { ArrowLeft, ClipboardCheck, Star } from "lucide-react";
 import { toast } from "sonner";
 import { StudentShell } from "../components/student/StudentShell";
 import { SegmentedControl } from "../components/student/SegmentedControl";
@@ -39,7 +39,7 @@ export function ChallengeDetailPage() {
   const [addingBookId, setAddingBookId] = useState<string | null>(null);
   const [endPage, setEndPage] = useState("");
   const [newWords, setNewWords] = useState("");
-  const [requiredTest, setRequiredTest] = useState<{ bookId: string; slug: string; name: string } | null>(null);
+  const [requiredTestModal, setRequiredTestModal] = useState<{ bookId: string; slug: string; name: string } | null>(null);
   const [challengeWords, setChallengeWords] = useState<ApiStudentChallengeWord[]>([]);
 
   useEffect(() => {
@@ -74,13 +74,22 @@ export function ChallengeDetailPage() {
     if (!id) return;
     const book = detail!.books.find((b) => b.id === bookId)!;
     if (book.pendingTest) {
-      setRequiredTest({ bookId, slug: book.pendingTest.slug!, name: book.pendingTest.name });
+      setRequiredTestModal({ bookId, slug: book.pendingTest.slug!, name: book.pendingTest.name });
       return;
     }
     const parsedEndPage = parseInt(endPage, 10);
-    if (Number.isNaN(parsedEndPage)) {
-      toast.error("Tugagan betni kiriting");
+    if (Number.isNaN(parsedEndPage) || parsedEndPage < 0) {
+      toast.error("Tugagan betni to'g'ri kiriting");
       return;
+    }
+    if (book.totalPages && parsedEndPage > book.totalPages) {
+      toast.error(`Tugagan bet kitobning jami sahifalari sonidan (${book.totalPages}) oshmasligi kerak`);
+      return;
+    }
+    if (parsedEndPage <= book.lastPageRead) {
+      if (!window.confirm(`Siz kitobni ${parsedEndPage}-betga qaytarmoqchimisiz?`)) {
+        return;
+      }
     }
     try {
       await apiAddChallengeEvent(id, bookId, {
@@ -92,12 +101,12 @@ export function ChallengeDetailPage() {
       setAddingBookId(null);
       setEndPage("");
       setNewWords("");
-      toast.success("Yozuv qo'shildi");
+      toast.success("Yozuv saqlandi");
     } catch (error: any) {
       const requiredTestSlug = error?.response?.data?.requiredTestSlug;
       const requiredTestName = error?.response?.data?.requiredTestName;
       if (requiredTestSlug) {
-        setRequiredTest({ bookId, slug: requiredTestSlug, name: requiredTestName ?? "" });
+        setRequiredTestModal({ bookId, slug: requiredTestSlug, name: requiredTestName ?? "Test" });
         return;
       }
       toast.error(error?.response?.data?.message ?? "Yozuv qo'shib bo'lmadi");
@@ -196,18 +205,32 @@ export function ChallengeDetailPage() {
                       </p>
                     </button>
                   ) : addingBookId === book.id ? (
-                    <div className="flex flex-col gap-2">
-                      <div className="flex items-center gap-2 text-xs text-gray-500">
-                        <span>Boshlagan bet: {book.lastPageRead}</span>
+                    <div className="mt-3 flex flex-col gap-2.5">
+                      <div className="flex items-center gap-2">
+                        <div className="flex-1 rounded-xl bg-gray-100/80 px-3 py-2 text-center text-xs font-bold text-gray-500 dark:bg-zinc-800/80 dark:text-zinc-400 border border-gray-200/60 dark:border-zinc-700/60">
+                          {book.lastPageRead} - bet
+                        </div>
+                        <span className="text-sm font-extrabold text-gray-400 dark:text-zinc-500">-</span>
+                        <input
+                          value={endPage}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            if (val === "" || /^\d+$/.test(val)) {
+                              const num = parseInt(val, 10);
+                              if (!num || !book.totalPages || num <= book.totalPages) {
+                                setEndPage(val);
+                              } else {
+                                setEndPage(String(book.totalPages));
+                              }
+                            }
+                          }}
+                          type="number"
+                          min={0}
+                          max={book.totalPages}
+                          placeholder="Tugagan bet"
+                          className="challenge-detail-input flex-1 rounded-xl px-3 py-2 text-center text-sm font-semibold outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
+                        />
                       </div>
-                      <input
-                        value={endPage}
-                        onChange={(e) => setEndPage(e.target.value)}
-                        type="number"
-                        min={book.lastPageRead + 1}
-                        placeholder="Tugagan bet"
-                        className="challenge-detail-input rounded-xl px-3 py-2 text-sm outline-none ring-1 ring-transparent transition-colors focus:ring-indigo-500 dark:bg-zinc-800 dark:text-white"
-                      />
                       <input
                         value={newWords}
                         onChange={(e) => setNewWords(e.target.value)}
@@ -219,17 +242,17 @@ export function ChallengeDetailPage() {
                       <div className="flex gap-2">
                         <button
                           type="button"
+                          onClick={() => setAddingBookId(null)}
+                          className="challenge-detail-input rounded-xl px-3.5 py-2 text-xs font-semibold text-gray-600 dark:text-zinc-400"
+                        >
+                          Bekor qilish
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => void handleSubmitEvent(book.id)}
                           className="flex-1 rounded-xl bg-indigo-600 py-2 text-xs font-semibold text-white shadow-sm transition-colors hover:bg-indigo-700"
                         >
                           Saqlash
-                        </button>
-                        <button
-                          type="button"
-                          onClick={() => setAddingBookId(null)}
-                          className="challenge-detail-input rounded-xl px-3 py-2 text-xs font-semibold text-gray-600"
-                        >
-                          Bekor
                         </button>
                       </div>
                     </div>
@@ -237,7 +260,7 @@ export function ChallengeDetailPage() {
                     <button
                       type="button"
                       onClick={() =>
-                        setRequiredTest({ bookId: book.id, slug: book.pendingTest!.slug!, name: book.pendingTest!.name })
+                        setRequiredTestModal({ bookId: book.id, slug: book.pendingTest!.slug!, name: book.pendingTest!.name })
                       }
                       className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
                     >
@@ -441,6 +464,42 @@ export function ChallengeDetailPage() {
           </div>
         )}
       </div>
+
+      {requiredTestModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
+          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-150">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40">
+              <ClipboardCheck size={24} className="text-amber-600 dark:text-amber-400" />
+            </div>
+            <h3 className="text-center text-lg font-extrabold text-gray-900 dark:text-white">
+              Majburiy test mavjud
+            </h3>
+            <p className="mt-2 text-center text-sm leading-relaxed text-gray-600 dark:text-zinc-300">
+              Ushbu bet uchun {requiredTestModal.name ? `"${requiredTestModal.name}"` : ""} testi mavjud. Testni ishlasangiz, kiritilgan bet qabul qilinadi. Testni boshlaysizmi?
+            </p>
+            <div className="mt-6 flex gap-3">
+              <button
+                type="button"
+                onClick={() => setRequiredTestModal(null)}
+                className="flex-1 rounded-xl bg-gray-100 py-3 text-xs font-bold text-gray-700 hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  const slug = requiredTestModal.slug;
+                  setRequiredTestModal(null);
+                  navigate(`/t/${slug}`);
+                }}
+                className="flex-1 rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+              >
+                Testni boshlash
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </StudentShell>
   );
 }

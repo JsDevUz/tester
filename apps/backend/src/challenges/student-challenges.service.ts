@@ -139,12 +139,16 @@ export class StudentChallengesService {
         .where(and(eq(challengeBookProgress.challengeParticipantId, participant.id), eq(challengeBookProgress.challengeBookId, bookId)));
       const startPage = progress?.lastPageRead ?? 0;
 
-      if (data.endPage <= startPage) {
-        throw new BadRequestException('Tugagan bet boshlagan betdan katta bo\'lishi kerak');
+      if (data.endPage < 0) {
+        throw new BadRequestException('Tugagan bet 0 dan kichik bo‘lishi mumkin emas');
+      }
+
+      if (book.totalPages && data.endPage > book.totalPages) {
+        throw new BadRequestException(`Tugagan bet kitobning jami sahifalari sonidan (${book.totalPages}) oshmasligi kerak`);
       }
 
       const bookTest = await tx.query.challengeBookTests.findFirst({ where: eq(challengeBookTests.challengeBookId, bookId) });
-      if (isTestTriggered(bookTest, data.endPage)) {
+      if (data.endPage > startPage && isTestTriggered(bookTest, data.endPage)) {
         const submission = await tx.query.submissions.findFirst({
           where: and(eq(submissions.testId, bookTest.testId), eq(submissions.userId, studentId)),
         });
