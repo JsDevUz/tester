@@ -60,3 +60,7 @@
 {$LIVEKIT_DOMAIN:livekit.jamm.uz} {
     reverse_proxy host.docker.internal:7880
 }
+
+kitobbot.jamm.uz {
+    reverse_proxy kitob-bot:3000
+}

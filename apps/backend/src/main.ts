@@ -13,6 +13,7 @@ validateEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  app.getHttpAdapter().getInstance().disable('x-powered-by');
   const redisAdapter = new RedisIoAdapter(app, process.env.REDIS_URL);
   await redisAdapter.connect();
   app.useWebSocketAdapter(redisAdapter);
