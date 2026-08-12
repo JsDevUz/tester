@@ -1513,12 +1513,20 @@ export class ClassroomService implements OnModuleInit {
     this.onBoardMutation(s);
   }
 
+  private persistDebounceTimers = new Map<string, NodeJS.Timeout>();
+
   private onBoardMutation(s: ClassroomSession): void {
     if (s.needsVersionCheckpointOnFirstMutation) {
       s.needsVersionCheckpointOnFirstMutation = false;
       void this.createBoardVersionCheckpoint(s.id).catch(() => {});
     }
-    void this.persistBoardSnapshot(s.id).catch(() => {});
+    const existing = this.persistDebounceTimers.get(s.id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => {
+      this.persistDebounceTimers.delete(s.id);
+      void this.persistBoardSnapshot(s.id).catch(() => {});
+    }, 1500);
+    this.persistDebounceTimers.set(s.id, timer);
   }
 
   async persistBoardSnapshot(sessionId: string): Promise<void> {

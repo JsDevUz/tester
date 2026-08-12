@@ -80,8 +80,8 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
 
   // Zoom o'zgarganda sichqoncha/pinch markazi ekranda aynan bir joyda qolishi
   // uchun (Excalidraw/Miro/Figma kabi focused zoom):
-  // Anchor nuqtasi (cursorClientX, cursorClientY) va zoom o'zgarishidan
-  // oldingi haqiqiy scroll holati ref'ga yoziladi.
+  // Sahifaning aniq qaysi nuqtasi (data-page va uning ichki v nisbati)
+  // sichqoncha/pinch ostida ekanligi aniqlanadi.
   const pendingAnchorRef = useRef<{
     anchorClientX: number;
     anchorClientY: number;
@@ -89,6 +89,8 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
     nextZoom: number;
     prevScrollLeft: number;
     prevScrollTop: number;
+    targetPage: number;
+    intraPageV: number;
   } | null>(null);
 
   const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
@@ -97,6 +99,17 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
     if (clamped === prevZoom) return;
     const scrollEl = scrollRef.current;
     if (scrollEl) {
+      const pageElements = Array.from(scrollEl.querySelectorAll<HTMLElement>('[data-page]'));
+      let targetPage = 1;
+      let intraPageV = 0.5;
+      for (const el of pageElements) {
+        const r = el.getBoundingClientRect();
+        if (anchorClientY >= r.top && anchorClientY <= r.bottom) {
+          targetPage = parseInt(el.getAttribute('data-page') || '1', 10);
+          intraPageV = r.height > 0 ? (anchorClientY - r.top) / r.height : 0.5;
+          break;
+        }
+      }
       pendingAnchorRef.current = {
         anchorClientX,
         anchorClientY,
@@ -104,6 +117,8 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
         nextZoom: clamped,
         prevScrollLeft: scrollEl.scrollLeft,
         prevScrollTop: scrollEl.scrollTop,
+        targetPage,
+        intraPageV,
       };
     }
     localZoomRef.current = clamped;
@@ -116,17 +131,24 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
     const scrollEl = scrollRef.current;
     pendingAnchorRef.current = null;
     if (!pending || !scrollEl) return;
-    const { anchorClientX, anchorClientY, prevZoom, nextZoom, prevScrollLeft, prevScrollTop } = pending;
+    const { anchorClientX, anchorClientY, prevZoom, nextZoom, prevScrollLeft, prevScrollTop, targetPage, intraPageV } = pending;
     const rect = scrollEl.getBoundingClientRect();
     const localX = anchorClientX - rect.left;
     const localY = anchorClientY - rect.top;
     const ratio = nextZoom / prevZoom;
 
-    // Har bir sahifaning kengligi va balandligi to'g'ridan-to'g'ri zoom'ga proporsional.
-    // Tepada 50px (py-[50px]) xavfsiz bo'shliq mavjud.
-    const topPadding = 50;
+    const pageEl = scrollEl.querySelector<HTMLElement>(`[data-page="${targetPage}"]`);
+    let newScrollTop: number;
+    if (pageEl) {
+      // DOM darajasida yangi zoom bilan render bo'lgan pageEl.offsetTop barcha
+      // gap, safe-padding va flexbox joylashuvlarini 100% hisobga oladi:
+      newScrollTop = pageEl.offsetTop + intraPageV * pageEl.offsetHeight - localY;
+    } else {
+      const topPadding = 50;
+      newScrollTop = topPadding + (prevScrollTop + localY - topPadding) * ratio - localY;
+    }
+
     const newScrollLeft = (prevScrollLeft + localX) * ratio - localX;
-    const newScrollTop = topPadding + (prevScrollTop + localY - topPadding) * ratio - localY;
 
     suppressScrollDetectRef.current = true;
     scrollEl.scrollLeft = Math.max(0, newScrollLeft);

@@ -9,7 +9,7 @@ export function getClassroomSocket(): Socket {
     // Cloudflare/Nginx ayrim ulanishlarda WebSocket handshake'ni reset qilishi
     // mumkin. Polling bilan ishonchli ulanib, keyin WebSocket'ga upgrade qilamiz.
     socket = io(`${BACKEND}/classroom`, {
-      transports: ['polling', 'websocket'],
+      transports: ['websocket', 'polling'],
       upgrade: true,
       timeout: 10_000,
       reconnection: true,
