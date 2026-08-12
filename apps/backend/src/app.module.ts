@@ -27,11 +27,15 @@ import { ClassroomModule } from './classroom/classroom.module';
 import { ChallengesModule } from './challenges/challenges.module';
 import { StudentTestsModule } from './student-tests/student-tests.module';
 import { WordDecksModule } from './word-decks/word-decks.module';
+import { RedisModule } from './redis/redis.module';
+import { HealthModule } from './health/health.module';
 import 'dotenv/config';
 
 @Module({
   imports: [
     ConfigModule.forRoot({ isGlobal: true }),
+    RedisModule,
+    HealthModule,
     ThrottlerModule.forRoot([
       {
         name: 'default',

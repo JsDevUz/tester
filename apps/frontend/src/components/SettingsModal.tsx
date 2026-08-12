@@ -14,6 +14,7 @@ import { apiUploadMedia } from "../api/questions";
 import { useAuthStore } from "../stores/authStore";
 import { useThemeStore } from "../stores/themeStore";
 import { UserAvatar } from "./UserAvatar";
+import { AdminsSection } from "./AdminsSection";
 import { ConfirmDeleteModal } from "./course/ConfirmDeleteModal";
 import { formatPhone } from "../utils/phone";
 
@@ -309,6 +310,12 @@ export function SettingsModal({ admin, onClose, onLogout }: SettingsModalProps) 
               {savingPassword ? "Yangilanmoqda..." : "Parolni yangilash"}
             </button>
           </div>
+
+          {admin?.role === "super" && (
+            <div className="mb-4 border-t border-gray-100 pt-4 dark:border-zinc-800">
+              <AdminsSection currentAdminId={admin.id} />
+            </div>
+          )}
 
           {/* Logout Button */}
           <button

@@ -1,4 +1,4 @@
-import { ForbiddenException, Injectable, NotFoundException, ServiceUnavailableException } from '@nestjs/common';
+import { ForbiddenException, Injectable, NotFoundException, Optional, ServiceUnavailableException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, eq } from 'drizzle-orm';
 import { AccessToken, RoomServiceClient } from 'livekit-server-sdk';
@@ -13,6 +13,8 @@ import {
   makeTeamId, validateTeamsReady, TEAM_TYPES_WITH_SUGGESTIONS,
 } from './live.logic';
 import { gradeAnswer } from '../grading/grading';
+import { RedisSessionStore } from '../redis/redis-session.store';
+import { RedisService } from '../redis/redis.service';
 
 export interface SessionStatePayload {
   pin: string;
@@ -37,7 +39,38 @@ export class LiveService {
   private sessions = new Map<string, LiveSession>();
   private broadcaster: LiveBroadcaster = { toRoom: () => {}, toSocket: () => {} };
 
-  constructor(private readonly config: ConfigService) {}
+  constructor(
+    private readonly config: ConfigService,
+    @Optional() private readonly sessionStore?: RedisSessionStore,
+    @Optional() private readonly redis?: RedisService,
+  ) {}
+
+  private sessionKey(pin: string) { return `live:session:${pin}`; }
+
+  async withSession<T>(pin: string, action: () => Promise<T> | T): Promise<T> {
+    const store = this.sessionStore;
+    if (!store) return action();
+    return store.transaction(this.sessionKey(pin), async () => {
+      const shared = await store.get<LiveSession>(this.sessionKey(pin));
+      if (shared) this.sessions.set(pin, shared);
+      const result = await action();
+      const current = this.sessions.get(pin);
+      if (current) await store.set(this.sessionKey(pin), current);
+      return result;
+    });
+  }
+
+  private async loadSharedSession(pin: string): Promise<LiveSession | null> {
+    const shared = this.sessionStore
+      ? await this.sessionStore.get<LiveSession>(this.sessionKey(pin))
+      : null;
+    if (shared) this.sessions.set(pin, shared);
+    return shared ?? this.sessions.get(pin) ?? null;
+  }
+
+  private async indexSocket(socketId: string, pin: string) {
+    if (this.redis?.enabled) await this.redis.raw.set(`live:socket:${socketId}`, pin, { EX: 86_400 });
+  }
 
   setBroadcaster(b: LiveBroadcaster) { this.broadcaster = b; }
 
@@ -102,6 +135,7 @@ export class LiveService {
     if (liveQuestions.length === 0) throw new Error('NO_LIVE_QUESTIONS');
 
     const pin = this.initSession(adminId, test.id, test.name, liveQuestions, questionTimeSec, mode);
+    await this.sessionStore?.set(this.sessionKey(pin), this.sessions.get(pin));
     await db.insert(liveSessions).values({
       testId: test.id,
       adminId,
@@ -162,6 +196,7 @@ export class LiveService {
     }
     if (s.hostAdminId !== adminId) throw new Error('NOT_HOST');
     s.hostSocketId = socketId;
+    await this.indexSocket(socketId, pin);
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
     return { state: this.buildState(s, null) };
   }
@@ -177,6 +212,7 @@ export class LiveService {
     } else {
       player.socketId = socketId; // reconnect
     }
+    void this.indexSocket(socketId, pin);
     this.broadcastLobby(s);
     if (s.mode === 'team') this.broadcastTeamUpdate(s);
     return { state: this.buildState(s, player) };
@@ -294,6 +330,8 @@ export class LiveService {
     const validIds = new Set(q.options.map((o) => o.id));
     const filteredOptionIds = (selectedOptionIds ?? []).filter((id) => validIds.has(id));
     const timeMs = Date.now() - s.questionStartedAt;
+    const teamId = team.id;
+    team.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect: false, points: 0, timeMs });
 
     // gradeAnswer is async only for 'open' (Groq call); for team mode's synchronous state machine
     // we resolve it inline — fire-and-forget the async grade, then finalize when it resolves.
@@ -303,10 +341,15 @@ export class LiveService {
         { selectedOptionIds: filteredOptionIds, textAnswer },
         async () => false, // team mode does not call Groq for 'open' — captains type answers directly and are graded as ungraded/manual only; AI grading is out of scope for this spec
       )) ?? false;
-      const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
-      team.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
-      team.score += points;
-      this.maybeRevealEarlyTeams(s);
+      await this.withSession(pin, () => {
+        const latest = this.mustGet(pin);
+        const latestTeam = latest.teams?.get(teamId);
+        if (!latestTeam) return;
+        const points = computePoints(isCorrect, timeMs, latest.questionTimeSec * 1000);
+        latestTeam.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
+        latestTeam.score += points;
+        this.maybeRevealEarlyTeams(latest);
+      });
     })();
   }
 
@@ -356,6 +399,7 @@ export class LiveService {
     const validIds = new Set(q.options.map((o) => o.id));
     const filteredOptionIds = (selectedOptionIds ?? []).filter((id) => validIds.has(id));
     const timeMs = Date.now() - s.questionStartedAt;
+    player.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect: false, points: 0, timeMs });
 
     void (async () => {
       const isCorrect = (await gradeAnswer(
@@ -363,13 +407,17 @@ export class LiveService {
         { selectedOptionIds: filteredOptionIds, textAnswer },
         async () => false, // individual Live Quiz does not call Groq for 'open' — same as team mode, out of scope for this spec
       )) ?? false;
-      const points = computePoints(isCorrect, timeMs, s.questionTimeSec * 1000);
-      player.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
-      player.score += points;
-
-      const answered = this.answeredCount(s);
-      this.broadcaster.toRoom(s.pin, 'question:progress', { answered, total: s.players.size });
-      this.maybeRevealEarly(s);
+      await this.withSession(pin, () => {
+        const latest = this.mustGet(pin);
+        const latestPlayer = latest.players.get(userId);
+        if (!latestPlayer) return;
+        const points = computePoints(isCorrect, timeMs, latest.questionTimeSec * 1000);
+        latestPlayer.answers.set(questionId, { selectedOptionIds: filteredOptionIds, isCorrect, points, timeMs });
+        latestPlayer.score += points;
+        const answered = this.answeredCount(latest);
+        this.broadcaster.toRoom(latest.pin, 'question:progress', { answered, total: latest.players.size });
+        this.maybeRevealEarly(latest);
+      });
     })();
   }
 
@@ -401,7 +449,7 @@ export class LiveService {
   }
 
   async voiceToken(pin: string, userId: string, displayName: string): Promise<{ token: string; url: string }> {
-    const s = this.sessions.get(pin);
+    const s = await this.loadSharedSession(pin);
     if (!s) throw new NotFoundException('Musobaqa topilmadi yoki allaqachon tugagan');
     const isHost = s.hostAdminId === userId;
     if (!isHost && !this.isParticipant(s, userId)) throw new ForbiddenException('Siz bu musobaqaning ishtirokchisi emassiz');
@@ -425,7 +473,7 @@ export class LiveService {
   }
 
   async muteParticipant(pin: string, adminId: string, targetUserId: string): Promise<void> {
-    const s = this.sessions.get(pin);
+    const s = await this.loadSharedSession(pin);
     if (!s) throw new NotFoundException('Musobaqa topilmadi yoki allaqachon tugagan');
     if (s.hostAdminId !== adminId) throw new ForbiddenException();
     const cfg = this.livekitConfig();
@@ -444,35 +492,55 @@ export class LiveService {
     }
   }
 
-  handleDisconnect(socketId: string) {
-    for (const s of this.sessions.values()) {
-      if (s.hostSocketId === socketId) {
-        s.hostSocketId = null;
-        if (s.status !== 'finished' && !s.hostDisconnectTimer) {
-          s.hostDisconnectTimer = setTimeout(() => { void this.finish(s); }, HOST_GRACE_MS);
-        }
-        return;
+  handleDisconnect(socketId: string): void | Promise<void> {
+    if (!this.redis?.enabled) {
+      for (const s of this.sessions.values()) {
+        if (this.disconnectFromSession(s, socketId)) return;
       }
-      for (const p of s.players.values()) {
-        if (p.socketId === socketId) {
-          p.socketId = null;
-          if (s.mode === 'team' && s.teams) {
-            for (const t of s.teams.values()) {
-              if (t.captainUserId === p.userId) {
-                t.captainUserId = null;
-                if (s.hostSocketId) this.broadcaster.toSocket(s.hostSocketId, 'team:captainDisconnected', { teamId: t.id });
-              }
-            }
-          }
-          if (s.status === 'lobby' || s.status === 'team_assign') this.broadcastLobby(s);
-          if (s.status === 'question') {
-            if (s.mode === 'team') this.maybeRevealEarlyTeams(s);
-            else this.maybeRevealEarly(s);
-          }
-          return;
-        }
-      }
+      return;
     }
+    return this.handleDistributedDisconnect(socketId);
+  }
+
+  private async handleDistributedDisconnect(socketId: string): Promise<void> {
+    const indexedPin = await this.redis!.raw.get(`live:socket:${socketId}`);
+    const pins = indexedPin ? [indexedPin] : [...this.sessions.keys()];
+    for (const pin of pins) {
+      await this.withSession(pin, async () => {
+        const s = this.sessions.get(pin);
+        if (s) this.disconnectFromSession(s, socketId);
+      });
+    }
+    await this.redis!.raw.del(`live:socket:${socketId}`);
+  }
+
+  private disconnectFromSession(s: LiveSession, socketId: string): boolean {
+    if (s.hostSocketId === socketId) {
+      s.hostSocketId = null;
+      if (s.status !== 'finished' && !s.hostDisconnectTimer) {
+        s.hostDisconnectTimer = setTimeout(() => { void this.finish(s); }, HOST_GRACE_MS);
+      }
+      return true;
+    }
+    for (const p of s.players.values()) {
+      if (p.socketId !== socketId) continue;
+      p.socketId = null;
+      if (s.mode === 'team' && s.teams) {
+        for (const t of s.teams.values()) {
+          if (t.captainUserId === p.userId) {
+            t.captainUserId = null;
+            if (s.hostSocketId) this.broadcaster.toSocket(s.hostSocketId, 'team:captainDisconnected', { teamId: t.id });
+          }
+        }
+      }
+      if (s.status === 'lobby' || s.status === 'team_assign') this.broadcastLobby(s);
+      if (s.status === 'question') {
+        if (s.mode === 'team') this.maybeRevealEarlyTeams(s);
+        else this.maybeRevealEarly(s);
+      }
+      return true;
+    }
+    return false;
   }
 
   // ── Ichki state machine ─────────────────────────────────────
@@ -507,7 +575,9 @@ export class LiveService {
       timeSec: s.questionTimeSec,
       endsAt: s.questionStartedAt + s.questionTimeSec * 1000,
     });
-    s.questionTimer = setTimeout(() => this.reveal(s), s.questionTimeSec * 1000);
+    s.questionTimer = setTimeout(() => {
+      void this.withSession(s.pin, () => this.reveal(this.mustGet(s.pin)));
+    }, s.questionTimeSec * 1000);
   }
 
   private reveal(s: LiveSession) {
@@ -582,11 +652,14 @@ export class LiveService {
     }
 
     s.revealTimer = setTimeout(() => {
-      if (s.currentIdx + 1 < s.questions.length) {
-        this.startQuestion(s, s.currentIdx + 1);
-      } else {
-        void this.finish(s);
-      }
+      void this.withSession(s.pin, async () => {
+        const latest = this.mustGet(s.pin);
+        if (latest.currentIdx + 1 < latest.questions.length) {
+          this.startQuestion(latest, latest.currentIdx + 1);
+        } else {
+          await this.finish(latest);
+        }
+      });
     }, REVEAL_MS);
   }
 
@@ -613,7 +686,11 @@ export class LiveService {
     } catch (e) {
       console.error(`finish: failed to mark session ${s.pin} as finished`, e);
     }
-    setTimeout(() => this.sessions.delete(s.pin), SESSION_CLEANUP_MS);
+    setTimeout(() => {
+      this.sessions.delete(s.pin);
+      void this.sessionStore?.delete(this.sessionKey(s.pin));
+    }, SESSION_CLEANUP_MS);
+    await this.sessionStore?.set(this.sessionKey(s.pin), s, Math.ceil(SESSION_CLEANUP_MS / 1000));
   }
 
   private async persistTeamResults(s: LiveSession) {

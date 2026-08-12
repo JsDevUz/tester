@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import {
   ConflictException, ForbiddenException, Injectable, NotFoundException,
-  OnModuleInit, ServiceUnavailableException,
+  OnModuleInit, Optional, ServiceUnavailableException,
 } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
@@ -27,6 +27,8 @@ import {
   AttendanceStatus, ClassroomBoardMode, ClassroomBoardSnapshot, ClassroomBroadcaster, ClassroomHistoryEvent, ClassroomNotebookOrientation, ClassroomNotebookStyle,
   ClassroomPageSnapshot, ClassroomParticipant, ClassroomRaisedHand, ClassroomRecordingMode, ClassroomSession, ClassroomSnapshot, ClassroomStroke, ClassroomUndoEntry,
 } from './classroom.types';
+import { RedisSessionStore } from '../redis/redis-session.store';
+import { RedisService } from '../redis/redis.service';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
 
@@ -42,20 +44,41 @@ export class ClassroomService implements OnModuleInit {
     private readonly mediaLibrary: MediaLibraryService,
     private readonly recording: ClassroomRecordingService,
     private readonly notifications: PracticeMessengerGateway,
+    @Optional() private readonly sessionStore?: RedisSessionStore,
+    @Optional() private readonly redis?: RedisService,
   ) {}
+
+  private sessionKey(sessionId: string) { return `classroom:session:${sessionId}`; }
+
+  async withSession<T>(sessionId: string, action: () => Promise<T> | T): Promise<T> {
+    const store = this.sessionStore;
+    if (!store) return action();
+    return store.transaction(this.sessionKey(sessionId), async () => {
+      const shared = await store.get<ClassroomSession>(this.sessionKey(sessionId));
+      if (shared) this.sessions.set(sessionId, shared);
+      const result = await action();
+      const current = this.sessions.get(sessionId);
+      if (current) await store.set(this.sessionKey(sessionId), current, 7 * 86_400);
+      else await store.delete(this.sessionKey(sessionId));
+      return result;
+    });
+  }
+
+  private async indexSocket(socketId: string, sessionId: string) {
+    if (this.redis?.enabled) await this.redis.raw.set(`classroom:socket:${socketId}`, sessionId, { EX: 7 * 86_400 });
+  }
 
   setBroadcaster(b: ClassroomBroadcaster) {
     this.broadcaster = b;
   }
 
   // Server restartda aktiv sessiyalarni yopmaymiz. Ular DB snapshotdan
-  // birinchi host/student join vaqtida getOrRestoreSession orqali tiklanadi.
   async onModuleInit() {
     // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
     // ustoz to'satdan brauzerni yopib yuborsa ham saqlanmay qolib ketmaydi.
     setInterval(() => {
       for (const s of this.sessions.values()) {
-        void this.persistBoardSnapshot(s.id).catch(() => {});
+        void this.withSession(s.id, () => this.persistBoardSnapshot(s.id)).catch(() => {});
       }
     }, 15000);
   }
@@ -1357,6 +1380,7 @@ export class ClassroomService implements OnModuleInit {
     if (s.hostUserId !== userId) throw new Error('FORBIDDEN');
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
     s.hostSocketId = socketId;
+    await this.indexSocket(socketId, sessionId);
     this.broadcaster.toRoom(sessionId, 'host:online', {});
     return buildSnapshot(s);
   }
@@ -1423,6 +1447,7 @@ export class ClassroomService implements OnModuleInit {
 
     const now = Date.now();
     p.socketId = socketId;
+    await this.indexSocket(socketId, sessionId);
     if (p.joinedAtMs === null) p.joinedAtMs = now;
     if (p.status === 'absent') {
       p.status = attendanceStatusOnJoin(s.startedAtMs, now);
@@ -1453,7 +1478,14 @@ export class ClassroomService implements OnModuleInit {
   }
 
   async handleDisconnect(socketId: string): Promise<void> {
-    for (const s of this.sessions.values()) {
+    const indexedSessionId = this.redis?.enabled
+      ? await this.redis.raw.get(`classroom:socket:${socketId}`)
+      : null;
+    const sessionIds = indexedSessionId ? [indexedSessionId] : [...this.sessions.keys()];
+    for (const sessionId of sessionIds) {
+      await this.withSession(sessionId, async () => {
+      const s = this.sessions.get(sessionId);
+      if (!s) return;
       if (s.hostSocketId === socketId) {
         s.hostSocketId = null;
         this.broadcaster.toRoom(s.id, 'host:offline', {});
@@ -1463,7 +1495,7 @@ export class ClassroomService implements OnModuleInit {
         void this.persistBoardSnapshot(s.id).catch(() => {});
         if (!s.hostDisconnectTimer) {
           s.hostDisconnectTimer = setTimeout(() => {
-            void this.endSession(s.id, null).catch(() => {});
+            void this.withSession(s.id, () => this.endSession(s.id, null)).catch(() => {});
           }, HOST_GRACE_MS);
         }
         return;
@@ -1477,7 +1509,9 @@ export class ClassroomService implements OnModuleInit {
           return;
         }
       }
+      });
     }
+    if (this.redis?.enabled) await this.redis.raw.del(`classroom:socket:${socketId}`);
   }
 
   // ---------- Socket: host boshqaruvi ----------

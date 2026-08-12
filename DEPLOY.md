@@ -97,7 +97,7 @@ docker compose build
 docker compose up -d db
 docker compose run --rm migrate
 docker compose run --rm seed
-docker compose up -d
+docker compose up -d --scale backend=2
 ```
 
 Tekshirish:
@@ -121,7 +121,17 @@ Kod yangilansa:
 git pull
 docker compose build
 docker compose run --rm migrate
-docker compose up -d
+docker compose up -d --scale backend=2
+```
+
+`migrate` faqat bir marta, backendlar ishga tushishidan oldin bajariladi. Backend
+replicalari migratsiyani o'zlari bajarmaydi. Caddy ikkala backend orasida HTTP va
+Socket.IO trafikni taqsimlaydi; umumiy jonli sessiya holati Redis'da saqlanadi.
+
+Uchinchi replica kerak bo'lsa:
+
+```bash
+docker compose up -d --scale backend=3
 ```
 
 Agar admin allaqachon yaratilgan bo'lsa, `seed` qayta ishga tushganda mavjud adminni o'tkazib yuboradi.

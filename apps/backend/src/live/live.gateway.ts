@@ -26,7 +26,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   handleDisconnect(client: Socket) {
-    this.liveService.handleDisconnect(client.id);
+    void this.liveService.handleDisconnect(client.id);
   }
 
   private verify(token: string): JwtUser {
@@ -37,9 +37,9 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
     }
   }
 
-  private run(fn: () => unknown) {
+  private async run(pin: string, fn: () => unknown | Promise<unknown>) {
     try {
-      const result = fn();
+      const result = await this.liveService.withSession(pin, fn);
       return { ok: true, ...(result && typeof result === 'object' ? result : {}) };
     } catch (e: any) {
       return { ok: false, code: e?.message ?? 'ERROR' };
@@ -51,7 +51,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
     try {
       const user = this.verify(body.token);
       if (user.role !== 'teacher' && user.role !== 'super') throw new Error('UNAUTHORIZED');
-      const res = await this.liveService.hostJoin(body.pin, user.sub, client.id);
+      const res = await this.liveService.withSession(body.pin, () => this.liveService.hostJoin(body.pin, user.sub, client.id));
       void client.join(`pin:${body.pin}`);
       return { ok: true, ...res };
     } catch (e: any) {
@@ -61,7 +61,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('player:join')
   playerJoin(@MessageBody() body: { pin: string; token: string }, @ConnectedSocket() client: Socket) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       const res = this.liveService.playerJoin(body.pin, { id: user.sub, name: user.name }, client.id);
       void client.join(`pin:${body.pin}`);
@@ -71,7 +71,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:start')
   hostStart(@MessageBody() body: { pin: string; token: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.start(body.pin, user.sub);
     });
@@ -79,7 +79,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:createTeam')
   hostCreateTeam(@MessageBody() body: { pin: string; token: string; name: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       return this.liveService.createTeam(body.pin, user.sub, body.name);
     });
@@ -87,7 +87,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:assignPlayer')
   hostAssignPlayer(@MessageBody() body: { pin: string; token: string; userId: string; teamId: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.assignPlayer(body.pin, user.sub, body.userId, body.teamId);
     });
@@ -95,7 +95,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:setCaptain')
   hostSetCaptain(@MessageBody() body: { pin: string; token: string; teamId: string; userId: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.setCaptain(body.pin, user.sub, body.teamId, body.userId);
     });
@@ -103,7 +103,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:removeTeam')
   hostRemoveTeam(@MessageBody() body: { pin: string; token: string; teamId: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.removeTeam(body.pin, user.sub, body.teamId);
     });
@@ -111,7 +111,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('host:startTeam')
   hostStartTeam(@MessageBody() body: { pin: string; token: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.startTeamGame(body.pin, user.sub);
     });
@@ -119,7 +119,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('member:suggest')
   memberSuggest(@MessageBody() body: { pin: string; token: string; teamId: string; optionId: string }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.suggest(body.pin, body.teamId, user.sub, body.optionId);
     });
@@ -127,7 +127,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('captain:answer')
   captainAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[]; textAnswer: string | null }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.captainAnswer(body.pin, user.sub, body.questionId, body.selectedOptionIds ?? [], body.textAnswer ?? null);
     });
@@ -135,7 +135,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
 
   @SubscribeMessage('player:answer')
   playerAnswer(@MessageBody() body: { pin: string; token: string; questionId: string; selectedOptionIds: string[]; textAnswer?: string | null }) {
-    return this.run(() => {
+    return this.run(body.pin, () => {
       const user = this.verify(body.token);
       this.liveService.answer(body.pin, user.sub, body.questionId, body.selectedOptionIds ?? [], body.textAnswer ?? null);
     });
@@ -145,7 +145,7 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
   async hostEnd(@MessageBody() body: { pin: string; token: string }) {
     try {
       const user = this.verify(body.token);
-      await this.liveService.end(body.pin, user.sub);
+      await this.liveService.withSession(body.pin, () => this.liveService.end(body.pin, user.sub));
       return { ok: true };
     } catch (e: any) {
       return { ok: false, code: e?.message ?? 'ERROR' };

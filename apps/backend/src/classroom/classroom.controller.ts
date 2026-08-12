@@ -100,7 +100,8 @@ export class ClassroomController {
     @Body() dto: ReopenFreeSessionDto,
     @Req() req: any,
   ) {
-    await this.classroomService.reopenFreeSession(req.admin.id, id, dto?.title);
+    await this.classroomService.withSession(id, () =>
+      this.classroomService.reopenFreeSession(req.admin.id, id, dto?.title));
     return { id };
   }
 
@@ -111,7 +112,8 @@ export class ClassroomController {
     @Body() dto: AttachPdfDto,
     @Req() req: any,
   ) {
-    return this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers));
   }
 
   @Post('sessions/:id/attach-board')
@@ -121,7 +123,8 @@ export class ClassroomController {
     @Body() dto: { boardId: string },
     @Req() req: any,
   ) {
-    return this.classroomService.attachBoardToSession(id, req.admin.id, dto.boardId);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.attachBoardToSession(id, req.admin.id, dto.boardId));
   }
 
   @Post('sessions/:id/pdf/insert')
@@ -131,13 +134,14 @@ export class ClassroomController {
     @Body() dto: InsertPdfPagesDto,
     @Req() req: any,
   ) {
-    return this.classroomService.insertPdfPagesFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers, dto.afterPageIndex);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.insertPdfPagesFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers, dto.afterPageIndex));
   }
 
   @Post('sessions/:id/end')
   @Roles('teacher', 'super')
   async endSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    await this.classroomService.endSession(id, req.admin.id);
+    await this.classroomService.withSession(id, () => this.classroomService.endSession(id, req.admin.id));
     return { ok: true };
   }
 
@@ -150,7 +154,8 @@ export class ClassroomController {
   @Get('sessions/:id')
   @Roles('teacher', 'super')
   getSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.classroomService.getSessionWithAttendance(id, req.admin.id, req.admin.role);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.getSessionWithAttendance(id, req.admin.id, req.admin.role));
   }
 
   @Get('sessions/:id/replay')
@@ -166,7 +171,8 @@ export class ClassroomController {
   @Delete('sessions/:id')
   @Roles('teacher', 'super')
   deleteSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.classroomService.deleteSession(id, req.admin.id, req.admin.role);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.deleteSession(id, req.admin.id, req.admin.role));
   }
 
   @Get('courses/:courseId/history')
@@ -201,7 +207,8 @@ export class ClassroomController {
   @Post('sessions/:id/voice-token')
   @Roles('teacher', 'super', 'student', 'curator')
   voiceToken(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.classroomService.voiceToken(id, req.admin.id, req.admin.name ?? '');
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.voiceToken(id, req.admin.id, req.admin.name ?? ''));
   }
 
   /** Guest (auth qilmagan) foydalanuvchi uchun voice token — JWT talab qilinmaydi.
@@ -213,7 +220,8 @@ export class ClassroomController {
     @Body() dto: GuestVoiceTokenDto,
   ) {
     const guestIdentity = dto.guestId ? `guest:${dto.guestId}` : `guest_${Math.random().toString(36).slice(2, 10)}`;
-    return this.classroomService.voiceToken(id, guestIdentity, dto.guestName);
+    return this.classroomService.withSession(id, () =>
+      this.classroomService.voiceToken(id, guestIdentity, dto.guestName));
   }
 
   @Post('sessions/:id/recording/start')
@@ -223,7 +231,8 @@ export class ClassroomController {
     @Body() dto: StartRecordingDto,
     @Req() req: any,
   ) {
-    await this.classroomService.startSessionRecording(id, req.admin.id, dto.mode);
+    await this.classroomService.withSession(id, () =>
+      this.classroomService.startSessionRecording(id, req.admin.id, dto.mode));
     return { ok: true };
   }
 
@@ -234,7 +243,8 @@ export class ClassroomController {
     @Param('userId', ParseUUIDPipe) userId: string,
     @Req() req: any,
   ) {
-    await this.classroomService.muteParticipant(id, req.admin.id, userId);
+    await this.classroomService.withSession(id, () =>
+      this.classroomService.muteParticipant(id, req.admin.id, userId));
     return { ok: true };
   }
 }

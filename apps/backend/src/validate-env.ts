@@ -10,6 +10,7 @@ const REQUIRED_ENV_VARS = [
 // Required only in production — convenient to omit locally/in CI.
 const REQUIRED_IN_PRODUCTION = [
   'TELEGRAM_WEBHOOK_SECRET',
+  'REDIS_URL',
 ] as const;
 
 // Ovoz (jonli dars) ixtiyoriy: uchchalasi ham bo'lsa yoqiladi, umuman
