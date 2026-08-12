@@ -190,21 +190,7 @@ export function ChallengeDetailPage() {
                     />
                   </div>
 
-                  {requiredTest?.bookId === book.id ? (
-                    <button
-                      type="button"
-                      onClick={() => navigate(`/t/${requiredTest.slug}`)}
-                      className="w-full rounded-xl bg-amber-50 px-3 py-2.5 text-left transition-colors hover:bg-amber-100"
-                    >
-                      <p className="text-xs font-semibold text-amber-700">
-                        Test ishlash
-                      </p>
-                      <p className="mt-0.5 text-[11px] text-amber-600">
-                        Davom etish uchun avval{requiredTest.name ? ` "${requiredTest.name}"` : ""} testini
-                        yakunlang
-                      </p>
-                    </button>
-                  ) : addingBookId === book.id ? (
+                  {addingBookId === book.id ? (
                     <div className="mt-3 flex flex-col gap-2.5">
                       <div className="flex items-center gap-2">
                         <div className="flex-1 rounded-xl bg-gray-100/80 px-3 py-2 text-center text-xs font-bold text-gray-500 dark:bg-zinc-800/80 dark:text-zinc-400 border border-gray-200/60 dark:border-zinc-700/60">
