@@ -172,12 +172,15 @@ export function useClassroomSession(
       setState((s) => applyStrokeAdd(s, p));
     });
     socket.on("stroke:update", (p: { page: number; strokeId: string; x: number; y: number; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      if (role === "host") return;
       setState((s) => applyStrokeUpdate(s, p));
     });
     socket.on("stroke:textUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      if (role === "host") return;
       setState((s) => applyStrokeTextUpdate(s, p));
     });
     socket.on("stroke:shapeUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
+      if (role === "host") return;
       setState((s) => applyStrokeShapeUpdate(s, p));
     });
     socket.on("stroke:reorder", (p: { page: number; strokeIds: string[]; op: "front" | "back" | "forward" | "backward"; pane?: "left" | "right"; mode?: CsBoardMode }) => {
@@ -193,13 +196,20 @@ export function useClassroomSession(
       setState((s) => applyPageClear(s, p));
     });
     socket.on("pointer:move", (p: CsPointer) => {
+      if (role === "host") return;
       setState((s) => ({ ...s, pointer: p.active ? p : null }));
     });
     socket.on("presence:update", (p: { participants: CsParticipant[]; hostOnline: boolean }) => {
       setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
     });
-    socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom })));
-    socket.on("splitRatio:set", (p: { ratio: number }) => setState((s) => ({ ...s, splitRatio: p.ratio })));
+    socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => {
+      if (role === "host") return;
+      setState((s) => p.pane === "right" ? ({ ...s, rightZoom: p.zoom }) : ({ ...s, zoom: p.zoom }));
+    });
+    socket.on("splitRatio:set", (p: { ratio: number }) => {
+      if (role === "host") return;
+      setState((s) => ({ ...s, splitRatio: p.ratio }));
+    });
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
@@ -207,7 +217,10 @@ export function useClassroomSession(
       setState((s) => applyNotebookPageStyle(s, p)));
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
     socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
-    socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p })));
+    socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => {
+      if (role === "host") return;
+      setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p }));
+    });
     socket.on("board:open:set", (p: { isOpen: boolean }) => setState((s) => ({ ...s, isBoardOpen: p.isOpen })));
     socket.on("theme:set", (p: { theme: "light" | "dark" }) => setState((s) => ({ ...s, classroomTheme: p.theme })));
     socket.on("host:online", () => setState((s) => ({ ...s, hostOnline: true })));
@@ -414,7 +427,10 @@ export function useClassroomSession(
         }, POINTER_THROTTLE_MS - elapsed);
       }
     },
-    setZoom: (zoom: number, pane: "left" | "right" = "left") => emitHost("host:setZoom", { zoom, pane }),
+    setZoom: (zoom: number, pane: "left" | "right" = "left") => {
+      setState((s) => pane === "right" ? ({ ...s, rightZoom: zoom }) : ({ ...s, zoom }));
+      emitHost("host:setZoom", { zoom, pane });
+    },
     setSplitRatio: (ratio: number) => {
       setState((s) => ({ ...s, splitRatio: ratio }));
       emitHost("host:setSplitRatio", { ratio });

@@ -19,6 +19,8 @@ function reviver(_key: string, value: any) {
 
 @Injectable()
 export class RedisSessionStore {
+  private readonly localQueues = new Map<string, Promise<void>>();
+
   constructor(private readonly redis: RedisService) {}
 
   async get<T>(key: string): Promise<T | null> {
@@ -38,20 +40,36 @@ export class RedisSessionStore {
 
   async transaction<T>(key: string, action: () => Promise<T> | T): Promise<T> {
     if (!this.redis.enabled) return action();
+    // Socket.IO bitta connection eventlarini tartib bilan uzatadi, ammo har bir
+    // async handler Redis lock uchun parallel kurashsa keyingi pointer/shape
+    // eventi oldingisidan avval lock olishi mumkin. Har bir session uchun lokal
+    // FIFO navbat distributed lock olish tartibini ham barqaror qiladi.
+    const previous = this.localQueues.get(key) ?? Promise.resolve();
+    let releaseLocal!: () => void;
+    const gate = new Promise<void>((resolve) => { releaseLocal = resolve; });
+    const tail = previous.catch(() => {}).then(() => gate);
+    this.localQueues.set(key, tail);
+    await previous.catch(() => {});
+
     const lockKey = `${key}:lock`;
     const token = randomUUID();
     const deadline = Date.now() + 5_000;
-    while (!(await this.redis.raw.set(lockKey, token, { NX: true, PX: 15_000 }))) {
-      if (Date.now() >= deadline) throw new Error('SESSION_BUSY');
-      await sleep(20 + Math.floor(Math.random() * 30));
-    }
     try {
-      return await action();
+      while (!(await this.redis.raw.set(lockKey, token, { NX: true, PX: 15_000 }))) {
+        if (Date.now() >= deadline) throw new Error('SESSION_BUSY');
+        await sleep(20 + Math.floor(Math.random() * 30));
+      }
+      try {
+        return await action();
+      } finally {
+        await this.redis.raw.eval(
+          'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end',
+          { keys: [lockKey], arguments: [token] },
+        );
+      }
     } finally {
-      await this.redis.raw.eval(
-        'if redis.call("get", KEYS[1]) == ARGV[1] then return redis.call("del", KEYS[1]) else return 0 end',
-        { keys: [lockKey], arguments: [token] },
-      );
+      releaseLocal();
+      if (this.localQueues.get(key) === tail) this.localQueues.delete(key);
     }
   }
 }
