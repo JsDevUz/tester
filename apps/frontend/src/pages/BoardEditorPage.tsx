@@ -77,23 +77,24 @@ export function BoardEditorPage() {
   };
 
   // Keyboard shortcuts
-  useHotkeys("1", () => handleToolChange("select"), { preventDefault: true });
-  useHotkeys("2", () => handleToolChange("pen"), { preventDefault: true });
-  useHotkeys("3", () => handleToolChange("text"), { preventDefault: true });
-  useHotkeys("4", () => handleToolChange("highlighter"), { preventDefault: true });
-  useHotkeys("z", () => handleToolChange("laser"), { preventDefault: true });
-  useHotkeys("5", () => handleToolChange("arrow"), { preventDefault: true });
-  useHotkeys("-", () => handleToolChange("line"), { preventDefault: true });
-  useHotkeys("6", () => handleToolChange("rectangle"), { preventDefault: true });
-  useHotkeys("7", () => handleToolChange("ellipse"), { preventDefault: true });
-  useHotkeys("8", () => handleToolChange("eraser-pixel"), { preventDefault: true });
-  useHotkeys("9", () => handleToolChange("eraser-stroke"), { preventDefault: true });
-  useHotkeys("0", () => handleToolChange("lasso"), { preventDefault: true });
-  useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
-  useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
-  useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
-  useHotkeys("mod+z", () => hostActions.undo(), { preventDefault: true });
-  useHotkeys("mod+shift+z", () => hostActions.redo(), { preventDefault: true });
+  const hotkeyOptions = { preventDefault: true, enabled: !isViewOnly };
+  useHotkeys("1", () => handleToolChange("select"), hotkeyOptions);
+  useHotkeys("2", () => handleToolChange("pen"), hotkeyOptions);
+  useHotkeys("3", () => handleToolChange("text"), hotkeyOptions);
+  useHotkeys("4", () => handleToolChange("highlighter"), hotkeyOptions);
+  useHotkeys("z", () => handleToolChange("laser"), hotkeyOptions);
+  useHotkeys("5", () => handleToolChange("arrow"), hotkeyOptions);
+  useHotkeys("-", () => handleToolChange("line"), hotkeyOptions);
+  useHotkeys("6", () => handleToolChange("rectangle"), hotkeyOptions);
+  useHotkeys("7", () => handleToolChange("ellipse"), hotkeyOptions);
+  useHotkeys("8", () => handleToolChange("eraser-pixel"), hotkeyOptions);
+  useHotkeys("9", () => handleToolChange("eraser-stroke"), hotkeyOptions);
+  useHotkeys("0", () => handleToolChange("lasso"), hotkeyOptions);
+  useHotkeys("s", () => setStrokeWidth(2), hotkeyOptions);
+  useHotkeys("m", () => setStrokeWidth(4), hotkeyOptions);
+  useHotkeys("l", () => setStrokeWidth(7), hotkeyOptions);
+  useHotkeys("mod+z", () => hostActions.undo(), hotkeyOptions);
+  useHotkeys("mod+shift+z", () => hostActions.redo(), hotkeyOptions);
 
   useEffect(() => {
     if (!id) return;
@@ -209,7 +210,7 @@ export function BoardEditorPage() {
           <div className="h-4 w-px bg-gray-200 shrink-0" />
 
           {/* Inline title edit */}
-          {editingTitle ? (
+          {!isViewOnly && editingTitle ? (
             <div className="flex items-center gap-1.5 flex-1 min-w-0">
               <input
                 type="text"
@@ -234,12 +235,23 @@ export function BoardEditorPage() {
           ) : (
             <button
               type="button"
-              onClick={() => { setTitleDraft(boardTitle); setEditingTitle(true); }}
-              className="flex-1 min-w-0 text-left px-2 py-1 rounded-lg text-sm font-semibold text-gray-800 hover:bg-gray-100 truncate"
-              title="Nomni tahrirlash"
+              onClick={() => {
+                if (!isViewOnly) {
+                  setTitleDraft(boardTitle);
+                  setEditingTitle(true);
+                }
+              }}
+              className={`flex-1 min-w-0 text-left px-2 py-1 rounded-lg text-sm font-semibold text-gray-800 truncate ${isViewOnly ? "cursor-default" : "hover:bg-gray-100"}`}
+              title={isViewOnly ? "Faqat ko'rish" : "Nomni tahrirlash"}
             >
               {boardTitle}
             </button>
+          )}
+
+          {isViewOnly && (
+            <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+              Faqat ko'rish
+            </span>
           )}
 
 
@@ -254,8 +266,8 @@ export function BoardEditorPage() {
           strokesByPage={state.strokesByPage}
           rightStrokesByPage={state.rightStrokesByPage}
           pointer={state.pointer}
-          editable={state.pages.length > 0 || state.boardMode === "notebook"}
-          isHost
+          editable={!isViewOnly && (state.pages.length > 0 || state.boardMode === "notebook")}
+          isHost={!isViewOnly}
           hostZoom={state.zoom}
           rightHostZoom={state.rightZoom}
           hostSplitRatio={state.splitRatio}
@@ -338,7 +350,7 @@ export function BoardEditorPage() {
           onBoardViewChange={(layout, left, right) => hostActions.setBoardView(layout, left, right)}
           onPageChange={(page) => hostActions.setPage(page)}
           onActivePaneChange={setActivePane}
-          toolbar={
+          toolbar={!isViewOnly ? (
             <ClassroomToolbar
               tool={tool}
               color={color}
@@ -359,7 +371,7 @@ export function BoardEditorPage() {
               onToggleHistory={() => setShowHistoryModal((prev) => !prev)}
               historyOpen={showHistoryModal}
             />
-          }
+          ) : undefined}
           toolbarActions={
             fullscreen.supported ? (
               <button
