@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, Maximize2, Minimize2, Check, PenLine,
+  ArrowLeft, Maximize2, Minimize2, Check, PenLine, Download,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -20,6 +20,8 @@ import { ClassroomToolbar } from "../components/classroom/ClassroomToolbar";
 import { ClassroomPdfLibraryModal } from "../components/classroom/ClassroomPdfLibraryModal";
 import { PdfPageSelectModal } from "../components/classroom/PdfPageSelectModal";
 import { WhiteboardHistoryModal } from "../components/classroom/WhiteboardHistoryModal";
+import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
+import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import { RouteLoadingScreen } from "../components/RouteLoadingScreen";
 import {
   apiAttachClassPdf,
@@ -65,6 +67,41 @@ export function BoardEditorPage() {
 
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [focusedStrokeId, setFocusedStrokeId] = useState<string | null>(null);
+
+  // Download PDF / Notebook modal
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+
+  const handleDownloadBoard = async (mode: "pdf" | "notebook") => {
+    const isSplitRight = state.boardLayout === "split" && activePane === "right";
+    const pageUrls = mode === "pdf" ? state.pages : [];
+    const strokesByPage = isSplitRight ? state.rightStrokesByPage : state.strokesByPage;
+    const pageCount = mode === "notebook" ? state.notebookPageCount : state.pages.length;
+    if (pageCount === 0) {
+      toast.error("Yuklab olish uchun sahifa topilmadi");
+      return;
+    }
+    setDownloading(true);
+    try {
+      await exportBoardToPdf({
+        mode,
+        notebookPageStyles: state.notebookPageStyles,
+        notebookPageOrientations: state.notebookPageOrientations,
+        theme: state.classroomTheme,
+        pageUrls,
+        strokesByPage: (state.strokesByMode
+          ? state.strokesByMode[mode]
+          : strokesByPage) ?? {},
+        pageCount,
+        fileName: `${mode === "notebook" ? "daftar" : "pdf"}-${boardTitle.replace(/\s+/g, "_") || "doska"}-${Date.now()}.pdf`,
+      });
+      setDownloadModalOpen(false);
+    } catch {
+      toast.error("Yuklab bo'lmadi, qayta urinib ko'ring");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleSelectActivity = (item: BoardActivityItem) => {
     if (item.page && item.page !== state.currentPage) {
@@ -258,7 +295,15 @@ export function BoardEditorPage() {
             </span>
           )}
 
-
+          <button
+            type="button"
+            onClick={() => setDownloadModalOpen(true)}
+            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:bg-gray-50 hover:text-gray-900"
+            title="PDF yoki Daftar yuklab olish"
+          >
+            <Download size={14} className="text-gray-500" />
+            <span className="hidden sm:inline">Yuklab olish</span>
+          </button>
         </div>
       )}
 
@@ -426,6 +471,14 @@ export function BoardEditorPage() {
           onClose={() => setShowHistoryModal(false)}
           onSelectActivity={handleSelectActivity}
           onRestored={() => window.location.reload()}
+        />
+      )}
+      {/* Download Board Modal */}
+      {downloadModalOpen && (
+        <DownloadBoardModal
+          submitting={downloading}
+          onSelect={handleDownloadBoard}
+          onClose={() => setDownloadModalOpen(false)}
         />
       )}
     </div>

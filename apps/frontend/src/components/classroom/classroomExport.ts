@@ -4,10 +4,9 @@ import { drawStroke } from "./classroomCanvasDraw";
 
 // Eksport uchun sahifa render kengligi — REF_WIDTH bilan bir xil bo'lishi
 // shart emas, lekin baland bo'lgani sari chiziqlar/matn sifatliroq chiqadi.
-// A4'ni taxminan 290 DPI'da rasterlaydi. Oldingi 1600px + JPEG siqish
-// ingichka daftar kataklari, matn va pen chiziqlarini xiralashtirardi.
+// A4'ni taxminan 290 DPI'da rasterlaydi.
 const EXPORT_WIDTH = 2400;
-const A4_RATIO = 297 / 210; // balandlik/kenglik
+const A4_RATIO = 297 / 210; // balandlik/kenglik (portrait)
 
 function loadImage(src: string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
@@ -19,14 +18,15 @@ function loadImage(src: string): Promise<HTMLImageElement> {
   });
 }
 
-// Daftar foni (katak/yo'l-yo'l) — ClassroomPdfPage'dagi CSS backgroundImage
-// bilan bir xil proporsiyada (A4 kengligiga nisbiy), lekin canvas chiziqlari
-// sifatida — CSS orqa fon eksport rasmida umuman ko'rinmagani uchun kerak.
-// Fon rangi jonli darsdagi ".bg-white" klassining dark-mode override'iga
-// mos (index.css: :root[data-theme="dark"] .bg-white { #1c1f26 }) — grid
-// chiziqlari esa ekranda ham har ikkala temada bir xil ko'k rangda
-// qolgani uchun bu yerda ham o'zgartirilmaydi.
-function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: number, style: CsNotebookStyle, theme: "light" | "dark" = "light") {
+// Daftar foni (katak/yo'l-yo'l/nuqtalar) — ClassroomPdfViewer.tsx va mobile
+// ClassroomNotebookBackground.tsx bilan 100% bir xil proporsiya va ranglarda.
+function drawNotebookBackground(
+  ctx: CanvasRenderingContext2D,
+  w: number,
+  h: number,
+  style: CsNotebookStyle,
+  theme: "light" | "dark" = "light"
+) {
   ctx.save();
   ctx.fillStyle = theme === "dark" ? "#1c1f26" : "#ffffff";
   ctx.fillRect(0, 0, w, h);
@@ -34,10 +34,12 @@ function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: num
     ctx.restore();
     return;
   }
-  ctx.strokeStyle = "rgba(96,165,250,.28)";
+
   ctx.lineWidth = 1;
   if (style === "lined") {
-    const step = w / 30;
+    // Yo'l-yo'l (chiziqli) — web da width / 22 ga mos
+    ctx.strokeStyle = "rgba(148,163,184,0.14)";
+    const step = w / 22;
     for (let y = step; y < h; y += step) {
       ctx.beginPath();
       ctx.moveTo(0, y);
@@ -45,8 +47,9 @@ function drawNotebookBackground(ctx: CanvasRenderingContext2D, w: number, h: num
       ctx.stroke();
     }
   } else {
-    const step = w / 42;
-    ctx.strokeStyle = "rgba(96,165,250,.22)";
+    // Kataklar (grid) — web (width / 24) va mobile bilan 1:1 bir xil
+    ctx.strokeStyle = "rgba(148,163,184,0.12)";
+    const step = w / 24;
     for (let x = step; x < w; x += step) {
       ctx.beginPath();
       ctx.moveTo(x, 0);
@@ -88,14 +91,17 @@ async function renderPageToCanvas(params: {
 
   if (mode === "notebook") {
     drawNotebookBackground(ctx, width, height, notebookStyle, theme);
-  } else if (img) {
-    ctx.drawImage(img, 0, 0, width, height);
+  } else {
+    // PDF rejimida har doim orqa fon toza oq qilib to'ldiriladi
+    ctx.fillStyle = "#ffffff";
+    ctx.fillRect(0, 0, width, height);
+    if (img) {
+      ctx.drawImage(img, 0, 0, width, height);
+    }
   }
 
   // stroke.points doim 0..1 normalized, shu sahifaning w/h'iga nisbiy —
-  // shuning uchun bu yerda haqiqiy sahifa o'lchami (PDF rasm nisbatiga mos
-  // yoki notebook uchun A4) qanday bo'lishidan qat'i nazar strokelar
-  // to'g'ri joyda chiqadi (canvas'dagi live render bilan bir xil formula).
+  // canvas render bilan 100% bir xil joyda va proporsiyada chiqadi.
   for (const stroke of strokes) {
     drawStroke(ctx, stroke, width, height);
   }
@@ -107,9 +113,6 @@ export interface ExportBoardParams {
   mode: CsBoardMode;
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
-  // Daftar fonini jonli darsdagi joriy UI temasiga moslashtirish uchun —
-  // PDF sahifalari (rasm) temadan mustaqil, faqat "notebook" mode uchun
-  // ishlatiladi. Berilmasa "light" (avvalgi xatti-harakat).
   theme?: "light" | "dark";
   pageUrls: string[];
   strokesByPage: Record<number, CsStroke[]>;
@@ -126,8 +129,9 @@ export async function exportBoardToPdf(params: ExportBoardParams): Promise<void>
   let pdf: jsPDF | null = null;
 
   for (let pageNumber = 1; pageNumber <= pageCount; pageNumber += 1) {
+    const isLandscape = notebookPageOrientations[pageNumber] === "landscape";
     const fallbackHeight = Math.round(
-      EXPORT_WIDTH * (notebookPageOrientations[pageNumber] === "landscape" ? 1 / A4_RATIO : A4_RATIO),
+      EXPORT_WIDTH * (isLandscape ? 1 / A4_RATIO : A4_RATIO),
     );
     const canvas = await renderPageToCanvas({
       mode,
@@ -138,17 +142,22 @@ export async function exportBoardToPdf(params: ExportBoardParams): Promise<void>
       width,
       fallbackHeight,
     });
-    // PNG lossless: sahifa allaqachon canvasga rasterlangan, uni yana JPEG
-    // bilan siqish ayniqsa mayda matn va ingichka chiziqlarni buzadi.
+
     const dataUrl = canvas.toDataURL("image/png");
     const format: [number, number] = [canvas.width, canvas.height];
+    // MUHIM: jsPDF-da agar width > height bo'lsa, orientation 'landscape' bo'lishi shart!
+    // Aks holda jsPDF format[width, height] ni o'zicha [height, width] deb almashtirib
+    // yuboradi va tasvirni gorizontal siqib (chizmalarni buzib) qo'yadi.
+    const orientation = canvas.width > canvas.height ? "landscape" : "portrait";
+
     if (!pdf) {
-      pdf = new jsPDF({ orientation: "portrait", unit: "px", format });
+      pdf = new jsPDF({ orientation, unit: "px", format, compress: true });
     } else {
-      pdf.addPage(format, "portrait");
+      pdf.addPage(format, orientation);
     }
     pdf.addImage(dataUrl, "PNG", 0, 0, canvas.width, canvas.height, undefined, "FAST");
   }
 
   pdf?.save(fileName);
 }
+

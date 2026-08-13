@@ -2064,6 +2064,9 @@ export class ClassroomService implements OnModuleInit {
     const count = s.notebookPageCount ?? 1;
     if (!Number.isInteger(page) || page < 1 || page > count) throw new Error('INVALID_NOTEBOOK_PAGE');
     s.notebookPageStyles = { ...(s.notebookPageStyles ?? {}), [page]: style };
+    if (page === 1) {
+      s.notebookStyle = style;
+    }
     const payload = { page, style };
     this.recordHistoryEvent(s, 'notebook:pageStyle', payload);
     this.broadcaster.toRoom(s.id, 'notebook:pageStyle', payload);
