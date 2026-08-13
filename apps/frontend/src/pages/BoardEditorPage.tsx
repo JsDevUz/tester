@@ -97,6 +97,10 @@ export function BoardEditorPage() {
   useHotkeys("mod+shift+z", () => hostActions.redo(), hotkeyOptions);
 
   useEffect(() => {
+    if (state.title) setBoardTitle(state.title);
+  }, [state.title]);
+
+  useEffect(() => {
     if (!id) return;
     apiClassSession(id)
       .then((detail) => {
@@ -265,6 +269,7 @@ export function BoardEditorPage() {
           currentPage={state.currentPage}
           strokesByPage={state.strokesByPage}
           rightStrokesByPage={state.rightStrokesByPage}
+          strokesByMode={state.strokesByMode}
           pointer={state.pointer}
           editable={!isViewOnly && (state.pages.length > 0 || state.boardMode === "notebook")}
           isHost={!isViewOnly}

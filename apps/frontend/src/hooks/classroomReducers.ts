@@ -28,17 +28,23 @@ export function reorderStrokeList(list: CsStroke[], strokeIds: string[], op: "fr
 }
 
 export function applyPdfSet(s: ClassroomState, p: { pdfName: string; pages: string[]; currentPage: number }): ClassroomState {
-  return { ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", strokesByPage: {}, rightStrokesByPage: {}, pointer: null };
+  const byMode = s.strokesByMode ? { ...s.strokesByMode, pdf: {} } : undefined;
+  return { ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", strokesByMode: byMode, strokesByPage: {}, rightStrokesByPage: {}, pointer: null };
 }
 
 export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]> }): ClassroomState {
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
 
-  if (s.isReplay) {
+  if (s.strokesByMode || s.isReplay) {
     const byMode = s.strokesByMode ?? {
       pdf: { ...s.strokesByPage },
       notebook: {},
+    };
+    const nextByMode = {
+      ...byMode,
+      [leftMode]: p.strokesByPage ?? byMode[leftMode] ?? {},
+      ...(p.rightStrokesByPage ? { [rightMode]: p.rightStrokesByPage } : {}),
     };
     return {
       ...s,
@@ -47,9 +53,9 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
       leftBoardMode: leftMode,
       rightBoardMode: rightMode,
       currentPage: p.currentPage,
-      strokesByMode: byMode,
-      strokesByPage: byMode[leftMode] ?? {},
-      rightStrokesByPage: byMode[rightMode] ?? {},
+      strokesByMode: nextByMode,
+      strokesByPage: nextByMode[leftMode] ?? {},
+      rightStrokesByPage: nextByMode[rightMode] ?? {},
       pointer: null,
       scroll: null,
     };
@@ -70,7 +76,7 @@ function updateStrokeListInState(
   const isRight = p.pane === "right";
   const targetMode = p.mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
 
-  if (s.isReplay) {
+  if (s.strokesByMode || s.isReplay) {
     const byMode = s.strokesByMode ?? {
       pdf: { ...(s.strokesByPage ?? {}) },
       notebook: {},

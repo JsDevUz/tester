@@ -236,11 +236,13 @@ export interface ClassroomRaisedHand {
 
 export interface ClassroomSnapshot {
   sessionId: string;
+  title: string | null;
   pdfName: string | null;
   pages: string[];
   currentPage: number;
   strokesByPage: Record<number, ClassroomStroke[]>;
   rightStrokesByPage: Record<number, ClassroomStroke[]>;
+  strokesByMode: Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>>;
   participants: Array<{ userId: string; name: string; online: boolean; status: AttendanceStatus }>;
   startedAt: number;
   hostOnline: boolean;

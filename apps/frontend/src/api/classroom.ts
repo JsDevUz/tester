@@ -384,11 +384,13 @@ export interface CsScrollPosition {
 
 export interface CsSnapshot {
   sessionId: string;
+  title?: string | null;
   pdfName: string | null;
   pages: string[];
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
   rightStrokesByPage: Record<number, CsStroke[]>;
+  strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
   participants: CsParticipant[];
   startedAt: number;
   hostOnline: boolean;

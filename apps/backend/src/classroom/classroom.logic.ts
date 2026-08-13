@@ -599,13 +599,24 @@ export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
   const rightStrokesByPage: Record<number, ClassroomStroke[]> = {};
   const rightMode = session.rightBoardMode ?? session.boardMode ?? 'pdf';
   for (const [page, strokes] of strokeMapFor(session, rightMode)) rightStrokesByPage[page] = strokes;
+  const strokesByMode: Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> = {
+    pdf: {},
+    notebook: {},
+  };
+  for (const mode of ['pdf', 'notebook'] as const) {
+    for (const [page, strokes] of strokeMapFor(session, mode)) {
+      strokesByMode[mode][page] = strokes;
+    }
+  }
   return {
     sessionId: session.id,
+    title: session.title ?? null,
     pdfName: session.pdfName,
     pages: session.pdfPages,
     currentPage: session.currentPage,
     strokesByPage,
     rightStrokesByPage,
+    strokesByMode,
     participants: [...session.participants.values()].map((p) => ({
       userId: p.userId, name: p.name, online: p.socketId !== null, status: p.status,
     })),
