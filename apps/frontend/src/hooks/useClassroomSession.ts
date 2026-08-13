@@ -328,24 +328,22 @@ export function useClassroomSession(
     });
   }, [emitHost]);
 
-  // Scroll uchun maxsus debouncer/throttler:
-  // Continuous scroll paytida 1 sekundda 60 ta socket emit o'rniga eng ko'pi
-  // 5-6 ta (har 150ms da) yuboriladi. Sahifa o'zgarsa (page jump) DARXOL yuboriladi.
-  // Scroll to'xtaganda esa trailing timer (150ms) eng oxirgi aniq nuqtani yuboradi.
-  const lastScrollEmittedRef = useRef<Record<string, { time: number; page: number }>>({});
+  // Scroll uchun toza DEBOUNCER:
+  // Bitta sahifa ichida scroll qilinganda oraliq mikro-scroll'larning birontasi yuborilmaydi!
+  // Faqat ustoz scroll qilishni to'xtatgach (220ms o'tib) eng oxirgi to'xtagan joyi yuboriladi.
+  // Agar ustoz boshqa sahifaga sakrasa (page jump), yangi sahifa bo'lagi (chunk) DARXOL yuboriladi.
+  const lastScrollEmittedRef = useRef<Record<string, { page: number; yRatio: number }>>({});
   const scrollDebounceTimerRef = useRef<Record<string, number>>({});
 
   const emitHostDebouncedScroll = useCallback(
     (pane: "left" | "right", page: number, yRatio: number, xRatio: number) => {
       const key = `scroll:${pane}`;
-      const now = Date.now();
-      const last = lastScrollEmittedRef.current[key] ?? { time: 0, page: -1 };
+      const last = lastScrollEmittedRef.current[key] ?? { page: -1, yRatio: -1 };
 
       const isPageJump = page !== last.page;
-      const elapsed = now - last.time;
 
       const doEmit = () => {
-        lastScrollEmittedRef.current[key] = { time: Date.now(), page };
+        lastScrollEmittedRef.current[key] = { page, yRatio };
         emitHost("host:scroll", { page, yRatio, pane, xRatio });
       };
 
@@ -354,14 +352,15 @@ export function useClassroomSession(
         delete scrollDebounceTimerRef.current[key];
       }
 
-      if (isPageJump || elapsed >= 150) {
+      if (isPageJump) {
         doEmit();
-      } else {
-        scrollDebounceTimerRef.current[key] = window.setTimeout(() => {
-          delete scrollDebounceTimerRef.current[key];
-          doEmit();
-        }, 150 - elapsed);
+        return;
       }
+
+      scrollDebounceTimerRef.current[key] = window.setTimeout(() => {
+        delete scrollDebounceTimerRef.current[key];
+        doEmit();
+      }, 220);
     },
     [emitHost]
   );
