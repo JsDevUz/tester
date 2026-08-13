@@ -19,22 +19,34 @@ function shapeAnchor(shape: CsStroke, side: 'top' | 'right' | 'bottom' | 'left',
   let x: number;
   let y: number;
   if (shape.tool === 'ellipse') {
-    const ellipseAngle = t * Math.PI * 2 - Math.PI / 2;
-    x = cx + Math.cos(ellipseAngle) * (right - left) / 2;
-    y = cy + Math.sin(ellipseAngle) * (bottom - top) / 2;
+    // Web (classroomShapeBindings.ts) bilan bir xil: side asosida baza burchak,
+    // position esa kichik offset beradi
+    const baseAngle =
+      side === 'right' ? 0
+      : side === 'bottom' ? Math.PI / 2
+      : side === 'left' ? Math.PI
+      : (3 * Math.PI) / 2; // top
+    const offset = (t - 0.5) * Math.PI;
+    const angle = baseAngle + offset;
+    x = cx + (Math.cos(angle) * (right - left)) / 2;
+    y = cy + (Math.sin(angle) * (bottom - top)) / 2;
   } else {
     x = side === 'left' ? left : side === 'right' ? right : left + (right - left) * t;
     y = side === 'top' ? top : side === 'bottom' ? bottom : top + (bottom - top) * t;
   }
-  const angle = ((shape.rotation ?? 0) * Math.PI) / 180;
-  if (angle) {
-    const dx = x - cx;
-    const dy = y - cy;
-    x = cx + dx * Math.cos(angle) - dy * Math.sin(angle);
-    y = cy + dx * Math.sin(angle) + dy * Math.cos(angle);
+  const rotAngle = ((shape.rotation ?? 0) * Math.PI) / 180;
+  if (rotAngle) {
+    // Web bilan bir xil: pixel-space bo'yicha aylantirish
+    const dx = (x - cx) * width;
+    const dy = (y - cy) * height;
+    const rdx = dx * Math.cos(rotAngle) - dy * Math.sin(rotAngle);
+    const rdy = dx * Math.sin(rotAngle) + dy * Math.cos(rotAngle);
+    x = cx + rdx / width;
+    y = cy + rdy / height;
   }
   return [x, y];
 }
+
 
 function resolveConnector(stroke: CsStroke, strokes: CsStroke[], width: number, height: number): CsStroke {
   if (stroke.tool !== 'line' && stroke.tool !== 'arrow') return stroke;
@@ -384,8 +396,13 @@ const StrokeShape = React.memo(function StrokeShape({s, w, h}: {s: CsStroke; w: 
         ? [lineWidth, lineWidth * 1.5]
         : undefined;
 
+    const [x0raw, y0raw, x1raw, y1raw] = [s.points[0] * w, s.points[1] * h, s.points[2] * w, s.points[3] * h];
+    const cx = (x0raw + x1raw) / 2;
+    const cy = (y0raw + y1raw) / 2;
+    const rotationDeg = s.rotation ?? 0;
+
     return (
-      <Group opacity={(s.opacity ?? 100) / 100}>
+      <Group opacity={(s.opacity ?? 100) / 100} origin={{x: cx, y: cy}} transform={rotationDeg ? [{rotate: (rotationDeg * Math.PI) / 180}] : undefined}>
         {hasFill && (
           <Path path={path} style="fill" color={s.backgroundColor} opacity={(s.opacity ?? 100) / 100} />
         )}

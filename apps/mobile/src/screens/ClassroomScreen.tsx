@@ -87,15 +87,14 @@ export function ClassroomScreen({route, navigation}: Props) {
     return <Loading />;
   }
 
+  const theme = state.joined ? state.classroomTheme : 'dark';
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? '#18191c' : '#f3f4f6';
+  const statusBarStyle = isDark ? 'light-content' : 'dark-content';
+
   return (
-    // MUHIM: reveal shu yerda global onTouchStart orqali emas — u har
-    // qanday touch'da (scroll/pinch boshlanishida ham, chunki RN touch
-    // bubbling qiladi) ishga tushib, "zoom/scroll qilsam ham panel qayta
-    // ko'rinib ketadi" holatiga sabab bo'lardi. Reveal endi faqat
-    // ClassroomBoard'ga uzatiladigan onTapBoard orqali, aniq (drag/pinch
-    // BO'LMAGAN) bosishda chaqiriladi — pastga qarang.
-    <View style={{flex: 1, backgroundColor: '#18191c'}}>
-      <StatusBar barStyle="light-content" backgroundColor="#18191c" hidden={isFullscreen} />
+    <View style={{flex: 1, backgroundColor: bgColor}}>
+      <StatusBar barStyle={statusBarStyle} backgroundColor={bgColor} hidden={isFullscreen} />
 
       {/* Floating Top Warning Banners */}
       {!state.hostOnline && (
@@ -222,7 +221,7 @@ export function ClassroomScreen({route, navigation}: Props) {
 
 
       {/* Main Content (Grid vs Board) */}
-      <View style={{flex: 1, paddingTop: insets.top, backgroundColor: '#18191c'}}>
+      <View style={{flex: 1, paddingTop: insets.top, backgroundColor: bgColor}}>
         {!state.isBoardOpen ? (
           // Board hali ochilmagan holatda ham (faqat qatnashuvchilar to'ri
           // ko'rinayotganda) ekranga bosilganda call bar (mikrofon/emoji/
@@ -242,7 +241,7 @@ export function ClassroomScreen({route, navigation}: Props) {
             />
           </Pressable>
         ) : (
-          <View style={{flex: 1, overflow: 'hidden', backgroundColor: '#18191c'}}>
+          <View style={{flex: 1, overflow: 'hidden', backgroundColor: bgColor}}>
             {!isFullscreen && (
               <ClassroomTopParticipantBar
                 participants={state.participants}
@@ -254,6 +253,7 @@ export function ClassroomScreen({route, navigation}: Props) {
                 hostUserId={state.hostUserId}
                 hostName={state.hostName}
                 onOpenRoster={() => setRosterOpen(true)}
+                theme={theme}
               />
             )}
             <ClassroomBoard

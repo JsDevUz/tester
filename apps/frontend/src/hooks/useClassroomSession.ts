@@ -452,6 +452,11 @@ export function useClassroomSession(
     // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida
     // "yopishib" qolib, hech qachon yashirinmasligi mumkin edi.
     pointer: (page: number, x: number, y: number, active: boolean, pane: "left" | "right" = "left") => {
+      // Ustoz uchun kursor holati mahalliy (lokal) state'da DARXOL yangilanadi —
+      // socket va internet tezligiga bog'liq bo'lmagan holda 0ms kechikish bilan ko'rinadi.
+      if (role === "host") {
+        setState((s) => ({ ...s, pointer: active ? { page, x, y, active, pane } : null }));
+      }
       if (pointerThrottleTimerRef.current) {
         window.clearTimeout(pointerThrottleTimerRef.current);
         pointerThrottleTimerRef.current = null;

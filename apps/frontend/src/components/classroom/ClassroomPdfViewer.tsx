@@ -3760,13 +3760,16 @@ function ClassroomPdfPage({
       }, size.w, size.h);
     }
     if (showPointer && pointer && pointer.active) {
-      // Ustoz kursori: faqat yarim shaffof doira (border/markaz nuqtasiz) —
-      // ostidagi matn ko'rinib tursin.
+      // Ustoz kursori: yarim shaffof ko'k doira va yengil border —
+      // har qanday fon/matn ustida 0ms kechikish bilan aniq ko'rinsin.
       ctx.save();
       ctx.beginPath();
       ctx.arc(pointer.x * size.w, pointer.y * size.h, 12, 0, Math.PI * 2);
-      ctx.fillStyle = "rgba(59,130,246,0.25)";
+      ctx.fillStyle = "rgba(59,130,246,0.3)";
       ctx.fill();
+      ctx.lineWidth = 1.5;
+      ctx.strokeStyle = "rgba(59,130,246,0.7)";
+      ctx.stroke();
       ctx.restore();
     }
     if (lassoDraftRef.current && lassoDraftRef.current.length >= 4) {

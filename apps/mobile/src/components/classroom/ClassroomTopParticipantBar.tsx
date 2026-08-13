@@ -40,6 +40,7 @@ export function ClassroomTopParticipantBar({
   hostUserId,
   hostName = 'Ustoz',
   onOpenRoster,
+  theme = 'light',
 }: {
   participants: CsParticipant[];
   speakingUserIds: Set<string>;
@@ -50,7 +51,16 @@ export function ClassroomTopParticipantBar({
   hostUserId?: string | null;
   hostName?: string | null;
   onOpenRoster?: () => void;
+  theme?: 'light' | 'dark';
 }) {
+  const isDark = theme === 'dark';
+  const barBg = isDark ? '#1e2130' : '#f9fafb';
+  const tileBg = isDark ? '#2a2d3e' : '#ffffff';
+  const tileBorderColor = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(0,0,0,0.08)';
+  const nameColor = isDark ? '#e2e8f0' : '#1f2937';
+  const nameBadgeBg = isDark ? 'rgba(255,255,255,0.08)' : 'rgba(255,255,255,0.95)';
+  const tagBg = isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.05)';
+  const tagTextColor = isDark ? '#cbd5e1' : '#1f2937';
   const {width: windowWidth} = useWindowDimensions();
 
   // Web bilan bir xil tartib: avval "men", keyin ustoz, keyin gapirayotganlar,
@@ -144,9 +154,9 @@ export function ClassroomTopParticipantBar({
     <View
       style={{
         height: isMobile ? 84 : 96,
-        backgroundColor: '#f9fafb',
+        backgroundColor: barBg,
         borderBottomWidth: 1,
-        borderBottomColor: 'rgba(0,0,0,0.08)',
+        borderBottomColor: isDark ? 'rgba(255,255,255,0.06)' : 'rgba(0,0,0,0.08)',
       }}>
       <View
         style={{
@@ -169,9 +179,9 @@ export function ClassroomTopParticipantBar({
                   width: tileWidth,
                   height: '100%',
                   borderRadius: 12,
-                  backgroundColor: '#ffffff',
+                  backgroundColor: tileBg,
                   borderWidth: 1,
-                  borderColor: 'rgba(0,0,0,0.08)',
+                  borderColor: tileBorderColor,
                   alignItems: 'center',
                   justifyContent: 'center',
                   overflow: 'hidden',
@@ -212,13 +222,13 @@ export function ClassroomTopParticipantBar({
                 </View>
                 <View
                   style={{
-                    backgroundColor: 'rgba(0,0,0,0.05)',
+                    backgroundColor: tagBg,
                     borderRadius: 999,
                     paddingHorizontal: 10,
                     paddingVertical: 2,
                     maxWidth: '90%',
                   }}>
-                  <Text numberOfLines={1} style={{color: '#1f2937', fontSize: 11, fontWeight: '600'}}>
+                  <Text numberOfLines={1} style={{color: tagTextColor, fontSize: 11, fontWeight: '600'}}>
                     {t.name}
                   </Text>
                 </View>
@@ -245,9 +255,9 @@ export function ClassroomTopParticipantBar({
                 width: tileWidth,
                 height: '100%',
                 borderRadius: 12,
-                backgroundColor: '#ffffff',
+                backgroundColor: tileBg,
                 borderWidth: isSpeaking ? 0 : 1,
-                borderColor: 'rgba(0,0,0,0.08)',
+                borderColor: isSpeaking ? undefined : tileBorderColor,
                 alignItems: 'center',
                 justifyContent: 'center',
                 overflow: 'hidden',
@@ -284,13 +294,13 @@ export function ClassroomTopParticipantBar({
                   flexDirection: 'row',
                   alignItems: 'center',
                   gap: 6,
-                  backgroundColor: 'rgba(255,255,255,0.95)',
+                  backgroundColor: nameBadgeBg,
                   borderRadius: 999,
                   paddingHorizontal: 10,
                   paddingVertical: 2,
                   maxWidth: '90%',
                 }}>
-                <Text numberOfLines={1} style={{color: '#1f2937', fontSize: 11, fontWeight: '500', flexShrink: 1}}>
+                <Text numberOfLines={1} style={{color: nameColor, fontSize: 11, fontWeight: '500', flexShrink: 1}}>
                   {displayName}
                 </Text>
                 {!t.isMuted ? <Mic size={11} color="#10b981" /> : <MicOff size={11} color="#9ca3af" />}
