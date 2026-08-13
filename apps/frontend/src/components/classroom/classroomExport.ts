@@ -1,6 +1,7 @@
 import { jsPDF } from "jspdf";
 import type { CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsStroke } from "../../api/classroom";
 import { drawStroke } from "./classroomCanvasDraw";
+import { resolveConnector } from "./classroomShapeBindings";
 
 // Eksport uchun sahifa render kengligi — REF_WIDTH bilan bir xil bo'lishi
 // shart emas, lekin baland bo'lgani sari chiziqlar/matn sifatliroq chiqadi.
@@ -103,7 +104,8 @@ async function renderPageToCanvas(params: {
   // stroke.points doim 0..1 normalized, shu sahifaning w/h'iga nisbiy —
   // canvas render bilan 100% bir xil joyda va proporsiyada chiqadi.
   for (const stroke of strokes) {
-    drawStroke(ctx, stroke, width, height);
+    const strokeToDraw = resolveConnector(stroke, strokes, width, height);
+    drawStroke(ctx, strokeToDraw, width, height);
   }
 
   return canvas;
