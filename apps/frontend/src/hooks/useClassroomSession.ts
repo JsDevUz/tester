@@ -169,7 +169,7 @@ export function useClassroomSession(
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
       setState((s) => applyPdfSet(s, p));
     });
-    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]> }) => {
+    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }) => {
       setState((s) => applyBoardSet(s, p));
     });
     socket.on("page:set", (p: { page: number }) => {

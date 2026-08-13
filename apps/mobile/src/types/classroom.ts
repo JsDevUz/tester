@@ -100,6 +100,7 @@ export interface CsSnapshot {
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
   rightStrokesByPage: Record<number, CsStroke[]>;
+  strokesByMode?: Record<string, Record<number, CsStroke[]>>;
   participants: CsParticipant[];
   startedAt: number;
   hostOnline: boolean;
@@ -146,6 +147,7 @@ export interface ClassroomState {
   currentPage: number;
   strokesByPage: Record<number, CsStroke[]>;
   rightStrokesByPage: Record<number, CsStroke[]>;
+  strokesByMode?: Record<string, Record<number, CsStroke[]>>;
   participants: CsParticipant[];
   hostOnline: boolean;
   hostUserId: string | null;

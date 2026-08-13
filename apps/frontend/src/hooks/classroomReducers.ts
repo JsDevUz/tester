@@ -32,7 +32,7 @@ export function applyPdfSet(s: ClassroomState, p: { pdfName: string; pages: stri
   return { ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", strokesByMode: byMode, strokesByPage: {}, rightStrokesByPage: {}, pointer: null };
 }
 
-export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]> }): ClassroomState {
+export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }): ClassroomState {
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
 
@@ -56,12 +56,13 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
       strokesByMode: nextByMode,
       strokesByPage: nextByMode[leftMode] ?? {},
       rightStrokesByPage: nextByMode[rightMode] ?? {},
+      notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
       pointer: null,
       scroll: null,
     };
   }
 
-  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, pointer: null, scroll: null };
+  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, notebookPageCount: p.notebookPageCount ?? s.notebookPageCount, pointer: null, scroll: null };
 }
 
 export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomState {

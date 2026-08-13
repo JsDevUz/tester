@@ -67,86 +67,136 @@ export function applyBoardSet(
     currentPage: number;
     strokesByPage?: Record<number, CsStroke[]>;
     rightStrokesByPage?: Record<number, CsStroke[]>;
+    notebookPageCount?: number;
   },
 ): ClassroomState {
+  const leftMode = p.leftMode ?? p.mode;
+  const rightMode = p.rightMode ?? p.mode;
+
+  // Agar backend notebookPageCount yubOrsa, strokesByMode'ni ham yangidan
+  // qurish kerak — eski sessiyadan qolgan sahifalar (sariq chizmalar) qolmasin.
+  let strokesByMode: Record<string, Record<number, CsStroke[]>>;
+  if (p.notebookPageCount !== undefined) {
+    // Backend fresh ma'lumot bermoqda — strokesByMode'ni to'liq almashtiramiz
+    strokesByMode = {
+      ...(s.strokesByMode ?? {}),
+      [leftMode]: p.strokesByPage ?? s.strokesByPage ?? {},
+    };
+    if (p.rightStrokesByPage !== undefined || leftMode !== rightMode) {
+      strokesByMode[rightMode] = p.rightStrokesByPage ?? s.rightStrokesByPage ?? {};
+    }
+  } else {
+    // Eski xatti-harakat: faqat kelgan datani merge qilamiz
+    strokesByMode = {...(s.strokesByMode ?? {})};
+    if (p.strokesByPage) strokesByMode[leftMode] = p.strokesByPage;
+    if (p.rightStrokesByPage) strokesByMode[rightMode] = p.rightStrokesByPage;
+  }
+
+  const strokesByPage = p.strokesByPage ?? strokesByMode[leftMode] ?? s.strokesByPage;
+  const rightStrokesByPage = p.rightStrokesByPage ?? strokesByMode[rightMode] ?? s.rightStrokesByPage;
+
   return {
     ...s,
     boardMode: p.mode,
     boardLayout: p.layout ?? 'single',
-    leftBoardMode: p.leftMode ?? p.mode,
-    rightBoardMode: p.rightMode ?? p.mode,
+    leftBoardMode: leftMode,
+    rightBoardMode: rightMode,
     currentPage: p.currentPage,
-    strokesByPage: p.strokesByPage ?? {},
-    rightStrokesByPage: p.rightStrokesByPage ?? {},
+    strokesByMode,
+    strokesByPage,
+    rightStrokesByPage,
+    notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
     pointer: null,
     scroll: null,
   };
 }
 
+
 export function applyPageSet(s: ClassroomState, p: {page: number}): ClassroomState {
   return {...s, currentPage: p.page, pointer: null};
+}
+
+export function optimistikApplyToPage(
+  s: ClassroomState,
+  page: number,
+  pane: 'left' | 'right' | undefined,
+  mode: CsBoardMode | undefined,
+  updateFn: (list: CsStroke[]) => CsStroke[],
+): ClassroomState {
+  const isRight = pane === 'right';
+  const activeLeft = s.leftBoardMode ?? s.boardMode ?? 'pdf';
+  const activeRight = s.rightBoardMode ?? s.boardMode ?? 'pdf';
+  const targetMode = (mode ?? (isRight ? activeRight : activeLeft) ?? 'pdf') as CsBoardMode;
+
+  const byMode = {...(s.strokesByMode ?? {})};
+  if (!byMode[activeLeft]) {
+    byMode[activeLeft] = s.strokesByPage ?? {};
+  }
+  if (!byMode[activeRight]) {
+    byMode[activeRight] = s.rightStrokesByPage ?? {};
+  }
+
+  const modeObj = byMode[targetMode] ?? {};
+  const fallbackList = targetMode === activeLeft
+    ? (s.strokesByPage[page] ?? [])
+    : targetMode === activeRight
+    ? (s.rightStrokesByPage[page] ?? [])
+    : [];
+
+  const currentList = modeObj[page] ?? fallbackList;
+  const nextList = updateFn(currentList);
+  const nextModeObj = {...modeObj, [page]: nextList};
+  const nextByMode = {...byMode, [targetMode]: nextModeObj};
+
+  return {
+    ...s,
+    strokesByMode: nextByMode,
+    strokesByPage: nextByMode[activeLeft] ?? s.strokesByPage,
+    rightStrokesByPage: nextByMode[activeRight] ?? s.rightStrokesByPage,
+  };
 }
 
 export function applyStrokeAdd(
   s: ClassroomState,
   p: {page: number; stroke: CsStroke; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  if (p.pane === 'right') {
-    if (p.mode && p.mode !== s.rightBoardMode) return s;
-    const existing = s.rightStrokesByPage[p.page] ?? [];
-    if (existing.some(x => x.id === p.stroke.id)) return s;
-    return {...s, rightStrokesByPage: {...s.rightStrokesByPage, [p.page]: [...existing, p.stroke]}};
-  }
-  if (p.mode && p.mode !== s.leftBoardMode) return s;
-  const existing = s.strokesByPage[p.page] ?? [];
-  if (existing.some(x => x.id === p.stroke.id)) return s;
-  return {...s, strokesByPage: {...s.strokesByPage, [p.page]: [...existing, p.stroke]}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list => {
+    if (list.some(x => x.id === p.stroke.id)) return list;
+    return [...list, p.stroke];
+  });
 }
 
 export function applyStrokeUpdate(
   s: ClassroomState,
   p: {page: number; strokeId: string; x: number; y: number; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const source = right ? s.rightStrokesByPage : s.strokesByPage;
-  const list = source[p.page] ?? [];
-  const next = list.map(stroke =>
-    stroke.id === p.strokeId ? {...stroke, points: moveStrokePoints(stroke, p.x, p.y)} : stroke,
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list =>
+    list.map(stroke =>
+      stroke.id === p.strokeId ? {...stroke, points: moveStrokePoints(stroke, p.x, p.y)} : stroke,
+    ),
   );
-  return right
-    ? {...s, rightStrokesByPage: {...s.rightStrokesByPage, [p.page]: next}}
-    : {...s, strokesByPage: {...s.strokesByPage, [p.page]: next}};
 }
 
 export function applyStrokeTextUpdate(
   s: ClassroomState,
   p: {page: number; stroke: CsStroke; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  const next = list.some(stroke => stroke.id === p.stroke.id)
-    ? list.map(stroke => (stroke.id === p.stroke.id ? p.stroke : stroke))
-    : [...list, p.stroke];
-  return {...s, [key]: {...source, [p.page]: next}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list =>
+    list.some(stroke => stroke.id === p.stroke.id)
+      ? list.map(stroke => (stroke.id === p.stroke.id ? p.stroke : stroke))
+      : [...list, p.stroke],
+  );
 }
 
 export function applyStrokeShapeUpdate(
   s: ClassroomState,
   p: {page: number; stroke: CsStroke; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  const next = list.some(stroke => stroke.id === p.stroke.id)
-    ? list.map(stroke => (stroke.id === p.stroke.id ? p.stroke : stroke))
-    : [...list, p.stroke];
-  return {...s, [key]: {...source, [p.page]: next}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list =>
+    list.some(stroke => stroke.id === p.stroke.id)
+      ? list.map(stroke => (stroke.id === p.stroke.id ? p.stroke : stroke))
+      : [...list, p.stroke],
+  );
 }
 
 export function applyStrokeReorder(
@@ -159,53 +209,42 @@ export function applyStrokeReorder(
     mode?: CsBoardMode;
   },
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  const list = source[p.page] ?? [];
-  return {...s, [key]: {...source, [p.page]: reorderStrokeList(list, p.strokeIds, p.op)}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list =>
+    reorderStrokeList(list, p.strokeIds, p.op),
+  );
 }
 
 export function applyStrokeUndo(
   s: ClassroomState,
   p: {page: number; strokeId: string; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  return {...s, [key]: {...source, [p.page]: (source[p.page] ?? []).filter(x => x.id !== p.strokeId)}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, list =>
+    list.filter(x => x.id !== p.strokeId),
+  );
 }
 
 export function applyStrokeSplit(
   s: ClassroomState,
   p: {page: number; strokeId: string; replacements: CsStroke[]; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  const existing = source[p.page] ?? [];
-  const idx = existing.findIndex(x => x.id === p.strokeId);
-  if (idx === -1) {
-    const news = p.replacements.filter(r => !existing.some(x => x.id === r.id));
-    if (news.length === 0) return s;
-    return {...s, [key]: {...source, [p.page]: [...existing, ...news]}};
-  }
-  const next = [...existing];
-  next.splice(idx, 1, ...p.replacements);
-  return {...s, [key]: {...source, [p.page]: next}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, existing => {
+    const idx = existing.findIndex(x => x.id === p.strokeId);
+    if (idx === -1) {
+      const news = p.replacements.filter(r => !existing.some(x => x.id === r.id));
+      if (news.length === 0) return existing;
+      return [...existing, ...news];
+    }
+    const next = [...existing];
+    next.splice(idx, 1, ...p.replacements);
+    return next;
+  });
 }
 
 export function applyPageClear(
   s: ClassroomState,
   p: {page: number; pane?: 'left' | 'right'; mode?: CsBoardMode},
 ): ClassroomState {
-  const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-  const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  return {...s, [key]: {...s[key], [p.page]: []}};
+  return optimistikApplyToPage(s, p.page, p.pane, p.mode, () => []);
 }
 
 // Sahifa o'chirilganda undan keyingi barcha sahifalarning chizmalari (shu
@@ -300,16 +339,29 @@ export function applyNotebookPageInsert(
   },
 ): ClassroomState {
   const right = p.pane === 'right';
-  if (p.mode && p.mode !== (right ? s.rightBoardMode : s.leftBoardMode)) return s;
-
+  // Mode guard olib tashlandi: page:insert her doim notebook uchun keladi
+  // va notebookPageCount barcha rejimlarda umumiy. Agar ustoz PDF rejimida
+  // bo'lsa ham, sahifa qo'shilsa mobile'da notebookPageCount +1 bo'lishi kerak.
+  // strokesByMode'dagi notebook kalidini ham yangilaymiz.
+  const insertMode = p.mode ?? 'notebook';
   const key = right ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
-  const rebuilt: Record<number, CsStroke[]> = {};
-  for (const [pageStr, strokes] of Object.entries(source)) {
+
+  // strokesByMode'dagi tegishli mode'ni rebuild qilamiz
+  const byMode = {...(s.strokesByMode ?? {})};
+  const modeSource: Record<number, CsStroke[]> = byMode[insertMode] ?? (right ? s.rightStrokesByPage : s.strokesByPage);
+  const rebuiltMode: Record<number, CsStroke[]> = {};
+  for (const [pageStr, strokes] of Object.entries(modeSource)) {
     const pageNum = Number(pageStr);
-    if (pageNum <= p.afterPageIndex) rebuilt[pageNum] = strokes;
-    else rebuilt[pageNum + 1] = strokes;
+    if (pageNum <= p.afterPageIndex) rebuiltMode[pageNum] = strokes;
+    else rebuiltMode[pageNum + 1] = strokes;
   }
+  byMode[insertMode] = rebuiltMode;
+
+  // Faol (active) strokesByPage/rightStrokesByPage ni ham yangilaymiz
+  const activeLeft = s.leftBoardMode ?? s.boardMode ?? 'pdf';
+  const activeRight = s.rightBoardMode ?? s.boardMode ?? 'pdf';
+  const nextStrokesByPage = byMode[activeLeft] ?? s.strokesByPage;
+  const nextRightStrokesByPage = byMode[activeRight] ?? s.rightStrokesByPage;
 
   const rebuiltStyles: Record<number, CsNotebookStyle> = {};
   for (const [pageStr, style] of Object.entries(s.notebookPageStyles)) {
@@ -332,7 +384,9 @@ export function applyNotebookPageInsert(
 
   return {
     ...s,
-    [key]: rebuilt,
+    strokesByMode: byMode,
+    strokesByPage: nextStrokesByPage,
+    rightStrokesByPage: nextRightStrokesByPage,
     notebookPageStyles: rebuiltStyles,
     notebookPageOrientations: rebuiltOrientations,
     notebookPageCount,
@@ -500,7 +554,12 @@ function applyBoardUndoRedo(
       return s;
   }
 
-  return {...s, [key]: nextSource ?? source, currentPage: p.page, boardMode: p.mode};
+  if (nextSource) {
+    const updated = optimistikApplyToPage(s, p.page, pane, p.mode, () => nextSource![p.page] ?? []);
+    return {...updated, currentPage: p.page, boardMode: p.mode};
+  }
+
+  return {...s, currentPage: p.page, boardMode: p.mode};
 }
 
 // page:remove/page:insert'ning teskarisi — bular sahifalar ro'yxati va

@@ -1234,6 +1234,7 @@ export class ClassroomService implements OnModuleInit {
       currentPage: snapshot.currentPage,
       strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
+      notebookPageCount: snapshot.notebookPageCount,
     };
     this.recordHistoryEvent(s, 'board:set', payload);
     this.broadcaster.toRoom(sessionId, 'board:set', payload);
@@ -1253,6 +1254,7 @@ export class ClassroomService implements OnModuleInit {
       mode: leftMode, layout: s.boardLayout, leftMode, rightMode,
       currentPage: snapshot.currentPage, strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
+      notebookPageCount: snapshot.notebookPageCount,
     };
     this.recordHistoryEvent(s, 'board:set', payload);
     this.broadcaster.toRoom(sessionId, 'board:set', payload);

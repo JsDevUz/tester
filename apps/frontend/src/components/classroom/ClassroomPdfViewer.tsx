@@ -3111,7 +3111,7 @@ function ClassroomPdfPage({
       newStroke = {
         id: newShapeId,
         tool: "text",
-        text: "",
+        text: "Matn",
         color: sourceStroke?.color ?? color,
         width: 2,
         fontFamily: "Inter",

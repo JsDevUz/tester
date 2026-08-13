@@ -476,8 +476,10 @@ function TextStrokeItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
   const fontFamily = resolveFontFamily(s.fontFamily, s.fontWeight);
   const lines = s.text.split('\n');
 
-  const boxWidth = (s.textBoxWidth ?? 320) * scale;
-  const boxHeight = (s.textBoxHeight ?? Math.max(lineHeight, lines.length * lineHeight)) * scale;
+  const measuredBoxWidth = (s.textBoxWidth ?? 320) * scale;
+  const maxLineLength = Math.max(...lines.map(l => l.length), 1);
+  const boxWidth = Math.max(measuredBoxWidth, fontSize * (maxLineLength * 0.75));
+  const boxHeight = Math.max((s.textBoxHeight ?? 30) * scale, lines.length * lineHeight);
 
   return (
     <View
@@ -491,10 +493,6 @@ function TextStrokeItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
         overflow: 'visible',
         alignItems:
           s.textAlign === 'center' ? 'center' : s.textAlign === 'right' ? 'flex-end' : 'flex-start',
-        // Web canvas render (classroomCanvasDraw.ts) matnni box balandligining
-        // vertikal MARKAZIDA chizadi — mobile ham shu bilan mos bo'lishi
-        // kerak, aks holda talaba tomonida matn ustoz ko'rgan joydan
-        // farqli balandlikda ko'rinardi.
         justifyContent: 'center',
         opacity: (s.opacity ?? 100) / 100,
         transform: s.rotation ? [{rotate: `${s.rotation}deg`}] : undefined,
@@ -502,16 +500,15 @@ function TextStrokeItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
       {lines.map((line, idx) => (
         <RNText
           key={idx}
+          numberOfLines={1}
           style={{
             fontSize,
             lineHeight,
-            color: s.color,
+            color: s.color || '#ffffff',
             fontFamily,
             fontWeight: String(s.fontWeight ?? 600) as any,
             textAlign: s.textAlign ?? 'left',
             includeFontPadding: false,
-            textAlignVertical: 'top',
-            width: '100%',
           }}>
           {line}
         </RNText>
@@ -529,7 +526,7 @@ function ShapeTextItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
   const fontSize = Math.max(1, (s.fontSize ?? 24) * (w / REF_WIDTH));
   return (
     <View pointerEvents="none" style={{position: 'absolute', left, top, width: boxWidth, height: boxHeight, padding: 6, justifyContent: s.verticalAlign === 'top' ? 'flex-start' : s.verticalAlign === 'bottom' ? 'flex-end' : 'center', opacity: (s.opacity ?? 100) / 100, transform: s.rotation ? [{rotate: `${s.rotation}deg`}] : undefined}}>
-      <RNText numberOfLines={20} style={{color: s.color, fontSize, lineHeight: fontSize * 1.25, fontFamily: resolveFontFamily(s.fontFamily, s.fontWeight), fontWeight: String(s.fontWeight ?? 600) as any, textAlign: s.textAlign ?? 'center', includeFontPadding: false}}>
+      <RNText numberOfLines={20} style={{color: s.color || '#ffffff', fontSize, lineHeight: fontSize * 1.25, fontFamily: resolveFontFamily(s.fontFamily, s.fontWeight), fontWeight: String(s.fontWeight ?? 600) as any, textAlign: s.textAlign ?? 'center', includeFontPadding: false}}>
         {s.text}
       </RNText>
     </View>
@@ -574,7 +571,7 @@ export function ClassroomStrokeCanvas({
   const hasPointer = Boolean(pointer && pointer.active);
 
   // If there are no drawings/text/pointer on this page, don't mount anything
-  if (pathStrokes.length === 0 && textStrokes.length === 0 && !hasPointer) {
+  if (pathStrokes.length === 0 && textStrokes.length === 0 && shapeTextStrokes.length === 0 && !hasPointer) {
     return null;
   }
 
