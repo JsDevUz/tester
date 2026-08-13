@@ -268,6 +268,7 @@ export function BoardEditorPage() {
           pointer={state.pointer}
           editable={!isViewOnly && (state.pages.length > 0 || state.boardMode === "notebook")}
           isHost={!isViewOnly}
+          noSync={isViewOnly}
           hostZoom={state.zoom}
           rightHostZoom={state.rightZoom}
           hostSplitRatio={state.splitRatio}

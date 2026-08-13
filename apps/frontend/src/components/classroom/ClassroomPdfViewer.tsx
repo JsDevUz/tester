@@ -4737,7 +4737,11 @@ export function ClassroomPdfViewer({
   );
 
   const modeMenuFor = (selectedMode: CsBoardMode, pane?: "left" | "right") => {
-    if (!isHost && !((noSync || !synced) && pageUrls.length > 0)) return null;
+    // Read-only board havolasida PDF hali bo'lmasa ham Daftar rejimiga
+    // o'tish tugmasi ko'rinishi kerak. Avvalgi pageUrls.length sharti aynan
+    // bo'sh PDF holatida switchni yashirib, mavjud daftar chizmalariga kirishni
+    // imkonsiz qilardi.
+    if (!isHost && !(noSync || !synced)) return null;
     const disabled = !isHost && synced;
     const isNotebook = selectedMode === "notebook";
     return (
