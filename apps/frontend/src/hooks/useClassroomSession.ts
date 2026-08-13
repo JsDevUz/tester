@@ -104,8 +104,11 @@ export function useClassroomSession(
 
   useEffect(() => {
     if (!sessionId) return;
-    const socket = getClassroomSocket();
     const token = localStorage.getItem("token");
+    if (!token && !guestName && role !== "host") {
+      return;
+    }
+    const socket = getClassroomSocket();
 
     const join = () => {
       const joinPayload: Record<string, unknown> = { sessionId, token };
