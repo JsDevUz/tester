@@ -349,7 +349,7 @@ export function useClassroomSession(
   ): ClassroomState => {
     const isRight = pane === "right";
     const key = isRight ? "rightStrokesByPage" : "strokesByPage";
-    const targetMode = mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
+    const targetMode = (mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf") as CsBoardMode;
 
     if (s.strokesByMode) {
       const byMode = s.strokesByMode;

@@ -12,9 +12,6 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
-  AlignVerticalJustifyCenter,
-  AlignVerticalJustifyEnd,
-  AlignVerticalJustifyStart,
   Bold,
   BringToFront,
   Check,
@@ -161,6 +158,7 @@ interface Props {
     mode: CsBoardMode,
     page: number,
     stroke: CsStroke,
+    groupId?: string,
   ) => void;
   onReorderStroke?: (
     page: number,
@@ -213,6 +211,7 @@ interface Props {
     mode: CsBoardMode,
     page: number,
     strokeId: string,
+    groupId?: string,
   ) => void;
   // Pixel-eraser: bitta chizmani (strokeId) bir nechta yangi kesim-chizmalar
   // bilan almashtiradi (segment-darajasida o'chirish natijasi).
@@ -313,20 +312,6 @@ const FONT_FAMILY_OPTIONS: CsFontFamily[] = [
   "Comic Sans MS",
   "Nunito",
 ];
-const FONT_SIZE_PRESETS: Array<{ label: string; size: number }> = [
-  { label: "S", size: 16 },
-  { label: "M", size: 24 },
-  { label: "L", size: 36 },
-  { label: "XL", size: 56 },
-];
-const TEXT_ALIGN_OPTIONS: Array<{
-  value: "left" | "center" | "right";
-  icon: typeof AlignLeft;
-}> = [
-    { value: "left", icon: AlignLeft },
-    { value: "center", icon: AlignCenter },
-    { value: "right", icon: AlignRight },
-  ];
 
 const LAYER_OPTIONS: Array<{
   value: "back" | "backward" | "forward" | "front";
@@ -774,11 +759,6 @@ function FillStyleIcon({ style }: { style: CsFillStyle }) {
     </svg>
   );
 }
-const STROKE_WIDTH_OPTIONS: Array<{ value: number; label: string }> = [
-  { value: 2, label: "S" },
-  { value: 4, label: "M" },
-  { value: 7, label: "L" },
-];
 const STROKE_STYLE_OPTIONS: Array<{ value: CsStrokeStyle; label: string }> = [
   { value: "none", label: "Kontursiz" },
   { value: "solid", label: "Solid" },
@@ -954,6 +934,8 @@ interface ShapeStylePanelProps {
 
   onFontFamilyChange?: (fontFamily: CsFontFamily) => void;
   onFontSizeChange?: (fontSize: number) => void;
+  onFontWeightChange?: (fontWeight: 400 | 500 | 600 | 700) => void;
+  onTextAlignChange?: (textAlign: "left" | "center" | "right") => void;
   onVerticalAlignChange?: (verticalAlign: "top" | "middle" | "bottom") => void;
 }
 
@@ -2270,6 +2252,7 @@ function ClassroomPdfPage({
   onToolChange,
   color,
   colorNonce,
+  onColorChange,
   strokeWidth,
   onStrokeWidthChange,
   shapeStyle = DEFAULT_SHAPE_STYLE,
@@ -3065,29 +3048,19 @@ function ClassroomPdfPage({
 
     let newMinX = minX;
     let newMinY = minY;
-    let newMaxX = maxX;
-    let newMaxY = maxY;
 
     if (side === "right") {
       newMinX = maxX + gapX;
-      newMaxX = newMinX + w;
       newMinY = cy - h / 2;
-      newMaxY = newMinY + h;
     } else if (side === "left") {
-      newMaxX = minX - gapX;
-      newMinX = newMaxX - w;
+      newMinX = minX - gapX - w;
       newMinY = cy - h / 2;
-      newMaxY = newMinY + h;
     } else if (side === "bottom") {
       newMinX = cx - w / 2;
-      newMaxX = newMinX + w;
       newMinY = maxY + gapY;
-      newMaxY = newMinY + h;
     } else if (side === "top") {
       newMinX = cx - w / 2;
-      newMaxX = newMinX + w;
       newMinY = minY - gapY - h;
-      newMaxY = minY - gapY;
     }
 
     const boundedMinX = Math.max(0.01, Math.min(0.99 - w, newMinX));
@@ -3137,6 +3110,7 @@ function ClassroomPdfPage({
         tool: "text",
         text: "Matn",
         color: sourceStroke?.color ?? color,
+        width: 2,
         fontFamily: "Inter",
         fontSize: 24,
         fontWeight: 400,
@@ -5325,13 +5299,15 @@ function ClassroomPdfPage({
                   onShapeStyleChange({ ...shapeStyle, fillStyle })
                 }
                 onStrokeWidthChange={(width) => onStrokeWidthChange?.(width)}
-                onStrokeStyleChange={(strokeStyle) =>
+                onStrokeStyleChange={(strokeStyle) => {
                   onShapeStyleChange({
                     ...shapeStyle,
                     strokeStyle,
-                    width: strokeStyle !== "none" && strokeWidth === 0 ? 2 : strokeWidth,
-                  })
-                }
+                  });
+                  if (strokeStyle !== "none" && strokeWidth === 0) {
+                    onStrokeWidthChange?.(2);
+                  }
+                }}
                 onLineShapeChange={(lineShape) =>
                   onShapeStyleChange({ ...shapeStyle, lineShape })
                 }
