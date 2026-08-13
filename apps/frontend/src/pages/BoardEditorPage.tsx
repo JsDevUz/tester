@@ -47,7 +47,7 @@ export function BoardEditorPage() {
     setColor(c);
     setColorNonce(Date.now());
   }, []);
-  const [strokeWidth, setStrokeWidth] = useState(4);
+  const [strokeWidth, setStrokeWidth] = useState(2);
   const [shapeStyle, setShapeStyle] = useState<ShapeStyle>(DEFAULT_SHAPE_STYLE);
   const [activePane, setActivePane] = useState<"left" | "right">("left");
 
@@ -307,11 +307,11 @@ export function BoardEditorPage() {
           onStrokeWidthChange={setStrokeWidth}
           shapeStyle={shapeStyle}
           onShapeStyleChange={setShapeStyle}
-          onUpdateShapeStroke={(page, stroke) =>
-            hostActions.updateShapeStroke(page, stroke, "left", state.boardMode)
+          onUpdateShapeStroke={(page, stroke, groupId) =>
+            hostActions.updateShapeStroke(page, stroke, "left", state.boardMode, groupId)
           }
-          onPaneUpdateShapeStroke={(pane, mode, page, stroke) =>
-            hostActions.updateShapeStroke(page, stroke, pane, mode)
+          onPaneUpdateShapeStroke={(pane, mode, page, stroke, groupId) =>
+            hostActions.updateShapeStroke(page, stroke, pane, mode, groupId)
           }
           onReorderStroke={(page, strokeIds, op) =>
             hostActions.reorderStroke(page, strokeIds, op, "left", state.boardMode)
@@ -319,28 +319,28 @@ export function BoardEditorPage() {
           onPaneReorderStroke={(pane, mode, page, strokeIds, op) =>
             hostActions.reorderStroke(page, strokeIds, op, pane, mode)
           }
-          onStrokeComplete={(page, s) => hostActions.sendStroke(page, s)}
-          onPaneStrokeComplete={(pane, mode, page, s) => hostActions.sendStroke(page, s, pane, mode)}
-          onMoveStroke={(page, strokeId, x, y) =>
-            hostActions.moveStroke(page, strokeId, x, y, "left", state.boardMode)
+          onStrokeComplete={(page, s, groupId) => hostActions.sendStroke(page, s, "left", state.boardMode, groupId)}
+          onPaneStrokeComplete={(pane, mode, page, s, groupId) => hostActions.sendStroke(page, s, pane, mode, groupId)}
+          onMoveStroke={(page, strokeId, x, y, groupId) =>
+            hostActions.moveStroke(page, strokeId, x, y, "left", state.boardMode, groupId)
           }
-          onPaneMoveStroke={(pane, mode, page, strokeId, x, y) =>
-            hostActions.moveStroke(page, strokeId, x, y, pane, mode)
+          onPaneMoveStroke={(pane, mode, page, strokeId, x, y, groupId) =>
+            hostActions.moveStroke(page, strokeId, x, y, pane, mode, groupId)
           }
-          onUpdateTextStroke={(page, stroke) =>
-            hostActions.updateTextStroke(page, stroke, "left", state.boardMode)
+          onUpdateTextStroke={(page, stroke, groupId) =>
+            hostActions.updateTextStroke(page, stroke, "left", state.boardMode, groupId)
           }
-          onPaneUpdateTextStroke={(pane, mode, page, stroke) =>
-            hostActions.updateTextStroke(page, stroke, pane, mode)
+          onPaneUpdateTextStroke={(pane, mode, page, stroke, groupId) =>
+            hostActions.updateTextStroke(page, stroke, pane, mode, groupId)
           }
           onPointerMove={(page, x, y, active, pane) =>
             hostActions.pointer(page, x, y, active, pane)
           }
-          onEraseStroke={(page, strokeId) =>
-            hostActions.eraseStroke(page, strokeId, "left", state.boardMode)
+          onEraseStroke={(page, strokeId, groupId) =>
+            hostActions.eraseStroke(page, strokeId, "left", state.boardMode, groupId)
           }
-          onPaneEraseStroke={(pane, mode, page, strokeId) =>
-            hostActions.eraseStroke(page, strokeId, pane, mode)
+          onPaneEraseStroke={(pane, mode, page, strokeId, groupId) =>
+            hostActions.eraseStroke(page, strokeId, pane, mode, groupId)
           }
           onSplitStroke={(page, strokeId, replacements) =>
             hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode)

@@ -3,6 +3,7 @@
 // React holatiga bog'liq emas.
 import type { CsStroke } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
+import { connectorCurvePoint } from "./classroomShapeBindings";
 
 const ERASE_HIT_BASE = 0.0025;
 export function eraseHitRadius(strokeWidth: number): number {
@@ -91,11 +92,12 @@ function hitTestLineOrArrow(
   px: number,
   py: number,
   hitRadius: number,
+  width = REF_WIDTH,
+  height = REF_WIDTH,
 ): boolean {
   const [x0, y0, x1, y1] = stroke.points;
   const shape = stroke.lineShape ?? "straight";
   const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
-  const ctrlY = stroke.controlY ?? (y0 + y1) / 2;
 
   // Hit radiusni foydalanuvchi qulay va oson ushlab olishi uchun sezgir qilamiz
   const radius = Math.max(hitRadius, 0.025);
@@ -108,16 +110,14 @@ function hitTestLineOrArrow(
   }
 
   if (shape === "curved") {
-    const STEPS = 16;
+    const STEPS = 32;
     let prevX = x0;
     let prevY = y0;
     let minDist = Infinity;
 
     for (let i = 1; i <= STEPS; i += 1) {
       const t = i / STEPS;
-      const invT = 1 - t;
-      const curX = invT * invT * x0 + 2 * invT * t * ctrlX + t * t * x1;
-      const curY = invT * invT * y0 + 2 * invT * t * ctrlY + t * t * y1;
+      const [curX, curY] = connectorCurvePoint(stroke, t, width, height);
 
       const d = distToSegment(px, py, prevX, prevY, curX, curY);
       if (d < minDist) minDist = d;
@@ -136,12 +136,14 @@ export function findSelectableShapeAt(
   x: number,
   y: number,
   hitRadius: number,
+  width = REF_WIDTH,
+  height = REF_WIDTH,
 ): CsStroke | null {
   for (let index = strokes.length - 1; index >= 0; index -= 1) {
     const stroke = strokes[index];
     if (stroke.points.length < 4) continue;
     if (stroke.tool === "line" || stroke.tool === "arrow") {
-      if (hitTestLineOrArrow(stroke, x, y, hitRadius)) return stroke;
+      if (hitTestLineOrArrow(stroke, x, y, hitRadius, width, height)) return stroke;
     } else if (stroke.tool === "rectangle" || stroke.tool === "ellipse") {
       if (hitTestShape(stroke, x, y, hitRadius, true)) return stroke;
     }
@@ -154,6 +156,8 @@ export function findStrokeAt(
   x: number,
   y: number,
   hitRadius: number,
+  width = REF_WIDTH,
+  height = REF_WIDTH,
 ): CsStroke | null {
   // Oxirgi chizilgandan boshlab tekshiramiz — ustma-ust chizmalarda eng
   // "tepadagi" (oxirgi chizilgan) ni topish tabiiyroq.
@@ -161,7 +165,7 @@ export function findStrokeAt(
     const s = strokes[i];
     const pts = s.points;
     if (pts.length >= 4 && (s.tool === "line" || s.tool === "arrow")) {
-      if (hitTestLineOrArrow(s, x, y, hitRadius)) return s;
+      if (hitTestLineOrArrow(s, x, y, hitRadius, width, height)) return s;
       continue;
     }
     if (pts.length === 4 && (s.tool === "rectangle" || s.tool === "ellipse")) {
@@ -389,5 +393,3 @@ export function findStrokesInLasso(strokes: CsStroke[], polygon: number[]): stri
   }
   return ids;
 }
-
-

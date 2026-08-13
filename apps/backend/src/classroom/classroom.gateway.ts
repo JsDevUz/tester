@@ -114,10 +114,10 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   }
 
   @SubscribeMessage('host:stroke')
-  stroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right' }) {
+  stroke(@MessageBody() body: BaseBody & { page: number; stroke: ClassroomStroke; mode?: 'pdf' | 'notebook'; pane?: 'left' | 'right'; groupId?: string }) {
     return this.run(body.sessionId, () => {
       const user = this.verify(body.token);
-      this.classroomService.stroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane);
+      this.classroomService.stroke(body.sessionId, user.sub, body.page, body.stroke, body.mode, body.pane, body.groupId);
     });
   }
 

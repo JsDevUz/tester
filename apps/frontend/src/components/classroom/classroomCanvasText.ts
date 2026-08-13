@@ -31,7 +31,7 @@ export const DEFAULT_SHAPE_STYLE: ShapeStyle = {
   backgroundColor: "transparent",
   fillStyle: "solid",
   strokeStyle: "solid",
-  edges: "sharp",
+  edges: "round",
   opacity: 100,
   lineShape: "straight",
 };

@@ -10,12 +10,19 @@ export type ClassroomFillStyle = 'hachure' | 'cross-hatch' | 'solid';
 export type ClassroomStrokeStyle = 'none' | 'solid' | 'dashed' | 'dotted';
 export type ClassroomSloppiness = 0 | 1 | 2;
 export type ClassroomEdges = 'sharp' | 'round';
+export type ClassroomBindingSide = 'top' | 'right' | 'bottom' | 'left';
+export interface ClassroomShapeBinding {
+  strokeId: string;
+  side: ClassroomBindingSide;
+  position?: number;
+}
 
 export interface ClassroomStroke {
   id: string;
   tool: ClassroomTool;
   createdAt?: number;
   color: string;
+  textColor?: string;
   width: number;
   // Text asbobi uchun matn mazmuni; points esa matnning chap-yuqori anchor'i.
   text?: string;
@@ -23,6 +30,7 @@ export interface ClassroomStroke {
   fontSize?: number;
   fontWeight?: 400 | 500 | 600 | 700;
   textAlign?: 'left' | 'center' | 'right';
+  verticalAlign?: 'top' | 'middle' | 'bottom';
   textBoxWidth?: number;
   textBoxHeight?: number;
   rotation?: number;
@@ -33,6 +41,15 @@ export interface ClassroomStroke {
   sloppiness?: ClassroomSloppiness;
   edges?: ClassroomEdges;
   opacity?: number;
+  lineShape?: 'straight' | 'curved' | 'elbow';
+  startArrowHead?: string;
+  endArrowHead?: string;
+  controlX?: number;
+  controlY?: number;
+  startBinding?: ClassroomShapeBinding;
+  endBinding?: ClassroomShapeBinding;
+  startBindingVector?: [number, number];
+  endBindingVector?: [number, number];
   // Normalizatsiyalangan (0..1) koordinatalar, flat: [x0, y0, x1, y1, ...].
   // Shape uchun bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];

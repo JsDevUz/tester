@@ -135,9 +135,35 @@ function drawArrow(
     lastAngle = Math.atan2(0, x1 - midX);
     firstAngle = Math.atan2(0, x0 - midX);
   } else if (shape === "curved") {
-    ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
-    lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
-    firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+    if ((s.startBinding || s.endBinding) && s.controlX === undefined && s.controlY === undefined) {
+      const vector = (side: string | undefined, fallbackX: number, fallbackY: number) =>
+        side === "left" ? [-1, 0] : side === "right" ? [1, 0] : side === "top" ? [0, -1] : side === "bottom" ? [0, 1] : [fallbackX, fallbackY];
+      const distance = Math.hypot(x1 - x0, y1 - y0);
+      const handle = Math.max(28 * (w / REF_WIDTH), Math.min(distance * 0.42, 180 * (w / REF_WIDTH)));
+      const [svx, svy] =
+        s.startBindingVector ??
+        vector(
+          s.startBinding?.side,
+          (x1 - x0) / Math.max(distance, 1),
+          (y1 - y0) / Math.max(distance, 1),
+        );
+      const [evx, evy] =
+        s.endBindingVector ??
+        vector(
+          s.endBinding?.side,
+          (x0 - x1) / Math.max(distance, 1),
+          (y0 - y1) / Math.max(distance, 1),
+        );
+      const cp1x = x0 + svx * handle, cp1y = y0 + svy * handle;
+      const cp2x = x1 + evx * handle, cp2y = y1 + evy * handle;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x1, y1);
+      lastAngle = Math.atan2(y1 - cp2y, x1 - cp2x);
+      firstAngle = Math.atan2(y0 - cp1y, x0 - cp1x);
+    } else {
+      ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
+      lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
+      firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+    }
   } else {
     ctx.lineTo(x1, y1);
   }
@@ -200,9 +226,35 @@ function drawLine(
     lastAngle = Math.atan2(0, x1 - midX);
     firstAngle = Math.atan2(0, x0 - midX);
   } else if (shape === "curved") {
-    ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
-    lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
-    firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+    if ((s.startBinding || s.endBinding) && s.controlX === undefined && s.controlY === undefined) {
+      const vector = (side: string | undefined, fallbackX: number, fallbackY: number) =>
+        side === "left" ? [-1, 0] : side === "right" ? [1, 0] : side === "top" ? [0, -1] : side === "bottom" ? [0, 1] : [fallbackX, fallbackY];
+      const distance = Math.hypot(x1 - x0, y1 - y0);
+      const handle = Math.max(28 * (w / REF_WIDTH), Math.min(distance * 0.42, 180 * (w / REF_WIDTH)));
+      const [svx, svy] =
+        s.startBindingVector ??
+        vector(
+          s.startBinding?.side,
+          (x1 - x0) / Math.max(distance, 1),
+          (y1 - y0) / Math.max(distance, 1),
+        );
+      const [evx, evy] =
+        s.endBindingVector ??
+        vector(
+          s.endBinding?.side,
+          (x0 - x1) / Math.max(distance, 1),
+          (y0 - y1) / Math.max(distance, 1),
+        );
+      const cp1x = x0 + svx * handle, cp1y = y0 + svy * handle;
+      const cp2x = x1 + evx * handle, cp2y = y1 + evy * handle;
+      ctx.bezierCurveTo(cp1x, cp1y, cp2x, cp2y, x1, y1);
+      lastAngle = Math.atan2(y1 - cp2y, x1 - cp2x);
+      firstAngle = Math.atan2(y0 - cp1y, x0 - cp1x);
+    } else {
+      ctx.quadraticCurveTo(ctrlX, ctrlY, x1, y1);
+      lastAngle = Math.atan2(y1 - ctrlY, x1 - ctrlX);
+      firstAngle = Math.atan2(y0 - ctrlY, x0 - ctrlX);
+    }
   } else {
     ctx.lineTo(x1, y1);
   }
@@ -368,6 +420,31 @@ function drawShape(
   if (strokeStyle !== "none") {
     buildPath();
     ctx.stroke();
+  }
+  if (s.text?.trim()) {
+    const fontSize = Math.max(1, (s.fontSize ?? 24) * scale);
+    const padding = Math.max(6, 12 * scale);
+    ctx.globalAlpha = strokeAlpha;
+    ctx.fillStyle = s.textColor || s.color;
+    ctx.font = `${s.fontWeight ?? 600} ${fontSize}px ${getFontFamilyString(s.fontFamily)}`;
+    ctx.textBaseline = "middle";
+    const lines = wrapTextLines(ctx, s.text.trim(), Math.max(1, width - padding * 2));
+    const lineHeight = fontSize * 1.25;
+    const blockHeight = lines.length * lineHeight;
+    const verticalAlign = s.verticalAlign ?? "middle";
+    const firstY = verticalAlign === "top"
+      ? y + padding + lineHeight / 2
+      : verticalAlign === "bottom"
+        ? y + height - padding - blockHeight + lineHeight / 2
+        : y + height / 2 - ((lines.length - 1) * lineHeight) / 2;
+    const align = s.textAlign ?? "center";
+    ctx.textAlign = align;
+    const textX = align === "left" ? x + padding : align === "right" ? x + width - padding : x + width / 2;
+    ctx.save();
+    buildPath();
+    ctx.clip();
+    lines.forEach((line, index) => ctx.fillText(line, textX, firstY + index * lineHeight));
+    ctx.restore();
   }
   ctx.restore();
 }

@@ -324,50 +324,87 @@ export function useClassroomSession(
       for (const { event: ev, payload: pl } of pending.values()) emitHost(ev, pl);
     });
   }, [emitHost]);
+  const flushHostEmits = useCallback(() => {
+    if (emitFrameRef.current !== null) {
+      window.cancelAnimationFrame(emitFrameRef.current);
+      emitFrameRef.current = null;
+    }
+    const pending = pendingEmitRef.current;
+    pendingEmitRef.current = new Map();
+    for (const { event, payload } of pending.values()) emitHost(event, payload);
+  }, [emitHost]);
+
+  // MUHIM: `strokesByMode` mavjud bo'lsa (split/replay rejimida), optimistik
+  // setState ham uni yangilashi shart. Aks holda keyingi har qanday server echo
+  // (stroke:add, stroke:shapeUpdate va h.k.) `updateStrokeListInState` orqali
+  // `strokesByPage = strokesByMode[activeLeftMode]` deb qayta derive qiladi va
+  // bu yerda strokesByMode eski qiymatda turgani uchun shape/text pozitsiyasi
+  // yoki uslubi oldingi holatga «rollback» qilib qo'yiladi.
+  const optimistikApplyToPage = (
+    s: ClassroomState,
+    page: number,
+    pane: "left" | "right",
+    mode: string | undefined,
+    updateFn: (list: CsStroke[]) => CsStroke[],
+  ): ClassroomState => {
+    const isRight = pane === "right";
+    const key = isRight ? "rightStrokesByPage" : "strokesByPage";
+    const targetMode = mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
+
+    if (s.strokesByMode) {
+      const byMode = s.strokesByMode;
+      const modeObj = byMode[targetMode] ?? {};
+      const nextList = updateFn(modeObj[page] ?? []);
+      const nextModeObj = { ...modeObj, [page]: nextList };
+      const nextByMode = { ...byMode, [targetMode]: nextModeObj };
+      const activeLeft = s.leftBoardMode ?? s.boardMode ?? "pdf";
+      const activeRight = s.rightBoardMode ?? s.boardMode ?? "pdf";
+      return {
+        ...s,
+        strokesByMode: nextByMode,
+        strokesByPage: nextByMode[activeLeft] ?? s.strokesByPage,
+        rightStrokesByPage: nextByMode[activeRight] ?? s.rightStrokesByPage,
+      };
+    }
+
+    const source = s[key];
+    return { ...s, [key]: { ...source, [page]: updateFn(source[page] ?? []) } };
+  };
 
   const hostActions = {
     setPage: (page: number) => emitHost("host:setPage", { page }),
     // Optimistik: local ekranga darhol qo'shiladi (socket round-trip'ni
-    // kutmasdan) — shuning uchun ustoz o'zi chizganda chiziq "yo'qolib
-    // qayta paydo bo'lish" holati bo'lmaydi. Server javobi kelganda
+    // kutmasdan) — shuning uchun ustoz o'zi chizganda chiziq «yo'qolib
+    // qayta paydo bo'lish» holati bo'lmaydi. Server javobi kelganda
     // stroke:add handleri id bo'yicha dublikatni tashlab yuboradi.
-    sendStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
-      if (pane === "right") {
-        setState((s) => ({ ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [page]: [...(s.rightStrokesByPage[page] ?? []), stroke] } }));
-      } else {
-        setState((s) => {
-          const existing = s.strokesByPage[page] ?? [];
-          if (existing.some((x) => x.id === stroke.id)) return s;
-          return { ...s, strokesByPage: { ...s.strokesByPage, [page]: [...existing, stroke] } };
-        });
-      }
-      emitHost("host:stroke", { page, stroke, pane, mode });
+    sendStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      // Shape/text transform hali RAF queue'da turgan paytda yangi connector
+      // yuborilsa server avval yangi stroke'ni, keyin eski transformni ko'rib
+      // bog'langan obyektlarni rollback qilishi mumkin. Oldingi mutatsiyalarni
+      // tartib bilan jo'natib bo'lgachgina yangi stroke qo'shamiz.
+      flushHostEmits();
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) => {
+        if (list.some((x) => x.id === stroke.id)) return list;
+        return [...list, stroke];
+      }));
+      emitHost("host:stroke", { page, stroke, pane, mode, groupId });
     },
     moveStroke: (page: number, strokeId: string, x: number, y: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
-      setState((s) => {
-        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-        const source = s[key];
-        const next = (source[page] ?? []).map((stroke) => stroke.id === strokeId ? { ...stroke, points: moveStrokePoints(stroke, x, y) } : stroke);
-        return { ...s, [key]: { ...source, [page]: next } };
-      });
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
+        list.map((stroke) => stroke.id === strokeId ? { ...stroke, points: moveStrokePoints(stroke, x, y) } : stroke)
+      ));
       emitHostThrottled(`moveStroke:${strokeId}`, "host:moveStroke", { page, strokeId, x, y, pane, mode, groupId });
     },
     updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
-      setState((s) => {
-        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-        const source = s[key];
-        const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
-        return { ...s, [key]: { ...source, [page]: next } };
-      });
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
+        list.map((item) => item.id === stroke.id ? stroke : item)
+      ));
       emitHostThrottled(`updateTextStroke:${stroke.id}`, "host:updateTextStroke", { page, stroke, pane, mode, groupId });
     },
     updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
-      setState((s) => {
-        const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-        const source = s[key];
-        const next = (source[page] ?? []).map((item) => item.id === stroke.id ? stroke : item);
-        return { ...s, [key]: { ...source, [page]: next } };
-      });
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
+        list.map((item) => item.id === stroke.id ? stroke : item)
+      ));
       emitHostThrottled(`updateShapeStroke:${stroke.id}`, "host:updateShapeStroke", { page, stroke, pane, mode, groupId });
     },
     // MUHIM: bu yerda optimistik local o'zgartirish YO'Q — "forward"/"backward"
@@ -381,30 +418,32 @@ export function useClassroomSession(
     reorderStroke: (page: number, strokeIds: string[], op: "front" | "back" | "forward" | "backward", pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
       emitHost("host:reorderStroke", { page, strokeIds, op, pane, mode });
     },
-    undo: () => emitHost("host:undo"),
-    redo: () => emitHost("host:redo"),
+    undo: () => {
+      flushHostEmits();
+      emitHost("host:undo");
+    },
+    redo: () => {
+      flushHostEmits();
+      emitHost("host:redo");
+    },
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
     // darhol o'chiradi, keyin serverga ID bilan yuboradi.
     eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
-      const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-      setState((s) => ({
-        ...s,
-        [key]: { ...s[key], [page]: (s[key][page] ?? []).filter((x) => x.id !== strokeId) },
-      }));
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
+        list.filter((x) => x.id !== strokeId)
+      ));
       emitHost("host:eraseStroke", { page, strokeId, pane, mode, groupId });
     },
     // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
     // yangi chizmalar bilan optimistik almashtiradi.
     splitStroke: (page: number, strokeId: string, replacements: CsStroke[], pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
-      const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-      setState((s) => {
-        const existing = s[key][page] ?? [];
-        const idx = existing.findIndex((x) => x.id === strokeId);
-        if (idx === -1) return s;
-        const next = [...existing];
+      setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) => {
+        const idx = list.findIndex((x) => x.id === strokeId);
+        if (idx === -1) return list;
+        const next = [...list];
         next.splice(idx, 1, ...replacements);
-        return { ...s, [key]: { ...s[key], [page]: next } };
-      });
+        return next;
+      }));
       emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode });
     },
     clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:clearPage", { page, pane, mode }),

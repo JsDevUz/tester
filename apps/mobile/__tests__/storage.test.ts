@@ -1,0 +1,79 @@
+const mockGetItem = jest.fn();
+const mockSetItem = jest.fn();
+const mockRemoveItem = jest.fn();
+
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: (...args: unknown[]) => mockGetItem(...args),
+  setItem: (...args: unknown[]) => mockSetItem(...args),
+  removeItem: (...args: unknown[]) => mockRemoveItem(...args),
+}));
+
+import {storage, cached} from '../src/lib/storage';
+
+describe('storage', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('prefixes keys and JSON-encodes values on set', async () => {
+    mockSetItem.mockResolvedValueOnce(undefined);
+    await storage.set('session', {token: 'abc'});
+    expect(mockSetItem).toHaveBeenCalledWith(
+      '@tester-mobile:session',
+      JSON.stringify({token: 'abc'}),
+    );
+  });
+
+  it('returns null when nothing is stored', async () => {
+    mockGetItem.mockResolvedValueOnce(null);
+    await expect(storage.get('missing')).resolves.toBeNull();
+  });
+
+  it('returns null instead of throwing when stored JSON is corrupt', async () => {
+    mockGetItem.mockResolvedValueOnce('{not-json');
+    await expect(storage.get('broken')).resolves.toBeNull();
+  });
+
+  it('prefixes keys on remove', async () => {
+    mockRemoveItem.mockResolvedValueOnce(undefined);
+    await storage.remove('session');
+    expect(mockRemoveItem).toHaveBeenCalledWith('@tester-mobile:session');
+  });
+});
+
+describe('cached', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
+  it('fetches fresh data and caches it, marking the result as not stale', async () => {
+    mockSetItem.mockResolvedValueOnce(undefined);
+    const request = jest.fn().mockResolvedValueOnce({items: [1, 2, 3]});
+
+    const result = await cached('courses', request);
+
+    expect(result).toEqual({data: {items: [1, 2, 3]}, stale: false});
+    expect(mockSetItem).toHaveBeenCalledWith(
+      '@tester-mobile:cache:courses',
+      expect.stringContaining('"items":[1,2,3]'),
+    );
+  });
+
+  it('falls back to a cached snapshot and marks it stale when the request fails', async () => {
+    const snapshot = {data: {items: ['cached']}, savedAt: 1000};
+    mockGetItem.mockResolvedValueOnce(JSON.stringify(snapshot));
+    const request = jest.fn().mockRejectedValueOnce(new Error('offline'));
+
+    const result = await cached('courses', request);
+
+    expect(result).toEqual({data: {items: ['cached']}, stale: true});
+  });
+
+  it('rethrows the original error when the request fails and there is no cached snapshot', async () => {
+    mockGetItem.mockResolvedValueOnce(null);
+    const error = new Error('offline, no cache');
+    const request = jest.fn().mockRejectedValueOnce(error);
+
+    await expect(cached('courses', request)).rejects.toBe(error);
+  });
+});

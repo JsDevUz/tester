@@ -12,9 +12,17 @@ import {
   AlignJustify,
   AlignLeft,
   AlignRight,
+  AlignVerticalJustifyCenter,
+  AlignVerticalJustifyEnd,
+  AlignVerticalJustifyStart,
+  Bold,
   BringToFront,
+  Check,
+  ChevronDown,
   ChevronsDown,
   ChevronsUp,
+  ChevronsUpDown,
+  Circle,
   Columns2,
   Copy,
   Grid3x3,
@@ -29,6 +37,8 @@ import {
   SendToBack,
   Square,
   Trash2,
+  Type,
+  X,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -61,6 +71,7 @@ import {
   type ShapeStyle,
 } from "./classroomCanvasText";
 import { drawStroke } from "./classroomCanvasDraw";
+import { connectorCurvePoint, nearestShapeBinding, resolveConnector, shapeAnchor } from "./classroomShapeBindings";
 import {
   eraseHitRadius,
   eraseNearPoint,
@@ -76,6 +87,8 @@ const MAX_DPR = 3.5;
 // 400%) canvas juda katta bo'lib brauzer GPU xotirasini to'ldirib qo'yadi.
 // 8192 = 4K/8K va Retina 3x+ displeylarda ultra-tiniq render ko'rsatkichi.
 const MAX_CANVAS_PX = 8192;
+const CONNECTOR_REVEAL_DISTANCE_PX = 44;
+const CONNECTOR_SNAP_DISTANCE_PX = 14;
 
 // To'rtburchak/doira asboblari uchun joriy uslub — Excalidraw'dagi
 // "current item style" ga o'xshash: yangi shape shu qiymatlar bilan
@@ -161,8 +174,8 @@ interface Props {
     strokeIds: string[],
     op: "front" | "back" | "forward" | "backward",
   ) => void;
-  onStrokeComplete?: (page: number, stroke: CsStroke) => void;
-  onMoveStroke?: (page: number, strokeId: string, x: number, y: number) => void;
+  onStrokeComplete?: (page: number, stroke: CsStroke, groupId?: string) => void;
+  onMoveStroke?: (page: number, strokeId: string, x: number, y: number, groupId?: string) => void;
   onPaneMoveStroke?: (
     pane: "left" | "right",
     mode: CsBoardMode,
@@ -170,6 +183,7 @@ interface Props {
     strokeId: string,
     x: number,
     y: number,
+    groupId?: string,
   ) => void;
   onUpdateTextStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onPaneUpdateTextStroke?: (
@@ -177,12 +191,14 @@ interface Props {
     mode: CsBoardMode,
     page: number,
     stroke: CsStroke,
+    groupId?: string,
   ) => void;
   onPaneStrokeComplete?: (
     pane: "left" | "right",
     mode: CsBoardMode,
     page: number,
     stroke: CsStroke,
+    groupId?: string,
   ) => void;
   onPointerMove?: (
     page: number,
@@ -352,6 +368,7 @@ interface TextStylePanelProps {
   fontSize: number;
   fontWeight: 400 | 500 | 600 | 700;
   textAlign: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
   rotation?: number;
   style?: React.CSSProperties;
   onColorChange?: (color: string) => void;
@@ -359,132 +376,323 @@ interface TextStylePanelProps {
   onFontSizeChange: (fontSize: number) => void;
   onFontWeightChange: (fontWeight: 400 | 500 | 600 | 700) => void;
   onTextAlignChange: (textAlign: "left" | "center" | "right") => void;
+  onVerticalAlignChange?: (verticalAlign: "top" | "middle" | "bottom") => void;
   onReorder?: (op: "front" | "back" | "forward" | "backward") => void;
   onDelete?: () => void;
 }
 
 function TextStylePanel({
-  fontFamily,
-  fontSize,
-  fontWeight,
-  textAlign,
+  color = "#000000",
+  fontFamily = "Inter",
+  fontSize = 24,
+  fontWeight = 600,
+  textAlign = "left",
+  verticalAlign = "middle",
   rotation: _rotation = 0,
   style: customStyle,
+  onColorChange,
   onFontFamilyChange,
   onFontSizeChange,
   onFontWeightChange,
   onTextAlignChange,
+  onVerticalAlignChange,
   onReorder,
   onDelete,
 }: TextStylePanelProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+  const toggleMenu = (menu: string) => {
+    setActiveMenu((prev) => (prev === menu ? null : menu));
+  };
+
+  const fontFamilyOpen = activeMenu === "fontFamily";
+  const fontSizeOpen = activeMenu === "fontSize";
+  const textAlignOpen = activeMenu === "textAlign";
+  const textColorOpen = activeMenu === "textColor";
+  const moreOpen = activeMenu === "more";
+
   const panelRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!moreOpen) return;
-    const handler = (e: Event) => {
+    if (!activeMenu) return;
+    const handler = (e: MouseEvent | TouchEvent | PointerEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
+        setActiveMenu(null);
       }
     };
-    document.addEventListener("pointerdown", handler, true);
-    return () => document.removeEventListener("pointerdown", handler, true);
-  }, [moreOpen]);
+    window.addEventListener("pointerdown", handler);
+    return () => window.removeEventListener("pointerdown", handler);
+  }, [activeMenu]);
 
   return (
     <div
       ref={panelRef}
-      className="pointer-events-auto absolute z-50 flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-gray-900 shadow-xl"
+      className="pointer-events-auto absolute z-50 flex items-center gap-1 rounded-2xl border border-gray-200/90 bg-white px-2 py-1.5 text-gray-900 shadow-2xl select-none"
       style={{
         ...customStyle,
       }}
       onPointerDown={(event) => event.stopPropagation()}
-      onPointerMove={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
-      {/* Font Family Selector */}
-      <select
-        aria-label="Font family"
-        value={fontFamily}
-        onChange={(event) => onFontFamilyChange(event.target.value as CsFontFamily)}
-        className="h-7 rounded-xl border border-gray-200 bg-gray-50 px-2.5 text-xs font-semibold text-gray-800 outline-none focus:border-indigo-500 cursor-pointer"
-      >
-        {FONT_FAMILY_OPTIONS.map((font) => (
-          <option key={font} value={font} className="bg-white text-gray-900 font-medium">
-            {font === "Comic Sans MS" ? "Comic Sans" : font}
-          </option>
-        ))}
-      </select>
-
-      <div className="h-4 w-px bg-gray-200" />
-
-      {/* Font Size Preset Buttons */}
-      <div className="flex items-center gap-0.5">
-        {FONT_SIZE_PRESETS.map((preset) => (
-          <button
-            key={preset.label}
-            type="button"
-            onClick={() => onFontSizeChange(preset.size)}
-            className={`flex h-7 px-2.5 items-center justify-center rounded-xl text-xs font-bold transition-all ${fontSize === preset.size
-              ? "bg-gray-900 text-white "
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-          >
-            {preset.label}
-          </button>
-        ))}
-      </div>
-
-      <div className="h-4 w-px bg-gray-200" />
-
-      {/* Text Alignment */}
-      <div className="flex items-center gap-0.5">
-        {TEXT_ALIGN_OPTIONS.map(({ value, icon: Icon }) => (
-          <button
-            key={value}
-            type="button"
-            onClick={() => onTextAlignChange(value)}
-            className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${textAlign === value
-              ? "bg-gray-900 text-white "
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-          >
-            <Icon size={14} />
-          </button>
-        ))}
-      </div>
-
-      <div className="h-4 w-px bg-gray-200" />
-
-      {/* Bold Toggle */}
-      <button
-        type="button"
-        onClick={() => onFontWeightChange(fontWeight === 700 ? 400 : 700)}
-        className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-black transition-all ${fontWeight === 700
-          ? "bg-gray-900 text-white "
-          : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-          }`}
-        title="Bold"
-      >
-        B
-      </button>
-
-      <div className="h-4 w-px bg-gray-200" />
-
-      {/* More ... Dropdown Button */}
+      {/* 1. Font Family Dropdown */}
       <div className="relative">
         <button
           type="button"
-          onClick={() => setMoreOpen((prev) => !prev)}
-          className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${moreOpen ? "bg-indigo-600 text-white " : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            }`}
+          onClick={() => toggleMenu("fontFamily")}
+          className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+            fontFamilyOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+          }`}
+          title="Shrift"
         >
-          <MoreHorizontal size={16} />
+          <span className="truncate max-w-[70px]">{fontFamily}</span>
+          <ChevronDown size={12} className="text-gray-400" />
+        </button>
+        {fontFamilyOpen && (
+          <div
+            className="absolute left-0 top-full mt-2 w-36 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {FONT_FAMILY_OPTIONS.map((f) => (
+              <button
+                key={f}
+                type="button"
+                onClick={() => {
+                  onFontFamilyChange(f);
+                  setActiveMenu(null);
+                }}
+                className={`flex items-center px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
+                  fontFamily === f ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                }`}
+                style={{ fontFamily: f }}
+              >
+                {f}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 2. Font Size Dropdown Stepper */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleMenu("fontSize")}
+          className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+            fontSizeOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+          }`}
+          title="Shrift o'lchami"
+        >
+          <span>{fontSize}</span>
+          <ChevronsUpDown size={12} className="text-gray-400" />
+        </button>
+        {fontSizeOpen && (
+          <div
+            className="absolute left-0 top-full mt-2 w-24 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {[12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 64].map((sz) => (
+              <button
+                key={sz}
+                type="button"
+                onClick={() => {
+                  onFontSizeChange(sz);
+                  setActiveMenu(null);
+                }}
+                className={`flex items-center justify-between px-2.5 py-1 rounded-xl text-xs transition-colors cursor-pointer ${
+                  fontSize === sz ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                }`}
+              >
+                <span>{sz}px</span>
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* 3. Bold Button */}
+      <button
+        type="button"
+        onClick={() => onFontWeightChange(fontWeight >= 600 ? 400 : 700)}
+        className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+          fontWeight >= 600 ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+        }`}
+        title="Qalin (Bold)"
+      >
+        <Bold size={15} />
+      </button>
+
+      {/* 4. Text Alignment Popover */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleMenu("textAlign")}
+          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+            textAlignOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+          }`}
+          title="Matnni tekislash (Alignment)"
+        >
+          {textAlign === "left" ? (
+            <AlignLeft size={16} />
+          ) : textAlign === "right" ? (
+            <AlignRight size={16} />
+          ) : (
+            <AlignCenter size={16} />
+          )}
+        </button>
+        {textAlignOpen && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {/* Horizontal align row */}
+            <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+              <button
+                type="button"
+                onClick={() => {
+                  onTextAlignChange("left");
+                }}
+                className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                  textAlign === "left" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="Chapga"
+              >
+                <AlignLeft size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onTextAlignChange("center");
+                }}
+                className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                  textAlign === "center" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="O'rtaga"
+              >
+                <AlignCenter size={14} />
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  onTextAlignChange("right");
+                }}
+                className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                  textAlign === "right" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                }`}
+                title="O'ngga"
+              >
+                <AlignRight size={14} />
+              </button>
+            </div>
+
+            {/* Vertical align row */}
+            {onVerticalAlignChange && (
+              <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                <button
+                  type="button"
+                  onClick={() => onVerticalAlignChange("top")}
+                  className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                    verticalAlign === "top" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Tepaga"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="4" y1="4" x2="20" y2="4" />
+                    <path d="M12 20V8M8 12l4-4 4 4" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onVerticalAlignChange("middle")}
+                  className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                    verticalAlign === "middle" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Markazga"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="4" y1="12" x2="20" y2="12" />
+                    <path d="M12 4v4M12 16v4" />
+                  </svg>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => onVerticalAlignChange("bottom")}
+                  className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                    verticalAlign === "bottom" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                  }`}
+                  title="Pastga"
+                >
+                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="4" y1="20" x2="20" y2="20" />
+                    <path d="M12 4v12M8 12l4 4 4-4" />
+                  </svg>
+                </button>
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+
+      {/* 5. Text Color Button (`A` with color bar) */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleMenu("textColor")}
+          className={`flex flex-col items-center justify-center h-8 w-8 rounded-xl transition-all cursor-pointer ${
+            textColorOpen ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+          }`}
+          title="Matn rangi"
+        >
+          <span className="text-xs font-bold leading-none text-gray-800">A</span>
+          <div
+            className="h-1 w-4 rounded-full mt-0.5"
+            style={{ backgroundColor: color || "#000000" }}
+          />
+        </button>
+        {textColorOpen && (
+          <div
+            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            {SHAPE_STROKE_COLORS.map((c) => (
+              <button
+                key={c}
+                type="button"
+                onClick={() => {
+                  onColorChange?.(c);
+                  setActiveMenu(null);
+                }}
+                className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 cursor-pointer ${
+                  color === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                }`}
+                style={{ backgroundColor: c }}
+              />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="h-4 w-px bg-gray-200" />
+
+      {/* 6. More (Order & Delete) Button */}
+      <div className="relative">
+        <button
+          type="button"
+          onClick={() => toggleMenu("more")}
+          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+            moreOpen ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+          title="Qatlamlar va amallar"
+        >
+          <MoreVertical size={16} />
         </button>
 
-        {/* More Menu Dropdown Popup */}
         {moreOpen && (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+          <div
+            className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl text-xs z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
               Qatlamlar (Order)
             </div>
             <div className="grid grid-cols-4 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
@@ -495,9 +703,9 @@ function TextStylePanel({
                   title={label}
                   onClick={() => {
                     onReorder?.(value);
-                    setMoreOpen(false);
+                    setActiveMenu(null);
                   }}
-                  className="flex h-7 w-full items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 transition-colors"
+                  className="flex h-8 items-center justify-center rounded-lg text-gray-600 hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all cursor-pointer"
                 >
                   <Icon size={14} />
                 </button>
@@ -506,14 +714,14 @@ function TextStylePanel({
 
             {onDelete && (
               <>
-                <div className="h-px bg-gray-200 my-0.5" />
+                <div className="h-px bg-gray-100" />
                 <button
                   type="button"
                   onClick={() => {
                     onDelete();
-                    setMoreOpen(false);
+                    setActiveMenu(null);
                   }}
-                  className="flex w-full items-center gap-2 rounded-xl px-2.5 py-1.5 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/15 transition-colors font-semibold"
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors font-medium text-xs cursor-pointer"
                 >
                   <Trash2 size={14} />
                   <span>O'chirish</span>
@@ -629,20 +837,85 @@ function EdgeIcon({ rounded }: { rounded: boolean }) {
   );
 }
 
+const SINGLE_ARROW_HEAD_OPTIONS = [
+  {
+    id: "none",
+    title: "None",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="12" x2="20" y2="12" />
+      </svg>
+    ),
+  },
+  {
+    id: "arrow",
+    title: "O'q (Arrow)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M4 12h14M13 7l5 5-5 5" />
+      </svg>
+    ),
+  },
+  {
+    id: "arrow-filled",
+    title: "To'ldirilgan o'q (Triangle)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="12" x2="14" y2="12" />
+        <polygon points="13,7 20,12 13,17" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "circle",
+    title: "Doira (Circle)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="12" x2="14" y2="12" />
+        <circle cx="17" cy="12" r="3.5" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "diamond",
+    title: "Romb (Diamond)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="12" x2="14" y2="12" />
+        <polygon points="14,12 17,8 20,12 17,16" fill="currentColor" />
+      </svg>
+    ),
+  },
+  {
+    id: "bar",
+    title: "Chiziqcha (Bar)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round">
+        <line x1="4" y1="12" x2="18" y2="12" />
+        <line x1="18" y1="6" x2="18" y2="18" />
+      </svg>
+    ),
+  },
+];
 
-
-const ARROWHEAD_PREVIEWS = [
-  { id: "none", title: "O'qsiz", endHead: "none", startHead: "none", svg: <line x1="4" y1="12" x2="20" y2="12" /> },
-  { id: "arrow", title: "O'qli", endHead: "arrow", startHead: "none", svg: <path d="M4 12h15M14 6l6 6-6 6" /> },
-  { id: "double-arrow", title: "Ikki tomonlama", endHead: "arrow", startHead: "arrow", svg: <path d="M9 6L3 12l6 6M15 6l6 6-6 6M3 12h18" /> },
-  { id: "arrow-filled", title: "To'ldirilgan o'q", endHead: "arrow-filled", startHead: "none", svg: <><line x1="4" y1="12" x2="16" y2="12" /><polygon points="15,6 21,12 15,18" fill="currentColor" /></> },
-  { id: "circle", title: "Nuqtali", endHead: "circle", startHead: "none", svg: <><line x1="4" y1="12" x2="16" y2="12" /><circle cx="18" cy="12" r="3.5" fill="currentColor" /></> },
-  { id: "diamond", title: "Romb", endHead: "diamond", startHead: "none", svg: <><line x1="4" y1="12" x2="15" y2="12" /><polygon points="15,12 18,8 21,12 18,16" fill="currentColor" /></> },
-  { id: "bar", title: "Chiziqcha", endHead: "bar", startHead: "none", svg: <><line x1="4" y1="12" x2="19" y2="12" /><line x1="19" y1="6" x2="19" y2="18" /></> },
+const SHAPE_STROKE_COLORS = [
+  "#000000",
+  "#ef4444",
+  "#f97316",
+  "#eab308",
+  "#22c55e",
+  "#06b6d4",
+  "#3b82f6",
+  "#6366f1",
+  "#a855f7",
+  "#ec4899",
+  "#71717a",
+  "#ffffff",
 ];
 
 interface ShapeStylePanelProps {
   color?: string;
+  textColor?: string;
   backgroundColor: string;
   fillStyle: CsFillStyle;
   strokeWidth: number;
@@ -655,452 +928,470 @@ interface ShapeStylePanelProps {
   rotation?: number;
   strokeTool?: CsTool;
   style?: React.CSSProperties;
-  onColorChange?: (color: string) => void;
+
+  // Text props
+  text?: string;
+  fontFamily?: CsFontFamily;
+  fontSize?: number;
+  fontWeight?: 400 | 500 | 600 | 700;
+  textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
+
+  onColorChange?: (color: string, strokeStyle?: CsStrokeStyle) => void;
+  onTextColorChange?: (color: string) => void;
   onBackgroundColorChange: (color: string) => void;
   onFillStyleChange: (fillStyle: CsFillStyle) => void;
   onStrokeWidthChange: (width: number) => void;
   onStrokeStyleChange: (strokeStyle: CsStrokeStyle) => void;
   onLineShapeChange?: (shape: "straight" | "curved" | "elbow") => void;
   onArrowHeadChange?: (endHead: string, startHead: string) => void;
+  onSwapDirection?: () => void;
   onEdgesChange: (edges: CsEdges) => void;
   onOpacityChange: (opacity: number) => void;
   onToolChange?: (tool: CsTool) => void;
   onReorder: (op: "front" | "back" | "forward" | "backward") => void;
+  onDelete?: () => void;
+
+  onFontFamilyChange?: (fontFamily: CsFontFamily) => void;
+  onFontSizeChange?: (fontSize: number) => void;
+  onVerticalAlignChange?: (verticalAlign: "top" | "middle" | "bottom") => void;
 }
 
 function ShapeStylePanel({
-  backgroundColor,
+  color = "#000000",
+  textColor,
+  backgroundColor = "transparent",
   fillStyle = "solid",
-  strokeWidth,
-  strokeStyle,
+  strokeWidth = 2,
+  strokeStyle = "solid",
   lineShape = "straight",
   startArrowHead = "none",
   endArrowHead = "arrow",
-  edges,
-  opacity,
+  edges = "round",
+  opacity = 100,
   rotation: _rotation = 0,
-  strokeTool,
+  strokeTool = "rectangle",
   style: customStyle,
+
+  // Text props
+  text: _text = "",
+  fontFamily = "Inter",
+  fontSize = 24,
+  fontWeight = 600,
+  textAlign = "center",
+  verticalAlign = "middle",
+
+  onColorChange,
+  onTextColorChange,
   onBackgroundColorChange,
   onFillStyleChange,
   onStrokeWidthChange,
   onStrokeStyleChange,
   onLineShapeChange,
   onArrowHeadChange,
+  onSwapDirection,
   onEdgesChange,
   onOpacityChange,
-  onToolChange: _onToolChange,
+  onToolChange,
   onReorder,
+  onDelete,
+
+  onFontFamilyChange,
+  onFontSizeChange,
+  onFontWeightChange,
+  onTextAlignChange,
+  onVerticalAlignChange,
 }: ShapeStylePanelProps) {
-  const [moreOpen, setMoreOpen] = useState(false);
-  const [lineThicknessOpen, setLineThicknessOpen] = useState(false);
-  const [arrowHeadOpen, setArrowHeadOpen] = useState(false);
-  const [opacityOpen, setOpacityOpen] = useState(false);
+  const [activeMenu, setActiveMenu] = useState<string | null>(null);
+
+  const toggleMenu = (menu: string) => {
+    setActiveMenu((prev) => (prev === menu ? null : menu));
+  };
+
+  const startArrowOpen = activeMenu === "startArrow";
+  const endArrowOpen = activeMenu === "endArrow";
+  const lineTypeOpen = activeMenu === "lineType";
+  const arrowColorOpen = activeMenu === "arrowColor";
+  const shapeToolOpen = activeMenu === "shapeTool";
+  const fontFamilyOpen = activeMenu === "fontFamily";
+  const fontSizeOpen = activeMenu === "fontSize";
+  const textAlignOpen = activeMenu === "textAlign";
+  const textColorOpen = activeMenu === "textColor";
+  const borderStyleOpen = activeMenu === "borderStyle";
+  const fillColorOpen = activeMenu === "fillColor";
+  const opacityOpen = activeMenu === "opacity";
+  const moreOpen = activeMenu === "more";
+
   const isLineOrArrow = strokeTool === "line" || strokeTool === "arrow";
   const panelRef = useRef<HTMLDivElement>(null);
 
-  const toggleLineThickness = () => {
-    setLineThicknessOpen((prev) => {
-      if (!prev) {
-        setMoreOpen(false);
-        setArrowHeadOpen(false);
-        setOpacityOpen(false);
-      }
-      return !prev;
-    });
-  };
-
-  const toggleArrowHead = () => {
-    setArrowHeadOpen((prev) => {
-      if (!prev) {
-        setLineThicknessOpen(false);
-        setMoreOpen(false);
-        setOpacityOpen(false);
-      }
-      return !prev;
-    });
-  };
-
-  const toggleOpacity = () => {
-    setOpacityOpen((prev) => {
-      if (!prev) {
-        setLineThicknessOpen(false);
-        setArrowHeadOpen(false);
-        setMoreOpen(false);
-      }
-      return !prev;
-    });
-  };
-
-  const toggleMore = () => {
-    setMoreOpen((prev) => {
-      if (!prev) {
-        setLineThicknessOpen(false);
-        setArrowHeadOpen(false);
-        setOpacityOpen(false);
-      }
-      return !prev;
-    });
-  };
-
-  const anyOpen = moreOpen || lineThicknessOpen || arrowHeadOpen || opacityOpen;
   useEffect(() => {
-    if (!anyOpen) return;
-    const handler = (e: Event) => {
+    if (!activeMenu) return;
+    const handler = (e: MouseEvent | TouchEvent | PointerEvent) => {
       if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
-        setMoreOpen(false);
-        setLineThicknessOpen(false);
-        setArrowHeadOpen(false);
-        setOpacityOpen(false);
+        setActiveMenu(null);
       }
     };
-    document.addEventListener("pointerdown", handler, true);
-    return () => document.removeEventListener("pointerdown", handler, true);
-  }, [anyOpen]);
+    window.addEventListener("pointerdown", handler);
+    return () => window.removeEventListener("pointerdown", handler);
+  }, [activeMenu]);
+
+  const renderHeadPreview = (head: string | undefined, isStart = false) => {
+    if (!head || head === "none") {
+      return <span className="text-xs font-semibold text-gray-700 px-1">None</span>;
+    }
+    const opt = SINGLE_ARROW_HEAD_OPTIONS.find((o) => o.id === head);
+    if (!opt) return <span className="text-xs font-semibold text-gray-700 px-1">None</span>;
+    return (
+      <div className={`flex items-center justify-center ${isStart ? "scale-x-[-1]" : ""}`}>
+        {opt.svg}
+      </div>
+    );
+  };
 
   return (
     <div
       ref={panelRef}
-      className="pointer-events-auto absolute z-40 flex items-center gap-1.5 rounded-full border border-gray-200/90 bg-white px-3.5 py-1.5 text-gray-900 shadow-xl"
-      style={{
-        ...customStyle,
-      }}
+      className="pointer-events-auto absolute z-40 flex items-center gap-1 rounded-2xl border border-gray-200/90 bg-white px-2 py-1.5 text-gray-900 shadow-2xl select-none"
+      style={{ ...customStyle }}
       onPointerDown={(event) => event.stopPropagation()}
-      onPointerMove={(event) => event.stopPropagation()}
+      onMouseDown={(event) => event.stopPropagation()}
+      onClick={(event) => event.stopPropagation()}
     >
-      {/* Line Thickness & Style Dropdown Button for Line/Arrow */}
-      {isLineOrArrow && (
-        <div className="relative">
+      {isLineOrArrow ? (
+        /* Miro-style Arrow/Line Toolbar */
+        <>
+          {/* 1. Start Arrowhead Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("startArrow")}
+              className={`flex h-8 min-w-10 items-center justify-center px-2 rounded-xl transition-all cursor-pointer ${
+                startArrowOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Boshlanish o'q uchi (Line start)"
+            >
+              {renderHeadPreview(startArrowHead, true)}
+            </button>
+
+            {startArrowOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+                  Line start
+                </div>
+                {SINGLE_ARROW_HEAD_OPTIONS.map((opt) => {
+                  const isSelected = (startArrowHead || "none") === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onArrowHeadChange?.(endArrowHead ?? (strokeTool === "line" ? "none" : "arrow"), opt.id);
+                        setActiveMenu(null);
+                      }}
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        isSelected ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="flex h-5 w-5 items-center justify-center scale-x-[-1]">
+                        {opt.svg}
+                      </div>
+                      <span>{opt.title}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* 2. Swap Direction Button */}
           <button
             type="button"
-            onClick={toggleLineThickness}
-            className={`flex h-7 items-center gap-1.5 px-2.5 rounded-xl transition-all ${lineThicknessOpen
-              ? "bg-indigo-600 text-white "
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-semibold"
-              }`}
-            title="Chiziq qalinligi va uslubi"
+            onClick={() => {
+              if (onSwapDirection) {
+                onSwapDirection();
+              } else {
+                const nextStart = endArrowHead ?? (strokeTool === "line" ? "none" : "arrow");
+                const nextEnd = startArrowHead ?? "none";
+                onArrowHeadChange?.(nextEnd, nextStart);
+              }
+            }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+            title="Yo'nalishni almashtirish (Swap direction)"
           >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={Math.max(1.5, Math.min(4, strokeWidth / 2))} strokeLinecap="round">
-              {strokeStyle === "dashed" ? (
-                <path d="M4 12h4M12 12h4M20 12h4" />
-              ) : strokeStyle === "dotted" ? (
-                <path d="M4 12h.01M10 12h.01M16 12h.01" />
-              ) : (
-                <path d="M4 12h16" />
-              )}
-            </svg>
-            <span className="text-xs font-bold text-gray-800">{strokeWidth}px</span>
+            <RotateCw size={15} />
           </button>
 
-          {/* Line Thickness & Style Popover Dropdown */}
-          {lineThicknessOpen && (
-            <div className="absolute left-0 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl text-xs z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100">
-              {/* Line thickness slider */}
-              <div className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between font-bold text-gray-700 text-xs">
-                  <span>Line thickness</span>
-                  <span className="text-indigo-600 font-bold">{strokeWidth}px</span>
+          {/* 3. End Arrowhead Dropdown */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("endArrow")}
+              className={`flex h-8 min-w-10 items-center justify-center px-2 rounded-xl transition-all cursor-pointer ${
+                endArrowOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Tugash o'q uchi (Line end)"
+            >
+              {renderHeadPreview(endArrowHead, false)}
+            </button>
+
+            {endArrowOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+                  Line end
                 </div>
-                <input
-                  type="range"
-                  min={1}
-                  max={16}
-                  step={1}
-                  value={strokeWidth}
-                  onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
-                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
-                />
+                {SINGLE_ARROW_HEAD_OPTIONS.map((opt) => {
+                  const isSelected = (endArrowHead ?? (strokeTool === "line" ? "none" : "arrow")) === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onArrowHeadChange?.(opt.id, startArrowHead ?? "none");
+                        setActiveMenu(null);
+                      }}
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                        isSelected ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                      }`}
+                    >
+                      <div className="flex h-5 w-5 items-center justify-center">
+                        {opt.svg}
+                      </div>
+                      <span>{opt.title}</span>
+                    </button>
+                  );
+                })}
               </div>
+            )}
+          </div>
 
-              <div className="h-px bg-gray-200" />
+          <div className="h-4 w-px bg-gray-200" />
 
-              {/* Line style options */}
-              <div className="flex flex-col gap-1.5">
-                <div className="font-bold text-gray-700 text-xs">Line style</div>
-                <div className="grid grid-cols-3 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+          {/* 4. Type Button (Line Shape, Thickness, Style Popover) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("lineType")}
+              className={`flex flex-col items-center justify-center h-8 px-2.5 rounded-xl transition-all cursor-pointer ${
+                lineTypeOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Chiziq turi va qalinligi (Type)"
+            >
+              <div className="h-3.5 flex items-center">
+                {lineShape === "elbow" ? (
+                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                    <polyline points="3,4 3,14 21,14" />
+                  </svg>
+                ) : lineShape === "curved" ? (
+                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <path d="M3 14 Q 12 3, 21 14" />
+                  </svg>
+                ) : (
+                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <line x1="3" y1="14" x2="21" y2="4" />
+                  </svg>
+                )}
+              </div>
+              <span className="text-[9px] font-medium leading-none mt-0.5 text-gray-600">Type</span>
+            </button>
+
+            {lineTypeOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {/* Thickness Slider */}
+                <div className="flex flex-col gap-2">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                    <span>Qalinlik</span>
+                    <span className="font-bold text-indigo-600">{strokeWidth}px</span>
+                  </div>
+                  <div className="relative flex items-center py-1">
+                    <div className="absolute inset-x-0 h-1 bg-indigo-100 rounded-full" />
+                    <div className="absolute inset-x-0 flex justify-between px-1 pointer-events-none">
+                      {[1, 2, 4, 6, 8, 12, 16].map((step) => (
+                        <div
+                          key={step}
+                          className={`h-2 w-2 rounded-full transition-colors ${
+                            strokeWidth >= step ? "bg-indigo-600" : "bg-indigo-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={16}
+                      step={1}
+                      value={strokeWidth}
+                      onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
+                      className="relative z-10 w-full appearance-none bg-transparent cursor-pointer accent-indigo-600 h-4"
+                    />
+                  </div>
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                {/* Line Shape Row */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onLineShapeChange?.("straight")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      lineShape === "straight"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="To'g'ri chiziq"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="4" y1="19" x2="20" y2="5" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLineShapeChange?.("elbow")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      lineShape === "elbow"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="Burchakli chiziq (Stepped)"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                      <polyline points="4,6 4,18 20,18" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onLineShapeChange?.("curved")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      lineShape === "curved"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="Egri chiziq (Curved)"
+                  >
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <path d="M4 18 Q 12 4, 20 18" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Stroke Style Row */}
+                <div className="grid grid-cols-3 gap-2">
                   <button
                     type="button"
                     onClick={() => onStrokeStyleChange("solid")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "solid"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
                     title="Solid"
-                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "solid"
-                      ? "bg-gray-900 text-white "
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
-                      }`}
                   >
-                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="2.5">
-                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    <svg width="28" height="12" viewBox="0 0 28 12" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="2" y1="6" x2="26" y2="6" strokeLinecap="round" />
                     </svg>
                   </button>
                   <button
                     type="button"
                     onClick={() => onStrokeStyleChange("dashed")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "dashed"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
                     title="Dashed"
-                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "dashed"
-                      ? "bg-gray-900 text-white "
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
-                      }`}
                   >
-                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="2.5" strokeDasharray="5,3">
-                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    <svg width="28" height="12" viewBox="0 0 28 12" stroke="currentColor" strokeWidth="2.5" strokeDasharray="5,4">
+                      <line x1="2" y1="6" x2="26" y2="6" strokeLinecap="round" />
                     </svg>
                   </button>
                   <button
                     type="button"
                     onClick={() => onStrokeStyleChange("dotted")}
+                    className={`flex h-10 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "dotted"
+                        ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm"
+                        : "border-gray-200 hover:border-gray-300 hover:bg-gray-50 text-gray-700"
+                    }`}
                     title="Dotted"
-                    className={`flex h-8 items-center justify-center rounded-lg transition-colors ${strokeStyle === "dotted"
-                      ? "bg-gray-900 text-white "
-                      : "text-gray-600 hover:text-gray-900 hover:bg-gray-200/60"
-                      }`}
                   >
-                    <svg width="24" height="12" viewBox="0 0 24 12" stroke="currentColor" strokeWidth="3" strokeDasharray="1,4">
-                      <line x1="2" y1="6" x2="22" y2="6" strokeLinecap="round" />
+                    <svg width="28" height="12" viewBox="0 0 28 12" stroke="currentColor" strokeWidth="3" strokeDasharray="1,4">
+                      <line x1="2" y1="6" x2="26" y2="6" strokeLinecap="round" />
                     </svg>
                   </button>
                 </div>
               </div>
-
-            </div>
-          )}
-        </div>
-      )}
-
-      {isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
-
-      {/* Background Fill Colors (for Rect/Ellipse) */}
-      {!isLineOrArrow && (
-        <div className="flex items-center gap-1 px-1">
-          {SHAPE_BACKGROUND_COLORS.map((c) => (
-            <button
-              key={c}
-              type="button"
-              aria-label={`Fon rangi ${c}`}
-              onClick={() => onBackgroundColorChange(c)}
-              className={`h-5 w-5 rounded-full border border-gray-300 transition-transform hover:scale-110 ${backgroundColor === c ? "ring-2 ring-indigo-500 scale-105" : ""
-                }`}
-              style={
-                c === "transparent"
-                  ? {
-                    backgroundImage:
-                      "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
-                    backgroundSize: "6px 6px",
-                  }
-                  : { backgroundColor: c }
-              }
-            />
-          ))}
-        </div>
-      )}
-
-      {/* Fill Style Selector (To'ldirish for Rect/Ellipse) */}
-      {!isLineOrArrow && backgroundColor !== "transparent" && (
-        <div className="flex items-center gap-0.5">
-          {FILL_STYLE_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onFillStyleChange(option.value)}
-              aria-label={option.label}
-              title={option.label}
-              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${fillStyle === option.value
-                ? "bg-gray-900 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <FillStyleIcon style={option.value} />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
-
-      {/* Stroke Width */}
-      <div className="flex items-center gap-0.5">
-        {STROKE_WIDTH_OPTIONS.map((option) => (
-          <button
-            key={option.value}
-            type="button"
-            onClick={() => onStrokeWidthChange(option.value)}
-            className={`flex h-7 w-7 items-center justify-center rounded-xl text-xs font-bold transition-all ${strokeWidth === option.value
-              ? "bg-gray-900 text-white "
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-          >
-            {option.label}
-          </button>
-        ))}
-      </div>
-
-      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
-
-      {/* Stroke Style — only for shapes (line/arrow has it in thickness subpanel) */}
-      {!isLineOrArrow && (
-        <>
-          <div className="flex items-center gap-0.5">
-            {STROKE_STYLE_OPTIONS.map((option) => (
-              <button
-                key={option.value}
-                type="button"
-                onClick={() => onStrokeStyleChange(option.value)}
-                aria-label={option.label}
-                title={option.label}
-                className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${strokeStyle === option.value
-                  ? "bg-gray-900 text-white "
-                  : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                  }`}
-              >
-                <StrokeStyleIcon style={option.value} />
-              </button>
-            ))}
+            )}
           </div>
 
           <div className="h-4 w-px bg-gray-200" />
-        </>
-      )}
 
-      {/* Line Shape — in main panel for line/arrow */}
-      {isLineOrArrow && (
-        <>
-          <div className="h-4 w-px bg-gray-200" />
-          <div className="flex items-center gap-0.5">
-            <button
-              type="button"
-              onClick={() => onLineShapeChange?.("straight")}
-              title="To'g'ri chiziq"
-              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "straight"
-                ? "bg-gray-900 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <line x1="4" y1="20" x2="20" y2="4" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => onLineShapeChange?.("elbow")}
-              title="Burchakli chiziq"
-              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "elbow"
-                ? "bg-gray-900 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                <polyline points="4,6 4,18 20,18" />
-              </svg>
-            </button>
-            <button
-              type="button"
-              onClick={() => onLineShapeChange?.("curved")}
-              title="Egri chiziq"
-              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${lineShape === "curved"
-                ? "bg-gray-900 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
-                <path d="M4 18 Q 12 4, 20 18" />
-              </svg>
-            </button>
-          </div>
-          <div className="h-4 w-px bg-gray-200" />
-        </>
-      )}
-
-      {/* Arrowhead / Line Endings Dropdown Popover */}
-      {isLineOrArrow && (
-        <div className="relative">
-          <button
-            type="button"
-            onClick={toggleArrowHead}
-            className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${arrowHeadOpen
-              ? "bg-indigo-600 text-white "
-              : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-              }`}
-            title="O'q uchlari shakllari"
-          >
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-              <line x1="4" y1="12" x2="19" y2="12" />
-              <polyline points="13 6 19 12 13 18" />
-            </svg>
-          </button>
-
-          {/* Arrowhead Dropdown Popup Grid */}
-          {arrowHeadOpen && (
-            <div className="absolute left-0 top-full mt-2 w-60 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 grid grid-cols-4 gap-1.5 animate-in fade-in zoom-in-95 duration-100">
-              {ARROWHEAD_PREVIEWS.map((opt) => {
-                const defaultEnd = strokeTool === "line" ? "none" : "arrow";
-                const currentEnd = endArrowHead ?? defaultEnd;
-                const currentStart = startArrowHead ?? "none";
-                const isActive = currentEnd === opt.endHead && currentStart === opt.startHead;
-                return (
-                  <button
-                    key={opt.id}
-                    type="button"
-                    onClick={() => {
-                      onArrowHeadChange?.(opt.endHead, opt.startHead);
-                      setArrowHeadOpen(false);
-                    }}
-                    title={opt.title}
-                    className={`flex h-9 items-center justify-center rounded-xl transition-all ${isActive
-                      ? "bg-indigo-600 text-white  font-bold"
-                      : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                      }`}
-                  >
-                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
-                      {opt.svg}
-                    </svg>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Edges (for Rect/Ellipse) */}
-      {!isLineOrArrow && (
-        <div className="flex items-center gap-0.5">
-          {EDGES_OPTIONS.map((option) => (
-            <button
-              key={option.value}
-              type="button"
-              onClick={() => onEdgesChange(option.value)}
-              aria-label={option.label}
-              title={option.label}
-              className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${edges === option.value
-                ? "bg-gray-900 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-                }`}
-            >
-              <EdgeIcon rounded={option.value === "round"} />
-            </button>
-          ))}
-        </div>
-      )}
-
-      {!isLineOrArrow && <div className="h-4 w-px bg-gray-200" />}
-
-      {/* Opacity Range Slider Popover (for Rect/Ellipse) */}
-      {!isLineOrArrow && (
-        <>
+          {/* 5. Color Button */}
           <div className="relative">
             <button
               type="button"
-              onClick={toggleOpacity}
-              className={`flex h-7 items-center gap-1 px-2.5 rounded-xl transition-all ${opacityOpen
-                ? "bg-indigo-600 text-white "
-                : "text-gray-600 hover:bg-gray-100 hover:text-gray-900 font-semibold"
-                }`}
-              title="Shaffoflik (Opacity)"
+              onClick={() => toggleMenu("arrowColor")}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl hover:bg-gray-100 transition-colors p-1 cursor-pointer ${
+                arrowColorOpen ? "bg-gray-100" : ""
+              }`}
+              title="Rang"
             >
-              <span className="text-xs font-bold text-gray-800">{opacity}%</span>
+              <div
+                className="h-5 w-5 rounded-full border border-gray-300 shadow-sm transition-transform hover:scale-110"
+                style={{ backgroundColor: color || "#ef4444" }}
+              />
             </button>
 
-            {/* Opacity Range Slider Dropdown */}
+            {arrowColorOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {SHAPE_STROKE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      onColorChange?.(c);
+                      setActiveMenu(null);
+                    }}
+                    className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 cursor-pointer ${
+                      color === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 6. Opacity */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("opacity")}
+              className={`flex h-8 items-center gap-1 px-2 rounded-xl transition-all cursor-pointer ${
+                opacityOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Shaffoflik (Opacity)"
+            >
+              <span className="text-xs font-semibold text-gray-700">{opacity}%</span>
+            </button>
+
             {opacityOpen && (
-              <div className="absolute left-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100">
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
                 <div className="flex items-center justify-between text-gray-700 font-bold text-xs mb-1">
                   <span>Opacity</span>
                   <span className="text-indigo-600 font-bold">{opacity}%</span>
@@ -1117,26 +1408,573 @@ function ShapeStylePanel({
               </div>
             )}
           </div>
+        </>
+      ) : (
+        /* Miro-style Unified Shape Toolbar (Shape + Text inside shape) */
+        <>
+          {/* 1. Shape Switcher */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("shapeTool")}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+                shapeToolOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Shakl turini almashtirish"
+            >
+              {strokeTool === "ellipse" ? (
+                <Circle size={17} />
+              ) : (
+                <Square size={17} className={edges === "round" ? "rounded-xs" : ""} />
+              )}
+            </button>
+            {shapeToolOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-34 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToolChange?.("rectangle");
+                    setActiveMenu(null);
+                  }}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer ${
+                    strokeTool === "rectangle" ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Square size={15} />
+                  <span>To'rtburchak</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onToolChange?.("ellipse");
+                    setActiveMenu(null);
+                  }}
+                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer ${
+                    strokeTool === "ellipse" ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                  }`}
+                >
+                  <Circle size={15} />
+                  <span>Doira</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="h-4 w-px bg-gray-200" />
+
+          {/* 2. Font Family */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("fontFamily")}
+              className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
+                fontFamilyOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Shrift"
+            >
+              <span className="truncate max-w-[70px]">{fontFamily}</span>
+              <ChevronDown size={12} className="text-gray-400" />
+            </button>
+            {fontFamilyOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-36 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {FONT_FAMILY_OPTIONS.map((f) => (
+                  <button
+                    key={f}
+                    type="button"
+                    onClick={() => {
+                      onFontFamilyChange?.(f);
+                      setActiveMenu(null);
+                    }}
+                    className={`flex items-center px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
+                      fontFamily === f ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                    style={{ fontFamily: f }}
+                  >
+                    {f}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 3. Font Size */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("fontSize")}
+              className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
+                fontSizeOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              }`}
+              title="Shrift o'lchami"
+            >
+              <span>{fontSize}</span>
+              <ChevronsUpDown size={12} className="text-gray-400" />
+            </button>
+            {fontSizeOpen && (
+              <div
+                className="absolute left-0 top-full mt-2 w-24 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {[12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 64].map((sz) => (
+                  <button
+                    key={sz}
+                    type="button"
+                    onClick={() => {
+                      onFontSizeChange?.(sz);
+                      setActiveMenu(null);
+                    }}
+                    className={`flex items-center justify-between px-2.5 py-1 rounded-xl text-xs transition-colors cursor-pointer ${
+                      fontSize === sz ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                    }`}
+                  >
+                    <span>{sz}px</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* 4. Bold Button */}
+          <button
+            type="button"
+            onClick={() => onFontWeightChange?.(fontWeight >= 600 ? 400 : 700)}
+            className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
+              fontWeight >= 600 ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+            }`}
+            title="Qalin (Bold)"
+          >
+            <Bold size={15} />
+          </button>
+
+          {/* 5. Text Align & Vertical Align Popover */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("textAlign")}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+                textAlignOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+              }`}
+              title="Matnni tekislash (Alignment)"
+            >
+              {textAlign === "left" ? (
+                <AlignLeft size={16} />
+              ) : textAlign === "right" ? (
+                <AlignRight size={16} />
+              ) : (
+                <AlignCenter size={16} />
+              )}
+            </button>
+            {textAlignOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {/* Horizontal align row */}
+                <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                  <button
+                    type="button"
+                    onClick={() => onTextAlignChange?.("left")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      textAlign === "left" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Chapga"
+                  >
+                    <AlignLeft size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTextAlignChange?.("center")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      textAlign === "center" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="O'rtaga"
+                  >
+                    <AlignCenter size={14} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onTextAlignChange?.("right")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      textAlign === "right" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="O'ngga"
+                  >
+                    <AlignRight size={14} />
+                  </button>
+                </div>
+
+                {/* Vertical align row */}
+                <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                  <button
+                    type="button"
+                    onClick={() => onVerticalAlignChange?.("top")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      verticalAlign === "top" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Tepaga"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="4" y1="4" x2="20" y2="4" />
+                      <path d="M12 20V8M8 12l4-4 4 4" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onVerticalAlignChange?.("middle")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      verticalAlign === "middle" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Markazga"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="4" y1="12" x2="20" y2="12" />
+                      <path d="M12 4v4M12 16v4" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onVerticalAlignChange?.("bottom")}
+                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                      verticalAlign === "bottom" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    }`}
+                    title="Pastga"
+                  >
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                      <line x1="4" y1="20" x2="20" y2="20" />
+                      <path d="M12 4v12M8 12l4 4 4-4" />
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 6. Text Color Button (`A` with color bar) */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("textColor")}
+              className={`flex flex-col items-center justify-center h-8 w-8 rounded-xl transition-all cursor-pointer ${
+                textColorOpen ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+              }`}
+              title="Matn rangi"
+            >
+              <span className="text-xs font-bold leading-none text-gray-800">A</span>
+              <div
+                className="h-1 w-4 rounded-full mt-0.5"
+                style={{ backgroundColor: textColor || color || "#000000" }}
+              />
+            </button>
+            {textColorOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {SHAPE_STROKE_COLORS.map((c) => (
+                  <button
+                    key={c}
+                    type="button"
+                    onClick={() => {
+                      onTextColorChange?.(c);
+                      setActiveMenu(null);
+                    }}
+                    className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 cursor-pointer ${
+                      (textColor || color) === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                    }`}
+                    style={{ backgroundColor: c }}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+
+          <div className="h-4 w-px bg-gray-200" />
+
+          {/* 7. Border / Stroke Style Popover */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("borderStyle")}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+                borderStyleOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+              }`}
+              title="Chegara (Border/Stroke) sozlamalari"
+            >
+              {strokeStyle === "none" ? (
+                <div className="h-5 w-5 rounded-full border border-gray-300 relative flex items-center justify-center">
+                  <div className="h-4 w-0.5 bg-red-500 rotate-45" />
+                </div>
+              ) : (
+                <div
+                  className="h-5 w-5 rounded-full border-2 transition-transform hover:scale-105"
+                  style={{
+                    borderColor: color || "#000000",
+                    borderStyle: strokeStyle === "dashed" ? "dashed" : strokeStyle === "dotted" ? "dotted" : "solid",
+                  }}
+                />
+              )}
+            </button>
+
+            {borderStyleOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                {/* Stroke Style (Solid, Dashed, Dotted) */}
+                <div className="grid grid-cols-3 gap-2">
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("solid")}
+                    className={`flex h-8 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "solid" ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="Solid"
+                  >
+                    <svg width="24" height="8" viewBox="0 0 24 8" stroke="currentColor" strokeWidth="2.5">
+                      <line x1="2" y1="4" x2="22" y2="4" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("dashed")}
+                    className={`flex h-8 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "dashed" ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="Dashed"
+                  >
+                    <svg width="24" height="8" viewBox="0 0 24 8" stroke="currentColor" strokeWidth="2.5" strokeDasharray="4,3">
+                      <line x1="2" y1="4" x2="22" y2="4" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onStrokeStyleChange("dotted")}
+                    className={`flex h-8 items-center justify-center rounded-xl border transition-all cursor-pointer ${
+                      strokeStyle === "dotted" ? "border-indigo-600 bg-indigo-50/60 text-indigo-600 shadow-sm" : "border-gray-200 hover:bg-gray-50 text-gray-700"
+                    }`}
+                    title="Dotted"
+                  >
+                    <svg width="24" height="8" viewBox="0 0 24 8" stroke="currentColor" strokeWidth="3" strokeDasharray="1,4">
+                      <line x1="2" y1="4" x2="22" y2="4" strokeLinecap="round" />
+                    </svg>
+                  </button>
+                </div>
+
+                {/* Thickness */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                    <span>Thickness</span>
+                    <span className="font-bold text-indigo-600">{strokeWidth}px</span>
+                  </div>
+                  <div className="relative flex items-center py-1">
+                    <div className="absolute inset-x-0 h-1 bg-indigo-100 rounded-full" />
+                    <div className="absolute inset-x-0 flex justify-between px-1 pointer-events-none">
+                      {[1, 2, 4, 6, 8, 12, 16].map((step) => (
+                        <div
+                          key={step}
+                          className={`h-2 w-2 rounded-full transition-colors ${
+                            strokeWidth >= step ? "bg-indigo-600" : "bg-indigo-200"
+                          }`}
+                        />
+                      ))}
+                    </div>
+                    <input
+                      type="range"
+                      min={1}
+                      max={16}
+                      step={1}
+                      value={strokeWidth}
+                      onChange={(e) => onStrokeWidthChange(Number(e.target.value))}
+                      className="relative z-10 w-full appearance-none bg-transparent cursor-pointer accent-indigo-600 h-4"
+                    />
+                  </div>
+                </div>
+
+                {/* Rounded corners */}
+                <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                  <span>Rounded corners</span>
+                  <button
+                    type="button"
+                    onClick={() => onEdgesChange(edges === "round" ? "sharp" : "round")}
+                    className={`flex items-center gap-1.5 px-2.5 py-1 rounded-lg border transition-all cursor-pointer ${
+                      edges === "round" ? "border-indigo-600 bg-indigo-50 text-indigo-600 font-bold" : "border-gray-200 text-gray-700 hover:bg-gray-50"
+                    }`}
+                  >
+                    <EdgeIcon rounded={edges === "round"} />
+                    <span>{edges === "round" ? "Round" : "Sharp"}</span>
+                  </button>
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                {/* Border color palette */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="text-xs font-semibold text-gray-700">Border colors</div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {/* None / transparent border */}
+                    <button
+                      type="button"
+                      onClick={() => onStrokeStyleChange("none")}
+                      className={`h-6 w-6 rounded-full border border-gray-300 flex items-center justify-center transition-transform hover:scale-110 cursor-pointer ${
+                        strokeStyle === "none" ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                      }`}
+                      title="Chegarasiz (None)"
+                    >
+                      <div className="h-4 w-0.5 bg-red-500 rotate-45" />
+                    </button>
+                    {SHAPE_STROKE_COLORS.map((c) => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => {
+                          const nextStrokeStyle = strokeStyle === "none" ? "solid" : strokeStyle;
+                          onColorChange?.(c, nextStrokeStyle);
+                          if (strokeStyle === "none") {
+                            onStrokeStyleChange("solid");
+                          }
+                        }}
+                        className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+                          color === c && strokeStyle !== "none" ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                        }`}
+                        style={{ backgroundColor: c }}
+                      >
+                        {color === c && strokeStyle !== "none" && (
+                          <Check size={12} className={c === "#ffffff" || c === "#eab308" ? "text-gray-900" : "text-white"} />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* 8. Fill / Background Color Popover */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => toggleMenu("fillColor")}
+              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+                fillColorOpen ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+              }`}
+              title="Fon rangi (Fill)"
+            >
+              <div
+                className="h-5 w-5 rounded-full border border-gray-300 shadow-sm transition-transform hover:scale-105"
+                style={
+                  backgroundColor === "transparent"
+                    ? {
+                        backgroundImage:
+                          "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
+                        backgroundSize: "6px 6px",
+                      }
+                    : { backgroundColor }
+                }
+              />
+            </button>
+
+            {fillColorOpen && (
+              <div
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-100 select-none"
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                  <span>Fon rangi</span>
+                  {/* Fill Style toggle (solid vs hachure) */}
+                  {backgroundColor !== "transparent" && (
+                    <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+                      {FILL_STYLE_OPTIONS.map((opt) => (
+                        <button
+                          key={opt.value}
+                          type="button"
+                          onClick={() => onFillStyleChange(opt.value)}
+                          className={`p-1 rounded cursor-pointer ${fillStyle === opt.value ? "bg-white shadow-xs text-indigo-600" : "text-gray-600 hover:text-gray-900"}`}
+                          title={opt.label}
+                        >
+                          <FillStyleIcon style={opt.value} />
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex flex-wrap gap-1.5">
+                  {SHAPE_BACKGROUND_COLORS.map((c) => (
+                    <button
+                      key={c}
+                      type="button"
+                      onClick={() => onBackgroundColorChange(c)}
+                      className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+                        backgroundColor === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
+                      }`}
+                      style={
+                        c === "transparent"
+                          ? {
+                              backgroundImage:
+                                "linear-gradient(45deg, #d4d4d8 25%, transparent 25%), linear-gradient(-45deg, #d4d4d8 25%, transparent 25%), linear-gradient(45deg, transparent 75%, #d4d4d8 75%), linear-gradient(-45deg, transparent 75%, #d4d4d8 75%)",
+                              backgroundSize: "6px 6px",
+                            }
+                          : { backgroundColor: c }
+                      }
+                    >
+                      {backgroundColor === c && (
+                        <Check size={12} className={c === "#ffffff" || c === "transparent" || c === "#eab308" ? "text-gray-900" : "text-white"} />
+                      )}
+                    </button>
+                  ))}
+                </div>
+
+                <div className="h-px bg-gray-100" />
+
+                {/* Opacity slider inside Fill popover */}
+                <div className="flex flex-col gap-1.5">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                    <span>Opacity</span>
+                    <span className="font-bold text-indigo-600">{opacity}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min={10}
+                    max={100}
+                    step={1}
+                    value={opacity}
+                    onChange={(e) => onOpacityChange(Number(e.target.value))}
+                    className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                  />
+                </div>
+              </div>
+            )}
+          </div>
         </>
       )}
 
-      {/* More ... Dropdown Button */}
+      <div className="h-4 w-px bg-gray-200" />
+
+      {/* 9. Qatlamlar (Order) & More Button */}
       <div className="relative">
         <button
           type="button"
-          onClick={toggleMore}
-          className={`flex h-7 w-7 items-center justify-center rounded-xl transition-all ${moreOpen ? "bg-indigo-600 text-white " : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
-            }`}
+          onClick={() => toggleMenu("more")}
+          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
+            moreOpen ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          }`}
+          title="Qatlamlar va amallar"
         >
-          <MoreHorizontal size={16} />
+          <MoreVertical size={16} />
         </button>
 
-        {/* More Menu Dropdown Popup */}
         {moreOpen && (
-          <div className="absolute right-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100">
-            <div className="px-2 py-1 text-[10px] font-bold uppercase text-gray-500 tracking-wider">
+          <div
+            className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl text-xs z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            onPointerDown={(e) => e.stopPropagation()}
+          >
+            <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
               Qatlamlar (Order)
             </div>
             <div className="grid grid-cols-4 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
@@ -1147,14 +1985,31 @@ function ShapeStylePanel({
                   title={label}
                   onClick={() => {
                     onReorder(value);
-                    setMoreOpen(false);
+                    setActiveMenu(null);
                   }}
-                  className="flex h-7 w-full items-center justify-center rounded-lg text-gray-600 hover:bg-gray-200/70 hover:text-gray-900 transition-colors"
+                  className="flex h-8 items-center justify-center rounded-lg text-gray-600 hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all cursor-pointer"
                 >
                   <Icon size={14} />
                 </button>
               ))}
             </div>
+
+            {onDelete && (
+              <>
+                <div className="h-px bg-gray-100" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    onDelete();
+                    setActiveMenu(null);
+                  }}
+                  className="flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-red-600 hover:bg-red-50 transition-colors font-medium text-xs cursor-pointer"
+                >
+                  <Trash2 size={14} />
+                  <span>O'chirish</span>
+                </button>
+              </>
+            )}
           </div>
         )}
       </div>
@@ -1336,8 +2191,8 @@ interface PageProps {
     strokeIds: string[],
     op: "front" | "back" | "forward" | "backward",
   ) => void;
-  onStrokeComplete?: (page: number, stroke: CsStroke) => void;
-  onMoveStroke?: (page: number, strokeId: string, x: number, y: number) => void;
+  onStrokeComplete?: (page: number, stroke: CsStroke, groupId?: string) => void;
+  onMoveStroke?: (page: number, strokeId: string, x: number, y: number, groupId?: string) => void;
   onUpdateTextStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onPointerMove?: (page: number, x: number, y: number, active: boolean) => void;
   onEraseStroke?: (page: number, strokeId: string, groupId?: string) => void;
@@ -1459,6 +2314,11 @@ function ClassroomPdfPage({
   const [hoveredStrokeId, setHoveredStrokeId] = useState<string | null>(null);
   const [selectedTextId, setSelectedTextId] = useState<string | null>(null);
   const [selectedShapeId, setSelectedShapeId] = useState<string | null>(null);
+  const [connectorTarget, setConnectorTarget] = useState<{
+    shapeId: string;
+    point: [number, number];
+    snapped: boolean;
+  } | null>(null);
   // Lasso bilan tanlangan guruh — bir nechta chizma/shape/matnni birga
   // ko'chirish/o'lchamini o'zgartirish/o'chirish uchun.
   const [selectedGroupIds, setSelectedGroupIds] = useState<Set<string>>(
@@ -1466,6 +2326,20 @@ function ClassroomPdfPage({
   );
   const lassoDraftRef = useRef<number[] | null>(null);
   const [editingTextId, setEditingTextId] = useState<string | null>(null);
+
+  const [connectorHover, setConnectorHover] = useState<{
+    stroke: CsStroke;
+    side: "top" | "right" | "bottom" | "left";
+  } | null>(null);
+  const [connectorShapePicker, setConnectorShapePicker] = useState<{
+    connectorId: string;
+    batchGroupId: string;
+    dropX: number;
+    dropY: number;
+    screenX: number;
+    screenY: number;
+    sourceStroke: CsStroke | null;
+  } | null>(null);
 
   const pageSelectionKeyRef = useRef<string | null>(null);
 
@@ -1484,6 +2358,8 @@ function ClassroomPdfPage({
       setSelectedGroupIds(new Set());
       setSelectedTextId(null);
       setEditingTextId(null);
+      setConnectorHover(null);
+      setConnectorShapePicker(null);
     }
   }, [activeSelectionKey]);
   const erasedThisDragRef = useRef<Set<string>>(new Set());
@@ -1511,6 +2387,7 @@ function ClassroomPdfPage({
     fontSize: number;
     fontWeight: 400 | 500 | 600 | 700;
     textAlign: "left" | "center" | "right";
+    verticalAlign?: "top" | "middle" | "bottom";
     textBoxWidth: number;
     textBoxHeight: number;
   } | null>(null);
@@ -1646,6 +2523,11 @@ function ClassroomPdfPage({
 
   const commitText = () => {
     if (!textEditor?.text.trim()) {
+      const editedShape = editingTextId
+        ? strokes.find((stroke) => stroke.id === editingTextId && (stroke.tool === "rectangle" || stroke.tool === "ellipse"))
+        : null;
+      if (editedShape) onUpdateShapeStroke?.(pageNumber, { ...editedShape, text: "" });
+      setEditingTextId(null);
       setTextEditor(null);
       return;
     }
@@ -1653,19 +2535,16 @@ function ClassroomPdfPage({
     // sub-pixel roundingdan keyin qayta hisoblash har save'da ozgina surardi.
     const anchorX = textEditor.x;
     const anchorY = textEditor.y;
-    // Qutini textarea'ning render qilingan o'lchamiga (inputRect) emas,
-    // matnning haqiqiy o'lchangan kengligi/balandligiga moslaymiz — aks
-    // holda shrift kattalashtirilganda yoki qator qisqa bo'lganda qutining
-    // o'zi eski (mos kelmaydigan) o'lchamda qolib ketardi.
+    // Backend text box uchun shu minimumlarni validatsiya qiladi.
+    // Preview ishlatgan boxni aynan saqlaymiz. Save paytida qayta o'lchash
+    // center/right alignment markazini o'zgartirib, textni chap/tepaga
+    // sakratmasligi kerak.
     const measured = measureTextBox(
       textEditor.text.trim(),
       textEditor.fontFamily,
       textEditor.fontSize,
       textEditor.fontWeight,
     );
-    // Backend ham text box uchun shu minimumlarni validatsiya qiladi
-    // (classroom.logic.ts) — shu qiymatlar bilan mos kelishi shart, aks
-    // holda server INVALID_STROKE deb rad etadi.
     const textBoxWidth = Math.max(4, Math.min(1000, measured.width + 8));
     const textBoxHeight = Math.max(1, Math.min(2000, measured.height));
     const style = {
@@ -1673,6 +2552,7 @@ function ClassroomPdfPage({
       fontSize: textEditor.fontSize,
       fontWeight: textEditor.fontWeight,
       textAlign: textEditor.textAlign,
+      verticalAlign: textEditor.verticalAlign,
       textBoxWidth,
       textBoxHeight,
     };
@@ -1683,12 +2563,21 @@ function ClassroomPdfPage({
       textAlign: style.textAlign,
     };
     const edited = editingTextId
-      ? strokes.find(
-        (stroke) => stroke.id === editingTextId && stroke.tool === "text",
-      )
+      ? strokes.find((stroke) => stroke.id === editingTextId)
       : null;
     const savedId = edited ? edited.id : crypto.randomUUID();
-    if (edited) {
+    if (edited?.tool === "rectangle" || edited?.tool === "ellipse") {
+      onUpdateShapeStroke?.(pageNumber, {
+        ...edited,
+        text: textEditor.text.trim(),
+        color: textEditor.color,
+        fontFamily: textEditor.fontFamily,
+        fontSize: textEditor.fontSize,
+        fontWeight: textEditor.fontWeight,
+        textAlign: textEditor.textAlign,
+        verticalAlign: textEditor.verticalAlign,
+      });
+    } else if (edited) {
       onUpdateTextStroke?.(pageNumber, {
         ...edited,
         color: textEditor.color,
@@ -1709,12 +2598,10 @@ function ClassroomPdfPage({
     }
     setEditingTextId(null);
     setTextEditor(null);
-    // Matn saqlangach avtomatik "select" asboziga o'tadi — Excalidraw kabi,
-    // darhol qayta tanlab tahrirlash/joylashtirish mumkin bo'lishi kerak.
-    if (tool === "text") {
-      onToolChange?.("select");
-      setSelectedTextId(savedId);
-    }
+    if (tool === "text") onToolChange?.("select");
+    setSelectedTextId(savedId);
+    setSelectedShapeId(null);
+    claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-text-${savedId}`);
   };
 
   const selectedText = selectedTextId
@@ -1742,23 +2629,80 @@ function ClassroomPdfPage({
         next.fontSize ?? 24,
         next.fontWeight ?? 600,
       );
-      next.textBoxWidth = Math.max(80, Math.min(1000, measured.width + 8));
-      next.textBoxHeight = Math.max(40, Math.min(2000, measured.height));
+      next.textBoxWidth = Math.max(4, Math.min(1000, measured.width + 8));
+      next.textBoxHeight = Math.max(1, Math.min(2000, measured.height));
     }
     onUpdateTextStroke?.(pageNumber, next);
   };
 
-  const selectedShape = selectedShapeId
+  const selectedShapeRaw = selectedShapeId
     ? strokes.find(
       (stroke) =>
         stroke.id === selectedShapeId &&
         (stroke.tool === "rectangle" || stroke.tool === "ellipse" || stroke.tool === "line" || stroke.tool === "arrow"),
     )
     : null;
+  const selectedShape = selectedShapeRaw
+    ? resolveConnector(selectedShapeRaw, strokes, size.w, size.h)
+    : null;
   const updateSelectedShape = (changes: Partial<CsStroke>) => {
     if (!selectedShape) return;
     onUpdateShapeStroke?.(pageNumber, { ...selectedShape, ...changes });
   };
+
+    const deleteStrokeAndAttachedConnectors = useCallback(
+    (strokeIdOrIds: string | string[]) => {
+      const idsToDelete = new Set(Array.isArray(strokeIdOrIds) ? strokeIdOrIds : [strokeIdOrIds]);
+      // Ushbu o'chirilayotgan shakl yoki matnlarga bog'langan barcha connectorlarni topamiz:
+      for (const s of strokes) {
+        if (s.tool === "line" || s.tool === "arrow") {
+          if (
+            (s.startBinding && idsToDelete.has(s.startBinding.strokeId)) ||
+            (s.endBinding && idsToDelete.has(s.endBinding.strokeId))
+          ) {
+            idsToDelete.add(s.id);
+          }
+        }
+      }
+      const batchGroupId = crypto.randomUUID();
+      for (const id of idsToDelete) {
+        onEraseStroke?.(pageNumber, id, batchGroupId);
+      }
+    },
+    [strokes, onEraseStroke, pageNumber],
+  );
+
+  useEffect(() => {
+    if (!editable || !isActiveSurface || tool !== "select") return;
+    const onDeleteSelection = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable ||
+        editingTextId !== null ||
+        textEditor !== null
+      ) return;
+
+      if (selectedGroupIds.size > 0) {
+        event.preventDefault();
+        deleteStrokeAndAttachedConnectors(Array.from(selectedGroupIds));
+        setSelectedGroupIds(new Set());
+      } else if (selectedShapeRaw) {
+        event.preventDefault();
+        deleteStrokeAndAttachedConnectors(selectedShapeRaw.id);
+        setSelectedShapeId(null);
+        setConnectorTarget(null);
+      } else if (selectedTextId) {
+        event.preventDefault();
+        deleteStrokeAndAttachedConnectors(selectedTextId);
+        setSelectedTextId(null);
+      }
+    };
+    window.addEventListener("keydown", onDeleteSelection);
+    return () => window.removeEventListener("keydown", onDeleteSelection);
+  }, [editable, isActiveSurface, deleteStrokeAndAttachedConnectors, selectedShapeRaw, selectedTextId, selectedGroupIds, editingTextId, textEditor, tool]);
 
   const selectedGroupStrokes =
     selectedGroupIds.size > 0
@@ -1825,7 +2769,8 @@ function ClassroomPdfPage({
   }, [colorNonce, color, applyColorToSelection]);
 
   const deleteSelectedGroup = () => {
-    for (const id of selectedGroupIds) onEraseStroke?.(pageNumber, id);
+    if (selectedGroupIds.size === 0) return;
+    deleteStrokeAndAttachedConnectors(Array.from(selectedGroupIds));
     setSelectedGroupIds(new Set());
   };
 
@@ -2092,6 +3037,159 @@ function ClassroomPdfPage({
     forceRedraw((v) => v + 1);
   };
 
+  const getGhostShapeBounds = (
+    source: CsStroke,
+    side: "top" | "right" | "bottom" | "left",
+  ) => {
+    let minX: number, maxX: number, minY: number, maxY: number, w: number, h: number;
+    if (source.tool === "text") {
+      minX = source.points[0];
+      minY = source.points[1];
+      w = (source.textBoxWidth ?? 320) / REF_WIDTH;
+      h = ((source.textBoxHeight ?? 120) * (size.w / REF_WIDTH)) / Math.max(size.h, 1);
+      maxX = minX + w;
+      maxY = minY + h;
+    } else {
+      minX = Math.min(source.points[0], source.points[2]);
+      maxX = Math.max(source.points[0], source.points[2]);
+      minY = Math.min(source.points[1], source.points[3]);
+      maxY = Math.max(source.points[1], source.points[3]);
+      w = maxX - minX;
+      h = maxY - minY;
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+
+    const gapX = Math.max(0.04, 60 / Math.max(size.w, 1));
+    const gapY = Math.max(0.04, 60 / Math.max(size.h, 1));
+
+    let newMinX = minX;
+    let newMinY = minY;
+    let newMaxX = maxX;
+    let newMaxY = maxY;
+
+    if (side === "right") {
+      newMinX = maxX + gapX;
+      newMaxX = newMinX + w;
+      newMinY = cy - h / 2;
+      newMaxY = newMinY + h;
+    } else if (side === "left") {
+      newMaxX = minX - gapX;
+      newMinX = newMaxX - w;
+      newMinY = cy - h / 2;
+      newMaxY = newMinY + h;
+    } else if (side === "bottom") {
+      newMinX = cx - w / 2;
+      newMaxX = newMinX + w;
+      newMinY = maxY + gapY;
+      newMaxY = newMinY + h;
+    } else if (side === "top") {
+      newMinX = cx - w / 2;
+      newMaxX = newMinX + w;
+      newMinY = minY - gapY - h;
+      newMaxY = minY - gapY;
+    }
+
+    const boundedMinX = Math.max(0.01, Math.min(0.99 - w, newMinX));
+    const boundedMinY = Math.max(0.01, Math.min(0.99 - h, newMinY));
+    const boundedMaxX = boundedMinX + w;
+    const boundedMaxY = boundedMinY + h;
+
+    return {
+      minX: boundedMinX,
+      minY: boundedMinY,
+      maxX: boundedMaxX,
+      maxY: boundedMaxY,
+      width: w,
+      height: h,
+      rotation: source.rotation ?? 0,
+      tool: source.tool === "ellipse" ? "ellipse" : "rectangle",
+    };
+  };
+
+  const pickConnectorShape = (chosenTool: "rectangle" | "ellipse" | "text") => {
+    if (!connectorShapePicker) return;
+    const { connectorId, batchGroupId, dropX, dropY, sourceStroke } = connectorShapePicker;
+    setConnectorShapePicker(null);
+
+    let defaultW = 0.16;
+    let defaultH = 0.09 * (size.w / Math.max(size.h, 1));
+    if (sourceStroke) {
+      if (sourceStroke.tool === "rectangle" || sourceStroke.tool === "ellipse") {
+        defaultW = Math.abs(sourceStroke.points[2] - sourceStroke.points[0]);
+        defaultH = Math.abs(sourceStroke.points[3] - sourceStroke.points[1]);
+      }
+    }
+    defaultW = Math.max(0.06, Math.min(0.5, defaultW));
+    defaultH = Math.max(0.04, Math.min(0.4, defaultH));
+
+    const minX = Math.max(0.01, Math.min(0.99 - defaultW, dropX - defaultW / 2));
+    const minY = Math.max(0.01, Math.min(0.99 - defaultH, dropY - defaultH / 2));
+    const maxX = minX + defaultW;
+    const maxY = minY + defaultH;
+
+    const newShapeId = crypto.randomUUID();
+    let newStroke: CsStroke;
+
+    if (chosenTool === "text") {
+      newStroke = {
+        id: newShapeId,
+        tool: "text",
+        text: "Matn",
+        color: sourceStroke?.color ?? color,
+        fontFamily: "Inter",
+        fontSize: 24,
+        fontWeight: 400,
+        textAlign: "left",
+        points: [minX, minY],
+        textBoxWidth: 160,
+        textBoxHeight: 48,
+      };
+    } else {
+      newStroke = {
+        id: newShapeId,
+        tool: chosenTool,
+        color: sourceStroke?.color ?? color,
+        width: sourceStroke?.width ?? strokeWidth,
+        ...shapeStyle,
+        ...(sourceStroke && (sourceStroke.tool === "rectangle" || sourceStroke.tool === "ellipse") ? {
+          backgroundColor: sourceStroke.backgroundColor,
+          fillStyle: sourceStroke.fillStyle,
+          strokeStyle: sourceStroke.strokeStyle,
+          edges: sourceStroke.edges,
+          opacity: sourceStroke.opacity,
+        } : {}),
+        points: [minX, minY, maxX, maxY],
+      };
+    }
+
+    const currentConnector = strokes.find((s) => s.id === connectorId);
+    const startX = currentConnector ? currentConnector.points[0] : dropX;
+    const startY = currentConnector ? currentConnector.points[1] : dropY;
+    const dx = dropX - startX;
+    const dy = (dropY - startY) * (size.h / Math.max(size.w, 1));
+    let targetSide: NonNullable<CsStroke["startBinding"]>["side"] = "left";
+    if (Math.abs(dx) > Math.abs(dy)) {
+      targetSide = dx > 0 ? "left" : "right";
+    } else {
+      targetSide = dy > 0 ? "top" : "bottom";
+    }
+
+    onStrokeComplete?.(pageNumber, newStroke, batchGroupId);
+
+    if (currentConnector) {
+      onUpdateShapeStroke?.(pageNumber, {
+        ...currentConnector,
+        endBinding: { strokeId: newShapeId, side: targetSide },
+      }, batchGroupId);
+    }
+
+    setSelectedTextId(chosenTool === "text" ? newShapeId : null);
+    setSelectedShapeId(chosenTool === "text" ? null : newShapeId);
+    claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-${chosenTool === "text" ? "text" : "shape"}-${newShapeId}`);
+    forceRedraw((v) => v + 1);
+  };
+
   const lineEndpointDragRef = useRef<{
     endpoint: "start" | "end" | "mid";
     startX: number;
@@ -2101,6 +3199,197 @@ function ClassroomPdfPage({
     initControlY?: number;
     shape?: string;
   } | null>(null);
+  const connectorDraftRef = useRef<{
+    points: number[];
+    startBinding: NonNullable<CsStroke["startBinding"]>;
+    startClientX: number;
+    startClientY: number;
+    sourceStroke: CsStroke;
+  } | null>(null);
+
+  const beginConnectorFromStroke = (
+    event: React.PointerEvent<HTMLButtonElement>,
+    source: CsStroke,
+    side: NonNullable<CsStroke["startBinding"]>["side"],
+  ) => {
+    if (source.tool !== "rectangle" && source.tool !== "ellipse" && source.tool !== "text") return;
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setConnectorHover(null);
+    setConnectorShapePicker(null);
+    // Shape tanlangan pointer gesture'dan qolgan drag ref yangi connector
+    // gesture'iga aralashib, shape'ni ham siljitmasin.
+    draggingShapeRef.current = null;
+    transformingShapeRef.current = null;
+    const [x, y] = shapeAnchor(source, side, 0.5, size.w, size.h);
+    connectorDraftRef.current = {
+      points: [x, y, x, y],
+      startBinding: { strokeId: source.id, side },
+      startClientX: event.clientX,
+      startClientY: event.clientY,
+      sourceStroke: source,
+    };
+    setConnectorTarget(null);
+    forceRedraw((value) => value + 1);
+  };
+
+  const moveConnectorFromShape = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const draft = connectorDraftRef.current;
+    if (!draft || !surfaceRef.current) return;
+    event.preventDefault();
+    event.stopPropagation();
+    const rect = surfaceRef.current.getBoundingClientRect();
+    const cursorX = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
+    const cursorY = Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+    const nearby = nearestShapeBinding(strokes, cursorX, cursorY, size.w, size.h, draft.startBinding.strokeId, CONNECTOR_REVEAL_DISTANCE_PX);
+    const magnet = nearestShapeBinding(strokes, cursorX, cursorY, size.w, size.h, draft.startBinding.strokeId, CONNECTOR_SNAP_DISTANCE_PX);
+    draft.points[2] = magnet?.point[0] ?? cursorX;
+    draft.points[3] = magnet?.point[1] ?? cursorY;
+    setConnectorTarget(nearby ? {
+      shapeId: nearby.binding.strokeId,
+      point: magnet?.point ?? nearby.point,
+      snapped: Boolean(magnet),
+    } : null);
+    forceRedraw((value) => value + 1);
+  };
+
+  const finishConnectorFromShape = (event: React.PointerEvent<HTMLButtonElement>) => {
+    const draft = connectorDraftRef.current;
+    if (!draft) return;
+    event.preventDefault();
+    event.stopPropagation();
+    connectorDraftRef.current = null;
+    setConnectorTarget(null);
+    setConnectorHover(null);
+
+    const dragDistance = Math.hypot(
+      event.clientX - draft.startClientX,
+      event.clientY - draft.startClientY,
+    );
+    const isDrag = dragDistance > 8;
+
+    if (!isDrag) {
+      // CLICK: create connected rectangle next to the shape
+      const batchGroupId = crypto.randomUUID();
+      const ghost = getGhostShapeBounds(draft.sourceStroke, draft.startBinding.side);
+      const newShapeId = crypto.randomUUID();
+      const connectorId = crypto.randomUUID();
+      const oppositeSide: NonNullable<CsStroke["startBinding"]>["side"] =
+        draft.startBinding.side === "left"
+          ? "right"
+          : draft.startBinding.side === "right"
+            ? "left"
+            : draft.startBinding.side === "top"
+              ? "bottom"
+              : "top";
+
+      const newShape: CsStroke = {
+        id: newShapeId,
+        tool: "rectangle",
+        color: draft.sourceStroke.color ?? color,
+        width: draft.sourceStroke.width ?? strokeWidth,
+        ...shapeStyle,
+        ...(draft.sourceStroke.tool === "rectangle" || draft.sourceStroke.tool === "ellipse" ? {
+          backgroundColor: draft.sourceStroke.backgroundColor,
+          fillStyle: draft.sourceStroke.fillStyle,
+          strokeStyle: draft.sourceStroke.strokeStyle,
+          edges: draft.sourceStroke.edges,
+          opacity: draft.sourceStroke.opacity,
+          width: draft.sourceStroke.width,
+        } : {}),
+        points: [ghost.minX, ghost.minY, ghost.maxX, ghost.maxY],
+      };
+
+      const [anchorStartX, anchorStartY] = shapeAnchor(draft.sourceStroke, draft.startBinding.side, 0.5, size.w, size.h);
+      const [anchorEndX, anchorEndY] = shapeAnchor(newShape, oppositeSide, 0.5, size.w, size.h);
+
+      const connector: CsStroke = {
+        id: connectorId,
+        tool: "arrow",
+        color: draft.sourceStroke.color ?? color,
+        ...shapeStyle,
+        points: [anchorStartX, anchorStartY, anchorEndX, anchorEndY],
+        lineShape: "curved",
+        startArrowHead: "none",
+        endArrowHead: "arrow",
+        startBinding: { strokeId: draft.sourceStroke.id, side: draft.startBinding.side },
+        endBinding: { strokeId: newShapeId, side: oppositeSide },
+        width: 2,
+      };
+
+      onStrokeComplete?.(pageNumber, newShape, batchGroupId);
+      onStrokeComplete?.(pageNumber, connector, batchGroupId);
+
+      setSelectedTextId(null);
+      setSelectedShapeId(newShapeId);
+      claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-shape-${newShapeId}`);
+      forceRedraw((value) => value + 1);
+      return;
+    }
+
+    // DRAG
+    const endSnap = nearestShapeBinding(
+      strokes,
+      draft.points[2],
+      draft.points[3],
+      size.w,
+      size.h,
+      draft.startBinding.strokeId,
+      CONNECTOR_SNAP_DISTANCE_PX,
+    );
+    if (endSnap) [draft.points[2], draft.points[3]] = endSnap.point;
+
+    if (endSnap) {
+      const connectorId = crypto.randomUUID();
+      onStrokeComplete?.(pageNumber, {
+        id: connectorId,
+        tool: "arrow",
+        color,
+        ...shapeStyle,
+        points: [...draft.points],
+        lineShape: "curved",
+        startArrowHead: "none",
+        endArrowHead: "arrow",
+        startBinding: { ...draft.startBinding },
+        endBinding: { ...endSnap.binding },
+        width: 2,
+      });
+      setSelectedTextId(null);
+      setSelectedShapeId(connectorId);
+      claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-shape-${connectorId}`);
+    } else {
+      // Dropped onto empty canvas
+      const batchGroupId = crypto.randomUUID();
+      const connectorId = crypto.randomUUID();
+      onStrokeComplete?.(pageNumber, {
+        id: connectorId,
+        tool: "arrow",
+        color,
+        ...shapeStyle,
+        points: [...draft.points],
+        lineShape: "curved",
+        startArrowHead: "none",
+        endArrowHead: "arrow",
+        startBinding: { ...draft.startBinding },
+        width: 2,
+      }, batchGroupId);
+      setSelectedTextId(null);
+      setSelectedShapeId(connectorId);
+      claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-shape-${connectorId}`);
+
+      setConnectorShapePicker({
+        connectorId,
+        batchGroupId,
+        dropX: draft.points[2],
+        dropY: draft.points[3],
+        screenX: event.clientX,
+        screenY: event.clientY,
+        sourceStroke: draft.sourceStroke,
+      });
+    }
+    forceRedraw((value) => value + 1);
+  };
 
   const beginLineEndpointResize = (
     e: React.PointerEvent,
@@ -2108,7 +3397,7 @@ function ClassroomPdfPage({
   ) => {
     e.preventDefault();
     e.stopPropagation();
-    if (!selectedShape || !surfaceRef.current) return;
+    if (!selectedShape || !selectedShapeRaw || !surfaceRef.current) return;
     e.currentTarget.setPointerCapture(e.pointerId);
     const rect = surfaceRef.current.getBoundingClientRect();
     // For mid on curved/elbow: derive initial control point
@@ -2132,10 +3421,16 @@ function ClassroomPdfPage({
       initControlY,
       shape,
     };
+    // Drag davomida serverga har pointer eventni yubormaymiz. Avval resolved
+    // endpointlarni lokal stroke'ga ko'chiramiz, bindingni uzamiz, so'ng faqat
+    // pointer-up'da bitta atomik update jo'natamiz — socket echo jitter yo'q.
+    selectedShapeRaw.points = [...selectedShape.points];
+    if (endpoint === "start") selectedShapeRaw.startBinding = undefined;
+    if (endpoint === "end") selectedShapeRaw.endBinding = undefined;
   };
 
   const transformLineEndpoint = (e: React.PointerEvent) => {
-    if (!lineEndpointDragRef.current || !selectedShape || !surfaceRef.current) return;
+    if (!lineEndpointDragRef.current || !selectedShapeRaw || !surfaceRef.current) return;
     e.preventDefault();
     e.stopPropagation();
     const rect = surfaceRef.current.getBoundingClientRect();
@@ -2149,20 +3444,21 @@ function ClassroomPdfPage({
       const nextPts = [...initPts];
       nextPts[0] = Math.max(0, Math.min(1, initPts[0] + dx));
       nextPts[1] = Math.max(0, Math.min(1, initPts[1] + dy));
-      updateSelectedShape({ points: nextPts });
+      selectedShapeRaw.points = nextPts;
     } else if (endpoint === "end") {
       const nextPts = [...initPts];
       nextPts[2] = Math.max(0, Math.min(1, initPts[2] + dx));
       nextPts[3] = Math.max(0, Math.min(1, initPts[3] + dy));
-      updateSelectedShape({ points: nextPts });
+      selectedShapeRaw.points = nextPts;
     } else if (endpoint === "mid") {
       if (shape === "curved") {
         const nextCtrlX = Math.max(0, Math.min(1, (initControlX ?? 0.5) + dx * 2));
         const nextCtrlY = Math.max(0, Math.min(1, (initControlY ?? 0.5) + dy * 2));
-        updateSelectedShape({ controlX: nextCtrlX, controlY: nextCtrlY });
+        selectedShapeRaw.controlX = nextCtrlX;
+        selectedShapeRaw.controlY = nextCtrlY;
       } else if (shape === "elbow") {
         const nextCtrlX = Math.max(0, Math.min(1, (initControlX ?? 0.5) + dx));
-        updateSelectedShape({ controlX: nextCtrlX });
+        selectedShapeRaw.controlX = nextCtrlX;
       } else {
         // straight: move entire line
         const nextPts = [...initPts];
@@ -2170,9 +3466,26 @@ function ClassroomPdfPage({
         nextPts[1] = Math.max(0, Math.min(1, initPts[1] + dy));
         nextPts[2] = Math.max(0, Math.min(1, initPts[2] + dx));
         nextPts[3] = Math.max(0, Math.min(1, initPts[3] + dy));
-        updateSelectedShape({ points: nextPts });
+        selectedShapeRaw.points = nextPts;
       }
     }
+    if (endpoint === "start" || endpoint === "end") {
+      const offset = endpoint === "start" ? 0 : 2;
+      const cursorX = selectedShapeRaw.points[offset];
+      const cursorY = selectedShapeRaw.points[offset + 1];
+      const nearby = nearestShapeBinding(strokes, cursorX, cursorY, size.w, size.h, selectedShapeRaw.id, CONNECTOR_REVEAL_DISTANCE_PX);
+      const magnet = nearestShapeBinding(strokes, cursorX, cursorY, size.w, size.h, selectedShapeRaw.id, CONNECTOR_SNAP_DISTANCE_PX);
+      if (magnet) {
+        selectedShapeRaw.points[offset] = magnet.point[0];
+        selectedShapeRaw.points[offset + 1] = magnet.point[1];
+      }
+      setConnectorTarget(nearby ? {
+        shapeId: nearby.binding.strokeId,
+        point: magnet?.point ?? nearby.point,
+        snapped: Boolean(magnet),
+      } : null);
+    }
+    forceRedraw((value) => value + 1);
   };
 
   const finishGroupResize = (event: React.PointerEvent<HTMLButtonElement>) => {
@@ -2371,10 +3684,50 @@ function ClassroomPdfPage({
     ctx.setTransform(drawScale, 0, 0, drawScale, 0, 0);
     ctx.clearRect(0, 0, size.w, size.h);
     for (const s of strokes) {
-      // Tahrirlash paytida o'sha matn textarea ichida ko'rinadi. Canvasdagi
-      // nusxani ham chizish ikkita matn ustma-ust ko'rinishiga olib keladi.
-      if (s.id !== editingTextId)
-        drawStroke(ctx, s, size.w, size.h, s.id === hoveredStrokeId);
+      const rendered = resolveConnector(s, strokes, size.w, size.h);
+      const isEditing = s.id === editingTextId && Boolean(textEditor);
+      // Edit va saved holat bir xil canvas text engine bilan chiziladi.
+      // Transparent textarea faqat input/caret beradi; shu sabab editga
+      // kirish/chiqishda baseline yoki vertical alignment sakramaydi.
+      const strokeToDraw = isEditing && textEditor
+        ? {
+          ...rendered,
+          text: textEditor.text,
+          color: textEditor.color,
+          fontFamily: textEditor.fontFamily,
+          fontSize: textEditor.fontSize,
+          fontWeight: textEditor.fontWeight,
+          textAlign: textEditor.textAlign,
+          verticalAlign: textEditor.verticalAlign,
+          ...(s.tool === "text"
+            ? {
+              points: [textEditor.x, textEditor.y],
+              textBoxWidth: textEditor.textBoxWidth,
+              textBoxHeight: textEditor.textBoxHeight,
+            }
+            : {}),
+        }
+        : rendered;
+      drawStroke(ctx, strokeToDraw, size.w, size.h, !isEditing && s.id === hoveredStrokeId);
+    }
+    // Yangi text hali strokes massivida yo'q. Transparent textarea input
+    // olayotgan paytda uni ham xuddi saved text kabi canvasda live chizamiz.
+    if (textEditor && !editingTextId && textEditor.text) {
+      drawStroke(ctx, {
+        id: "__text_editor_draft__",
+        tool: "text",
+        color: textEditor.color,
+        width: strokeWidth,
+        points: [textEditor.x, textEditor.y],
+        text: textEditor.text,
+        fontFamily: textEditor.fontFamily,
+        fontSize: textEditor.fontSize,
+        fontWeight: textEditor.fontWeight,
+        textAlign: textEditor.textAlign,
+        verticalAlign: textEditor.verticalAlign,
+        textBoxWidth: textEditor.textBoxWidth,
+        textBoxHeight: textEditor.textBoxHeight,
+      }, size.w, size.h);
     }
     if (
       draftRef.current &&
@@ -2402,6 +3755,14 @@ function ClassroomPdfPage({
         size.w,
         size.h,
       );
+    }
+    if (connectorDraftRef.current) {
+      drawStroke(ctx, {
+        id: "__connector_draft__", tool: "arrow", color,
+        points: connectorDraftRef.current.points, ...shapeStyle, width: 2,
+        lineShape: "curved",
+        startArrowHead: "none", endArrowHead: "arrow",
+      }, size.w, size.h);
     }
     if (showPointer && pointer && pointer.active) {
       // Ustoz kursori: faqat yarim shaffof doira (border/markaz nuqtasiz) —
@@ -2574,6 +3935,13 @@ function ClassroomPdfPage({
         (current.startRotation ?? 0) +
         ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
       current.stroke.rotation = snapRotationAngle(rawDeg);
+      // Rotation paytida ham React state yangilanishi shart — aks holda
+      // resolveConnector strokes'dagi eski rotation'dan anchor hisoblaydi
+      // va connector shakldan «uzilib» ko'rinadi.
+      onUpdateShapeStroke?.(pageNumber, {
+        ...current.stroke,
+        points: [...current.stroke.points],
+      });
       forceRedraw((value) => value + 1);
       return;
     }
@@ -2650,9 +4018,38 @@ function ClassroomPdfPage({
 
     // Chiziq endpoint/control drag tugashi
     const epCurrent = lineEndpointDragRef.current;
-    if (epCurrent && selectedShape) {
+    setConnectorTarget(null);
+    if (epCurrent && selectedShapeRaw) {
       lineEndpointDragRef.current = null;
-      onUpdateShapeStroke?.(pageNumber, { ...selectedShape });
+      let next = { ...selectedShapeRaw, points: [...selectedShapeRaw.points] };
+      if (epCurrent.endpoint === "start" || epCurrent.endpoint === "end") {
+        const offset = epCurrent.endpoint === "start" ? 0 : 2;
+        const snap = nearestShapeBinding(
+          strokes,
+          next.points[offset],
+          next.points[offset + 1],
+          size.w,
+          size.h,
+          next.id,
+          CONNECTOR_SNAP_DISTANCE_PX,
+        );
+        if (snap) {
+          next.points[offset] = snap.point[0];
+          next.points[offset + 1] = snap.point[1];
+          next = epCurrent.endpoint === "start"
+            ? { ...next, startBinding: snap.binding }
+            : { ...next, endBinding: snap.binding };
+          // Shape'ga ulanish bilan connector avtomatik, ixcham routing'ga
+          // qaytadi; avvalgi qo'lda surilgan control katta halqa yasamasin.
+          next.controlX = undefined;
+          next.controlY = undefined;
+          next.width = 2;
+          next.lineShape = "curved";
+          next.startArrowHead = "none";
+          next.endArrowHead = "arrow";
+        }
+      }
+      onUpdateShapeStroke?.(pageNumber, next);
     } else {
       lineEndpointDragRef.current = null;
     }
@@ -2717,6 +4114,8 @@ function ClassroomPdfPage({
       startWidth: selectedText.textBoxWidth ?? 320,
       startHeight: selectedText.textBoxHeight ?? 120,
       startFontSize: selectedText.fontSize ?? 24,
+      centerX,
+      centerY,
       startAngle: Math.atan2(event.clientY - centerY, event.clientX - centerX),
       startRotation: selectedText.rotation ?? 0,
     };
@@ -2884,15 +4283,15 @@ function ClassroomPdfPage({
         hit.tool === "rectangle" ||
         hit.tool === "ellipse"
       ) {
-        onEraseStroke?.(pageNumber, hit.id);
+        deleteStrokeAndAttachedConnectors(hit.id);
         return;
       }
       const remaining = eraseNearPoint(hit, x, y, hitRadius);
       if (remaining === null) return;
-      if (remaining.length === 0) onEraseStroke?.(pageNumber, hit.id);
+      if (remaining.length === 0) deleteStrokeAndAttachedConnectors(hit.id);
       else onSplitStroke?.(pageNumber, hit.id, remaining);
     },
-    [strokes, strokeWidth, pageNumber, onEraseStroke, onSplitStroke],
+    [strokes, strokeWidth, pageNumber, deleteStrokeAndAttachedConnectors, onSplitStroke],
   );
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -2918,8 +4317,8 @@ function ClassroomPdfPage({
         y: p[1],
         text: "",
         color,
-        textBoxWidth: 360,
-        textBoxHeight: 120,
+        textBoxWidth: 4,
+        textBoxHeight: Math.max(1, lastTextStyleRef.current.fontSize * 1.25),
         ...lastTextStyleRef.current,
       });
       return;
@@ -2970,19 +4369,6 @@ function ClassroomPdfPage({
           const existingFontFamily = existing.fontFamily ?? "Inter";
           const existingFontSize = existing.fontSize ?? 24;
           const existingFontWeight = existing.fontWeight ?? 600;
-          // Tahrirlashga kirishda box existing.textBoxHeight'ni AYNAN
-          // ko'chirmasdan, matnning haqiqiy tabiiy o'lchamiga moslab
-          // tekislanadi — aks holda avval resize qilib kattalashtirilgan
-          // (yoki eski, hali tekislanmagan) box baland qolib ketib, editor
-          // ichida matn markazga tortilib ancha pastda ko'rinardi, saqlash
-          // (commitText) esa boxni tor o'lchamga qaytarganda matn tepaga
-          // "sakrab" ketganday tuyular edi.
-          const measured = measureTextBox(
-            existing.text ?? "",
-            existingFontFamily,
-            existingFontSize,
-            existingFontWeight,
-          );
           setTextEditor({
             x: existing.points[0],
             y: existing.points[1],
@@ -2992,11 +4378,9 @@ function ClassroomPdfPage({
             fontSize: existingFontSize,
             fontWeight: existingFontWeight,
             textAlign: existing.textAlign ?? "left",
-            textBoxWidth: Math.max(
-              existing.textBoxWidth ?? 0,
-              measured.width + 8,
-            ),
-            textBoxHeight: measured.height,
+            // Edit va saved render bir xil box markazidan foydalanadi.
+            textBoxWidth: existing.textBoxWidth ?? Math.max(4, (existing.text?.length ?? 1) * existingFontSize * 0.6),
+            textBoxHeight: existing.textBoxHeight ?? Math.max(1, existingFontSize * 1.25),
           });
         } else {
           draggingTextRef.current = {
@@ -3008,23 +4392,61 @@ function ClassroomPdfPage({
         return;
       }
       const existingShape = findSelectableShapeAt(
-        strokes.filter(
+        strokes.map((stroke) => resolveConnector(stroke, strokes, size.w, size.h)).filter(
           (stroke) => stroke.tool === "rectangle" || stroke.tool === "ellipse" || stroke.tool === "line" || stroke.tool === "arrow",
         ),
         p[0],
         p[1],
         eraseHitRadius(strokeWidth),
+        size.w,
+        size.h,
       );
       setSelectedShapeId(existingShape?.id ?? null);
       if (existingShape) {
         setSelectedTextId(null);
         setSelectedGroupIds(new Set());
         claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-shape-${existingShape.id}`);
-        draggingShapeRef.current = {
-          stroke: existingShape,
-          dx: p[0] - existingShape.points[0],
-          dy: p[1] - existingShape.points[1],
-        };
+        const now = Date.now();
+        const isDoubleClick =
+          lastClickRef.current?.id === existingShape.id &&
+          now - lastClickRef.current.atMs < DOUBLE_CLICK_MS;
+        lastClickRef.current = { id: existingShape.id, atMs: now };
+        if ((e.detail >= 2 || isDoubleClick) &&
+          (existingShape.tool === "rectangle" || existingShape.tool === "ellipse")) {
+          lastClickRef.current = null;
+          setEditingTextId(existingShape.id);
+          const left = Math.min(existingShape.points[0], existingShape.points[2]);
+          const top = Math.min(existingShape.points[1], existingShape.points[3]);
+          const shapeWidth = Math.abs(existingShape.points[2] - existingShape.points[0]);
+          const shapeHeight = Math.abs(existingShape.points[3] - existingShape.points[1]);
+          setTextEditor({
+            x: left,
+            y: top,
+            text: existingShape.text ?? "",
+            color: existingShape.color,
+            fontFamily: existingShape.fontFamily ?? "Inter",
+            fontSize: existingShape.fontSize ?? 24,
+            fontWeight: existingShape.fontWeight ?? 600,
+            textAlign: existingShape.textAlign ?? "center",
+            verticalAlign: existingShape.verticalAlign ?? "middle",
+            textBoxWidth: Math.max(40, shapeWidth * REF_WIDTH),
+            textBoxHeight: Math.max(24, shapeHeight * (size.h / Math.max(size.w, 1)) * REF_WIDTH),
+          });
+        } else {
+          // Connector (startBinding yoki endBinding bo'lgan arrow) tanasidan
+          // drag qilinmaydi — faqat endpoint handle'laridan drag qilish mumkin.
+          // Oddiy bosish tanlashni o'zgartiradi (setSelectedShapeId yuqorida).
+          const isConnector =
+            existingShape.tool === "arrow" &&
+            Boolean(existingShape.startBinding ?? existingShape.endBinding);
+          if (!isConnector) {
+            draggingShapeRef.current = {
+              stroke: existingShape,
+              dx: p[0] - existingShape.points[0],
+              dy: p[1] - existingShape.points[1],
+            };
+          }
+        }
       }
       if (!existing && !existingShape) {
         const existingStroke = findStrokeAt(
@@ -3065,7 +4487,7 @@ function ClassroomPdfPage({
       );
       if (hit && !erasedThisDragRef.current.has(hit.id)) {
         erasedThisDragRef.current.add(hit.id);
-        onEraseStroke?.(pageNumber, hit.id);
+        deleteStrokeAndAttachedConnectors(hit.id);
       }
       return;
     }
@@ -3175,7 +4597,7 @@ function ClassroomPdfPage({
       if (draggingEraserRef.current) {
         if (hit && !erasedThisDragRef.current.has(hit.id)) {
           erasedThisDragRef.current.add(hit.id);
-          onEraseStroke?.(pageNumber, hit.id);
+          deleteStrokeAndAttachedConnectors(hit.id);
         }
       } else {
         // Sichqoncha ustidan o'tayotgan chizma xiralashib ko'rsatiladi
@@ -3195,15 +4617,25 @@ function ClassroomPdfPage({
       const hoveredText = findTextAt(p[0], p[1]);
       const hoveredShape = hoveredText
         ? null
-        : findSelectableShapeAt(
-          strokes.filter(
-            (stroke) =>
-              stroke.tool === "rectangle" || stroke.tool === "ellipse",
-          ),
-          p[0],
-          p[1],
-          eraseHitRadius(strokeWidth),
-        );
+        : (() => {
+          const found = findSelectableShapeAt(
+            strokes.map((stroke) => resolveConnector(stroke, strokes, size.w, size.h)).filter(
+              (stroke) =>
+                stroke.tool === "rectangle" || stroke.tool === "ellipse" || stroke.tool === "line" || stroke.tool === "arrow",
+            ),
+            p[0],
+            p[1],
+            eraseHitRadius(strokeWidth),
+            size.w,
+            size.h,
+          );
+          // Connector tanasi ustida grab kursori ko'rsatmaymiz — drag yo'q.
+          if (
+            found?.tool === "arrow" &&
+            Boolean(found.startBinding ?? found.endBinding)
+          ) return null;
+          return found;
+        })();
       const hoveredStroke =
         hoveredText || hoveredShape
           ? null
@@ -3369,11 +4801,20 @@ function ClassroomPdfPage({
         Math.abs(draft[3] - draft[1]) > 0.003
       ) {
         const strokeId = crypto.randomUUID();
+        const startSnap = isLineOrArrow
+          ? nearestShapeBinding(strokes, draft[0], draft[1], size.w, size.h, undefined, CONNECTOR_SNAP_DISTANCE_PX)
+          : null;
+        const endSnap = isLineOrArrow
+          ? nearestShapeBinding(strokes, draft[2], draft[3], size.w, size.h, undefined, CONNECTOR_SNAP_DISTANCE_PX)
+          : null;
+        const isConnector = Boolean(startSnap || endSnap);
+        if (startSnap) [draft[0], draft[1]] = startSnap.point;
+        if (endSnap) [draft[2], draft[3]] = endSnap.point;
         onStrokeComplete?.(pageNumber, {
           id: strokeId,
           tool: tool as CsTool,
           color,
-          width: strokeWidth,
+          width: isConnector ? 2 : strokeWidth,
           points: draft,
           ...((tool as string) === "laser" ? { createdAt: Date.now() } : {}),
           ...(tool === "pen" && draftPressures?.length === draft.length / 2
@@ -3382,7 +4823,7 @@ function ClassroomPdfPage({
           ...(isAnyShapeOrLine
             ? {
               ...shapeStyle,
-              lineShape: shapeStyle.lineShape ?? "straight",
+              lineShape: isConnector ? "curved" : (shapeStyle.lineShape ?? "straight"),
               ...(tool === "arrow" && !shapeStyle.endArrowHead
                 ? { endArrowHead: "arrow", startArrowHead: "none" }
                 : {}),
@@ -3390,6 +4831,11 @@ function ClassroomPdfPage({
                 ? { endArrowHead: "none", startArrowHead: "none" }
                 : {}),
             }
+            : {}),
+          ...(startSnap ? { startBinding: startSnap.binding } : {}),
+          ...(endSnap ? { endBinding: endSnap.binding } : {}),
+          ...(isConnector
+            ? { width: 2, lineShape: "curved" as const, startArrowHead: "none" as const, endArrowHead: "arrow" as const }
             : {}),
         });
         if (isAnyShapeOrLine) {
@@ -3404,6 +4850,7 @@ function ClassroomPdfPage({
   const handlePointerLeave = () => {
     setHoveredStrokeId(null);
     eraserCursorRef.current = null;
+    if (!connectorDraftRef.current && !lineEndpointDragRef.current) setConnectorTarget(null);
     finishStroke();
   };
 
@@ -3416,6 +4863,42 @@ function ClassroomPdfPage({
   const editorHeight = textEditor
     ? Math.max(24, textEditor.textBoxHeight * (size.w / REF_WIDTH))
     : 48;
+  const editingShapeForPanel = editingTextId
+    ? strokes.find((stroke) => stroke.id === editingTextId && (stroke.tool === "rectangle" || stroke.tool === "ellipse"))
+    : undefined;
+
+  useLayoutEffect(() => {
+    const textarea = textInputRef.current;
+    if (!textarea || !textEditor) return;
+    // Native textarea default `rows=2` balandligi flex alignmentni buzib,
+    // edit ochilganda matnni tepaga sakratardi. Balandlikni aynan kontentga
+    // moslab qo'yamiz — wrapper uni top/center/bottomga joylaydi.
+    textarea.style.height = "0px";
+    textarea.style.height = `${textarea.scrollHeight}px`;
+    const contentHeight = textarea.scrollHeight;
+    const padding = editingShapeForPanel ? Math.max(6, 12 * (size.w / REF_WIDTH)) : 0;
+    const verticalAlign = editingShapeForPanel
+      ? (textEditor.verticalAlign ?? "middle")
+      : "middle";
+    const top = verticalAlign === "top"
+      ? padding
+      : verticalAlign === "bottom"
+        ? Math.max(padding, editorHeight - padding - contentHeight)
+        : Math.max(0, (editorHeight - contentHeight) / 2);
+    textarea.style.position = "absolute";
+    textarea.style.top = `${top}px`;
+    textarea.style.left = "0px";
+  }, [
+    editorFontSize,
+    editorHeight,
+    editorWidth,
+    editingShapeForPanel,
+    size.w,
+    textEditor?.fontFamily,
+    textEditor?.fontWeight,
+    textEditor?.text,
+    textEditor?.verticalAlign,
+  ]);
 
   return (
     <div
@@ -3530,6 +5013,21 @@ function ClassroomPdfPage({
             onPointerCancel={finishStroke}
             onPointerLeave={handlePointerLeave}
           />
+          {connectorTarget && (() => {
+            const targetShape = strokes.find((stroke) => stroke.id === connectorTarget.shapeId);
+            if (!targetShape) return null;
+            return (
+              <div className="pointer-events-none absolute inset-0 z-40">
+                {(["top", "right", "bottom", "left"] as const).map((side) => {
+                  const [anchorX, anchorY] = shapeAnchor(targetShape, side, 0.5, size.w, size.h);
+                  return <span key={side} className="absolute h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500 bg-white shadow-md"
+                    style={{left: `${anchorX * 100}%`, top: `${anchorY * 100}%`}} />;
+                })}
+                <span className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500 transition-all ${connectorTarget.snapped ? "h-5 w-5 bg-indigo-500/25 ring-4 ring-indigo-400/20" : "h-3.5 w-3.5 bg-white"}`}
+                  style={{left: `${connectorTarget.point[0] * 100}%`, top: `${connectorTarget.point[1] * 100}%`}} />
+              </div>
+            );
+          })()}
           {textEditor && (
             <div
               // justify-center: canvas render ham matnni box balandligining
@@ -3543,6 +5041,12 @@ function ClassroomPdfPage({
                 top: `${textEditor.y * 100}%`,
                 width: editorWidth,
                 height: editorHeight,
+                justifyContent:
+                  textEditor.verticalAlign === "top"
+                    ? "flex-start"
+                    : textEditor.verticalAlign === "bottom"
+                      ? "flex-end"
+                      : "center",
               }}
               onPointerDown={(event) => event.stopPropagation()}
               onPointerMove={(event) => event.stopPropagation()}
@@ -3565,34 +5069,13 @@ function ClassroomPdfPage({
                   )
                     commitText();
                 }}
-                onPointerUp={() => {
-                  const rect = textInputRef.current?.getBoundingClientRect();
-                  if (!rect || size.w <= 0) return;
-                  setTextEditor((current) =>
-                    current
-                      ? {
-                        ...current,
-                        textBoxWidth: Math.max(
-                          4,
-                          Math.min(1000, (rect.width / size.w) * REF_WIDTH),
-                        ),
-                        textBoxHeight: Math.max(
-                          1,
-                          Math.min(
-                            1600,
-                            (rect.height / size.w) * REF_WIDTH,
-                          ),
-                        ),
-                      }
-                      : current,
-                  );
-                }}
                 className="classroom-text-editor block w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
                 style={{
                   margin: 0,
                   backgroundColor: "transparent",
                   appearance: "none",
-                  color: textEditor.color,
+                  color: "transparent",
+                  caretColor: textEditor.color,
                   fontFamily: getFontFamilyString(textEditor.fontFamily),
                   fontSize: editorFontSize,
                   fontWeight: textEditor.fontWeight,
@@ -3602,15 +5085,15 @@ function ClassroomPdfPage({
               />
             </div>
           )}
-          {/* TextStylePanel for active text editor — rendered OUTSIDE the editor div
-              so it doesn't overlap the textarea. Positioned above the text box. */}
-          {textEditor && showStylePanel && (
+          {/* TextStylePanel for active standalone text editor — only rendered when NOT editing text inside a shape */}
+          {textEditor && showStylePanel && !selectedShape && (
             <TextStylePanel
               color={textEditor.color}
               fontFamily={textEditor.fontFamily}
               fontSize={textEditor.fontSize}
               fontWeight={textEditor.fontWeight}
               textAlign={textEditor.textAlign}
+              verticalAlign={textEditor.verticalAlign ?? "middle"}
               rotation={0}
               style={(() => {
                 const PANEL_H = 52; // taxminiy panel balandligi px
@@ -3652,6 +5135,16 @@ function ClassroomPdfPage({
                   current ? { ...current, textAlign } : current,
                 )
               }
+              onVerticalAlignChange={(verticalAlign) => {
+                setTextEditor((current) => current ? { ...current, verticalAlign } : current);
+                if (editingShapeForPanel) {
+                  onUpdateShapeStroke?.(pageNumber, {
+                    ...editingShapeForPanel,
+                    points: [...editingShapeForPanel.points],
+                    verticalAlign,
+                  });
+                }
+              }}
             />
           )}
           {tool === "select" &&
@@ -3696,6 +5189,34 @@ function ClassroomPdfPage({
                       onPointerMove={transformText}
                       onPointerUp={finishTextTransform}
                       onPointerCancel={finishTextTransform}
+                    />
+                  ))}
+                  {(["top", "right", "bottom", "left"] as const).map((side) => (
+                    <button
+                      key={`text-connector-${side}`}
+                      type="button"
+                      aria-label={`Text box ${side} qirrasidan connector chizish`}
+                      className="pointer-events-auto absolute z-50 h-4 w-4 rounded-full border-2 border-indigo-500 bg-white shadow-md transition-transform hover:scale-125"
+                      style={{
+                        left: side === "left" ? "0%" : side === "right" ? "100%" : "50%",
+                        top: side === "top" ? "0%" : side === "bottom" ? "100%" : "50%",
+                        transform: "translate(-50%, -50%)",
+                        cursor: "crosshair",
+                      }}
+                      onPointerDown={(event) => beginConnectorFromStroke(event, selectedText, side)}
+                      onPointerMove={moveConnectorFromShape}
+                      onPointerUp={finishConnectorFromShape}
+                      onPointerCancel={finishConnectorFromShape}
+                      onPointerEnter={() => {
+                        if (!connectorDraftRef.current) {
+                          setConnectorHover({ stroke: selectedText, side });
+                        }
+                      }}
+                      onPointerLeave={() => {
+                        if (!connectorDraftRef.current) {
+                          setConnectorHover(null);
+                        }
+                      }}
                     />
                   ))}
                   <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
@@ -3752,7 +5273,7 @@ function ClassroomPdfPage({
                         onReorderStroke?.(pageNumber, [selectedText.id], op)
                       }
                       onDelete={() => {
-                        onEraseStroke?.(pageNumber, selectedText.id);
+                        deleteStrokeAndAttachedConnectors(selectedText.id);
                         setSelectedTextId(null);
                       }}
                     />
@@ -3780,10 +5301,19 @@ function ClassroomPdfPage({
                 edges={shapeStyle.edges}
                 opacity={shapeStyle.opacity}
                 strokeTool={tool}
+                style={{
+                  left: "50%",
+                  top: "16px",
+                  transform: "translateX(-50%)",
+                }}
                 onToolChange={onToolChange}
-                onColorChange={(nextColor) =>
-                  applyColorToSelection(nextColor)
-                }
+                onColorChange={(nextColor, nextStrokeStyle) => {
+                  onColorChange?.(nextColor);
+                  if (nextStrokeStyle && nextStrokeStyle !== shapeStyle.strokeStyle) {
+                    onShapeStyleChange({ ...shapeStyle, strokeStyle: nextStrokeStyle });
+                  }
+                  applyColorToSelection(nextColor);
+                }}
                 onBackgroundColorChange={(backgroundColor) =>
                   onShapeStyleChange({
                     ...shapeStyle,
@@ -3796,7 +5326,11 @@ function ClassroomPdfPage({
                 }
                 onStrokeWidthChange={(width) => onStrokeWidthChange?.(width)}
                 onStrokeStyleChange={(strokeStyle) =>
-                  onShapeStyleChange({ ...shapeStyle, strokeStyle })
+                  onShapeStyleChange({
+                    ...shapeStyle,
+                    strokeStyle,
+                    width: strokeStyle !== "none" && strokeWidth === 0 ? 2 : strokeWidth,
+                  })
                 }
                 onLineShapeChange={(lineShape) =>
                   onShapeStyleChange({ ...shapeStyle, lineShape })
@@ -3816,6 +5350,15 @@ function ClassroomPdfPage({
                 onOpacityChange={(opacity) =>
                   onShapeStyleChange({ ...shapeStyle, opacity })
                 }
+                onSwapDirection={() => {
+                  const curEnd = shapeStyle.endArrowHead ?? (tool === "line" ? "none" : "arrow");
+                  const curStart = shapeStyle.startArrowHead ?? "none";
+                  onShapeStyleChange({
+                    ...shapeStyle,
+                    endArrowHead: curStart,
+                    startArrowHead: curEnd,
+                  });
+                }}
                 onReorder={() => { }}
               />
             )}
@@ -3856,13 +5399,10 @@ function ClassroomPdfPage({
                     const x1 = selectedShape.points[2];
                     const y1 = selectedShape.points[3];
                     const ctrlX = selectedShape.controlX ?? (x0 + x1) / 2;
-                    const ctrlY = selectedShape.controlY ?? (y0 + y1) / 2;
                     let dotX = (x0 + x1) / 2;
                     let dotY = (y0 + y1) / 2;
                     if (selectedShape.lineShape === "curved") {
-                      // Point directly on quadratic curve at t = 0.5
-                      dotX = 0.25 * x0 + 0.5 * ctrlX + 0.25 * x1;
-                      dotY = 0.25 * y0 + 0.5 * ctrlY + 0.25 * y1;
+                      [dotX, dotY] = connectorCurvePoint(selectedShape, 0.5, size.w, size.h);
                     } else if (selectedShape.lineShape === "elbow") {
                       dotX = ctrlX;
                       dotY = (y0 + y1) / 2;
@@ -3914,6 +5454,34 @@ function ClassroomPdfPage({
                       onPointerCancel={finishShapeTransform}
                     />
                   ))}
+                  {(["top", "right", "bottom", "left"] as const).map((side) => (
+                    <button
+                      key={`connector-${side}`}
+                      type="button"
+                      aria-label={`${side} qirradan connector chizish`}
+                      className="pointer-events-auto absolute z-50 h-4 w-4 rounded-full border-2 border-indigo-500 bg-white shadow-md transition-transform hover:scale-125"
+                      style={{
+                        left: side === "left" ? "0%" : side === "right" ? "100%" : "50%",
+                        top: side === "top" ? "0%" : side === "bottom" ? "100%" : "50%",
+                        transform: "translate(-50%, -50%)",
+                        cursor: "crosshair",
+                      }}
+                      onPointerDown={(event) => beginConnectorFromStroke(event, selectedShapeRaw!, side)}
+                      onPointerMove={moveConnectorFromShape}
+                      onPointerUp={finishConnectorFromShape}
+                      onPointerCancel={finishConnectorFromShape}
+                      onPointerEnter={() => {
+                        if (!connectorDraftRef.current && selectedShapeRaw) {
+                          setConnectorHover({ stroke: selectedShapeRaw, side });
+                        }
+                      }}
+                      onPointerLeave={() => {
+                        if (!connectorDraftRef.current) {
+                          setConnectorHover(null);
+                        }
+                      }}
+                    />
+                  ))}
                   <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
                   <button
                     type="button"
@@ -3939,6 +5507,7 @@ function ClassroomPdfPage({
                 return (
                   <ShapeStylePanel
                     color={selectedShape.color}
+                    textColor={selectedShape.textColor || selectedShape.color}
                     backgroundColor={
                       selectedShape.backgroundColor ?? "transparent"
                     }
@@ -3948,10 +5517,39 @@ function ClassroomPdfPage({
                     lineShape={selectedShape.lineShape ?? "straight"}
                     startArrowHead={selectedShape.startArrowHead ?? "none"}
                     endArrowHead={selectedShape.endArrowHead ?? (selectedShape.tool === "line" ? "none" : "arrow")}
-                    edges={selectedShape.edges ?? "sharp"}
+                    edges={selectedShape.edges ?? "round"}
                     opacity={selectedShape.opacity ?? 100}
                     rotation={0}
                     strokeTool={selectedShape.tool}
+                    text={selectedShape.text}
+                    fontFamily={selectedShape.fontFamily ?? "Inter"}
+                    fontSize={selectedShape.fontSize ?? 24}
+                    fontWeight={selectedShape.fontWeight ?? 600}
+                    textAlign={selectedShape.textAlign ?? "center"}
+                    onFontFamilyChange={(fontFamily) => {
+                      updateSelectedShape({ fontFamily });
+                      setTextEditor((c) => (c ? { ...c, fontFamily } : c));
+                    }}
+                    onFontSizeChange={(fontSize) => {
+                      updateSelectedShape({ fontSize });
+                      setTextEditor((c) => (c ? { ...c, fontSize } : c));
+                    }}
+                    onFontWeightChange={(fontWeight) => {
+                      updateSelectedShape({ fontWeight });
+                      setTextEditor((c) => (c ? { ...c, fontWeight } : c));
+                    }}
+                    onTextAlignChange={(textAlign) => {
+                      updateSelectedShape({ textAlign });
+                      setTextEditor((c) => (c ? { ...c, textAlign } : c));
+                    }}
+                    onVerticalAlignChange={(verticalAlign) => {
+                      updateSelectedShape({ verticalAlign });
+                      setTextEditor((c) => (c ? { ...c, verticalAlign } : c));
+                    }}
+                    onTextColorChange={(textColor) => {
+                      updateSelectedShape({ textColor });
+                      setTextEditor((c) => (c ? { ...c, color: textColor } : c));
+                    }}
                     onToolChange={(nextTool) =>
                       updateSelectedShape({ tool: nextTool })
                     }
@@ -3960,9 +5558,17 @@ function ClassroomPdfPage({
                       top: `${Math.max(12, topY - 48)}px`,
                       transform: "translate(-50%, -100%)",
                     }}
-                    onColorChange={(nextColor) =>
-                      updateSelectedShape({ color: nextColor })
-                    }
+                    onColorChange={(nextColor, nextStrokeStyle) => {
+                      if (nextStrokeStyle && nextStrokeStyle !== selectedShape.strokeStyle) {
+                        updateSelectedShape({
+                          color: nextColor,
+                          strokeStyle: nextStrokeStyle,
+                          width: selectedShape.width > 0 ? selectedShape.width : 2,
+                        });
+                      } else {
+                        updateSelectedShape({ color: nextColor });
+                      }
+                    }}
                     onBackgroundColorChange={(backgroundColor) =>
                       updateSelectedShape({
                         backgroundColor,
@@ -3975,9 +5581,17 @@ function ClassroomPdfPage({
                     onStrokeWidthChange={(width) =>
                       updateSelectedShape({ width })
                     }
-                    onStrokeStyleChange={(strokeStyle) =>
-                      updateSelectedShape({ strokeStyle })
-                    }
+                    onStrokeStyleChange={(strokeStyle) => {
+                      if (strokeStyle !== "none" && selectedShape.strokeStyle === "none") {
+                        updateSelectedShape({
+                          strokeStyle,
+                          width: selectedShape.width > 0 ? selectedShape.width : 2,
+                          color: selectedShape.color || "#000000",
+                        });
+                      } else {
+                        updateSelectedShape({ strokeStyle });
+                      }
+                    }}
                     onLineShapeChange={(lineShape) =>
                       updateSelectedShape({ lineShape })
                     }
@@ -3993,6 +5607,31 @@ function ClassroomPdfPage({
                     onOpacityChange={(opacity) =>
                       updateSelectedShape({ opacity })
                     }
+                    onSwapDirection={() => {
+                      if (!selectedShape) return;
+                      const revPoints = [
+                        selectedShape.points[2],
+                        selectedShape.points[3],
+                        selectedShape.points[0],
+                        selectedShape.points[1],
+                      ];
+                      const curEnd = selectedShape.endArrowHead ?? (selectedShape.tool === "line" ? "none" : "arrow");
+                      const curStart = selectedShape.startArrowHead ?? "none";
+                      updateSelectedShape({
+                        points: revPoints,
+                        startBinding: selectedShape.endBinding,
+                        endBinding: selectedShape.startBinding,
+                        startArrowHead: curEnd,
+                        endArrowHead: curStart,
+                      });
+                    }}
+                    onDelete={() => {
+                      if (selectedShape) {
+                        deleteStrokeAndAttachedConnectors(selectedShape.id);
+                        setSelectedShapeId(null);
+                        setConnectorTarget(null);
+                      }
+                    }}
                     onReorder={(op) =>
                       selectedShape &&
                       onReorderStroke?.(pageNumber, [selectedShape.id], op)
@@ -4081,6 +5720,86 @@ function ClassroomPdfPage({
                 <RotateCw size={11} />
               </button>
             </div>
+          )}
+          {connectorHover && size.w > 0 && size.h > 0 && (() => {
+            const ghost = getGhostShapeBounds(connectorHover.stroke, connectorHover.side);
+            return (
+              <div
+                className={`pointer-events-none absolute z-30 border-2 border-dashed border-indigo-400 bg-indigo-500/10 transition-all duration-150 flex items-center justify-center ${ghost.tool === "ellipse" ? "rounded-full" : "rounded-lg"}`}
+                style={{
+                  left: `${ghost.minX * 100}%`,
+                  top: `${ghost.minY * 100}%`,
+                  width: `${ghost.width * 100}%`,
+                  height: `${ghost.height * 100}%`,
+                  transform: `rotate(${ghost.rotation}deg)`,
+                  transformOrigin: "center",
+                }}
+              >
+                <Plus className="h-5 w-5 text-indigo-500 opacity-60 animate-pulse" />
+              </div>
+            );
+          })()}
+          {connectorShapePicker && (
+            <>
+              <div
+                className="fixed inset-0 z-[199]"
+                onClick={() => setConnectorShapePicker(null)}
+                onPointerDown={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setConnectorShapePicker(null);
+                }}
+              />
+              <div
+                className="fixed z-[200] flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150 select-none"
+                style={{
+                  left: Math.max(16, Math.min(window.innerWidth - 240, connectorShapePicker.screenX - 100)),
+                  top: Math.max(16, Math.min(window.innerHeight - 150, connectorShapePicker.screenY + 12)),
+                }}
+                onClick={(e) => e.stopPropagation()}
+                onPointerDown={(e) => e.stopPropagation()}
+              >
+                <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-100">
+                  <span className="text-xs font-semibold text-slate-500">Shakl tanlang</span>
+                  <button
+                    type="button"
+                    onClick={() => setConnectorShapePicker(null)}
+                    className="text-slate-400 hover:text-slate-600 rounded p-0.5 transition-colors"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+                <div className="grid grid-cols-3 gap-1.5 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => pickConnectorShape("rectangle")}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    title="To'rtburchak"
+                  >
+                    <Square className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
+                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">To'rtburchak</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pickConnectorShape("ellipse")}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    title="Doira"
+                  >
+                    <Circle className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
+                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">Doira</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => pickConnectorShape("text")}
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    title="Matn"
+                  >
+                    <Type className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
+                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">Matn</span>
+                  </button>
+                </div>
+              </div>
+            </>
           )}
         </div>
       ) : (
@@ -5077,15 +6796,16 @@ export function ClassroomPdfViewer({
                           onStrokeWidthChange={onStrokeWidthChange}
                           shapeStyle={shapeStyle}
                           onShapeStyleChange={onShapeStyleChange}
-                          onUpdateShapeStroke={(page, stroke) => {
+                          onUpdateShapeStroke={(page, stroke, groupId) => {
                             if (displayLayout === "split")
                               onPaneUpdateShapeStroke?.(
                                 paneIndex === 1 ? "right" : "left",
                                 paneMode,
                                 page,
                                 stroke,
+                                groupId,
                               );
-                            else onUpdateShapeStroke?.(page, stroke);
+                            else onUpdateShapeStroke?.(page, stroke, groupId);
                           }}
                           onReorderStroke={(page, strokeIds, op) => {
                             if (displayLayout === "split")
@@ -5098,13 +6818,14 @@ export function ClassroomPdfViewer({
                               );
                             else onReorderStroke?.(page, strokeIds, op);
                           }}
-                          onStrokeComplete={(page, stroke) => {
+                          onStrokeComplete={(page, stroke, groupId) => {
                             if (displayLayout === "split" && paneIndex === 1) {
                               onPaneStrokeComplete?.(
                                 "right",
                                 paneMode,
                                 page,
                                 stroke,
+                                groupId,
                               );
                             } else {
                               if (displayLayout === "split")
@@ -5113,6 +6834,7 @@ export function ClassroomPdfViewer({
                                   paneMode,
                                   page,
                                   stroke,
+                                  groupId,
                                 );
                               else if (onPaneStrokeComplete)
                                 onPaneStrokeComplete(
@@ -5120,11 +6842,12 @@ export function ClassroomPdfViewer({
                                   displayMode,
                                   page,
                                   stroke,
+                                  groupId,
                                 );
-                              else onStrokeComplete?.(page, stroke);
+                              else onStrokeComplete?.(page, stroke, groupId);
                             }
                           }}
-                          onMoveStroke={(page, strokeId, x, y) => {
+                          onMoveStroke={(page, strokeId, x, y, groupId) => {
                             if (displayLayout === "split")
                               onPaneMoveStroke?.(
                                 paneIndex === 1 ? "right" : "left",
@@ -5133,19 +6856,21 @@ export function ClassroomPdfViewer({
                                 strokeId,
                                 x,
                                 y,
+                                groupId,
                               );
-                            else onMoveStroke?.(page, strokeId, x, y);
+                            else onMoveStroke?.(page, strokeId, x, y, groupId);
                           }}
-                          onUpdateTextStroke={(page, stroke) => {
+                          onUpdateTextStroke={(page, stroke, groupId) => {
                             if (boardLayout === "split") {
                               onPaneUpdateTextStroke?.(
                                 paneIndex === 1 ? "right" : "left",
                                 paneMode,
                                 page,
                                 stroke,
+                                groupId,
                               );
                             } else {
-                              onUpdateTextStroke?.(page, stroke);
+                              onUpdateTextStroke?.(page, stroke, groupId);
                             }
                           }}
                           onPointerMove={(page, x, y, active) =>
@@ -5157,15 +6882,16 @@ export function ClassroomPdfViewer({
                               paneIndex === 1 ? "right" : "left",
                             )
                           }
-                          onEraseStroke={(page, strokeId) => {
+                          onEraseStroke={(page, strokeId, groupId) => {
                             if (displayLayout === "split")
                               onPaneEraseStroke?.(
                                 paneIndex === 1 ? "right" : "left",
                                 paneMode,
                                 page,
                                 strokeId,
+                                groupId,
                               );
-                            else onEraseStroke?.(page, strokeId);
+                            else onEraseStroke?.(page, strokeId, groupId);
                           }}
                           onSplitStroke={(page, strokeId, replacements) => {
                             if (displayLayout === "split")

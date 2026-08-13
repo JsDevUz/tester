@@ -394,6 +394,22 @@ function validateShapeFields(stroke: ClassroomStroke): boolean {
   if (stroke.sloppiness !== undefined && ![0, 1, 2].includes(stroke.sloppiness)) return false;
   if (stroke.edges !== undefined && !['sharp', 'round'].includes(stroke.edges)) return false;
   if (stroke.opacity !== undefined && (!Number.isFinite(stroke.opacity) || stroke.opacity < 0 || stroke.opacity > 100)) return false;
+  if (stroke.text !== undefined && (typeof stroke.text !== 'string' || stroke.text.length > 500)) return false;
+  if (stroke.fontSize !== undefined && (!Number.isFinite(stroke.fontSize) || stroke.fontSize < 1 || stroke.fontSize > 96)) return false;
+  if (stroke.fontWeight !== undefined && ![400, 500, 600, 700].includes(stroke.fontWeight)) return false;
+  if (stroke.fontFamily !== undefined && !FONT_FAMILIES.includes(stroke.fontFamily)) return false;
+  if (stroke.textAlign !== undefined && !['left', 'center', 'right'].includes(stroke.textAlign)) return false;
+  if (stroke.verticalAlign !== undefined && !['top', 'middle', 'bottom'].includes(stroke.verticalAlign)) return false;
+  const validBinding = (binding: ClassroomStroke['startBinding']) => binding === undefined || (
+    typeof binding === 'object' && binding !== null &&
+    typeof binding.strokeId === 'string' && binding.strokeId.length > 0 && binding.strokeId.length <= 128 &&
+    ['top', 'right', 'bottom', 'left'].includes(binding.side) &&
+    (binding.position === undefined || (Number.isFinite(binding.position) && binding.position >= 0 && binding.position <= 1))
+  );
+  if (!validBinding(stroke.startBinding) || !validBinding(stroke.endBinding)) return false;
+  if (stroke.lineShape !== undefined && !['straight', 'curved', 'elbow'].includes(stroke.lineShape)) return false;
+  if (stroke.controlX !== undefined && (!Number.isFinite(stroke.controlX) || stroke.controlX < 0 || stroke.controlX > 1)) return false;
+  if (stroke.controlY !== undefined && (!Number.isFinite(stroke.controlY) || stroke.controlY < 0 || stroke.controlY > 1)) return false;
   return true;
 }
 
@@ -415,6 +431,9 @@ export function addStroke(session: ClassroomSession, page: number, stroke: Class
     if (points.length !== 4) return false;
     if (!validateShapeFields(stroke)) return false;
     if (stroke.rotation !== undefined && (!Number.isFinite(stroke.rotation) || stroke.rotation < -360 || stroke.rotation > 360)) return false;
+  }
+  if (stroke.tool === 'line' || stroke.tool === 'arrow') {
+    if (points.length !== 4 || !validateShapeFields(stroke)) return false;
   }
   if (points.length > MAX_STROKE_POINTS * 2) return false;
   if (points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
@@ -468,6 +487,12 @@ export function updateShapeStroke(
   const index = list.findIndex((item) => item.id === updated.id);
   if (index === -1) return false;
   const candidate = { ...updated, points: [...updated.points] };
+  if ((candidate.tool === 'line' || candidate.tool === 'arrow') && (candidate.startBinding || candidate.endBinding)) {
+    candidate.width = 2;
+    candidate.lineShape = 'curved';
+    candidate.startArrowHead = 'none';
+    candidate.endArrowHead = 'arrow';
+  }
   if (candidate.points.length === 0 || candidate.points.length % 2 !== 0 || candidate.points.length > MAX_STROKE_POINTS * 2) return false;
   if (candidate.points.some((v) => typeof v !== 'number' || !Number.isFinite(v) || v < 0 || v > 1)) return false;
   if ((candidate.tool === 'rectangle' || candidate.tool === 'ellipse') && candidate.points.length !== 4) return false;

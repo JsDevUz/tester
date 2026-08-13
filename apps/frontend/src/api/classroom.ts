@@ -327,18 +327,26 @@ export type CsFillStyle = "hachure" | "cross-hatch" | "solid";
 export type CsStrokeStyle = "none" | "solid" | "dashed" | "dotted";
 export type CsSloppiness = 0 | 1 | 2;
 export type CsEdges = "sharp" | "round";
+export type CsBindingSide = "top" | "right" | "bottom" | "left";
+export interface CsShapeBinding {
+  strokeId: string;
+  side: CsBindingSide;
+  position?: number;
+}
 
 export interface CsStroke {
   id: string;
   tool: CsTool;
   createdAt?: number;
   color: string;
+  textColor?: string;
   width: number;
   text?: string;
   fontFamily?: CsFontFamily;
   fontSize?: number;
   fontWeight?: 400 | 500 | 600 | 700;
   textAlign?: "left" | "center" | "right";
+  verticalAlign?: "top" | "middle" | "bottom";
   textBoxWidth?: number;
   textBoxHeight?: number;
   rotation?: number;
@@ -356,6 +364,10 @@ export interface CsStroke {
   endArrowHead?: string;
   controlX?: number;
   controlY?: number;
+  startBinding?: CsShapeBinding;
+  endBinding?: CsShapeBinding;
+  startBindingVector?: [number, number];
+  endBindingVector?: [number, number];
   // Normalizatsiyalangan (0..1), flat: [x0, y0, x1, y1, ...]. Shape uchun
   // bounding box burchaklari: [x0, y0, x1, y1].
   points: number[];

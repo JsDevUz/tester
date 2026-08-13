@@ -1589,14 +1589,14 @@ export class ClassroomService implements OnModuleInit {
     this.broadcaster.toRoom(sessionId, 'theme:set', payload);
   }
 
-  stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  stroke(sessionId: string, userId: string, page: number, stroke: ClassroomStroke, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
     const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    pushUndoEntry(s, { type: 'stroke:add', mode, page, pane, before: null, after: { stroke } });
+    pushUndoEntry(s, { type: 'stroke:add', mode, page, pane, before: null, after: { stroke }, groupId });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:add', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:add', payload);

@@ -1,16 +1,53 @@
+# Dependencies & build outputs
 node_modules/
 dist/
+build/
 .env
 **/.env
 *.local
+.DS_Store
+**/.DS_Store
 
 # Generated credential/import scratch files — never track plaintext passwords.
 apps/backend/test-accounts-credentials.csv
 apps/backend/test-accounts-insert.sql
 apps/backend/school-members-insert.sql
 
-# React Native mobile workspace is kept local and must not be pushed.
-apps/mobile/
+# Mobile (React Native) — Android build artifacts & private keys
+apps/mobile/.gradle/
+apps/mobile/.idea/
+apps/mobile/.cxx/
+apps/mobile/.kotlin/
+apps/mobile/android/.gradle/
+apps/mobile/android/.idea/
+apps/mobile/android/.cxx/
+apps/mobile/android/.kotlin/
+apps/mobile/android/app/build/
+apps/mobile/android/build/
+apps/mobile/android/local.properties
+apps/mobile/android/gradle.properties
+apps/mobile/android/*.keystore
+!apps/mobile/android/app/debug.keystore
 
-# Superpowers brainstorming companion scratch (demo HTML, server pid/log/state) — ephemeral, never tracked.
-.superpowers/brainstorm/
+# Mobile (React Native) — iOS build artifacts & Xcode user state
+apps/mobile/ios/Pods/
+apps/mobile/ios/build/
+apps/mobile/ios/DerivedData/
+apps/mobile/ios/*.xcworkspace/xcuserdata/
+apps/mobile/ios/*.xcodeproj/xcuserdata/
+apps/mobile/ios/*.xcodeproj/project.xcworkspace/xcuserdata/
+apps/mobile/ios/**/.xcode.env.local
+
+# Mobile (React Native) — Metro, Bundles, Fastlane & Coverage
+apps/mobile/.bundle/
+apps/mobile/coverage/
+apps/mobile/*.jsbundle
+apps/mobile/.metro-health-check*
+apps/mobile/**/fastlane/report.xml
+apps/mobile/**/fastlane/Preview.html
+apps/mobile/**/fastlane/screenshots
+apps/mobile/**/fastlane/test_output
+
+# Superpowers and ephemeral scratch
+.superpowers/
+.claude/
