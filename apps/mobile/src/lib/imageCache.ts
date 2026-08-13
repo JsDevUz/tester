@@ -74,8 +74,13 @@ export async function getCachedImageUri(
   try {
     const exists = await ReactNativeBlobUtil.fs.exists(localFilePath);
     if (exists) {
-      memoryCache.set(remoteUrl, localFileUri);
-      return localFileUri;
+      const stat = await ReactNativeBlobUtil.fs.stat(localFilePath);
+      if (Number(stat.size) > 0) {
+        memoryCache.set(remoteUrl, localFileUri);
+        return localFileUri;
+      }
+      // If 0-byte or corrupted file exists, remove it
+      await ReactNativeBlobUtil.fs.unlink(localFilePath).catch(() => {});
     }
   } catch {
     // proceed to download
@@ -86,20 +91,29 @@ export async function getCachedImageUri(
     return inFlightDownloads.get(remoteUrl)!;
   }
 
+  const tmpFilePath = `${localFilePath}.tmp`;
+
   const downloadPromise = (async () => {
     try {
       await ensureDir(targetDir);
+      // Download to temporary file first so partial downloads never corrupt final cache
       const res = await ReactNativeBlobUtil.config({
-        path: localFilePath,
+        path: tmpFilePath,
       }).fetch('GET', remoteUrl);
 
       const status = res.info().status;
       if (status >= 200 && status < 300) {
-        memoryCache.set(remoteUrl, localFileUri);
-        return localFileUri;
+        const stat = await ReactNativeBlobUtil.fs.stat(tmpFilePath).catch(() => null);
+        if (stat && Number(stat.size) > 0) {
+          await ReactNativeBlobUtil.fs.mv(tmpFilePath, localFilePath).catch(() => {});
+          memoryCache.set(remoteUrl, localFileUri);
+          return localFileUri;
+        }
       }
+      await ReactNativeBlobUtil.fs.unlink(tmpFilePath).catch(() => {});
       return remoteUrl;
     } catch {
+      await ReactNativeBlobUtil.fs.unlink(tmpFilePath).catch(() => {});
       return remoteUrl;
     } finally {
       inFlightDownloads.delete(remoteUrl);

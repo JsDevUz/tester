@@ -1,9 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { Image, Pressable, Text, View } from 'react-native';
+import { Image, Platform, Pressable, Text, View } from 'react-native';
 import { RefreshCw } from 'lucide-react-native';
 import { ClassroomStrokeCanvas } from './ClassroomStrokeCanvas';
 import { ClassroomNotebookBackground } from './ClassroomNotebookBackground';
 import type { CsNotebookStyle, CsPointer, CsStroke } from '../../types/classroom';
+
+import { WEB_URL } from '../../config/env';
 
 // Matches PDF_RENDER_WIDTH=1600 from backend; fallback aspect ratio.
 const DEFAULT_PDF_ASPECT_RATIO = 1600 / 2263;
@@ -21,6 +23,23 @@ export function setCachedDocAspectRatio(ratio: number) {
   if (ratio > 0 && Number.isFinite(ratio)) {
     lastKnownDocAspectRatio = ratio;
   }
+}
+
+function resolvePageUrl(rawUrl: string | null): string | null {
+  if (!rawUrl) return null;
+  if (
+    rawUrl.startsWith('http://') ||
+    rawUrl.startsWith('https://') ||
+    rawUrl.startsWith('file://') ||
+    rawUrl.startsWith('data:')
+  ) {
+    if (Platform.OS === 'android' && (rawUrl.includes('localhost') || rawUrl.includes('127.0.0.1'))) {
+      return rawUrl.replace('localhost', '10.0.2.2').replace('127.0.0.1', '10.0.2.2');
+    }
+    return rawUrl;
+  }
+  const cleanPath = rawUrl.startsWith('/') ? rawUrl : `/${rawUrl}`;
+  return `${WEB_URL}${cleanPath}`;
 }
 
 export function ClassroomPageView({
@@ -41,9 +60,11 @@ export function ClassroomPageView({
   pointer?: CsPointer | null;
   customWidth?: number;
 }) {
+  const fullPageUrl = React.useMemo(() => resolvePageUrl(pageUrl), [pageUrl]);
+
   const [aspectRatio, setAspectRatio] = useState<number>(() => {
     if (boardMode === 'notebook') return NOTEBOOK_ASPECT_RATIO;
-    if (pageUrl && aspectCache[pageUrl]) return aspectCache[pageUrl];
+    if (fullPageUrl && aspectCache[fullPageUrl]) return aspectCache[fullPageUrl];
     return lastKnownDocAspectRatio || DEFAULT_PDF_ASPECT_RATIO;
   });
   const safeAspectRatio = aspectRatio > 0 && Number.isFinite(aspectRatio) ? aspectRatio : DEFAULT_PDF_ASPECT_RATIO;
@@ -58,15 +79,15 @@ export function ClassroomPageView({
   useEffect(() => {
     retryCountRef.current = 0;
     setLoadFailed(false);
-  }, [pageUrl]);
+  }, [fullPageUrl]);
 
   const handleImageError = useCallback(() => {
-    if (retryCountRef.current >= 4) {
+    if (retryCountRef.current >= 8) {
       setLoadFailed(true);
       return;
     }
     retryCountRef.current += 1;
-    const delay = Math.min(1000 * 2 ** retryCountRef.current, 8000);
+    const delay = Math.min(800 * 2 ** retryCountRef.current, 6000);
     setTimeout(() => {
       setRetryKey(k => k + 1);
     }, delay);
@@ -75,21 +96,21 @@ export function ClassroomPageView({
   const handleImageDimension = useCallback((w: number, h: number) => {
     if (w > 0 && h > 0) {
       const ratio = w / h;
-      if (pageUrl) aspectCache[pageUrl] = ratio;
+      if (fullPageUrl) aspectCache[fullPageUrl] = ratio;
       setCachedDocAspectRatio(ratio);
       setAspectRatio(ratio);
     }
-  }, [pageUrl]);
+  }, [fullPageUrl]);
 
   useEffect(() => {
-    if (boardMode !== 'pdf' || !pageUrl) return;
-    if (aspectCache[pageUrl]) {
-      setAspectRatio(aspectCache[pageUrl]);
+    if (boardMode !== 'pdf' || !fullPageUrl) return;
+    if (aspectCache[fullPageUrl]) {
+      setAspectRatio(aspectCache[fullPageUrl]);
       return;
     }
     let cancelled = false;
     Image.getSize(
-      pageUrl,
+      fullPageUrl,
       (w, h) => {
         if (!cancelled) handleImageDimension(w, h);
       },
@@ -98,7 +119,7 @@ export function ClassroomPageView({
     return () => {
       cancelled = true;
     };
-  }, [boardMode, pageUrl, handleImageDimension]);
+  }, [boardMode, fullPageUrl, handleImageDimension]);
 
   const isDark = theme === 'dark';
   const cardBg = boardMode === 'pdf' ? '#ffffff' : (isDark ? '#232733' : '#ffffff');
@@ -114,11 +135,11 @@ export function ClassroomPageView({
         borderRadius: 4,
         overflow: 'hidden',
       }}>
-      {boardMode === 'pdf' && pageUrl ? (
+      {boardMode === 'pdf' && fullPageUrl ? (
         <>
           <Image
             key={retryKey}
-            source={{ uri: pageUrl }}
+            source={{ uri: fullPageUrl }}
             style={{ width: '100%', height: '100%' }}
             resizeMode="contain"
             onLoad={e => {

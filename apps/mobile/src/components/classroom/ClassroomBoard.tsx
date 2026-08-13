@@ -150,7 +150,40 @@ function Pane({
     setVisiblePage(page);
   };
 
-  // Helper worklet to compute visible page and clamp (tx, ty)
+  // Helper JS function to compute camera clamp using fresh JS layout variables
+  // directly during React sync effects, avoiding stale SharedValue reads.
+  const clampCameraVal = (
+    targetTx: number,
+    targetTy: number,
+    s: number,
+    cW: number,
+    cH: number,
+    totalW: number,
+    totalH: number,
+  ) => {
+    const currentW = totalW * s;
+    const currentH = totalH * s;
+
+    let clampedX = targetTx;
+    if (currentW <= cW) {
+      clampedX = 0;
+    } else {
+      const maxDeltaX = (currentW - cW) / 2;
+      clampedX = Math.max(-maxDeltaX, Math.min(maxDeltaX, targetTx));
+    }
+
+    let clampedY = targetTy;
+    if (currentH <= cH) {
+      clampedY = 0;
+    } else {
+      const maxDeltaY = (currentH - cH) / 2;
+      clampedY = Math.max(-maxDeltaY, Math.min(maxDeltaY, targetTy));
+    }
+
+    return {x: clampedX, y: clampedY};
+  };
+
+  // Helper worklet to compute visible page and clamp (tx, ty) during gesture pan
   const clampCamera = (targetTx: number, targetTy: number, s: number) => {
     'worklet';
     const cW = containerWSV.value;
@@ -260,6 +293,14 @@ function Pane({
     };
   });
 
+  // Track initial sync load to set camera instantly without giant animation jump
+  const isInitialSyncRef = useRef(true);
+
+  // Reset initial sync flag when mode or page count changes fundamentally
+  useEffect(() => {
+    isInitialSyncRef.current = true;
+  }, [boardMode, pageCount]);
+
   // =========================================================================
   // TEACHER SYNC LOGIC
   // =========================================================================
@@ -275,13 +316,20 @@ function Pane({
     const targetContentY = pageY + baseCardHeight * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
-    scale.value = withTiming(s, {duration: 200});
-
     const targetTy = s * (totalContentHeight / 2 - targetContentY);
-    const clamped = clampCamera(0, targetTy, s);
+    // Use fresh JS layout values to compute camera clamp immediately upon mount/sync
+    const clamped = clampCameraVal(0, targetTy, s, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
 
-    tx.value = withTiming(clamped.x, {duration: 200});
-    ty.value = withTiming(clamped.y, {duration: 200});
+    if (isInitialSyncRef.current) {
+      isInitialSyncRef.current = false;
+      scale.value = s;
+      tx.value = clamped.x;
+      ty.value = clamped.y;
+    } else {
+      scale.value = withTiming(s, {duration: 200});
+      tx.value = withTiming(clamped.x, {duration: 200});
+      ty.value = withTiming(clamped.y, {duration: 200});
+    }
     setVisiblePage(targetPage);
   }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, scale, tx, ty]);
 
@@ -301,7 +349,7 @@ function Pane({
     const nextTx = tx.value * ratio;
     const nextTy = ty.value * ratio;
 
-    const clamped = clampCamera(nextTx, nextTy, nextS);
+    const clamped = clampCameraVal(nextTx, nextTy, nextS, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
 
     scale.value = withTiming(nextS, {duration: 180});
     tx.value = withTiming(clamped.x, {duration: 180});
@@ -309,7 +357,15 @@ function Pane({
   };
 
   const isPressingControlRef = useRef(false);
-  const activePageDisplay = synced ? safeCurrentPage : visiblePage;
+  const targetPage = Math.min(Math.max(1, scroll?.page ?? safeCurrentPage), pageCount);
+  const activePageDisplay = synced ? targetPage : visiblePage;
+
+  // Windowing: 191+ betli katta PDF'larda barcha sahifalarni birdaniga DOM'ga
+  // chiqarmaymiz — faqat joriy ko'rinayotgan sahifa va uning atrofidagi 3 ta
+  // sahifani (jami 7 ta) render qilamiz. Qolganlariga yengil placeholder joy
+  // qoldiriladi. Bu xotira to'lishi, op-oppoq sahifa va tarmoq botlanishini batamom yo'qotadi.
+  const renderWindowMin = Math.max(1, activePageDisplay - 3);
+  const renderWindowMax = Math.min(pageCount, activePageDisplay + 3);
 
   return (
     <View
@@ -335,26 +391,41 @@ function Pane({
             },
             animatedCameraStyle,
           ]}>
-          {listData.map(pageNumber => (
-            <View
-              key={pageNumber}
-              style={{
-                width: baseCardWidth,
-                marginBottom: PAGE_GAP,
-                alignItems: 'center',
-              }}>
-              <ClassroomPageView
-                pageUrl={boardMode === 'pdf' ? (pages[pageNumber - 1] ?? null) : null}
-                boardMode={boardMode}
-                notebookStyle={notebookPageStyles[pageNumber] ?? 'grid'}
-                theme={theme}
-                strokes={strokesByPage[pageNumber] ?? []}
-                pageIndex={pageNumber}
-                pointer={pointer && pointer.page === pageNumber ? pointer : null}
-                customWidth={baseCardWidth}
-              />
-            </View>
-          ))}
+          {listData.map(pageNumber => {
+            const isVisibleWindow = pageNumber >= renderWindowMin && pageNumber <= renderWindowMax;
+            return (
+              <View
+                key={pageNumber}
+                style={{
+                  width: baseCardWidth,
+                  height: baseCardHeight,
+                  marginBottom: PAGE_GAP,
+                  alignItems: 'center',
+                }}>
+                {isVisibleWindow ? (
+                  <ClassroomPageView
+                    pageUrl={boardMode === 'pdf' ? (pages[pageNumber - 1] ?? null) : null}
+                    boardMode={boardMode}
+                    notebookStyle={notebookPageStyles[pageNumber] ?? 'grid'}
+                    theme={theme}
+                    strokes={strokesByPage[pageNumber] ?? []}
+                    pageIndex={pageNumber}
+                    pointer={pointer && pointer.page === pageNumber ? pointer : null}
+                    customWidth={baseCardWidth}
+                  />
+                ) : (
+                  <View
+                    style={{
+                      width: baseCardWidth,
+                      height: baseCardHeight,
+                      backgroundColor: boardMode === 'pdf' ? '#ffffff' : (theme === 'dark' ? '#232733' : '#ffffff'),
+                      borderRadius: 4,
+                    }}
+                  />
+                )}
+              </View>
+            );
+          })}
         </Animated.View>
       </GestureDetector>
 
