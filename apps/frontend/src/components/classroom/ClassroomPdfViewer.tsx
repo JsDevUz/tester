@@ -6714,6 +6714,42 @@ export function ClassroomPdfViewer({
                     { length: visiblePageCount(paneMode) },
                     (_, idx) => {
                       const pageNumber = idx + 1;
+                      const totalPages = visiblePageCount(paneMode);
+
+                      // Virtualization: ko'p sahifali (masalan 191 ta) PDF yoki daftarlarda
+                      // barcha sahifalarni bir vaqtda DOM'ga yuklash brauzerni 5-10 soniya
+                      // muzlatib ("Yuklanmoqda...") qo'yardi. Faqat joriy ko'rinayotgan
+                      // va unga yaqin sahifalar (±5) to'liq render qilinadi; qolganlari
+                      // proporsiyasini saqlaydigan yengil placeholder div bilan almashtiriladi.
+                      const centerPage = paneIndex === 1 ? (rightHostScroll?.page ?? currentPage) : currentPage;
+                      const isNearCurrentPage =
+                        totalPages <= 10 ||
+                        Math.abs(pageNumber - centerPage) <= 5 ||
+                        pageNumber === 1 ||
+                        pageNumber === currentPage;
+
+                      if (!isNearCurrentPage) {
+                        const isNotebook = paneMode === "notebook";
+                        const isLandscape = notebookPageOrientations[pageNumber] === "landscape";
+                        const aspectClass = isNotebook
+                          ? (isLandscape ? "aspect-[297/210]" : "aspect-[210/297]")
+                          : "aspect-[210/297]";
+                        const registerFn = displayLayout === "split" && paneIndex === 1 ? registerRightEl : registerEl;
+
+                        return (
+                          <div
+                            key={`${paneIndex}-${pageNumber}`}
+                            ref={(el) => registerFn(pageNumber, el)}
+                            data-page={pageNumber}
+                            className={`relative shrink-0 w-full flex items-center justify-center ${aspectClass} max-w-3xl bg-gray-100/60 dark:bg-zinc-800/30 rounded-xl my-1 select-none pointer-events-none`}
+                          >
+                            <span className="text-xs font-semibold text-gray-400/80 dark:text-zinc-500/80">
+                              Sahifa {pageNumber}
+                            </span>
+                          </div>
+                        );
+                      }
+
                       return (
                         <ClassroomPdfPage
                           key={`${paneIndex}-${pageNumber}`}
