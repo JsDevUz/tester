@@ -643,6 +643,27 @@ describe('sahifa va chizish', () => {
     expect(saved.boardSnapshot.notebookPageStyles).toEqual({ 2: 'plain' });
   });
 
+  it('guruh darsi yakunlanganda biriktirilgan persistent doskaga yakuniy snapshotni yozadi', async () => {
+    const { service, sessionId } = await withPdf();
+    const stroke = { id: 'attached-s1', tool: 'pen' as const, color: '#2563eb', width: 4, points: [0.1, 0.2, 0.7, 0.8] };
+    const session = service.getSession(sessionId)!;
+    session.attachedBoardId = 'board-1';
+    service.stroke(sessionId, 'teacher-1', 1, stroke);
+    mockedDb.update.mockClear();
+
+    await service.endSession(sessionId, 'teacher-1');
+
+    const setCalls = mockedDb.update.mock.results.map((r: any) => r.value.set.mock.calls[0][0]);
+    expect(setCalls).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        pdfName: 'dars.pdf',
+        boardSnapshot: expect.objectContaining({
+          strokesByPage: expect.objectContaining({ 1: expect.arrayContaining([stroke]) }),
+        }),
+      }),
+    ]));
+  });
+
   it('getReplay tarix+recording+attendance qaytaradi', async () => {
     const { service, sessionId } = await withPdf();
     service.stroke(sessionId, 'teacher-1', 1, { id: 's1', tool: 'pen', color: '#f00', width: 3, points: [0.1, 0.1, 0.5, 0.5] });
