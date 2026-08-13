@@ -327,6 +327,78 @@ export function useClassroomSession(
       for (const { event: ev, payload: pl } of pending.values()) emitHost(ev, pl);
     });
   }, [emitHost]);
+
+  // Scroll uchun maxsus debouncer/throttler:
+  // Continuous scroll paytida 1 sekundda 60 ta socket emit o'rniga eng ko'pi
+  // 5-6 ta (har 150ms da) yuboriladi. Sahifa o'zgarsa (page jump) DARXOL yuboriladi.
+  // Scroll to'xtaganda esa trailing timer (150ms) eng oxirgi aniq nuqtani yuboradi.
+  const lastScrollEmittedRef = useRef<Record<string, { time: number; page: number }>>({});
+  const scrollDebounceTimerRef = useRef<Record<string, number>>({});
+
+  const emitHostDebouncedScroll = useCallback(
+    (pane: "left" | "right", page: number, yRatio: number, xRatio: number) => {
+      const key = `scroll:${pane}`;
+      const now = Date.now();
+      const last = lastScrollEmittedRef.current[key] ?? { time: 0, page: -1 };
+
+      const isPageJump = page !== last.page;
+      const elapsed = now - last.time;
+
+      const doEmit = () => {
+        lastScrollEmittedRef.current[key] = { time: Date.now(), page };
+        emitHost("host:scroll", { page, yRatio, pane, xRatio });
+      };
+
+      if (scrollDebounceTimerRef.current[key]) {
+        window.clearTimeout(scrollDebounceTimerRef.current[key]);
+        delete scrollDebounceTimerRef.current[key];
+      }
+
+      if (isPageJump || elapsed >= 150) {
+        doEmit();
+      } else {
+        scrollDebounceTimerRef.current[key] = window.setTimeout(() => {
+          delete scrollDebounceTimerRef.current[key];
+          doEmit();
+        }, 150 - elapsed);
+      }
+    },
+    [emitHost]
+  );
+
+  const lastZoomEmittedRef = useRef<Record<string, number>>({});
+  const zoomDebounceTimerRef = useRef<Record<string, number>>({});
+
+  const emitHostDebouncedZoom = useCallback(
+    (pane: "left" | "right", zoom: number) => {
+      const key = `zoom:${pane}`;
+      const now = Date.now();
+      const lastTime = lastZoomEmittedRef.current[key] ?? 0;
+      const elapsed = now - lastTime;
+
+      const doEmit = () => {
+        lastZoomEmittedRef.current[key] = Date.now();
+        setState((s) => (pane === "right" ? { ...s, rightZoom: zoom } : { ...s, zoom }));
+        emitHost("host:setZoom", { zoom, pane });
+      };
+
+      if (zoomDebounceTimerRef.current[key]) {
+        window.clearTimeout(zoomDebounceTimerRef.current[key]);
+        delete zoomDebounceTimerRef.current[key];
+      }
+
+      if (elapsed >= 150) {
+        doEmit();
+      } else {
+        zoomDebounceTimerRef.current[key] = window.setTimeout(() => {
+          delete zoomDebounceTimerRef.current[key];
+          doEmit();
+        }, 150 - elapsed);
+      }
+    },
+    [emitHost]
+  );
+
   const flushHostEmits = useCallback(() => {
     if (emitFrameRef.current !== null) {
       window.cancelAnimationFrame(emitFrameRef.current);
@@ -482,8 +554,7 @@ export function useClassroomSession(
       }
     },
     setZoom: (zoom: number, pane: "left" | "right" = "left") => {
-      setState((s) => pane === "right" ? ({ ...s, rightZoom: zoom }) : ({ ...s, zoom }));
-      emitHostThrottled(`zoom:${pane}`, "host:setZoom", { zoom, pane });
+      emitHostDebouncedZoom(pane, zoom);
     },
     setSplitRatio: (ratio: number) => {
       setState((s) => ({ ...s, splitRatio: ratio }));
@@ -498,7 +569,7 @@ export function useClassroomSession(
     pastePage: (mode: CsBoardMode, afterPageIndex: number, pageUrl: string | undefined, style: CsNotebookStyle, orientation: CsNotebookOrientation, strokes: CsStroke[], pane: "left" | "right" = "left") =>
       emitHost("host:pastePage", { mode, afterPageIndex, pageUrl, style, orientation, strokes, pane }),
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => {
-      emitHostThrottled(`scroll:${pane}`, "host:scroll", { page, yRatio, pane, xRatio });
+      emitHostDebouncedScroll(pane, page, yRatio, xRatio);
     },
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),

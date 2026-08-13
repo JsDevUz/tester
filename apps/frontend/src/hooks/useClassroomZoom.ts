@@ -93,10 +93,22 @@ export function useClassroomZoom({ isHost, synced, hostZoom, onZoomChange, scrol
     intraPageV: number;
   } | null>(null);
 
+  const lastReactZoomUpdateRef = useRef(0);
   const applyZoomAnchored = useCallback((next: number, anchorClientX: number, anchorClientY: number) => {
     const clamped = clampZoom(next);
     const prevZoom = localZoomRef.current;
     if (clamped === prevZoom) return;
+
+    // Micro zoom step check (0.02) va 80ms throttle — trackpad pinch paytida
+    // sekundiga 60 marta butun React komponent daraxtini va barcha canvas
+    // qatlamlarini qayta render qilib brauzer/kompyuterni qotirib qo'ymaslik uchun.
+    const now = Date.now();
+    const elapsed = now - lastReactZoomUpdateRef.current;
+    if (Math.abs(clamped - prevZoom) < 0.02 && elapsed < 80) {
+      return;
+    }
+    lastReactZoomUpdateRef.current = now;
+
     const scrollEl = scrollRef.current;
     if (scrollEl) {
       const pageElements = Array.from(scrollEl.querySelectorAll<HTMLElement>('[data-page]'));

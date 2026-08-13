@@ -3833,9 +3833,14 @@ function ClassroomPdfPage({
     const canvas = canvasRef.current;
     if (!canvas) return null;
     const rect = canvas.getBoundingClientRect();
-    const x = (e.clientX - rect.left) / rect.width;
-    const y = (e.clientY - rect.top) / rect.height;
-    if (x < 0 || x > 1 || y < 0 || y > 1) return null;
+    if (rect.width <= 0 || rect.height <= 0) return null;
+    const rawX = (e.clientX - rect.left) / rect.width;
+    const rawY = (e.clientY - rect.top) / rect.height;
+    // Zoom 150%+ bo'lganda yoki pointerCapture paytida nuqta [0, 1] chegarasidan
+    // 0.001 ga chiqib ketsa null qaytarilardi — natijada chizish to'xtab qolar
+    // va brauzer pointerCapture loop'ida qotib qolardi. Clamp [0, 1] har doim ishonchli ishlaydi.
+    const x = Math.max(0, Math.min(1, rawX));
+    const y = Math.max(0, Math.min(1, rawY));
     return [Math.round(x * 10000) / 10000, Math.round(y * 10000) / 10000];
   };
 
@@ -4849,6 +4854,10 @@ function ClassroomPdfPage({
     setHoveredStrokeId(null);
     eraserCursorRef.current = null;
     if (!connectorDraftRef.current && !lineEndpointDragRef.current) setConnectorTarget(null);
+    // Active chizish (draftRef) yoki sudrash davom etayotganda pointerleave chizishni uzib qo'ymasligi kerak
+    if (draftRef.current || draggingStrokeRef.current || draggingShapeRef.current || draggingTextRef.current) {
+      return;
+    }
     finishStroke();
   };
 
