@@ -588,20 +588,27 @@ select::-ms-expand {
   :root:not([data-theme="light"]) .text-gray-950,
   :root:not([data-theme="light"]) .text-gray-900,
   :root:not([data-theme="light"]) .text-gray-800,
-  :root:not([data-theme="light"]) .text-gray-700 {
+  :root:not([data-theme="light"]) .text-gray-700,
+  :root:not([data-theme="light"]) .text-slate-900,
+  :root:not([data-theme="light"]) .text-slate-800,
+  :root:not([data-theme="light"]) .text-slate-700 {
     color: #e8eaed !important;
   }
 
   :root:not([data-theme="light"]) .text-gray-600,
-  :root:not([data-theme="light"]) .text-gray-500 {
+  :root:not([data-theme="light"]) .text-gray-500,
+  :root:not([data-theme="light"]) .text-slate-600,
+  :root:not([data-theme="light"]) .text-slate-500 {
     color: #c9cdd6 !important;
   }
 
-  :root:not([data-theme="light"]) .text-gray-400 {
+  :root:not([data-theme="light"]) .text-gray-400,
+  :root:not([data-theme="light"]) .text-slate-400 {
     color: #9aa1af !important;
   }
 
-  :root:not([data-theme="light"]) .text-gray-300 {
+  :root:not([data-theme="light"]) .text-gray-300,
+  :root:not([data-theme="light"]) .text-slate-300 {
     color: #7b8494 !important;
   }
 

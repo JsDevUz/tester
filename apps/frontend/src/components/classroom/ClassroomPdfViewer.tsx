@@ -1034,7 +1034,7 @@ function ShapeStylePanel({
   return (
     <div
       ref={panelRef}
-      className="pointer-events-auto absolute z-40 flex items-center gap-1 rounded-2xl border border-gray-200/90 bg-white px-2 py-1.5 text-gray-900 shadow-2xl select-none"
+      className="pointer-events-auto absolute z-40 flex items-center gap-0.5 rounded-xl border border-gray-200/90 bg-white/95 dark:bg-zinc-800/95 dark:border-zinc-700/90 px-1.5 py-1 text-gray-900 dark:text-white shadow-xl select-none backdrop-blur-xs"
       style={{ ...customStyle }}
       onPointerDown={(event) => event.stopPropagation()}
       onMouseDown={(event) => event.stopPropagation()}
@@ -1048,8 +1048,8 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("startArrow")}
-              className={`flex h-8 min-w-10 items-center justify-center px-2 rounded-xl transition-all cursor-pointer ${
-                startArrowOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 min-w-7 items-center justify-center px-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                startArrowOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Boshlanish o'q uchi (Line start)"
             >
@@ -1101,10 +1101,10 @@ function ShapeStylePanel({
                 onArrowHeadChange?.(nextEnd, nextStart);
               }
             }}
-            className="flex h-8 w-8 items-center justify-center rounded-xl text-gray-700 hover:bg-gray-100 hover:text-gray-900 transition-colors cursor-pointer"
+            className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-700 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700/60 transition-colors cursor-pointer"
             title="Yo'nalishni almashtirish (Swap direction)"
           >
-            <RotateCw size={15} />
+            <RotateCw size={13} />
           </button>
 
           {/* 3. End Arrowhead Dropdown */}
@@ -1112,8 +1112,8 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("endArrow")}
-              className={`flex h-8 min-w-10 items-center justify-center px-2 rounded-xl transition-all cursor-pointer ${
-                endArrowOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 min-w-7 items-center justify-center px-1.5 rounded-lg text-xs transition-all cursor-pointer ${
+                endArrowOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Tugash o'q uchi (Line end)"
             >
@@ -1122,10 +1122,10 @@ function ShapeStylePanel({
 
             {endArrowOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+                <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 dark:text-zinc-400 tracking-wider">
                   Line end
                 </div>
                 {SINGLE_ARROW_HEAD_OPTIONS.map((opt) => {
@@ -1138,8 +1138,8 @@ function ShapeStylePanel({
                         onArrowHeadChange?.(opt.id, startArrowHead ?? "none");
                         setActiveMenu(null);
                       }}
-                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                        isSelected ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                      className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                        isSelected ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
                       }`}
                     >
                       <div className="flex h-5 w-5 items-center justify-center">
@@ -1153,34 +1153,34 @@ function ShapeStylePanel({
             )}
           </div>
 
-          <div className="h-4 w-px bg-gray-200" />
+          <div className="h-3.5 w-px bg-gray-200 dark:bg-zinc-700 mx-0.5" />
 
           {/* 4. Type Button (Line Shape, Thickness, Style Popover) */}
           <div className="relative">
             <button
               type="button"
               onClick={() => toggleMenu("lineType")}
-              className={`flex flex-col items-center justify-center h-8 px-2.5 rounded-xl transition-all cursor-pointer ${
-                lineTypeOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              className={`flex items-center gap-1 h-7 px-2 rounded-lg text-xs transition-all cursor-pointer ${
+                lineTypeOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Chiziq turi va qalinligi (Type)"
             >
               <div className="h-3.5 flex items-center">
                 {lineShape === "elbow" ? (
-                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                  <svg width="14" height="10" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
                     <polyline points="3,4 3,14 21,14" />
                   </svg>
                 ) : lineShape === "curved" ? (
-                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="14" height="10" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <path d="M3 14 Q 12 3, 21 14" />
                   </svg>
                 ) : (
-                  <svg width="16" height="12" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                  <svg width="14" height="10" viewBox="0 0 24 18" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                     <line x1="3" y1="14" x2="21" y2="4" />
                   </svg>
                 )}
               </div>
-              <span className="text-[9px] font-medium leading-none mt-0.5 text-gray-600">Type</span>
+              <span className="text-xs font-medium">Type</span>
             </button>
 
             {lineTypeOpen && (
@@ -1322,20 +1322,20 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("arrowColor")}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl hover:bg-gray-100 transition-colors p-1 cursor-pointer ${
-                arrowColorOpen ? "bg-gray-100" : ""
+              className={`flex h-7 w-7 items-center justify-center rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-700/60 transition-colors p-0.5 cursor-pointer ${
+                arrowColorOpen ? "bg-gray-100 dark:bg-zinc-700/80" : ""
               }`}
               title="Rang"
             >
               <div
-                className="h-5 w-5 rounded-full border border-gray-300 shadow-sm transition-transform hover:scale-110"
+                className="h-4 w-4 rounded-full border border-gray-300 dark:border-zinc-600 shadow-xs transition-transform hover:scale-110"
                 style={{ backgroundColor: color || "#ef4444" }}
               />
             </button>
 
             {arrowColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {SHAPE_STROKE_COLORS.map((c) => (
@@ -1346,7 +1346,7 @@ function ShapeStylePanel({
                       onColorChange?.(c);
                       setActiveMenu(null);
                     }}
-                    className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 cursor-pointer ${
+                    className={`h-5 w-5 rounded-full border border-gray-300 dark:border-zinc-600 transition-transform hover:scale-110 cursor-pointer ${
                       color === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
                     }`}
                     style={{ backgroundColor: c }}
@@ -1361,22 +1361,22 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("opacity")}
-              className={`flex h-8 items-center gap-1 px-2 rounded-xl transition-all cursor-pointer ${
-                opacityOpen ? "bg-indigo-50 border border-indigo-200 text-indigo-600" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 items-center gap-1 px-1.5 rounded-lg transition-all cursor-pointer ${
+                opacityOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800 text-indigo-600 dark:text-indigo-400" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Shaffoflik (Opacity)"
             >
-              <span className="text-xs font-semibold text-gray-700">{opacity}%</span>
+              <span className="text-xs font-semibold text-gray-700 dark:text-zinc-200">{opacity}%</span>
             </button>
 
             {opacityOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between text-gray-700 font-bold text-xs mb-1">
+                <div className="flex items-center justify-between text-gray-700 dark:text-zinc-200 font-bold text-xs mb-1">
                   <span>Opacity</span>
-                  <span className="text-indigo-600 font-bold">{opacity}%</span>
+                  <span className="text-indigo-600 dark:text-indigo-400 font-bold">{opacity}%</span>
                 </div>
                 <input
                   type="range"
@@ -1385,7 +1385,7 @@ function ShapeStylePanel({
                   step={1}
                   value={opacity}
                   onChange={(e) => onOpacityChange(Number(e.target.value))}
-                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                  className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 dark:bg-zinc-700 rounded-lg appearance-none"
                 />
               </div>
             )}
@@ -1399,20 +1399,20 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("shapeTool")}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-                shapeToolOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                shapeToolOpen ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Shakl turini almashtirish"
             >
               {strokeTool === "ellipse" ? (
-                <Circle size={17} />
+                <Circle size={15} />
               ) : (
-                <Square size={17} className={edges === "round" ? "rounded-xs" : ""} />
+                <Square size={15} className={edges === "round" ? "rounded-xs" : ""} />
               )}
             </button>
             {shapeToolOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-34 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-0 top-full mt-2 w-34 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <button
@@ -1421,11 +1421,11 @@ function ShapeStylePanel({
                     onToolChange?.("rectangle");
                     setActiveMenu(null);
                   }}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer ${
-                    strokeTool === "rectangle" ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-medium cursor-pointer ${
+                    strokeTool === "rectangle" ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
                   }`}
                 >
-                  <Square size={15} />
+                  <Square size={14} />
                   <span>To'rtburchak</span>
                 </button>
                 <button
@@ -1434,35 +1434,35 @@ function ShapeStylePanel({
                     onToolChange?.("ellipse");
                     setActiveMenu(null);
                   }}
-                  className={`flex items-center gap-2 px-2.5 py-1.5 rounded-xl text-xs font-medium cursor-pointer ${
-                    strokeTool === "ellipse" ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                  className={`flex items-center gap-2 px-2 py-1 rounded-lg text-xs font-medium cursor-pointer ${
+                    strokeTool === "ellipse" ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
                   }`}
                 >
-                  <Circle size={15} />
+                  <Circle size={14} />
                   <span>Doira</span>
                 </button>
               </div>
             )}
           </div>
 
-          <div className="h-4 w-px bg-gray-200" />
+          <div className="h-3.5 w-px bg-gray-200 dark:bg-zinc-700 mx-0.5" />
 
           {/* 2. Font Family */}
           <div className="relative">
             <button
               type="button"
               onClick={() => toggleMenu("fontFamily")}
-              className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-medium transition-all cursor-pointer ${
-                fontFamilyOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 items-center gap-1 px-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
+                fontFamilyOpen ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Shrift"
             >
-              <span className="truncate max-w-[70px]">{fontFamily}</span>
-              <ChevronDown size={12} className="text-gray-400" />
+              <span className="truncate max-w-[65px]">{fontFamily}</span>
+              <ChevronDown size={11} className="text-gray-400 dark:text-zinc-400" />
             </button>
             {fontFamilyOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-36 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-0 top-full mt-2 w-36 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {FONT_FAMILY_OPTIONS.map((f) => (
@@ -1473,8 +1473,8 @@ function ShapeStylePanel({
                       onFontFamilyChange?.(f);
                       setActiveMenu(null);
                     }}
-                    className={`flex items-center px-2.5 py-1.5 rounded-xl text-xs text-left transition-colors cursor-pointer ${
-                      fontFamily === f ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                    className={`flex items-center px-2 py-1 rounded-lg text-xs text-left transition-colors cursor-pointer ${
+                      fontFamily === f ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
                     }`}
                     style={{ fontFamily: f }}
                   >
@@ -1490,17 +1490,17 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("fontSize")}
-              className={`flex h-8 items-center gap-1 px-2 rounded-xl text-xs font-semibold transition-all cursor-pointer ${
-                fontSizeOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "hover:bg-gray-100 text-gray-700"
+              className={`flex h-7 items-center gap-0.5 px-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                fontSizeOpen ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60 text-gray-700 dark:text-zinc-200"
               }`}
               title="Shrift o'lchami"
             >
               <span>{fontSize}</span>
-              <ChevronsUpDown size={12} className="text-gray-400" />
+              <ChevronsUpDown size={11} className="text-gray-400 dark:text-zinc-400" />
             </button>
             {fontSizeOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-24 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-0 top-full mt-2 w-24 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {[12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 64].map((sz) => (
@@ -1511,8 +1511,8 @@ function ShapeStylePanel({
                       onFontSizeChange?.(sz);
                       setActiveMenu(null);
                     }}
-                    className={`flex items-center justify-between px-2.5 py-1 rounded-xl text-xs transition-colors cursor-pointer ${
-                      fontSize === sz ? "bg-indigo-50 text-indigo-600 font-bold" : "text-gray-700 hover:bg-gray-100"
+                    className={`flex items-center justify-between px-2 py-1 rounded-lg text-xs transition-colors cursor-pointer ${
+                      fontSize === sz ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 font-bold" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
                     }`}
                   >
                     <span>{sz}px</span>
@@ -1526,12 +1526,12 @@ function ShapeStylePanel({
           <button
             type="button"
             onClick={() => onFontWeightChange?.(fontWeight >= 600 ? 400 : 700)}
-            className={`flex h-8 w-8 items-center justify-center rounded-xl text-xs font-bold transition-all cursor-pointer ${
-              fontWeight >= 600 ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+            className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold transition-all cursor-pointer ${
+              fontWeight >= 600 ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
             }`}
             title="Qalin (Bold)"
           >
-            <Bold size={15} />
+            <Bold size={13} />
           </button>
 
           {/* 5. Text Align & Vertical Align Popover */}
@@ -1539,69 +1539,69 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("textAlign")}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-                textAlignOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                textAlignOpen ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
               }`}
               title="Matnni tekislash (Alignment)"
             >
               {textAlign === "left" ? (
-                <AlignLeft size={16} />
+                <AlignLeft size={14} />
               ) : textAlign === "right" ? (
-                <AlignRight size={16} />
+                <AlignRight size={14} />
               ) : (
-                <AlignCenter size={16} />
+                <AlignCenter size={14} />
               )}
             </button>
             {textAlignOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Horizontal align row */}
-                <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                <div className="flex items-center justify-between gap-1 p-0.5 bg-gray-50 dark:bg-zinc-700/50 rounded-lg border border-gray-200/80 dark:border-zinc-600">
                   <button
                     type="button"
                     onClick={() => onTextAlignChange?.("left")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      textAlign === "left" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      textAlign === "left" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="Chapga"
                   >
-                    <AlignLeft size={14} />
+                    <AlignLeft size={13} />
                   </button>
                   <button
                     type="button"
                     onClick={() => onTextAlignChange?.("center")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      textAlign === "center" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      textAlign === "center" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="O'rtaga"
                   >
-                    <AlignCenter size={14} />
+                    <AlignCenter size={13} />
                   </button>
                   <button
                     type="button"
                     onClick={() => onTextAlignChange?.("right")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      textAlign === "right" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      textAlign === "right" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="O'ngga"
                   >
-                    <AlignRight size={14} />
+                    <AlignRight size={13} />
                   </button>
                 </div>
 
                 {/* Vertical align row */}
-                <div className="flex items-center justify-between gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+                <div className="flex items-center justify-between gap-1 p-0.5 bg-gray-50 dark:bg-zinc-700/50 rounded-lg border border-gray-200/80 dark:border-zinc-600">
                   <button
                     type="button"
                     onClick={() => onVerticalAlignChange?.("top")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      verticalAlign === "top" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      verticalAlign === "top" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="Tepaga"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <line x1="4" y1="4" x2="20" y2="4" />
                       <path d="M12 20V8M8 12l4-4 4 4" />
                     </svg>
@@ -1609,12 +1609,12 @@ function ShapeStylePanel({
                   <button
                     type="button"
                     onClick={() => onVerticalAlignChange?.("middle")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      verticalAlign === "middle" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      verticalAlign === "middle" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="Markazga"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <line x1="4" y1="12" x2="20" y2="12" />
                       <path d="M12 4v4M12 16v4" />
                     </svg>
@@ -1622,12 +1622,12 @@ function ShapeStylePanel({
                   <button
                     type="button"
                     onClick={() => onVerticalAlignChange?.("bottom")}
-                    className={`flex h-7 flex-1 items-center justify-center rounded-lg transition-all cursor-pointer ${
-                      verticalAlign === "bottom" ? "bg-white text-indigo-600 shadow-sm" : "text-gray-600 hover:text-gray-900"
+                    className={`flex h-6 flex-1 items-center justify-center rounded-md transition-all cursor-pointer ${
+                      verticalAlign === "bottom" ? "bg-white dark:bg-zinc-800 text-indigo-600 dark:text-indigo-400 shadow-xs" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"
                     }`}
                     title="Pastga"
                   >
-                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                    <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
                       <line x1="4" y1="20" x2="20" y2="20" />
                       <path d="M12 4v12M8 12l4 4 4-4" />
                     </svg>
@@ -1642,20 +1642,20 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("textColor")}
-              className={`flex flex-col items-center justify-center h-8 w-8 rounded-xl transition-all cursor-pointer ${
-                textColorOpen ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+              className={`flex flex-col items-center justify-center h-7 w-7 rounded-lg transition-all cursor-pointer ${
+                textColorOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60"
               }`}
               title="Matn rangi"
             >
-              <span className="text-xs font-bold leading-none text-gray-800">A</span>
+              <span className="text-[11px] font-bold leading-none text-gray-800 dark:text-zinc-100">A</span>
               <div
-                className="h-1 w-4 rounded-full mt-0.5"
+                className="h-0.5 w-3.5 rounded-full mt-0.5"
                 style={{ backgroundColor: textColor || color || "#000000" }}
               />
             </button>
             {textColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100"
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {SHAPE_STROKE_COLORS.map((c) => (
@@ -1666,7 +1666,7 @@ function ShapeStylePanel({
                       onTextColorChange?.(c);
                       setActiveMenu(null);
                     }}
-                    className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 cursor-pointer ${
+                    className={`h-5 w-5 rounded-full border border-gray-300 dark:border-zinc-600 transition-transform hover:scale-110 cursor-pointer ${
                       (textColor || color) === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
                     }`}
                     style={{ backgroundColor: c }}
@@ -1676,25 +1676,25 @@ function ShapeStylePanel({
             )}
           </div>
 
-          <div className="h-4 w-px bg-gray-200" />
+          <div className="h-3.5 w-px bg-gray-200 dark:bg-zinc-700 mx-0.5" />
 
           {/* 7. Border / Stroke Style Popover */}
           <div className="relative">
             <button
               type="button"
               onClick={() => toggleMenu("borderStyle")}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-                borderStyleOpen ? "bg-indigo-50 text-indigo-600 border border-indigo-200" : "text-gray-700 hover:bg-gray-100"
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                borderStyleOpen ? "bg-indigo-50 dark:bg-indigo-950/60 text-indigo-600 dark:text-indigo-400 border border-indigo-200 dark:border-indigo-800" : "text-gray-700 dark:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60"
               }`}
               title="Chegara (Border/Stroke) sozlamalari"
             >
               {strokeStyle === "none" ? (
-                <div className="h-5 w-5 rounded-full border border-gray-300 relative flex items-center justify-center">
-                  <div className="h-4 w-0.5 bg-red-500 rotate-45" />
+                <div className="h-4 w-4 rounded-full border border-gray-300 dark:border-zinc-600 relative flex items-center justify-center">
+                  <div className="h-3 w-0.5 bg-red-500 rotate-45" />
                 </div>
               ) : (
                 <div
-                  className="h-5 w-5 rounded-full border-2 transition-transform hover:scale-105"
+                  className="h-4 w-4 rounded-full border-2 transition-transform hover:scale-105"
                   style={{
                     borderColor: color || "#000000",
                     borderStyle: strokeStyle === "dashed" ? "dashed" : strokeStyle === "dotted" ? "dotted" : "solid",
@@ -1842,13 +1842,13 @@ function ShapeStylePanel({
             <button
               type="button"
               onClick={() => toggleMenu("fillColor")}
-              className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-                fillColorOpen ? "bg-indigo-50 border border-indigo-200" : "hover:bg-gray-100"
+              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all cursor-pointer ${
+                fillColorOpen ? "bg-indigo-50 dark:bg-indigo-950/60 border border-indigo-200 dark:border-indigo-800" : "hover:bg-gray-100 dark:hover:bg-zinc-700/60"
               }`}
               title="Fon rangi (Fill)"
             >
               <div
-                className="h-5 w-5 rounded-full border border-gray-300 shadow-sm transition-transform hover:scale-105"
+                className="h-4 w-4 rounded-full border border-gray-300 dark:border-zinc-600 shadow-xs transition-transform hover:scale-105"
                 style={
                   backgroundColor === "transparent"
                     ? {
@@ -1863,20 +1863,20 @@ function ShapeStylePanel({
 
             {fillColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 rounded-2xl border border-gray-200 bg-white p-3.5 shadow-2xl z-50 flex flex-col gap-3 animate-in fade-in zoom-in-95 duration-100 select-none"
+                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 select-none"
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                <div className="flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-zinc-200">
                   <span>Fon rangi</span>
                   {/* Fill Style toggle (solid vs hachure) */}
                   {backgroundColor !== "transparent" && (
-                    <div className="flex items-center gap-1 bg-gray-100 p-0.5 rounded-lg">
+                    <div className="flex items-center gap-1 bg-gray-100 dark:bg-zinc-700/50 p-0.5 rounded-md">
                       {FILL_STYLE_OPTIONS.map((opt) => (
                         <button
                           key={opt.value}
                           type="button"
                           onClick={() => onFillStyleChange(opt.value)}
-                          className={`p-1 rounded cursor-pointer ${fillStyle === opt.value ? "bg-white shadow-xs text-indigo-600" : "text-gray-600 hover:text-gray-900"}`}
+                          className={`p-1 rounded cursor-pointer ${fillStyle === opt.value ? "bg-white dark:bg-zinc-800 shadow-xs text-indigo-600 dark:text-indigo-400" : "text-gray-600 dark:text-zinc-300 hover:text-gray-900"}`}
                           title={opt.label}
                         >
                           <FillStyleIcon style={opt.value} />
@@ -1892,7 +1892,7 @@ function ShapeStylePanel({
                       key={c}
                       type="button"
                       onClick={() => onBackgroundColorChange(c)}
-                      className={`h-6 w-6 rounded-full border border-gray-300 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer ${
+                      className={`h-5 w-5 rounded-full border border-gray-300 dark:border-zinc-600 transition-transform hover:scale-110 flex items-center justify-center cursor-pointer ${
                         backgroundColor === c ? "ring-2 ring-indigo-500 ring-offset-1 scale-105" : ""
                       }`}
                       style={
@@ -1906,19 +1906,19 @@ function ShapeStylePanel({
                       }
                     >
                       {backgroundColor === c && (
-                        <Check size={12} className={c === "#ffffff" || c === "transparent" || c === "#eab308" ? "text-gray-900" : "text-white"} />
+                        <Check size={11} className={c === "#ffffff" || c === "transparent" || c === "#eab308" ? "text-gray-900" : "text-white"} />
                       )}
                     </button>
                   ))}
                 </div>
 
-                <div className="h-px bg-gray-100" />
+                <div className="h-px bg-gray-100 dark:bg-zinc-700" />
 
                 {/* Opacity slider inside Fill popover */}
                 <div className="flex flex-col gap-1.5">
-                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700">
+                  <div className="flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-zinc-200">
                     <span>Opacity</span>
-                    <span className="font-bold text-indigo-600">{opacity}%</span>
+                    <span className="font-bold text-indigo-600 dark:text-indigo-400">{opacity}%</span>
                   </div>
                   <input
                     type="range"
@@ -1927,7 +1927,7 @@ function ShapeStylePanel({
                     step={1}
                     value={opacity}
                     onChange={(e) => onOpacityChange(Number(e.target.value))}
-                    className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 rounded-lg appearance-none"
+                    className="w-full accent-indigo-600 cursor-pointer h-1.5 bg-gray-200 dark:bg-zinc-700 rounded-lg appearance-none"
                   />
                 </div>
               </div>
@@ -1936,30 +1936,30 @@ function ShapeStylePanel({
         </>
       )}
 
-      <div className="h-4 w-px bg-gray-200" />
+      <div className="h-3.5 w-px bg-gray-200 dark:bg-zinc-700 mx-0.5" />
 
       {/* 9. Qatlamlar (Order) & More Button */}
       <div className="relative">
         <button
           type="button"
           onClick={() => toggleMenu("more")}
-          className={`flex h-8 w-8 items-center justify-center rounded-xl transition-all cursor-pointer ${
-            moreOpen ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-100 hover:text-gray-900"
+          className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all cursor-pointer ${
+            moreOpen ? "bg-gray-100 dark:bg-zinc-700 text-gray-900 dark:text-zinc-100" : "text-gray-600 dark:text-zinc-300 hover:bg-gray-100 dark:hover:bg-zinc-700/60 hover:text-gray-900"
           }`}
           title="Qatlamlar va amallar"
         >
-          <MoreVertical size={16} />
+          <MoreVertical size={14} />
         </button>
 
         {moreOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl text-xs z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100"
             onPointerDown={(e) => e.stopPropagation()}
           >
-            <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
+            <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 dark:text-zinc-400 tracking-wider">
               Qatlamlar (Order)
             </div>
-            <div className="grid grid-cols-4 gap-1 p-1 bg-gray-50 rounded-xl border border-gray-200/80">
+            <div className="grid grid-cols-4 gap-1 p-0.5 bg-gray-50 dark:bg-zinc-700/50 rounded-lg border border-gray-200/80 dark:border-zinc-600">
               {LAYER_OPTIONS.map(({ value, label, icon: Icon }) => (
                 <button
                   key={value}
@@ -1969,9 +1969,9 @@ function ShapeStylePanel({
                     onReorder(value);
                     setActiveMenu(null);
                   }}
-                  className="flex h-8 items-center justify-center rounded-lg text-gray-600 hover:bg-white hover:text-indigo-600 hover:shadow-sm transition-all cursor-pointer"
+                  className="flex h-7 items-center justify-center rounded-md text-gray-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 hover:text-indigo-600 dark:hover:text-indigo-400 hover:shadow-xs transition-all cursor-pointer"
                 >
-                  <Icon size={14} />
+                  <Icon size={13} />
                 </button>
               ))}
             </div>
@@ -2451,12 +2451,15 @@ function ClassroomPdfPage({
   // chegarasiz yozish maydoniga aylanadi.
   useEffect(() => {
     if (!textEditor) return;
+    const isEditingShape = editingTextId
+      ? strokes.some((stroke) => stroke.id === editingTextId && (stroke.tool === "rectangle" || stroke.tool === "ellipse"))
+      : false;
     const input = textInputRef.current;
     if (!input) return;
     input.style.height = "auto";
     const nextHeight = Math.max(1, Math.min(2000, input.scrollHeight));
     input.style.height = `${nextHeight}px`;
-    if (size.w > 0) {
+    if (!isEditingShape && size.w > 0) {
       // MUHIM: box balandligi yozish paytida (text o'zgarganda) har doim
       // matnning aniq tabiiy balandligiga TENGLASHTIRILADI (faqat o'sish
       // emas) — aks holda: matn 2 qatorga o'tib box kattalashadi, keyin
@@ -3108,7 +3111,7 @@ function ClassroomPdfPage({
       newStroke = {
         id: newShapeId,
         tool: "text",
-        text: "Matn",
+        text: "",
         color: sourceStroke?.color ?? color,
         width: 2,
         fontFamily: "Inter",
@@ -3158,8 +3161,26 @@ function ClassroomPdfPage({
       }, batchGroupId);
     }
 
-    setSelectedTextId(chosenTool === "text" ? newShapeId : null);
-    setSelectedShapeId(chosenTool === "text" ? null : newShapeId);
+    if (chosenTool === "text") {
+      setSelectedTextId(newShapeId);
+      setSelectedShapeId(null);
+      setEditingTextId(newShapeId);
+      setTextEditor({
+        x: minX,
+        y: minY,
+        text: "",
+        color: sourceStroke?.color ?? color,
+        fontFamily: "Inter",
+        fontSize: 24,
+        fontWeight: 400,
+        textAlign: "left",
+        textBoxWidth: 160,
+        textBoxHeight: 48,
+      });
+    } else {
+      setSelectedTextId(null);
+      setSelectedShapeId(newShapeId);
+    }
     claimSelection(`${notebook ? "nb" : "pdf"}-${pageNumber}-${chosenTool === "text" ? "text" : "shape"}-${newShapeId}`);
     forceRedraw((v) => v + 1);
   };
@@ -4831,42 +4852,29 @@ function ClassroomPdfPage({
   const editorFontSize = textEditor
     ? Math.max(1, textEditor.fontSize * (size.w / REF_WIDTH))
     : 16;
-  const editorWidth = textEditor
-    ? Math.max(40, textEditor.textBoxWidth * (size.w / REF_WIDTH))
-    : 140;
-  const editorHeight = textEditor
-    ? Math.max(24, textEditor.textBoxHeight * (size.w / REF_WIDTH))
-    : 48;
   const editingShapeForPanel = editingTextId
     ? strokes.find((stroke) => stroke.id === editingTextId && (stroke.tool === "rectangle" || stroke.tool === "ellipse"))
     : undefined;
+  const editorWidth = editingShapeForPanel
+    ? Math.abs(editingShapeForPanel.points[2] - editingShapeForPanel.points[0]) * size.w
+    : textEditor
+      ? Math.max(40, textEditor.textBoxWidth * (size.w / REF_WIDTH))
+      : 140;
+  const editorHeight = editingShapeForPanel
+    ? Math.abs(editingShapeForPanel.points[3] - editingShapeForPanel.points[1]) * size.h
+    : textEditor
+      ? Math.max(24, textEditor.textBoxHeight * (size.w / REF_WIDTH))
+      : 48;
 
   useLayoutEffect(() => {
     const textarea = textInputRef.current;
     if (!textarea || !textEditor) return;
-    // Native textarea default `rows=2` balandligi flex alignmentni buzib,
-    // edit ochilganda matnni tepaga sakratardi. Balandlikni aynan kontentga
-    // moslab qo'yamiz — wrapper uni top/center/bottomga joylaydi.
-    textarea.style.height = "0px";
+    textarea.style.height = "auto";
     textarea.style.height = `${textarea.scrollHeight}px`;
-    const contentHeight = textarea.scrollHeight;
-    const padding = editingShapeForPanel ? Math.max(6, 12 * (size.w / REF_WIDTH)) : 0;
-    const verticalAlign = editingShapeForPanel
-      ? (textEditor.verticalAlign ?? "middle")
-      : "middle";
-    const top = verticalAlign === "top"
-      ? padding
-      : verticalAlign === "bottom"
-        ? Math.max(padding, editorHeight - padding - contentHeight)
-        : Math.max(0, (editorHeight - contentHeight) / 2);
-    textarea.style.position = "absolute";
-    textarea.style.top = `${top}px`;
-    textarea.style.left = "0px";
   }, [
     editorFontSize,
     editorHeight,
     editorWidth,
-    editingShapeForPanel,
     size.w,
     textEditor?.fontFamily,
     textEditor?.fontWeight,
@@ -5004,17 +5012,14 @@ function ClassroomPdfPage({
           })()}
           {textEditor && (
             <div
-              // justify-center: canvas render ham matnni box balandligining
-              // vertikal MARKAZIDA chizadi (classroomCanvasDraw.ts) — bu
-              // ikkalasi mos bo'lishi shart, aks holda tahrirlashda ko'ringan
-              // joy bilan saqlangandan keyingi joy farq qilib, matn
-              // saqlanganda tepaga/pastga "sakrab" ketganday tuyuladi.
-              className="absolute z-30 flex flex-col justify-center"
+              className="absolute z-30 flex flex-col pointer-events-auto"
               style={{
                 left: `${textEditor.x * 100}%`,
                 top: `${textEditor.y * 100}%`,
                 width: editorWidth,
                 height: editorHeight,
+                padding: editingShapeForPanel ? `${Math.max(6, 12 * (size.w / REF_WIDTH))}px` : 0,
+                boxSizing: "border-box",
                 justifyContent:
                   textEditor.verticalAlign === "top"
                     ? "flex-start"
@@ -5028,13 +5033,17 @@ function ClassroomPdfPage({
               <textarea
                 ref={textInputRef}
                 value={textEditor.text}
-                onChange={(event) =>
+                onChange={(event) => {
                   setTextEditor((current) =>
                     current
                       ? { ...current, text: event.target.value.slice(0, 500) }
                       : current,
-                  )
-                }
+                  );
+                  if (textInputRef.current) {
+                    textInputRef.current.style.height = "auto";
+                    textInputRef.current.style.height = `${textInputRef.current.scrollHeight}px`;
+                  }
+                }}
                 onKeyDown={(event) => {
                   if (event.key === "Escape") setTextEditor(null);
                   if (
@@ -5046,6 +5055,7 @@ function ClassroomPdfPage({
                 className="classroom-text-editor block w-full shrink-0 resize-none overflow-hidden border-0 bg-transparent p-0 outline-none ring-0"
                 style={{
                   margin: 0,
+                  padding: 0,
                   backgroundColor: "transparent",
                   appearance: "none",
                   color: "transparent",
@@ -5152,8 +5162,10 @@ function ClassroomPdfPage({
                       key={corner}
                       type="button"
                       aria-label={`Matn o'lchamini ${corner} tomondan o'zgartirish`}
-                      className={`pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-indigo-500 bg-white ${corner.includes("n") ? "-top-1.5" : "-bottom-1.5"} ${corner.includes("w") ? "-left-1.5" : "-right-1.5"}`}
+                      className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150"
                       style={{
+                        left: corner.includes("w") ? "0%" : "100%",
+                        top: corner.includes("n") ? "0%" : "100%",
                         cursor:
                           corner === "nw" || corner === "se"
                             ? "nwse-resize"
@@ -5170,12 +5182,10 @@ function ClassroomPdfPage({
                       key={`text-connector-${side}`}
                       type="button"
                       aria-label={`Text box ${side} qirrasidan connector chizish`}
-                      className="pointer-events-auto absolute z-50 h-4 w-4 rounded-full border-2 border-indigo-500 bg-white shadow-md transition-transform hover:scale-125"
+                      className="pointer-events-auto absolute z-50 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600 border-2 border-white shadow-md hover:scale-130 hover:bg-blue-700 hover:ring-4 hover:ring-blue-400/30 active:scale-110 transition-all duration-150 cursor-crosshair"
                       style={{
-                        left: side === "left" ? "0%" : side === "right" ? "100%" : "50%",
-                        top: side === "top" ? "0%" : side === "bottom" ? "100%" : "50%",
-                        transform: "translate(-50%, -50%)",
-                        cursor: "crosshair",
+                        left: side === "left" ? "-20px" : side === "right" ? "calc(100% + 20px)" : "50%",
+                        top: side === "top" ? "-20px" : side === "bottom" ? "calc(100% + 20px)" : "50%",
                       }}
                       onPointerDown={(event) => beginConnectorFromStroke(event, selectedText, side)}
                       onPointerMove={moveConnectorFromShape}
@@ -5193,16 +5203,21 @@ function ClassroomPdfPage({
                       }}
                     />
                   ))}
-                  <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
                   <button
                     type="button"
                     aria-label="Matnni aylantirish"
-                    className="pointer-events-auto absolute left-1/2 -bottom-10 h-4.5 w-4.5 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing z-50 shadow-md hover:scale-110 transition-transform"
+                    className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white text-blue-600 shadow-md cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                    style={{
+                      left: "calc(100% + 22px)",
+                      top: "-22px",
+                    }}
                     onPointerDown={beginTextRotate}
                     onPointerMove={transformText}
                     onPointerUp={finishTextTransform}
                     onPointerCancel={finishTextTransform}
-                  />
+                  >
+                    <RotateCw size={12} className="stroke-[2.5]" />
+                  </button>
                 </div>
                 {showStylePanel && (() => {
                   const w = (selectedText.textBoxWidth ?? 320) * (size.w / REF_WIDTH);
@@ -5417,8 +5432,10 @@ function ClassroomPdfPage({
                       key={corner}
                       type="button"
                       aria-label={`Shape o'lchamini ${corner} tomondan o'zgartirish`}
-                      className={`pointer-events-auto absolute h-3 w-3 rounded-sm border-2 border-indigo-500 bg-white ${corner.includes("n") ? "-top-1.5" : "-bottom-1.5"} ${corner.includes("w") ? "-left-1.5" : "-right-1.5"}`}
+                      className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150"
                       style={{
+                        left: corner.includes("w") ? "0%" : "100%",
+                        top: corner.includes("n") ? "0%" : "100%",
                         cursor:
                           corner === "nw" || corner === "se"
                             ? "nwse-resize"
@@ -5435,12 +5452,10 @@ function ClassroomPdfPage({
                       key={`connector-${side}`}
                       type="button"
                       aria-label={`${side} qirradan connector chizish`}
-                      className="pointer-events-auto absolute z-50 h-4 w-4 rounded-full border-2 border-indigo-500 bg-white shadow-md transition-transform hover:scale-125"
+                      className="pointer-events-auto absolute z-50 h-3.5 w-3.5 -translate-x-1/2 -translate-y-1/2 rounded-full bg-blue-600 border-2 border-white shadow-md hover:scale-130 hover:bg-blue-700 hover:ring-4 hover:ring-blue-400/30 active:scale-110 transition-all duration-150 cursor-crosshair"
                       style={{
-                        left: side === "left" ? "0%" : side === "right" ? "100%" : "50%",
-                        top: side === "top" ? "0%" : side === "bottom" ? "100%" : "50%",
-                        transform: "translate(-50%, -50%)",
-                        cursor: "crosshair",
+                        left: side === "left" ? "-20px" : side === "right" ? "calc(100% + 20px)" : "50%",
+                        top: side === "top" ? "-20px" : side === "bottom" ? "calc(100% + 20px)" : "50%",
                       }}
                       onPointerDown={(event) => beginConnectorFromStroke(event, selectedShapeRaw!, side)}
                       onPointerMove={moveConnectorFromShape}
@@ -5458,16 +5473,21 @@ function ClassroomPdfPage({
                       }}
                     />
                   ))}
-                  <div className="pointer-events-none absolute left-1/2 -bottom-8 h-6 w-px -translate-x-1/2 bg-indigo-500 z-40" />
                   <button
                     type="button"
                     aria-label="Shape'ni aylantirish"
-                    className="pointer-events-auto absolute left-1/2 -bottom-10 h-4.5 w-4.5 -translate-x-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab active:cursor-grabbing z-50 shadow-md hover:scale-110 transition-transform"
+                    className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white text-blue-600 shadow-md cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                    style={{
+                      left: "calc(100% + 22px)",
+                      top: "-22px",
+                    }}
                     onPointerDown={beginShapeRotate}
                     onPointerMove={transformShape}
                     onPointerUp={finishShapeTransform}
                     onPointerCancel={finishShapeTransform}
-                  />
+                  >
+                    <RotateCw size={12} className="stroke-[2.5]" />
+                  </button>
                 </div>
               )}
               {showStylePanel && (() => {
@@ -5727,7 +5747,7 @@ function ClassroomPdfPage({
                 }}
               />
               <div
-                className="fixed z-[200] flex flex-col gap-2 rounded-2xl border border-slate-200 bg-white/95 backdrop-blur-md p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150 select-none"
+                className="fixed z-[200] flex flex-col gap-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/95 dark:bg-zinc-800/95 text-gray-900 dark:text-zinc-100 backdrop-blur-md p-3 shadow-2xl animate-in fade-in zoom-in-95 duration-150 select-none"
                 style={{
                   left: Math.max(16, Math.min(window.innerWidth - 240, connectorShapePicker.screenX - 100)),
                   top: Math.max(16, Math.min(window.innerHeight - 150, connectorShapePicker.screenY + 12)),
@@ -5735,12 +5755,12 @@ function ClassroomPdfPage({
                 onClick={(e) => e.stopPropagation()}
                 onPointerDown={(e) => e.stopPropagation()}
               >
-                <div className="flex items-center justify-between px-1 pb-1 border-b border-slate-100">
-                  <span className="text-xs font-semibold text-slate-500">Shakl tanlang</span>
+                <div className="flex items-center justify-between px-1 pb-1 border-b border-gray-100 dark:border-zinc-700">
+                  <span className="text-xs font-semibold text-gray-600 dark:text-zinc-300">Shakl tanlang</span>
                   <button
                     type="button"
                     onClick={() => setConnectorShapePicker(null)}
-                    className="text-slate-400 hover:text-slate-600 rounded p-0.5 transition-colors"
+                    className="text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 rounded p-0.5 transition-colors"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
@@ -5749,29 +5769,29 @@ function ClassroomPdfPage({
                   <button
                     type="button"
                     onClick={() => pickConnectorShape("rectangle")}
-                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-200/80 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group"
                     title="To'rtburchak"
                   >
-                    <Square className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
-                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">To'rtburchak</span>
+                    <Square className="h-5 w-5 text-gray-700 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
+                    <span className="text-[11px] font-medium text-gray-800 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">To'rtburchak</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => pickConnectorShape("ellipse")}
-                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-200/80 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group"
                     title="Doira"
                   >
-                    <Circle className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
-                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">Doira</span>
+                    <Circle className="h-5 w-5 text-gray-700 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
+                    <span className="text-[11px] font-medium text-gray-800 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Doira</span>
                   </button>
                   <button
                     type="button"
                     onClick={() => pickConnectorShape("text")}
-                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-slate-200/80 hover:border-indigo-500 hover:bg-indigo-50/50 hover:text-indigo-600 transition-all group"
+                    className="flex flex-col items-center gap-1 p-2 rounded-xl border border-gray-200/80 dark:border-zinc-700 hover:border-indigo-500 dark:hover:border-indigo-400 hover:bg-indigo-50/50 dark:hover:bg-indigo-950/50 hover:text-indigo-600 dark:hover:text-indigo-400 transition-all group"
                     title="Matn"
                   >
-                    <Type className="h-5 w-5 text-slate-600 group-hover:text-indigo-600" />
-                    <span className="text-[11px] font-medium text-slate-700 group-hover:text-indigo-600">Matn</span>
+                    <Type className="h-5 w-5 text-gray-700 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400" />
+                    <span className="text-[11px] font-medium text-gray-800 dark:text-zinc-200 group-hover:text-indigo-600 dark:group-hover:text-indigo-400">Matn</span>
                   </button>
                 </div>
               </div>
