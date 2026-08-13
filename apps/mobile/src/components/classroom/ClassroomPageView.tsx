@@ -48,6 +48,7 @@ export function ClassroomPageView({
   notebookStyle,
   theme = 'light',
   strokes,
+  pageIndex = 0,
   pointer,
   customWidth,
 }: {
@@ -181,6 +182,7 @@ export function ClassroomPageView({
           width={size.width}
           height={size.height}
           style={notebookStyle}
+          pageIndex={pageIndex}
           theme={theme}
         />
       ) : null}

@@ -87,19 +87,15 @@ export const Input = React.forwardRef<
         placeholderTextColor={props.placeholderTextColor ?? '#94a3b8'}
         style={[
           {
-            paddingTop: 0,
-            paddingBottom: 0,
+            flex: 1,
+            height: '100%',
             paddingVertical: 0,
-            marginTop: 0,
-            marginBottom: 0,
-            marginVertical: 0,
-            alignSelf: 'center',
-            textAlignVertical: 'center',
-            lineHeight: undefined,
+            fontSize: 14,
+            includeFontPadding: false,
           },
           style,
         ]}
-        className={`flex-1 p-0 text-sm text-ink dark:text-dark-ink ${className}`}
+        className={`text-sm text-ink dark:text-dark-ink ${className}`}
         {...props}
       />
     </View>

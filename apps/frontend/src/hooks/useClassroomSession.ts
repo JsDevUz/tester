@@ -483,7 +483,7 @@ export function useClassroomSession(
     },
     setZoom: (zoom: number, pane: "left" | "right" = "left") => {
       setState((s) => pane === "right" ? ({ ...s, rightZoom: zoom }) : ({ ...s, zoom }));
-      emitHost("host:setZoom", { zoom, pane });
+      emitHostThrottled(`zoom:${pane}`, "host:setZoom", { zoom, pane });
     },
     setSplitRatio: (ratio: number) => {
       setState((s) => ({ ...s, splitRatio: ratio }));
@@ -497,7 +497,9 @@ export function useClassroomSession(
       emitHost("host:setNotebookPageStyle", { page, style, pane }),
     pastePage: (mode: CsBoardMode, afterPageIndex: number, pageUrl: string | undefined, style: CsNotebookStyle, orientation: CsNotebookOrientation, strokes: CsStroke[], pane: "left" | "right" = "left") =>
       emitHost("host:pastePage", { mode, afterPageIndex, pageUrl, style, orientation, strokes, pane }),
-    setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => emitHost("host:scroll", { page, yRatio, pane, xRatio }),
+    setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => {
+      emitHostThrottled(`scroll:${pane}`, "host:scroll", { page, yRatio, pane, xRatio });
+    },
     setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
     setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
     setBoardOpen: (isOpen: boolean) => {

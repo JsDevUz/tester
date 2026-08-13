@@ -2639,6 +2639,15 @@ export class ClassroomService implements OnModuleInit {
 
   private recordHistoryEvent(s: ClassroomSession, type: string, payload: unknown): void {
     if (!s.historyEvents) s.historyEvents = [];
+    if (type === 'scroll:set' || type === 'zoom:set' || type === 'pointer:move') {
+      const last = s.historyEvents[s.historyEvents.length - 1];
+      const nowMs = Date.now() - s.startedAtMs;
+      if (last && last.type === type && (nowMs - last.atMs < 200)) {
+        last.payload = payload;
+        last.atMs = nowMs;
+        return;
+      }
+    }
     s.historyEvents.push({ type, payload, atMs: Date.now() - s.startedAtMs });
   }
 

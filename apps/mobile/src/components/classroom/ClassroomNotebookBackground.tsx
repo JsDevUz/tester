@@ -1,30 +1,28 @@
 import React from 'react';
 import {View} from 'react-native';
-import Svg, {Defs, Line, Pattern, Rect} from 'react-native-svg';
+import Svg, {Circle, Defs, Line, Pattern, Rect} from 'react-native-svg';
 import type {CsNotebookStyle} from '../../types/classroom';
 
 export function ClassroomNotebookBackground({
   width,
   height,
   style,
-  theme,
+  pageIndex = 0,
 }: {
   width: number;
   height: number;
   style: CsNotebookStyle;
-  theme: 'light' | 'dark';
+  pageIndex?: number;
+  theme?: 'light' | 'dark';
 }) {
-  const isDark = theme === 'dark';
-  const bgColor = isDark ? '#232733' : '#ffffff';
-  // Web bilan bir xil: grid uchun 0.12, lined uchun 0.14 (classroomCanvasDraw.ts).
-  const gridLineColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.12)';
-  const linedLineColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.14)';
+  // Web (ClassroomPdfViewer.tsx) bilan 100% bir xil: daftar varag'i har doim toza oq (#ffffff)
+  const bgColor = '#ffffff';
+  // Web bilan bir xil slating: grid uchun rgba(148, 163, 184, 0.12), lined uchun rgba(148, 163, 184, 0.14)
+  const gridLineColor = 'rgba(148, 163, 184, 0.12)';
+  const linedLineColor = 'rgba(148, 163, 184, 0.14)';
+  const dotColor = 'rgba(148, 163, 184, 0.25)';
 
-  if (width <= 0 || height <= 0) {
-    return <View style={{width: '100%', height: '100%', backgroundColor: bgColor}} />;
-  }
-
-  if (style === 'plain') {
+  if (width <= 0 || height <= 0 || style === 'plain') {
     return <View style={{width: '100%', height: '100%', backgroundColor: bgColor}} />;
   }
 
@@ -32,11 +30,12 @@ export function ClassroomNotebookBackground({
   const lineSpacing = width / 22;
 
   if (style === 'grid') {
+    const patternId = `notebook-grid-pattern-${pageIndex}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>
           <Pattern
-            id="notebook-grid-pattern"
+            id={patternId}
             width={cellSize}
             height={cellSize}
             patternUnits="userSpaceOnUse">
@@ -45,17 +44,18 @@ export function ClassroomNotebookBackground({
           </Pattern>
         </Defs>
         <Rect width={width} height={height} fill={bgColor} />
-        <Rect width={width} height={height} fill="url(#notebook-grid-pattern)" />
+        <Rect width={width} height={height} fill={`url(#${patternId})`} />
       </Svg>
     );
   }
 
   if (style === 'lined') {
+    const patternId = `notebook-lined-pattern-${pageIndex}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>
           <Pattern
-            id="notebook-lined-pattern"
+            id={patternId}
             width={width}
             height={lineSpacing}
             patternUnits="userSpaceOnUse">
@@ -63,7 +63,26 @@ export function ClassroomNotebookBackground({
           </Pattern>
         </Defs>
         <Rect width={width} height={height} fill={bgColor} />
-        <Rect width={width} height={height} fill="url(#notebook-lined-pattern)" />
+        <Rect width={width} height={height} fill={`url(#${patternId})`} />
+      </Svg>
+    );
+  }
+
+  if (style === 'dots') {
+    const patternId = `notebook-dots-pattern-${pageIndex}`;
+    return (
+      <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
+        <Defs>
+          <Pattern
+            id={patternId}
+            width={cellSize}
+            height={cellSize}
+            patternUnits="userSpaceOnUse">
+            <Circle cx={cellSize / 2} cy={cellSize / 2} r="1" fill={dotColor} />
+          </Pattern>
+        </Defs>
+        <Rect width={width} height={height} fill={bgColor} />
+        <Rect width={width} height={height} fill={`url(#${patternId})`} />
       </Svg>
     );
   }

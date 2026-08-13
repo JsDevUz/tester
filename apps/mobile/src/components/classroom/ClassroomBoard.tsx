@@ -1,6 +1,7 @@
 import React, {useEffect, useRef, useState} from 'react';
 import {Image, Pressable, Text, View, useWindowDimensions} from 'react-native';
 import Animated, {
+  cancelAnimation,
   runOnJS,
   useAnimatedStyle,
   useSharedValue,
@@ -89,11 +90,17 @@ function Pane({
     }
   }, [boardMode, pages]);
 
-  const baseCardWidth = Math.min(800, containerWidth);
+  const isLandscape = containerWidth > containerHeight;
   const cardAspectRatio = boardMode === 'pdf' ? (docAspectRatio > 0 ? docAspectRatio : 1600 / 2263) : (210 / 297);
+  const safePaddingTop = isLandscape ? 12 : SAFE_TOP;
+  const safePaddingBottom = isLandscape ? 12 : SAFE_BOTTOM;
+  const availableH = Math.max(200, containerHeight - safePaddingTop - safePaddingBottom);
+  const baseCardWidth = isLandscape
+    ? Math.min(containerWidth, Math.max(260, availableH * cardAspectRatio))
+    : Math.min(800, containerWidth);
   const baseCardHeight = baseCardWidth / cardAspectRatio;
   const baseItemTotalHeight = baseCardHeight + PAGE_GAP;
-  const totalContentHeight = SAFE_TOP + pageCount * baseItemTotalHeight + SAFE_BOTTOM;
+  const totalContentHeight = safePaddingTop + pageCount * baseItemTotalHeight + safePaddingBottom;
 
   const baseCardWidthSV = useSharedValue(baseCardWidth);
   const totalHeightSV = useSharedValue(totalContentHeight);
@@ -108,7 +115,7 @@ function Pane({
   }, [baseCardWidth, totalContentHeight, baseItemTotalHeight, pageCount, baseCardWidthSV, totalHeightSV, itemTotalHeightSV, pageCountSV]);
 
   // Initial target Y for page
-  const initialTargetY = SAFE_TOP + (safeCurrentPage - 0.5) * baseItemTotalHeight;
+  const initialTargetY = safePaddingTop + (safeCurrentPage - 0.5) * baseItemTotalHeight;
   const initialTy = (totalContentHeight / 2 - initialTargetY);
 
   const tx = useSharedValue(0);
@@ -132,7 +139,7 @@ function Pane({
     const targetPage = Math.min(Math.max(1, scroll?.page ?? safeCurrentPage), pageCount);
     const targetYRatio = scroll?.yRatio ?? 0;
 
-    const pageY = SAFE_TOP + (targetPage - 1) * baseItemTotalHeight;
+    const pageY = safePaddingTop + (targetPage - 1) * baseItemTotalHeight;
     const targetContentY = pageY + baseCardHeight * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
@@ -312,7 +319,7 @@ function Pane({
     if (lastSyncPayloadRef.current === syncKey) return;
     lastSyncPayloadRef.current = syncKey;
 
-    const pageY = SAFE_TOP + (targetPage - 1) * baseItemTotalHeight;
+    const pageY = safePaddingTop + (targetPage - 1) * baseItemTotalHeight;
     const targetContentY = pageY + baseCardHeight * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
@@ -320,15 +327,20 @@ function Pane({
     // Use fresh JS layout values to compute camera clamp immediately upon mount/sync
     const clamped = clampCameraVal(0, targetTy, s, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
 
-    if (isInitialSyncRef.current) {
+    const pageDistance = Math.abs(targetPage - (lastReportedPage.value || visiblePage));
+
+    if (isInitialSyncRef.current || pageDistance > 1) {
       isInitialSyncRef.current = false;
+      cancelAnimation(scale);
+      cancelAnimation(tx);
+      cancelAnimation(ty);
       scale.value = s;
       tx.value = clamped.x;
       ty.value = clamped.y;
     } else {
-      scale.value = withTiming(s, {duration: 200});
-      tx.value = withTiming(clamped.x, {duration: 200});
-      ty.value = withTiming(clamped.y, {duration: 200});
+      scale.value = withTiming(s, {duration: 80});
+      tx.value = withTiming(clamped.x, {duration: 80});
+      ty.value = withTiming(clamped.y, {duration: 80});
     }
     setVisiblePage(targetPage);
   }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, scale, tx, ty]);
@@ -385,8 +397,8 @@ function Pane({
           style={[
             {
               width: baseCardWidth,
-              paddingTop: SAFE_TOP,
-              paddingBottom: SAFE_BOTTOM,
+              paddingTop: safePaddingTop,
+              paddingBottom: safePaddingBottom,
               alignItems: 'center',
             },
             animatedCameraStyle,

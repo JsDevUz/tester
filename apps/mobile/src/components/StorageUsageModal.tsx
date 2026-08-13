@@ -221,7 +221,7 @@ function StorageUsageContent({
         <Animated.View style={backdropStyle} className="absolute inset-0 bg-black/50">
           <Pressable className="flex-1" onPress={onClose} />
         </Animated.View>
-        <Animated.View style={sheetStyle} className="max-h-[90%] rounded-t-3xl bg-white dark:bg-dark-surface">
+        <Animated.View style={sheetStyle} className="max-h-[88%] rounded-t-3xl bg-white flex-col dark:bg-dark-surface">
           {/* Pan handle */}
           <GestureDetector gesture={pan}>
             <View className="items-center pb-2 pt-3">
@@ -229,7 +229,7 @@ function StorageUsageContent({
             </View>
           </GestureDetector>
 
-          <View className="px-5">
+          <View className="flex-1 min-h-0 flex-col px-5 pb-4">
             {/* Title bar */}
             <View className="mb-4 flex-row items-center justify-between">
               <View className="flex-row items-center gap-2.5">
@@ -249,7 +249,7 @@ function StorageUsageContent({
               </Pressable>
             </View>
 
-            <ScrollView contentContainerClassName="pb-8" showsVerticalScrollIndicator={false}>
+            <ScrollView className="flex-1" contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
               {/* Total Storage Card */}
               <View className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-900/30 dark:bg-indigo-950/20">
                 <View className="flex-row items-center justify-between">

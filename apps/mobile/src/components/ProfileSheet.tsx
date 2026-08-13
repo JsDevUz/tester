@@ -169,20 +169,20 @@ function ProfileSheetContent({
         <Animated.View style={backdropStyle} className="absolute inset-0 bg-black/50">
           <Pressable className="flex-1" onPress={onClose} />
         </Animated.View>
-        <Animated.View style={sheetStyle} className="max-h-[90%] rounded-t-3xl bg-white dark:bg-dark-surface">
+        <Animated.View style={sheetStyle} className="max-h-[88%] rounded-t-3xl bg-white flex-col dark:bg-dark-surface">
           <GestureDetector gesture={pan}>
             <View className="items-center pb-2 pt-3">
               <View className="h-1.5 w-10 rounded-full bg-slate-200 dark:bg-dark-border" />
             </View>
           </GestureDetector>
-          <View className="px-5">
+          <View className="flex-1 min-h-0 flex-col px-5 pb-4">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-lg font-bold text-ink dark:text-dark-ink">Sozlamalar</Text>
               <Pressable onPress={onClose} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-dark-surface-2">
                 <X size={16} color="#64748b" />
               </Pressable>
             </View>
-            <ScrollView contentContainerClassName="pb-8" showsVerticalScrollIndicator={false}>
+            <ScrollView className="flex-1" contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
               <Pressable
                 onPress={() => void changeAvatar()}
                 className="mb-6 items-center gap-3 self-center">
