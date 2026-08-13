@@ -163,6 +163,8 @@ export function findStrokeAt(
   // "tepadagi" (oxirgi chizilgan) ni topish tabiiyroq.
   for (let i = strokes.length - 1; i >= 0; i--) {
     const s = strokes[i];
+    // Lazer ko'rsatkichi — o'chirilmaydi, tanlanmaydi va o'chirg'ich bilan kesilmaydi
+    if (s.tool === "laser") continue;
     const pts = s.points;
     if (pts.length >= 4 && (s.tool === "line" || s.tool === "arrow")) {
       if (hitTestLineOrArrow(s, x, y, hitRadius, width, height)) return s;
@@ -203,7 +205,8 @@ export function eraseNearPoint(
     stroke.tool === "arrow" ||
     stroke.tool === "line" ||
     stroke.tool === "rectangle" ||
-    stroke.tool === "ellipse"
+    stroke.tool === "ellipse" ||
+    stroke.tool === "laser"
   )
     return null;
 
@@ -228,6 +231,7 @@ export function eraseNearPoint(
       color: stroke.color,
       width: stroke.width,
       points: run,
+      ...(stroke.createdAt ? { createdAt: stroke.createdAt } : {}),
     }));
 }
 

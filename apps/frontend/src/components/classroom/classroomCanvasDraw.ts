@@ -12,6 +12,18 @@ import {
 const ARROW_HEAD_LEN_REF = 14;
 const ARROW_HEAD_ANGLE = Math.PI / 7;
 
+const laserStartTimeMap = new Map<string, number>();
+
+function getLaserStartTime(s: CsStroke): number {
+  if (s.createdAt) return s.createdAt;
+  let start = laserStartTimeMap.get(s.id);
+  if (!start) {
+    start = Date.now();
+    laserStartTimeMap.set(s.id, start);
+  }
+  return start;
+}
+
 function drawHead(
   ctx: CanvasRenderingContext2D,
   type: string,
@@ -574,7 +586,7 @@ export function drawStroke(
   }
   if (s.tool === "laser") {
     const now = Date.now();
-    const startTime = s.createdAt || now;
+    const startTime = getLaserStartTime(s);
     const elapsed = (now - startTime) / 1000;
     if (elapsed >= 3) {
       return;
