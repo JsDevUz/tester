@@ -34,13 +34,15 @@ import {
 import { RedisSessionStore } from '../redis/redis-session.store';
 import { RedisService } from '../redis/redis.service';
 
+import { ClassroomReplayService } from './classroom-replay.service';
+import { ClassroomSnapshotService } from './classroom-snapshot.service';
+
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
 
 @Injectable()
 export class ClassroomService implements OnModuleInit {
   private readonly logger = new Logger(ClassroomService.name);
   private sessions = new Map<string, ClassroomSession>();
-  private subtitleTranscriptionJobs = new Map<string, Promise<void>>();
   private broadcaster: ClassroomBroadcaster = { toRoom: () => {}, toSocket: () => {} };
 
   constructor(
@@ -52,9 +54,13 @@ export class ClassroomService implements OnModuleInit {
     @Optional() @Inject(forwardRef(() => BoardsService)) private readonly boardsService?: BoardsService,
     @Optional() private readonly voiceService?: ClassroomVoiceService,
     @Optional() @Inject(forwardRef(() => ClassroomAttendanceService)) private readonly attendanceService?: ClassroomAttendanceService,
+    @Optional() private readonly replayService?: ClassroomReplayService,
+    @Optional() private readonly snapshotService?: ClassroomSnapshotService,
     @Optional() private readonly sessionStore?: RedisSessionStore,
     @Optional() private readonly redis?: RedisService,
   ) {}
+
+  private subtitleTranscriptionJobs = new Map<string, Promise<void>>();
 
   private get boardsSvc(): BoardsService {
     return this.boardsService ?? new BoardsService(this);
@@ -66,6 +72,14 @@ export class ClassroomService implements OnModuleInit {
 
   private get attendanceSvc(): ClassroomAttendanceService {
     return this.attendanceService ?? new ClassroomAttendanceService(this);
+  }
+
+  private get replaySvc(): ClassroomReplayService {
+    return this.replayService ?? new ClassroomReplayService(this.storage, this.config, this.recording);
+  }
+
+  private get snapshotSvc(): ClassroomSnapshotService {
+    return this.snapshotService ?? new ClassroomSnapshotService();
   }
 
   private sessionKey(sessionId: string) { return `classroom:session:${sessionId}`; }
@@ -103,9 +117,7 @@ export class ClassroomService implements OnModuleInit {
   // integratsiya qilingan, graceful shutdown'da to'g'ri to'xtatiladi.
   @Interval(15_000)
   private async autoPersistActiveSessions(): Promise<void> {
-    for (const s of this.sessions.values()) {
-      await this.withSession(s.id, () => this.persistBoardSnapshot(s.id)).catch(() => {});
-    }
+    await this.snapshotSvc.autoSaveSnapshots(this.sessions);
   }
 
   // ---------- REST: lifecycle ----------
@@ -1233,24 +1245,9 @@ export class ClassroomService implements OnModuleInit {
   async persistBoardSnapshot(sessionId: string): Promise<void> {
     const s = this.sessions.get(sessionId);
     if (!s) return;
-    const boardSnapshot = this.buildBoardSnapshot(s);
-    await db.update(classSessions)
-      .set({
-        boardSnapshot,
-        pdfName: s.pdfName,
-        pdfPages: s.pdfPages,
-      })
-      .where(eq(classSessions.id, sessionId));
+    await this.snapshotSvc.persistBoardSnapshot(s);
 
     if (s.attachedBoardId) {
-      await db.update(classSessions)
-        .set({
-          boardSnapshot,
-          pdfName: s.pdfName,
-          pdfPages: s.pdfPages,
-        })
-        .where(eq(classSessions.id, s.attachedBoardId));
-
       const attachedBoard = this.sessions.get(s.attachedBoardId);
       if (attachedBoard) {
         attachedBoard.pdfName = s.pdfName;
@@ -1823,166 +1820,12 @@ export class ClassroomService implements OnModuleInit {
     };
   }
 
-  // Bitta darsning to'liq replay ma'lumoti — chizma tarixi + audio +
-  // davomat. Talaba (shu kursga yozilgan, attendance_records orqali) yoki
-  // o'qituvchi (shu kurs egasi) kira oladi.
   async getReplay(sessionId: string, callerId: string, recordingId?: string) {
-    const row = await db.query.classSessions.findFirst({
-      where: eq(classSessions.id, sessionId),
-      with: {
-        course: true,
-        attendance: { with: { enrollment: { with: { schoolMember: { with: { student: true } } } } } },
-      },
-    });
-    if (!row) throw new NotFoundException('Dars topilmadi');
-    const course = row.course as unknown as { adminId: string; id: string } | null;
-    const isTeacher = course ? course.adminId === callerId : row.teacherId === callerId;
-    let hasAccess = isTeacher;
-    if (!hasAccess && course) {
-      const attendanceRows = row.attendance as unknown as Array<{ enrollment?: { schoolMember?: { studentId?: string } } }>;
-      hasAccess = attendanceRows.some((a) => a.enrollment?.schoolMember?.studentId === callerId);
-    }
-    if (!hasAccess && !course) {
-      const participation = await db.query.freeSessionParticipants.findFirst({
-        where: and(eq(freeSessionParticipants.sessionId, sessionId), eq(freeSessionParticipants.userId, callerId)),
-      });
-      hasAccess = !!participation;
-    }
-    if (!hasAccess) throw new ForbiddenException();
-
-    const freeParticipants = !course
-      ? await db.query.freeSessionParticipants.findMany({
-          where: eq(freeSessionParticipants.sessionId, sessionId),
-          with: { user: true },
-        })
-      : [];
-
-    const rawRecordings = (row.recordings as unknown as any[]) ?? [];
-    const formattedRecordings = rawRecordings.map((r) => ({
-      id: r.id,
-      partNumber: r.partNumber,
-      createdAt: r.createdAt,
-      title: r.title ?? null,
-      recordingStatus: r.recordingStatus ?? 'none',
-      recordingMode: r.recordingMode ?? null,
-      recordingUrl: r.recordingUrl ? this.storage.getPublicUrl(r.recordingUrl) : null,
-    }));
-
-    let selectedEntry: any = null;
-    if (recordingId) {
-      selectedEntry = rawRecordings.find((r) => r.id === recordingId);
-    }
-    if (!selectedEntry && rawRecordings.length > 0) {
-      selectedEntry = rawRecordings[rawRecordings.length - 1];
-    }
-
-    let recordingUrl = (selectedEntry && selectedEntry.recordingUrl) ? selectedEntry.recordingUrl : row.recordingUrl;
-    let recordingStatus = (selectedEntry && selectedEntry.recordingStatus && selectedEntry.recordingStatus !== 'none')
-      ? selectedEntry.recordingStatus
-      : row.recordingStatus;
-    if (recordingStatus === 'pending') {
-      await this.recording.refreshRecording(sessionId);
-      const refreshed = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
-      if (refreshed) {
-        recordingUrl = refreshed.recordingUrl;
-        recordingStatus = refreshed.recordingStatus;
-      }
-    }
-
-    const historyEvents = selectedEntry
-      ? (selectedEntry.historyEvents ?? [])
-      : ((row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? []);
-    const recordingStartedAtMs = selectedEntry ? selectedEntry.recordingStartedAtMs : row.recordingStartedAtMs;
-    const recordingMode = selectedEntry ? selectedEntry.recordingMode : (row.recordingMode as ClassroomRecordingMode | null);
-    const boardSnapshot = selectedEntry ? selectedEntry.boardSnapshot : (row.boardSnapshot as unknown as ClassroomBoardSnapshot | null);
-
-    let subtitles = selectedEntry && Array.isArray(selectedEntry.subtitles)
-      ? selectedEntry.subtitles
-      : (((row as any).subtitles as unknown as any[]) ?? []);
-
-    if ((!subtitles || subtitles.length === 0) && recordingUrl) {
-      const publicUrl = this.storage.getPublicUrl(recordingUrl);
-      if (publicUrl) {
-        const jobKey = `${sessionId}:${selectedEntry?.id ?? 'latest'}`;
-        if (!this.subtitleTranscriptionJobs.has(jobKey)) {
-          const job = this.autoTranscribeReplayAudio(sessionId, publicUrl, selectedEntry?.id)
-            .catch((err) => console.warn('[Subtitle] Auto-transcribe error for past replay:', err))
-            .finally(() => this.subtitleTranscriptionJobs.delete(jobKey));
-          this.subtitleTranscriptionJobs.set(jobKey, job);
-        }
-      }
-    }
-
-    return {
-      isTeacher,
-      title: selectedEntry?.title ?? row.title ?? row.pdfName ?? null,
-      pdfName: row.pdfName,
-      pdfPages: (row.pdfPages as string[]) ?? [],
-      historyEvents,
-      subtitles,
-      recordingUrl: recordingUrl ? this.storage.getPublicUrl(recordingUrl) : null,
-      recordingStatus,
-      recordingStartedAtMs,
-      recordingMode: (recordingMode as ClassroomRecordingMode | null) ?? null,
-      boardSnapshot: (boardSnapshot as unknown as ClassroomBoardSnapshot | null) ?? null,
-      recordings: formattedRecordings,
-      attendance: selectedEntry && Array.isArray(selectedEntry.attendance)
-        ? selectedEntry.attendance
-        : (course
-            ? (row.attendance as unknown as Array<{
-                enrollment?: { schoolMember?: { studentId?: string; student?: { displayName: string } } };
-                status: string;
-              }>)
-                .filter((a) => a.enrollment?.schoolMember?.studentId)
-                .map((a) => ({
-                  userId: a.enrollment!.schoolMember!.studentId as string,
-                  name: a.enrollment!.schoolMember!.student?.displayName ?? '—',
-                  status: a.status,
-                }))
-            : freeParticipants.map((p) => ({
-                userId: p.userId,
-                name: p.user.displayName,
-                status: 'present' as const,
-              }))),
-    };
+    return this.replaySvc.getReplay(sessionId, callerId, recordingId);
   }
 
   async autoTranscribeReplayAudio(sessionId: string, audioUrl: string, recordingId?: string) {
-    try {
-      const primaryUrl = this.config.get<string>('SUBTITLE_SERVER_URL') ?? 'http://subtitle-server:8090';
-      let response: Response | null = null;
-      try {
-        response = await fetch(`${primaryUrl}/transcribe-file`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ audioUrl }),
-        });
-      } catch {
-        try {
-          response = await fetch('http://127.0.0.1:8090/transcribe-file', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ audioUrl }),
-          });
-        } catch {}
-      }
-
-      if (!response || !response.ok) return;
-      const data = (await response.json()) as { cues?: any[] };
-      if (data.cues && data.cues.length > 0) {
-        const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
-        const recordings = ((row?.recordings as unknown as any[]) ?? []).map((entry) =>
-          recordingId && entry.id === recordingId ? { ...entry, subtitles: data.cues } : entry,
-        );
-        await db.update(classSessions).set({
-          subtitles: recordingId ? ((row?.subtitles as any[]) ?? []) : data.cues,
-          ...(recordingId ? { recordings } : {}),
-        }).where(eq(classSessions.id, sessionId));
-        this.logger.log(`Auto-transcribed ${data.cues.length} subtitle cues for session ${sessionId}`);
-      }
-    } catch (err) {
-      this.logger.warn(`autoTranscribeReplayAudio failed for session ${sessionId}: ${err}`);
-    }
+    return this.replaySvc.autoTranscribeReplayAudio(sessionId, audioUrl, recordingId);
   }
 
   // Yakunlangan sessiyani butunlay ochiradi: DB yozuvi, audio yozuv fayli
@@ -2058,44 +1901,7 @@ export class ClassroomService implements OnModuleInit {
   // participants/zoom/scroll kabi replay uchun keraksiz maydonlar olib
   // tashlanadi.
   buildBoardSnapshot(s: ClassroomSession): ClassroomBoardSnapshot {
-    const full = buildSnapshot(s);
-    const pdfStrokes: Record<number, ClassroomStroke[]> = {};
-    const notebookStrokes: Record<number, ClassroomStroke[]> = {};
-
-    if (s.strokesByMode) {
-      const pdfMap = s.strokesByMode.get('pdf');
-      if (pdfMap) {
-        for (const [p, strokes] of pdfMap) {
-          if (strokes.length > 0) pdfStrokes[p] = strokes;
-        }
-      }
-      const notebookMap = s.strokesByMode.get('notebook');
-      if (notebookMap) {
-        for (const [p, strokes] of notebookMap) {
-          if (strokes.length > 0) notebookStrokes[p] = strokes;
-        }
-      }
-    }
-
-    return {
-      pdfName: full.pdfName,
-      pages: full.pages,
-      strokesByPage: full.strokesByPage,
-      rightStrokesByPage: full.rightStrokesByPage,
-      strokesByMode: {
-        pdf: pdfStrokes,
-        notebook: notebookStrokes,
-      },
-      boardMode: full.boardMode,
-      boardLayout: full.boardLayout,
-      leftBoardMode: full.leftBoardMode,
-      rightBoardMode: full.rightBoardMode,
-      notebookStyle: full.notebookStyle,
-      notebookPageCount: full.notebookPageCount ?? 1,
-      notebookPageStyles: full.notebookPageStyles,
-      notebookPageOrientations: full.notebookPageOrientations,
-      savedVersions: s.savedVersions ?? (s as any).boardSnapshot?.savedVersions ?? [],
-    };
+    return this.snapshotSvc.buildBoardSnapshot(s);
   }
 
   async voiceToken(sessionId: string, userId: string, displayName: string): Promise<{ token: string; url: string }> {
@@ -2190,7 +1996,7 @@ export class ClassroomService implements OnModuleInit {
     if (row.status !== 'active') {
       // Faqat erkin dars egasi eski host URL orqali o'z darsini qayta
       // ochishi mumkin. Student/begona user va kurs darsi avtomatik ochilmaydi.
-      if (!restoringHostId || row.courseId !== null || row.teacherId !== restoringHostId) return null;
+      if (!restoringHostId || (row.courseId !== null && !row.isBoard) || row.teacherId !== restoringHostId) return null;
       await db.update(classSessions)
         .set({ status: 'active', endedAt: null })
         .where(eq(classSessions.id, sessionId));

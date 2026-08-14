@@ -14,6 +14,8 @@ import { PracticeMessengerModule } from '../practice-messenger/practice-messenge
 import { BoardsService } from './boards.service';
 import { ClassroomVoiceService } from './classroom-voice.service';
 import { ClassroomAttendanceService } from './classroom-attendance.service';
+import { ClassroomReplayService } from './classroom-replay.service';
+import { ClassroomSnapshotService } from './classroom-snapshot.service';
 
 @Module({
   imports: [
@@ -39,8 +41,17 @@ import { ClassroomAttendanceService } from './classroom-attendance.service';
     BoardsService,
     ClassroomVoiceService,
     ClassroomAttendanceService,
+    ClassroomReplayService,
+    ClassroomSnapshotService,
   ],
-  exports: [BoardsService, ClassroomVoiceService, ClassroomAttendanceService],
+  exports: [
+    ClassroomService,
+    BoardsService,
+    ClassroomVoiceService,
+    ClassroomAttendanceService,
+    ClassroomReplayService,
+    ClassroomSnapshotService,
+  ],
 })
 export class ClassroomModule {}
 

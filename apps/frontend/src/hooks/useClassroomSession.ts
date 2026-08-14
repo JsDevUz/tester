@@ -121,7 +121,7 @@ export function useClassroomSession(
         joinPayload.guestId = getGuestId();
         joinPayload.guestName = guestName;
       }
-      socket.timeout(10_000).emit(
+      socket.timeout(5_000).emit(
         role === "host" ? "host:join" : "student:join",
         joinPayload,
         (timeoutError: Error | null, res?: { ok: boolean; code?: string; state?: CsSnapshot }) => {

@@ -11,7 +11,8 @@ export function getClassroomSocket(): Socket {
     socket = io(`${BACKEND}/classroom`, {
       transports: ['websocket', 'polling'],
       upgrade: true,
-      timeout: 10_000,
+      rememberUpgrade: true,
+      timeout: 5_000,
       reconnection: true,
     });
   }
