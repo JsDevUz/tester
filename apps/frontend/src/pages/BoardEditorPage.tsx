@@ -129,6 +129,7 @@ export function BoardEditorPage() {
   useHotkeys("0", () => handleToolChange("lasso"), hotkeyOptions);
   useHotkeys("s", () => setStrokeWidth(2), hotkeyOptions);
   useHotkeys("m", () => setStrokeWidth(4), hotkeyOptions);
+  useHotkeys("l", () => setStrokeWidth(7), hotkeyOptions);
   useHotkeys("mod+z", () => {
     if (canUndo) hostActions.undo();
   }, hotkeyOptions, [canUndo]);

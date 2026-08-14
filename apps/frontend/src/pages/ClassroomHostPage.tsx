@@ -144,6 +144,7 @@ export function ClassroomHostPage() {
   useHotkeys("0", () => handleToolChange("lasso"), { preventDefault: true });
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
+  useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
   useHotkeys("mod+z", () => {
     if (canUndo) hostActions.undo();
   }, { preventDefault: true }, [canUndo]);
