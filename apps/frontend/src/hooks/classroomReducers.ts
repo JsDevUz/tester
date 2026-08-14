@@ -136,9 +136,9 @@ function updateStrokeListInState(
   const targetMode = p.mode ?? (isRight ? activeRightMode : activeLeftMode) ?? "pdf";
 
   if (s.strokesByMode || s.isReplay) {
-    const byMode: Record<string, Record<number, CsStroke[]>> = s.strokesByMode ?? {
-      pdf: { ...(s.strokesByPage ?? {}) },
-      notebook: {},
+    const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+      pdf: (s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
+      notebook: (s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
     };
     const modeObj = byMode[targetMode] ?? {};
     const fallbackStrokes = targetMode === (isRight ? activeRightMode : activeLeftMode)
@@ -148,7 +148,10 @@ function updateStrokeListInState(
     const nextStrokes = updateFn(pageStrokes);
 
     const nextModeObj = { ...modeObj, [p.page]: nextStrokes };
-    const nextByMode = { ...byMode, [targetMode]: nextModeObj };
+    const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+      ...byMode,
+      [targetMode]: nextModeObj,
+    };
 
     return {
       ...s,
