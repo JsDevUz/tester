@@ -80,7 +80,7 @@ export class ClassroomSnapshotService {
 
   async autoSaveSnapshots(sessions: Map<string, ClassroomSession>): Promise<void> {
     const active = Array.from(sessions.values()).filter(
-      (s) => !s.ended && s.hostConnected,
+      (s) => s.hostSocketId !== null,
     );
     if (active.length === 0) return;
 
