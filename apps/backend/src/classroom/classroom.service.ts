@@ -97,6 +97,12 @@ export class ClassroomService implements OnModuleInit {
   private sessionKey(sessionId: string) { return `classroom:session:${sessionId}`; }
 
   async withSession<T>(sessionId: string, action: () => Promise<T> | T): Promise<T> {
+    // Agar sessiya xotirada faol bo'lsa, har bir so'rovda Redis distributed lock
+    // va og'ir JSON.stringify / JSON.parse qilmasdan to'g'ridan-to'g'ri (0ms)
+    // bajarish xizmat tezligini minglab marta oshiradi.
+    if (this.sessions.has(sessionId)) {
+      return action();
+    }
     const store = this.sessionStore;
     if (!store) return action();
     return store.transaction(this.sessionKey(sessionId), async () => {

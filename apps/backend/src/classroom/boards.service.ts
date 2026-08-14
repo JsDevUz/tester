@@ -311,7 +311,7 @@ export class BoardsService {
       pdfName: string | null;
       pageCount: number;
       strokeCount: number;
-      snapshot: any;
+      snapshot?: any;
       isCurrent?: boolean;
     }>
   > {
@@ -340,7 +340,7 @@ export class BoardsService {
       pdfName: string | null;
       pageCount: number;
       strokeCount: number;
-      snapshot: any;
+      snapshot?: any;
       isCurrent?: boolean;
     }> = [];
 
@@ -384,7 +384,6 @@ export class BoardsService {
         pdfName: currentSnapshot?.pdfName ?? null,
         pageCount,
         strokeCount: totalStrokes,
-        snapshot: currentSnapshot,
         isCurrent: true,
       });
     }
@@ -393,7 +392,14 @@ export class BoardsService {
     if (Array.isArray(savedVersionsList)) {
       for (const ver of savedVersionsList) {
         versions.push({
-          ...ver,
+          id: ver.id,
+          versionNumber: ver.versionNumber,
+          label: ver.label,
+          timestampMs: ver.timestampMs,
+          boardMode: ver.boardMode ?? 'pdf',
+          pdfName: ver.pdfName ?? null,
+          pageCount: ver.pageCount ?? 1,
+          strokeCount: ver.strokeCount ?? 0,
           isCurrent: activeVerId === ver.id,
         });
       }
@@ -409,18 +415,6 @@ export class BoardsService {
       pdfName: null,
       pageCount: 1,
       strokeCount: 0,
-      snapshot: {
-        pdfName: null,
-        pages: [],
-        strokesByPage: {},
-        strokesByMode: { pdf: {}, notebook: {} },
-        boardMode: 'notebook',
-        boardLayout: 'single',
-        notebookStyle: 'grid',
-        notebookPageCount: 1,
-        notebookPageStyles: {},
-        notebookPageOrientations: {},
-      },
       isCurrent: activeVerId === 'initial',
     });
 

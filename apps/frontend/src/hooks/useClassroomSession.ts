@@ -217,8 +217,21 @@ export function useClassroomSession(
       );
     };
 
-    if (socket.connected) join();
+    const onConnectError = () => {
+      if (attempts < 3) {
+        retryTimer = window.setTimeout(join, 1500);
+      } else {
+        setState((s) => ({ ...s, error: "CONNECTION_TIMEOUT" }));
+      }
+    };
+
+    if (socket.connected) {
+      join();
+    } else {
+      socket.connect();
+    }
     socket.on("connect", join);
+    socket.on("connect_error", onConnectError);
 
     socket.on("presence:update", (p: { participants: CsParticipant[] }) => {
       setState((s) => ({ ...s, participants: p.participants }));
@@ -368,6 +381,7 @@ export function useClassroomSession(
 
     return () => {
       socket.off("connect", join);
+      socket.off("connect_error", onConnectError);
       socket.off("pdf:set");
       socket.off("board:set");
       socket.off("page:set");

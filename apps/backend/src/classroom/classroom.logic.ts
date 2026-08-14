@@ -671,17 +671,21 @@ export function closeInterval(participant: ClassroomParticipant, nowMs: number):
 
 export function buildSnapshot(session: ClassroomSession): ClassroomSnapshot {
   const strokesByPage: Record<number, ClassroomStroke[]> = {};
-  for (const [page, strokes] of activeStrokeMap(session)) strokesByPage[page] = strokes;
+  for (const [page, strokes] of activeStrokeMap(session)) {
+    if (strokes.length > 0) strokesByPage[page] = strokes;
+  }
   const rightStrokesByPage: Record<number, ClassroomStroke[]> = {};
   const rightMode = session.rightBoardMode ?? session.boardMode ?? 'pdf';
-  for (const [page, strokes] of strokeMapFor(session, rightMode)) rightStrokesByPage[page] = strokes;
+  for (const [page, strokes] of strokeMapFor(session, rightMode)) {
+    if (strokes.length > 0) rightStrokesByPage[page] = strokes;
+  }
   const strokesByMode: Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>> = {
     pdf: {},
     notebook: {},
   };
   for (const mode of ['pdf', 'notebook'] as const) {
     for (const [page, strokes] of strokeMapFor(session, mode)) {
-      strokesByMode[mode][page] = strokes;
+      if (strokes.length > 0) strokesByMode[mode][page] = strokes;
     }
   }
   return {

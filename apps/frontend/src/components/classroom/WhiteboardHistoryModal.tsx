@@ -91,14 +91,14 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
     return () => clearInterval(interval);
   }, [boardId, activeTab]);
 
-  // Real-time polling for versions list every 1.2 seconds
+  // Real-time polling for versions list every 3 seconds
   useEffect(() => {
     if (activeTab !== "versions") return;
     const interval = setInterval(() => {
       apiGetBoardVersions(boardId)
         .then((res) => setVersions(res))
         .catch(() => { });
-    }, 1200);
+    }, 3000);
     return () => clearInterval(interval);
   }, [boardId, activeTab]);
 
