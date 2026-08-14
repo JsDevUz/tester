@@ -80,7 +80,7 @@ export class ClassroomSnapshotService {
 
   async autoSaveSnapshots(sessions: Map<string, ClassroomSession>): Promise<void> {
     const active = Array.from(sessions.values()).filter(
-      (s) => s.hostSocketId !== null,
+      (s) => !s.ended && s.hostConnected,
     );
     if (active.length === 0) return;
 
@@ -93,5 +93,61 @@ export class ClassroomSnapshotService {
         );
       }
     }
+  }
+
+  /**
+   * Snapshot JSON'dan `strokesByMode` Map qayta tiklaydi.
+   * Eski formatda (strokesByMode yo'q) esa boardMode/rightBoardMode bo'yicha
+   * strokesByPage / rightStrokesByPage dan tuzadi.
+   */
+  deserializeStrokesByMode(
+    snapshot: ClassroomBoardSnapshot,
+  ): Map<'pdf' | 'notebook', Map<number, ClassroomStroke[]>> {
+    const strokesByMode = new Map<'pdf' | 'notebook', Map<number, ClassroomStroke[]>>([
+      ['pdf', new Map()],
+      ['notebook', new Map()],
+    ]);
+    const raw = (snapshot as any).strokesByMode as
+      | Record<'pdf' | 'notebook', Record<number, ClassroomStroke[]>>
+      | undefined;
+    if (raw) {
+      if (raw.pdf) {
+        strokesByMode.set(
+          'pdf',
+          new Map(Object.entries(raw.pdf).map(([p, s]) => [Number(p), s])),
+        );
+      }
+      if (raw.notebook) {
+        strokesByMode.set(
+          'notebook',
+          new Map(Object.entries(raw.notebook).map(([p, s]) => [Number(p), s])),
+        );
+      }
+    } else {
+      strokesByMode.set(
+        snapshot.boardMode,
+        new Map(
+          Object.entries(snapshot.strokesByPage ?? {}).map(([p, s]) => [
+            Number(p),
+            s,
+          ]),
+        ),
+      );
+      if (
+        snapshot.rightBoardMode &&
+        snapshot.rightBoardMode !== snapshot.boardMode
+      ) {
+        strokesByMode.set(
+          snapshot.rightBoardMode,
+          new Map(
+            Object.entries(snapshot.rightStrokesByPage ?? {}).map(([p, s]) => [
+              Number(p),
+              s,
+            ]),
+          ),
+        );
+      }
+    }
+    return strokesByMode;
   }
 }
