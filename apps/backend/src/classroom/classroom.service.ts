@@ -169,13 +169,14 @@ export class ClassroomService implements OnModuleInit {
       pdfPages: [],
       currentPage: 1,
       strokesByPage: new Map(),
-      boardMode: 'pdf',
+      boardMode: 'notebook',
       boardLayout: 'single',
-      leftBoardMode: 'pdf',
-      rightBoardMode: 'pdf',
+      leftBoardMode: 'notebook',
+      rightBoardMode: 'notebook',
       classroomTheme: 'light',
       notebookStyle: 'grid',
-      strokesByMode: new Map([['pdf', new Map()]]),
+      notebookPageCount: 1,
+      strokesByMode: new Map([['pdf', new Map()], ['notebook', new Map()]]),
       participants: new Map(),
       startedAtMs: Date.now(),
       hostDisconnectTimer: null,
@@ -1465,13 +1466,17 @@ export class ClassroomService implements OnModuleInit {
         .where(eq(classSessions.id, sessionId));
     }
 
+    const isStandaloneBoard = row.isBoard === true || (row.courseId === null && !row.pdfName);
+    const defaultMode: ClassroomBoardMode = isStandaloneBoard ? 'notebook' : 'pdf';
+
     const snapshot = (row.boardSnapshot as unknown as ClassroomBoardSnapshot) ?? {
       pdfName: row.pdfName ?? null,
       pages: row.pdfPages ?? [],
       strokesByPage: {},
       rightStrokesByPage: {},
-      boardMode: 'pdf',
+      boardMode: defaultMode,
       boardLayout: 'single',
+      notebookPageCount: 1,
     };
 
     const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([

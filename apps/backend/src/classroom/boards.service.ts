@@ -25,6 +25,19 @@ export class BoardsService {
 
   async createBoard(teacherId: string, title?: string): Promise<{ id: string }> {
     const cleanTitle = title?.trim() ? title.trim() : null;
+    const initialSnapshot = {
+      pdfName: null,
+      pages: [],
+      strokesByPage: {},
+      strokesByMode: { pdf: {}, notebook: {} },
+      boardMode: 'notebook',
+      boardLayout: 'single',
+      notebookStyle: 'grid',
+      notebookPageCount: 1,
+      notebookPageStyles: {},
+      notebookPageOrientations: {},
+    };
+
     const [row] = await db
       .insert(classSessions)
       .values({
@@ -32,6 +45,7 @@ export class BoardsService {
         teacherId,
         title: cleanTitle,
         isBoard: true,
+        boardSnapshot: initialSnapshot,
       })
       .returning();
 
