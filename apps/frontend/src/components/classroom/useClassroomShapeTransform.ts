@@ -197,6 +197,16 @@ export function useClassroomShapeTransform({
           : null,
       );
     }
+    onUpdateShapeStroke?.(pageNumber, {
+      ...selectedShapeRaw,
+      points: [...selectedShapeRaw.points],
+      ...(selectedShapeRaw.controlX !== undefined
+        ? { controlX: selectedShapeRaw.controlX }
+        : {}),
+      ...(selectedShapeRaw.controlY !== undefined
+        ? { controlY: selectedShapeRaw.controlY }
+        : {}),
+    });
     forceRedraw((value) => value + 1);
   };
 
@@ -319,6 +329,10 @@ export function useClassroomShapeTransform({
     const nextY1 = newCy + newH / 2;
 
     current.stroke.points = [nextX0, nextY0, nextX1, nextY1];
+    onUpdateShapeStroke?.(pageNumber, {
+      ...current.stroke,
+      points: [...current.stroke.points],
+    });
     forceRedraw((value) => value + 1);
   };
 

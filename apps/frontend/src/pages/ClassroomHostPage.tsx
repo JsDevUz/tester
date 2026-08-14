@@ -37,6 +37,7 @@ import {
   apiAttachBoardToClassroom,
   apiAttachClassPdf,
   apiClassSession,
+  apiEndClassSession,
   apiInsertClassPdfPages,
   apiMuteParticipant,
   apiStartClassRecording,
@@ -203,13 +204,23 @@ export function ClassroomHostPage() {
     }
   };
 
-  const handleEnd = () => {
-    // Dars fullscreen rejimida yakunlansa, brauzer avtomatik chiqmaydi —
-    // foydalanuvchi navigatsiyadan keyin ham fullscreen holatida qolib
-    // ketmasin deb aniq chiqariladi.
+  const [endingLesson, setEndingLesson] = useState(false);
+
+  const handleEnd = async () => {
     if (fullscreen.isFullscreen) void fullscreen.toggle();
-    hostActions.endLesson();
-    navigate(-1);
+    if (!id || endingLesson) return;
+    setEndingLesson(true);
+    try {
+      hostActions.endLesson();
+      await apiEndClassSession(id);
+      toast.success("Dars muvaffaqiyatli yakunlandi");
+    } catch (e: any) {
+      console.error("Failed to end class session via API:", e);
+    } finally {
+      setEndingLesson(false);
+      setConfirmEnd(false);
+      navigate(-1);
+    }
   };
 
   const handleCopyLink = () => {
@@ -690,17 +701,19 @@ export function ClassroomHostPage() {
             <div className="flex gap-2 justify-end">
               <button
                 type="button"
+                disabled={endingLesson}
                 onClick={() => setConfirmEnd(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
               >
                 Bekor qilish
               </button>
               <button
                 type="button"
+                disabled={endingLesson}
                 onClick={handleEnd}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700"
+                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
               >
-                Yakunlash
+                {endingLesson ? "Yakunlanmoqda..." : "Yakunlash"}
               </button>
             </div>
           </div>

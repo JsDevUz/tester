@@ -40,14 +40,16 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
   const clampedCurrentPage = Math.min(Math.max(1, p.currentPage || s.currentPage || 1), Math.max(1, targetPageCount));
 
   const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
-    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? (s.boardMode === "pdf" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
-    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? (s.boardMode === "notebook" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
   };
-  const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
-    ...byMode,
-    [leftMode]: p.strokesByPage ?? byMode[leftMode] ?? {},
-    ...(p.rightStrokesByPage ? { [rightMode]: p.rightStrokesByPage } : {}),
-  };
+  if (p.strokesByPage) {
+    byMode[leftMode] = p.strokesByPage;
+  }
+  if (p.rightStrokesByPage) {
+    byMode[rightMode] = p.rightStrokesByPage;
+  }
+
   return {
     ...s,
     pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
@@ -57,9 +59,9 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
     leftBoardMode: leftMode,
     rightBoardMode: rightMode,
     currentPage: clampedCurrentPage,
-    strokesByMode: nextByMode,
-    strokesByPage: nextByMode[leftMode] ?? {},
-    rightStrokesByPage: nextByMode[rightMode] ?? {},
+    strokesByMode: byMode,
+    strokesByPage: byMode[leftMode] ?? {},
+    rightStrokesByPage: byMode[rightMode] ?? {},
     notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
     notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
     notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
@@ -94,9 +96,15 @@ export function applyBoardAttached(s: ClassroomState, p: {
   const clampedPage = Math.min(Math.max(1, p.currentPage ?? 1), Math.max(1, targetPageCount));
 
   const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
-    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? (mode === "pdf" ? (p.strokesByPage ?? {}) : {})) as Record<number, CsStroke[]>,
-    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? (mode === "notebook" ? (p.strokesByPage ?? {}) : {})) as Record<number, CsStroke[]>,
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
   };
+  if (p.strokesByPage) {
+    byMode[leftMode] = p.strokesByPage;
+  }
+  if (p.rightStrokesByPage) {
+    byMode[rightMode] = p.rightStrokesByPage;
+  }
 
   return {
     ...s,
@@ -113,8 +121,8 @@ export function applyBoardAttached(s: ClassroomState, p: {
     notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
     currentPage: clampedPage,
     strokesByMode: byMode,
-    strokesByPage: byMode[leftMode] ?? p.strokesByPage ?? {},
-    rightStrokesByPage: byMode[rightMode] ?? p.rightStrokesByPage ?? {},
+    strokesByPage: byMode[leftMode] ?? {},
+    rightStrokesByPage: byMode[rightMode] ?? {},
     pointer: null,
     scroll: null,
     isBoardOpen: true,
@@ -133,42 +141,29 @@ function updateStrokeListInState(
   const isRight = p.pane === "right";
   const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
   const activeRightMode = s.rightBoardMode ?? s.boardMode ?? "pdf";
-  const targetMode = p.mode ?? (isRight ? activeRightMode : activeLeftMode) ?? "pdf";
+  const targetMode: CsBoardMode = p.mode ?? (isRight ? activeRightMode : activeLeftMode) ?? "pdf";
 
-  if (s.strokesByMode || s.isReplay) {
-    const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
-      pdf: (s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
-      notebook: (s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
-    };
-    const modeObj = byMode[targetMode] ?? {};
-    const fallbackStrokes = targetMode === (isRight ? activeRightMode : activeLeftMode)
-      ? (isRight ? (s.rightStrokesByPage[p.page] ?? []) : (s.strokesByPage[p.page] ?? []))
-      : [];
-    const pageStrokes = modeObj[p.page] ?? fallbackStrokes;
-    const nextStrokes = updateFn(pageStrokes);
+  const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    pdf: { ...(s.strokesByMode?.pdf ?? (s.boardMode === "pdf" ? s.strokesByPage : {})) } as Record<number, CsStroke[]>,
+    notebook: { ...(s.strokesByMode?.notebook ?? (s.boardMode === "notebook" ? s.strokesByPage : {})) } as Record<number, CsStroke[]>,
+  };
 
-    const nextModeObj = { ...modeObj, [p.page]: nextStrokes };
-    const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
-      ...byMode,
-      [targetMode]: nextModeObj,
-    };
+  const modeObj = byMode[targetMode] ?? {};
+  const pageStrokes = modeObj[p.page] ?? [];
+  const nextStrokes = updateFn(pageStrokes);
 
-    return {
-      ...s,
-      strokesByMode: nextByMode,
-      strokesByPage: nextByMode[activeLeftMode] ?? {},
-      rightStrokesByPage: nextByMode[activeRightMode] ?? {},
-    };
-  }
+  const nextModeObj = { ...modeObj, [p.page]: nextStrokes };
+  const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    ...byMode,
+    [targetMode]: nextModeObj,
+  };
 
-  if (isRight) {
-    if (p.mode && p.mode !== s.rightBoardMode) return s;
-    const existing = s.rightStrokesByPage[p.page] ?? [];
-    return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [p.page]: updateFn(existing) } };
-  }
-  if (p.mode && p.mode !== s.leftBoardMode) return s;
-  const existing = s.strokesByPage[p.page] ?? [];
-  return { ...s, strokesByPage: { ...s.strokesByPage, [p.page]: updateFn(existing) } };
+  return {
+    ...s,
+    strokesByMode: nextByMode,
+    strokesByPage: nextByMode[activeLeftMode] ?? {},
+    rightStrokesByPage: nextByMode[activeRightMode] ?? {},
+  };
 }
 
 export function applyStrokeAdd(s: ClassroomState, p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }): ClassroomState {

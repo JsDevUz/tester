@@ -455,6 +455,7 @@ export function useClassroomPagePointerGestures({
       const nextY = Math.max(0, Math.min(1, p[1] - dy));
       stroke.points[0] = nextX;
       stroke.points[1] = nextY;
+      onMoveStroke?.(pageNumber, stroke.id, nextX, nextY);
       forceRedraw((n) => n + 1);
       return;
     }
@@ -471,6 +472,16 @@ export function useClassroomPagePointerGestures({
       stroke.points = [nextX0, nextY0, nextX0 + width, nextY0 + height];
       if (stroke.controlX !== undefined) stroke.controlX += offsetX;
       if (stroke.controlY !== undefined) stroke.controlY += offsetY;
+      onUpdateShapeStroke?.(pageNumber, {
+        ...stroke,
+        points: [...stroke.points],
+        ...(stroke.controlX !== undefined
+          ? { controlX: stroke.controlX }
+          : {}),
+        ...(stroke.controlY !== undefined
+          ? { controlY: stroke.controlY }
+          : {}),
+      });
       forceRedraw((n) => n + 1);
       return;
     }
@@ -485,6 +496,7 @@ export function useClassroomPagePointerGestures({
       );
       if (moved.every((value) => value >= 0 && value <= 1)) {
         stroke.points = moved;
+        onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
         forceRedraw((n) => n + 1);
       }
       return;

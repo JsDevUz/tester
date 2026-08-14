@@ -73,14 +73,34 @@ export class ClassroomRecordingService {
     const failed = info.status >= 4 || !!info.error || !location;
 
     const storage = this.storageConfig();
+    const publicUrl = failed || !storage ? null : this.publicRecordingUrl(location, storage);
+    const recordingStatus = failed ? 'failed' : 'ready';
+
+    const row = await db.query.classSessions.findFirst({
+      where: eq(classSessions.id, sessionId),
+    });
+    const rawRecordings = (row?.recordings as unknown as any[]) ?? [];
+    const updatedRecordings = rawRecordings.map((r) => {
+      const isTarget =
+        (info as any).egressId && r.egressId === (info as any).egressId;
+      const isPendingMatch =
+        r.recordingStatus === 'pending' || !r.recordingUrl;
+      if (isTarget || isPendingMatch) {
+        return {
+          ...r,
+          recordingStatus,
+          recordingUrl: publicUrl,
+        };
+      }
+      return r;
+    });
+
     await db
       .update(classSessions)
       .set({
-        recordingStatus: failed ? 'failed' : 'ready',
-        recordingUrl:
-          failed || !storage
-            ? null
-            : this.publicRecordingUrl(location, storage),
+        recordingStatus,
+        recordingUrl: publicUrl,
+        recordings: updatedRecordings,
       })
       .where(eq(classSessions.id, sessionId));
     return true;

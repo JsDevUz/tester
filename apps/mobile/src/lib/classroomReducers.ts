@@ -78,25 +78,19 @@ export function applyBoardSet(
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
 
-  let strokesByMode: Record<string, Record<number, CsStroke[]>>;
-  if (p.strokesByMode) {
-    strokesByMode = p.strokesByMode as Record<string, Record<number, CsStroke[]>>;
-  } else if (p.notebookPageCount !== undefined) {
-    strokesByMode = {
-      ...(s.strokesByMode ?? {}),
-      [leftMode]: p.strokesByPage ?? s.strokesByPage ?? {},
-    };
-    if (p.rightStrokesByPage !== undefined || leftMode !== rightMode) {
-      strokesByMode[rightMode] = p.rightStrokesByPage ?? s.rightStrokesByPage ?? {};
-    }
-  } else {
-    strokesByMode = {...(s.strokesByMode ?? {})};
-    if (p.strokesByPage) strokesByMode[leftMode] = p.strokesByPage;
-    if (p.rightStrokesByPage) strokesByMode[rightMode] = p.rightStrokesByPage;
+  const byMode: Record<string, Record<number, CsStroke[]>> = {
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
+  };
+  if (p.strokesByPage) {
+    byMode[leftMode] = p.strokesByPage;
+  }
+  if (p.rightStrokesByPage) {
+    byMode[rightMode] = p.rightStrokesByPage;
   }
 
-  const strokesByPage = p.strokesByPage ?? strokesByMode[leftMode] ?? s.strokesByPage;
-  const rightStrokesByPage = p.rightStrokesByPage ?? strokesByMode[rightMode] ?? s.rightStrokesByPage;
+  const strokesByPage = byMode[leftMode] ?? {};
+  const rightStrokesByPage = byMode[rightMode] ?? {};
 
   return {
     ...s,
@@ -107,7 +101,7 @@ export function applyBoardSet(
     currentPage: p.currentPage,
     pages: p.pages ?? s.pages,
     pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
-    strokesByMode,
+    strokesByMode: byMode as Record<CsBoardMode, Record<number, CsStroke[]>>,
     strokesByPage,
     rightStrokesByPage,
     notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
@@ -145,10 +139,16 @@ export function applyBoardAttached(
   const targetPageCount = leftMode === 'notebook' ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (pages?.length || 1);
   const clampedPage = Math.min(Math.max(1, p.currentPage ?? 1), Math.max(1, targetPageCount));
 
-  const byMode = (p.strokesByMode as Record<string, Record<number, CsStroke[]>>) ?? s.strokesByMode ?? {
-    pdf: mode === 'pdf' ? (p.strokesByPage ?? {}) : {},
-    notebook: mode === 'notebook' ? (p.strokesByPage ?? {}) : {},
+  const byMode: Record<string, Record<number, CsStroke[]>> = {
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? {}) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? {}) as Record<number, CsStroke[]>,
   };
+  if (p.strokesByPage) {
+    byMode[leftMode] = p.strokesByPage;
+  }
+  if (p.rightStrokesByPage) {
+    byMode[rightMode] = p.rightStrokesByPage;
+  }
 
   return {
     ...s,
@@ -164,15 +164,14 @@ export function applyBoardAttached(
     notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
     notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
     currentPage: clampedPage,
-    strokesByMode: byMode,
-    strokesByPage: byMode[leftMode] ?? p.strokesByPage ?? {},
-    rightStrokesByPage: byMode[rightMode] ?? p.rightStrokesByPage ?? {},
+    strokesByMode: byMode as Record<CsBoardMode, Record<number, CsStroke[]>>,
+    strokesByPage: byMode[leftMode] ?? {},
+    rightStrokesByPage: byMode[rightMode] ?? {},
     pointer: null,
     scroll: null,
     isBoardOpen: true,
   };
 }
-
 
 export function applyPageSet(s: ClassroomState, p: {page: number}): ClassroomState {
   return {...s, currentPage: p.page, pointer: null};
@@ -190,37 +189,24 @@ export function optimistikApplyToPage(
   const activeRightMode = s.rightBoardMode ?? s.boardMode ?? 'pdf';
   const targetMode = (mode ?? (isRight ? activeRightMode : activeLeftMode) ?? 'pdf') as CsBoardMode;
 
-  if (s.strokesByMode || s.isReplay) {
-    const byMode: Record<string, Record<number, CsStroke[]>> = s.strokesByMode ?? {
-      pdf: { ...(s.strokesByPage ?? {}) },
-      notebook: {},
-    };
-    const modeObj = byMode[targetMode] ?? {};
-    const fallbackStrokes = targetMode === (isRight ? activeRightMode : activeLeftMode)
-      ? (isRight ? (s.rightStrokesByPage[page] ?? []) : (s.strokesByPage[page] ?? []))
-      : [];
-    const pageStrokes = modeObj[page] ?? fallbackStrokes;
-    const nextStrokes = updateFn(pageStrokes);
+  const byMode: Record<string, Record<number, CsStroke[]>> = {
+    pdf: { ...(s.strokesByMode?.pdf ?? (s.boardMode === 'pdf' ? s.strokesByPage : {})) },
+    notebook: { ...(s.strokesByMode?.notebook ?? (s.boardMode === 'notebook' ? s.strokesByPage : {})) },
+  };
 
-    const nextModeObj = { ...modeObj, [page]: nextStrokes };
-    const nextByMode = { ...byMode, [targetMode]: nextModeObj };
+  const modeObj = byMode[targetMode] ?? {};
+  const pageStrokes = modeObj[page] ?? [];
+  const nextStrokes = updateFn(pageStrokes);
 
-    return {
-      ...s,
-      strokesByMode: nextByMode,
-      strokesByPage: nextByMode[activeLeftMode] ?? {},
-      rightStrokesByPage: nextByMode[activeRightMode] ?? {},
-    };
-  }
+  const nextModeObj = { ...modeObj, [page]: nextStrokes };
+  const nextByMode = { ...byMode, [targetMode]: nextModeObj };
 
-  if (isRight) {
-    if (mode && mode !== s.rightBoardMode) return s;
-    const existing = s.rightStrokesByPage[page] ?? [];
-    return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [page]: updateFn(existing) } };
-  }
-  if (mode && mode !== s.leftBoardMode) return s;
-  const existing = s.strokesByPage[page] ?? [];
-  return { ...s, strokesByPage: { ...s.strokesByPage, [page]: updateFn(existing) } };
+  return {
+    ...s,
+    strokesByMode: nextByMode as Record<CsBoardMode, Record<number, CsStroke[]>>,
+    strokesByPage: nextByMode[activeLeftMode] ?? {},
+    rightStrokesByPage: nextByMode[activeRightMode] ?? {},
+  };
 }
 
 export function applyStrokeAdd(

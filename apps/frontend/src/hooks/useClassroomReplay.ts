@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { ClassroomState } from "./useClassroomSession";
 import {
-  applyBoardRedo, applyBoardSet, applyBoardUndo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyBoardClear, applyBoardRedo, applyBoardSet, applyBoardUndo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate,
 } from "./classroomReducers";
@@ -14,6 +14,7 @@ export interface ReplayHistoryEvent {
 
 const REDUCERS: Record<string, (s: ClassroomState, p: any) => ClassroomState> = {
   "board:set": applyBoardSet,
+  "board:clear": applyBoardClear,
   "pdf:set": applyPdfSet,
   "page:set": applyPageSet,
   "stroke:add": applyStrokeAdd,

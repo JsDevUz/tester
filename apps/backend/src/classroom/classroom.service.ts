@@ -297,7 +297,12 @@ export class ClassroomService implements OnModuleInit {
       currentPage: snapshot.currentPage,
       strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
+      strokesByMode: snapshot.strokesByMode,
       notebookPageCount: snapshot.notebookPageCount,
+      notebookPageStyles: snapshot.notebookPageStyles,
+      notebookPageOrientations: snapshot.notebookPageOrientations,
+      pdfName: snapshot.pdfName,
+      pages: snapshot.pages,
     };
     this.recordHistoryEvent(s, 'board:set', payload);
     this.broadcaster.toRoom(sessionId, 'board:set', payload);
@@ -317,7 +322,12 @@ export class ClassroomService implements OnModuleInit {
       mode: leftMode, layout: s.boardLayout, leftMode, rightMode,
       currentPage: snapshot.currentPage, strokesByPage: snapshot.strokesByPage,
       rightStrokesByPage: snapshot.rightStrokesByPage,
+      strokesByMode: snapshot.strokesByMode,
       notebookPageCount: snapshot.notebookPageCount,
+      notebookPageStyles: snapshot.notebookPageStyles,
+      notebookPageOrientations: snapshot.notebookPageOrientations,
+      pdfName: snapshot.pdfName,
+      pages: snapshot.pages,
     };
     this.recordHistoryEvent(s, 'board:set', payload);
     this.broadcaster.toRoom(sessionId, 'board:set', payload);

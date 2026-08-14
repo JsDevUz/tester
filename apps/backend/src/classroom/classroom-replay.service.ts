@@ -101,7 +101,13 @@ export class ClassroomReplayService {
       selectedEntry.recordingStatus &&
       selectedEntry.recordingStatus !== 'none'
         ? selectedEntry.recordingStatus
-        : row.recordingStatus;
+        : (row.recordingStatus ?? 'none');
+
+    if (!recordingUrl && row.recordingUrl) {
+      recordingUrl = row.recordingUrl;
+      recordingStatus = row.recordingStatus;
+    }
+
     if (recordingStatus === 'pending') {
       await this.recording.refreshRecording(sessionId);
       const refreshed = await db.query.classSessions.findFirst({
