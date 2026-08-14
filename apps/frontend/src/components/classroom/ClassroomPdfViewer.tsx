@@ -6145,6 +6145,7 @@ export function ClassroomPdfViewer({
   // unmount bo'lsa ham nusxa saqlanadi va fokuslangan boshqa sahifaga
   // Ctrl/Cmd+V orqali qo'yilishi mumkin.
   const lassoClipboardRef = useRef<CsStroke[]>([]);
+  const lastSplitActionTimeRef = useRef<number>(0);
   const currentPageRef = useRef(currentPage);
   currentPageRef.current = currentPage;
 
@@ -6261,6 +6262,7 @@ export function ClassroomPdfViewer({
   ]);
 
   useEffect(() => {
+    if (isHost && Date.now() - lastSplitActionTimeRef.current < 600) return;
     if (isHost || synced) {
       setDisplayMode(boardMode);
       setDisplayLayout(boardLayout);
@@ -6417,6 +6419,9 @@ export function ClassroomPdfViewer({
   ]);
 
   const changeDisplayMode = (mode: CsBoardMode) => {
+    const now = Date.now();
+    if (now - lastSplitActionTimeRef.current < 350) return;
+    lastSplitActionTimeRef.current = now;
     setDisplayMode(mode);
     setLeftMode(mode);
     setRightMode(mode);
@@ -6424,6 +6429,9 @@ export function ClassroomPdfViewer({
   };
 
   const toggleSplit = () => {
+    const now = Date.now();
+    if (now - lastSplitActionTimeRef.current < 350) return;
+    lastSplitActionTimeRef.current = now;
     const next = displayLayout === "split" ? "single" : ("split" as const);
     setDisplayLayout(next);
     if (next === "split") {
@@ -6437,9 +6445,13 @@ export function ClassroomPdfViewer({
   };
 
   const swapSplitPanes = () => {
-    if (displayLayout !== "split") return;
-    const newLeft = rightMode;
-    const newRight = leftMode;
+    const now = Date.now();
+    if (displayLayout !== "split" || now - lastSplitActionTimeRef.current < 350) return;
+    lastSplitActionTimeRef.current = now;
+    const currentLeft = leftMode;
+    const currentRight = rightMode === currentLeft ? (currentLeft === "pdf" ? "notebook" : "pdf") : rightMode;
+    const newLeft = currentRight;
+    const newRight = currentLeft;
     setLeftMode(newLeft);
     setRightMode(newRight);
     if (isHost) onBoardViewChange?.("split", newLeft, newRight);

@@ -1243,7 +1243,9 @@ export class ClassroomService implements OnModuleInit {
   setBoardView(sessionId: string, userId: string, layout: 'single' | 'split', leftMode: ClassroomBoardMode, rightMode: ClassroomBoardMode): void {
     const s = this.requireHost(sessionId, userId);
     if (!['pdf', 'notebook'].includes(leftMode) || !['pdf', 'notebook'].includes(rightMode)) throw new Error('INVALID_BOARD_MODE');
-    if (layout === 'split' && leftMode === rightMode) throw new Error('DUPLICATE_SPLIT_MODE');
+    if (layout === 'split' && leftMode === rightMode) {
+      rightMode = leftMode === 'pdf' ? 'notebook' : 'pdf';
+    }
     s.boardLayout = layout === 'split' ? 'split' : 'single';
     s.leftBoardMode = leftMode;
     s.rightBoardMode = rightMode;
