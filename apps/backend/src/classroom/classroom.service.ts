@@ -36,6 +36,8 @@ import { RedisService } from '../redis/redis.service';
 
 import { ClassroomReplayService } from './classroom-replay.service';
 import { ClassroomSnapshotService } from './classroom-snapshot.service';
+import { ClassroomBoardAttachmentService } from './classroom-board-attachment.service';
+import { ClassroomSessionLifecycleService } from './classroom-session-lifecycle.service';
 
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
 
@@ -56,6 +58,8 @@ export class ClassroomService implements OnModuleInit {
     @Optional() @Inject(forwardRef(() => ClassroomAttendanceService)) private readonly attendanceService?: ClassroomAttendanceService,
     @Optional() private readonly replayService?: ClassroomReplayService,
     @Optional() private readonly snapshotService?: ClassroomSnapshotService,
+    @Optional() private readonly attachmentService?: ClassroomBoardAttachmentService,
+    @Optional() private readonly lifecycleService?: ClassroomSessionLifecycleService,
     @Optional() private readonly sessionStore?: RedisSessionStore,
     @Optional() private readonly redis?: RedisService,
   ) {}
@@ -80,6 +84,14 @@ export class ClassroomService implements OnModuleInit {
 
   private get snapshotSvc(): ClassroomSnapshotService {
     return this.snapshotService ?? new ClassroomSnapshotService();
+  }
+
+  private get attachmentSvc(): ClassroomBoardAttachmentService {
+    return this.attachmentService ?? new ClassroomBoardAttachmentService(this.mediaLibrary);
+  }
+
+  private get lifecycleSvc(): ClassroomSessionLifecycleService {
+    return this.lifecycleService ?? new ClassroomSessionLifecycleService(this.storage, this.notifications, this.snapshotSvc);
   }
 
   private sessionKey(sessionId: string) { return `classroom:session:${sessionId}`; }
@@ -122,143 +134,16 @@ export class ClassroomService implements OnModuleInit {
 
   // ---------- REST: lifecycle ----------
 
-  // Kursning barcha guruhlaridagi aktiv enrollmentlari — bitta darsni butun
-  // kursga o'tish mumkin bo'lishi kerak, guruhga cheklab bo'lmaydi.
   private async loadCourseEnrollments(courseId: string) {
-    const courseGroups = await db.query.groups.findMany({ where: eq(groups.courseId, courseId) });
-    if (courseGroups.length === 0) return [];
-    const groupIds = courseGroups.map((g) => g.id);
-    return db.query.groupEnrollments.findMany({
-      where: and(inArray(groupEnrollments.groupId, groupIds), isNull(groupEnrollments.removedAt)),
-      with: { schoolMember: { with: { student: true } } },
-    });
+    return this.lifecycleSvc.loadCourseEnrollments(courseId);
   }
 
   async createSession(courseId: string, teacherId: string, role: string, title?: string): Promise<{ id: string }> {
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
-    if (!course) throw new NotFoundException('Kurs topilmadi');
-    if (role !== 'super' && course.adminId !== teacherId) {
-      throw new ForbiddenException('Bu kurs sizga tegishli emas');
-    }
-
-    for (const s of this.sessions.values()) {
-      if (s.courseId === courseId) throw new ConflictException('Bu kursda jonli dars allaqachon ochiq');
-    }
-    // Restartdan qolgan stale row bo'lsa yopib qo'yamiz
-    const staleRow = await db.query.classSessions.findFirst({
-      where: and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'active')),
-    });
-    if (staleRow) {
-      await db.update(classSessions)
-        .set({ status: 'ended', endedAt: new Date() })
-        .where(eq(classSessions.id, staleRow.id));
-    }
-
-    const cleanTitle = title?.trim() ? title.trim() : null;
-    const [row] = await db.insert(classSessions).values({ courseId, teacherId, title: cleanTitle }).returning();
-
-    const enrollments = await this.loadCourseEnrollments(courseId);
-
-    if (enrollments.length > 0) {
-      await db.insert(attendanceRecords)
-        .values(enrollments.map((e) => ({ sessionId: row.id, enrollmentId: e.id })))
-        .onConflictDoNothing();
-    }
-
-    const participants = new Map<string, ClassroomParticipant>();
-    for (const e of enrollments) {
-      const member = e.schoolMember as unknown as { studentId: string; student: { displayName: string } };
-      participants.set(member.studentId, {
-        userId: member.studentId,
-        name: member.student.displayName,
-        enrollmentId: e.id,
-        socketId: null,
-        joinedAtMs: null,
-        totalSeconds: 0,
-        status: 'absent',
-      });
-    }
-
-    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
-    const hostName = hostUser?.displayName ?? 'Ustoz';
-
-    this.sessions.set(row.id, {
-      id: row.id,
-      courseId,
-      courseName: course.title,
-      title: cleanTitle,
-      isFree: false,
-      hostUserId: teacherId,
-      hostSocketId: null,
-      hostName,
-      pdfName: null,
-      pdfPages: [],
-      currentPage: 1,
-      strokesByPage: new Map(),
-      boardMode: 'pdf',
-      boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
-      classroomTheme: 'light',
-      notebookStyle: 'grid',
-      strokesByMode: new Map([['pdf', new Map()]]),
-      participants,
-      startedAtMs: Date.now(),
-      hostDisconnectTimer: null,
-      zoom: 1,
-      rightZoom: 1,
-      scroll: null,
-      rightScroll: null,
-    });
-
-    // Talaba hali darsga "join" qilmagan (masalan kurslar ro'yxatida yoki
-    // boshqa sahifada) bo'lsa ham, real-time "jonli dars boshlandi"
-    // bildirishnomasi olishi uchun — PracticeMessengerGateway'ning
-    // user:<userId> xona-infratuzilmasi orqali (u ilova ochilganda avtomatik
-    // ulanadi, aniq join kerak emas).
-    this.notifications.notifyUsers([...participants.keys()], 'liveSession:started', {
-      sessionId: row.id,
-      courseId,
-      courseName: course.title,
-    });
-
-    return { id: row.id };
+    return this.lifecycleSvc.createSession(courseId, teacherId, role, this.sessions, title);
   }
 
-  // Erkin (guruhsiz) dars: kursga, guruhga, enrollmentga umuman bog'liq
-  // emas. DB'ga yozuv qilinadi — title va saqlanadigan ma'lumotlar bilan.
-  // Istalgan kishi (login qilgan yoki anonim mehmon) havola orqali kira oladi.
   async createFreeSession(teacherId: string, title?: string): Promise<{ id: string }> {
-    const cleanTitle = title?.trim() ? title.trim() : null;
-    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId, title: cleanTitle }).returning();
-    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
-    const hostName = hostUser?.displayName ?? 'Ustoz';
-
-    this.sessions.set(row.id, {
-      id: row.id,
-      courseId: null,
-      courseName: null,
-      title: cleanTitle,
-      isFree: true,
-      hostUserId: teacherId,
-      hostSocketId: null,
-      hostName,
-      pdfName: null,
-      pdfPages: [],
-      currentPage: 1,
-      strokesByPage: new Map(),
-      boardMode: 'pdf',
-      boardLayout: 'single', leftBoardMode: 'pdf', rightBoardMode: 'pdf',
-      classroomTheme: 'light',
-      notebookStyle: 'grid',
-      strokesByMode: new Map([['pdf', new Map()]]),
-      participants: new Map(),
-      startedAtMs: Date.now(),
-      hostDisconnectTimer: null,
-      zoom: 1,
-      rightZoom: 1,
-      scroll: null,
-      rightScroll: null,
-    });
-    return { id: row.id };
+    return this.lifecycleSvc.createFreeSession(teacherId, this.sessions, title);
   }
 
   // -------------------- BOARDS (Delegated to BoardsService) --------------------
@@ -333,507 +218,56 @@ export class ClassroomService implements OnModuleInit {
 
   // -------------------- END BOARDS --------------------
 
-  // Eski (tugagan yoki hali jonli) erkin darsning oxirgi saqlangan
-
-  // taxta holatidan (board_snapshot) YANGI erkin dars yaratadi — haqiqiy
-  // "davom ettirish" emas (eski sessiya xotirada allaqachon yo'q bo'lishi
-  // mumkin), balki createFreeSession bilan bir xil, faqat bo'sh o'rniga
-  // snapshot'dagi PDF/daftar/chizmalarni boshlang'ich holat qilib beradi.
   async createFreeSessionFromSnapshot(teacherId: string, sourceSessionId: string): Promise<{ id: string }> {
-    const sourceRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sourceSessionId) });
-    if (!sourceRow) throw new NotFoundException('Dars topilmadi');
-    if (sourceRow.teacherId !== teacherId) throw new ForbiddenException('Bu dars sizga tegishli emas');
-    if (!sourceRow.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q");
-
-    const snapshot = sourceRow.boardSnapshot as unknown as ClassroomBoardSnapshot;
-
-    const [row] = await db.insert(classSessions).values({ courseId: null, teacherId }).returning();
-
-    const strokesByMode = this.deserializeStrokesByMode(snapshot);
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
-
-    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
-    const hostName = hostUser?.displayName ?? 'Ustoz';
-
-    this.sessions.set(row.id, {
-      id: row.id,
-      courseId: null,
-      courseName: null,
-      isFree: true,
-      hostUserId: teacherId,
-      hostSocketId: null,
-      hostName,
-      pdfName: snapshot.pdfName,
-      pdfPages: snapshot.pages,
-      currentPage: 1,
-      strokesByPage: primaryStrokes,
-      boardMode: snapshot.boardMode,
-      boardLayout: snapshot.boardLayout,
-      leftBoardMode: snapshot.leftBoardMode,
-      rightBoardMode: snapshot.rightBoardMode,
-      classroomTheme: 'light',
-      notebookStyle: snapshot.notebookStyle,
-      notebookPageCount: snapshot.notebookPageCount,
-      notebookPageStyles: snapshot.notebookPageStyles,
-      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
-      strokesByMode,
-      participants: new Map(),
-      startedAtMs: Date.now(),
-      hostDisconnectTimer: null,
-      zoom: 1,
-      rightZoom: 1,
-      scroll: null,
-      rightScroll: null,
-    });
-    return { id: row.id };
+    return this.lifecycleSvc.createFreeSessionFromSnapshot(teacherId, sourceSessionId, this.sessions);
   }
 
-  // Kurs jonli darsini oxirgi saqlangan taxta holati (boardSnapshot) bilan YANGI dars qilib boshlaydi.
   async createClassSessionFromSnapshot(sourceSessionId: string, teacherId: string, role: string, title?: string): Promise<{ id: string }> {
-    const sourceRow = await db.query.classSessions.findFirst({
-      where: eq(classSessions.id, sourceSessionId),
-      with: { course: true },
-    });
-    if (!sourceRow) throw new NotFoundException('Dars topilmadi');
-    const courseId = sourceRow.courseId;
-    if (!courseId) {
-      return this.createFreeSessionFromSnapshot(teacherId, sourceSessionId);
-    }
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, courseId) });
-    if (!course) throw new NotFoundException('Kurs topilmadi');
-    if (role !== 'super' && course.adminId !== teacherId) {
-      throw new ForbiddenException('Bu kurs sizga tegishli emas');
-    }
-    if (!sourceRow.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q");
-
-    const staleRow = await db.query.classSessions.findFirst({
-      where: and(eq(classSessions.courseId, courseId), eq(classSessions.status, 'active')),
-    });
-    if (staleRow) {
-      await db.update(classSessions)
-        .set({ status: 'ended', endedAt: new Date() })
-        .where(eq(classSessions.id, staleRow.id));
-    }
-
-    const cleanTitle = title?.trim() ? title.trim() : (sourceRow.title ?? null);
-    const [row] = await db.insert(classSessions).values({
-      courseId,
-      teacherId,
-      title: cleanTitle,
-      pdfName: sourceRow.pdfName,
-      pdfPages: sourceRow.pdfPages,
-    }).returning();
-
-    const snapshot = sourceRow.boardSnapshot as unknown as ClassroomBoardSnapshot;
-
-    const enrollments = await this.loadCourseEnrollments(courseId);
-    if (enrollments.length > 0) {
-      await db.insert(attendanceRecords)
-        .values(enrollments.map((e) => ({ sessionId: row.id, enrollmentId: e.id })))
-        .onConflictDoNothing();
-    }
-
-    const participants = new Map<string, ClassroomParticipant>();
-    for (const e of enrollments) {
-      const member = e.schoolMember as unknown as { studentId: string; student: { displayName: string } };
-      participants.set(member.studentId, {
-        userId: member.studentId,
-        name: member.student.displayName,
-        enrollmentId: e.id,
-        socketId: null,
-        joinedAtMs: null,
-        totalSeconds: 0,
-        status: 'absent',
-      });
-    }
-
-    const strokesByMode = this.deserializeStrokesByMode(snapshot);
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
-
-    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
-    const hostName = hostUser?.displayName ?? 'Ustoz';
-
-    this.sessions.set(row.id, {
-      id: row.id,
-      courseId,
-      courseName: course.title,
-      title: cleanTitle,
-      isFree: false,
-      hostUserId: teacherId,
-      hostSocketId: null,
-      hostName,
-      pdfName: snapshot.pdfName,
-      pdfPages: snapshot.pages,
-      currentPage: 1,
-      strokesByPage: primaryStrokes,
-      boardMode: snapshot.boardMode,
-      boardLayout: snapshot.boardLayout,
-      leftBoardMode: snapshot.leftBoardMode,
-      rightBoardMode: snapshot.rightBoardMode,
-      classroomTheme: 'light',
-      notebookStyle: snapshot.notebookStyle,
-      notebookPageCount: snapshot.notebookPageCount,
-      notebookPageStyles: snapshot.notebookPageStyles,
-      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
-      strokesByMode,
-      participants,
-      startedAtMs: Date.now(),
-      hostDisconnectTimer: null,
-      zoom: 1,
-      rightZoom: 1,
-      scroll: null,
-      rightScroll: null,
-    });
-
-    this.notifications.notifyUsers([...participants.keys()], 'liveSession:started', {
-      sessionId: row.id,
-      courseId,
-      courseName: course.title,
-    });
-
-    return { id: row.id };
+    return this.lifecycleSvc.createClassSessionFromSnapshot(sourceSessionId, teacherId, role, this.sessions, title);
   }
 
-  // Tugallangan erkin darsni o'SHA ID bilan davom ettiradi — yangi sessiya
-  // yaratmasdan, DB'dagi boardSnapshot'ni xotiraga qayta yuklaydi va
-  // status'ni 'active' ga o'zgartiradi. Foydalanuvchi URL ham o'zgarmaydi.
   async reopenFreeSession(teacherId: string, sessionId: string, title?: string): Promise<void> {
-    // Allaqachon jonli bo'lsa va RAM'da bor bo'lsa — s.title yangilab o'tamiz (idempotent)
-    const existing = this.sessions.get(sessionId);
-    if (existing) {
-      if (title?.trim()) existing.title = title.trim();
-      return;
-    }
-
-    const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
-    if (!row) throw new NotFoundException('Dars topilmadi');
-    if (row.teacherId !== teacherId) throw new ForbiddenException('Bu dars sizga tegishli emas');
-    if (!row.boardSnapshot) throw new ConflictException("Bu darsda saqlangan taxta holati yo'q — davom ettirib bo'lmaydi");
-
-    const newTitle = title?.trim() ? title.trim() : row.title;
-    const snapshot = row.boardSnapshot as unknown as ClassroomBoardSnapshot;
-
-    const strokesByMode = this.deserializeStrokesByMode(snapshot);
-    const primaryStrokes = strokesByMode.get(snapshot.boardMode) ?? new Map();
-
-    const hostUser = await db.query.users.findFirst({ where: eq(users.id, teacherId) });
-    const hostName = hostUser?.displayName ?? 'Ustoz';
-
-    // Xuddi o'sha ID bilan RAM'ga yuklaymiz
-    this.sessions.set(sessionId, {
-      id: sessionId,
-      courseId: null,
-      courseName: null,
-      title: newTitle,
-      isFree: true,
-      hostUserId: teacherId,
-      hostSocketId: null,
-      hostName,
-      pdfName: snapshot.pdfName,
-      pdfPages: snapshot.pages,
-      currentPage: 1,
-      strokesByPage: primaryStrokes,
-      boardMode: snapshot.boardMode,
-      boardLayout: snapshot.boardLayout,
-      leftBoardMode: snapshot.leftBoardMode,
-      rightBoardMode: snapshot.rightBoardMode,
-      classroomTheme: 'light',
-      notebookStyle: snapshot.notebookStyle,
-      notebookPageCount: snapshot.notebookPageCount,
-      notebookPageStyles: snapshot.notebookPageStyles,
-      notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
-      strokesByMode,
-      participants: new Map(),
-      startedAtMs: Date.now(),
-      hostDisconnectTimer: null,
-      zoom: 1,
-      rightZoom: 1,
-      scroll: null,
-      rightScroll: null,
-      needsVersionCheckpointOnFirstMutation: true,
-      savedVersions: snapshot.savedVersions ?? [],
-    });
-
-    // DB'da status'ni qayta 'active' ga o'tkazamiz (asosiy dars nomini saqlagan holda)
-    await db.update(classSessions)
-      .set({ status: 'active', endedAt: null, title: row.title ?? newTitle })
-      .where(eq(classSessions.id, sessionId));
+    return this.lifecycleSvc.reopenFreeSession(teacherId, sessionId, this.sessions, title);
   }
 
-  // Kutubxonadagi (allaqachon WebP'ga konvertatsiya qilingan) PDF'dan
-  // ustoz tanlagan sahifalarni jonli darsga qo'shadi. Konvertatsiya bu
-  // yerda sodir bo'lmaydi — u kutubxonaga yuklashda bir marta bajarilgan.
   async attachPdfFromLibrary(
     sessionId: string, teacherId: string, teacherRole: string, mediaAssetId: string, pageNumbers: number[],
   ): Promise<{ pdfName: string; pages: string[] }> {
     const s = this.requireSession(sessionId);
-    if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi PDF yuklay oladi');
-
-    const { pages: allPages, status } = await this.mediaLibrary.getPdfPages(mediaAssetId, teacherId, teacherRole);
-    if (status !== 'ready') {
-      throw new ConflictException("PDF hali tayyor emas — konvertatsiya tugashini kuting");
-    }
-    if (allPages.length === 0) {
-      throw new ConflictException('PDF sahifalari topilmadi');
-    }
-
-    const uniqueSorted = [...new Set(pageNumbers)].sort((a, b) => a - b);
-    if (uniqueSorted.some((n) => !Number.isInteger(n) || n < 1 || n > allPages.length)) {
-      throw new ConflictException("Noto'g'ri sahifa raqami tanlangan");
-    }
-    const selectedPages = uniqueSorted.map((n) => allPages[n - 1]);
-
-    const asset = await db.query.mediaAssets.findFirst({ where: eq(mediaAssets.id, mediaAssetId) });
-    const pdfName = asset?.originalName ?? 'dars.pdf';
-
-    await db.update(classSessions)
-      .set({ pdfName, pdfPages: selectedPages })
-      .where(eq(classSessions.id, sessionId));
-
-    this.applyPdf(s, pdfName, selectedPages);
-    const payload = { pdfName: s.pdfName, pages: selectedPages, currentPage: 1 };
-    this.recordHistoryEvent(s, 'pdf:set', payload);
-    this.broadcaster.toRoom(sessionId, 'pdf:set', payload);
-    this.onBoardMutation(s);
-    return { pdfName, pages: selectedPages };
+    return this.attachmentSvc.attachPdfFromLibrary(
+      s, teacherId, teacherRole, mediaAssetId, pageNumbers,
+      (sess, type, payload) => this.recordHistoryEvent(sess, type, payload),
+      this.broadcaster,
+      (sess) => this.onBoardMutation(sess),
+    );
   }
 
-  // Mavjud doskani (boardId) jonli dars sessiyasiga (sessionId) biriktiradi
   async attachBoardToSession(
     sessionId: string, teacherId: string, boardId: string,
   ): Promise<{ ok: boolean; state?: any }> {
     const s = this.requireSession(sessionId);
-    if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi doska biriktira oladi');
-
-    const boardRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
-    if (!boardRow) throw new NotFoundException('Doska topilmadi');
-    if (boardRow.teacherId !== teacherId) throw new ForbiddenException('Bu doska sizga tegishli emas');
-
-    const memoryBoard = this.sessions.get(boardId);
-    let pdfName = boardRow.pdfName;
-    let pages = (boardRow.pdfPages as string[]) ?? [];
-    let boardMode: ClassroomBoardMode = 'pdf';
-    let boardLayout: 'single' | 'split' = 'single';
-    let leftBoardMode: ClassroomBoardMode = 'pdf';
-    let rightBoardMode: ClassroomBoardMode = 'pdf';
-    let notebookStyle: ClassroomNotebookStyle = 'grid';
-    let notebookPageCount = 1;
-    let notebookPageStyles: Record<number, ClassroomNotebookStyle> = {};
-    let notebookPageOrientations: Record<number, ClassroomNotebookOrientation> = {};
-    let strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
-      ['pdf', new Map()],
-      ['notebook', new Map()],
-    ]);
-
-    if (memoryBoard) {
-      pdfName = memoryBoard.pdfName;
-      pages = memoryBoard.pdfPages;
-      boardMode = memoryBoard.boardMode ?? 'pdf';
-      boardLayout = memoryBoard.boardLayout ?? 'single';
-      leftBoardMode = memoryBoard.leftBoardMode ?? boardMode;
-      rightBoardMode = memoryBoard.rightBoardMode ?? boardMode;
-      notebookStyle = memoryBoard.notebookStyle ?? 'grid';
-      notebookPageCount = memoryBoard.notebookPageCount ?? 1;
-      notebookPageStyles = { ...(memoryBoard.notebookPageStyles ?? {}) };
-      notebookPageOrientations = { ...(memoryBoard.notebookPageOrientations ?? {}) };
-      if (memoryBoard.strokesByMode) {
-        for (const [mode, map] of memoryBoard.strokesByMode.entries()) {
-          const newMap = new Map<number, ClassroomStroke[]>();
-          for (const [p, list] of map.entries()) {
-            newMap.set(p, [...list]);
-          }
-          strokesByMode.set(mode, newMap);
-        }
-      } else {
-        const primaryMap = new Map<number, ClassroomStroke[]>();
-        for (const [p, list] of memoryBoard.strokesByPage.entries()) {
-          primaryMap.set(p, [...list]);
-        }
-        strokesByMode.set(boardMode, primaryMap);
-      }
-    } else if (boardRow.boardSnapshot) {
-      const snap = boardRow.boardSnapshot as any;
-      pdfName = snap.pdfName ?? pdfName;
-      pages = snap.pages ?? pages;
-      boardMode = snap.boardMode ?? 'pdf';
-      boardLayout = snap.boardLayout ?? 'single';
-      leftBoardMode = snap.leftBoardMode ?? boardMode;
-      rightBoardMode = snap.rightBoardMode ?? boardMode;
-      notebookStyle = snap.notebookStyle ?? 'grid';
-      notebookPageCount = snap.notebookPageCount ?? 1;
-      notebookPageStyles = snap.notebookPageStyles ?? {};
-      notebookPageOrientations = snap.notebookPageOrientations ?? {};
-
-      if (snap.strokesByMode) {
-        if (snap.strokesByMode.pdf) {
-          strokesByMode.set('pdf', new Map(Object.entries(snap.strokesByMode.pdf).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
-        }
-        if (snap.strokesByMode.notebook) {
-          strokesByMode.set('notebook', new Map(Object.entries(snap.strokesByMode.notebook).map(([p, st]) => [Number(p), st as ClassroomStroke[]])));
-        }
-      } else if (snap.strokesByPage) {
-        const primaryMap = new Map<number, ClassroomStroke[]>();
-        for (const [p, list] of Object.entries(snap.strokesByPage)) {
-          primaryMap.set(Number(p), list as ClassroomStroke[]);
-        }
-        strokesByMode.set(boardMode, primaryMap);
-      }
-    }
-
-    s.attachedBoardId = boardId;
-    s.pdfName = pdfName;
-    s.pdfPages = pages;
-    s.boardMode = boardMode;
-    s.boardLayout = boardLayout;
-    s.leftBoardMode = leftBoardMode;
-    s.rightBoardMode = rightBoardMode;
-    s.notebookStyle = notebookStyle;
-    s.notebookPageCount = notebookPageCount;
-    s.notebookPageStyles = notebookPageStyles;
-    s.notebookPageOrientations = notebookPageOrientations;
-    s.strokesByMode = strokesByMode;
-
-    const primaryStrokesMap = strokesByMode.get(boardMode) ?? new Map();
-    s.strokesByPage = primaryStrokesMap;
-
-    const strokesRecord: Record<number, ClassroomStroke[]> = {};
-    for (const [p, list] of primaryStrokesMap.entries()) {
-      strokesRecord[p] = [...list];
-    }
-
-    const strokesByModeRecord: Record<string, Record<number, ClassroomStroke[]>> = {
-      pdf: {},
-      notebook: {},
-    };
-    for (const [mode, map] of s.strokesByMode.entries()) {
-      const modeObj: Record<number, ClassroomStroke[]> = {};
-      for (const [p, list] of map.entries()) {
-        modeObj[p] = [...list];
-      }
-      strokesByModeRecord[mode] = modeObj;
-    }
-
-    const snapshotData = this.buildBoardSnapshot(s);
-
-    await db.update(classSessions)
-      .set({
-        pdfName,
-        pdfPages: pages,
-        boardSnapshot: snapshotData as any,
-        attachedBoardId: boardId,
-      })
-      .where(eq(classSessions.id, sessionId));
-
-    await db.update(classSessions)
-      .set({
-        pdfName,
-        pdfPages: pages,
-        boardSnapshot: snapshotData as any,
-      })
-      .where(eq(classSessions.id, boardId));
-
-    const attachedPayload = {
-      attachedBoardId: boardId,
-      pdfName: s.pdfName,
-      pages,
-      boardMode,
-      boardLayout,
-      leftBoardMode,
-      rightBoardMode,
-      notebookStyle,
-      notebookPageCount,
-      notebookPageStyles,
-      notebookPageOrientations,
-      strokesByMode: strokesByModeRecord,
-      strokesByPage: strokesRecord,
-      currentPage: 1,
-    };
-
-    const pdfPayload = { pdfName: s.pdfName, pages, currentPage: 1 };
-    this.recordHistoryEvent(s, 'pdf:set', pdfPayload);
-    this.broadcaster.toRoom(sessionId, 'pdf:set', pdfPayload);
-
-    this.broadcaster.toRoom(sessionId, 'board:set', {
-      mode: boardMode,
-      layout: boardLayout,
-      leftMode: leftBoardMode,
-      rightMode: rightBoardMode,
-      currentPage: 1,
-      strokesByPage: strokesRecord,
-      notebookPageCount,
-      notebookPageStyles,
-      notebookPageOrientations,
-      strokesByMode: strokesByModeRecord,
-      pdfName: s.pdfName,
-      pages,
-    });
-
-    this.broadcaster.toRoom(sessionId, 'board:attached', attachedPayload);
-
-    s.isBoardOpen = true;
-    this.recordHistoryEvent(s, 'board:toggle', { open: true });
-    this.broadcaster.toRoom(sessionId, 'board:toggle', { open: true });
-
-    return { ok: true, state: attachedPayload };
+    return this.attachmentSvc.attachBoardToSession(
+      s, teacherId, boardId, this.sessions,
+      (sess) => this.buildBoardSnapshot(sess),
+      (sess, type, payload) => this.recordHistoryEvent(sess, type, payload),
+      this.broadcaster,
+    );
   }
 
-  // Kutubxonadagi (istalgan, hozirgi darsga biriktirilganidan farqli
-  // bo'lishi ham mumkin) PDF'dan tanlangan sahifalarni mavjud darsga
-  // QO'SHADI (attachPdfFromLibrary'dan farqli — u butun sessiyani
-  // almashtiradi, bu faqat append/insert qiladi, eski sahifa/chizmalarga
-  // tegmaydi). pdfName o'zgarmaydi — endi faqat ko'rgazmali (advisory)
-  // yorliq, chunki sahifalar turli fayllardan aralash bo'lishi mumkin.
   async insertPdfPagesFromLibrary(
     sessionId: string, teacherId: string, teacherRole: string, mediaAssetId: string, pageNumbers: number[], afterPageIndex: number,
   ): Promise<{ pages: string[] }> {
     const s = this.requireSession(sessionId);
-    if (s.hostUserId !== teacherId) throw new ForbiddenException('Faqat dars ustozi sahifa qo\'sha oladi');
-
-    const { pages: allPages, status } = await this.mediaLibrary.getPdfPages(mediaAssetId, teacherId, teacherRole);
-    if (status !== 'ready') {
-      throw new ConflictException("PDF hali tayyor emas — konvertatsiya tugashini kuting");
-    }
-    if (allPages.length === 0) {
-      throw new ConflictException('PDF sahifalari topilmadi');
-    }
-
-    const uniqueSorted = [...new Set(pageNumbers)].sort((a, b) => a - b);
-    if (uniqueSorted.some((n) => !Number.isInteger(n) || n < 1 || n > allPages.length)) {
-      throw new ConflictException("Noto'g'ri sahifa raqami tanlangan");
-    }
-    const newPages = uniqueSorted.map((n) => allPages[n - 1]);
-
-    const ok = insertPdfPagesIntoSession(s, newPages, afterPageIndex);
-    if (!ok) throw new ConflictException("Noto'g'ri qo'yish joyi");
-    pushUndoEntry(s, { type: 'page:insert', mode: 'pdf', page: afterPageIndex + 1, pane: 'left', before: null, after: { afterPageIndex, pages: newPages } });
-
-    await db.update(classSessions)
-      .set({ pdfPages: s.pdfPages })
-      .where(eq(classSessions.id, sessionId));
-
-    const payload = { pages: newPages, afterPageIndex };
-    this.recordHistoryEvent(s, 'pdf:insert', payload);
-    this.broadcaster.toRoom(sessionId, 'pdf:insert', payload);
-    this.onBoardMutation(s);
-    return { pages: newPages };
+    return this.attachmentSvc.insertPdfPagesFromLibrary(
+      s, teacherId, teacherRole, mediaAssetId, pageNumbers, afterPageIndex,
+      (sess, type, payload) => this.recordHistoryEvent(sess, type, payload),
+      this.broadcaster,
+      (sess) => this.onBoardMutation(sess),
+    );
   }
 
   private applyPdf(s: ClassroomSession, pdfName: string, pages: string[]) {
-    // Yangi PDF faqat PDF taxtasini almashtiradi. Daftar chizmalari alohida
-    // mode map'da saqlanadi va PDF yuklashda yo'qolmasligi kerak.
-    if (!s.strokesByMode) {
-      s.strokesByMode = new Map([[s.boardMode ?? 'pdf', s.strokesByPage]]);
-    }
-    const pdfStrokes = new Map<number, ClassroomStroke[]>();
-    s.strokesByMode.set('pdf', pdfStrokes);
-    s.pdfName = pdfName;
-    s.pdfPages = pages;
-    s.currentPage = 1;
-    s.boardMode = 'pdf';
-    s.boardLayout = 'single'; s.leftBoardMode = 'pdf'; s.rightBoardMode = 'pdf';
-    s.strokesByPage = pdfStrokes;
-    s.scroll = null;
-    s.rightScroll = null;
+    this.attachmentSvc.applyPdf(s, pdfName, pages);
   }
 
   // Testlar uchun to'g'ridan-to'g'ri holat o'rnatish (S3/konvertatsiyasiz)
@@ -1754,70 +1188,11 @@ export class ClassroomService implements OnModuleInit {
   // ---------- REST: ro'yxatlar / davomat ----------
 
   async listActiveForUser(userId: string, role: string) {
-    const result: Array<{ id: string; courseId: string; courseName: string; startedAt: number }> = [];
-    for (const s of this.sessions.values()) {
-      // Erkin darslar bu ro'yxatda ko'rinmaydi — ularga faqat to'g'ridan-to'g'ri
-      // havola orqali kirish mumkin, "faol darslarim" ro'yxatiga chiqmaydi.
-      if (s.isFree) continue;
-      const isHost = s.hostUserId === userId && (role === 'teacher' || role === 'super');
-      const isMember = role === 'student' && s.participants.has(userId);
-      if (isHost || isMember) {
-        result.push({ id: s.id, courseId: s.courseId!, courseName: s.courseName!, startedAt: s.startedAtMs });
-      }
-    }
-    return result;
+    return this.lifecycleSvc.listActiveForUser(userId, role, this.sessions);
   }
 
   async getSessionWithAttendance(sessionId: string, callerId: string, role: string) {
-    const row = await db.query.classSessions.findFirst({
-      where: eq(classSessions.id, sessionId),
-      with: {
-        course: true,
-        attendance: { with: { enrollment: { with: { schoolMember: { with: { student: true } } } } } },
-      },
-    });
-    if (!row) throw new NotFoundException('Sessiya topilmadi');
-    const course = row.course as unknown as { adminId: string; title: string } | null;
-    if (role !== 'super') {
-      if (course) {
-        if (course.adminId !== callerId) throw new ForbiddenException();
-      } else if (row.teacherId !== callerId) {
-        throw new ForbiddenException();
-      }
-    }
-    const live = this.sessions.get(sessionId);
-    return {
-      id: row.id,
-      courseId: row.courseId,
-      courseName: course?.title ?? null,
-      title: row.title ?? row.pdfName ?? null,
-      status: row.status,
-      pdfName: row.pdfName,
-      startedAt: row.startedAt?.toISOString() ?? null,
-      endedAt: row.endedAt?.toISOString() ?? null,
-      recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
-      hasBoardSnapshot: row.boardSnapshot !== null,
-      attendance: (row.attendance as unknown as Array<{
-        id: string; status: string; firstJoinedAt: Date | null; lastLeftAt: Date | null;
-        totalSeconds: number; overriddenByAdminId: string | null;
-        enrollment: { schoolMember: { studentId: string; student: { displayName: string } } };
-      }>).map((a) => {
-        const memberUserId = a.enrollment.schoolMember.studentId;
-        const liveParticipant = live?.participants.get(memberUserId);
-        return {
-          id: a.id,
-          userId: memberUserId,
-          name: a.enrollment.schoolMember.student.displayName,
-          status: liveParticipant?.status ?? a.status,
-          firstJoinedAt: a.firstJoinedAt?.toISOString() ?? null,
-          lastLeftAt: a.lastLeftAt?.toISOString() ?? null,
-          totalSeconds: liveParticipant
-            ? liveParticipant.totalSeconds + (liveParticipant.joinedAtMs ? Math.round((Date.now() - liveParticipant.joinedAtMs) / 1000) : 0)
-            : a.totalSeconds,
-          overridden: a.overriddenByAdminId !== null,
-        };
-      }),
-    };
+    return this.lifecycleSvc.getSessionWithAttendance(sessionId, callerId, role, this.sessions);
   }
 
   async getReplay(sessionId: string, callerId: string, recordingId?: string) {
@@ -1828,40 +1203,8 @@ export class ClassroomService implements OnModuleInit {
     return this.replaySvc.autoTranscribeReplayAudio(sessionId, audioUrl, recordingId);
   }
 
-  // Yakunlangan sessiyani butunlay ochiradi: DB yozuvi, audio yozuv fayli
-  // (agar bo'lsa) va unga bog'langan "Jonli dars" content_blocks. PDF
-  // sahifalari (pdfPages) HECH QACHON ochirilmaydi — ular media-kutubxona
-  // resursi, boshqa darslar/kurslarda ham ishlatilgan bo'lishi mumkin.
   async deleteSession(sessionId: string, callerId: string, callerRole = 'teacher'): Promise<void> {
-    const row = await db.query.classSessions.findFirst({
-      where: eq(classSessions.id, sessionId),
-      with: { course: true },
-    });
-    if (!row) throw new NotFoundException('Dars topilmadi');
-    const course = row.course as unknown as { adminId: string } | null;
-    const isOwner = course ? course.adminId === callerId : row.teacherId === callerId;
-    if (callerRole !== 'super' && !isOwner) throw new ForbiddenException('Bu dars sizga tegishli emas');
-    if (row.status !== 'ended') throw new ConflictException("Faqat yakunlangan darsni o'chirish mumkin");
-
-    if (row.recordingUrl) {
-      const ext = row.recordingUrl.endsWith('.mp4') ? 'mp4' : 'ogg';
-      await this.storage.deleteFile(`classroom-recordings/${sessionId}.${ext}`);
-    }
-    const rawRecordings = (row.recordings as unknown as any[]) ?? [];
-    for (const r of rawRecordings) {
-      if (r.recordingUrl) {
-        const key = r.recordingUrl.split('/').pop();
-        if (key) {
-          await this.storage.deleteFile(`classroom-recordings/${key}`);
-        }
-      }
-    }
-
-    if (!row.course && !row.courseId) {
-      await db.delete(freeSessionParticipants).where(eq(freeSessionParticipants.sessionId, sessionId));
-}
-    await db.delete(contentBlocks).where(eq(contentBlocks.classSessionId, sessionId));
-    await db.delete(classSessions).where(eq(classSessions.id, sessionId));
+    return this.lifecycleSvc.deleteSession(sessionId, callerId, callerRole);
   }
 
   // ---------- REST: ro'yxatlar / davomat (Delegated to ClassroomAttendanceService) ----------
@@ -2107,47 +1450,9 @@ export class ClassroomService implements OnModuleInit {
     return s;
   }
 
-  /**
-   * Snapshot JSON'dan `strokesByMode` Map qayta tiklaydi.
-   * Eski formatda (strokesByMode yo'q) esa boardMode/rightBoardMode bo'yicha
-   * strokesByPage / rightStrokesByPage dan tuzadi.
-   * 3 ta metodda takrorlangan kod shu helper bilan almashtirildi.
-   */
   private deserializeStrokesByMode(
     snapshot: ClassroomBoardSnapshot,
   ): Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>> {
-    const strokesByMode = new Map<ClassroomBoardMode, Map<number, ClassroomStroke[]>>([
-      ['pdf', new Map()],
-      ['notebook', new Map()],
-    ]);
-    const raw = (snapshot as any).strokesByMode as
-      | Record<ClassroomBoardMode, Record<number, ClassroomStroke[]>>
-      | undefined;
-    if (raw) {
-      if (raw.pdf) {
-        strokesByMode.set(
-          'pdf',
-          new Map(Object.entries(raw.pdf).map(([p, s]) => [Number(p), s])),
-        );
-      }
-      if (raw.notebook) {
-        strokesByMode.set(
-          'notebook',
-          new Map(Object.entries(raw.notebook).map(([p, s]) => [Number(p), s])),
-        );
-      }
-    } else {
-      strokesByMode.set(
-        snapshot.boardMode,
-        new Map(Object.entries(snapshot.strokesByPage ?? {}).map(([p, s]) => [Number(p), s])),
-      );
-      if (snapshot.rightBoardMode && snapshot.rightBoardMode !== snapshot.boardMode) {
-        strokesByMode.set(
-          snapshot.rightBoardMode,
-          new Map(Object.entries(snapshot.rightStrokesByPage ?? {}).map(([p, s]) => [Number(p), s])),
-        );
-      }
-    }
-    return strokesByMode;
+    return this.snapshotSvc.deserializeStrokesByMode(snapshot);
   }
 }

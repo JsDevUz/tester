@@ -16,6 +16,8 @@ import { ClassroomVoiceService } from './classroom-voice.service';
 import { ClassroomAttendanceService } from './classroom-attendance.service';
 import { ClassroomReplayService } from './classroom-replay.service';
 import { ClassroomSnapshotService } from './classroom-snapshot.service';
+import { ClassroomBoardAttachmentService } from './classroom-board-attachment.service';
+import { ClassroomSessionLifecycleService } from './classroom-session-lifecycle.service';
 
 @Module({
   imports: [
@@ -43,6 +45,8 @@ import { ClassroomSnapshotService } from './classroom-snapshot.service';
     ClassroomAttendanceService,
     ClassroomReplayService,
     ClassroomSnapshotService,
+    ClassroomBoardAttachmentService,
+    ClassroomSessionLifecycleService,
   ],
   exports: [
     ClassroomService,
@@ -51,6 +55,8 @@ import { ClassroomSnapshotService } from './classroom-snapshot.service';
     ClassroomAttendanceService,
     ClassroomReplayService,
     ClassroomSnapshotService,
+    ClassroomBoardAttachmentService,
+    ClassroomSessionLifecycleService,
   ],
 })
 export class ClassroomModule {}
