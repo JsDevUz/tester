@@ -6425,25 +6425,24 @@ export function ClassroomPdfViewer({
 
   const toggleSplit = () => {
     const next = displayLayout === "split" ? "single" : ("split" as const);
+    setDisplayLayout(next);
+    if (next === "split") {
+      setLeftMode("pdf");
+      setRightMode("notebook");
+    }
     if (isHost) {
       if (next === "split") onBoardViewChange?.("split", "pdf", "notebook");
       else onBoardViewChange?.("single", leftMode, rightMode);
-    } else if (!synced) {
-      if (next === "split") {
-        setLeftMode("pdf");
-        setRightMode("notebook");
-      }
-      setDisplayLayout(next);
     }
   };
 
   const swapSplitPanes = () => {
     if (displayLayout !== "split") return;
-    if (isHost) onBoardViewChange?.("split", rightMode, leftMode);
-    else if (!synced) {
-      setLeftMode(rightMode);
-      setRightMode(leftMode);
-    }
+    const newLeft = rightMode;
+    const newRight = leftMode;
+    setLeftMode(newLeft);
+    setRightMode(newRight);
+    if (isHost) onBoardViewChange?.("split", newLeft, newRight);
   };
 
   const visiblePageCount = (mode: CsBoardMode) =>
