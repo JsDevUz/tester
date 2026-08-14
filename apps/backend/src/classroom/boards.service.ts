@@ -217,14 +217,14 @@ export class BoardsService {
     };
   }
 
-  async createBoardVersionCheckpoint(sessionId: string, customLabel?: string): Promise<void> {
+  async createBoardVersionCheckpoint(sessionId: string, customLabel?: string, explicitSnapshot?: any): Promise<void> {
     const s = this.classroomService.getSession(sessionId);
     const dbRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, sessionId) });
     if (!dbRow && !s) return;
 
-    const currentSnapshot = s
+    const currentSnapshot = explicitSnapshot ?? (s
       ? this.classroomService.buildBoardSnapshot(s)
-      : (dbRow?.boardSnapshot as any);
+      : (dbRow?.boardSnapshot as any));
     if (!currentSnapshot) return;
 
     let totalStrokes = 0;
@@ -252,7 +252,7 @@ export class BoardsService {
       : [];
 
     const lastVer = savedVersions[0];
-    if (lastVer && lastVer.strokeCount === totalStrokes && Date.now() - lastVer.timestampMs < 5000) {
+    if (!customLabel && lastVer && lastVer.strokeCount === totalStrokes && Date.now() - lastVer.timestampMs < 5000) {
       return;
     }
 
@@ -312,6 +312,7 @@ export class BoardsService {
       pageCount: number;
       strokeCount: number;
       snapshot: any;
+      isCurrent?: boolean;
     }>
   > {
     const row = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
@@ -340,6 +341,7 @@ export class BoardsService {
       pageCount: number;
       strokeCount: number;
       snapshot: any;
+      isCurrent?: boolean;
     }> = [];
 
     const startTime = row.startedAt ? new Date(row.startedAt).getTime() : Date.now();
@@ -369,23 +371,31 @@ export class BoardsService {
       (row.boardSnapshot as any)?.savedVersions ??
       [];
 
-    // 1. Live Current Checkpoint
-    versions.push({
-      id: 'current',
-      versionNumber: savedVersionsList.length + 2,
-      label: 'Hozirgi holat (Oxirgi saqlangan)',
-      timestampMs: Date.now(),
-      boardMode: currentSnapshot?.boardMode ?? 'pdf',
-      pdfName: currentSnapshot?.pdfName ?? null,
-      pageCount,
-      strokeCount: totalStrokes,
-      snapshot: currentSnapshot,
-    });
+    const activeVerId = s?.activeVersionId ?? (currentSnapshot as any)?.activeVersionId ?? 'current';
+
+    // 1. Live Current Checkpoint — faqat foydalanuvchi joriy tahrirda bo'lsa
+    if (activeVerId === 'current' || !activeVerId) {
+      versions.push({
+        id: 'current',
+        versionNumber: savedVersionsList.length + 2,
+        label: 'Hozirgi holat (Oxirgi saqlangan)',
+        timestampMs: Date.now(),
+        boardMode: currentSnapshot?.boardMode ?? 'pdf',
+        pdfName: currentSnapshot?.pdfName ?? null,
+        pageCount,
+        strokeCount: totalStrokes,
+        snapshot: currentSnapshot,
+        isCurrent: true,
+      });
+    }
 
     // 2. Saved session versions
     if (Array.isArray(savedVersionsList)) {
       for (const ver of savedVersionsList) {
-        versions.push(ver);
+        versions.push({
+          ...ver,
+          isCurrent: activeVerId === ver.id,
+        });
       }
     }
 
@@ -411,6 +421,7 @@ export class BoardsService {
         notebookPageStyles: {},
         notebookPageOrientations: {},
       },
+      isCurrent: activeVerId === 'initial',
     });
 
     return versions;
@@ -422,15 +433,51 @@ export class BoardsService {
     if (row.teacherId !== userId) throw new ForbiddenException('Bu doska sizga tegishli emas');
 
     const s = this.classroomService.getSession(boardId);
+
+    // 1. Agar tiklashdan oldin doskada chizmalar bo'lsa (0 chizmasiz bo'lmasa)
+    // va foydalanuvchi joriy tahrirda ('current') turgan bo'lsa,
+    // o'sha chizmalarni yo'qotmaslik uchun avval checkpoint yaratamiz:
+    const currentSnapshotBeforeRestore = s
+      ? this.classroomService.buildBoardSnapshot(s)
+      : (row.boardSnapshot as any);
+
+    let currentStrokes = 0;
+    if (currentSnapshotBeforeRestore?.strokesByMode) {
+      for (const map of Object.values(
+        currentSnapshotBeforeRestore.strokesByMode as Record<string, Record<number, any[]>>,
+      )) {
+        for (const list of Object.values(map)) currentStrokes += list?.length ?? 0;
+      }
+    } else if (currentSnapshotBeforeRestore?.strokesByPage) {
+      for (const list of Object.values(
+        currentSnapshotBeforeRestore.strokesByPage as Record<number, any[]>,
+      )) {
+        currentStrokes += list?.length ?? 0;
+      }
+    }
+
+    const currentActiveVerId = s?.activeVersionId ?? (row.boardSnapshot as any)?.activeVersionId ?? 'current';
+    if (currentStrokes > 0 && currentActiveVerId === 'current') {
+      const now = Date.now();
+      const timeStr = new Date(now).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      await this.createBoardVersionCheckpoint(
+        boardId,
+        `Tiklashdan oldingi holat (${timeStr})`,
+        currentSnapshotBeforeRestore,
+      );
+    }
+
     const versions = await this.getBoardVersions(boardId, userId);
     const targetVersion = versions.find((v) => v.id === versionId);
     if (!targetVersion || !targetVersion.snapshot) {
       throw new NotFoundException('Versiya topilmadi');
     }
 
+    const updatedRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
     const snap = JSON.parse(JSON.stringify(targetVersion.snapshot));
-    const currentSaved = (row.boardSnapshot as any)?.savedVersions ?? s?.savedVersions ?? [];
+    const currentSaved = (updatedRow?.boardSnapshot as any)?.savedVersions ?? s?.savedVersions ?? [];
     snap.savedVersions = currentSaved;
+    snap.activeVersionId = versionId;
 
     await db
       .update(classSessions)
@@ -454,6 +501,7 @@ export class BoardsService {
     }
 
     if (s) {
+      s.activeVersionId = versionId;
       s.pdfName = snap.pdfName ?? null;
       s.pdfPages = snap.pages ?? [];
       s.boardMode = snap.boardMode ?? 'pdf';
@@ -496,16 +544,39 @@ export class BoardsService {
       }
       s.strokesByMode = strokesByMode;
       s.strokesByPage = strokesByMode.get(s.boardMode ?? 'pdf') ?? new Map();
+      s.undoStack = [];
+      s.redoStack = [];
 
       const strokesRecord: Record<number, ClassroomStroke[]> = {};
       for (const [p, list] of s.strokesByPage.entries()) {
         strokesRecord[p] = [...list];
       }
 
+      const strokesByModeRecord: Record<string, Record<number, ClassroomStroke[]>> = {
+        pdf: {},
+        notebook: {},
+      };
+      if (s.strokesByMode?.get('pdf')) {
+        for (const [p, list] of s.strokesByMode.get('pdf')!.entries()) {
+          strokesByModeRecord.pdf[p] = [...list];
+        }
+      }
+      if (s.strokesByMode?.get('notebook')) {
+        for (const [p, list] of s.strokesByMode.get('notebook')!.entries()) {
+          strokesByModeRecord.notebook[p] = [...list];
+        }
+      }
+
       this.classroomService.broadcastToRoom(boardId, 'board:set', {
         mode: s.boardMode,
         currentPage: 1,
         strokesByPage: strokesRecord,
+        strokesByMode: strokesByModeRecord,
+        pages: s.pdfPages ?? [],
+        pdfName: s.pdfName ?? null,
+        notebookPageCount: s.notebookPageCount ?? 1,
+        notebookPageStyles: s.notebookPageStyles ?? {},
+        notebookPageOrientations: s.notebookPageOrientations ?? {},
       });
     }
   }

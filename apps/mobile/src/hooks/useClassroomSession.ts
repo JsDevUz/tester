@@ -5,6 +5,7 @@ import {useAuthStore} from '../store/authStore';
 import {storage} from '../lib/storage';
 import {
   applyBoardAttached,
+  applyBoardClear,
   applyBoardRedo,
   applyBoardSet,
   applyBoardUndo,
@@ -182,6 +183,9 @@ export function useClassroomSession(
     );
     socket.on('page:clear', (p: {page: number; pane?: 'left' | 'right'; mode?: CsBoardMode}) =>
       setState(s => applyPageClear(s, p)),
+    );
+    socket.on('board:clear', () =>
+      setState(s => applyBoardClear(s)),
     );
     socket.on('pointer:move', (p: CsPointer) => setState(s => ({...s, pointer: p.active ? p : null})));
     socket.on('presence:update', (p: {participants: CsParticipant[]; hostOnline: boolean}) =>

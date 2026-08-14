@@ -225,6 +225,18 @@ export function applyPageClear(s: ClassroomState, p: { page: number; pane?: "lef
   return updateStrokeListInState(s, p, () => []);
 }
 
+export function applyBoardClear(s: ClassroomState): ClassroomState {
+  return {
+    ...s,
+    strokesByPage: {},
+    rightStrokesByPage: {},
+    strokesByMode: {
+      pdf: {},
+      notebook: {},
+    },
+  };
+}
+
 // Sahifa o'chirilganda undan keyingi barcha sahifalarning chizmalari
 // (shu pane uchun) bittaga siljiydi — backend'dagi removePageFromSession
 // bilan bir xil mantiq, lekin frontend strokesByPage/rightStrokesByPage
@@ -471,9 +483,15 @@ function applyBoardUndoRedo(
   p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after?: unknown },
   direction: "undo" | "redo",
 ): ClassroomState {
-  const pane = p.pane ?? (paneKeyForMode(s, p.mode) === "rightStrokesByPage" ? "right" : "left");
-  const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
+  const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
+  const activeRightMode = s.rightBoardMode ?? s.boardMode ?? "pdf";
+  const targetMode = p.mode ?? activeLeftMode;
+
+  const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    pdf: (s.strokesByMode?.pdf ?? (activeLeftMode === "pdf" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+    notebook: (s.strokesByMode?.notebook ?? (activeLeftMode === "notebook" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+  };
+  const modeSource = byMode[targetMode] ?? {};
 
   if (p.entryType === "notebook:pageStyle") {
     return applyNotebookPageStyleInverseClient(s, p.page, {
@@ -485,13 +503,13 @@ function applyBoardUndoRedo(
   let nextSource: Record<number, CsStroke[]> | null = null;
   switch (p.entryType) {
     case "stroke:add":
-      nextSource = applyStrokeAddInverseClient(source, p.page, p.after as { stroke: CsStroke }, direction);
+      nextSource = applyStrokeAddInverseClient(modeSource, p.page, p.after as { stroke: CsStroke }, direction);
       break;
     case "stroke:erase":
-      nextSource = applyStrokeEraseInverseClient(source, p.page, p.before as { stroke: CsStroke; index: number }, direction);
+      nextSource = applyStrokeEraseInverseClient(modeSource, p.page, p.before as { stroke: CsStroke; index: number }, direction);
       break;
     case "stroke:split":
-      nextSource = applyStrokeSplitInverseClient(source, p.page, {
+      nextSource = applyStrokeSplitInverseClient(modeSource, p.page, {
         strokeId: p.strokeId!,
         before: p.before as { stroke: CsStroke; index: number },
         after: p.after as { replacements: CsStroke[] },
@@ -499,30 +517,42 @@ function applyBoardUndoRedo(
       break;
     case "stroke:transform":
     case "stroke:style":
-      nextSource = applyStrokeTransformInverseClient(source, p.page, {
+      nextSource = applyStrokeTransformInverseClient(modeSource, p.page, {
         strokeId: p.strokeId!,
         before: p.before as Partial<CsStroke>,
         after: p.after as Partial<CsStroke>,
       }, direction);
       break;
     case "stroke:text":
-      nextSource = applyStrokeTextInverseClient(source, p.page, {
+      nextSource = applyStrokeTextInverseClient(modeSource, p.page, {
         strokeId: p.strokeId!,
         before: p.before as CsStroke | null,
         after: p.after as CsStroke,
       }, direction);
       break;
     case "stroke:reorder":
-      nextSource = applyStrokeReorderInverseClient(source, p.page, { before: p.before as { order: string[] }, after: p.after as { order: string[] } }, direction);
+      nextSource = applyStrokeReorderInverseClient(modeSource, p.page, { before: p.before as { order: string[] }, after: p.after as { order: string[] } }, direction);
       break;
     case "page:clear":
-      nextSource = applyPageClearInverseClient(source, p.page, { before: p.before as { strokes: CsStroke[] } }, direction);
+      nextSource = applyPageClearInverseClient(modeSource, p.page, { before: p.before as { strokes: CsStroke[] } }, direction);
       break;
     default:
       return s;
   }
 
-  return { ...s, [key]: nextSource ?? source, currentPage: p.page, boardMode: p.mode };
+  const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    ...byMode,
+    [targetMode]: nextSource ?? modeSource,
+  };
+
+  return {
+    ...s,
+    strokesByMode: nextByMode,
+    strokesByPage: nextByMode[activeLeftMode] ?? {},
+    rightStrokesByPage: nextByMode[activeRightMode] ?? {},
+    currentPage: p.page,
+    boardMode: p.mode,
+  };
 }
 
 // page:remove/page:insert'ning teskarisi — bular sahifalar ro'yxati va

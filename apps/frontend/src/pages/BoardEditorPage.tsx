@@ -37,7 +37,7 @@ export function BoardEditorPage() {
   const [searchParams] = useSearchParams();
   const isViewOnly = searchParams.get("view") === "1" || searchParams.get("mode") === "view";
 
-  const { state, hostActions } = useClassroomSession(id, isViewOnly ? "student" : "host");
+  const { state, hostActions, canUndo, canRedo } = useClassroomSession(id, isViewOnly ? "student" : "host");
   useClassroomTheme(state.classroomTheme);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
@@ -129,10 +129,15 @@ export function BoardEditorPage() {
   useHotkeys("0", () => handleToolChange("lasso"), hotkeyOptions);
   useHotkeys("s", () => setStrokeWidth(2), hotkeyOptions);
   useHotkeys("m", () => setStrokeWidth(4), hotkeyOptions);
-  useHotkeys("l", () => setStrokeWidth(7), hotkeyOptions);
-  useHotkeys("mod+z", () => hostActions.undo(), hotkeyOptions);
-  useHotkeys("mod+shift+z", () => hostActions.redo(), hotkeyOptions);
-  useHotkeys("mod+y", () => hostActions.redo(), hotkeyOptions);
+  useHotkeys("mod+z", () => {
+    if (canUndo) hostActions.undo();
+  }, hotkeyOptions, [canUndo]);
+  useHotkeys("mod+shift+z", () => {
+    if (canRedo) hostActions.redo();
+  }, hotkeyOptions, [canRedo]);
+  useHotkeys("mod+y", () => {
+    if (canRedo) hostActions.redo();
+  }, hotkeyOptions, [canRedo]);
 
   useEffect(() => {
     if (state.title) setBoardTitle(state.title);
@@ -338,6 +343,13 @@ export function BoardEditorPage() {
             hostActions.pastePage(mode, afterPageIndex, pageUrl, style, orientation, strokes, pane)
           }
           onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
+          onClearPage={(page, pane, mode) =>
+            hostActions.clearPage(
+              page,
+              pane ?? "left",
+              mode ?? (pane === "right" ? state.rightBoardMode : state.leftBoardMode),
+            )
+          }
           onSetSplitRatio={hostActions.setSplitRatio}
           onZoomChange={(zoom) => hostActions.setZoom(zoom)}
           hostScroll={state.scroll}
@@ -412,13 +424,9 @@ export function BoardEditorPage() {
               onStrokeWidthChange={setStrokeWidth}
               onUndo={() => hostActions.undo()}
               onRedo={() => hostActions.redo()}
-              onClear={() =>
-                hostActions.clearPage(
-                  state.currentPage,
-                  activePane,
-                  activePane === "right" ? state.rightBoardMode : state.leftBoardMode,
-                )
-              }
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onClear={() => hostActions.clearBoard()}
               onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
               onToggleHistory={() => setShowHistoryModal((prev) => !prev)}
               historyOpen={showHistoryModal}
@@ -471,7 +479,6 @@ export function BoardEditorPage() {
           boardId={id}
           onClose={() => setShowHistoryModal(false)}
           onSelectActivity={handleSelectActivity}
-          onRestored={() => window.location.reload()}
         />
       )}
       {/* Download Board Modal */}

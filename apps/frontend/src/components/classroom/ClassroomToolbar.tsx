@@ -93,6 +93,8 @@ interface Props {
   onStrokeWidthChange: (width: number) => void;
   onUndo: () => void;
   onRedo: () => void;
+  canUndo?: boolean;
+  canRedo?: boolean;
   onClear: () => void;
   onOpenPdfLibrary: () => void;
   onToggleHistory?: () => void;
@@ -108,6 +110,8 @@ export function ClassroomToolbar({
   onStrokeWidthChange,
   onUndo,
   onRedo,
+  canUndo,
+  canRedo,
   onClear,
   onOpenPdfLibrary,
   onToggleHistory,
@@ -144,8 +148,14 @@ export function ClassroomToolbar({
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [onToolChange]);
 
-  const iconBtn = (active: boolean) =>
-    `relative p-1.5 rounded-xl transition-colors ${active ? "bg-gray-200 text-gray-900" : "text-gray-500 hover:bg-gray-100"}`;
+  const iconBtn = (active: boolean, disabled: boolean = false) =>
+    `relative p-1.5 rounded-xl transition-colors ${
+      disabled
+        ? "text-gray-300 cursor-not-allowed opacity-40 pointer-events-none"
+        : active
+        ? "bg-gray-200 text-gray-900"
+        : "text-gray-500 hover:bg-gray-100"
+    }`;
 
   const shortcut = (key: string) => (
     <kbd className="pointer-events-none absolute bottom-0.6 right-1 text-[8px] font-bold leading-none text-gray-500">
@@ -349,16 +359,18 @@ export function ClassroomToolbar({
 
       <button
         type="button"
-        className={iconBtn(false)}
-        title="Bekor qilish (Ctrl+Z)"
+        className={iconBtn(false, canUndo === false)}
+        disabled={canUndo === false}
+        title={canUndo === false ? "Bekor qilish mavjud emas" : "Bekor qilish (Ctrl+Z)"}
         onClick={onUndo}
       >
         <Undo2 size={15} />
       </button>
       <button
         type="button"
-        className={iconBtn(false)}
-        title="Qaytarish (Ctrl+Shift+Z)"
+        className={iconBtn(false, canRedo === false)}
+        disabled={canRedo === false}
+        title={canRedo === false ? "Qaytarish mavjud emas" : "Qaytarish (Ctrl+Shift+Z)"}
         onClick={onRedo}
       >
         <Redo2 size={15} />
@@ -366,7 +378,7 @@ export function ClassroomToolbar({
       <button
         type="button"
         className={iconBtn(confirmClearOpen)}
-        title="Sahifani tozalash"
+        title="Butun doskani tozalash"
         onClick={() => setConfirmClearOpen(true)}
       >
         <Trash2 size={15} />
@@ -379,9 +391,10 @@ export function ClassroomToolbar({
             if (event.target === event.currentTarget) setConfirmClearOpen(false);
           }}
         >
-          <div className="flex w-full max-w-sm flex-col gap-4 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Sahifani tozalash">
-            <p className="text-sm text-gray-600">Sahifadagi barcha chizmalar o'chiriladi. Davom etilsinmi?</p>
-            <div className="flex justify-end gap-2">
+          <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Butun doskani tozalash">
+            <h3 className="text-base font-semibold text-gray-900">Butun doskani tozalash</h3>
+            <p className="text-sm text-gray-600">Daftardagi va PDFdagi barcha sahifalar chizmalari to'liq o'chiriladi. Davom etilsinmi?</p>
+            <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmClearOpen(false)}
@@ -397,7 +410,7 @@ export function ClassroomToolbar({
                 }}
                 className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
               >
-                Tozalash
+                Barchasini tozalash
               </button>
             </div>
           </div>

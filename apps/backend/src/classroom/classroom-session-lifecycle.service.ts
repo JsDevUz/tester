@@ -472,7 +472,6 @@ export class ClassroomSessionLifecycleService {
       rightZoom: 1,
       scroll: null,
       rightScroll: null,
-      needsVersionCheckpointOnFirstMutation: true,
       savedVersions: snapshot.savedVersions ?? [],
     });
 

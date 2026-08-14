@@ -204,8 +204,8 @@ export class ClassroomService implements OnModuleInit {
     return this.boardsSvc.getBoardActivity(boardId, userId, page, limit);
   }
 
-  async createBoardVersionCheckpoint(sessionId: string, customLabel?: string): Promise<void> {
-    return this.boardsSvc.createBoardVersionCheckpoint(sessionId, customLabel);
+  async createBoardVersionCheckpoint(sessionId: string, customLabel?: string, explicitSnapshot?: any): Promise<void> {
+    return this.boardsSvc.createBoardVersionCheckpoint(sessionId, customLabel, explicitSnapshot);
   }
 
   async getBoardVersions(boardId: string, userId: string) {
@@ -236,6 +236,8 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireSession(sessionId);
     return this.attachmentSvc.attachPdfFromLibrary(
       s, teacherId, teacherRole, mediaAssetId, pageNumbers,
+      (sess) => this.buildBoardSnapshot(sess),
+      (sessId, label, snap) => this.createBoardVersionCheckpoint(sessId, label, snap),
       (sess, type, payload) => this.recordHistoryEvent(sess, type, payload),
       this.broadcaster,
       (sess) => this.onBoardMutation(sess),
@@ -249,6 +251,7 @@ export class ClassroomService implements OnModuleInit {
     return this.attachmentSvc.attachBoardToSession(
       s, teacherId, boardId, this.sessions,
       (sess) => this.buildBoardSnapshot(sess),
+      (sessId, label, snap) => this.createBoardVersionCheckpoint(sessId, label, snap),
       (sess, type, payload) => this.recordHistoryEvent(sess, type, payload),
       this.broadcaster,
     );
@@ -408,10 +411,16 @@ export class ClassroomService implements OnModuleInit {
       }
     }
 
+    const lessonTitle = s.title?.trim() || s.courseName?.trim() || 'Jonli dars';
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const dateStr = now.toLocaleDateString([], { month: 'numeric', day: 'numeric' });
+    const endLessonLabel = `Dars yakunlangan holat (${lessonTitle}, ${dateStr} ${timeStr})`;
+
     // Persistent doska oddiy erkin dars emas: endSession tasodifan chaqirilsa
     // ham qatorni o'chirmaymiz, faqat oxirgi holatini saqlaymiz.
     if (s.isBoard || dbRow?.isBoard === true) {
-      await this.createBoardVersionCheckpoint(sessionId);
+      await this.createBoardVersionCheckpoint(sessionId, `Doska seansi yakuni (${dateStr} ${timeStr})`);
       await db.update(classSessions)
         .set({
           boardSnapshot,
@@ -424,7 +433,10 @@ export class ClassroomService implements OnModuleInit {
       return;
     }
 
-    await this.createBoardVersionCheckpoint(sessionId);
+    if (s.attachedBoardId) {
+      await this.createBoardVersionCheckpoint(s.attachedBoardId, endLessonLabel);
+    }
+    await this.createBoardVersionCheckpoint(sessionId, endLessonLabel);
 
     const hasRecording = s.recordingMode != null;
 
@@ -663,9 +675,10 @@ export class ClassroomService implements OnModuleInit {
   private persistDebounceTimers = new Map<string, NodeJS.Timeout>();
 
   private onBoardMutation(s: ClassroomSession): void {
-    if (s.needsVersionCheckpointOnFirstMutation) {
-      s.needsVersionCheckpointOnFirstMutation = false;
-      void this.createBoardVersionCheckpoint(s.id).catch(() => {});
+    s.activeVersionId = 'current';
+    if (s.attachedBoardId) {
+      const attached = this.sessions.get(s.attachedBoardId);
+      if (attached) attached.activeVersionId = 'current';
     }
     const existing = this.persistDebounceTimers.get(s.id);
     if (existing) clearTimeout(existing);
@@ -1000,8 +1013,22 @@ export class ClassroomService implements OnModuleInit {
     s.boardMode = mode;
     const map = strokeMapFor(s, mode);
     const strokesBeforeClear = [...(map.get(page) ?? [])];
+
+    const modeLabel = mode === 'notebook' ? 'Daftar' : 'PDF';
+
+    // 1. Tozalashdan oldingi holatni DARXOL sinxron snapshot qilib olamiz:
+    if (strokesBeforeClear.length > 0) {
+      const snapshotBeforeClear = this.buildBoardSnapshot(s);
+      void this.createBoardVersionCheckpoint(
+        s.id,
+        `Tozalashdan oldin (${modeLabel}, ${page}-sahifa)`,
+        snapshotBeforeClear,
+      ).catch(() => {});
+    }
+
     clearPageStrokes(s, page, map);
     s.boardMode = previousMode;
+
     if (strokesBeforeClear.length > 0) {
       pushUndoEntry(s, {
         type: 'page:clear',
@@ -1013,9 +1040,51 @@ export class ClassroomService implements OnModuleInit {
         groupId,
       });
     }
+
     const payload = { page, pane, mode };
     this.recordHistoryEvent(s, 'page:clear', payload);
     this.broadcaster.toRoom(sessionId, 'page:clear', payload);
+    this.onBoardMutation(s);
+  }
+
+  clearBoard(sessionId: string, userId: string): void {
+    const s = this.requireHost(sessionId, userId);
+
+    // 1. Tozalashdan oldingi holatni DARXOL sinxron snapshot qilib olamiz:
+    const snapshotBeforeClear = this.buildBoardSnapshot(s);
+
+    let totalStrokes = 0;
+    if (s.strokesByMode) {
+      for (const map of s.strokesByMode.values()) {
+        for (const list of map.values()) totalStrokes += list?.length ?? 0;
+      }
+    }
+    if (totalStrokes === 0) {
+      for (const list of s.strokesByPage.values()) totalStrokes += list?.length ?? 0;
+    }
+
+    // Agar doskada chizmalar bo'lsa, tozalashdan oldingi versiyani saqlaymiz:
+    if (totalStrokes > 0) {
+      void this.createBoardVersionCheckpoint(
+        s.id,
+        'Tozalashdan oldin (Butun doska)',
+        snapshotBeforeClear,
+      ).catch(() => {});
+    }
+
+    // 2. Barcha rejimlardagi barcha sahifalar chizmalarini tozalaymiz:
+    s.strokesByPage.clear();
+    if (!s.strokesByMode) {
+      s.strokesByMode = new Map();
+    }
+    s.strokesByMode.set('pdf', new Map());
+    s.strokesByMode.set('notebook', new Map());
+    s.undoStack = [];
+    s.redoStack = [];
+
+    const payload = {};
+    this.recordHistoryEvent(s, 'board:clear', payload);
+    this.broadcaster.toRoom(sessionId, 'board:clear', payload);
     this.onBoardMutation(s);
   }
 
@@ -1055,12 +1124,25 @@ export class ClassroomService implements OnModuleInit {
   removePage(sessionId: string, userId: string, mode: 'pdf' | 'notebook', pageIndex: number, pane: 'left' | 'right' = 'left'): void {
     const s = this.requireHost(sessionId, userId);
     const map = strokeMapFor(s, mode);
+    const pageStrokes = map.get(pageIndex) ?? [];
     const pageSnapshot: ClassroomPageSnapshot = {
       url: mode === 'pdf' ? s.pdfPages[pageIndex - 1] : undefined,
       notebookStyle: mode === 'notebook' ? resolveNotebookPageStyle(s, pageIndex) : undefined,
       notebookOrientation: mode === 'notebook' ? resolveNotebookPageOrientation(s, pageIndex) : undefined,
-      strokes: map.get(pageIndex) ?? [],
+      strokes: pageStrokes,
     };
+
+    // Agar o'chirilayotgan sahifada chizmalar bo'lsa, o'chirishdan oldin versiya saqlaymiz:
+    if (pageStrokes.length > 0) {
+      const snapshotBeforeRemove = this.buildBoardSnapshot(s);
+      const modeLabel = mode === 'notebook' ? 'Daftar' : 'PDF';
+      void this.createBoardVersionCheckpoint(
+        s.id,
+        `Sahifa o'chirishdan oldin (${modeLabel}, ${pageIndex}-sahifa)`,
+        snapshotBeforeRemove,
+      ).catch(() => {});
+    }
+
     const ok = removePageFromSession(s, mode, pageIndex);
     if (!ok) throw new Error('INVALID_PAGE_REMOVAL');
     pushUndoEntry(s, { type: 'page:remove', mode, page: pageIndex, pane, before: { pageIndex, page: pageSnapshot }, after: null });

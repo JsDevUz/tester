@@ -31,6 +31,7 @@ export interface BoardVersionItem {
   pageCount: number;
   strokeCount: number;
   snapshot: any;
+  isCurrent?: boolean;
 }
 
 export async function apiListBoards(): Promise<BoardItem[]> {

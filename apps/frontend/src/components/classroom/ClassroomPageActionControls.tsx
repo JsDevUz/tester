@@ -2,6 +2,7 @@ import { useState } from "react";
 import {
   AlignJustify,
   Copy,
+  Eraser,
   Grid3x3,
   MoreVertical,
   Plus,
@@ -26,6 +27,7 @@ interface ClassroomPageActionControlsProps {
   ) => void;
   onSetNotebookStyle?: (pageNumber: number, style: CsNotebookStyle) => void;
   onRemovePage?: (pageNumber: number) => void;
+  onClearPage?: (pageNumber: number) => void;
   onCopyPage: () => void;
 }
 
@@ -38,6 +40,7 @@ export function ClassroomPageActionControls({
   onInsertPage,
   onSetNotebookStyle,
   onRemovePage,
+  onClearPage,
   onCopyPage,
 }: ClassroomPageActionControlsProps) {
   const [showPageMenu, setShowPageMenu] = useState(false);
@@ -105,6 +108,18 @@ export function ClassroomPageActionControls({
             >
               <Copy size={14} /> Nusxalash
             </button>
+            {isHost && onClearPage && (
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPageMenu(false);
+                  onClearPage(pageNumber);
+                }}
+                className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+              >
+                <Eraser size={14} /> Tozalash
+              </button>
+            )}
             {isHost && (
               <button
                 type="button"

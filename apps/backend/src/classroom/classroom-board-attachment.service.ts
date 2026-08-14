@@ -50,6 +50,8 @@ export class ClassroomBoardAttachmentService {
     teacherRole: string,
     mediaAssetId: string,
     pageNumbers: number[],
+    buildBoardSnapshot: (s: ClassroomSession) => any,
+    createBoardVersionCheckpoint: (sessionId: string, customLabel?: string, explicitSnapshot?: any) => Promise<void>,
     recordHistoryEvent: (s: ClassroomSession, type: string, payload: unknown) => void,
     broadcaster: ClassroomBroadcaster,
     onBoardMutation: (s: ClassroomSession) => void,
@@ -87,6 +89,25 @@ export class ClassroomBoardAttachmentService {
     });
     const pdfName = asset?.originalName ?? 'dars.pdf';
 
+    // Katta o'zgarishdan (yangi PDF yuklashdan) oldin mavjud holatni versiya qilib saqlaymiz:
+    const snapshotBeforePdf = buildBoardSnapshot(s);
+    let prevStrokes = 0;
+    if (s.strokesByMode) {
+      for (const map of s.strokesByMode.values()) {
+        for (const list of map.values()) prevStrokes += list?.length ?? 0;
+      }
+    }
+    if (prevStrokes === 0 && s.strokesByPage) {
+      for (const list of s.strokesByPage.values()) prevStrokes += list?.length ?? 0;
+    }
+    if (prevStrokes > 0 || (s.pdfPages && s.pdfPages.length > 0)) {
+      const label = s.pdfName ? `PDF almashtirishdan oldin (${s.pdfName})` : 'Yangi PDF yuklashdan oldin';
+      void createBoardVersionCheckpoint(s.id, label, snapshotBeforePdf).catch(() => {});
+      if (s.attachedBoardId) {
+        void createBoardVersionCheckpoint(s.attachedBoardId, label, snapshotBeforePdf).catch(() => {});
+      }
+    }
+
     await db
       .update(classSessions)
       .set({ pdfName, pdfPages: selectedPages })
@@ -106,11 +127,27 @@ export class ClassroomBoardAttachmentService {
     boardId: string,
     sessions: Map<string, ClassroomSession>,
     buildBoardSnapshot: (s: ClassroomSession) => any,
+    createBoardVersionCheckpoint: (sessionId: string, customLabel?: string, explicitSnapshot?: any) => Promise<void>,
     recordHistoryEvent: (s: ClassroomSession, type: string, payload: unknown) => void,
     broadcaster: ClassroomBroadcaster,
   ): Promise<{ ok: boolean; state?: any }> {
     if (s.hostUserId !== teacherId) {
       throw new ForbiddenException('Faqat dars ustozi doska biriktira oladi');
+    }
+
+    // Doska biriktirishdan oldin mavjud holatni versiya qilib saqlaymiz:
+    const snapshotBeforeAttach = buildBoardSnapshot(s);
+    let prevStrokes = 0;
+    if (s.strokesByMode) {
+      for (const map of s.strokesByMode.values()) {
+        for (const list of map.values()) prevStrokes += list?.length ?? 0;
+      }
+    }
+    if (prevStrokes === 0 && s.strokesByPage) {
+      for (const list of s.strokesByPage.values()) prevStrokes += list?.length ?? 0;
+    }
+    if (prevStrokes > 0 || (s.pdfPages && s.pdfPages.length > 0)) {
+      void createBoardVersionCheckpoint(s.id, 'Doska biriktirishdan oldin', snapshotBeforeAttach).catch(() => {});
     }
 
     const boardRow = await db.query.classSessions.findFirst({

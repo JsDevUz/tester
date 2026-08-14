@@ -241,6 +241,7 @@ interface Props {
     strokes: CsStroke[],
     pane: "left" | "right",
   ) => void;
+  onClearPage?: (page: number, pane?: "left" | "right", mode?: CsBoardMode) => void;
   allowPageCopy?: boolean;
   activeSelectionKey?: string | null;
   onClaimSelection?: (key: string) => void;
@@ -310,6 +311,7 @@ export function ClassroomPdfViewer({
   onInsertNotebookPage,
   onSetNotebookPageStyle,
   onPastePage,
+  onClearPage,
   allowPageCopy,
 }: Props) {
   // Auto-hide faqat o'quvchi uchun (ekranni band qilmaslik uchun) — ustoz
@@ -1047,6 +1049,13 @@ export function ClassroomPdfViewer({
                               pageNumber,
                               style,
                               paneIndex === 1 ? "right" : "left",
+                            )
+                          }
+                          onClearPage={(pageNumber) =>
+                            onClearPage?.(
+                              pageNumber,
+                              paneIndex === 1 ? "right" : "left",
+                              paneMode,
                             )
                           }
                           url={paneMode === "pdf" ? pageUrls[idx] : undefined}

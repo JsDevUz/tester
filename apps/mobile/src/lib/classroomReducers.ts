@@ -307,6 +307,18 @@ export function applyPageClear(
   return optimistikApplyToPage(s, p.page, p.pane, p.mode, () => []);
 }
 
+export function applyBoardClear(s: ClassroomState): ClassroomState {
+  return {
+    ...s,
+    strokesByPage: {},
+    rightStrokesByPage: {},
+    strokesByMode: {
+      pdf: {},
+      notebook: {},
+    },
+  };
+}
+
 // Sahifa o'chirilganda undan keyingi barcha sahifalarning chizmalari (shu
 // pane uchun) bittaga siljiydi — backend'dagi removePageFromSession bilan
 // bir xil mantiq.

@@ -4,7 +4,8 @@ import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
   applyBoardAttached,
-  applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
+  applyBoardClear,
+  applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
 } from "./classroomReducers";
@@ -82,6 +83,25 @@ export function getGuestId(): string {
   return id;
 }
 
+interface ClientUndoEntry {
+  type: string;
+  mode: CsBoardMode;
+  page: number;
+  pane?: "left" | "right";
+  strokeId?: string;
+  before?: unknown;
+  after?: unknown;
+  groupId?: string;
+}
+
+function getStrokesFromState(s: ClassroomState, mode: CsBoardMode, page: number, pane: "left" | "right" = "left"): CsStroke[] {
+  if (s.strokesByMode && s.strokesByMode[mode]) {
+    return s.strokesByMode[mode][page] ?? [];
+  }
+  const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
+  return s[key]?.[page] ?? [];
+}
+
 export function useClassroomSession(
   sessionId: string | undefined, role: "host" | "student", guestName?: string,
 ) {
@@ -93,12 +113,27 @@ export function useClassroomSession(
     ...INITIAL,
     classroomTheme: globalTheme,
   }));
+  const stateRef = useRef(state);
+  stateRef.current = state;
+  const clientUndoStackRef = useRef<ClientUndoEntry[]>([]);
+  const clientRedoStackRef = useRef<ClientUndoEntry[]>([]);
+  const [canUndo, setCanUndo] = useState(false);
+  const [canRedo, setCanRedo] = useState(false);
+  const syncUndoRedoFlags = useCallback(() => {
+    setCanUndo(clientUndoStackRef.current.length > 0);
+    setCanRedo(clientRedoStackRef.current.length > 0);
+  }, []);
+
   const sessionIdRef = useRef(sessionId);
   sessionIdRef.current = sessionId;
   const lastPointerSentRef = useRef(0);
   const pointerThrottleTimerRef = useRef<number | null>(null);
 
   useLayoutEffect(() => {
+    clientUndoStackRef.current = [];
+    clientRedoStackRef.current = [];
+    setCanUndo(false);
+    setCanRedo(false);
     setState({
       ...INITIAL,
       classroomTheme: role === "host" ? globalTheme : INITIAL.classroomTheme,
@@ -172,31 +207,55 @@ export function useClassroomSession(
     if (socket.connected) join();
     socket.on("connect", join);
 
+    socket.on("presence:update", (p: { participants: CsParticipant[] }) => {
+      setState((s) => ({ ...s, participants: p.participants }));
+    });
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
       setState((s) => applyPdfSet(s, p));
     });
-    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number; notebookPageStyles?: Record<number, CsNotebookStyle>; notebookPageOrientations?: Record<number, CsNotebookOrientation>; strokesByMode?: Record<string, Record<number, CsStroke[]>>; pdfName?: string; pages?: string[] }) => {
-      setState((s) => applyBoardSet(s, p));
+    socket.on("board:set", (p: {
+      mode?: CsBoardMode;
+      currentPage?: number;
+      strokesByPage?: Record<number, CsStroke[]>;
+      strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
+      pages?: string[];
+      pdfName?: string | null;
+      notebookPageCount?: number;
+      notebookPageStyles?: Record<number, CsNotebookStyle>;
+      notebookPageOrientations?: Record<number, CsNotebookOrientation>;
+    }) => {
+      clientUndoStackRef.current = [];
+      clientRedoStackRef.current = [];
+      syncUndoRedoFlags();
+      setState((s) => ({
+        ...s,
+        boardMode: p.mode ?? s.boardMode,
+        currentPage: p.currentPage ?? s.currentPage,
+        strokesByPage: p.strokesByPage ?? s.strokesByPage,
+        strokesByMode: p.strokesByMode ?? s.strokesByMode,
+        pages: p.pages ?? s.pages,
+        pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
+        notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
+        notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
+        notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
+      }));
     });
     socket.on("board:attached", (p: Parameters<typeof applyBoardAttached>[1]) => {
+      clientUndoStackRef.current = [];
+      clientRedoStackRef.current = [];
+      syncUndoRedoFlags();
       setState((s) => applyBoardAttached(s, p));
-    });
-    socket.on("page:set", (p: { page: number }) => {
-      setState((s) => applyPageSet(s, p));
     });
     socket.on("stroke:add", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
       setState((s) => applyStrokeAdd(s, p));
     });
     socket.on("stroke:update", (p: { page: number; strokeId: string; x: number; y: number; pane?: "left" | "right"; mode?: CsBoardMode }) => {
-      if (role === "host") return;
       setState((s) => applyStrokeUpdate(s, p));
     });
     socket.on("stroke:textUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
-      if (role === "host") return;
       setState((s) => applyStrokeTextUpdate(s, p));
     });
     socket.on("stroke:shapeUpdate", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
-      if (role === "host") return;
       setState((s) => applyStrokeShapeUpdate(s, p));
     });
     socket.on("stroke:reorder", (p: { page: number; strokeIds: string[]; op: "front" | "back" | "forward" | "backward"; pane?: "left" | "right"; mode?: CsBoardMode }) => {
@@ -211,12 +270,19 @@ export function useClassroomSession(
     socket.on("page:clear", (p: { page: number; pane?: "left" | "right"; mode?: CsBoardMode }) => {
       setState((s) => applyPageClear(s, p));
     });
-    socket.on("pointer:move", (p: CsPointer) => {
-      if (role === "host") return;
-      setState((s) => ({ ...s, pointer: p.active ? p : null }));
+    socket.on("board:clear", () => {
+      clientUndoStackRef.current = [];
+      clientRedoStackRef.current = [];
+      syncUndoRedoFlags();
+      setState((s) => applyBoardClear(s));
     });
-    socket.on("presence:update", (p: { participants: CsParticipant[]; hostOnline: boolean }) => {
-      setState((s) => ({ ...s, participants: p.participants, hostOnline: p.hostOnline }));
+    socket.on("page:set", (p: { page: number }) => {
+      if (role === "host") return;
+      setState((s) => ({ ...s, currentPage: p.page }));
+    });
+    socket.on("pointer:move", (p: { page: number; x: number; y: number; active: boolean; pane?: "left" | "right" }) => {
+      if (role === "host") return;
+      setState((s) => ({ ...s, pointer: p as CsPointer }));
     });
     socket.on("zoom:set", (p: { zoom: number; pane?: "left" | "right" }) => {
       if (role === "host") return;
@@ -474,11 +540,17 @@ export function useClassroomSession(
     // qayta paydo bo'lish» holati bo'lmaydi. Server javobi kelganda
     // stroke:add handleri id bo'yicha dublikatni tashlab yuboradi.
     sendStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
-      // Shape/text transform hali RAF queue'da turgan paytda yangi connector
-      // yuborilsa server avval yangi stroke'ni, keyin eski transformni ko'rib
-      // bog'langan obyektlarni rollback qilishi mumkin. Oldingi mutatsiyalarni
-      // tartib bilan jo'natib bo'lgachgina yangi stroke qo'shamiz.
       flushHostEmits();
+      clientUndoStackRef.current.push({
+        type: "stroke:add",
+        mode,
+        page,
+        pane,
+        after: { stroke },
+        groupId,
+      });
+      clientRedoStackRef.current = [];
+      syncUndoRedoFlags();
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) => {
         if (list.some((x) => x.id === stroke.id)) return list;
         return [...list, stroke];
@@ -492,12 +564,44 @@ export function useClassroomSession(
       emitHostThrottled(`moveStroke:${strokeId}`, "host:moveStroke", { page, strokeId, x, y, pane, mode, groupId });
     },
     updateTextStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      const list = getStrokesFromState(stateRef.current, mode, page, pane);
+      const existing = list.find((x) => x.id === stroke.id);
+      if (existing) {
+        clientUndoStackRef.current.push({
+          type: "stroke:text",
+          mode,
+          page,
+          pane,
+          strokeId: stroke.id,
+          before: existing,
+          after: stroke,
+          groupId,
+        });
+        clientRedoStackRef.current = [];
+        syncUndoRedoFlags();
+      }
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
         list.map((item) => item.id === stroke.id ? stroke : item)
       ));
       emitHostThrottled(`updateTextStroke:${stroke.id}`, "host:updateTextStroke", { page, stroke, pane, mode, groupId });
     },
     updateShapeStroke: (page: number, stroke: CsStroke, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      const list = getStrokesFromState(stateRef.current, mode, page, pane);
+      const existing = list.find((x) => x.id === stroke.id);
+      if (existing) {
+        clientUndoStackRef.current.push({
+          type: "stroke:style",
+          mode,
+          page,
+          pane,
+          strokeId: stroke.id,
+          before: { ...existing, points: [...existing.points] },
+          after: { ...stroke, points: [...stroke.points] },
+          groupId,
+        });
+        clientRedoStackRef.current = [];
+        syncUndoRedoFlags();
+      }
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
         list.map((item) => item.id === stroke.id ? stroke : item)
       ));
@@ -516,15 +620,99 @@ export function useClassroomSession(
     },
     undo: () => {
       flushHostEmits();
+      if (clientUndoStackRef.current.length === 0) return;
+      const firstEntry = clientUndoStackRef.current.pop()!;
+      const groupId = firstEntry.groupId;
+      const batch: ClientUndoEntry[] = [firstEntry];
+      if (groupId) {
+        while (
+          clientUndoStackRef.current.length > 0 &&
+          clientUndoStackRef.current[clientUndoStackRef.current.length - 1].groupId === groupId
+        ) {
+          batch.push(clientUndoStackRef.current.pop()!);
+        }
+      }
+      clientRedoStackRef.current.push(...batch);
+      syncUndoRedoFlags();
+      setState((s) =>
+        applyBoardUndo(s, {
+          mode: firstEntry.mode,
+          page: firstEntry.page,
+          entryType: firstEntry.type,
+          strokeId: firstEntry.strokeId,
+          pane: firstEntry.pane,
+          before: firstEntry.before,
+          after: firstEntry.after,
+          entries: batch.map((e) => ({
+            mode: e.mode,
+            page: e.page,
+            entryType: e.type,
+            strokeId: e.strokeId,
+            pane: e.pane,
+            before: e.before,
+            after: e.after,
+          })),
+        }),
+      );
       emitHost("host:undo");
     },
     redo: () => {
       flushHostEmits();
+      if (clientRedoStackRef.current.length === 0) return;
+      const firstEntry = clientRedoStackRef.current.pop()!;
+      const groupId = firstEntry.groupId;
+      const batch: ClientUndoEntry[] = [firstEntry];
+      if (groupId) {
+        while (
+          clientRedoStackRef.current.length > 0 &&
+          clientRedoStackRef.current[clientRedoStackRef.current.length - 1].groupId === groupId
+        ) {
+          batch.push(clientRedoStackRef.current.pop()!);
+        }
+      }
+      clientUndoStackRef.current.push(...batch);
+      syncUndoRedoFlags();
+      setState((s) =>
+        applyBoardRedo(s, {
+          mode: firstEntry.mode,
+          page: firstEntry.page,
+          entryType: firstEntry.type,
+          strokeId: firstEntry.strokeId,
+          pane: firstEntry.pane,
+          before: firstEntry.before,
+          after: firstEntry.after,
+          entries: batch.map((e) => ({
+            mode: e.mode,
+            page: e.page,
+            entryType: e.type,
+            strokeId: e.strokeId,
+            pane: e.pane,
+            before: e.before,
+            after: e.after,
+          })),
+        }),
+      );
       emitHost("host:redo");
     },
     // Stroke-eraser: sichqoncha ustidan o'tgan chizmani optimistik ravishda
     // darhol o'chiradi, keyin serverga ID bilan yuboradi.
     eraseStroke: (page: number, strokeId: string, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      const list = getStrokesFromState(stateRef.current, mode, page, pane);
+      const index = list.findIndex((x) => x.id === strokeId);
+      const stroke = index !== -1 ? list[index] : undefined;
+      if (stroke) {
+        clientUndoStackRef.current.push({
+          type: "stroke:erase",
+          mode,
+          page,
+          pane,
+          strokeId,
+          before: { stroke, index },
+          groupId,
+        });
+        clientRedoStackRef.current = [];
+        syncUndoRedoFlags();
+      }
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) =>
         list.filter((x) => x.id !== strokeId)
       ));
@@ -533,6 +721,23 @@ export function useClassroomSession(
     // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
     // yangi chizmalar bilan optimistik almashtiradi.
     splitStroke: (page: number, strokeId: string, replacements: CsStroke[], pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      const list = getStrokesFromState(stateRef.current, mode, page, pane);
+      const index = list.findIndex((x) => x.id === strokeId);
+      const stroke = index !== -1 ? list[index] : undefined;
+      if (stroke) {
+        clientUndoStackRef.current.push({
+          type: "stroke:split",
+          mode,
+          page,
+          pane,
+          strokeId,
+          before: { stroke, index },
+          after: { replacements },
+          groupId,
+        });
+        clientRedoStackRef.current = [];
+        syncUndoRedoFlags();
+      }
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) => {
         const idx = list.findIndex((x) => x.id === strokeId);
         if (idx === -1) return list;
@@ -543,8 +748,29 @@ export function useClassroomSession(
       emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode, groupId });
     },
     clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      const strokesBeforeClear = [...getStrokesFromState(stateRef.current, mode, page, pane)];
+      if (strokesBeforeClear.length > 0) {
+        clientUndoStackRef.current.push({
+          type: "page:clear",
+          mode,
+          page,
+          pane,
+          before: { strokes: strokesBeforeClear },
+          after: null,
+          groupId,
+        });
+        clientRedoStackRef.current = [];
+        syncUndoRedoFlags();
+      }
       setState((s) => applyPageClear(s, { page, pane, mode }));
       emitHost("host:clearPage", { page, pane, mode, groupId });
+    },
+    clearBoard: () => {
+      clientUndoStackRef.current = [];
+      clientRedoStackRef.current = [];
+      syncUndoRedoFlags();
+      setState((s) => applyBoardClear(s));
+      emitHost("host:clearBoard");
     },
     // ~30ms throttle: pointermove juda tez-tez otiladi, lekin ko'zga bu
     // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
@@ -647,6 +873,8 @@ export function useClassroomSession(
 
   return {
     state,
+    canUndo,
+    canRedo,
     hostActions: {
       ...hostActions,
       lowerAllHands,

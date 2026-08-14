@@ -103,6 +103,7 @@ export interface PageProps {
   isHost?: boolean;
   canRemove?: boolean;
   onRemovePage?: (pageNumber: number) => void;
+  onClearPage?: (pageNumber: number) => void;
   onInsertPage?: (pageNumber: number, style?: CsNotebookStyle, orientation?: CsNotebookOrientation) => void;
   onSetNotebookStyle?: (pageNumber: number, style: CsNotebookStyle) => void;
   isActiveSurface?: boolean;
@@ -147,6 +148,7 @@ export function ClassroomPdfPage({
   isHost = false,
   canRemove = true,
   onRemovePage,
+  onClearPage,
   onInsertPage,
   onSetNotebookStyle,
   isActiveSurface = false,
@@ -784,6 +786,7 @@ export function ClassroomPdfPage({
         onInsertPage={onInsertPage}
         onSetNotebookStyle={onSetNotebookStyle}
         onRemovePage={onRemovePage}
+        onClearPage={onClearPage}
         onCopyPage={copyWholePage}
       />
     </div>

@@ -193,6 +193,7 @@ export interface ClassroomSession {
   undoStack?: ClassroomUndoEntry[];
   redoStack?: ClassroomUndoEntry[];
   needsVersionCheckpointOnFirstMutation?: boolean;
+  activeVersionId?: string | null;
   savedVersions?: any[];
   // Faqat isFree=false sessiyalarda to'ldiriladi — dars tugaganda
   // class_sessions.history_events'ga saqlanadi.
@@ -239,6 +240,7 @@ export interface ClassroomBoardSnapshot {
   notebookPageStyles: Record<number, ClassroomNotebookStyle>;
   notebookPageOrientations: Record<number, ClassroomNotebookOrientation>;
   subtitles?: ClassroomSubtitleCue[];
+  activeVersionId?: string | null;
   savedVersions?: any[];
 }
 

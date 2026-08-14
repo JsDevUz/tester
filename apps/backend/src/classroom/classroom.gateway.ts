@@ -196,6 +196,14 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     });
   }
 
+  @SubscribeMessage('host:clearBoard')
+  clearBoard(@MessageBody() body: BaseBody) {
+    return this.run(body.sessionId, () => {
+      const user = this.verify(body.token);
+      this.classroomService.clearBoard(body.sessionId, user.sub);
+    });
+  }
+
   @SubscribeMessage('host:pointer')
   pointer(@MessageBody() body: BaseBody & { page: number; x: number; y: number; active: boolean; pane?: 'left' | 'right' }) {
     return this.run(body.sessionId, () => {

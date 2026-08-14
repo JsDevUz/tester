@@ -50,6 +50,7 @@ export class ClassroomSnapshotService {
       notebookPageCount: full.notebookPageCount ?? 1,
       notebookPageStyles: full.notebookPageStyles,
       notebookPageOrientations: full.notebookPageOrientations,
+      activeVersionId: s.activeVersionId ?? 'current',
       savedVersions:
         s.savedVersions ?? (s as any).boardSnapshot?.savedVersions ?? [],
     };

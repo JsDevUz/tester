@@ -63,7 +63,7 @@ export function ClassroomHostPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const admin = useAuthStore((s) => s.admin);
-  const { state, hostActions, sendReaction, toggleHandRaise, lowerAllHands, lowerUserHand } = useClassroomSession(id, "host");
+  const { state, hostActions, canUndo, canRedo, sendReaction, toggleHandRaise, lowerAllHands, lowerUserHand } = useClassroomSession(id, "host");
   const isHandRaised = (state.raisedHands ?? []).some((h) => h.userId === (admin?.id ?? "host"));
   useClassroomTheme(state.classroomTheme);
   const voice = useClassroomVoice(state.joined ? id : undefined, true);
@@ -144,16 +144,15 @@ export function ClassroomHostPage() {
   useHotkeys("0", () => handleToolChange("lasso"), { preventDefault: true });
   useHotkeys("s", () => setStrokeWidth(2), { preventDefault: true });
   useHotkeys("m", () => setStrokeWidth(4), { preventDefault: true });
-  useHotkeys("l", () => setStrokeWidth(7), { preventDefault: true });
-  useHotkeys("mod+z", () => hostActions.undo(), {
-    preventDefault: true,
-  });
-  useHotkeys("mod+shift+z", () => hostActions.redo(), {
-    preventDefault: true,
-  });
-  useHotkeys("mod+y", () => hostActions.redo(), {
-    preventDefault: true,
-  });
+  useHotkeys("mod+z", () => {
+    if (canUndo) hostActions.undo();
+  }, { preventDefault: true }, [canUndo]);
+  useHotkeys("mod+shift+z", () => {
+    if (canRedo) hostActions.redo();
+  }, { preventDefault: true }, [canRedo]);
+  useHotkeys("mod+y", () => {
+    if (canRedo) hostActions.redo();
+  }, { preventDefault: true }, [canRedo]);
 
   const handleAttachPages = async (pageNumbers: number[]) => {
     if (!id || !pageSelectAsset) return;
@@ -365,6 +364,13 @@ export function ClassroomHostPage() {
                 hostActions.pastePage(mode, afterPageIndex, pageUrl, style, orientation, strokes, pane)
               }
               onRemovePage={(mode, pageIndex, pane) => hostActions.removePage(mode, pageIndex, pane)}
+              onClearPage={(page, pane, mode) =>
+                hostActions.clearPage(
+                  page,
+                  pane ?? "left",
+                  mode ?? (pane === "right" ? state.rightBoardMode : state.leftBoardMode),
+                )
+              }
               onSetSplitRatio={hostActions.setSplitRatio}
               onZoomChange={(zoom) => hostActions.setZoom(zoom)}
               hostScroll={state.scroll}
@@ -420,7 +426,9 @@ export function ClassroomHostPage() {
                   onStrokeWidthChange={setStrokeWidth}
                   onUndo={() => hostActions.undo()}
                   onRedo={() => hostActions.redo()}
-                  onClear={() => hostActions.clearPage(state.currentPage, activePane, activePane === "right" ? state.rightBoardMode : state.leftBoardMode)}
+                  canUndo={canUndo}
+                  canRedo={canRedo}
+                  onClear={() => hostActions.clearBoard()}
                   onOpenPdfLibrary={() => setPdfLibraryOpen(true)}
                   onToggleHistory={() => setShowHistoryModal((prev) => !prev)}
                   historyOpen={showHistoryModal}
@@ -703,7 +711,6 @@ export function ClassroomHostPage() {
           boardId={id}
           onClose={() => setShowHistoryModal(false)}
           onSelectActivity={handleSelectActivity}
-          onRestored={() => window.location.reload()}
         />
       )}
     </div>

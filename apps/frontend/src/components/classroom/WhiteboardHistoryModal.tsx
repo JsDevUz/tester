@@ -91,14 +91,14 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
     return () => clearInterval(interval);
   }, [boardId, activeTab]);
 
-  // Real-time polling for versions list every 2.5 seconds
+  // Real-time polling for versions list every 1.2 seconds
   useEffect(() => {
     if (activeTab !== "versions") return;
     const interval = setInterval(() => {
       apiGetBoardVersions(boardId)
         .then((res) => setVersions(res))
         .catch(() => { });
-    }, 2500);
+    }, 1200);
     return () => clearInterval(interval);
   }, [boardId, activeTab]);
 
@@ -141,8 +141,9 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
     try {
       await apiRestoreBoardVersion(boardId, versionId);
       toast.success("Doska tanlangan versiyaga qaytarildi!");
+      const updated = await apiGetBoardVersions(boardId);
+      setVersions(updated);
       if (onRestored) onRestored();
-      onClose();
     } catch {
       toast.error("Versiyani tiklab bo'lmadi");
     } finally {
@@ -316,6 +317,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
               <div className="flex flex-col gap-2.5">
                 {versions.map((ver) => {
                   const isRestoring = restoringId === ver.id;
+                  const isCurrent = !!ver.isCurrent;
                   return (
                     <div
                       key={ver.id}
@@ -324,7 +326,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-xs text-gray-900">{ver.label}</span>
-                          {ver.id === "current" && (
+                          {isCurrent && (
                             <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
                               Joriy
                             </span>
@@ -338,12 +340,12 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                         </p>
                       </div>
 
-                      {ver.id !== "current" && (
+                      {!isCurrent && (
                         <button
                           type="button"
                           onClick={() => void handleRestore(ver.id)}
                           disabled={restoringId !== null}
-                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white  hover:bg-indigo-700 disabled:opacity-50 shrink-0 transition-all active:scale-95"
+                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0 transition-all active:scale-95"
                         >
                           {isRestoring ? (
                             <span className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
