@@ -1,4 +1,4 @@
-import { useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { CsStroke } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
 import { snapRotationAngle } from "./classroomCanvasGeometry";
@@ -34,6 +34,9 @@ export function useClassroomShapeTransform({
   setConnectorTarget,
   forceRedraw,
 }: UseClassroomShapeTransformParams) {
+  const [isTransforming, setIsTransforming] = useState(false);
+  const rafUpdateRef = useRef<number | null>(null);
+
   const lineEndpointDragRef = useRef<{
     endpoint: "start" | "end" | "mid";
     startX: number;
@@ -53,6 +56,7 @@ export function useClassroomShapeTransform({
     startY0: number;
     startX1: number;
     startY1: number;
+    startFontSize?: number;
     corner?: "nw" | "ne" | "sw" | "se";
     centerX?: number;
     centerY?: number;
@@ -84,6 +88,7 @@ export function useClassroomShapeTransform({
     e.preventDefault();
     e.stopPropagation();
     if (!selectedShape || !selectedShapeRaw || !surfaceRef.current) return;
+    setIsTransforming(true);
     e.currentTarget.setPointerCapture(e.pointerId);
     const rect = surfaceRef.current.getBoundingClientRect();
     const x0 = selectedShape.points[0];
@@ -138,75 +143,45 @@ export function useClassroomShapeTransform({
       if (shape === "curved") {
         const nextCtrlX = Math.max(
           0,
-          Math.min(1, (initControlX ?? 0.5) + dx * 2),
+          Math.min(1, (initControlX ?? (initPts[0] + initPts[2]) / 2) + dx),
         );
         const nextCtrlY = Math.max(
           0,
-          Math.min(1, (initControlY ?? 0.5) + dy * 2),
+          Math.min(1, (initControlY ?? (initPts[1] + initPts[3]) / 2) + dy),
         );
         selectedShapeRaw.controlX = nextCtrlX;
         selectedShapeRaw.controlY = nextCtrlY;
-      } else if (shape === "elbow") {
-        const nextCtrlX = Math.max(
-          0,
-          Math.min(1, (initControlX ?? 0.5) + dx),
-        );
-        selectedShapeRaw.controlX = nextCtrlX;
-      } else {
-        const nextPts = [...initPts];
-        nextPts[0] = Math.max(0, Math.min(1, initPts[0] + dx));
-        nextPts[1] = Math.max(0, Math.min(1, initPts[1] + dy));
-        nextPts[2] = Math.max(0, Math.min(1, initPts[2] + dx));
-        nextPts[3] = Math.max(0, Math.min(1, initPts[3] + dy));
-        selectedShapeRaw.points = nextPts;
       }
     }
-    if (endpoint === "start" || endpoint === "end") {
-      const offset = endpoint === "start" ? 0 : 2;
-      const cursorX = selectedShapeRaw.points[offset];
-      const cursorY = selectedShapeRaw.points[offset + 1];
-      const nearby = nearestShapeBinding(
+
+    const curOffset =
+      endpoint === "start" ? 0 : endpoint === "end" ? 2 : -1;
+    if (curOffset >= 0) {
+      const snap = nearestShapeBinding(
         strokes,
-        cursorX,
-        cursorY,
+        selectedShapeRaw.points[curOffset],
+        selectedShapeRaw.points[curOffset + 1],
         size.w,
         size.h,
         selectedShapeRaw.id,
         CONNECTOR_REVEAL_DISTANCE_PX,
       );
-      const magnet = nearestShapeBinding(
-        strokes,
-        cursorX,
-        cursorY,
-        size.w,
-        size.h,
-        selectedShapeRaw.id,
-        CONNECTOR_SNAP_DISTANCE_PX,
-      );
-      if (magnet) {
-        selectedShapeRaw.points[offset] = magnet.point[0];
-        selectedShapeRaw.points[offset + 1] = magnet.point[1];
-      }
-      setConnectorTarget(
-        nearby
-          ? {
-              shapeId: nearby.binding.strokeId,
-              point: magnet?.point ?? nearby.point,
-              snapped: Boolean(magnet),
-            }
-          : null,
-      );
+      setConnectorTarget(snap ? snap.point : null);
+    } else {
+      setConnectorTarget(null);
     }
-    onUpdateShapeStroke?.(pageNumber, {
-      ...selectedShapeRaw,
-      points: [...selectedShapeRaw.points],
-      ...(selectedShapeRaw.controlX !== undefined
-        ? { controlX: selectedShapeRaw.controlX }
-        : {}),
-      ...(selectedShapeRaw.controlY !== undefined
-        ? { controlY: selectedShapeRaw.controlY }
-        : {}),
-    });
+
+    if (rafUpdateRef.current === null) {
+      rafUpdateRef.current = requestAnimationFrame(() => {
+        rafUpdateRef.current = null;
+        if (selectedShapeRaw) {
+          onUpdateShapeStroke?.(pageNumber, {
+            ...selectedShapeRaw,
+            points: [...selectedShapeRaw.points],
+          });
+        }
+      });
+    }
     forceRedraw((value) => value + 1);
   };
 
@@ -217,6 +192,7 @@ export function useClassroomShapeTransform({
     if (!selectedShape) return;
     event.preventDefault();
     event.stopPropagation();
+    setIsTransforming(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     transformingShapeRef.current = {
       type: "resize",
@@ -228,6 +204,7 @@ export function useClassroomShapeTransform({
       startY0: selectedShape.points[1],
       startX1: selectedShape.points[2],
       startY1: selectedShape.points[3],
+      startFontSize: selectedShape.fontSize ?? 24,
     };
   };
 
@@ -235,6 +212,7 @@ export function useClassroomShapeTransform({
     if (!selectedShape || !surfaceRef.current) return;
     event.preventDefault();
     event.stopPropagation();
+    setIsTransforming(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = surfaceRef.current.getBoundingClientRect();
     const [x0, y0, x1, y1] = selectedShape.points;
@@ -271,11 +249,19 @@ export function useClassroomShapeTransform({
         (current.startRotation ?? 0) +
         ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
       current.stroke.rotation = snapRotationAngle(rawDeg);
-      onUpdateShapeStroke?.(pageNumber, {
-        ...current.stroke,
-        points: [...current.stroke.points],
-      });
       forceRedraw((value) => value + 1);
+
+      if (rafUpdateRef.current === null) {
+        rafUpdateRef.current = requestAnimationFrame(() => {
+          rafUpdateRef.current = null;
+          if (transformingShapeRef.current) {
+            onUpdateShapeStroke?.(pageNumber, {
+              ...transformingShapeRef.current.stroke,
+              points: [...transformingShapeRef.current.stroke.points],
+            });
+          }
+        });
+      }
       return;
     }
 
@@ -329,16 +315,36 @@ export function useClassroomShapeTransform({
     const nextY1 = newCy + newH / 2;
 
     current.stroke.points = [nextX0, nextY0, nextX1, nextY1];
-    onUpdateShapeStroke?.(pageNumber, {
-      ...current.stroke,
-      points: [...current.stroke.points],
-    });
+
+    if (current.stroke.text?.trim() && current.startFontSize) {
+      const shapeScale = Math.min(newW / Math.max(0.001, startW), newH / Math.max(0.001, startH));
+      current.stroke.fontSize = Math.max(6, Math.min(96, Math.round(current.startFontSize * shapeScale)));
+    }
+
     forceRedraw((value) => value + 1);
+
+    if (rafUpdateRef.current === null) {
+      rafUpdateRef.current = requestAnimationFrame(() => {
+        rafUpdateRef.current = null;
+        if (transformingShapeRef.current) {
+          onUpdateShapeStroke?.(pageNumber, {
+            ...transformingShapeRef.current.stroke,
+            points: [...transformingShapeRef.current.stroke.points],
+          });
+        }
+      });
+    }
   };
 
   const finishShapeTransform = (event: ReactPointerEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
+
+    if (rafUpdateRef.current !== null) {
+      cancelAnimationFrame(rafUpdateRef.current);
+      rafUpdateRef.current = null;
+    }
+    setIsTransforming(false);
 
     const current = transformingShapeRef.current;
     if (current) {
@@ -393,6 +399,7 @@ export function useClassroomShapeTransform({
     if (!selectedText) return;
     event.preventDefault();
     event.stopPropagation();
+    setIsTransforming(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     transformingTextRef.current = {
       type: "resize",
@@ -412,6 +419,7 @@ export function useClassroomShapeTransform({
     if (!selectedText || !surfaceRef.current) return;
     event.preventDefault();
     event.stopPropagation();
+    setIsTransforming(true);
     event.currentTarget.setPointerCapture(event.pointerId);
     const rect = surfaceRef.current.getBoundingClientRect();
     const boxWidth =
@@ -453,6 +461,18 @@ export function useClassroomShapeTransform({
         ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
       current.stroke.rotation = snapRotationAngle(rawDeg);
       forceRedraw((value) => value + 1);
+
+      if (rafUpdateRef.current === null) {
+        rafUpdateRef.current = requestAnimationFrame(() => {
+          rafUpdateRef.current = null;
+          if (transformingTextRef.current) {
+            onUpdateTextStroke?.(pageNumber, {
+              ...transformingTextRef.current.stroke,
+              points: [...transformingTextRef.current.stroke.points],
+            });
+          }
+        });
+      }
       return;
     }
 
@@ -528,15 +548,34 @@ export function useClassroomShapeTransform({
     current.stroke.points[1] = Math.max(0, Math.min(1, newCy - nextH / 2));
 
     forceRedraw((value) => value + 1);
+
+    if (rafUpdateRef.current === null) {
+      rafUpdateRef.current = requestAnimationFrame(() => {
+        rafUpdateRef.current = null;
+        if (transformingTextRef.current) {
+          onUpdateTextStroke?.(pageNumber, {
+            ...transformingTextRef.current.stroke,
+            points: [...transformingTextRef.current.stroke.points],
+          });
+        }
+      });
+    }
   };
 
   const finishTextTransform = (
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => {
-    const current = transformingTextRef.current;
-    if (!current) return;
     event.preventDefault();
     event.stopPropagation();
+
+    if (rafUpdateRef.current !== null) {
+      cancelAnimationFrame(rafUpdateRef.current);
+      rafUpdateRef.current = null;
+    }
+    setIsTransforming(false);
+
+    const current = transformingTextRef.current;
+    if (!current) return;
     transformingTextRef.current = null;
     onUpdateTextStroke?.(pageNumber, {
       ...current.stroke,
@@ -545,6 +584,7 @@ export function useClassroomShapeTransform({
   };
 
   return {
+    isTransforming,
     lineEndpointDragRef,
     transformingShapeRef,
     transformingTextRef,

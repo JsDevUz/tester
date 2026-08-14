@@ -8,6 +8,7 @@ export function ClassroomNotebookBackground({
   height,
   style,
   pageIndex = 0,
+  theme = 'light',
 }: {
   width: number;
   height: number;
@@ -15,12 +16,11 @@ export function ClassroomNotebookBackground({
   pageIndex?: number;
   theme?: 'light' | 'dark';
 }) {
-  // Web (ClassroomPdfViewer.tsx) bilan 100% bir xil: daftar varag'i har doim toza oq (#ffffff)
-  const bgColor = '#ffffff';
-  // Web bilan bir xil slating: grid uchun rgba(148, 163, 184, 0.12), lined uchun rgba(148, 163, 184, 0.14)
-  const gridLineColor = 'rgba(148, 163, 184, 0.12)';
-  const linedLineColor = 'rgba(148, 163, 184, 0.14)';
-  const dotColor = 'rgba(148, 163, 184, 0.25)';
+  const isDark = theme === 'dark';
+  const bgColor = isDark ? '#232733' : '#ffffff';
+  const gridLineColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.12)';
+  const linedLineColor = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(148, 163, 184, 0.14)';
+  const dotColor = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(148, 163, 184, 0.25)';
 
   if (width <= 0 || height <= 0 || style === 'plain') {
     return <View style={{width: '100%', height: '100%', backgroundColor: bgColor}} />;
@@ -30,7 +30,7 @@ export function ClassroomNotebookBackground({
   const lineSpacing = width / 22;
 
   if (style === 'grid') {
-    const patternId = `notebook-grid-pattern-${pageIndex}`;
+    const patternId = `notebook-grid-pattern-${pageIndex}-${theme}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>
@@ -50,7 +50,7 @@ export function ClassroomNotebookBackground({
   }
 
   if (style === 'lined') {
-    const patternId = `notebook-lined-pattern-${pageIndex}`;
+    const patternId = `notebook-lined-pattern-${pageIndex}-${theme}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>
@@ -69,7 +69,7 @@ export function ClassroomNotebookBackground({
   }
 
   if (style === 'dots') {
-    const patternId = `notebook-dots-pattern-${pageIndex}`;
+    const patternId = `notebook-dots-pattern-${pageIndex}-${theme}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>

@@ -334,6 +334,7 @@ export function ClassroomPdfPage({
   const {
     lineEndpointDragRef,
     transformingShapeRef,
+    isTransforming,
     beginLineEndpointResize,
     transformLineEndpoint,
     beginShapeResize,
@@ -693,6 +694,7 @@ export function ClassroomPdfPage({
             color={color}
             strokeWidth={strokeWidth}
             showStylePanel={showStylePanel}
+            isTransforming={isTransforming}
             size={size}
             pageNumber={pageNumber}
             onToolChange={onToolChange}

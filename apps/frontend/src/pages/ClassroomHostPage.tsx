@@ -360,6 +360,7 @@ export function ClassroomHostPage() {
               currentPage={state.currentPage}
               strokesByPage={state.strokesByPage}
               rightStrokesByPage={state.rightStrokesByPage}
+              strokesByMode={state.strokesByMode}
               pointer={state.pointer}
               editable={state.pages.length > 0 || state.boardMode === "notebook"}
               isHost

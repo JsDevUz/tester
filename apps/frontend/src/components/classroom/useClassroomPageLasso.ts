@@ -336,6 +336,13 @@ export function useClassroomPageLasso({
           1,
           Math.round((original.width ?? 4) * fontScale),
         );
+        if (original.text?.trim()) {
+          const originalFont = original.fontSize ?? 24;
+          const clampedFont = Math.round(
+            Math.max(6, Math.min(96, originalFont * fontScale)),
+          );
+          stroke.fontSize = clampedFont;
+        }
       }
     }
     forceRedraw((v) => v + 1);

@@ -1,4 +1,4 @@
-import React, {useEffect, useRef, useState} from 'react';
+import React, {useEffect, useMemo, useRef, useState} from 'react';
 import {Image, Pressable, Text, View, useWindowDimensions} from 'react-native';
 import Animated, {
   cancelAnimation,
@@ -23,6 +23,7 @@ function Pane({
   pages,
   boardMode,
   notebookPageStyles,
+  notebookPageOrientations = {},
   notebookPageCount,
   theme,
   strokesByPage,
@@ -36,6 +37,7 @@ function Pane({
   pages: string[];
   boardMode: CsBoardMode;
   notebookPageStyles: ClassroomState['notebookPageStyles'];
+  notebookPageOrientations?: ClassroomState['notebookPageOrientations'];
   notebookPageCount: number;
   theme: 'light' | 'dark';
   strokesByPage: Record<number, CsStroke[]>;
@@ -73,21 +75,37 @@ function Pane({
     return getCachedDocAspectRatio() || 1600 / 2263;
   });
 
+  const [aspects, setAspects] = useState<Record<number, number>>({});
+
   useEffect(() => {
-    if (boardMode === 'pdf' && pages.length > 0 && pages[0]) {
-      if (aspectCache[pages[0]]) {
-        setDocAspectRatio(aspectCache[pages[0]]);
+    if (boardMode !== 'pdf' || pages.length === 0) return;
+    pages.forEach((url, idx) => {
+      if (!url) return;
+      const pageNumber = idx + 1;
+      if (aspectCache[url]) {
+        setAspects((prev) =>
+          prev[pageNumber] === aspectCache[url]
+            ? prev
+            : { ...prev, [pageNumber]: aspectCache[url] },
+        );
       } else {
-        Image.getSize(pages[0], (w, h) => {
-          if (w > 0 && h > 0) {
-            const ratio = w / h;
-            aspectCache[pages[0]] = ratio;
-            setCachedDocAspectRatio(ratio);
-            setDocAspectRatio(ratio);
-          }
-        });
+        Image.getSize(
+          url,
+          (w, h) => {
+            if (w > 0 && h > 0) {
+              const ratio = w / h;
+              aspectCache[url] = ratio;
+              if (idx === 0) {
+                setCachedDocAspectRatio(ratio);
+                setDocAspectRatio(ratio);
+              }
+              setAspects((prev) => ({ ...prev, [pageNumber]: ratio }));
+            }
+          },
+          () => {},
+        );
       }
-    }
+    });
   }, [boardMode, pages]);
 
   const isLandscape = containerWidth > containerHeight;
@@ -100,22 +118,59 @@ function Pane({
     : Math.min(800, containerWidth);
   const baseCardHeight = baseCardWidth / cardAspectRatio;
   const baseItemTotalHeight = baseCardHeight + PAGE_GAP;
-  const totalContentHeight = safePaddingTop + pageCount * baseItemTotalHeight + safePaddingBottom;
+
+  const pageAspectRatios = useMemo(() => {
+    return listData.map((pageNumber) => {
+      if (boardMode === 'notebook') {
+        const orientation = notebookPageOrientations[pageNumber] ?? 'portrait';
+        return orientation === 'landscape' ? 297 / 210 : 210 / 297;
+      }
+      const url = pages[pageNumber - 1];
+      if (url && aspectCache[url]) return aspectCache[url];
+      if (aspects[pageNumber]) return aspects[pageNumber];
+      return docAspectRatio > 0 ? docAspectRatio : 1600 / 2263;
+    });
+  }, [listData, boardMode, notebookPageOrientations, pages, aspects, docAspectRatio]);
+
+  const pageHeights = useMemo(() => {
+    return pageAspectRatios.map((ratio: number) => baseCardWidth / (ratio > 0 ? ratio : 1));
+  }, [pageAspectRatios, baseCardWidth]);
+
+  const pageOffsets = useMemo(() => {
+    const offsets: number[] = [];
+    let currentY = safePaddingTop;
+    for (let i = 0; i < pageHeights.length; i++) {
+      offsets.push(currentY);
+      currentY += pageHeights[i] + PAGE_GAP;
+    }
+    return offsets;
+  }, [pageHeights, safePaddingTop]);
+
+  const totalContentHeight = useMemo(() => {
+    const sumH = pageHeights.reduce((acc: number, h: number) => acc + h, 0);
+    const gaps = Math.max(0, pageCount - 1) * PAGE_GAP;
+    return safePaddingTop + sumH + gaps + safePaddingBottom;
+  }, [pageHeights, pageCount, safePaddingTop, safePaddingBottom]);
 
   const baseCardWidthSV = useSharedValue(baseCardWidth);
   const totalHeightSV = useSharedValue(totalContentHeight);
   const itemTotalHeightSV = useSharedValue(baseItemTotalHeight);
   const pageCountSV = useSharedValue(pageCount);
+  const pageOffsetsSV = useSharedValue<number[]>(pageOffsets);
+  const pageHeightsSV = useSharedValue<number[]>(pageHeights);
 
   useEffect(() => {
     baseCardWidthSV.value = baseCardWidth;
     totalHeightSV.value = totalContentHeight;
     itemTotalHeightSV.value = baseItemTotalHeight;
     pageCountSV.value = pageCount;
-  }, [baseCardWidth, totalContentHeight, baseItemTotalHeight, pageCount, baseCardWidthSV, totalHeightSV, itemTotalHeightSV, pageCountSV]);
+    pageOffsetsSV.value = pageOffsets;
+    pageHeightsSV.value = pageHeights;
+  }, [baseCardWidth, totalContentHeight, baseItemTotalHeight, pageCount, pageOffsets, pageHeights, baseCardWidthSV, totalHeightSV, itemTotalHeightSV, pageCountSV, pageOffsetsSV, pageHeightsSV]);
 
   // Initial target Y for page
-  const initialTargetY = safePaddingTop + (safeCurrentPage - 0.5) * baseItemTotalHeight;
+  const initialPageIdx = safeCurrentPage - 1;
+  const initialTargetY = (pageOffsets[initialPageIdx] ?? safePaddingTop) + (pageHeights[initialPageIdx] ?? baseCardHeight) / 2;
   const initialTy = (totalContentHeight / 2 - initialTargetY);
 
   const tx = useSharedValue(0);
@@ -138,9 +193,10 @@ function Pane({
 
     const targetPage = Math.min(Math.max(1, scroll?.page ?? safeCurrentPage), pageCount);
     const targetYRatio = scroll?.yRatio ?? 0;
-
-    const pageY = safePaddingTop + (targetPage - 1) * baseItemTotalHeight;
-    const targetContentY = pageY + baseCardHeight * targetYRatio;
+    const pageIdx = targetPage - 1;
+    const pageY = pageOffsets[pageIdx] ?? (safePaddingTop + pageIdx * baseItemTotalHeight);
+    const pageH = pageHeights[pageIdx] ?? baseCardHeight;
+    const targetContentY = pageY + pageH * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
     scale.value = withTiming(s, {duration: 250});
@@ -239,10 +295,20 @@ function Pane({
 
       const totalH = totalHeightSV.value;
       const currentYMid = totalH / 2 - clamped.y / s;
-      const yInList = currentYMid - SAFE_TOP;
-      const itemH = itemTotalHeightSV.value;
-      const pCount = pageCountSV.value;
-      const curPage = Math.max(1, Math.min(pCount, Math.floor(yInList / itemH) + 1));
+      const offsets = pageOffsetsSV.value;
+      const heights = pageHeightsSV.value;
+      let curPage = 1;
+      for (let i = 0; i < offsets.length; i++) {
+        const pageTop = offsets[i];
+        const pageBottom = pageTop + (heights[i] || 0) + PAGE_GAP;
+        if (currentYMid >= pageTop && currentYMid < pageBottom) {
+          curPage = i + 1;
+          break;
+        }
+        if (currentYMid >= pageBottom) {
+          curPage = i + 1;
+        }
+      }
       if (curPage !== lastReportedPage.value) {
         lastReportedPage.value = curPage;
         runOnJS(updateVisiblePageJS)(curPage);
@@ -266,10 +332,20 @@ function Pane({
           () => {
             'worklet';
             const curYMid = totalH / 2 - ty.value / s;
-            const yInList = curYMid - SAFE_TOP;
-            const itemH = itemTotalHeightSV.value;
-            const pCount = pageCountSV.value;
-            const curPage = Math.max(1, Math.min(pCount, Math.floor(yInList / itemH) + 1));
+            const offsets = pageOffsetsSV.value;
+            const heights = pageHeightsSV.value;
+            let curPage = 1;
+            for (let i = 0; i < offsets.length; i++) {
+              const pageTop = offsets[i];
+              const pageBottom = pageTop + (heights[i] || 0) + PAGE_GAP;
+              if (curYMid >= pageTop && curYMid < pageBottom) {
+                curPage = i + 1;
+                break;
+              }
+              if (curYMid >= pageBottom) {
+                curPage = i + 1;
+              }
+            }
             if (curPage !== lastReportedPage.value) {
               lastReportedPage.value = curPage;
               runOnJS(updateVisiblePageJS)(curPage);
@@ -319,8 +395,10 @@ function Pane({
     if (lastSyncPayloadRef.current === syncKey) return;
     lastSyncPayloadRef.current = syncKey;
 
-    const pageY = safePaddingTop + (targetPage - 1) * baseItemTotalHeight;
-    const targetContentY = pageY + baseCardHeight * targetYRatio;
+    const pageIdx = targetPage - 1;
+    const pageY = pageOffsets[pageIdx] ?? (safePaddingTop + pageIdx * baseItemTotalHeight);
+    const pageH = pageHeights[pageIdx] ?? baseCardHeight;
+    const targetContentY = pageY + pageH * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
     const targetTy = s * (totalContentHeight / 2 - targetContentY);
@@ -343,7 +421,7 @@ function Pane({
       ty.value = withTiming(clamped.y, {duration: 80});
     }
     setVisiblePage(targetPage);
-  }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, scale, tx, ty]);
+  }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, pageOffsets, pageHeights, scale, tx, ty]);
 
   // =========================================================================
   // DISCRETE ZOOM BUTTONS (+/-)
@@ -403,14 +481,15 @@ function Pane({
             },
             animatedCameraStyle,
           ]}>
-          {listData.map(pageNumber => {
+          {listData.map((pageNumber, idx) => {
             const isVisibleWindow = pageNumber >= renderWindowMin && pageNumber <= renderWindowMax;
+            const cardHeight = pageHeights[idx] ?? baseCardHeight;
             return (
               <View
                 key={pageNumber}
                 style={{
                   width: baseCardWidth,
-                  height: baseCardHeight,
+                  height: cardHeight,
                   marginBottom: PAGE_GAP,
                   alignItems: 'center',
                 }}>
@@ -429,7 +508,7 @@ function Pane({
                   <View
                     style={{
                       width: baseCardWidth,
-                      height: baseCardHeight,
+                      height: cardHeight,
                       backgroundColor: boardMode === 'pdf' ? '#ffffff' : (theme === 'dark' ? '#232733' : '#ffffff'),
                       borderRadius: 4,
                     }}
@@ -606,6 +685,7 @@ export const ClassroomBoard = React.memo(function ClassroomBoard({
             pages={state.pages}
             boardMode={state.leftBoardMode}
             notebookPageStyles={state.notebookPageStyles}
+            notebookPageOrientations={state.notebookPageOrientations}
             notebookPageCount={state.notebookPageCount}
             theme={state.classroomTheme}
             strokesByPage={state.strokesByPage}
@@ -624,6 +704,7 @@ export const ClassroomBoard = React.memo(function ClassroomBoard({
             pages={state.pages}
             boardMode={state.rightBoardMode}
             notebookPageStyles={state.notebookPageStyles}
+            notebookPageOrientations={state.notebookPageOrientations}
             notebookPageCount={state.notebookPageCount}
             theme={state.classroomTheme}
             strokesByPage={state.rightStrokesByPage}
@@ -646,6 +727,7 @@ export const ClassroomBoard = React.memo(function ClassroomBoard({
       pages={state.pages}
       boardMode={state.boardMode}
       notebookPageStyles={state.notebookPageStyles}
+      notebookPageOrientations={state.notebookPageOrientations}
       notebookPageCount={state.notebookPageCount}
       theme={state.classroomTheme}
       strokesByPage={state.strokesByPage}

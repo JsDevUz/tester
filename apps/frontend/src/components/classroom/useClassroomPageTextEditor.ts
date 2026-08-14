@@ -180,7 +180,7 @@ export function useClassroomPageTextEditor({
       onUpdateShapeStroke?.(pageNumber, {
         ...edited,
         text: textEditor.text.trim(),
-        color: textEditor.color,
+        textColor: textEditor.color,
         fontFamily: textEditor.fontFamily,
         fontSize: textEditor.fontSize,
         fontWeight: textEditor.fontWeight,

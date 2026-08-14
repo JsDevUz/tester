@@ -20,6 +20,7 @@ interface ClassroomPageSelectionOverlayProps {
   color: string;
   strokeWidth: number;
   showStylePanel: boolean;
+  isTransforming?: boolean;
   size: { w: number; h: number };
   pageNumber: number;
   onToolChange?: (tool: DrawTool) => void;
@@ -68,9 +69,7 @@ interface ClassroomPageSelectionOverlayProps {
     event: ReactPointerEvent<HTMLButtonElement>,
   ) => void;
   connectorDraftRef: React.RefObject<any>;
-  setConnectorHover: (
-    hover: { stroke: CsStroke; side: "top" | "right" | "bottom" | "left" } | null,
-  ) => void;
+  setConnectorHover: React.Dispatch<React.SetStateAction<any>>;
 }
 
 export function ClassroomPageSelectionOverlay({
@@ -83,6 +82,7 @@ export function ClassroomPageSelectionOverlay({
   color,
   strokeWidth,
   showStylePanel,
+  isTransforming,
   size,
   pageNumber,
   onToolChange,
@@ -205,7 +205,7 @@ export function ClassroomPageSelectionOverlay({
                 <RotateCw size={12} className="stroke-[2.5]" />
               </button>
             </div>
-            {showStylePanel && (() => {
+            {showStylePanel && !isTransforming && (() => {
               const w =
                 (selectedText.textBoxWidth ?? 320) * (size.w / REF_WIDTH);
               const h =
@@ -514,6 +514,7 @@ export function ClassroomPageSelectionOverlay({
             </div>
           )}
           {showStylePanel &&
+            !isTransforming &&
             (() => {
               const w =
                 Math.abs(selectedShape.points[2] - selectedShape.points[0]) *

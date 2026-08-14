@@ -5,6 +5,7 @@ import type { CsBoardLayout, CsBoardMode, CsNotebookOrientation, CsNotebookStyle
 import {
   applyBoardAttached,
   applyBoardClear,
+  applyBoardSet,
   applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
@@ -239,32 +240,11 @@ export function useClassroomSession(
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
       setState((s) => applyPdfSet(s, p));
     });
-    socket.on("board:set", (p: {
-      mode?: CsBoardMode;
-      currentPage?: number;
-      strokesByPage?: Record<number, CsStroke[]>;
-      strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
-      pages?: string[];
-      pdfName?: string | null;
-      notebookPageCount?: number;
-      notebookPageStyles?: Record<number, CsNotebookStyle>;
-      notebookPageOrientations?: Record<number, CsNotebookOrientation>;
-    }) => {
+    socket.on("board:set", (p: Parameters<typeof applyBoardSet>[1]) => {
       clientUndoStackRef.current = [];
       clientRedoStackRef.current = [];
       syncUndoRedoFlags();
-      setState((s) => ({
-        ...s,
-        boardMode: p.mode ?? s.boardMode,
-        currentPage: p.currentPage ?? s.currentPage,
-        strokesByPage: p.strokesByPage ?? s.strokesByPage,
-        strokesByMode: p.strokesByMode ?? s.strokesByMode,
-        pages: p.pages ?? s.pages,
-        pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
-        notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
-        notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
-        notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
-      }));
+      setState((s) => applyBoardSet(s, p));
     });
     socket.on("board:attached", (p: Parameters<typeof applyBoardAttached>[1]) => {
       clientUndoStackRef.current = [];
@@ -849,8 +829,34 @@ export function useClassroomSession(
     setScroll: (page: number, yRatio: number, pane: "left" | "right" = "left", xRatio = 0) => {
       emitHostDebouncedScroll(pane, page, yRatio, xRatio);
     },
-    setBoardMode: (mode: CsBoardMode) => emitHost("host:setBoardMode", { mode }),
-    setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => emitHost("host:setBoardView", { layout, leftMode, rightMode }),
+    setBoardMode: (mode: CsBoardMode) => {
+      setState((s) => applyBoardSet(s, {
+        mode,
+        layout: s.boardLayout,
+        leftMode: s.boardLayout === 'split' ? mode : mode,
+        rightMode: s.boardLayout === 'split' ? s.rightBoardMode : mode,
+        currentPage: s.currentPage,
+        strokesByMode: s.strokesByMode,
+        notebookPageCount: s.notebookPageCount,
+        notebookPageStyles: s.notebookPageStyles,
+        notebookPageOrientations: s.notebookPageOrientations,
+      }));
+      emitHost("host:setBoardMode", { mode });
+    },
+    setBoardView: (layout: CsBoardLayout, leftMode: CsBoardMode, rightMode: CsBoardMode) => {
+      setState((s) => applyBoardSet(s, {
+        mode: leftMode,
+        layout,
+        leftMode,
+        rightMode,
+        currentPage: s.currentPage,
+        strokesByMode: s.strokesByMode,
+        notebookPageCount: s.notebookPageCount,
+        notebookPageStyles: s.notebookPageStyles,
+        notebookPageOrientations: s.notebookPageOrientations,
+      }));
+      emitHost("host:setBoardView", { layout, leftMode, rightMode });
+    },
     setBoardOpen: (isOpen: boolean) => {
       setState((s) => ({ ...s, isBoardOpen: isOpen }));
       emitHost("host:setBoardOpen", { isOpen });

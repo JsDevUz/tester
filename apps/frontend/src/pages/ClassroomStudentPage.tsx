@@ -233,6 +233,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
               currentPage={state.currentPage}
               strokesByPage={state.strokesByPage}
               rightStrokesByPage={state.rightStrokesByPage}
+              strokesByMode={state.strokesByMode}
               pointer={state.pointer}
               editable={false}
               isHost={false}

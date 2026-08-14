@@ -337,7 +337,7 @@ export function useClassroomPagePointerGestures({
             x: left,
             y: top,
             text: existingShape.text ?? "",
-            color: existingShape.color,
+            color: existingShape.textColor || existingShape.color || "#000000",
             fontFamily: existingShape.fontFamily ?? "Inter",
             fontSize: existingShape.fontSize ?? 24,
             fontWeight: existingShape.fontWeight ?? 600,
