@@ -66,18 +66,22 @@ export function applyBoardSet(
     rightMode?: CsBoardMode;
     currentPage: number;
     strokesByPage?: Record<number, CsStroke[]>;
+    strokesByMode?: Record<CsBoardMode, Record<number, CsStroke[]>>;
     rightStrokesByPage?: Record<number, CsStroke[]>;
+    pages?: string[];
+    pdfName?: string | null;
     notebookPageCount?: number;
+    notebookPageStyles?: Record<number, CsNotebookStyle>;
+    notebookPageOrientations?: Record<number, CsNotebookOrientation>;
   },
 ): ClassroomState {
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
 
-  // Agar backend notebookPageCount yubOrsa, strokesByMode'ni ham yangidan
-  // qurish kerak — eski sessiyadan qolgan sahifalar (sariq chizmalar) qolmasin.
   let strokesByMode: Record<string, Record<number, CsStroke[]>>;
-  if (p.notebookPageCount !== undefined) {
-    // Backend fresh ma'lumot bermoqda — strokesByMode'ni to'liq almashtiramiz
+  if (p.strokesByMode) {
+    strokesByMode = p.strokesByMode as Record<string, Record<number, CsStroke[]>>;
+  } else if (p.notebookPageCount !== undefined) {
     strokesByMode = {
       ...(s.strokesByMode ?? {}),
       [leftMode]: p.strokesByPage ?? s.strokesByPage ?? {},
@@ -86,7 +90,6 @@ export function applyBoardSet(
       strokesByMode[rightMode] = p.rightStrokesByPage ?? s.rightStrokesByPage ?? {};
     }
   } else {
-    // Eski xatti-harakat: faqat kelgan datani merge qilamiz
     strokesByMode = {...(s.strokesByMode ?? {})};
     if (p.strokesByPage) strokesByMode[leftMode] = p.strokesByPage;
     if (p.rightStrokesByPage) strokesByMode[rightMode] = p.rightStrokesByPage;
@@ -102,10 +105,14 @@ export function applyBoardSet(
     leftBoardMode: leftMode,
     rightBoardMode: rightMode,
     currentPage: p.currentPage,
+    pages: p.pages ?? s.pages,
+    pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
     strokesByMode,
     strokesByPage,
     rightStrokesByPage,
     notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
+    notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
+    notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
     pointer: null,
     scroll: null,
   };
@@ -553,6 +560,51 @@ function applyStrokeTextInverseClient(
   };
 }
 
+function applyStrokeSplitInverseClient(
+  source: Record<number, CsStroke[]>,
+  page: number,
+  data: {strokeId: string; before: {stroke: CsStroke; index: number}; after: {replacements: CsStroke[]}},
+  direction: 'undo' | 'redo',
+): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  if (direction === 'undo') {
+    const replacementIds = new Set(data.after.replacements.map(r => r.id));
+    const filtered = list.filter(s => !replacementIds.has(s.id));
+    const next = [...filtered];
+    const insertIdx = Math.min(next.length, Math.max(0, data.before.index));
+    next.splice(insertIdx, 0, data.before.stroke);
+    return {...source, [page]: next};
+  }
+  const filtered = list.filter(s => s.id !== data.before.stroke.id);
+  const insertIdx = Math.min(filtered.length, Math.max(0, data.before.index));
+  const next = [...filtered];
+  next.splice(insertIdx, 0, ...data.after.replacements);
+  return {...source, [page]: next};
+}
+
+function applyPageClearInverseClient(
+  source: Record<number, CsStroke[]>,
+  page: number,
+  data: {before: {strokes: CsStroke[]}},
+  direction: 'undo' | 'redo',
+): Record<number, CsStroke[]> {
+  if (direction === 'undo') {
+    return {...source, [page]: [...data.before.strokes]};
+  }
+  return {...source, [page]: []};
+}
+
+function applyNotebookPageStyleInverseClient(
+  s: ClassroomState,
+  page: number,
+  data: {before: {style: CsNotebookStyle}; after: {style: CsNotebookStyle}},
+  direction: 'undo' | 'redo',
+): ClassroomState {
+  const targetStyle = direction === 'undo' ? data.before.style : data.after.style;
+  const notebookPageStyles = {...(s.notebookPageStyles ?? {}), [page]: targetStyle};
+  return {...s, notebookPageStyles};
+}
+
 function applyBoardUndoRedo(
   s: ClassroomState,
   p: {
@@ -566,30 +618,57 @@ function applyBoardUndoRedo(
   },
   direction: 'undo' | 'redo',
 ): ClassroomState {
-  const pane = p.pane ?? (paneKeyForMode(s, p.mode) === 'rightStrokesByPage' ? 'right' : 'left');
-  const key = pane === 'right' ? 'rightStrokesByPage' : 'strokesByPage';
-  const source = s[key];
+  const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? 'pdf';
+  const activeRightMode = s.rightBoardMode ?? s.boardMode ?? 'pdf';
+  const targetMode = p.mode ?? activeLeftMode;
+
+  const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    pdf: (s.strokesByMode?.pdf ?? (activeLeftMode === 'pdf' ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+    notebook: (s.strokesByMode?.notebook ?? (activeLeftMode === 'notebook' ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+  };
+  const modeSource = byMode[targetMode] ?? {};
+
+  if (p.entryType === 'notebook:pageStyle') {
+    return applyNotebookPageStyleInverseClient(
+      s,
+      p.page,
+      {
+        before: p.before as {style: CsNotebookStyle},
+        after: p.after as {style: CsNotebookStyle},
+      },
+      direction,
+    );
+  }
 
   let nextSource: Record<number, CsStroke[]> | null = null;
   switch (p.entryType) {
     case 'stroke:add':
-      // stroke:add yozuvida before har doim null — haqiqiy stroke ma'lumoti
-      // faqat afterda, shuning uchun ikkala yo'nalishda ham afterdan
-      // olinadi (direction'ning o'zi o'chirish/qo'shishni hal qiladi).
-      nextSource = applyStrokeAddInverseClient(source, p.page, p.after as {stroke: CsStroke}, direction);
+      nextSource = applyStrokeAddInverseClient(modeSource, p.page, p.after as {stroke: CsStroke}, direction);
       break;
     case 'stroke:erase':
       nextSource = applyStrokeEraseInverseClient(
-        source,
+        modeSource,
         p.page,
         p.before as {stroke: CsStroke; index: number},
+        direction,
+      );
+      break;
+    case 'stroke:split':
+      nextSource = applyStrokeSplitInverseClient(
+        modeSource,
+        p.page,
+        {
+          strokeId: p.strokeId!,
+          before: p.before as {stroke: CsStroke; index: number},
+          after: p.after as {replacements: CsStroke[]},
+        },
         direction,
       );
       break;
     case 'stroke:transform':
     case 'stroke:style':
       nextSource = applyStrokeTransformInverseClient(
-        source,
+        modeSource,
         p.page,
         {
           strokeId: p.strokeId!,
@@ -601,7 +680,7 @@ function applyBoardUndoRedo(
       break;
     case 'stroke:text':
       nextSource = applyStrokeTextInverseClient(
-        source,
+        modeSource,
         p.page,
         {
           strokeId: p.strokeId!,
@@ -613,25 +692,37 @@ function applyBoardUndoRedo(
       break;
     case 'stroke:reorder':
       nextSource = applyStrokeReorderInverseClient(
-        source,
+        modeSource,
         p.page,
         {before: p.before as {order: string[]}, after: p.after as {order: string[]}},
         direction,
       );
       break;
+    case 'page:clear':
+      nextSource = applyPageClearInverseClient(
+        modeSource,
+        p.page,
+        {before: p.before as {strokes: CsStroke[]}},
+        direction,
+      );
+      break;
     default:
-      // page:remove / page:insert: sahifa-darajasidagi turlar bu yerda
-      // ishlanmaydi, alohida applyPageUndoRedo orqali to'liq qamrab
-      // olinadi.
       return s;
   }
 
-  if (nextSource) {
-    const updated = optimistikApplyToPage(s, p.page, pane, p.mode, () => nextSource![p.page] ?? []);
-    return {...updated, currentPage: p.page, boardMode: p.mode};
-  }
+  const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    ...byMode,
+    [targetMode]: nextSource ?? modeSource,
+  };
 
-  return {...s, currentPage: p.page, boardMode: p.mode};
+  return {
+    ...s,
+    strokesByMode: nextByMode,
+    strokesByPage: nextByMode[activeLeftMode] ?? {},
+    rightStrokesByPage: nextByMode[activeRightMode] ?? {},
+    currentPage: p.page,
+    boardMode: p.mode,
+  };
 }
 
 // page:remove/page:insert'ning teskarisi — bular sahifalar ro'yxati va
