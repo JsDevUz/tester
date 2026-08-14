@@ -1121,11 +1121,38 @@ export class ClassroomService implements OnModuleInit {
     }
 
     const page = afterPageIndex + 1;
-    const copiedStrokes = strokes.map((stroke) => ({
-      ...stroke,
-      id: crypto.randomUUID(),
-      points: [...stroke.points],
-    }));
+    // Connectorlar (startBinding, endBinding) nusxalangan shakllarning yangi
+    // ID lariga to'g'ri bog'lanib qolishi uchun barcha ID larni remap qilamiz.
+    const idMap = new Map<string, string>();
+    for (const stroke of strokes) {
+      if (stroke?.id) {
+        idMap.set(stroke.id, crypto.randomUUID());
+      }
+    }
+
+    const copiedStrokes = strokes.map((stroke) => {
+      const newId = idMap.get(stroke.id) ?? crypto.randomUUID();
+      const startBinding = stroke.startBinding
+        ? {
+            ...stroke.startBinding,
+            strokeId: idMap.get(stroke.startBinding.strokeId) ?? stroke.startBinding.strokeId,
+          }
+        : undefined;
+      const endBinding = stroke.endBinding
+        ? {
+            ...stroke.endBinding,
+            strokeId: idMap.get(stroke.endBinding.strokeId) ?? stroke.endBinding.strokeId,
+          }
+        : undefined;
+
+      return {
+        ...stroke,
+        id: newId,
+        points: [...stroke.points],
+        startBinding,
+        endBinding,
+      };
+    });
     strokeMapFor(s, mode).set(page, copiedStrokes);
 
     if (mode === 'pdf') {

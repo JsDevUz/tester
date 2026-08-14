@@ -1,6 +1,67 @@
 import type { CsShapeBinding, CsStroke } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
 
+export function getGhostShapeBounds(
+  source: CsStroke,
+  side: "top" | "right" | "bottom" | "left",
+  size: { w: number; h: number },
+) {
+  let minX: number, maxX: number, minY: number, maxY: number, w: number, h: number;
+  if (source.tool === "text") {
+    minX = source.points[0];
+    minY = source.points[1];
+    w = (source.textBoxWidth ?? 320) / REF_WIDTH;
+    h = ((source.textBoxHeight ?? 120) * (size.w / REF_WIDTH)) / Math.max(size.h, 1);
+    maxX = minX + w;
+    maxY = minY + h;
+  } else {
+    minX = Math.min(source.points[0], source.points[2]);
+    maxX = Math.max(source.points[0], source.points[2]);
+    minY = Math.min(source.points[1], source.points[3]);
+    maxY = Math.max(source.points[1], source.points[3]);
+    w = maxX - minX;
+    h = maxY - minY;
+  }
+  const cx = (minX + maxX) / 2;
+  const cy = (minY + maxY) / 2;
+
+  const gapX = Math.max(0.04, 60 / Math.max(size.w, 1));
+  const gapY = Math.max(0.04, 60 / Math.max(size.h, 1));
+
+  let newMinX = minX;
+  let newMinY = minY;
+
+  if (side === "right") {
+    newMinX = maxX + gapX;
+    newMinY = cy - h / 2;
+  } else if (side === "left") {
+    newMinX = minX - gapX - w;
+    newMinY = cy - h / 2;
+  } else if (side === "bottom") {
+    newMinX = cx - w / 2;
+    newMinY = maxY + gapY;
+  } else if (side === "top") {
+    newMinX = cx - w / 2;
+    newMinY = minY - gapY - h;
+  }
+
+  const boundedMinX = Math.max(0.01, Math.min(0.99 - w, newMinX));
+  const boundedMinY = Math.max(0.01, Math.min(0.99 - h, newMinY));
+  const boundedMaxX = boundedMinX + w;
+  const boundedMaxY = boundedMinY + h;
+
+  return {
+    minX: boundedMinX,
+    minY: boundedMinY,
+    maxX: boundedMaxX,
+    maxY: boundedMaxY,
+    width: w,
+    height: h,
+    rotation: source.rotation ?? 0,
+    tool: source.tool === "ellipse" ? "ellipse" : "rectangle",
+  };
+}
+
 export function connectorCurvePoint(
   stroke: CsStroke,
   t: number,
