@@ -131,28 +131,30 @@ function updateStrokeListInState(
   updateFn: (list: CsStroke[]) => CsStroke[]
 ): ClassroomState {
   const isRight = p.pane === "right";
-  const targetMode = p.mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? "pdf";
+  const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
+  const activeRightMode = s.rightBoardMode ?? s.boardMode ?? "pdf";
+  const targetMode = p.mode ?? (isRight ? activeRightMode : activeLeftMode) ?? "pdf";
 
   if (s.strokesByMode || s.isReplay) {
-    const byMode = s.strokesByMode ?? {
+    const byMode: Record<string, Record<number, CsStroke[]>> = s.strokesByMode ?? {
       pdf: { ...(s.strokesByPage ?? {}) },
       notebook: {},
     };
     const modeObj = byMode[targetMode] ?? {};
-    const pageStrokes = modeObj[p.page] ?? [];
+    const fallbackStrokes = targetMode === (isRight ? activeRightMode : activeLeftMode)
+      ? (isRight ? (s.rightStrokesByPage[p.page] ?? []) : (s.strokesByPage[p.page] ?? []))
+      : [];
+    const pageStrokes = modeObj[p.page] ?? fallbackStrokes;
     const nextStrokes = updateFn(pageStrokes);
 
     const nextModeObj = { ...modeObj, [p.page]: nextStrokes };
     const nextByMode = { ...byMode, [targetMode]: nextModeObj };
 
-    const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? "pdf";
-    const activeRightMode = s.rightBoardMode ?? s.boardMode ?? "pdf";
-
     return {
       ...s,
       strokesByMode: nextByMode,
-      strokesByPage: nextByMode[activeLeftMode] ?? s.strokesByPage,
-      rightStrokesByPage: nextByMode[activeRightMode] ?? s.rightStrokesByPage,
+      strokesByPage: nextByMode[activeLeftMode] ?? {},
+      rightStrokesByPage: nextByMode[activeRightMode] ?? {},
     };
   }
 

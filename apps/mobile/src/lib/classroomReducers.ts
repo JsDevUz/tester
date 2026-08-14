@@ -179,28 +179,30 @@ export function optimistikApplyToPage(
   updateFn: (list: CsStroke[]) => CsStroke[],
 ): ClassroomState {
   const isRight = pane === 'right';
-  const targetMode = (mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? 'pdf') as CsBoardMode;
+  const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? 'pdf';
+  const activeRightMode = s.rightBoardMode ?? s.boardMode ?? 'pdf';
+  const targetMode = (mode ?? (isRight ? activeRightMode : activeLeftMode) ?? 'pdf') as CsBoardMode;
 
   if (s.strokesByMode || s.isReplay) {
-    const byMode = s.strokesByMode ?? {
+    const byMode: Record<string, Record<number, CsStroke[]>> = s.strokesByMode ?? {
       pdf: { ...(s.strokesByPage ?? {}) },
       notebook: {},
     };
     const modeObj = byMode[targetMode] ?? {};
-    const pageStrokes = modeObj[page] ?? [];
+    const fallbackStrokes = targetMode === (isRight ? activeRightMode : activeLeftMode)
+      ? (isRight ? (s.rightStrokesByPage[page] ?? []) : (s.strokesByPage[page] ?? []))
+      : [];
+    const pageStrokes = modeObj[page] ?? fallbackStrokes;
     const nextStrokes = updateFn(pageStrokes);
 
     const nextModeObj = { ...modeObj, [page]: nextStrokes };
     const nextByMode = { ...byMode, [targetMode]: nextModeObj };
 
-    const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? 'pdf';
-    const activeRightMode = s.rightBoardMode ?? s.boardMode ?? 'pdf';
-
     return {
       ...s,
       strokesByMode: nextByMode,
-      strokesByPage: nextByMode[activeLeftMode] ?? s.strokesByPage,
-      rightStrokesByPage: nextByMode[activeRightMode] ?? s.rightStrokesByPage,
+      strokesByPage: nextByMode[activeLeftMode] ?? {},
+      rightStrokesByPage: nextByMode[activeRightMode] ?? {},
     };
   }
 

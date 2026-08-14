@@ -542,7 +542,10 @@ export function useClassroomSession(
       }));
       emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode, groupId });
     },
-    clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => emitHost("host:clearPage", { page, pane, mode, groupId }),
+    clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
+      setState((s) => applyPageClear(s, { page, pane, mode }));
+      emitHost("host:clearPage", { page, pane, mode, groupId });
+    },
     // ~30ms throttle: pointermove juda tez-tez otiladi, lekin ko'zga bu
     // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
     // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida
