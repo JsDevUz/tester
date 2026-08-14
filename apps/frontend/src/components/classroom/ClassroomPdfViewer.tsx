@@ -6417,8 +6417,10 @@ export function ClassroomPdfViewer({
   ]);
 
   const changeDisplayMode = (mode: CsBoardMode) => {
+    setDisplayMode(mode);
+    setLeftMode(mode);
+    setRightMode(mode);
     if (isHost) onBoardModeChange?.(mode);
-    else if (!synced) setDisplayMode(mode);
   };
 
   const toggleSplit = () => {
@@ -6721,12 +6723,13 @@ export function ClassroomPdfViewer({
                       // muzlatib ("Yuklanmoqda...") qo'yardi. Faqat joriy ko'rinayotgan
                       // va unga yaqin sahifalar (±5) to'liq render qilinadi; qolganlari
                       // proporsiyasini saqlaydigan yengil placeholder div bilan almashtiriladi.
-                      const centerPage = paneIndex === 1 ? (rightHostScroll?.page ?? currentPage) : currentPage;
+                      const rawCenterPage = paneIndex === 1 ? (rightHostScroll?.page ?? currentPage) : currentPage;
+                      const centerPage = Math.min(totalPages, Math.max(1, rawCenterPage));
                       const isNearCurrentPage =
                         totalPages <= 10 ||
                         Math.abs(pageNumber - centerPage) <= 5 ||
                         pageNumber === 1 ||
-                        pageNumber === currentPage;
+                        pageNumber === centerPage;
 
                       if (!isNearCurrentPage) {
                         const isNotebook = paneMode === "notebook";

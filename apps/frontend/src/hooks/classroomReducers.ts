@@ -35,6 +35,8 @@ export function applyPdfSet(s: ClassroomState, p: { pdfName: string; pages: stri
 export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }): ClassroomState {
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
+  const targetPageCount = leftMode === "notebook" ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (s.pages?.length || 1);
+  const clampedCurrentPage = Math.min(Math.max(1, p.currentPage || s.currentPage || 1), Math.max(1, targetPageCount));
 
   if (s.strokesByMode || s.isReplay) {
     const byMode = s.strokesByMode ?? {
@@ -52,7 +54,7 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
       boardLayout: p.layout ?? "single",
       leftBoardMode: leftMode,
       rightBoardMode: rightMode,
-      currentPage: p.currentPage,
+      currentPage: clampedCurrentPage,
       strokesByMode: nextByMode,
       strokesByPage: nextByMode[leftMode] ?? {},
       rightStrokesByPage: nextByMode[rightMode] ?? {},
@@ -62,7 +64,7 @@ export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?
     };
   }
 
-  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: p.currentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, notebookPageCount: p.notebookPageCount ?? s.notebookPageCount, pointer: null, scroll: null };
+  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: clampedCurrentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, notebookPageCount: p.notebookPageCount ?? s.notebookPageCount, pointer: null, scroll: null };
 }
 
 export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomState {

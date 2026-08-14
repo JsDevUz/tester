@@ -15,6 +15,7 @@ const ARROW_HEAD_ANGLE = Math.PI / 7;
 const laserStartTimeMap = new Map<string, number>();
 
 function getLaserStartTime(s: CsStroke): number {
+  if (s.id === "__draft__") return Date.now();
   if (s.createdAt) return s.createdAt;
   let start = laserStartTimeMap.get(s.id);
   if (!start) {
@@ -585,9 +586,10 @@ export function drawStroke(
     return;
   }
   if (s.tool === "laser") {
+    const isDraft = s.id === "__draft__";
     const now = Date.now();
     const startTime = getLaserStartTime(s);
-    const elapsed = (now - startTime) / 1000;
+    const elapsed = isDraft ? 0 : (now - startTime) / 1000;
     if (elapsed >= 3) {
       return;
     }
@@ -600,40 +602,58 @@ export function drawStroke(
     ctx.lineJoin = "round";
     const laserColor = s.color && s.color !== "#000000" ? s.color : "#ff2b2b";
     ctx.strokeStyle = laserColor;
-    ctx.shadowColor = laserColor;
-    ctx.shadowBlur = Math.max(8, (s.width || 4) * 2.5);
-    ctx.lineWidth = Math.max(3, s.width * (w / REF_WIDTH));
-    ctx.globalAlpha = (dimmed ? 0.25 : 1) * Math.max(0, Math.min(1, laserAlpha));
+    const baseAlpha = (dimmed ? 0.25 : 1) * Math.max(0, Math.min(1, laserAlpha));
+    const lineWidth = Math.max(3, (s.width || 4) * (w / REF_WIDTH));
 
-    ctx.beginPath();
-    if (s.points.length === 2) {
-      ctx.moveTo(s.points[0] * w, s.points[1] * h);
-      ctx.lineTo(s.points[0] * w + 0.5, s.points[1] * h + 0.5);
-    } else if (s.points.length === 4) {
-      ctx.moveTo(s.points[0] * w, s.points[1] * h);
-      ctx.lineTo(s.points[2] * w, s.points[3] * h);
-    } else {
-      ctx.moveTo(s.points[0] * w, s.points[1] * h);
-      let prevX = s.points[0] * w;
-      let prevY = s.points[1] * h;
-      for (let i = 2; i + 1 < s.points.length; i += 2) {
-        const curX = s.points[i] * w;
-        const curY = s.points[i + 1] * h;
-        const midX = (prevX + curX) / 2;
-        const midY = (prevY + curY) / 2;
-        ctx.quadraticCurveTo(prevX, prevY, midX, midY);
-        prevX = curX;
-        prevY = curY;
+    const drawPath = () => {
+      ctx.beginPath();
+      if (s.points.length === 2) {
+        ctx.moveTo(s.points[0] * w, s.points[1] * h);
+        ctx.lineTo(s.points[0] * w + 0.5, s.points[1] * h + 0.5);
+      } else if (s.points.length === 4) {
+        ctx.moveTo(s.points[0] * w, s.points[1] * h);
+        ctx.lineTo(s.points[2] * w, s.points[3] * h);
+      } else {
+        ctx.moveTo(s.points[0] * w, s.points[1] * h);
+        let prevX = s.points[0] * w;
+        let prevY = s.points[1] * h;
+        for (let i = 2; i + 1 < s.points.length; i += 2) {
+          const curX = s.points[i] * w;
+          const curY = s.points[i + 1] * h;
+          const midX = (prevX + curX) / 2;
+          const midY = (prevY + curY) / 2;
+          ctx.quadraticCurveTo(prevX, prevY, midX, midY);
+          prevX = curX;
+          prevY = curY;
+        }
+        ctx.lineTo(prevX, prevY);
       }
-      ctx.lineTo(prevX, prevY);
-    }
+    };
+
+    // Outer soft glowing aura pass (no shadowBlur overhead)
+    ctx.globalAlpha = baseAlpha * 0.28;
+    ctx.lineWidth = lineWidth * 2.2;
+    drawPath();
+    ctx.stroke();
+
+    // Core crisp laser beam pass
+    ctx.globalAlpha = baseAlpha;
+    ctx.lineWidth = lineWidth;
+    drawPath();
     ctx.stroke();
 
     if (s.points.length >= 2) {
       const tipX = s.points[s.points.length - 2] * w;
       const tipY = s.points[s.points.length - 1] * h;
-      const dotRadius = Math.max(4, (s.width * (w / REF_WIDTH)) * 1.1);
+      const dotRadius = Math.max(4, lineWidth * 1.1);
+
       ctx.fillStyle = laserColor;
+      ctx.globalAlpha = baseAlpha * 0.3;
+      ctx.beginPath();
+      ctx.arc(tipX, tipY, dotRadius * 1.6, 0, Math.PI * 2);
+      ctx.fill();
+
+      ctx.globalAlpha = baseAlpha;
       ctx.beginPath();
       ctx.arc(tipX, tipY, dotRadius, 0, Math.PI * 2);
       ctx.fill();
