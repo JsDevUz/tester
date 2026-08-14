@@ -57,7 +57,7 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
       if (user.role !== 'teacher' && user.role !== 'super') throw new Error('UNAUTHORIZED');
       const state = await this.classroomService.withSession(
         body.sessionId,
-        () => this.classroomService.hostJoinRestored(body.sessionId, user.sub, client.id),
+        () => this.classroomService.hostJoinRestored(body.sessionId, user.sub, client.id, user.role),
       );
       void client.join(`cs:${body.sessionId}`);
       return { ok: true, state };

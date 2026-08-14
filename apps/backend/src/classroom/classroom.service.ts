@@ -489,10 +489,10 @@ export class ClassroomService implements OnModuleInit {
     return buildSnapshot(s);
   }
 
-  async hostJoinRestored(sessionId: string, userId: string, socketId: string): Promise<ClassroomSnapshot> {
+  async hostJoinRestored(sessionId: string, userId: string, socketId: string, role?: string): Promise<ClassroomSnapshot> {
     const s = await this.getOrRestoreSession(sessionId, userId);
     if (!s) throw new Error('SESSION_NOT_FOUND');
-    if (s.hostUserId !== userId) throw new Error('FORBIDDEN');
+    if (s.hostUserId !== userId && role !== 'super') throw new Error('FORBIDDEN');
     if (s.hostDisconnectTimer) { clearTimeout(s.hostDisconnectTimer); s.hostDisconnectTimer = null; }
     s.hostSocketId = socketId;
     await this.indexSocket(socketId, sessionId);
@@ -1446,9 +1446,14 @@ export class ClassroomService implements OnModuleInit {
     });
     if (!row) return null;
     if (row.status !== 'active') {
-      // Faqat erkin dars egasi eski host URL orqali o'z darsini qayta
-      // ochishi mumkin. Student/begona user va kurs darsi avtomatik ochilmaydi.
-      if (!restoringHostId || (row.courseId !== null && !row.isBoard) || row.teacherId !== restoringHostId) return null;
+      const isBoard = row.isBoard === true || (row.courseId === null && row.title !== null);
+      const isOwner = restoringHostId && (row.teacherId === restoringHostId || row.course?.adminId === restoringHostId);
+      const isFreeSession = row.courseId === null;
+
+      // Doska (isBoard) har doim qayta ochiladi (hujjat).
+      // Erkin dars (isFreeSession) egasi kirganda qayta ochiladi.
+      const canRestore = isBoard || (isFreeSession && isOwner);
+      if (!canRestore) return null;
       await db.update(classSessions)
         .set({ status: 'active', endedAt: null })
         .where(eq(classSessions.id, sessionId));

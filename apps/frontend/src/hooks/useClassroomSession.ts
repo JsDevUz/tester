@@ -148,7 +148,11 @@ export function useClassroomSession(
     }
     const socket = getClassroomSocket();
 
+    let retryTimer: number | null = null;
+    let attempts = 0;
+
     const join = () => {
+      attempts++;
       const joinPayload: Record<string, unknown> = { sessionId, token };
       // Login qilmagan mehmon uchun: token bo'sh, o'rniga guestId+guestName
       // yuboriladi — erkin darsda server buni qabul qiladi.
@@ -156,18 +160,27 @@ export function useClassroomSession(
         joinPayload.guestId = getGuestId();
         joinPayload.guestName = guestName;
       }
-      socket.timeout(5_000).emit(
+      socket.timeout(15_000).emit(
         role === "host" ? "host:join" : "student:join",
         joinPayload,
         (timeoutError: Error | null, res?: { ok: boolean; code?: string; state?: CsSnapshot }) => {
           if (timeoutError) {
+            if (attempts < 3) {
+              retryTimer = window.setTimeout(join, 1500);
+              return;
+            }
             setState((s) => ({ ...s, error: "CONNECTION_TIMEOUT" }));
             return;
           }
           if (!res?.ok || !res.state) {
+            if ((res?.code === "SESSION_BUSY" || res?.code === "CONNECTION_TIMEOUT") && attempts < 3) {
+              retryTimer = window.setTimeout(join, 1500);
+              return;
+            }
             setState((s) => ({ ...s, error: res?.code ?? "ERROR" }));
             return;
           }
+          attempts = 0;
           const snap = res.state;
           setState({
             joined: true, error: null, ended: false,
@@ -383,6 +396,7 @@ export function useClassroomSession(
       socket.off("session:ended");
       socket.off("reaction:receive");
       socket.off("hand:update");
+      if (retryTimer) window.clearTimeout(retryTimer);
       if (pointerThrottleTimerRef.current) window.clearTimeout(pointerThrottleTimerRef.current);
       closeClassroomSocket();
     };

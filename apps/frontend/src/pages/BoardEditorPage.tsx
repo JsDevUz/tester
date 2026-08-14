@@ -213,19 +213,35 @@ export function BoardEditorPage() {
   }, []);
 
   if (state.error) {
+    const errorText =
+      state.error === "FORBIDDEN"
+        ? "Ushbu doskani ko'rish huquqingiz yo'q"
+        : state.error === "CONNECTION_TIMEOUT"
+        ? "Internet yoki server bilan ulanish vaqti tugadi"
+        : "Doska topilmadi yoki ochib bo'lmadi";
+
     return (
       <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 p-6">
         <PenLine size={48} className="text-gray-300" />
-        <p className="text-gray-600 text-center">
-          Doska topilmadi yoki ochib bo'lmadi
+        <p className="text-gray-600 text-center font-medium">
+          {errorText}
         </p>
-        <button
-          type="button"
-          onClick={() => navigate("/boards")}
-          className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium"
-        >
-          Doskalar ro'yxatiga qaytish
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => window.location.reload()}
+            className="px-4 py-2 rounded-xl bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 transition-colors"
+          >
+            Qayta urinish
+          </button>
+          <button
+            type="button"
+            onClick={() => navigate("/boards")}
+            className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
+          >
+            Doskalar ro'yxatiga qaytish
+          </button>
+        </div>
       </div>
     );
   }

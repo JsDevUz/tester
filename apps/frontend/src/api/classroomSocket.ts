@@ -12,8 +12,10 @@ export function getClassroomSocket(): Socket {
       transports: ['websocket', 'polling'],
       upgrade: true,
       rememberUpgrade: true,
-      timeout: 5_000,
+      timeout: 15_000,
       reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
     });
   }
   return socket;
