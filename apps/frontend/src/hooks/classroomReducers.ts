@@ -365,6 +365,48 @@ function applyStrokeTextInverseClient(
   return { ...source, [page]: exists ? list.map((s) => s.id === data.strokeId ? data.after : s) : [...list, data.after] };
 }
 
+function applyStrokeSplitInverseClient(
+  source: Record<number, CsStroke[]>, page: number,
+  data: { strokeId: string; before: { stroke: CsStroke; index: number }; after: { replacements: CsStroke[] } },
+  direction: "undo" | "redo",
+): Record<number, CsStroke[]> {
+  const list = source[page] ?? [];
+  if (direction === "undo") {
+    const replacementIds = new Set(data.after.replacements.map((r) => r.id));
+    const filtered = list.filter((s) => !replacementIds.has(s.id));
+    const next = [...filtered];
+    const insertIdx = Math.min(next.length, Math.max(0, data.before.index));
+    next.splice(insertIdx, 0, data.before.stroke);
+    return { ...source, [page]: next };
+  }
+  const filtered = list.filter((s) => s.id !== data.before.stroke.id);
+  const insertIdx = Math.min(filtered.length, Math.max(0, data.before.index));
+  const next = [...filtered];
+  next.splice(insertIdx, 0, ...data.after.replacements);
+  return { ...source, [page]: next };
+}
+
+function applyPageClearInverseClient(
+  source: Record<number, CsStroke[]>, page: number,
+  data: { before: { strokes: CsStroke[] } },
+  direction: "undo" | "redo",
+): Record<number, CsStroke[]> {
+  if (direction === "undo") {
+    return { ...source, [page]: [...data.before.strokes] };
+  }
+  return { ...source, [page]: [] };
+}
+
+function applyNotebookPageStyleInverseClient(
+  s: ClassroomState, page: number,
+  data: { before: { style: CsNotebookStyle }; after: { style: CsNotebookStyle } },
+  direction: "undo" | "redo",
+): ClassroomState {
+  const targetStyle = direction === "undo" ? data.before.style : data.after.style;
+  const notebookPageStyles = { ...(s.notebookPageStyles ?? {}), [page]: targetStyle };
+  return { ...s, notebookPageStyles };
+}
+
 function applyBoardUndoRedo(
   s: ClassroomState,
   p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after?: unknown },
@@ -374,17 +416,27 @@ function applyBoardUndoRedo(
   const key = pane === "right" ? "rightStrokesByPage" : "strokesByPage";
   const source = s[key];
 
+  if (p.entryType === "notebook:pageStyle") {
+    return applyNotebookPageStyleInverseClient(s, p.page, {
+      before: p.before as { style: CsNotebookStyle },
+      after: p.after as { style: CsNotebookStyle },
+    }, direction);
+  }
+
   let nextSource: Record<number, CsStroke[]> | null = null;
   switch (p.entryType) {
     case "stroke:add":
-      // stroke:add yozuvida before har doim null (yangi chizma qo'shilishidan
-      // oldin "avvalgi holat" yo'q) — haqiqiy stroke ma'lumoti faqat afterda,
-      // shuning uchun ikkala yo'nalishda ham afterdan olinadi (direction'ning
-      // o'zi funksiya ichida o'chirish/qo'shishni hal qiladi).
       nextSource = applyStrokeAddInverseClient(source, p.page, p.after as { stroke: CsStroke }, direction);
       break;
     case "stroke:erase":
       nextSource = applyStrokeEraseInverseClient(source, p.page, p.before as { stroke: CsStroke; index: number }, direction);
+      break;
+    case "stroke:split":
+      nextSource = applyStrokeSplitInverseClient(source, p.page, {
+        strokeId: p.strokeId!,
+        before: p.before as { stroke: CsStroke; index: number },
+        after: p.after as { replacements: CsStroke[] },
+      }, direction);
       break;
     case "stroke:transform":
     case "stroke:style":
@@ -404,12 +456,10 @@ function applyBoardUndoRedo(
     case "stroke:reorder":
       nextSource = applyStrokeReorderInverseClient(source, p.page, { before: p.before as { order: string[] }, after: p.after as { order: string[] } }, direction);
       break;
+    case "page:clear":
+      nextSource = applyPageClearInverseClient(source, p.page, { before: p.before as { strokes: CsStroke[] } }, direction);
+      break;
     default:
-      // page:remove / page:insert: bu ikkalasi sahifalar ro'yxati va
-      // notebookPageCount/Styles'ni ham o'zgartiradi — bu funksiya faqat
-      // stroke-darajasidagi turlarni qamrab oladi. Sahifa-darajasidagi
-      // undo/redo alohida (quyida applyBoardUndo/applyBoardRedo ichida
-      // to'liq) ishlanadi.
       return s;
   }
 

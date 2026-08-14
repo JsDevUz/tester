@@ -151,6 +151,9 @@ export function ClassroomHostPage() {
   useHotkeys("mod+shift+z", () => hostActions.redo(), {
     preventDefault: true,
   });
+  useHotkeys("mod+y", () => hostActions.redo(), {
+    preventDefault: true,
+  });
 
   const handleAttachPages = async (pageNumbers: number[]) => {
     if (!id || !pageSelectAsset) return;
@@ -394,10 +397,10 @@ export function ClassroomHostPage() {
                 hostActions.eraseStroke(page, strokeId, "left", state.boardMode, groupId)
               }
               onPaneEraseStroke={(pane, mode, page, strokeId, groupId) => hostActions.eraseStroke(page, strokeId, pane, mode, groupId)}
-              onSplitStroke={(page, strokeId, replacements) =>
-                hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode)
+              onSplitStroke={(page, strokeId, replacements, groupId) =>
+                hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode, groupId)
               }
-              onPaneSplitStroke={(pane, mode, page, strokeId, replacements) => hostActions.splitStroke(page, strokeId, replacements, pane, mode)}
+              onPaneSplitStroke={(pane, mode, page, strokeId, replacements, groupId) => hostActions.splitStroke(page, strokeId, replacements, pane, mode, groupId)}
               boardMode={state.boardMode}
               onBoardModeChange={(mode) => hostActions.setBoardMode(mode)}
               boardLayout={state.boardLayout}

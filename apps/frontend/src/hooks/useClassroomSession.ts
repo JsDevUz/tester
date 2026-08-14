@@ -530,7 +530,7 @@ export function useClassroomSession(
     },
     // Pixel-eraser: bitta chizmani (segment-darajasida kesilgan) bir nechta
     // yangi chizmalar bilan optimistik almashtiradi.
-    splitStroke: (page: number, strokeId: string, replacements: CsStroke[], pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => {
+    splitStroke: (page: number, strokeId: string, replacements: CsStroke[], pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => {
       setState((s) => optimistikApplyToPage(s, page, pane, mode, (list) => {
         const idx = list.findIndex((x) => x.id === strokeId);
         if (idx === -1) return list;
@@ -538,9 +538,9 @@ export function useClassroomSession(
         next.splice(idx, 1, ...replacements);
         return next;
       }));
-      emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode });
+      emitHost("host:splitStroke", { page, strokeId, replacements, pane, mode, groupId });
     },
-    clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf") => emitHost("host:clearPage", { page, pane, mode }),
+    clearPage: (page: number, pane: "left" | "right" = "left", mode: "pdf" | "notebook" = "pdf", groupId?: string) => emitHost("host:clearPage", { page, pane, mode, groupId }),
     // ~30ms throttle: pointermove juda tez-tez otiladi, lekin ko'zga bu
     // aniqlik shart emas. "active: false" (barmoq/sichqoncha ko'tarilishi)
     // hech qachon throttle'lanmaydi — aks holda kursor oxirgi joyida

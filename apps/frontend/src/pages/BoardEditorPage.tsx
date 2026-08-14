@@ -132,6 +132,7 @@ export function BoardEditorPage() {
   useHotkeys("l", () => setStrokeWidth(7), hotkeyOptions);
   useHotkeys("mod+z", () => hostActions.undo(), hotkeyOptions);
   useHotkeys("mod+shift+z", () => hostActions.redo(), hotkeyOptions);
+  useHotkeys("mod+y", () => hostActions.redo(), hotkeyOptions);
 
   useEffect(() => {
     if (state.title) setBoardTitle(state.title);
@@ -387,11 +388,11 @@ export function BoardEditorPage() {
           onPaneEraseStroke={(pane, mode, page, strokeId, groupId) =>
             hostActions.eraseStroke(page, strokeId, pane, mode, groupId)
           }
-          onSplitStroke={(page, strokeId, replacements) =>
-            hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode)
+          onSplitStroke={(page, strokeId, replacements, groupId) =>
+            hostActions.splitStroke(page, strokeId, replacements, "left", state.boardMode, groupId)
           }
-          onPaneSplitStroke={(pane, mode, page, strokeId, replacements) =>
-            hostActions.splitStroke(page, strokeId, replacements, pane, mode)
+          onPaneSplitStroke={(pane, mode, page, strokeId, replacements, groupId) =>
+            hostActions.splitStroke(page, strokeId, replacements, pane, mode, groupId)
           }
           boardMode={state.boardMode}
           onBoardModeChange={hostActions.setBoardMode}

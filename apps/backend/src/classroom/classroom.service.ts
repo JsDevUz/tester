@@ -13,8 +13,8 @@ import { MediaLibraryService } from '../upload/media-library.service';
 import { PracticeMessengerGateway } from '../practice-messenger/practice-messenger.gateway';
 import { ClassroomRecordingService } from './classroom-recording.service';
 import {
-  addStroke, applyPageInsertInverse, applyPageRemoveInverse, applyStrokeAddInverse, applyStrokeEraseInverse,
-  applyStrokeReorderInverse, applyStrokeStyleInverse, applyStrokeTextInverse, applyStrokeTransformInverse,
+  addStroke, applyNotebookPageStyleInverse, applyPageClearInverse, applyPageInsertInverse, applyPageRemoveInverse, applyStrokeAddInverse, applyStrokeEraseInverse,
+  applyStrokeReorderInverse, applyStrokeSplitInverse, applyStrokeStyleInverse, applyStrokeTextInverse, applyStrokeTransformInverse,
   attendanceStatusOnJoin, buildSnapshot, clearPage as clearPageStrokes,
   closeInterval, eraseStroke as eraseStrokeById, HOST_GRACE_MS, insertNotebookPageIntoSession, insertPdfPagesIntoSession, isValidPage,
   pushUndoEntry, removePageFromSession,
@@ -1600,7 +1600,9 @@ export class ClassroomService implements OnModuleInit {
     const accepted = addStroke(s, page, stroke, strokeMapFor(s, mode));
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
-    pushUndoEntry(s, { type: 'stroke:add', mode, page, pane, before: null, after: { stroke }, groupId });
+    if (stroke.tool !== 'laser') {
+      pushUndoEntry(s, { type: 'stroke:add', mode, page, pane, before: null, after: { stroke }, groupId });
+    }
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:add', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:add', payload);
@@ -1825,6 +1827,13 @@ export class ClassroomService implements OnModuleInit {
       case 'stroke:erase':
         applyStrokeEraseInverse(s, entry.mode, entry.page, entry.before as { stroke: ClassroomStroke; index: number }, direction);
         break;
+      case 'stroke:split':
+        applyStrokeSplitInverse(s, entry.mode, entry.page, {
+          strokeId: entry.strokeId!,
+          before: entry.before as { stroke: ClassroomStroke; index: number },
+          after: entry.after as { replacements: ClassroomStroke[] },
+        }, direction);
+        break;
       case 'stroke:transform':
         applyStrokeTransformInverse(s, entry.mode, entry.page, {
           strokeId: entry.strokeId!,
@@ -1850,6 +1859,15 @@ export class ClassroomService implements OnModuleInit {
         applyStrokeReorderInverse(s, entry.mode, entry.page, {
           before: entry.before as { order: string[] },
           after: entry.after as { order: string[] },
+        }, direction);
+        break;
+      case 'page:clear':
+        applyPageClearInverse(s, entry.mode, entry.page, entry.before as { strokes: ClassroomStroke[] }, direction);
+        break;
+      case 'notebook:pageStyle':
+        applyNotebookPageStyleInverse(s, entry.page, {
+          before: entry.before as { style: ClassroomNotebookStyle },
+          after: entry.after as { style: ClassroomNotebookStyle },
         }, direction);
         break;
       case 'page:remove':
@@ -1909,26 +1927,56 @@ export class ClassroomService implements OnModuleInit {
   // o'chiradi — qolgan uzluksiz bo'laklari yangi alohida chizmalar bo'lib qoladi.
   splitStroke(
     sessionId: string, userId: string, page: number, strokeId: string, replacements: ClassroomStroke[],
-    mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left',
+    mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string,
   ): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    const accepted = splitStrokeInSession(s, page, strokeId, replacements, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const list = map.get(page) ?? [];
+    const index = list.findIndex((item) => item.id === strokeId);
+    const strokeBeforeSplit = index !== -1 ? list[index] : undefined;
+
+    const accepted = splitStrokeInSession(s, page, strokeId, replacements, map);
     s.boardMode = previousMode;
     if (!accepted) throw new Error('INVALID_STROKE');
+    if (strokeBeforeSplit) {
+      pushUndoEntry(s, {
+        type: 'stroke:split',
+        mode,
+        page,
+        pane,
+        strokeId,
+        before: { stroke: strokeBeforeSplit, index },
+        after: { replacements },
+        groupId,
+      });
+    }
     const payload = { page, strokeId, replacements, pane, mode };
     this.recordHistoryEvent(s, 'stroke:split', payload);
     this.broadcaster.toRoom(sessionId, 'stroke:split', payload);
     this.onBoardMutation(s);
   }
 
-  clearPage(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left'): void {
+  clearPage(sessionId: string, userId: string, page: number, mode: 'pdf' | 'notebook' = 'pdf', pane: 'left' | 'right' = 'left', groupId?: string): void {
     const s = this.requireHost(sessionId, userId);
     const previousMode = s.boardMode;
     s.boardMode = mode;
-    clearPageStrokes(s, page, strokeMapFor(s, mode));
+    const map = strokeMapFor(s, mode);
+    const strokesBeforeClear = [...(map.get(page) ?? [])];
+    clearPageStrokes(s, page, map);
     s.boardMode = previousMode;
+    if (strokesBeforeClear.length > 0) {
+      pushUndoEntry(s, {
+        type: 'page:clear',
+        mode,
+        page,
+        pane,
+        before: { strokes: strokesBeforeClear },
+        after: null,
+        groupId,
+      });
+    }
     const payload = { page, pane, mode };
     this.recordHistoryEvent(s, 'page:clear', payload);
     this.broadcaster.toRoom(sessionId, 'page:clear', payload);
@@ -2065,10 +2113,19 @@ export class ClassroomService implements OnModuleInit {
     const s = this.requireHost(sessionId, userId);
     const count = s.notebookPageCount ?? 1;
     if (!Number.isInteger(page) || page < 1 || page > count) throw new Error('INVALID_NOTEBOOK_PAGE');
+    const oldStyle = resolveNotebookPageStyle(s, page);
     s.notebookPageStyles = { ...(s.notebookPageStyles ?? {}), [page]: style };
     if (page === 1) {
       s.notebookStyle = style;
     }
+    pushUndoEntry(s, {
+      type: 'notebook:pageStyle',
+      mode: 'notebook',
+      page,
+      pane: 'left',
+      before: { style: oldStyle },
+      after: { style },
+    });
     const payload = { page, style };
     this.recordHistoryEvent(s, 'notebook:pageStyle', payload);
     this.broadcaster.toRoom(s.id, 'notebook:pageStyle', payload);

@@ -219,6 +219,7 @@ interface Props {
     page: number,
     strokeId: string,
     replacements: CsStroke[],
+    groupId?: string,
   ) => void;
   onPaneSplitStroke?: (
     pane: "left" | "right",
@@ -226,6 +227,7 @@ interface Props {
     page: number,
     strokeId: string,
     replacements: CsStroke[],
+    groupId?: string,
   ) => void;
   // Ustoz qo'lda scroll qilib sahifa almashtirganda chaqiriladi (faqat isHost=true'da) —
   // shu orqali toolbar'dagi sahifa raqami va serverga yuboriladigan currentPage yangilanadi.
@@ -2182,6 +2184,7 @@ interface PageProps {
     page: number,
     strokeId: string,
     replacements: CsStroke[],
+    groupId?: string,
   ) => void;
   registerEl: (page: number, el: HTMLDivElement | null) => void;
   // Ota konteynerning joriy zoom darajasi — faqat canvas o'lchamini
@@ -2346,6 +2349,7 @@ function ClassroomPdfPage({
     }
   }, [activeSelectionKey]);
   const erasedThisDragRef = useRef<Set<string>>(new Set());
+  const eraserGroupIdRef = useRef<string | null>(null);
   const [size, setSize] = useState<{ w: number; h: number }>({ w: 0, h: 0 });
   const draftRef = useRef<number[] | null>(null);
   const draftPressuresRef = useRef<number[] | null>(null);
@@ -2637,7 +2641,7 @@ function ClassroomPdfPage({
   };
 
     const deleteStrokeAndAttachedConnectors = useCallback(
-    (strokeIdOrIds: string | string[]) => {
+    (strokeIdOrIds: string | string[], customGroupId?: string) => {
       const idsToDelete = new Set(Array.isArray(strokeIdOrIds) ? strokeIdOrIds : [strokeIdOrIds]);
       // Ushbu o'chirilayotgan shakl yoki matnlarga bog'langan barcha connectorlarni topamiz:
       for (const s of strokes) {
@@ -2650,7 +2654,7 @@ function ClassroomPdfPage({
           }
         }
       }
-      const batchGroupId = crypto.randomUUID();
+      const batchGroupId = customGroupId || eraserGroupIdRef.current || crypto.randomUUID();
       for (const id of idsToDelete) {
         onEraseStroke?.(pageNumber, id, batchGroupId);
       }
@@ -4278,6 +4282,7 @@ function ClassroomPdfPage({
       const hit = findStrokeAt(strokes, x, y, hitRadius);
       if (!hit || erasedThisDragRef.current.has(hit.id)) return;
       erasedThisDragRef.current.add(hit.id);
+      const groupId = eraserGroupIdRef.current || undefined;
       // Strelka, chiziq va shape (rectangle/ellipse) segmentlarga bo'linmaydi —
       // teginilsa butunlay o'chadi.
       if (
@@ -4286,13 +4291,13 @@ function ClassroomPdfPage({
         hit.tool === "rectangle" ||
         hit.tool === "ellipse"
       ) {
-        deleteStrokeAndAttachedConnectors(hit.id);
+        deleteStrokeAndAttachedConnectors(hit.id, groupId);
         return;
       }
       const remaining = eraseNearPoint(hit, x, y, hitRadius);
       if (remaining === null) return;
-      if (remaining.length === 0) deleteStrokeAndAttachedConnectors(hit.id);
-      else onSplitStroke?.(pageNumber, hit.id, remaining);
+      if (remaining.length === 0) deleteStrokeAndAttachedConnectors(hit.id, groupId);
+      else onSplitStroke?.(pageNumber, hit.id, remaining, groupId);
     },
     [strokes, strokeWidth, pageNumber, deleteStrokeAndAttachedConnectors, onSplitStroke],
   );
@@ -4473,24 +4478,23 @@ function ClassroomPdfPage({
       }
       return;
     }
-    if (tool === "eraser-pixel") {
+    if (tool === "eraser-pixel" || tool === "eraser-stroke") {
       draggingEraserRef.current = true;
       erasedThisDragRef.current = new Set();
-      erasePixelAt(p[0], p[1]);
-      return;
-    }
-    if (tool === "eraser-stroke") {
-      draggingEraserRef.current = true;
-      erasedThisDragRef.current = new Set();
-      const hit = findStrokeAt(
-        strokes,
-        p[0],
-        p[1],
-        eraseHitRadius(strokeWidth),
-      );
-      if (hit && !erasedThisDragRef.current.has(hit.id)) {
-        erasedThisDragRef.current.add(hit.id);
-        deleteStrokeAndAttachedConnectors(hit.id);
+      eraserGroupIdRef.current = crypto.randomUUID();
+      if (tool === "eraser-pixel") {
+        erasePixelAt(p[0], p[1]);
+      } else {
+        const hit = findStrokeAt(
+          strokes,
+          p[0],
+          p[1],
+          eraseHitRadius(strokeWidth),
+        );
+        if (hit && !erasedThisDragRef.current.has(hit.id)) {
+          erasedThisDragRef.current.add(hit.id);
+          deleteStrokeAndAttachedConnectors(hit.id, eraserGroupIdRef.current);
+        }
       }
       return;
     }
@@ -4729,6 +4733,7 @@ function ClassroomPdfPage({
     onPointerMove?.(pageNumber, 0, 0, false);
     if (isEraser) {
       draggingEraserRef.current = false;
+      eraserGroupIdRef.current = null;
       return;
     }
     if (draggingGroupRef.current) {

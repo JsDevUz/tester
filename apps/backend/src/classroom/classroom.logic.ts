@@ -122,21 +122,56 @@ export function applyStrokeTextInverse(
   }
 }
 
-// stroke:reorder'ning teskarisi — sahifadagi chizmalar massivini
-// belgilangan ID tartibiga qayta quradi (front/back/forward/backward
-// amalining oldingi/keyingi to'liq tartibi saqlangan).
-export function applyStrokeReorderInverse(
+// stroke:split'ning teskarisi — undo: bo'lingan sub-strokelarni o'chiradi va asl strokeni index bo'yicha tiklaydi.
+// redo: asl strokeni o'chiradi va replacements sub-strokelarini joylashtiradi.
+export function applyStrokeSplitInverse(
   session: ClassroomSession, mode: ClassroomBoardMode, page: number,
-  data: { before: { order: string[] }; after: { order: string[] } },
+  data: { strokeId: string; before: { stroke: ClassroomStroke; index: number }; after: { replacements: ClassroomStroke[] } },
   direction: 'undo' | 'redo',
 ): void {
   const map = strokeMapFor(session, mode);
-  const list = map.get(page);
-  if (!list) return;
-  const targetOrder = direction === 'undo' ? data.before.order : data.after.order;
-  const byId = new Map(list.map((s) => [s.id, s]));
-  const reordered = targetOrder.map((id) => byId.get(id)).filter((s): s is ClassroomStroke => s !== undefined);
-  map.set(page, reordered);
+  const list = map.get(page) ?? [];
+  if (direction === 'undo') {
+    const replacementIds = new Set(data.after.replacements.map((r) => r.id));
+    const filtered = list.filter((s) => !replacementIds.has(s.id));
+    const next = [...filtered];
+    const insertIdx = Math.min(next.length, Math.max(0, data.before.index));
+    next.splice(insertIdx, 0, data.before.stroke);
+    map.set(page, next);
+  } else {
+    const filtered = list.filter((s) => s.id !== data.before.stroke.id);
+    const insertIdx = Math.min(filtered.length, Math.max(0, data.before.index));
+    const next = [...filtered];
+    next.splice(insertIdx, 0, ...data.after.replacements);
+    map.set(page, next);
+  }
+}
+
+// page:clear'ning teskarisi — undo: tozalangan sahifaning o'chirilishdan oldingi barcha chizmalarini tiklaydi.
+// redo: sahifadagi barcha chizmalarni qayta tozalaydi.
+export function applyPageClearInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { before: { strokes: ClassroomStroke[] } },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  if (direction === 'undo') {
+    map.set(page, [...data.before.strokes]);
+  } else {
+    map.set(page, []);
+  }
+}
+
+// notebook:pageStyle'ning teskarisi — undo: daftar sahifasining oldingi naqshini tiklaydi.
+// redo: daftar sahifasining yangi naqshini o'rnatadi.
+export function applyNotebookPageStyleInverse(
+  session: ClassroomSession, page: number,
+  data: { before: { style: ClassroomNotebookStyle }; after: { style: ClassroomNotebookStyle } },
+  direction: 'undo' | 'redo',
+): void {
+  if (!session.notebookPageStyles) session.notebookPageStyles = {};
+  const targetStyle = direction === 'undo' ? data.before.style : data.after.style;
+  session.notebookPageStyles[page] = targetStyle;
 }
 
 export function strokeMapFor(
