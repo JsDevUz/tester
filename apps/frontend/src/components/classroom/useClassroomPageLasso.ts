@@ -25,7 +25,7 @@ interface UseClassroomPageLassoParams {
   onUpdateShapeStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   deleteStrokeAndAttachedConnectors: (strokeIdOrIds: string | string[]) => void;
   forceRedraw: React.Dispatch<React.SetStateAction<number>>;
-  surfaceRef: React.RefObject<HTMLDivElement | HTMLImageElement | null>;
+  surfaceRef: React.RefObject<HTMLElement | null>;
 }
 
 export function useClassroomPageLasso({

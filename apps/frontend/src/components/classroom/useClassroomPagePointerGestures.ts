@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { CsStroke, CsTool } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
-import { resolveConnector } from "./classroomShapeBindings";
+import { nearestShapeBinding, resolveConnector } from "./classroomShapeBindings";
 import {
   eraseHitRadius,
   eraseNearPoint,

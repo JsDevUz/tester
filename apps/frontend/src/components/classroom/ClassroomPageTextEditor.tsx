@@ -19,18 +19,20 @@ export interface ActiveTextEditorState {
   color: string;
   fontSize: number;
   fontFamily: CsFontFamily;
-  fontWeight: number;
+  fontWeight: 400 | 500 | 600 | 700;
   textAlign: "left" | "center" | "right";
   verticalAlign?: "top" | "middle" | "bottom";
+  textBoxWidth?: number;
+  textBoxHeight?: number;
   strokeId?: string;
 }
 
 interface ClassroomPageTextEditorProps {
   textEditor: ActiveTextEditorState;
   size: { w: number; h: number };
-  editorWidth: string;
-  editorHeight: string;
-  editorFontSize: string;
+  editorWidth: string | number;
+  editorHeight: string | number;
+  editorFontSize: string | number;
   editingShapeForPanel?: CsStroke | null;
   selectedShape?: CsStroke | null;
   showStylePanel: boolean;

@@ -1,10 +1,8 @@
 import { useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { CsStroke } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
-import {
-  nearestShapeBinding,
-  snapRotationAngle,
-} from "./classroomCanvasGeometry";
+import { snapRotationAngle } from "./classroomCanvasGeometry";
+import { nearestShapeBinding } from "./classroomShapeBindings";
 
 const CONNECTOR_REVEAL_DISTANCE_PX = 44;
 const CONNECTOR_SNAP_DISTANCE_PX = 14;
@@ -16,7 +14,7 @@ interface UseClassroomShapeTransformParams {
   selectedShape: CsStroke | null;
   selectedShapeRaw: CsStroke | null;
   selectedText: CsStroke | null;
-  surfaceRef: React.RefObject<HTMLDivElement | HTMLImageElement | null>;
+  surfaceRef: React.RefObject<HTMLElement | null>;
   onUpdateShapeStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   onUpdateTextStroke?: (page: number, stroke: CsStroke, groupId?: string) => void;
   setConnectorTarget: (target: any) => void;

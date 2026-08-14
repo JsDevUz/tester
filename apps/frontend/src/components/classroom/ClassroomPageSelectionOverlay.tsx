@@ -1,9 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { RotateCw } from "lucide-react";
-import type {
-  CsFontFamily,
-  CsStroke,
-} from "../../api/classroom";
+import type { CsStroke } from "../../api/classroom";
 import {
   REF_WIDTH,
   type ShapeStyle,
@@ -55,7 +52,7 @@ interface ClassroomPageSelectionOverlayProps {
   ) => void;
   beginShapeRotate: (event: ReactPointerEvent<HTMLButtonElement>) => void;
   transformShape: (event: ReactPointerEvent<HTMLButtonElement>) => void;
-  finishShapeTransform: (event: ReactPointerEvent<HTMLButtonElement>) => void;
+  finishShapeTransform: (event: ReactPointerEvent<HTMLElement>) => void;
   beginLineEndpointResize: (
     event: ReactPointerEvent<HTMLDivElement>,
     endpoint: "start" | "end" | "mid",

@@ -18,7 +18,7 @@ interface UseClassroomPageConnectorsParams {
   strokeWidth: number;
   shapeStyle: ShapeStyle;
   notebook: boolean;
-  surfaceRef: React.RefObject<HTMLDivElement | HTMLImageElement | null>;
+  surfaceRef: React.RefObject<HTMLElement | null>;
   draggingShapeRef: React.RefObject<any>;
   transformingShapeRef: React.RefObject<any>;
   onStrokeComplete?: (page: number, stroke: CsStroke, groupId?: string) => void;

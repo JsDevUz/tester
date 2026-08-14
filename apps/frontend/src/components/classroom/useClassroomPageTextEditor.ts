@@ -57,7 +57,7 @@ export function useClassroomPageTextEditor({
   const lastTextStyleRef = useRef<{
     fontFamily: CsFontFamily;
     fontSize: number;
-    fontWeight: number;
+    fontWeight: 400 | 500 | 600 | 700;
     textAlign: "left" | "center" | "right";
   }>({
     fontFamily: "Inter",
