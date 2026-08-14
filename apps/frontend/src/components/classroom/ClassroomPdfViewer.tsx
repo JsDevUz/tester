@@ -6262,8 +6262,7 @@ export function ClassroomPdfViewer({
   ]);
 
   useEffect(() => {
-    if (isHost && Date.now() - lastSplitActionTimeRef.current < 600) return;
-    if (isHost || synced) {
+    if (!isHost && synced) {
       setDisplayMode(boardMode);
       setDisplayLayout(boardLayout);
       setLeftMode(leftBoardMode);

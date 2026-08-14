@@ -170,12 +170,15 @@ export function useClassroomSession(
     socket.on("connect", join);
 
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
+      if (role === "host") return;
       setState((s) => applyPdfSet(s, p));
     });
     socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }) => {
+      if (role === "host") return;
       setState((s) => applyBoardSet(s, p));
     });
     socket.on("page:set", (p: { page: number }) => {
+      if (role === "host") return;
       setState((s) => applyPageSet(s, p));
     });
     socket.on("stroke:add", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
@@ -220,13 +223,30 @@ export function useClassroomSession(
       if (role === "host") return;
       setState((s) => ({ ...s, splitRatio: p.ratio }));
     });
-    socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => setState((s) => applyPageRemove(s, p)));
-    socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => setState((s) => applyPdfInsert(s, p)));
-    socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => setState((s) => applyNotebookPageInsert(s, p)));
-    socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) =>
-      setState((s) => applyNotebookPageStyle(s, p)));
-    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => setState((s) => applyBoardUndo(s, p)));
-    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown }) => setState((s) => applyBoardRedo(s, p)));
+    socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => {
+      if (role === "host") return;
+      setState((s) => applyPageRemove(s, p));
+    });
+    socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => {
+      if (role === "host") return;
+      setState((s) => applyPdfInsert(s, p));
+    });
+    socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => {
+      if (role === "host") return;
+      setState((s) => applyNotebookPageInsert(s, p));
+    });
+    socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) => {
+      if (role === "host") return;
+      setState((s) => applyNotebookPageStyle(s, p));
+    });
+    socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => {
+      if (role === "host") return;
+      setState((s) => applyBoardUndo(s, p));
+    });
+    socket.on("board:redo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before?: unknown; after: unknown }) => {
+      if (role === "host") return;
+      setState((s) => applyBoardRedo(s, p));
+    });
     socket.on("scroll:set", (p: CsScrollPosition & { pane?: "left" | "right" }) => {
       if (role === "host") return;
       setState((s) => p.pane === "right" ? ({ ...s, rightScroll: p }) : ({ ...s, scroll: p }));
