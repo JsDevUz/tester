@@ -311,12 +311,15 @@ function buildShapePath(s: CsStroke, w: number, h: number) {
 
 const laserArrivalMap = new Map<string, number>();
 
-function getLaserAge(id: string): number {
+function getLaserAge(s: CsStroke): number {
   const now = Date.now();
-  if (!laserArrivalMap.has(id)) {
-    laserArrivalMap.set(id, now);
+  if (s.createdAt) {
+    return (now - s.createdAt) / 1000;
   }
-  return (now - laserArrivalMap.get(id)!) / 1000;
+  if (!laserArrivalMap.has(s.id)) {
+    laserArrivalMap.set(s.id, now);
+  }
+  return (now - laserArrivalMap.get(s.id)!) / 1000;
 }
 
 const StrokeShape = React.memo(function StrokeShape({s, w, h}: {s: CsStroke; w: number; h: number}) {
@@ -416,7 +419,7 @@ const StrokeShape = React.memo(function StrokeShape({s, w, h}: {s: CsStroke; w: 
   }
 
   if (s.tool === 'laser') {
-    const elapsed = getLaserAge(s.id);
+    const elapsed = getLaserAge(s);
     if (elapsed >= 3) return null;
 
     let laserAlpha = 1;
@@ -708,14 +711,14 @@ export function ClassroomStrokeCanvas({
 
   // Check if any active laser strokes exist
   const hasActiveLaser = useMemo(() => {
-    return strokes.some(s => s.tool === 'laser' && getLaserAge(s.id) < 3);
+    return strokes.some(s => s.tool === 'laser' && getLaserAge(s) < 3);
   }, [strokes, tick]);
 
   useEffect(() => {
     if (!hasActiveLaser) return;
     const interval = setInterval(() => {
       setTick(t => t + 1);
-    }, 50);
+    }, 30);
     return () => clearInterval(interval);
   }, [hasActiveLaser]);
 
@@ -736,7 +739,12 @@ export function ClassroomStrokeCanvas({
       {(pathStrokes.length > 0 || hasPointer) && (
         <Canvas style={{width, height, position: 'absolute', top: 0, left: 0}} pointerEvents="none">
           {pathStrokes.map(s => (
-            <StrokeShape key={s.id} s={s} w={width} h={height} />
+            <StrokeShape
+              key={s.tool === 'laser' ? `${s.id}_${tick}` : s.id}
+              s={s}
+              w={width}
+              h={height}
+            />
           ))}
           {hasPointer && (
             <Circle
