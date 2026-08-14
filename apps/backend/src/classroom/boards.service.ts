@@ -461,15 +461,44 @@ export class BoardsService {
       );
     }
 
-    const versions = await this.getBoardVersions(boardId, userId);
-    const targetVersion = versions.find((v) => v.id === versionId);
-    if (!targetVersion || !targetVersion.snapshot) {
-      throw new NotFoundException('Versiya topilmadi');
+    // Snapshot'ni to'g'ridan-to'g'ri olish (getBoardVersions endi snapshot qaytarmaydi)
+    const updatedRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
+    const currentSavedVersions: any[] =
+      s?.savedVersions ??
+      (updatedRow?.boardSnapshot as any)?.savedVersions ??
+      [];
+
+    let snap: any;
+
+    if (versionId === 'current') {
+      // Joriy holatga qaytish — hozirgi snapshot'dan foydalanish
+      snap = JSON.parse(JSON.stringify(
+        s ? this.classroomService.buildBoardSnapshot(s) : (updatedRow?.boardSnapshot as any),
+      ));
+    } else if (versionId === 'initial') {
+      // Boshlang'ich holat — bo'sh snapshot
+      snap = {
+        pdfName: null,
+        pages: [],
+        strokesByPage: {},
+        strokesByMode: { pdf: {}, notebook: {} },
+        boardMode: 'notebook',
+        boardLayout: 'single',
+        notebookStyle: 'grid',
+        notebookPageCount: 1,
+        notebookPageStyles: {},
+        notebookPageOrientations: {},
+      };
+    } else {
+      // Saqlangan versiyalardan qidirish
+      const savedVer = currentSavedVersions.find((v: any) => v.id === versionId);
+      if (!savedVer?.snapshot) {
+        throw new NotFoundException('Versiya topilmadi');
+      }
+      snap = JSON.parse(JSON.stringify(savedVer.snapshot));
     }
 
-    const updatedRow = await db.query.classSessions.findFirst({ where: eq(classSessions.id, boardId) });
-    const snap = JSON.parse(JSON.stringify(targetVersion.snapshot));
-    const currentSaved = (updatedRow?.boardSnapshot as any)?.savedVersions ?? s?.savedVersions ?? [];
+    const currentSaved = currentSavedVersions;
     snap.savedVersions = currentSaved;
     snap.activeVersionId = versionId;
 
