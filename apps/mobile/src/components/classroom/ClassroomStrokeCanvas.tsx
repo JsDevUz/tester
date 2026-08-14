@@ -534,18 +534,157 @@ function TextStrokeItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
   );
 }
 
+function estimateTextWidth(
+  str: string,
+  fontSize: number,
+): number {
+  let total = 0;
+  for (let i = 0; i < str.length; i++) {
+    const ch = str[i];
+    if (
+      ch === ' ' ||
+      ch === 'i' ||
+      ch === 'l' ||
+      ch === 'j' ||
+      ch === '.' ||
+      ch === ',' ||
+      ch === ':' ||
+      ch === ';' ||
+      ch === '!' ||
+      ch === '|'
+    ) {
+      total += fontSize * 0.23;
+    } else if (ch === '1') {
+      total += fontSize * 0.42;
+    } else if (ch === 'f' || ch === 't' || ch === 'r' || ch === 'I') {
+      total += fontSize * 0.33;
+    } else if (
+      ch === 'm' ||
+      ch === 'w' ||
+      ch === 'M' ||
+      ch === 'W' ||
+      ch === '@' ||
+      ch === '%'
+    ) {
+      total += fontSize * 0.80;
+    } else if (ch >= 'A' && ch <= 'Z') {
+      total += fontSize * 0.65;
+    } else if (ch >= '0' && ch <= '9') {
+      total += fontSize * 0.58;
+    } else {
+      total += fontSize * 0.55;
+    }
+  }
+  return total;
+}
+
+function wrapMobileTextLines(
+  text: string,
+  maxWidth: number,
+  fontSize: number,
+): string[] {
+  const lines: string[] = [];
+  for (const paragraph of text.split('\n')) {
+    if (!paragraph) {
+      lines.push('');
+      continue;
+    }
+    let line = '';
+    for (const word of paragraph.split(/\s+/)) {
+      let candidate = line ? `${line} ${word}` : word;
+      if (
+        line &&
+        estimateTextWidth(candidate, fontSize) > maxWidth
+      ) {
+        lines.push(line);
+        line = '';
+        candidate = word;
+      }
+      if (
+        estimateTextWidth(candidate, fontSize) <= maxWidth
+      ) {
+        line = candidate;
+        continue;
+      }
+      // Word itself is wider than container - break into characters
+      let chunk = line;
+      for (const ch of candidate.slice(line.length)) {
+        const next = chunk + ch;
+        if (
+          chunk &&
+          estimateTextWidth(next, fontSize) > maxWidth
+        ) {
+          lines.push(chunk);
+          chunk = ch;
+        } else {
+          chunk = next;
+        }
+      }
+      line = chunk;
+    }
+    if (line) lines.push(line);
+  }
+  return lines.length > 0 ? lines : [''];
+}
+
 function ShapeTextItem({s, w, h}: {s: CsStroke; w: number; h: number}) {
   if (!s.text?.trim() || (s.tool !== 'rectangle' && s.tool !== 'ellipse')) return null;
+  const scale = w / REF_WIDTH;
   const left = Math.min(s.points[0], s.points[2]) * w;
   const top = Math.min(s.points[1], s.points[3]) * h;
   const boxWidth = Math.abs(s.points[2] - s.points[0]) * w;
   const boxHeight = Math.abs(s.points[3] - s.points[1]) * h;
-  const fontSize = Math.max(1, (s.fontSize ?? 24) * (w / REF_WIDTH));
+  const fontSize = Math.max(1, (s.fontSize ?? 24) * scale);
+  const wrapPadding = Math.max(6, 12 * scale);
+  const usableWidth = Math.max(1, boxWidth - wrapPadding * 2);
+  const lines = wrapMobileTextLines(
+    s.text.trim(),
+    usableWidth,
+    fontSize,
+  );
+  const textColor = s.textColor || s.color || '#ffffff';
+  const lineHeight = fontSize * 1.25;
+
   return (
-    <View pointerEvents="none" style={{position: 'absolute', left, top, width: boxWidth, height: boxHeight, padding: 6, justifyContent: s.verticalAlign === 'top' ? 'flex-start' : s.verticalAlign === 'bottom' ? 'flex-end' : 'center', opacity: (s.opacity ?? 100) / 100, transform: s.rotation ? [{rotate: `${s.rotation}deg`}] : undefined}}>
-      <RNText numberOfLines={20} style={{color: s.color || '#ffffff', fontSize, lineHeight: fontSize * 1.25, fontFamily: resolveFontFamily(s.fontFamily, s.fontWeight), fontWeight: String(s.fontWeight ?? 600) as any, textAlign: s.textAlign ?? 'center', includeFontPadding: false}}>
-        {s.text}
-      </RNText>
+    <View
+      pointerEvents="none"
+      style={{
+        position: 'absolute',
+        left,
+        top,
+        width: boxWidth,
+        height: boxHeight,
+        overflow: 'visible',
+        justifyContent:
+          s.verticalAlign === 'top'
+            ? 'flex-start'
+            : s.verticalAlign === 'bottom'
+              ? 'flex-end'
+              : 'center',
+        alignItems:
+          s.textAlign === 'left'
+            ? 'flex-start'
+            : s.textAlign === 'right'
+              ? 'flex-end'
+              : 'center',
+        opacity: (s.opacity ?? 100) / 100,
+        transform: s.rotation ? [{rotate: `${s.rotation}deg`}] : undefined,
+      }}>
+      {lines.map((line, idx) => (
+        <RNText
+          key={idx}
+          style={{
+            color: textColor,
+            fontSize,
+            lineHeight,
+            fontFamily: resolveFontFamily(s.fontFamily, s.fontWeight),
+            fontWeight: String(s.fontWeight ?? 600) as any,
+            textAlign: s.textAlign ?? 'center',
+            includeFontPadding: false,
+          }}>
+          {line}
+        </RNText>
+      ))}
     </View>
   );
 }

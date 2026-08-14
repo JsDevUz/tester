@@ -58,6 +58,7 @@ export interface CsStroke {
   verticalAlign?: 'top' | 'middle' | 'bottom';
   textBoxWidth?: number;
   textBoxHeight?: number;
+  textColor?: string;
   rotation?: number;
   backgroundColor?: string;
   fillStyle?: CsFillStyle;

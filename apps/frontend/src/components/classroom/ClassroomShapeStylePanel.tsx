@@ -144,6 +144,15 @@ export const SINGLE_ARROW_HEAD_OPTIONS = [
     ),
   },
   {
+    id: "both-arrow",
+    title: "Ikki tomonlama o'q (Two-sided)",
+    svg: (
+      <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+        <path d="M7 7l-5 5 5 5M2 12h20M17 7l5 5-5 5" />
+      </svg>
+    ),
+  },
+  {
     id: "arrow-filled",
     title: "To'ldirilgan o'q (Triangle)",
     svg: (
@@ -311,11 +320,22 @@ export function ShapeStylePanel({
   }, [activeMenu]);
 
   const renderHeadPreview = (head: string | undefined, isStart = false) => {
+    const isBoth = startArrowHead === "arrow" && (endArrowHead === "arrow" || (!endArrowHead && strokeTool === "arrow"));
+    if (isBoth) {
+      const opt = SINGLE_ARROW_HEAD_OPTIONS.find((o) => o.id === "both-arrow");
+      if (opt) {
+        return (
+          <div className={`flex items-center justify-center ${isStart ? "scale-x-[-1]" : ""}`}>
+            {opt.svg}
+          </div>
+        );
+      }
+    }
     if (!head || head === "none") {
-      return <span className="text-xs font-semibold text-gray-700 px-1">None</span>;
+      return <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300 px-1">None</span>;
     }
     const opt = SINGLE_ARROW_HEAD_OPTIONS.find((o) => o.id === head);
-    if (!opt) return <span className="text-xs font-semibold text-gray-700 px-1">None</span>;
+    if (!opt) return <span className="text-xs font-semibold text-gray-700 dark:text-zinc-300 px-1">None</span>;
     return (
       <div className={`flex items-center justify-center ${isStart ? "scale-x-[-1]" : ""}`}>
         {opt.svg}
@@ -357,13 +377,20 @@ export function ShapeStylePanel({
                   Line start
                 </div>
                 {SINGLE_ARROW_HEAD_OPTIONS.map((opt) => {
-                  const isSelected = (startArrowHead || "none") === opt.id;
+                  const isBoth = startArrowHead === "arrow" && (endArrowHead === "arrow" || (!endArrowHead && strokeTool === "arrow"));
+                  const isSelected = opt.id === "both-arrow"
+                    ? isBoth
+                    : !isBoth && (startArrowHead || "none") === opt.id;
                   return (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => {
-                        onArrowHeadChange?.(endArrowHead ?? (strokeTool === "line" ? "none" : "arrow"), opt.id);
+                        if (opt.id === "both-arrow") {
+                          onArrowHeadChange?.("arrow", "arrow");
+                        } else {
+                          onArrowHeadChange?.(endArrowHead ?? (strokeTool === "line" ? "none" : "arrow"), opt.id);
+                        }
                         setActiveMenu(null);
                       }}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-xl text-xs font-medium transition-all cursor-pointer ${
@@ -421,13 +448,20 @@ export function ShapeStylePanel({
                   Line end
                 </div>
                 {SINGLE_ARROW_HEAD_OPTIONS.map((opt) => {
-                  const isSelected = (endArrowHead ?? (strokeTool === "line" ? "none" : "arrow")) === opt.id;
+                  const isBoth = startArrowHead === "arrow" && (endArrowHead === "arrow" || (!endArrowHead && strokeTool === "arrow"));
+                  const isSelected = opt.id === "both-arrow"
+                    ? isBoth
+                    : !isBoth && (endArrowHead ?? (strokeTool === "line" ? "none" : "arrow")) === opt.id;
                   return (
                     <button
                       key={opt.id}
                       type="button"
                       onClick={() => {
-                        onArrowHeadChange?.(opt.id, startArrowHead ?? "none");
+                        if (opt.id === "both-arrow") {
+                          onArrowHeadChange?.("arrow", "arrow");
+                        } else {
+                          onArrowHeadChange?.(opt.id, startArrowHead ?? "none");
+                        }
                         setActiveMenu(null);
                       }}
                       className={`flex items-center gap-2.5 px-2.5 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${

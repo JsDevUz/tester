@@ -201,8 +201,12 @@ function Pane({
     const s = zoom > 0 ? zoom : 1;
     scale.value = withTiming(s, {duration: 250});
 
+    const currentW = baseCardWidth * s;
+    const targetTx = currentW > containerWidth
+      ? ((currentW - containerWidth) / 2) - (scroll?.xRatio ?? 0) * (currentW - containerWidth)
+      : 0;
     const targetTy = s * (totalContentHeight / 2 - targetContentY);
-    const clamped = clampCamera(0, targetTy, s);
+    const clamped = clampCameraVal(targetTx, targetTy, s, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
 
     tx.value = withTiming(clamped.x, {duration: 250});
     ty.value = withTiming(clamped.y, {duration: 250});
@@ -391,7 +395,8 @@ function Pane({
     if (!synced) return;
     const targetPage = Math.min(Math.max(1, scroll?.page ?? safeCurrentPage), pageCount);
     const targetYRatio = scroll?.yRatio ?? 0;
-    const syncKey = `${synced}_${targetPage}_${targetYRatio}_${zoom}_${containerWidth}_${containerHeight}`;
+    const targetXRatio = scroll?.xRatio ?? 0;
+    const syncKey = `${synced}_${targetPage}_${targetYRatio}_${targetXRatio}_${zoom}_${containerWidth}_${containerHeight}`;
     if (lastSyncPayloadRef.current === syncKey) return;
     lastSyncPayloadRef.current = syncKey;
 
@@ -401,9 +406,13 @@ function Pane({
     const targetContentY = pageY + pageH * targetYRatio;
 
     const s = zoom > 0 ? zoom : 1;
+    const currentW = baseCardWidth * s;
+    const targetTx = currentW > containerWidth
+      ? ((currentW - containerWidth) / 2) - targetXRatio * (currentW - containerWidth)
+      : 0;
     const targetTy = s * (totalContentHeight / 2 - targetContentY);
     // Use fresh JS layout values to compute camera clamp immediately upon mount/sync
-    const clamped = clampCameraVal(0, targetTy, s, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
+    const clamped = clampCameraVal(targetTx, targetTy, s, containerWidth, containerHeight, baseCardWidth, totalContentHeight);
 
     const pageDistance = Math.abs(targetPage - (lastReportedPage.value || visiblePage));
 
@@ -421,7 +430,7 @@ function Pane({
       ty.value = withTiming(clamped.y, {duration: 80});
     }
     setVisiblePage(targetPage);
-  }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, pageOffsets, pageHeights, scale, tx, ty]);
+  }, [synced, safeCurrentPage, zoom, scroll?.page, scroll?.yRatio, scroll?.xRatio, baseCardWidth, baseCardHeight, baseItemTotalHeight, containerHeight, containerWidth, pageCount, totalContentHeight, pageOffsets, pageHeights, scale, tx, ty]);
 
   // =========================================================================
   // DISCRETE ZOOM BUTTONS (+/-)

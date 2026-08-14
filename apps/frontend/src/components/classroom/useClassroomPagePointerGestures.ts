@@ -472,16 +472,6 @@ export function useClassroomPagePointerGestures({
       stroke.points = [nextX0, nextY0, nextX0 + width, nextY0 + height];
       if (stroke.controlX !== undefined) stroke.controlX += offsetX;
       if (stroke.controlY !== undefined) stroke.controlY += offsetY;
-      onUpdateShapeStroke?.(pageNumber, {
-        ...stroke,
-        points: [...stroke.points],
-        ...(stroke.controlX !== undefined
-          ? { controlX: stroke.controlX }
-          : {}),
-        ...(stroke.controlY !== undefined
-          ? { controlY: stroke.controlY }
-          : {}),
-      });
       forceRedraw((n) => n + 1);
       return;
     }

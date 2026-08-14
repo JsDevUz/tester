@@ -35,7 +35,6 @@ export function useClassroomShapeTransform({
   forceRedraw,
 }: UseClassroomShapeTransformParams) {
   const [isTransforming, setIsTransforming] = useState(false);
-  const rafUpdateRef = useRef<number | null>(null);
 
   const lineEndpointDragRef = useRef<{
     endpoint: "start" | "end" | "mid";
@@ -171,17 +170,6 @@ export function useClassroomShapeTransform({
       setConnectorTarget(null);
     }
 
-    if (rafUpdateRef.current === null) {
-      rafUpdateRef.current = requestAnimationFrame(() => {
-        rafUpdateRef.current = null;
-        if (selectedShapeRaw) {
-          onUpdateShapeStroke?.(pageNumber, {
-            ...selectedShapeRaw,
-            points: [...selectedShapeRaw.points],
-          });
-        }
-      });
-    }
     forceRedraw((value) => value + 1);
   };
 
@@ -250,18 +238,6 @@ export function useClassroomShapeTransform({
         ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
       current.stroke.rotation = snapRotationAngle(rawDeg);
       forceRedraw((value) => value + 1);
-
-      if (rafUpdateRef.current === null) {
-        rafUpdateRef.current = requestAnimationFrame(() => {
-          rafUpdateRef.current = null;
-          if (transformingShapeRef.current) {
-            onUpdateShapeStroke?.(pageNumber, {
-              ...transformingShapeRef.current.stroke,
-              points: [...transformingShapeRef.current.stroke.points],
-            });
-          }
-        });
-      }
       return;
     }
 
@@ -322,28 +298,11 @@ export function useClassroomShapeTransform({
     }
 
     forceRedraw((value) => value + 1);
-
-    if (rafUpdateRef.current === null) {
-      rafUpdateRef.current = requestAnimationFrame(() => {
-        rafUpdateRef.current = null;
-        if (transformingShapeRef.current) {
-          onUpdateShapeStroke?.(pageNumber, {
-            ...transformingShapeRef.current.stroke,
-            points: [...transformingShapeRef.current.stroke.points],
-          });
-        }
-      });
-    }
   };
 
   const finishShapeTransform = (event: ReactPointerEvent<HTMLElement>) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (rafUpdateRef.current !== null) {
-      cancelAnimationFrame(rafUpdateRef.current);
-      rafUpdateRef.current = null;
-    }
     setIsTransforming(false);
 
     const current = transformingShapeRef.current;
@@ -461,18 +420,6 @@ export function useClassroomShapeTransform({
         ((angle - (current.startAngle ?? 0)) * 180) / Math.PI;
       current.stroke.rotation = snapRotationAngle(rawDeg);
       forceRedraw((value) => value + 1);
-
-      if (rafUpdateRef.current === null) {
-        rafUpdateRef.current = requestAnimationFrame(() => {
-          rafUpdateRef.current = null;
-          if (transformingTextRef.current) {
-            onUpdateTextStroke?.(pageNumber, {
-              ...transformingTextRef.current.stroke,
-              points: [...transformingTextRef.current.stroke.points],
-            });
-          }
-        });
-      }
       return;
     }
 
@@ -548,18 +495,6 @@ export function useClassroomShapeTransform({
     current.stroke.points[1] = Math.max(0, Math.min(1, newCy - nextH / 2));
 
     forceRedraw((value) => value + 1);
-
-    if (rafUpdateRef.current === null) {
-      rafUpdateRef.current = requestAnimationFrame(() => {
-        rafUpdateRef.current = null;
-        if (transformingTextRef.current) {
-          onUpdateTextStroke?.(pageNumber, {
-            ...transformingTextRef.current.stroke,
-            points: [...transformingTextRef.current.stroke.points],
-          });
-        }
-      });
-    }
   };
 
   const finishTextTransform = (
@@ -567,11 +502,6 @@ export function useClassroomShapeTransform({
   ) => {
     event.preventDefault();
     event.stopPropagation();
-
-    if (rafUpdateRef.current !== null) {
-      cancelAnimationFrame(rafUpdateRef.current);
-      rafUpdateRef.current = null;
-    }
     setIsTransforming(false);
 
     const current = transformingTextRef.current;
