@@ -17,7 +17,6 @@ async function bootstrap() {
   const redisAdapter = new RedisIoAdapter(app, process.env.REDIS_URL);
   await redisAdapter.connect();
   app.useWebSocketAdapter(redisAdapter);
-  app.getHttpAdapter().getInstance().disable('x-powered-by');
   const uploadsDir = join(process.cwd(), 'uploads');
   if (!existsSync(uploadsDir)) mkdirSync(uploadsDir, { recursive: true });
   app.useStaticAssets(uploadsDir, { prefix: '/uploads' });

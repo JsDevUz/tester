@@ -1,105 +1,43 @@
-import { useRef, useState, useCallback } from "react";
-
-function DropPinEditor({
-  imageUrl,
-  correctAnswer,
-  radiusPct,
-  onChange,
-}: {
-  imageUrl: string;
-  correctAnswer: string;
-  radiusPct: number;
-  onChange: (v: string) => void;
-}) {
-  const [containerW, setContainerW] = useState(0);
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
-      const rect = e.currentTarget.getBoundingClientRect();
-      setContainerW(rect.width);
-      const x = ((e.clientX - rect.left) / rect.width).toFixed(4);
-      const y = ((e.clientY - rect.top) / rect.height).toFixed(4);
-      onChange(`${x},${y}`);
-    },
-    [onChange],
-  );
-
-  const pin = correctAnswer ? correctAnswer.split(",").map(Number) : null;
-  const radiusPx =
-    (radiusPct / 100) *
-    (containerW || containerRef.current?.getBoundingClientRect().width || 300);
-
-  return (
-    <div
-      ref={containerRef}
-      className="relative w-full cursor-crosshair"
-      onClick={handleClick}
-    >
-      <img
-        src={imageUrl}
-        alt=""
-        className="w-full rounded-xl object-contain select-none pointer-events-none"
-        draggable={false}
-      />
-      {pin && (
-        <>
-          <div
-            className="absolute -translate-x-1/2 -translate-y-1/2 pointer-events-none rounded-full border border-red-400/50 bg-red-100/30"
-            style={{
-              left: `${pin[0] * 100}%`,
-              top: `${pin[1] * 100}%`,
-              width: radiusPx * 2,
-              height: radiusPx * 2,
-            }}
-          />
-          <div
-            className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 pointer-events-none"
-            style={{ left: `${pin[0] * 100}%`, top: `${pin[1] * 100}%` }}
-          >
-            <div className="w-5 h-5 rounded-full bg-red-500 border border-white shadow-lg" />
-          </div>
-        </>
-      )}
-    </div>
-  );
-}
-import {
-  Image,
-  Music,
-  X,
-  GripHorizontal,
-  Plus,
-  Trash2,
-} from "lucide-react";
+import type React from "react";
+import { useState } from "react";
+import { Image, Music, X } from "lucide-react";
 import { MediaLibraryModal } from "./MediaLibraryModal";
+import {
+  type OptionInput,
+  type MatchPair,
+  TrueFalseEditor,
+  FillBlankEditor,
+  SliderEditor,
+  MatchingEditor,
+  ReorderEditor,
+  ArrangeEditor,
+  OpenEditor,
+  SingleMultiEditor,
+  DropPinEditor,
+} from "./question/QuestionFormEditors";
 
-interface OptionInput {
-  text: string;
-  isCorrect: boolean;
-  orderIndex?: number;
-}
+export type { OptionInput };
 
-interface InitialValues {
+export interface InitialValues {
   text: string;
   type:
-  | "single"
-  | "multi"
-  | "open"
-  | "arrange"
-  | "truefalse"
-  | "reorder"
-  | "matching"
-  | "fillblank"
-  | "slider"
-  | "droppin";
+    | "single"
+    | "multi"
+    | "open"
+    | "arrange"
+    | "truefalse"
+    | "reorder"
+    | "matching"
+    | "fillblank"
+    | "slider"
+    | "droppin";
   options: OptionInput[];
   imageUrl?: string | null;
   audioUrl?: string | null;
   correctAnswer?: string | null;
 }
 
-interface Props {
+export interface QuestionFormProps {
   onSubmit: (data: {
     text: string;
     type: string;
@@ -139,58 +77,41 @@ export function QuestionForm({
   initial,
   submitLabel,
   onCancel,
-  hideAiTypes = false,
-}: Props) {
+  hideAiTypes,
+}: QuestionFormProps) {
   const [text, setText] = useState(initial?.text ?? "");
-  const [type, setType] = useState<
-    | "single"
-    | "multi"
-    | "open"
-    | "arrange"
-    | "truefalse"
-    | "reorder"
-    | "matching"
-    | "fillblank"
-    | "slider"
-    | "droppin"
-  >(initial?.type ?? "single");
-  const [opts, setOpts] = useState<OptionInput[]>(() => {
-    if (initial?.options.length) {
-      return initial.options.map((o) => ({
-        text: o.text,
-        isCorrect: o.isCorrect,
-        orderIndex: o.orderIndex,
-      }));
-    }
-    return [
-      { text: "", isCorrect: false },
-      { text: "", isCorrect: false },
-    ];
-  });
-  // arrange/reorder: correct tokens in order + distractors (arrange only)
-  const [correctTokens, setCorrectTokens] = useState<string[]>(() => {
-    if (initial?.type === "arrange" || initial?.type === "reorder") {
-      return initial.options
-        .filter((o) => o.isCorrect)
-        .sort((a, b) => (a.orderIndex ?? 0) - (b.orderIndex ?? 0))
-        .map((o) => o.text);
-    }
-    return ["", ""];
-  });
-  const [distractors, setDistractors] = useState<string[]>(() => {
-    if (initial?.type === "arrange") {
-      return initial.options.filter((o) => !o.isCorrect).map((o) => o.text);
-    }
-    return [];
-  });
-
-  const [correctAnswer, setCorrectAnswer] = useState<string>(
+  const [type, setType] = useState<InitialValues["type"]>(
+    initial?.type ?? "single",
+  );
+  const [opts, setOpts] = useState<OptionInput[]>(
+    initial?.options.length
+      ? initial.options
+      : [
+          { text: "", isCorrect: false },
+          { text: "", isCorrect: false },
+        ],
+  );
+  const [correctTokens, setCorrectTokens] = useState<string[]>(
+    initial?.type === "arrange" || initial?.type === "reorder"
+      ? initial.options.filter((o) => o.isCorrect).map((o) => o.text)
+      : ["", ""],
+  );
+  const [distractors, setDistractors] = useState<string[]>(
+    initial?.type === "arrange"
+      ? initial.options.filter((o) => !o.isCorrect).map((o) => o.text)
+      : [],
+  );
+  const [correctAnswer, setCorrectAnswer] = useState(
     initial?.correctAnswer ?? "",
   );
-  // matching: array of { left, right } pairs
-  const [matchPairs, setMatchPairs] = useState<
-    { left: string; right: string }[]
-  >(() => {
+  const [tfCorrect, setTfCorrect] = useState<"true" | "false" | null>(
+    initial?.type === "truefalse"
+      ? initial.options.find((o) => o.text === "To'g'ri")?.isCorrect
+        ? "true"
+        : "false"
+      : null,
+  );
+  const [matchPairs, setMatchPairs] = useState<MatchPair[]>(() => {
     if (initial?.type === "matching" && initial.options.length) {
       const lefts = initial.options
         .filter((o) => o.isCorrect)
@@ -208,45 +129,40 @@ export function QuestionForm({
       { left: "", right: "" },
     ];
   });
-  // truefalse: which option is correct — 'true' | 'false' | null (not selected)
-  const [tfCorrect, setTfCorrect] = useState<"true" | "false" | null>(() => {
-    if (initial?.type === "truefalse" && initial.options.length) {
-      const correct = initial.options.find((o) => o.isCorrect);
-      if (correct?.text === "To'g'ri") return "true";
-      if (correct?.text === "Noto'g'ri") return "false";
-    }
-    return null;
-  });
   const [imageUrl, setImageUrl] = useState<string | null>(
     initial?.imageUrl ?? null,
   );
   const [audioUrl, setAudioUrl] = useState<string | null>(
     initial?.audioUrl ?? null,
   );
-  const [uploadError, setUploadError] = useState<string | null>(null);
   const [mediaModal, setMediaModal] = useState<"image" | "audio" | null>(null);
+  const [uploadError, setUploadError] = useState<string | null>(null);
 
   function addOption() {
     setOpts([...opts, { text: "", isCorrect: false }]);
   }
+
   function removeOption(i: number) {
     setOpts(opts.filter((_, idx) => idx !== i));
   }
+
   function toggleCorrect(i: number) {
-    if (type === "single")
-      setOpts(opts.map((o, idx) => ({ ...o, isCorrect: idx === i })));
-    else
+    if (type === "single") {
       setOpts(
-        opts.map((o, idx) =>
-          idx === i ? { ...o, isCorrect: !o.isCorrect } : o,
-        ),
+        opts.map((o, idx) => ({
+          ...o,
+          isCorrect: idx === i,
+        })),
       );
+    } else {
+      setOpts(
+        opts.map((o, idx) => (idx === i ? { ...o, isCorrect: !o.isCorrect } : o)),
+      );
+    }
   }
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    if (!text.trim()) return;
-
     let options: OptionInput[];
     if (type === "arrange") {
       const validTokens = correctTokens.filter((t) => t.trim());
@@ -294,7 +210,6 @@ export function QuestionForm({
     } else if (type === "fillblank") {
       options = [];
     } else if (type === "slider") {
-      // options[0]=min, options[1]=max, options[2]=step
       options = [
         { text: opts[0]?.text || "0", isCorrect: false, orderIndex: 0 },
         { text: opts[1]?.text || "100", isCorrect: false, orderIndex: 1 },
@@ -370,7 +285,7 @@ export function QuestionForm({
             <button
               type="button"
               onClick={() => setImageUrl(null)}
-              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+              className="absolute -top-1.5 -right-1.5 bg-red-500 text-white rounded-full w-5 h-5 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
             >
               <X size={10} />
             </button>
@@ -379,7 +294,7 @@ export function QuestionForm({
           <button
             type="button"
             onClick={() => setMediaModal("image")}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0 cursor-pointer"
           >
             <Image size={13} /> Rasm
           </button>
@@ -391,7 +306,7 @@ export function QuestionForm({
             <button
               type="button"
               onClick={() => setAudioUrl(null)}
-              className="text-gray-400 hover:text-red-400"
+              className="text-gray-400 hover:text-red-400 cursor-pointer"
             >
               <X size={12} />
             </button>
@@ -400,7 +315,7 @@ export function QuestionForm({
           <button
             type="button"
             onClick={() => setMediaModal("audio")}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors font-medium shrink-0 cursor-pointer"
           >
             <Music size={13} /> Audio
           </button>
@@ -409,7 +324,7 @@ export function QuestionForm({
         {/* Type select */}
         <select
           value={type}
-          onChange={(e) => setType(e.target.value as any)}
+          onChange={(e) => setType(e.target.value as InitialValues["type"])}
           className="text-xs px-3 py-1.5 border border-dashed border-border rounded-lg text-gray-700 bg-white font-semibold outline-none cursor-pointer hover:border-gray-400 focus:ring-2 focus:ring-indigo-500 transition-colors shrink-0"
         >
           {Object.entries(ALL_TYPE_LABELS)
@@ -425,6 +340,7 @@ export function QuestionForm({
           <span className="text-xs text-red-500 shrink-0">{uploadError}</span>
         )}
       </div>
+
       {mediaModal && (
         <MediaLibraryModal
           type={mediaModal}
@@ -440,112 +356,23 @@ export function QuestionForm({
 
       {/* Options by type */}
       {type === "truefalse" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-400">To'g'ri javobni tanlang:</p>
-          <div className="flex gap-2">
-            <button
-              type="button"
-              onClick={() => setTfCorrect("true")}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "true"
-                ? "bg-green-500 text-white border-green-500"
-                : "border-border text-gray-500 hover:border-green-300 hover:text-green-600"
-                }`}
-            >
-              ✓ To'g'ri
-            </button>
-            <button
-              type="button"
-              onClick={() => setTfCorrect("false")}
-              className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors ${tfCorrect === "false"
-                ? "bg-red-400 text-white border-red-400"
-                : "border-border text-gray-500 hover:border-red-300 hover:text-red-500"
-                }`}
-            >
-              ✗ Noto'g'ri
-            </button>
-          </div>
-        </div>
+        <TrueFalseEditor tfCorrect={tfCorrect} onChange={setTfCorrect} />
       )}
 
       {type === "fillblank" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-400">
-            Savol matnida <code className="bg-gray-100 px-1 rounded">___</code>{" "}
-            yozing, to'g'ri javobni kiriting:
-          </p>
-          <input
-            value={correctAnswer}
-            onChange={(e) => setCorrectAnswer(e.target.value)}
-            placeholder="To'g'ri javob..."
-            className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
-          />
-        </div>
+        <FillBlankEditor
+          correctAnswer={correctAnswer}
+          onChange={setCorrectAnswer}
+        />
       )}
 
       {type === "slider" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-400">Slider sozlamalari:</p>
-          <div className="grid grid-cols-3 gap-2">
-            <div>
-              <label className="text-[10px] text-gray-400">Min</label>
-              <input
-                type="number"
-                placeholder="0"
-                value={opts[0]?.text ?? ""}
-                onChange={(e) =>
-                  setOpts([
-                    { text: e.target.value, isCorrect: false },
-                    opts[1] ?? { text: "", isCorrect: false },
-                    opts[2] ?? { text: "", isCorrect: false },
-                  ])
-                }
-                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400">Max</label>
-              <input
-                type="number"
-                placeholder="100"
-                value={opts[1]?.text ?? ""}
-                onChange={(e) =>
-                  setOpts([
-                    opts[0] ?? { text: "", isCorrect: false },
-                    { text: e.target.value, isCorrect: false },
-                    opts[2] ?? { text: "", isCorrect: false },
-                  ])
-                }
-                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-            </div>
-            <div>
-              <label className="text-[10px] text-gray-400">Qadam</label>
-              <input
-                type="number"
-                placeholder="1"
-                value={opts[2]?.text ?? ""}
-                onChange={(e) =>
-                  setOpts([
-                    opts[0] ?? { text: "", isCorrect: false },
-                    opts[1] ?? { text: "", isCorrect: false },
-                    { text: e.target.value, isCorrect: false },
-                  ])
-                }
-                className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
-              />
-            </div>
-          </div>
-          <div>
-            <label className="text-[10px] text-gray-400">To'g'ri qiymat</label>
-            <input
-              type="number"
-              value={correctAnswer}
-              onChange={(e) => setCorrectAnswer(e.target.value)}
-              placeholder="Masalan: 42"
-              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
-            />
-          </div>
-        </div>
+        <SliderEditor
+          opts={opts}
+          setOpts={setOpts}
+          correctAnswer={correctAnswer}
+          setCorrectAnswer={setCorrectAnswer}
+        />
       )}
 
       {type === "droppin" && (
@@ -592,361 +419,46 @@ export function QuestionForm({
       )}
 
       {type === "matching" && (
-        <div className="flex flex-col gap-2">
-          <div className="grid grid-cols-2 gap-1 mb-1">
-            <p className="text-xs text-gray-500 font-medium px-1">
-              Chap (savol)
-            </p>
-            <p className="text-xs text-gray-500 font-medium px-1">
-              O'ng (javob)
-            </p>
-          </div>
-          {matchPairs.map((pair, i) => (
-            <div key={i} className="grid grid-cols-2 gap-2 items-center">
-              <input
-                value={pair.left}
-                onChange={(e) =>
-                  setMatchPairs(
-                    matchPairs.map((p, idx) =>
-                      idx === i ? { ...p, left: e.target.value } : p,
-                    ),
-                  )
-                }
-                placeholder={`Savol ${i + 1}`}
-                className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
-              />
-              <div className="flex gap-1 items-center">
-                <input
-                  value={pair.right}
-                  onChange={(e) =>
-                    setMatchPairs(
-                      matchPairs.map((p, idx) =>
-                        idx === i ? { ...p, right: e.target.value } : p,
-                      ),
-                    )
-                  }
-                  placeholder={`Javob ${i + 1}`}
-                  className="flex-1 border border-green-200 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-green-400 bg-green-50/30"
-                />
-                {matchPairs.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setMatchPairs(matchPairs.filter((_, idx) => idx !== i))
-                    }
-                    className="text-gray-300 hover:text-red-400 shrink-0"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={() =>
-              setMatchPairs([...matchPairs, { left: "", right: "" }])
-            }
-            className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1"
-          >
-            <Plus size={12} /> Juft qo'shish
-          </button>
-        </div>
+        <MatchingEditor
+          matchPairs={matchPairs}
+          setMatchPairs={setMatchPairs}
+        />
       )}
 
       {type === "reorder" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-500 flex items-center gap-1">
-            <GripHorizontal size={12} /> To'g'ri tartibni kiriting (o'quvchi
-            aralashtirilib beriladi)
-          </p>
-          <div className="flex flex-col gap-1.5">
-            {correctTokens.map((tok, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
-                  {i + 1}.
-                </span>
-                <input
-                  value={tok}
-                  onChange={(e) =>
-                    setCorrectTokens(
-                      correctTokens.map((t, idx) =>
-                        idx === i ? e.target.value : t,
-                      ),
-                    )
-                  }
-                  placeholder={`Element ${i + 1}`}
-                  className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
-                />
-                {correctTokens.length > 2 && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setCorrectTokens(
-                        correctTokens.filter((_, idx) => idx !== i),
-                      )
-                    }
-                    className="text-gray-300 hover:text-red-400"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                )}
-              </div>
-            ))}
-            <button
-              type="button"
-              onClick={() => setCorrectTokens([...correctTokens, ""])}
-              className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5"
-            >
-              <Plus size={12} /> Element qo'shish
-            </button>
-          </div>
-          {correctTokens.filter((t) => t.trim()).length >= 2 && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 mb-2">
-                O'quvchiga ko'rinishi (aralashtirilgan):
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {[...correctTokens.filter((t) => t.trim())]
-                  .sort(() => Math.random() - 0.5)
-                  .map((tok, i) => (
-                    <span
-                      key={i}
-                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
-                    >
-                      {tok}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <ReorderEditor
+          correctTokens={correctTokens}
+          setCorrectTokens={setCorrectTokens}
+        />
       )}
 
       {type === "arrange" && (
-        <div className="flex flex-col gap-2">
-          {/* Correct tokens in order */}
-          <div>
-            <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
-              <GripHorizontal size={12} /> To'g'ri tartib (ketma-ketlikda
-              kiriting)
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {correctTokens.map((tok, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
-                    {i + 1}.
-                  </span>
-                  <input
-                    value={tok}
-                    onChange={(e) =>
-                      setCorrectTokens(
-                        correctTokens.map((t, idx) =>
-                          idx === i ? e.target.value : t,
-                        ),
-                      )
-                    }
-                    placeholder={`Bo'lak ${i + 1}`}
-                    className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
-                  />
-                  {correctTokens.length > 2 && (
-                    <button
-                      type="button"
-                      onClick={() =>
-                        setCorrectTokens(
-                          correctTokens.filter((_, idx) => idx !== i),
-                        )
-                      }
-                      className="text-gray-300 hover:text-red-400"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setCorrectTokens([...correctTokens, ""])}
-                className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5"
-              >
-                <Plus size={12} /> Bo'lak qo'shish
-              </button>
-            </div>
-          </div>
-
-          {/* Distractors */}
-          <div>
-            <p className="text-xs text-gray-400 mb-1.5">
-              Chalg'ituvchi bo'laklar (ixtiyoriy)
-            </p>
-            <div className="flex flex-col gap-1.5">
-              {distractors.map((d, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <input
-                    value={d}
-                    onChange={(e) =>
-                      setDistractors(
-                        distractors.map((t, idx) =>
-                          idx === i ? e.target.value : t,
-                        ),
-                      )
-                    }
-                    placeholder={`Chalg'ituvchi ${i + 1}`}
-                    className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-300"
-                  />
-                  <button
-                    type="button"
-                    onClick={() =>
-                      setDistractors(distractors.filter((_, idx) => idx !== i))
-                    }
-                    className="text-gray-300 hover:text-red-400"
-                  >
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-              <button
-                type="button"
-                onClick={() => setDistractors([...distractors, ""])}
-                className="text-xs text-gray-400 hover:text-gray-600 self-start flex items-center gap-1 mt-0.5"
-              >
-                <Plus size={12} /> Chalg'ituvchi qo'shish
-              </button>
-            </div>
-          </div>
-
-          {/* Preview */}
-          {correctTokens.filter((t) => t.trim()).length >= 2 && (
-            <div className="bg-gray-50 rounded-xl p-3">
-              <p className="text-[10px] text-gray-400 mb-2">Ko'rinishi:</p>
-              <div className="flex flex-wrap gap-1.5">
-                {[
-                  ...correctTokens.filter((t) => t.trim()),
-                  ...distractors.filter((d) => d.trim()),
-                ]
-                  .sort(() => Math.random() - 0.5)
-                  .map((tok, i) => (
-                    <span
-                      key={i}
-                      className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
-                    >
-                      {tok}
-                    </span>
-                  ))}
-              </div>
-            </div>
-          )}
-        </div>
+        <ArrangeEditor
+          correctTokens={correctTokens}
+          setCorrectTokens={setCorrectTokens}
+          distractors={distractors}
+          setDistractors={setDistractors}
+        />
       )}
 
       {type === "open" && (
-        <div className="flex flex-col gap-2">
-          <p className="text-xs text-gray-400">
-            To'g'ri javoblar (agar o'quvchi yozsa — to'g'ri hisoblanadi):
-          </p>
-          {opts
-            .filter((o) => o.isCorrect)
-            .map((opt, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <span className="w-4 h-4 rounded-full bg-green-400 shrink-0" />
-                <input
-                  value={opt.text}
-                  onChange={(e) =>
-                    setOpts(
-                      opts.map((o, idx) =>
-                        idx === opts.indexOf(opt)
-                          ? { ...o, text: e.target.value }
-                          : o,
-                      ),
-                    )
-                  }
-                  placeholder={`To'g'ri variant ${i + 1}`}
-                  className="flex-1 border border-green-200 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-green-400"
-                />
-                <button
-                  type="button"
-                  onClick={() => setOpts(opts.filter((o) => o !== opt))}
-                  className="text-gray-300 hover:text-red-400 text-lg leading-none"
-                >
-                  ×
-                </button>
-              </div>
-            ))}
-          <button
-            type="button"
-            onClick={() => setOpts([...opts, { text: "", isCorrect: true }])}
-            className="text-xs text-green-600 hover:text-green-700 self-start"
-          >
-            + To'g'ri javob qo'shish
-          </button>
-          <div className="mt-1">
-            <div className="flex items-center justify-between mb-1">
-              <p className="text-xs text-gray-400">
-                AI uchun qo'shimcha ko'rsatma (ixtiyoriy):
-              </p>
-              <span
-                className={`text-[10px] ${correctAnswer.length > 30 ? "text-red-400" : "text-gray-300"}`}
-              >
-                {correctAnswer.length}/30
-              </span>
-            </div>
-            <input
-              value={correctAnswer}
-              onChange={(e) => {
-                if (e.target.value.length <= 30)
-                  setCorrectAnswer(e.target.value);
-              }}
-              placeholder="Masalan: O'zbekiston poytaxti..."
-              className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
-            />
-            <p className="text-[10px] text-gray-400 mt-1">
-              Agar o'quvchi javobi yuqoridagi variantlarga mos kelmasa, AI shu
-              ko'rsatma asosida tekshiradi.
-            </p>
-          </div>
-        </div>
+        <OpenEditor
+          opts={opts}
+          setOpts={setOpts}
+          correctAnswer={correctAnswer}
+          setCorrectAnswer={setCorrectAnswer}
+        />
       )}
 
       {(type === "single" || type === "multi") && (
-        <div className="flex flex-col gap-2">
-          {opts.map((opt, i) => (
-            <div key={i} className="flex items-center gap-2">
-              <input
-                type={type === "single" ? "radio" : "checkbox"}
-                checked={opt.isCorrect}
-                onChange={() => toggleCorrect(i)}
-                name="correct"
-                className="w-4 h-4 accent-gray-900"
-              />
-              <input
-                value={opt.text}
-                onChange={(e) =>
-                  setOpts(
-                    opts.map((o, idx) =>
-                      idx === i ? { ...o, text: e.target.value } : o,
-                    ),
-                  )
-                }
-                placeholder={`Variant ${i + 1}`}
-                className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400"
-              />
-              <button
-                type="button"
-                onClick={() => removeOption(i)}
-                className="text-gray-300 hover:text-red-400 text-lg leading-none"
-              >
-                ×
-              </button>
-            </div>
-          ))}
-          <button
-            type="button"
-            onClick={addOption}
-            className="text-xs text-gray-700 hover:text-gray-900 self-start"
-          >
-            + Variant qo'shish
-          </button>
-        </div>
+        <SingleMultiEditor
+          type={type}
+          opts={opts}
+          setOpts={setOpts}
+          onToggleCorrect={toggleCorrect}
+          onAddOption={addOption}
+          onRemoveOption={removeOption}
+        />
       )}
 
       <div className="flex gap-2 justify-end">
@@ -954,14 +466,14 @@ export function QuestionForm({
           <button
             type="button"
             onClick={onCancel}
-            className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700"
+            className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700 cursor-pointer"
           >
             Bekor qilish
           </button>
         )}
         <button
           type="submit"
-          className="text-sm bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 disabled:opacity-40"
+          className="text-sm bg-indigo-500 text-white px-4 py-2 rounded-lg hover:bg-indigo-600 disabled:opacity-40 cursor-pointer"
         >
           {submitLabel ?? "Savol qo'shish"}
         </button>

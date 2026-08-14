@@ -1,56 +1,21 @@
 import {
   Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { ArrayMinSize, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles, Public } from '../auth/roles.decorator';
+import { type JwtRequest } from '../auth/types/jwt-request.interface';
 import { ClassroomService } from './classroom.service';
-
-class CreateClassSessionDto {
-  @IsString() courseId!: string;
-  @IsOptional() @IsString() title?: string;
-}
-
-class CreateFreeClassSessionDto {
-  @IsOptional() @IsString() title?: string;
-}
-
-class CreateBoardDto {
-  @IsOptional() @IsString() title?: string;
-}
-
-class UpdateBoardTitleDto {
-  @IsString() title!: string;
-}
-
-class ReopenFreeSessionDto {
-  @IsOptional() @IsString() title?: string;
-}
-
-class OverrideAttendanceDto {
-  @IsIn(['absent', 'present', 'late']) status!: 'absent' | 'present' | 'late';
-}
-
-class AttachPdfDto {
-  @IsString() mediaAssetId!: string;
-  @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
-}
-
-class InsertPdfPagesDto {
-  @IsString() mediaAssetId!: string;
-  @IsInt({ each: true }) @Min(1, { each: true }) @ArrayMinSize(1) pageNumbers!: number[];
-  @IsInt() @Min(0) afterPageIndex!: number;
-}
-
-class StartRecordingDto {
-  @IsIn(['full', 'boardAudio', 'boardSilent']) mode!: 'full' | 'boardAudio' | 'boardSilent';
-}
-
-class GuestVoiceTokenDto {
-  @IsString() guestName!: string;
-  @IsString() @IsOptional() guestId?: string;
-}
+import {
+  AttachPdfDto,
+  CreateClassSessionDto,
+  CreateFreeClassSessionDto,
+  GuestVoiceTokenDto,
+  InsertPdfPagesDto,
+  OverrideAttendanceDto,
+  ReopenFreeSessionDto,
+  StartRecordingDto,
+} from './dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('classroom')
@@ -59,14 +24,14 @@ export class ClassroomController {
 
   @Post('sessions')
   @Roles('teacher', 'super')
-  createSession(@Body() dto: CreateClassSessionDto, @Req() req: any) {
+  createSession(@Body() dto: CreateClassSessionDto, @Req() req: JwtRequest) {
     return this.classroomService.createSession(dto.courseId, req.admin.id, req.admin.role, dto.title);
   }
 
   // Erkin (guruhsiz) dars — kursga, guruhga bog'liq emas, DB'ga yozuv qilinadi.
   @Post('sessions/free')
   @Roles('teacher', 'super')
-  createFreeSession(@Body() dto: CreateFreeClassSessionDto, @Req() req: any) {
+  createFreeSession(@Body() dto: CreateFreeClassSessionDto, @Req() req: JwtRequest) {
     return this.classroomService.createFreeSession(req.admin.id, dto?.title);
   }
 
@@ -76,7 +41,7 @@ export class ClassroomController {
   @Roles('teacher', 'super')
   async createFreeSessionFromSnapshot(
     @Param('sourceSessionId', ParseUUIDPipe) sourceSessionId: string,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     return this.classroomService.createFreeSessionFromSnapshot(req.admin.id, sourceSessionId);
   }
@@ -87,7 +52,7 @@ export class ClassroomController {
   async createSessionFromSnapshot(
     @Param('sourceSessionId', ParseUUIDPipe) sourceSessionId: string,
     @Body() dto: { title?: string },
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     return this.classroomService.createClassSessionFromSnapshot(sourceSessionId, req.admin.id, req.admin.role, dto?.title);
   }
@@ -98,7 +63,7 @@ export class ClassroomController {
   async reopenFreeSession(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: ReopenFreeSessionDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     await this.classroomService.withSession(id, () =>
       this.classroomService.reopenFreeSession(req.admin.id, id, dto?.title));
@@ -110,7 +75,7 @@ export class ClassroomController {
   async attachPdf(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: AttachPdfDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.attachPdfFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers));
@@ -121,7 +86,7 @@ export class ClassroomController {
   async attachBoard(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: { boardId: string },
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.attachBoardToSession(id, req.admin.id, dto.boardId));
@@ -132,7 +97,7 @@ export class ClassroomController {
   async insertPdfPages(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: InsertPdfPagesDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.insertPdfPagesFromLibrary(id, req.admin.id, req.admin.role, dto.mediaAssetId, dto.pageNumbers, dto.afterPageIndex));
@@ -140,20 +105,20 @@ export class ClassroomController {
 
   @Post('sessions/:id/end')
   @Roles('teacher', 'super')
-  async endSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  async endSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
     await this.classroomService.withSession(id, () => this.classroomService.endSession(id, req.admin.id));
     return { ok: true };
   }
 
   @Get('sessions/active')
   @Roles('teacher', 'super', 'student', 'curator')
-  listActive(@Req() req: any) {
+  listActive(@Req() req: JwtRequest) {
     return this.classroomService.listActiveForUser(req.admin.id, req.admin.role);
   }
 
   @Get('sessions/:id')
   @Roles('teacher', 'super')
-  getSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  getSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.getSessionWithAttendance(id, req.admin.id, req.admin.role));
   }
@@ -162,7 +127,7 @@ export class ClassroomController {
   @Roles('teacher', 'super', 'student')
   getReplay(
     @Param('id', ParseUUIDPipe) id: string,
-    @Req() req: any,
+    @Req() req: JwtRequest,
     @Query('recordingId') recordingId?: string,
   ) {
     return this.classroomService.getReplay(id, req.admin.id, recordingId);
@@ -170,26 +135,26 @@ export class ClassroomController {
 
   @Delete('sessions/:id')
   @Roles('teacher', 'super')
-  deleteSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  deleteSession(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.deleteSession(id, req.admin.id, req.admin.role));
   }
 
   @Get('courses/:courseId/history')
   @Roles('teacher', 'super')
-  courseHistory(@Param('courseId', ParseUUIDPipe) courseId: string, @Req() req: any) {
+  courseHistory(@Param('courseId', ParseUUIDPipe) courseId: string, @Req() req: JwtRequest) {
     return this.classroomService.courseHistory(courseId, req.admin.id, req.admin.role);
   }
 
   @Get('my-free-sessions')
   @Roles('teacher', 'super')
-  myFreeSessionHistory(@Req() req: any) {
+  myFreeSessionHistory(@Req() req: JwtRequest) {
     return this.classroomService.myFreeSessionHistory(req.admin.id);
   }
 
   @Get('my-sessions')
   @Roles('student')
-  myClassSessions(@Req() req: any) {
+  myClassSessions(@Req() req: JwtRequest) {
     return this.classroomService.myClassSessions(req.admin.id);
   }
 
@@ -198,7 +163,7 @@ export class ClassroomController {
   async overrideAttendance(
     @Param('recordId', ParseUUIDPipe) recordId: string,
     @Body() dto: OverrideAttendanceDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     await this.classroomService.overrideAttendance(recordId, req.admin.id, req.admin.role, dto.status);
     return { ok: true };
@@ -206,7 +171,7 @@ export class ClassroomController {
 
   @Post('sessions/:id/voice-token')
   @Roles('teacher', 'super', 'student', 'curator')
-  voiceToken(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
+  voiceToken(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
     return this.classroomService.withSession(id, () =>
       this.classroomService.voiceToken(id, req.admin.id, req.admin.name ?? ''));
   }
@@ -229,7 +194,7 @@ export class ClassroomController {
   async startRecording(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: StartRecordingDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     await this.classroomService.withSession(id, () =>
       this.classroomService.startSessionRecording(id, req.admin.id, dto.mode));
@@ -241,7 +206,7 @@ export class ClassroomController {
   async mute(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('userId', ParseUUIDPipe) userId: string,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
     await this.classroomService.withSession(id, () =>
       this.classroomService.muteParticipant(id, req.admin.id, userId));

@@ -1,41 +1,34 @@
 import {
   Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
-import { IsOptional, IsString } from 'class-validator';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { ClassroomService } from './classroom.service';
-
-class CreateBoardDto {
-  @IsOptional() @IsString() title?: string;
-}
-
-class UpdateBoardTitleDto {
-  @IsString() title!: string;
-}
+import { type JwtRequest } from '../auth/types/jwt-request.interface';
+import { BoardsService } from './boards.service';
+import { CreateBoardDto, UpdateBoardTitleDto } from './dto';
 
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller('boards')
 export class BoardsController {
-  constructor(private readonly classroomService: ClassroomService) {}
+  constructor(private readonly boardsService: BoardsService) {}
 
   @Get()
   @Roles('teacher', 'super')
-  listBoards(@Req() req: any) {
-    return this.classroomService.listMyBoards(req.admin.id);
+  listBoards(@Req() req: JwtRequest) {
+    return this.boardsService.listMyBoards(req.admin.id);
   }
 
   @Post()
   @Roles('teacher', 'super')
-  createBoard(@Body() dto: CreateBoardDto, @Req() req: any) {
-    return this.classroomService.createBoard(req.admin.id, dto?.title);
+  createBoard(@Body() dto: CreateBoardDto, @Req() req: JwtRequest) {
+    return this.boardsService.createBoard(req.admin.id, dto?.title);
   }
 
   @Delete(':id')
   @Roles('teacher', 'super')
-  async deleteBoard(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    await this.classroomService.deleteBoard(id, req.admin.id);
+  async deleteBoard(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
+    await this.boardsService.deleteBoard(id, req.admin.id);
     return { ok: true };
   }
 
@@ -44,9 +37,9 @@ export class BoardsController {
   async updateBoardTitle(
     @Param('id', ParseUUIDPipe) id: string,
     @Body() dto: UpdateBoardTitleDto,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
-    await this.classroomService.updateBoardTitle(id, req.admin.id, dto.title);
+    await this.boardsService.updateBoardTitle(id, req.admin.id, dto.title);
     return { ok: true };
   }
 
@@ -56,17 +49,18 @@ export class BoardsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Query('page') page?: string,
     @Query('limit') limit?: string,
-    @Req() req?: any,
+    @Req() req?: JwtRequest,
   ) {
     const p = page ? parseInt(page, 10) : 1;
     const l = limit ? parseInt(limit, 10) : 20;
-    return this.classroomService.getBoardActivity(id, req.admin.id, p, l);
+    const adminId = req?.admin?.id ?? '';
+    return this.boardsService.getBoardActivity(id, adminId, p, l);
   }
 
   @Get(':id/versions')
   @Roles('teacher', 'super')
-  getBoardVersions(@Param('id', ParseUUIDPipe) id: string, @Req() req: any) {
-    return this.classroomService.getBoardVersions(id, req.admin.id);
+  getBoardVersions(@Param('id', ParseUUIDPipe) id: string, @Req() req: JwtRequest) {
+    return this.boardsService.getBoardVersions(id, req.admin.id);
   }
 
   @Post(':id/versions/:versionId/restore')
@@ -74,9 +68,9 @@ export class BoardsController {
   async restoreBoardVersion(
     @Param('id', ParseUUIDPipe) id: string,
     @Param('versionId') versionId: string,
-    @Req() req: any,
+    @Req() req: JwtRequest,
   ) {
-    await this.classroomService.restoreBoardVersion(id, req.admin.id, versionId);
+    await this.boardsService.restoreBoardVersion(id, req.admin.id, versionId);
     return { ok: true };
   }
 
@@ -86,7 +80,7 @@ export class BoardsController {
     @Param('id', ParseUUIDPipe) id: string,
     @Body('label') label?: string,
   ) {
-    await this.classroomService.createBoardVersionCheckpoint(id, label);
+    await this.boardsService.createBoardVersionCheckpoint(id, label);
     return { ok: true };
   }
 }

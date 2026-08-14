@@ -44,8 +44,9 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
     try {
       const result = await this.classroomService.withSession(sessionId, fn);
       return { ok: true, ...(result && typeof result === 'object' ? result : {}) };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -60,8 +61,9 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
       );
       void client.join(`cs:${body.sessionId}`);
       return { ok: true, state };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -92,8 +94,9 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
       );
       void client.join(`cs:${body.sessionId}`);
       return { ok: true, state };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -312,8 +315,9 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
         () => this.classroomService.endSession(body.sessionId, user.sub),
       );
       return { ok: true };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -367,6 +371,8 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   @SubscribeMessage('hand:lowerAll')
   handLowerAll(@MessageBody() body: BaseBody) {
     return this.run(body.sessionId, () => {
+      // Faqat autentifikatsiya qilingan foydalanuvchi barcha qo'llarni tushira oladi
+      this.verify(body.token);
       const raisedHands = this.classroomService.handLowerAll(body.sessionId);
       this.server.to(`cs:${body.sessionId}`).emit('hand:update', { raisedHands });
     });
@@ -375,6 +381,8 @@ export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   @SubscribeMessage('hand:lowerUser')
   handLowerUser(@MessageBody() body: BaseBody & { targetUserId: string }) {
     return this.run(body.sessionId, () => {
+      // Faqat autentifikatsiya qilingan foydalanuvchi aniq bir foydalanuvchining qo'lini tushira oladi
+      this.verify(body.token);
       const raisedHands = this.classroomService.handLowerUser(body.sessionId, body.targetUserId);
       this.server.to(`cs:${body.sessionId}`).emit('hand:update', { raisedHands });
     });

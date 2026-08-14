@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useLoadingStore } from '../store/loadingStore';
+import { useLoadingStore } from '../stores/loadingStore';
 
 export function TopProgressBar() {
   const active = useLoadingStore((s) => s.count > 0);

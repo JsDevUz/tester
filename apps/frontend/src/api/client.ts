@@ -1,5 +1,6 @@
 import axios from "axios";
-import { useLoadingStore } from "../store/loadingStore";
+import { useLoadingStore } from "../stores/loadingStore";
+import { useAuthStore } from "../stores/authStore";
 import { getApiBaseUrl } from "./baseUrl";
 
 const client = axios.create({
@@ -23,7 +24,7 @@ client.interceptors.response.use(
   (err) => {
     useLoadingStore.getState().dec();
     if (err.response?.status === 401) {
-      localStorage.removeItem("token");
+      useAuthStore.getState().logout();
       window.location.href = "/login";
     }
     return Promise.reject(err);

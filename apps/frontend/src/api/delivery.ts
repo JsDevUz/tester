@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { useLoadingStore } from '../store/loadingStore';
+import { useLoadingStore } from '../stores/loadingStore';
 import { getPublicBaseUrl } from './baseUrl';
 
 const publicClient = axios.create({

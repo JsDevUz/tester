@@ -3,6 +3,7 @@ import { Throttle } from '@nestjs/throttler';
 import { AuthService } from './auth.service';
 import { JwtAuthGuard } from './jwt-auth.guard';
 import { IsOptional, IsString, MaxLength, MinLength } from 'class-validator';
+import { type JwtRequest } from './types/jwt-request.interface';
 
 // Auth kod/login endpointlari brute-force'ga qarshi qat'iyroq limitga ega:
 // har bir client IP uchun bir daqiqada 5 tagacha urinish.
@@ -119,20 +120,20 @@ export class AuthController {
 
   @UseGuards(JwtAuthGuard)
   @Get('me')
-  me(@Req() req: any) {
+  me(@Req() req: JwtRequest) {
     return this.authService.getMe(req.admin.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Patch('me')
-  updateProfile(@Req() req: any, @Body() dto: UpdateProfileDto) {
+  updateProfile(@Req() req: JwtRequest, @Body() dto: UpdateProfileDto) {
     return this.authService.updateProfile(req.admin.id, dto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Throttle(AUTH_THROTTLE)
   @Patch('me/password')
-  changePassword(@Req() req: any, @Body() dto: ChangePasswordDto) {
+  changePassword(@Req() req: JwtRequest, @Body() dto: ChangePasswordDto) {
     return this.authService.changePassword(req.admin.id, dto.currentPassword, dto.newPassword);
   }
 }

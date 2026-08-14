@@ -166,8 +166,11 @@ export interface ClassroomState {
   rightBoardMode: CsBoardMode;
   isBoardOpen: boolean;
   classroomTheme: 'light' | 'dark';
+  notebookStyle?: CsNotebookStyle;
   notebookPageStyles: Record<number, CsNotebookStyle>;
   notebookPageOrientations: Record<number, CsNotebookOrientation>;
+  attachedBoardId?: string;
+  isReplay?: boolean;
   reactions: StickerReactionItem[];
   userReactions: Record<string, string>;
   raisedHands: RaisedHandItem[];

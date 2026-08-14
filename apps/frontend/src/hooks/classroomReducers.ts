@@ -32,39 +32,93 @@ export function applyPdfSet(s: ClassroomState, p: { pdfName: string; pages: stri
   return { ...s, pdfName: p.pdfName, pages: p.pages, currentPage: p.currentPage, boardMode: "pdf", boardLayout: "single", leftBoardMode: "pdf", rightBoardMode: "pdf", strokesByMode: byMode, strokesByPage: {}, rightStrokesByPage: {}, pointer: null };
 }
 
-export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }): ClassroomState {
+export function applyBoardSet(s: ClassroomState, p: { mode: CsBoardMode; layout?: CsBoardLayout; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number; notebookPageStyles?: Record<number, CsNotebookStyle>; notebookPageOrientations?: Record<number, CsNotebookOrientation>; strokesByMode?: Record<string, Record<number, CsStroke[]>>; pdfName?: string | null; pages?: string[] }): ClassroomState {
   const leftMode = p.leftMode ?? p.mode;
   const rightMode = p.rightMode ?? p.mode;
-  const targetPageCount = leftMode === "notebook" ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (s.pages?.length || 1);
+  const pages = p.pages ?? s.pages;
+  const targetPageCount = leftMode === "notebook" ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (pages?.length || 1);
   const clampedCurrentPage = Math.min(Math.max(1, p.currentPage || s.currentPage || 1), Math.max(1, targetPageCount));
 
-  if (s.strokesByMode || s.isReplay) {
-    const byMode = s.strokesByMode ?? {
-      pdf: { ...s.strokesByPage },
-      notebook: {},
-    };
-    const nextByMode = {
-      ...byMode,
-      [leftMode]: p.strokesByPage ?? byMode[leftMode] ?? {},
-      ...(p.rightStrokesByPage ? { [rightMode]: p.rightStrokesByPage } : {}),
-    };
-    return {
-      ...s,
-      boardMode: p.mode,
-      boardLayout: p.layout ?? "single",
-      leftBoardMode: leftMode,
-      rightBoardMode: rightMode,
-      currentPage: clampedCurrentPage,
-      strokesByMode: nextByMode,
-      strokesByPage: nextByMode[leftMode] ?? {},
-      rightStrokesByPage: nextByMode[rightMode] ?? {},
-      notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
-      pointer: null,
-      scroll: null,
-    };
-  }
+  const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? (s.boardMode === "pdf" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? (s.boardMode === "notebook" ? s.strokesByPage : {})) as Record<number, CsStroke[]>,
+  };
+  const nextByMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    ...byMode,
+    [leftMode]: p.strokesByPage ?? byMode[leftMode] ?? {},
+    ...(p.rightStrokesByPage ? { [rightMode]: p.rightStrokesByPage } : {}),
+  };
+  return {
+    ...s,
+    pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
+    pages: pages,
+    boardMode: p.mode,
+    boardLayout: p.layout ?? "single",
+    leftBoardMode: leftMode,
+    rightBoardMode: rightMode,
+    currentPage: clampedCurrentPage,
+    strokesByMode: nextByMode,
+    strokesByPage: nextByMode[leftMode] ?? {},
+    rightStrokesByPage: nextByMode[rightMode] ?? {},
+    notebookPageCount: p.notebookPageCount ?? s.notebookPageCount,
+    notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
+    notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
+    pointer: null,
+    scroll: null,
+    isBoardOpen: true,
+  };
+}
 
-  return { ...s, boardMode: p.mode, boardLayout: p.layout ?? "single", leftBoardMode: leftMode, rightBoardMode: rightMode, currentPage: clampedCurrentPage, strokesByPage: p.strokesByPage ?? {}, rightStrokesByPage: p.rightStrokesByPage ?? {}, notebookPageCount: p.notebookPageCount ?? s.notebookPageCount, pointer: null, scroll: null };
+export function applyBoardAttached(s: ClassroomState, p: {
+  attachedBoardId?: string;
+  pdfName?: string | null;
+  pages?: string[];
+  boardMode?: CsBoardMode;
+  boardLayout?: CsBoardLayout;
+  leftBoardMode?: CsBoardMode;
+  rightBoardMode?: CsBoardMode;
+  notebookStyle?: CsNotebookStyle;
+  notebookPageCount?: number;
+  notebookPageStyles?: Record<number, CsNotebookStyle>;
+  notebookPageOrientations?: Record<number, CsNotebookOrientation>;
+  strokesByMode?: Record<string, Record<number, CsStroke[]>>;
+  strokesByPage?: Record<number, CsStroke[]>;
+  rightStrokesByPage?: Record<number, CsStroke[]>;
+  currentPage?: number;
+}): ClassroomState {
+  const mode = p.boardMode ?? s.boardMode ?? "pdf";
+  const leftMode = p.leftBoardMode ?? mode;
+  const rightMode = p.rightBoardMode ?? mode;
+  const pages = p.pages ?? s.pages;
+  const targetPageCount = leftMode === "notebook" ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (pages?.length || 1);
+  const clampedPage = Math.min(Math.max(1, p.currentPage ?? 1), Math.max(1, targetPageCount));
+
+  const byMode: Record<CsBoardMode, Record<number, CsStroke[]>> = {
+    pdf: (p.strokesByMode?.pdf ?? s.strokesByMode?.pdf ?? (mode === "pdf" ? (p.strokesByPage ?? {}) : {})) as Record<number, CsStroke[]>,
+    notebook: (p.strokesByMode?.notebook ?? s.strokesByMode?.notebook ?? (mode === "notebook" ? (p.strokesByPage ?? {}) : {})) as Record<number, CsStroke[]>,
+  };
+
+  return {
+    ...s,
+    attachedBoardId: p.attachedBoardId ?? s.attachedBoardId,
+    pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
+    pages: pages,
+    boardMode: mode,
+    boardLayout: p.boardLayout ?? "single",
+    leftBoardMode: leftMode,
+    rightBoardMode: rightMode,
+    notebookStyle: p.notebookStyle ?? s.notebookStyle ?? "grid",
+    notebookPageCount: p.notebookPageCount ?? s.notebookPageCount ?? 1,
+    notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
+    notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
+    currentPage: clampedPage,
+    strokesByMode: byMode,
+    strokesByPage: byMode[leftMode] ?? p.strokesByPage ?? {},
+    rightStrokesByPage: byMode[rightMode] ?? p.rightStrokesByPage ?? {},
+    pointer: null,
+    scroll: null,
+    isBoardOpen: true,
+  };
 }
 
 export function applyPageSet(s: ClassroomState, p: { page: number }): ClassroomState {

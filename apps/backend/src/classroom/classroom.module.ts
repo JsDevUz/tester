@@ -1,5 +1,6 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { ClassroomService } from './classroom.service';
 import { ClassroomGateway } from './classroom.gateway';
 import { ClassroomController } from './classroom.controller';
@@ -9,11 +10,20 @@ import { BoardsController } from './boards.controller';
 import { StorageModule } from '../storage/storage.module';
 import { UploadModule } from '../upload/upload.module';
 import { PracticeMessengerModule } from '../practice-messenger/practice-messenger.module';
-import 'dotenv/config';
+
+import { BoardsService } from './boards.service';
+import { ClassroomVoiceService } from './classroom-voice.service';
+import { ClassroomAttendanceService } from './classroom-attendance.service';
 
 @Module({
   imports: [
-    JwtModule.register({ secret: process.env.JWT_SECRET! }),
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
     StorageModule,
     UploadModule,
     // "Jonli dars boshlandi" bildirishnomasini foydalanuvchining
@@ -22,7 +32,15 @@ import 'dotenv/config';
     PracticeMessengerModule,
   ],
   controllers: [ClassroomController, ClassroomRecordingController, BoardsController],
-  providers: [ClassroomService, ClassroomGateway, ClassroomRecordingService],
+  providers: [
+    ClassroomService,
+    ClassroomGateway,
+    ClassroomRecordingService,
+    BoardsService,
+    ClassroomVoiceService,
+    ClassroomAttendanceService,
+  ],
+  exports: [BoardsService, ClassroomVoiceService, ClassroomAttendanceService],
 })
 export class ClassroomModule {}
 

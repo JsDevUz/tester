@@ -111,6 +111,61 @@ export function applyBoardSet(
   };
 }
 
+export function applyBoardAttached(
+  s: ClassroomState,
+  p: {
+    attachedBoardId?: string;
+    pdfName?: string | null;
+    pages?: string[];
+    boardMode?: CsBoardMode;
+    boardLayout?: CsBoardLayout;
+    leftBoardMode?: CsBoardMode;
+    rightBoardMode?: CsBoardMode;
+    notebookStyle?: CsNotebookStyle;
+    notebookPageCount?: number;
+    notebookPageStyles?: Record<number, CsNotebookStyle>;
+    notebookPageOrientations?: Record<number, CsNotebookOrientation>;
+    strokesByMode?: Record<string, Record<number, CsStroke[]>>;
+    strokesByPage?: Record<number, CsStroke[]>;
+    rightStrokesByPage?: Record<number, CsStroke[]>;
+    currentPage?: number;
+  },
+): ClassroomState {
+  const mode = p.boardMode ?? s.boardMode ?? 'pdf';
+  const leftMode = p.leftBoardMode ?? mode;
+  const rightMode = p.rightBoardMode ?? mode;
+  const pages = p.pages ?? s.pages;
+  const targetPageCount = leftMode === 'notebook' ? (p.notebookPageCount ?? s.notebookPageCount ?? 1) : (pages?.length || 1);
+  const clampedPage = Math.min(Math.max(1, p.currentPage ?? 1), Math.max(1, targetPageCount));
+
+  const byMode = (p.strokesByMode as Record<string, Record<number, CsStroke[]>>) ?? s.strokesByMode ?? {
+    pdf: mode === 'pdf' ? (p.strokesByPage ?? {}) : {},
+    notebook: mode === 'notebook' ? (p.strokesByPage ?? {}) : {},
+  };
+
+  return {
+    ...s,
+    attachedBoardId: p.attachedBoardId ?? s.attachedBoardId,
+    pdfName: p.pdfName !== undefined ? p.pdfName : s.pdfName,
+    pages: pages,
+    boardMode: mode,
+    boardLayout: p.boardLayout ?? 'single',
+    leftBoardMode: leftMode,
+    rightBoardMode: rightMode,
+    notebookStyle: p.notebookStyle ?? s.notebookStyle ?? 'grid',
+    notebookPageCount: p.notebookPageCount ?? s.notebookPageCount ?? 1,
+    notebookPageStyles: p.notebookPageStyles ?? s.notebookPageStyles,
+    notebookPageOrientations: p.notebookPageOrientations ?? s.notebookPageOrientations,
+    currentPage: clampedPage,
+    strokesByMode: byMode,
+    strokesByPage: byMode[leftMode] ?? p.strokesByPage ?? {},
+    rightStrokesByPage: byMode[rightMode] ?? p.rightStrokesByPage ?? {},
+    pointer: null,
+    scroll: null,
+    isBoardOpen: true,
+  };
+}
+
 
 export function applyPageSet(s: ClassroomState, p: {page: number}): ClassroomState {
   return {...s, currentPage: p.page, pointer: null};
@@ -124,36 +179,39 @@ export function optimistikApplyToPage(
   updateFn: (list: CsStroke[]) => CsStroke[],
 ): ClassroomState {
   const isRight = pane === 'right';
-  const activeLeft = s.leftBoardMode ?? s.boardMode ?? 'pdf';
-  const activeRight = s.rightBoardMode ?? s.boardMode ?? 'pdf';
-  const targetMode = (mode ?? (isRight ? activeRight : activeLeft) ?? 'pdf') as CsBoardMode;
+  const targetMode = (mode ?? (isRight ? s.rightBoardMode : s.leftBoardMode) ?? 'pdf') as CsBoardMode;
 
-  const byMode = {...(s.strokesByMode ?? {})};
-  if (!byMode[activeLeft]) {
-    byMode[activeLeft] = s.strokesByPage ?? {};
+  if (s.strokesByMode || s.isReplay) {
+    const byMode = s.strokesByMode ?? {
+      pdf: { ...(s.strokesByPage ?? {}) },
+      notebook: {},
+    };
+    const modeObj = byMode[targetMode] ?? {};
+    const pageStrokes = modeObj[page] ?? [];
+    const nextStrokes = updateFn(pageStrokes);
+
+    const nextModeObj = { ...modeObj, [page]: nextStrokes };
+    const nextByMode = { ...byMode, [targetMode]: nextModeObj };
+
+    const activeLeftMode = s.leftBoardMode ?? s.boardMode ?? 'pdf';
+    const activeRightMode = s.rightBoardMode ?? s.boardMode ?? 'pdf';
+
+    return {
+      ...s,
+      strokesByMode: nextByMode,
+      strokesByPage: nextByMode[activeLeftMode] ?? s.strokesByPage,
+      rightStrokesByPage: nextByMode[activeRightMode] ?? s.rightStrokesByPage,
+    };
   }
-  if (!byMode[activeRight]) {
-    byMode[activeRight] = s.rightStrokesByPage ?? {};
+
+  if (isRight) {
+    if (mode && mode !== s.rightBoardMode) return s;
+    const existing = s.rightStrokesByPage[page] ?? [];
+    return { ...s, rightStrokesByPage: { ...s.rightStrokesByPage, [page]: updateFn(existing) } };
   }
-
-  const modeObj = byMode[targetMode] ?? {};
-  const fallbackList = targetMode === activeLeft
-    ? (s.strokesByPage[page] ?? [])
-    : targetMode === activeRight
-    ? (s.rightStrokesByPage[page] ?? [])
-    : [];
-
-  const currentList = modeObj[page] ?? fallbackList;
-  const nextList = updateFn(currentList);
-  const nextModeObj = {...modeObj, [page]: nextList};
-  const nextByMode = {...byMode, [targetMode]: nextModeObj};
-
-  return {
-    ...s,
-    strokesByMode: nextByMode,
-    strokesByPage: nextByMode[activeLeft] ?? s.strokesByPage,
-    rightStrokesByPage: nextByMode[activeRight] ?? s.rightStrokesByPage,
-  };
+  if (mode && mode !== s.leftBoardMode) return s;
+  const existing = s.strokesByPage[page] ?? [];
+  return { ...s, strokesByPage: { ...s.strokesByPage, [page]: updateFn(existing) } };
 }
 
 export function applyStrokeAdd(

@@ -41,8 +41,9 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
     try {
       const result = await this.liveService.withSession(pin, fn);
       return { ok: true, ...(result && typeof result === 'object' ? result : {}) };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -54,8 +55,9 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
       const res = await this.liveService.withSession(body.pin, () => this.liveService.hostJoin(body.pin, user.sub, client.id));
       void client.join(`pin:${body.pin}`);
       return { ok: true, ...res };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 
@@ -147,8 +149,9 @@ export class LiveGateway implements OnGatewayInit, OnGatewayDisconnect {
       const user = this.verify(body.token);
       await this.liveService.withSession(body.pin, () => this.liveService.end(body.pin, user.sub));
       return { ok: true };
-    } catch (e: any) {
-      return { ok: false, code: e?.message ?? 'ERROR' };
+    } catch (err: unknown) {
+      const code = err instanceof Error ? err.message : 'ERROR';
+      return { ok: false, code };
     }
   }
 }

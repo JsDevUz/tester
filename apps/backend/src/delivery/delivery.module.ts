@@ -1,13 +1,23 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { DeliveryController } from './delivery.controller';
 import { DeliveryService } from './delivery.service';
 import { GroqModule } from '../groq/groq.module';
 import { PracticeMessengerModule } from '../practice-messenger/practice-messenger.module';
-import 'dotenv/config';
 
 @Module({
-  imports: [JwtModule.register({ secret: process.env.JWT_SECRET! }), GroqModule, PracticeMessengerModule],
+  imports: [
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      useFactory: (config: ConfigService) => ({
+        secret: config.getOrThrow<string>('JWT_SECRET'),
+      }),
+      inject: [ConfigService],
+    }),
+    GroqModule,
+    PracticeMessengerModule,
+  ],
   controllers: [DeliveryController],
   providers: [DeliveryService],
 })

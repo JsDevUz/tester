@@ -3,6 +3,7 @@ import { getClassroomSocket, closeClassroomSocket } from "../api/classroomSocket
 import { useThemeStore } from "../stores/themeStore";
 import type { CsBoardLayout, CsBoardMode, CsNotebookOrientation, CsNotebookStyle, CsParticipant, CsPointer, CsScrollPosition, CsSnapshot, CsStroke } from "../api/classroom";
 import {
+  applyBoardAttached,
   applyBoardSet, applyBoardUndo, applyBoardRedo, applyNotebookPageInsert, applyNotebookPageStyle, applyPageClear, applyPageRemove, applyPageSet, applyPdfInsert, applyPdfSet,
   applyStrokeAdd, applyStrokeReorder, applyStrokeShapeUpdate, applyStrokeSplit, applyStrokeTextUpdate, applyStrokeUndo,
   applyStrokeUpdate, moveStrokePoints,
@@ -13,6 +14,7 @@ import type { RaisedHandItem } from "../components/classroom/RaisedHandsControl"
 export interface ClassroomState {
   joined: boolean;
   title?: string | null;
+  attachedBoardId?: string | null;
   error: string | null;
   ended: boolean;
   pdfName: string | null;
@@ -28,6 +30,7 @@ export interface ClassroomState {
   zoom: number;
   rightZoom: number;
   splitRatio: number;
+  notebookStyle?: CsNotebookStyle;
   notebookPageCount: number;
   scroll: CsScrollPosition | null;
   rightScroll: CsScrollPosition | null;
@@ -170,15 +173,15 @@ export function useClassroomSession(
     socket.on("connect", join);
 
     socket.on("pdf:set", (p: { pdfName: string; pages: string[]; currentPage: number }) => {
-      if (role === "host") return;
       setState((s) => applyPdfSet(s, p));
     });
-    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number }) => {
-      if (role === "host") return;
+    socket.on("board:set", (p: { mode: CsBoardMode; layout?: "single" | "split"; leftMode?: CsBoardMode; rightMode?: CsBoardMode; currentPage: number; strokesByPage?: Record<number, CsStroke[]>; rightStrokesByPage?: Record<number, CsStroke[]>; notebookPageCount?: number; notebookPageStyles?: Record<number, CsNotebookStyle>; notebookPageOrientations?: Record<number, CsNotebookOrientation>; strokesByMode?: Record<string, Record<number, CsStroke[]>>; pdfName?: string; pages?: string[] }) => {
       setState((s) => applyBoardSet(s, p));
     });
+    socket.on("board:attached", (p: Parameters<typeof applyBoardAttached>[1]) => {
+      setState((s) => applyBoardAttached(s, p));
+    });
     socket.on("page:set", (p: { page: number }) => {
-      if (role === "host") return;
       setState((s) => applyPageSet(s, p));
     });
     socket.on("stroke:add", (p: { page: number; stroke: CsStroke; pane?: "left" | "right"; mode?: CsBoardMode }) => {
@@ -224,19 +227,15 @@ export function useClassroomSession(
       setState((s) => ({ ...s, splitRatio: p.ratio }));
     });
     socket.on("page:remove", (p: { mode: CsBoardMode; pageIndex: number; pane?: "left" | "right" }) => {
-      if (role === "host") return;
       setState((s) => applyPageRemove(s, p));
     });
     socket.on("pdf:insert", (p: { pages: string[]; afterPageIndex: number }) => {
-      if (role === "host") return;
       setState((s) => applyPdfInsert(s, p));
     });
     socket.on("page:insert", (p: { mode: CsBoardMode; afterPageIndex: number; style: CsNotebookStyle; orientation?: CsNotebookOrientation; pane?: "left" | "right" }) => {
-      if (role === "host") return;
       setState((s) => applyNotebookPageInsert(s, p));
     });
     socket.on("notebook:pageStyle", (p: { page: number; style: CsNotebookStyle }) => {
-      if (role === "host") return;
       setState((s) => applyNotebookPageStyle(s, p));
     });
     socket.on("board:undo", (p: { mode: CsBoardMode; page: number; entryType: string; strokeId?: string; pane?: "left" | "right"; before: unknown; after?: unknown }) => {
@@ -466,7 +465,10 @@ export function useClassroomSession(
   };
 
   const hostActions = {
-    setPage: (page: number) => emitHost("host:setPage", { page }),
+    setPage: (page: number) => {
+      setState((s) => ({ ...s, currentPage: page }));
+      emitHost("host:setPage", { page });
+    },
     // Optimistik: local ekranga darhol qo'shiladi (socket round-trip'ni
     // kutmasdan) — shuning uchun ustoz o'zi chizganda chiziq «yo'qolib
     // qayta paydo bo'lish» holati bo'lmaydi. Server javobi kelganda

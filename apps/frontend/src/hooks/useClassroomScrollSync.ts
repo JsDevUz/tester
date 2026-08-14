@@ -80,7 +80,6 @@ export function useClassroomScrollSync({
   // sahifa ichidagi nisbiy joyni (yRatio) tashqariga chiqarib beramiz.
   const scrollDetectRaf = useRef<number | null>(null);
   const handleScroll = useCallback(() => {
-    if (!isHost) return;
     if (suppressScrollDetectRef.current) return;
     if (scrollDetectRaf.current) cancelAnimationFrame(scrollDetectRaf.current);
     scrollDetectRaf.current = requestAnimationFrame(() => {
@@ -97,8 +96,11 @@ export function useClassroomScrollSync({
         const dist = Math.abs(mid - viewportMid);
         if (dist < closestDist) { closestDist = dist; closestPage = page; closestRect = rect; }
       }
-      if (closestPage !== currentPageRef.current) onPageChange?.(closestPage);
-      if (onScrollChange && closestRect) {
+      if (closestPage !== currentPageRef.current) {
+        currentPageRef.current = closestPage;
+        onPageChange?.(closestPage);
+      }
+      if (isHost && onScrollChange && closestRect) {
         const yRatio = closestRect.height > 0
           ? Math.min(1, Math.max(0, (viewportMid - closestRect.top) / closestRect.height))
           : 0;

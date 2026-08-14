@@ -7,20 +7,14 @@ import {
   ChevronDown,
   ChevronRight,
   ChevronUp,
-  Download,
-  FileText,
   Film,
-  Image as ImageIcon,
   Layers3,
   Loader2,
   Lock,
-  MessageCircle,
   Play,
-  Radio,
   Star,
   Trophy,
   UserRound,
-  X,
   Zap,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -28,91 +22,20 @@ import { StudentShell } from "../components/student/StudentShell";
 import { StudentActiveBanners } from "../components/student/StudentActiveBanners";
 import {
   apiGetMyCourseDetail,
-  apiGetMyCourseLeaderboard,
   apiGetMyCourses,
   apiMarkLessonComplete,
   type ApiMyCourse,
   type ApiMyCourseDetail,
-  type ApiMyCourseLeaderboard,
   type ApiMyLesson,
 } from "../api/groups";
 import { apiGetOrCreatePracticeChatForCourse } from "../api/practiceMessenger";
-import type { ApiContentBlock } from "../api/contentBlocks";
-import { HlsVideoPlayer } from "../components/course/HlsVideoPlayer";
-import { ImageLightbox } from "../components/student/ImageLightbox";
-import { PdfViewerSheet } from "../components/student/PdfViewerSheet";
 import { PracticeScreen } from "../components/student/PracticeScreen";
 import { TestTaker } from "../components/test/TestTaker";
 import { schedulePageScrollReset } from "../utils/scroll";
-import { UserAvatar } from "../components/UserAvatar";
-
-function pauseLessonVideos() {
-  document.querySelectorAll("video").forEach((video) => {
-    video.pause();
-  });
-}
-
-function useLessonAntiCapture(enabled: boolean) {
-  useEffect(() => {
-    if (!enabled) return undefined;
-
-    const prevent = (event: Event) => {
-      event.preventDefault();
-    };
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      const key = event.key.toLowerCase();
-      const hasModifier = event.ctrlKey || event.metaKey;
-      const isScreenshotCombo =
-        event.metaKey && event.shiftKey && ["3", "4", "5"].includes(key);
-      const isDevToolsCombo =
-        event.key === "F12" ||
-        (hasModifier && event.shiftKey && ["i", "j", "c"].includes(key));
-      const isBlockedShortcut =
-        hasModifier && ["p", "s", "u", "c"].includes(key);
-
-      if (event.key === "PrintScreen") {
-        event.preventDefault();
-        pauseLessonVideos();
-        if (navigator.clipboard?.writeText) {
-          void navigator.clipboard.writeText("").catch(() => undefined);
-        }
-        return;
-      }
-
-      if (isScreenshotCombo || isDevToolsCombo || isBlockedShortcut) {
-        event.preventDefault();
-        pauseLessonVideos();
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.hidden) pauseLessonVideos();
-    };
-
-    window.addEventListener("keydown", handleKeyDown, true);
-    window.addEventListener("blur", pauseLessonVideos);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
-    document.addEventListener("contextmenu", prevent);
-    document.addEventListener("copy", prevent);
-    document.addEventListener("cut", prevent);
-    document.addEventListener("paste", prevent);
-    document.addEventListener("dragstart", prevent);
-    document.addEventListener("selectstart", prevent);
-
-    return () => {
-      window.removeEventListener("keydown", handleKeyDown, true);
-      window.removeEventListener("blur", pauseLessonVideos);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
-      document.removeEventListener("contextmenu", prevent);
-      document.removeEventListener("copy", prevent);
-      document.removeEventListener("cut", prevent);
-      document.removeEventListener("paste", prevent);
-      document.removeEventListener("dragstart", prevent);
-      document.removeEventListener("selectstart", prevent);
-    };
-  }, [enabled]);
-}
+import { useLessonAntiCapture } from "../hooks/useLessonAntiCapture";
+import { CourseLeaderboardModal } from "../components/course/CourseLeaderboardModal";
+import { CourseModulesSidebar } from "../components/course/CourseModulesSidebar";
+import { LessonReader } from "../components/course/LessonContentRenderer";
 
 export function MyCoursesPage() {
   const { schoolId } = useParams<{ schoolId: string }>();
@@ -121,17 +44,19 @@ export function MyCoursesPage() {
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
-  const [leaderboardCourse, setLeaderboardCourse] =
-    useState<ApiMyCourse | null>(null);
+  const [leaderboardCourse, setLeaderboardCourse] = useState<ApiMyCourse | null>(null);
 
   function loadCourses() {
     setLoading(true);
     setLoadError(null);
     return apiGetMyCourses(schoolId)
       .then(setCourses)
-      .catch(() => {
+      .catch((err) => {
+        const message = err?.response?.data?.message;
         setLoadError(
-          "Kurslarni yuklab bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+          Array.isArray(message)
+            ? message[0]
+            : message || "Kurslarni yuklab bo‘lmadi",
         );
       })
       .finally(() => setLoading(false));
@@ -140,10 +65,6 @@ export function MyCoursesPage() {
   useEffect(() => {
     void loadCourses();
   }, [schoolId]);
-
-  useLayoutEffect(() => {
-    return schedulePageScrollReset();
-  }, [selectedCourseId]);
 
   if (selectedCourseId) {
     return (
@@ -277,165 +198,6 @@ export function MyCoursesPage() {
   );
 }
 
-function CourseLeaderboardModal({
-  course,
-  onClose,
-}: {
-  course: ApiMyCourse;
-  onClose: () => void;
-}) {
-  const [leaderboard, setLeaderboard] = useState<ApiMyCourseLeaderboard | null>(
-    null,
-  );
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    let active = true;
-    apiGetMyCourseLeaderboard(course.courseId)
-      .then((data) => {
-        if (active) setLeaderboard(data);
-      })
-      .catch((requestError) => {
-        if (active)
-          setError(
-            requestError?.response?.data?.message ??
-            "Reytingni yuklab bo‘lmadi.",
-          );
-      })
-      .finally(() => {
-        if (active) setLoading(false);
-      });
-    return () => {
-      active = false;
-    };
-  }, [course.courseId]);
-
-  const topThree = leaderboard?.entries.slice(0, 3) ?? [];
-  const remaining = leaderboard?.entries.slice(3) ?? [];
-  const rankStyle: Record<number, { podium: string; avatar: string }> = {
-    1: { podium: "order-2 h-32 bg-amber-400", avatar: "bg-amber-400" },
-    2: { podium: "order-1 h-24 bg-slate-300", avatar: "bg-slate-400" },
-    3: { podium: "order-3 h-20 bg-orange-300", avatar: "bg-orange-400" },
-  };
-
-  return (
-    <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/50 p-0 sm:items-center sm:p-5"
-      onClick={(event) => {
-        if (event.target === event.currentTarget) onClose();
-      }}
-    >
-      <section
-        className="max-h-[90dvh] w-full max-w-2xl overflow-y-auto rounded-t-3xl bg-gradient-to-br from-cyan-600 via-sky-600 to-indigo-600 p-4 text-white shadow-2xl sm:rounded-3xl sm:p-6"
-        role="dialog"
-        aria-modal="true"
-        aria-label="Kurs peshqadamlari"
-      >
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <p className="text-xs font-medium text-white/70">
-              {course.courseTitle}
-            </p>
-            <h2 className="mt-0.5 flex items-center gap-2 text-xl font-bold">
-              <Trophy size={20} className="text-amber-300" /> Peshqadamlar
-            </h2>
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="grid h-9 w-9 place-items-center rounded-xl bg-white/10 text-white/80 hover:bg-white/20"
-            aria-label="Yopish"
-          >
-            <X size={18} />
-          </button>
-        </div>
-
-        {loading ? (
-          <p className="py-16 text-center text-sm text-white/75">
-            Reyting yuklanmoqda...
-          </p>
-        ) : error ? (
-          <p className="py-16 text-center text-sm text-red-100">{error}</p>
-        ) : leaderboard?.entries.length === 0 ? (
-          <p className="py-16 text-center text-sm text-white/75">
-            Hali reyting uchun o‘quvchilar yo‘q.
-          </p>
-        ) : (
-          <>
-            <div className="mt-6 flex items-end justify-center gap-2 sm:gap-4">
-              {[topThree[1], topThree[0], topThree[2]]
-                .filter(Boolean)
-                .map((entry) => {
-                  const style = rankStyle[entry.rank];
-                  return (
-                    <div
-                      key={entry.studentId}
-                      className={`flex w-[30%] max-w-40 flex-col items-center ${style.podium.includes("order-2") ? "mb-0" : "mb-0"}`}
-                    >
-                      <div className="relative mb-2">
-                        <UserAvatar
-                          name={entry.studentName}
-                          avatarUrl={entry.studentAvatarUrl}
-                          className={`h-11 w-12 rounded-full border-2 border-white/70 text-sm font-bold text-white shadow-lg ${style.avatar}`}
-                        />
-                        <span className="absolute -bottom-1 -right-1 grid h-5 w-5 place-items-center rounded-full bg-white text-[10px] font-bold text-gray-800">
-                          {entry.rank}
-                        </span>
-                      </div>
-                      <p className="w-full truncate text-center text-xs font-semibold">
-                        {entry.studentName}
-                      </p>
-                      <p className="mt-1 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[11px] font-bold text-amber-100">
-                        <Star size={11} fill="currentColor" />{" "}
-                        {entry.starsEarned}
-                      </p>
-                      <div
-                        className={`mt-2 flex w-full items-center justify-center rounded-t-xl text-3xl font-black text-white/90 ${style.podium}`}
-                      >
-                        {entry.rank}
-                      </div>
-                    </div>
-                  );
-                })}
-            </div>
-
-            <div className="mt-4 space-y-2">
-              {remaining.map((entry) => (
-                <div
-                  key={entry.studentId}
-                  className={`flex items-center gap-2 rounded-xl px-3 py-2.5 ${entry.isCurrentStudent ? "bg-white/25 ring-1 ring-white/50" : "bg-white/15"}`}
-                >
-                  <span className="w-6 text-center text-sm font-bold text-white/80">
-                    {entry.rank}
-                  </span>
-                  <UserAvatar
-                    name={entry.studentName}
-                    avatarUrl={entry.studentAvatarUrl}
-                    className="h-8 w-8 rounded-full bg-white/20 text-xs font-bold"
-                  />
-                  <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-semibold">
-                      {entry.studentName}
-                      {entry.isCurrentStudent ? " (Siz)" : ""}
-                    </p>
-                    <p className="text-[11px] text-white/70">
-                      {entry.lessonsCompleted}/{entry.lessonsTotal} dars
-                    </p>
-                  </div>
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-400/90 px-2 py-1 text-xs font-bold text-amber-950">
-                    <Star size={12} fill="currentColor" /> {entry.starsEarned}
-                  </span>
-                </div>
-              ))}
-            </div>
-          </>
-        )}
-      </section>
-    </div>
-  );
-}
-
 function StudentCourseReader({
   courseId,
   onBack,
@@ -469,8 +231,7 @@ function StudentCourseReader({
           if (!allLessons[i].completed) break;
           resumeIndex = i + 1;
         }
-        const resumeLesson =
-          allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
+        const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
         setSelectedLessonId(resumeLesson?.id ?? null);
       })
       .catch((err) => {
@@ -489,7 +250,7 @@ function StudentCourseReader({
   function refreshCourseSilently() {
     return apiGetMyCourseDetail(courseId)
       .then(setCourse)
-      .catch(() => { });
+      .catch(() => {});
   }
 
   const lessons = useMemo(
@@ -499,17 +260,11 @@ function StudentCourseReader({
       ) ?? [],
     [course],
   );
-  const selected =
-    lessons.find((item) => item.lesson.id === selectedLessonId) ?? lessons[0];
+  const selected = lessons.find((item) => item.lesson.id === selectedLessonId) ?? lessons[0];
   const selectedIndex = selected
     ? lessons.findIndex((item) => item.lesson.id === selected.lesson.id)
     : -1;
-  // Har bir bo'lim o'zining MUSTAQIL ketma-ket unlock zanjiriga ega —
-  // bo'limning birinchi darsi har doim ochiq (oldingi bo'lim tugallanmagan
-  // bo'lsa ham), shu bo'lim ichida esa navbatdagi dars faqat oldingisi
-  // tugallangach ochiladi. Bitta bo'limdagi progress boshqa bo'limlarni
-  // ochib yubormaydi — global (butun kurs bo'ylab) indeks emas, har bir
-  // bo'lim o'z ichida alohida hisoblanadi.
+
   const unlockedLessonIds = useMemo(() => {
     const unlocked = new Set<string>();
     for (const module of course?.modules ?? []) {
@@ -525,9 +280,11 @@ function StudentCourseReader({
     }
     return unlocked;
   }, [course]);
+
   const progressCount = lessons.filter((item) => item.lesson.completed).length;
   const progressPercent =
     lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0;
+
   const courseStars = useMemo(() => {
     let earned = 0;
     let max = 0;
@@ -582,11 +339,7 @@ function StudentCourseReader({
     return lesson.combinedPracticePercent >= (lesson.passThresholdPercent ?? 0);
   }
 
-  const renderLessonButton = (
-    moduleIndex: number,
-    lesson: ApiMyLesson,
-    mobile = false,
-  ) => {
+  const renderMobileLessonButton = (moduleIndex: number, lesson: ApiMyLesson) => {
     const active = lesson.id === selected?.lesson.id;
     const videoBlock = lesson.blocks.find((block) => block.type === "video");
     const hasVideo = Boolean(videoBlock);
@@ -598,7 +351,9 @@ function StudentCourseReader({
     const hasPractice = lesson.practiceBlocks.length > 0;
     const videoDurationLabel =
       videoBlock?.durationSec != null
-        ? `${String(Math.floor(videoBlock.durationSec / 60)).padStart(2, "0")}:${String(videoBlock.durationSec % 60).padStart(2, "0")}`
+        ? `${String(Math.floor(videoBlock.durationSec / 60)).padStart(2, "0")}:${String(
+            videoBlock.durationSec % 60,
+          ).padStart(2, "0")}`
         : null;
 
     return (
@@ -608,34 +363,24 @@ function StudentCourseReader({
         onClick={() => {
           if (locked) return;
           setSelectedLessonId(lesson.id);
-          if (mobile) setMobileLessonsOpen(false);
+          setMobileLessonsOpen(false);
         }}
         disabled={locked}
-        className={
-          mobile
-            ? `flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${locked
-              ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
-              : active
-                ? "border-gray-900 bg-white text-gray-900"
-                : "border-transparent bg-white text-gray-900 hover:border-gray-300"
-            }`
-            : `flex w-full items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors ${locked
-              ? "cursor-not-allowed border-transparent text-gray-300 opacity-70"
-              : active
-                ? "border-gray-900 text-gray-900"
-                : "border-transparent text-gray-900 hover:border-gray-300"
-            }`
-        }
+        className={`flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
+          locked
+            ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
+            : active
+            ? "border-gray-900 bg-white text-gray-900"
+            : "border-transparent bg-white text-gray-900 hover:border-gray-300"
+        }`}
       >
-        <div
-          className={`${mobile ? "h-11 w-11 rounded-xl" : "h-11 w-11 rounded-xl"} relative flex shrink-0 items-center justify-center bg-gray-100 text-gray-300`}
-        >
+        <div className="h-11 w-11 rounded-xl relative flex shrink-0 items-center justify-center bg-gray-100 text-gray-300">
           {locked ? (
-            <Lock size={mobile ? 18 : 18} />
+            <Lock size={18} />
           ) : hasVideo ? (
-            <Film size={mobile ? 19 : 19} />
+            <Film size={19} />
           ) : (
-            <BookOpen size={mobile ? 19 : 19} />
+            <BookOpen size={19} />
           )}
           {hasVideo && !locked && (
             <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500 text-white">
@@ -645,13 +390,13 @@ function StudentCourseReader({
         </div>
         <div className="min-w-0 flex-1">
           <p
-            className={`${mobile ? "text-sm" : "text-xs"} line-clamp-2 font-bold ${active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"}`}
+            className={`text-sm line-clamp-2 font-bold ${
+              active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"
+            }`}
           >
             {lesson.title}
           </p>
-          <div
-            className={`${mobile ? "text-xs" : "text-[11px]"} mt-0.5 flex flex-wrap items-center gap-1.5 font-semibold text-gray-400`}
-          >
+          <div className="text-xs mt-0.5 flex flex-wrap items-center gap-1.5 font-semibold text-gray-400">
             <span>Modul {moduleIndex + 1}</span>
             {videoDurationLabel && (
               <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-gray-500">
@@ -673,14 +418,11 @@ function StudentCourseReader({
           )}
           <span className="text-gray-400">
             {locked ? (
-              <Lock size={mobile ? 18 : 15} />
+              <Lock size={18} />
             ) : isDone ? (
-              <CheckCircle2
-                size={mobile ? 18 : 16}
-                className="text-green-500"
-              />
+              <CheckCircle2 size={18} className="text-green-500" />
             ) : (
-              <ChevronRight size={mobile ? 18 : 16} />
+              <ChevronRight size={18} />
             )}
           </span>
         </div>
@@ -726,9 +468,7 @@ function StudentCourseReader({
         </button>
         <div className="rounded-2xl bg-gray-50 py-20 text-center text-gray-400">
           <BookOpen size={34} className="mx-auto mb-3 opacity-50" />
-          <p className="text-sm font-semibold">
-            Bu kursda hozircha ochiq dars yo‘q
-          </p>
+          <p className="text-sm font-semibold">Bu kursda hozircha ochiq dars yo‘q</p>
         </div>
       </div>
     );
@@ -813,7 +553,7 @@ function StudentCourseReader({
                   <span>{module.title || `Modul ${moduleIndex + 1}`}</span>
                 </div>
                 {module.lessons.map((lesson) =>
-                  renderLessonButton(moduleIndex, lesson, true),
+                  renderMobileLessonButton(moduleIndex, lesson),
                 )}
               </div>
             ))}
@@ -832,58 +572,22 @@ function StudentCourseReader({
       )}
 
       <div className="grid min-h-0 lg:min-h-screen lg:grid-cols-[340px_minmax(0,1fr)]">
-        <aside className="hidden max-w-full overflow-hidden border-b border-gray-200 bg-gray-100/80 p-3 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={onBack}
-              className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600"
-            >
-              <ArrowLeft size={16} /> Kurslar
-            </button>
-            {courseStars.max > 0 && (
-              <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-500">
-                <Star size={13} fill="currentColor" /> {courseStars.earned} /{" "}
-                {courseStars.max}
-              </span>
-            )}
-          </div>
-
-          <div className="mb-3 rounded-2xl bg-white p-3 sm:mb-4">
-            <div className="mb-2.5 flex items-center justify-between gap-2">
-              <span className="text-xs font-bold text-gray-900">Jarayon</span>
-              <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-[11px] font-bold text-white">
-                {progressCount} / {lessons.length}
-              </span>
-            </div>
-            <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
-              <div
-                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
-                style={{ width: `${progressPercent}%` }}
-              />
-            </div>
-          </div>
-
-          <div className="-mx-3 flex max-w-[100vw] gap-2 overflow-x-auto px-3 pb-1 sm:gap-2 lg:mx-0 lg:max-w-none lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
-            {course.modules.map((module, moduleIndex) => (
-              <div key={module.id} className="contents lg:block">
-                <div className="mb-2 hidden items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-gray-400 lg:flex">
-                  <Layers3 size={14} />
-                  <span>{module.title || `Modul ${moduleIndex + 1}`}</span>
-                </div>
-                <div className="contents lg:block lg:space-y-2.5">
-                  {module.lessons.map((lesson) =>
-                    renderLessonButton(moduleIndex, lesson),
-                  )}
-                </div>
-              </div>
-            ))}
-          </div>
-        </aside>
+        <CourseModulesSidebar
+          course={course}
+          selectedLessonId={selected?.lesson.id ?? null}
+          unlockedLessonIds={unlockedLessonIds}
+          progressCount={progressCount}
+          totalLessons={lessons.length}
+          progressPercent={progressPercent}
+          courseStars={courseStars}
+          onBack={onBack}
+          onSelectLesson={(id) => setSelectedLessonId(id)}
+        />
 
         <main
-          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
-            }`}
+          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${
+            activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
+          }`}
         >
           {selected && activeTest ? (
             <TestTaker
@@ -906,8 +610,7 @@ function StudentCourseReader({
                 if (block.testSlug) setActiveTest({ slug: block.testSlug });
               }}
               onViewSubmission={(block, submissionId) => {
-                if (block.testSlug)
-                  setActiveTest({ slug: block.testSlug, submissionId });
+                if (block.testSlug) setActiveTest({ slug: block.testSlug, submissionId });
               }}
               onImageSubmitted={() => void refreshCourseSilently()}
               hasNext={selectedIndex + 1 < lessons.length}
@@ -959,337 +662,6 @@ function StudentCourseReader({
           ) : null}
         </main>
       </div>
-    </div>
-  );
-}
-
-function LessonReader({
-  lesson,
-  moduleTitle,
-  curatorName,
-  lessonNumber,
-  totalLessons,
-  hasPractice,
-  blockedByThreshold,
-  onOpenMessenger,
-  onOpenPractice,
-  onPrev,
-  onNext,
-}: {
-  lesson: ApiMyLesson;
-  moduleTitle: string;
-  curatorName: string | null;
-  lessonNumber: number;
-  totalLessons: number;
-  hasPractice: boolean;
-  blockedByThreshold: boolean;
-  onOpenMessenger: () => void;
-  onOpenPractice: () => void | Promise<void>;
-  onPrev: () => void;
-  onNext: () => void | Promise<void>;
-}) {
-  const readyBlocks = lesson.blocks.filter(
-    (block) =>
-      block.type !== "video" ||
-      block.embedUrl ||
-      block.processingStatus === "ready",
-  );
-
-  return (
-    <article className="mx-auto w-full max-w-full overflow-hidden pb-12 text-gray-900">
-      <div className="-mx-4 mb-4 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:-mx-6 sm:mb-6 sm:px-6 lg:sticky lg:top-0 lg:z-10 lg:-mx-10 lg:px-10">
-        <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-gray-400 sm:text-xs">
-            {moduleTitle}
-          </p>
-          <h1 className="mt-1.5 text-xl font-black leading-tight text-gray-950 sm:mt-3 sm:text-4xl">
-            {lesson.title}
-          </h1>
-        </div>
-      </div>
-
-      <button
-        type="button"
-        onClick={onOpenMessenger}
-        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl hover:bg-gray-200"
-      >
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white sm:h-9 sm:w-9">
-            <MessageCircle size={16} />
-          </span>
-          <span className="min-w-0">
-            <span className="block text-xs font-bold text-gray-900">
-              {curatorName
-                ? `${curatorName} bilan suhbatlashish`
-                : "Ustozga murojaat"}
-            </span>
-            <span className="block truncate text-[11px] font-semibold text-gray-500">
-              {curatorName
-                ? "Kuratorga savolingizni berishingiz mumkin"
-                : "Kurator biriktirilmaguncha ustozingizga yozishingiz mumkin"}
-            </span>
-          </span>
-        </span>
-        <MessageCircle size={18} className="shrink-0 text-gray-700" />
-      </button>
-
-      <div className="space-y-5 sm:space-y-6">
-        {readyBlocks.length === 0 ? (
-          <div className="rounded-2xl bg-gray-50 py-16 text-center text-gray-400">
-            <BookOpen size={30} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm font-semibold">
-              Dars kontenti hozircha tayyor emas
-            </p>
-          </div>
-        ) : (
-          readyBlocks.map((block) => (
-            <LessonBlock key={block.id} block={block} />
-          ))
-        )}
-      </div>
-
-      <div className="mt-8 flex items-center justify-between gap-2 sm:mt-10 sm:gap-4">
-        <button
-          type="button"
-          onClick={onPrev}
-          disabled={lessonNumber <= 1}
-          className="rounded-xl bg-gray-100 px-3.5 py-2.5 text-xs font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
-        >
-          Orqaga
-        </button>
-        <button
-          type="button"
-          onClick={() => {
-            if (hasPractice) void onOpenPractice();
-            else void onNext();
-          }}
-          disabled={!hasPractice && blockedByThreshold}
-          className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${!hasPractice && blockedByThreshold
-            ? "cursor-not-allowed bg-gray-200 text-gray-400"
-            : "bg-[var(--color-indigo-500)]"
-            }`}
-        >
-          {hasPractice
-            ? "Amaliyot"
-            : lessonNumber >= totalLessons
-              ? "Yakunlash"
-              : "Keyingi dars"}
-        </button>
-      </div>
-      {!hasPractice && blockedByThreshold && (
-        <p className="mt-2 text-right text-xs font-semibold text-red-500">
-          Keyingi darsni ochish uchun o'tish balidan yetarlicha ball to'plang
-        </p>
-      )}
-    </article>
-  );
-}
-
-function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
-  const navigate = useNavigate();
-  return (
-    <button
-      type="button"
-      onClick={() => navigate(`/classroom-history/${classSessionId}/replay`)}
-      className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
-    >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
-        <Radio size={18} />
-      </span>
-      <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-bold text-gray-900">
-          Jonli dars
-        </span>
-        <span className="block text-xs font-semibold text-gray-400">
-          Yozuvni ko'rish
-        </span>
-      </span>
-    </button>
-  );
-}
-
-function LessonBlock({ block }: { block: ApiContentBlock }) {
-  const [lightboxOpen, setLightboxOpen] = useState(false);
-  const [lightboxSrc, setLightboxSrc] = useState<string | null>(null);
-  const [pdfSheetOpen, setPdfSheetOpen] = useState(false);
-
-  if (block.type === "editor") {
-    return (
-      <>
-        <div
-          className="lesson-reader-html max-w-full overflow-hidden text-sm leading-7 text-gray-900 sm:text-base [&_p]:w-fit [&_p]:max-w-full [&_div]:w-fit [&_div]:max-w-full [&_.bn-block-outer]:w-fit [&_.bn-block-content]:w-fit [&_[data-content-type]]:w-fit [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
-          dangerouslySetInnerHTML={{ __html: block.html ?? "" }}
-          onClick={(e) => {
-            const target = e.target as HTMLElement;
-            if (target.tagName === "IMG") {
-              setLightboxSrc((target as HTMLImageElement).src);
-            }
-          }}
-        />
-        {lightboxSrc && (
-          <ImageLightbox
-            src={lightboxSrc}
-            onClose={() => setLightboxSrc(null)}
-          />
-        )}
-      </>
-    );
-  }
-
-  if (block.type === "video") {
-    if (block.embedUrl) {
-      return (
-        <div className="max-w-full overflow-hidden rounded-2xl bg-black">
-          <iframe
-            src={block.embedUrl}
-            title={block.label ?? block.fileName ?? "Video"}
-            className="aspect-video w-full"
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-            allowFullScreen
-          />
-        </div>
-      );
-    }
-    return <HlsVideoPlayer blockId={block.id} watermark />;
-  }
-
-  if (block.type === "image" && block.previewUrl) {
-    return (
-      <figure>
-        <button
-          type="button"
-          onClick={() => setLightboxOpen(true)}
-          className="block w-full max-w-full cursor-zoom-in overflow-hidden"
-          aria-label="Rasmni kattalashtirish"
-        >
-          <img
-            src={block.previewUrl}
-            alt={block.label ?? block.fileName ?? ""}
-            draggable={false}
-            className="max-h-[260px] w-full rounded-2xl object-contain sm:max-h-[420px]"
-          />
-        </button>
-        {block.label && (
-          <figcaption className="mt-2 text-xs font-semibold text-gray-400">
-            {block.label}
-          </figcaption>
-        )}
-        {lightboxOpen && (
-          <ImageLightbox
-            src={block.previewUrl}
-            alt={block.label ?? block.fileName ?? ""}
-            onClose={() => setLightboxOpen(false)}
-          />
-        )}
-      </figure>
-    );
-  }
-
-  if (block.type === "file" && block.previewUrl) {
-    const ext =
-      (block.fileName ?? block.label ?? "FILE")
-        .split(".")
-        .pop()
-        ?.toUpperCase() ?? "FILE";
-    const isPdf = ext === "PDF";
-    return (
-      <>
-        <button
-          type="button"
-          onClick={() => {
-            if (isPdf) setPdfSheetOpen(true);
-            else
-              window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
-          }}
-          className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
-        >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
-            {ext.slice(0, 4)}
-          </span>
-          <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-gray-900">
-              {block.label || block.fileName || "Fayl"}
-            </span>
-            <span className="block text-xs font-semibold text-gray-400">
-              {isPdf ? "Ko'rish" : "Yuklab olish"}
-            </span>
-          </span>
-          <Download size={18} className="text-gray-400" />
-        </button>
-        {isPdf && pdfSheetOpen && (
-          <PdfViewerSheet
-            uri={block.previewUrl}
-            title={block.label || block.fileName || "Fayl"}
-            onClose={() => setPdfSheetOpen(false)}
-          />
-        )}
-      </>
-    );
-  }
-
-  if (block.type === "live_class" && block.classSessionId) {
-    return <LiveClassBlockTile classSessionId={block.classSessionId} />;
-  }
-
-  if (block.type === "button") {
-    if (!block.buttonUrl) return null;
-    return (
-      <div className="flex justify-center py-2">
-        <a
-          href={block.buttonUrl}
-          target={block.openInNewTab ? "_blank" : undefined}
-          rel={block.openInNewTab ? "noreferrer" : undefined}
-          className="rounded-xl px-5 py-2.5 text-sm font-bold"
-          style={{
-            backgroundColor: block.buttonColor || "#4F46E5",
-            color: block.buttonTextColor || "#FFFFFF",
-          }}
-        >
-          {block.label || "O'tish"}
-        </a>
-      </div>
-    );
-  }
-
-  if (block.type === "message") {
-    const lines = block.messageLines ?? [];
-    if (lines.length === 0 || !block.messageSender) return null;
-    return (
-      <div className="flex flex-col gap-2 py-2">
-        <div className="flex items-center gap-2">
-          <UserAvatar
-            name={block.messageSender.name}
-            avatarUrl={block.messageSender.avatarUrl}
-            className="h-8 w-8 rounded-full text-xs font-bold"
-          />
-          <span className="text-xs font-bold text-gray-600">
-            {block.messageSender.name}
-          </span>
-        </div>
-        <div className="flex flex-col gap-1.5">
-          {[...lines]
-            .sort((a, b) => a.orderIndex - b.orderIndex)
-            .map((line) => (
-              <div
-                key={line.id}
-                className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-sm text-gray-800"
-              >
-                {line.text}
-              </div>
-            ))}
-        </div>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
-      {block.type === "image" ? (
-        <ImageIcon size={18} />
-      ) : (
-        <FileText size={18} />
-      )}
-      <span>Kontent ochilmadi</span>
     </div>
   );
 }

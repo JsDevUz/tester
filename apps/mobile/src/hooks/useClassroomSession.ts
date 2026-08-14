@@ -4,6 +4,7 @@ import {getClassroomSocket, closeClassroomSocket} from '../lib/classroomSocket';
 import {useAuthStore} from '../store/authStore';
 import {storage} from '../lib/storage';
 import {
+  applyBoardAttached,
   applyBoardRedo,
   applyBoardSet,
   applyBoardUndo,
@@ -134,6 +135,9 @@ export function useClassroomSession(
         strokesByPage?: Record<number, CsStroke[]>;
         rightStrokesByPage?: Record<number, CsStroke[]>;
       }) => setState(s => applyBoardSet(s, p)),
+    );
+    socket.on('board:attached', (p: Parameters<typeof applyBoardAttached>[1]) =>
+      setState(s => applyBoardAttached(s, p)),
     );
     socket.on('page:set', (p: {page: number}) => setState(s => applyPageSet(s, p)));
     socket.on(
