@@ -147,16 +147,32 @@ export function applyStrokeSplitInverse(
   }
 }
 
+// stroke:reorder'ning teskarisi — sahifadagi chizmalar massivini
+// belgilangan ID tartibiga qayta quradi.
+export function applyStrokeReorderInverse(
+  session: ClassroomSession, mode: ClassroomBoardMode, page: number,
+  data: { before: { order: string[] }; after: { order: string[] } },
+  direction: 'undo' | 'redo',
+): void {
+  const map = strokeMapFor(session, mode);
+  const list = map.get(page);
+  if (!list) return;
+  const targetOrder = direction === 'undo' ? data.before.order : data.after.order;
+  const byId = new Map(list.map((s) => [s.id, s]));
+  const reordered = targetOrder.map((id) => byId.get(id)).filter((s): s is ClassroomStroke => s !== undefined);
+  map.set(page, reordered);
+}
+
 // page:clear'ning teskarisi — undo: tozalangan sahifaning o'chirilishdan oldingi barcha chizmalarini tiklaydi.
 // redo: sahifadagi barcha chizmalarni qayta tozalaydi.
 export function applyPageClearInverse(
   session: ClassroomSession, mode: ClassroomBoardMode, page: number,
-  data: { before: { strokes: ClassroomStroke[] } },
+  data: { strokes: ClassroomStroke[] },
   direction: 'undo' | 'redo',
 ): void {
   const map = strokeMapFor(session, mode);
   if (direction === 'undo') {
-    map.set(page, [...data.before.strokes]);
+    map.set(page, [...data.strokes]);
   } else {
     map.set(page, []);
   }

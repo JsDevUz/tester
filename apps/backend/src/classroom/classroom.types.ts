@@ -58,11 +58,8 @@ export interface ClassroomStroke {
 }
 
 export type ClassroomUndoActionType =
-  | 'stroke:add' | 'stroke:erase'
-  | 'stroke:transform'
-  | 'stroke:style'
-  | 'stroke:text'
-  | 'stroke:reorder'
+  | 'stroke:add' | 'stroke:erase' | 'stroke:split' | 'stroke:transform' | 'stroke:style' | 'stroke:text'
+  | 'stroke:reorder' | 'page:clear' | 'notebook:pageStyle'
   | 'page:remove' | 'page:insert';
 
 // Har bir tugallangan (commit qilingan) harakat — bekor qilish/qaytarish
