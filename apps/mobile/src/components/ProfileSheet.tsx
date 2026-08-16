@@ -36,21 +36,44 @@ const ROLE_LABELS: Record<string, string> = {
 const SPRING = {damping: 22, stiffness: 260, mass: 0.7};
 
 export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () => void}) {
-  const {height: windowHeight} = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
+
+  useEffect(() => {
+    if (visible) setMounted(true);
+  }, [visible]);
+
+  if (!mounted) return null;
+
+  return (
+    <ProfileSheetContent
+      visible={visible}
+      onClose={onClose}
+      onClosed={() => setMounted(false)}
+    />
+  );
+}
+
+function ProfileSheetContent({
+  visible,
+  onClose,
+  onClosed,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onClosed: () => void;
+}) {
+  const {height: windowHeight} = useWindowDimensions();
   const translateY = useSharedValue(windowHeight);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
-      translateY.value = windowHeight;
       backdropOpacity.value = withTiming(1, {duration: 220});
       translateY.value = withSpring(0, SPRING);
-    } else if (mounted) {
+    } else {
       backdropOpacity.value = withTiming(0, {duration: 180});
       translateY.value = withSpring(windowHeight, SPRING, finished => {
-        if (finished) runOnJS(setMounted)(false);
+        if (finished) runOnJS(onClosed)();
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -80,23 +103,6 @@ export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () 
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
-
-  if (!mounted) return null;
-
-  return <ProfileSheetContent onClose={close} pan={pan} sheetStyle={sheetStyle} backdropStyle={backdropStyle} />;
-}
-
-function ProfileSheetContent({
-  onClose,
-  pan,
-  sheetStyle,
-  backdropStyle,
-}: {
-  onClose: () => void;
-  pan: ReturnType<typeof Gesture.Pan>;
-  sheetStyle: ReturnType<typeof useAnimatedStyle>;
-  backdropStyle: ReturnType<typeof useAnimatedStyle>;
-}) {
   const user = useAuthStore(s => s.user);
   const logout = useAuthStore(s => s.logout);
   const setUser = useAuthStore(s => s.setUser);
@@ -175,14 +181,14 @@ function ProfileSheetContent({
               <View className="h-1.5 w-10 rounded-full bg-slate-200 dark:bg-dark-border" />
             </View>
           </GestureDetector>
-          <View className="flex-1 min-h-0 flex-col px-5 pb-4">
+          <View className="flex-col px-5 pb-4">
             <View className="mb-4 flex-row items-center justify-between">
               <Text className="text-lg font-bold text-ink dark:text-dark-ink">Sozlamalar</Text>
               <Pressable onPress={onClose} className="h-8 w-8 items-center justify-center rounded-full bg-slate-100 dark:bg-dark-surface-2">
                 <X size={16} color="#64748b" />
               </Pressable>
             </View>
-            <ScrollView className="flex-1" contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
               <Pressable
                 onPress={() => void changeAvatar()}
                 className="mb-6 items-center gap-3 self-center">

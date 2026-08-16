@@ -1,6 +1,5 @@
 import { useNavigate } from "react-router-dom";
 import {
-  BookOpen,
   CheckCircle2,
   FileText,
   Focus,
@@ -34,24 +33,6 @@ export function ChallengesHubPage() {
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
             <button
               type="button"
-              onClick={() => navigate("/challanges")}
-              className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-all"
-            >
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <BookOpen size={22} className="text-indigo-500" />
-              </div>
-              <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
-                  Challenge-lar
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                  Turli topshiriqlar
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
               onClick={() => navigate("/live/join")}
               className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-all"
             >
@@ -68,15 +49,11 @@ export function ChallengesHubPage() {
               </div>
             </button>
 
-            <button
-              type="button"
-              onClick={() => navigate("/my-tests")}
-              className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-all"
-            >
+            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
               <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <FileText size={22} className="text-emerald-500" />
+                <FileText size={22} className="text-gray-700 dark:text-zinc-400" />
               </div>
-              <div className="min-w-0">
+              <div className="min-w-0 flex-1">
                 <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
                   Mening testlarim
                 </p>
@@ -84,7 +61,10 @@ export function ChallengesHubPage() {
                   O'z testlaringizni tuzing
                 </p>
               </div>
-            </button>
+              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
+                Tez orada
+              </span>
+            </div>
 
             <button
               type="button"
@@ -120,7 +100,7 @@ export function ChallengesHubPage() {
                 </p>
               </div>
               <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
-                Tez kunda
+                Tez orada
               </span>
             </div>
 

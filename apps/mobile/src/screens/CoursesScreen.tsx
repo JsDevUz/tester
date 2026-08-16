@@ -103,15 +103,23 @@ export function CoursesScreen({navigation, route}: Props) {
                   {item.lessonsCompleted}/{item.lessonsTotal} dars · {item.progressPercent}%
                 </Text>
               </Pressable>
-              <Pressable
-                onPress={() => {
-                  setLeaderboardCourse(item);
-                  setLeaderboardOpen(true);
-                }}
-                className="mt-3 flex-row items-center gap-1.5 self-start rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-dark-surface-2">
-                <Trophy size={14} color="#f59e0b" />
-                <Text className="text-xs font-semibold text-slate-700 dark:text-dark-ink">Peshqadamlar</Text>
-              </Pressable>
+              <View className="mt-3 flex-row flex-wrap items-center gap-2">
+                <Pressable
+                  onPress={() => {
+                    setLeaderboardCourse(item);
+                    setLeaderboardOpen(true);
+                  }}
+                  className="flex-row items-center gap-1.5 self-start rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-dark-surface-2">
+                  <Trophy size={14} color="#f59e0b" />
+                  <Text className="text-xs font-semibold text-slate-700 dark:text-dark-ink">Peshqadamlar</Text>
+                </Pressable>
+                <Pressable
+                  onPress={() => navigation.navigate('ChallengesList')}
+                  className="flex-row items-center gap-1.5 self-start rounded-lg bg-slate-50 px-2.5 py-1.5 dark:bg-dark-surface-2">
+                  <BookOpen size={14} color="#6366f1" />
+                  <Text className="text-xs font-semibold text-slate-700 dark:text-dark-ink">Challenge-lar</Text>
+                </Pressable>
+              </View>
             </View>
           )}
         />

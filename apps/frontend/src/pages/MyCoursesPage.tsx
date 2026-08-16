@@ -176,13 +176,22 @@ export function MyCoursesPage() {
                     </div>
                   </div>
                 </button>
-                <button
-                  type="button"
-                  onClick={() => setLeaderboardCourse(c)}
-                  className="mt-3 inline-flex w-fit shrink-0 self-start items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
-                >
-                  <Trophy size={14} className="text-amber-500" /> Peshqadamlar
-                </button>
+                <div className="mt-3 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setLeaderboardCourse(c)}
+                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                  >
+                    <Trophy size={14} className="text-amber-500" /> Peshqadamlar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/challanges")}
+                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                  >
+                    <BookOpen size={14} className="text-indigo-500" /> Challenge-lar
+                  </button>
+                </div>
               </div>
             ))}
           </div>
@@ -226,6 +235,12 @@ function StudentCourseReader({
       .then((data) => {
         setCourse(data);
         const allLessons = data.modules.flatMap((m) => m.lessons);
+        const lastViewedId = localStorage.getItem(`course:${courseId}:lastLessonId`);
+        const lastViewedLesson = allLessons.find((l) => l.id === lastViewedId);
+        if (lastViewedLesson) {
+          setSelectedLessonId(lastViewedLesson.id);
+          return;
+        }
         let resumeIndex = 0;
         for (let i = 0; i < allLessons.length - 1; i++) {
           if (!allLessons[i].completed) break;
@@ -305,6 +320,11 @@ function StudentCourseReader({
     setShowPractice(false);
     setActiveTest(null);
   }, [selectedLessonId]);
+
+  useEffect(() => {
+    if (!selectedLessonId) return;
+    localStorage.setItem(`course:${courseId}:lastLessonId`, selectedLessonId);
+  }, [courseId, selectedLessonId]);
 
   useLayoutEffect(() => {
     return schedulePageScrollReset();

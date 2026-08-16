@@ -20,8 +20,8 @@ import type {RootStackParamList} from '../navigation/types';
 import type {ApiMyCourseDetail, ApiMyLesson, ApiMyPracticeBlock} from '../types/api';
 import {apiGetMyCourseDetail, apiMarkLessonComplete} from '../api/groups';
 import {apiGetOrCreatePracticeChatForCourse} from '../api/practiceMessenger';
-import {cached} from '../lib/storage';
-import {computeCourseStars, computeMaxUnlockedIndex, isLessonPassing} from '../lib/lessons';
+import {cached, storage} from '../lib/storage';
+import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../lib/lessons';
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
@@ -59,6 +59,12 @@ export function CourseScreen({route, navigation}: Props) {
       setStale(r.stale);
       if (!r.stale && !selectedLessonId) {
         const allLessons = r.data.modules.flatMap(m => m.lessons);
+        const lastViewedId = await storage.get<string>(`course:${courseId}:lastLessonId`);
+        const lastViewedLesson = allLessons.find(l => l.id === lastViewedId);
+        if (lastViewedLesson) {
+          setSelectedLessonId(lastViewedLesson.id);
+          return;
+        }
         let resumeIndex = 0;
         for (let i = 0; i < allLessons.length - 1; i++) {
           if (!allLessons[i].completed) break;
@@ -86,9 +92,9 @@ export function CourseScreen({route, navigation}: Props) {
   const selectedIndex = selected
     ? lessons.findIndex(item => item.lesson.id === selected.lesson.id)
     : -1;
-  const maxUnlockedIndex = useMemo(
-    () => computeMaxUnlockedIndex(lessons.map(l => ({completed: l.lesson.completed}))),
-    [lessons],
+  const unlockedLessonIds = useMemo(
+    () => computeUnlockedLessonIds(course?.modules ?? []),
+    [course],
   );
   const progressCount = lessons.filter(item => item.lesson.completed).length;
   const courseStars = useMemo(() => computeCourseStars(lessons), [lessons]);
@@ -97,8 +103,16 @@ export function CourseScreen({route, navigation}: Props) {
     setShowPractice(false);
   }, [selectedLessonId]);
 
+  useEffect(() => {
+    if (!selectedLessonId) return;
+    void storage.set(`course:${courseId}:lastLessonId`, selectedLessonId);
+  }, [courseId, selectedLessonId]);
+
   const canGoPrev = selectedIndex > 0;
-  const canGoNext = selectedIndex >= 0 && selectedIndex + 1 < lessons.length && selectedIndex + 1 <= maxUnlockedIndex;
+  const canGoNext =
+    selectedIndex >= 0 &&
+    selectedIndex + 1 < lessons.length &&
+    unlockedLessonIds.has(lessons[selectedIndex + 1].lesson.id);
 
   const goToPrevLesson = useCallback(() => {
     const prev = lessons[selectedIndex - 1];
@@ -107,8 +121,8 @@ export function CourseScreen({route, navigation}: Props) {
 
   const goToNextLesson = useCallback(() => {
     const next = lessons[selectedIndex + 1];
-    if (next && selectedIndex + 1 <= maxUnlockedIndex) setSelectedLessonId(next.lesson.id);
-  }, [lessons, selectedIndex, maxUnlockedIndex]);
+    if (next && unlockedLessonIds.has(next.lesson.id)) setSelectedLessonId(next.lesson.id);
+  }, [lessons, selectedIndex, unlockedLessonIds]);
 
   useLayoutEffect(() => {
     if (!selected || showPractice) {
@@ -414,8 +428,7 @@ export function CourseScreen({route, navigation}: Props) {
           </Text>
         </View>
         {module.lessons.map(lesson => {
-          const globalIndex = lessons.findIndex(item => item.lesson.id === lesson.id);
-          const locked = globalIndex > maxUnlockedIndex;
+          const locked = !unlockedLessonIds.has(lesson.id);
           const active = lesson.id === selected?.lesson.id;
           const hasVideo = lesson.blocks.some(b => b.type === 'video');
           const totalStars =

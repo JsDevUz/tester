@@ -93,21 +93,44 @@ export function StorageUsageModal({
   visible: boolean;
   onClose: () => void;
 }) {
-  const {height: windowHeight} = useWindowDimensions();
   const [mounted, setMounted] = useState(visible);
+
+  useEffect(() => {
+    if (visible) setMounted(true);
+  }, [visible]);
+
+  if (!mounted) return null;
+
+  return (
+    <StorageUsageContent
+      visible={visible}
+      onClose={onClose}
+      onClosed={() => setMounted(false)}
+    />
+  );
+}
+
+function StorageUsageContent({
+  visible,
+  onClose,
+  onClosed,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  onClosed: () => void;
+}) {
+  const {height: windowHeight} = useWindowDimensions();
   const translateY = useSharedValue(windowHeight);
   const backdropOpacity = useSharedValue(0);
 
   useEffect(() => {
     if (visible) {
-      setMounted(true);
-      translateY.value = windowHeight;
       backdropOpacity.value = withTiming(1, {duration: 220});
       translateY.value = withSpring(0, SPRING);
-    } else if (mounted) {
+    } else {
       backdropOpacity.value = withTiming(0, {duration: 180});
       translateY.value = withSpring(windowHeight, SPRING, finished => {
-        if (finished) runOnJS(setMounted)(false);
+        if (finished) runOnJS(onClosed)();
       });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -137,30 +160,6 @@ export function StorageUsageModal({
   const backdropStyle = useAnimatedStyle(() => ({
     opacity: backdropOpacity.value,
   }));
-
-  if (!mounted) return null;
-
-  return (
-    <StorageUsageContent
-      onClose={close}
-      pan={pan}
-      sheetStyle={sheetStyle}
-      backdropStyle={backdropStyle}
-    />
-  );
-}
-
-function StorageUsageContent({
-  onClose,
-  pan,
-  sheetStyle,
-  backdropStyle,
-}: {
-  onClose: () => void;
-  pan: ReturnType<typeof Gesture.Pan>;
-  sheetStyle: ReturnType<typeof useAnimatedStyle>;
-  backdropStyle: ReturnType<typeof useAnimatedStyle>;
-}) {
   const [loading, setLoading] = useState(true);
   const [clearingKey, setClearingKey] = useState<string | null>(null);
   const [clearedSuccessKey, setClearedSuccessKey] = useState<string | null>(null);
@@ -229,7 +228,7 @@ function StorageUsageContent({
             </View>
           </GestureDetector>
 
-          <View className="flex-1 min-h-0 flex-col px-5 pb-4">
+          <View className="flex-col px-5 pb-4">
             {/* Title bar */}
             <View className="mb-4 flex-row items-center justify-between">
               <View className="flex-row items-center gap-2.5">
@@ -249,7 +248,7 @@ function StorageUsageContent({
               </Pressable>
             </View>
 
-            <ScrollView className="flex-1" contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
               {/* Total Storage Card */}
               <View className="mb-5 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 dark:border-indigo-900/30 dark:bg-indigo-950/20">
                 <View className="flex-row items-center justify-between">

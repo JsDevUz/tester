@@ -1,30 +1,47 @@
-import {computeMaxUnlockedIndex, isLessonPassing, computeCourseStars} from '../src/lib/lessons';
+import {computeUnlockedLessonIds, isLessonPassing, computeCourseStars} from '../src/lib/lessons';
 
-describe('computeMaxUnlockedIndex', () => {
-  it('unlocks only the first lesson when nothing is completed', () => {
-    expect(computeMaxUnlockedIndex([{completed: false}, {completed: false}])).toBe(0);
+describe('computeUnlockedLessonIds', () => {
+  it('always unlocks the first lesson of every module, even with no progress', () => {
+    const modules = [
+      {lessons: [{id: 'm1l1', completed: false}, {id: 'm1l2', completed: false}]},
+      {lessons: [{id: 'm2l1', completed: false}, {id: 'm2l2', completed: false}]},
+    ];
+    const unlocked = computeUnlockedLessonIds(modules);
+    expect(unlocked.has('m1l1')).toBe(true);
+    expect(unlocked.has('m2l1')).toBe(true);
+    expect(unlocked.has('m1l2')).toBe(false);
+    expect(unlocked.has('m2l2')).toBe(false);
   });
 
-  it('unlocks up to one past the last consecutive completed lesson', () => {
-    expect(
-      computeMaxUnlockedIndex([{completed: true}, {completed: true}, {completed: false}]),
-    ).toBe(2);
+  it('unlocks a lesson once the previous lesson in the same module is completed', () => {
+    const modules = [
+      {lessons: [{id: 'm1l1', completed: true}, {id: 'm1l2', completed: false}]},
+    ];
+    const unlocked = computeUnlockedLessonIds(modules);
+    expect(unlocked.has('m1l2')).toBe(true);
   });
 
-  it('stops at the first incomplete lesson even if later ones are complete', () => {
-    expect(
-      computeMaxUnlockedIndex([{completed: true}, {completed: false}, {completed: true}]),
-    ).toBe(1);
+  it('does not let completing module 1 skip unlocking module 2 lesson 1 (already unlocked by default)', () => {
+    const modules = [
+      {lessons: [{id: 'm1l1', completed: false}]},
+      {lessons: [{id: 'm2l1', completed: false}]},
+    ];
+    const unlocked = computeUnlockedLessonIds(modules);
+    expect(unlocked.has('m2l1')).toBe(true);
   });
 
-  it('returns -1 for an empty lesson list', () => {
-    expect(computeMaxUnlockedIndex([])).toBe(-1);
-  });
-
-  it('unlocks everything when all lessons are completed', () => {
-    expect(
-      computeMaxUnlockedIndex([{completed: true}, {completed: true}]),
-    ).toBe(1);
+  it('stops unlocking within a module after the first incomplete lesson', () => {
+    const modules = [
+      {
+        lessons: [
+          {id: 'l1', completed: true},
+          {id: 'l2', completed: false},
+          {id: 'l3', completed: true},
+        ],
+      },
+    ];
+    const unlocked = computeUnlockedLessonIds(modules);
+    expect(Array.from(unlocked)).toEqual(['l1', 'l2']);
   });
 });
 

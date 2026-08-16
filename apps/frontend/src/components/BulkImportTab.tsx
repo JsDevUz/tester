@@ -129,13 +129,13 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="rounded-xl border border-gray-200 bg-white/80 p-4">
+      <div className="rounded-xl border border-gray-200 dark:border-zinc-700 bg-white/80 dark:bg-zinc-800/40 p-4">
         <div className="flex items-center justify-between gap-2 mb-3">
           <div>
-            <h3 className="text-sm font-semibold text-gray-700">
+            <h3 className="text-sm font-semibold text-gray-700 dark:text-zinc-200">
               Namuna pattern
             </h3>
-            <p className="text-xs text-gray-400 mt-0.5">
+            <p className="text-xs text-gray-400 dark:text-zinc-400 mt-0.5">
               # savol, + to'g'ri javob, - noto'g'ri javob, &gt; tartib, ~
               ortiqcha variant
             </p>
@@ -143,7 +143,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           <button
             type="button"
             onClick={copySamplePrompt}
-            className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 rounded-lg text-gray-700 hover:border-gray-400 hover:bg-gray-50 transition-colors bg-white"
+            className="flex shrink-0 items-center gap-1.5 text-xs px-3 py-1.5 border border-gray-200 dark:border-zinc-600 rounded-lg text-gray-700 dark:text-zinc-200 hover:border-gray-400 dark:hover:border-zinc-500 hover:bg-gray-50 dark:hover:bg-zinc-700 transition-colors bg-white dark:bg-zinc-800"
           >
             {samplecopied ? (
               <Check size={12} className="text-green-500" />
@@ -162,7 +162,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           <button
             type="button"
             onClick={copyBulk}
-            className="flex items-center gap-1.5 text-xs px-3 py-1.5rounded-lg text-gray-500 hover:border-gray-400 hover:text-gray-700 transition-colors bg-white"
+            className="flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg text-gray-500 dark:text-zinc-400 hover:border-gray-400 hover:text-gray-700 dark:hover:text-zinc-200 transition-colors bg-white dark:bg-zinc-800"
           >
             {copied ? (
               <Check size={12} className="text-green-500" />
@@ -182,12 +182,12 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
         }}
         rows={10}
         placeholder="Savollarni shu yerga joylashtiring..."
-        className="w-full rounded-xl border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 font-mono resize-y"
+        className="w-full rounded-xl border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 font-mono resize-y"
       />
-      {preview && <p className="text-sm text-gray-600">{preview}</p>}
+      {preview && <p className="text-sm text-gray-600 dark:text-zinc-300">{preview}</p>}
       {result && (
         <p
-          className={`text-sm ${result.startsWith("ok:") ? "text-green-600" : "text-red-500"}`}
+          className={`text-sm ${result.startsWith("ok:") ? "text-green-600 dark:text-green-400" : "text-red-500"}`}
         >
           {result.startsWith("ok:") ? result.slice(3) : result.slice(4)}
         </p>
@@ -197,7 +197,7 @@ export function BulkImportTab({ onImport, bulkText = "" }: Props) {
           type="button"
           onClick={handlePreview}
           disabled={!text.trim()}
-          className="text-sm px-4 py-2rounded-lg hover:bg-gray-50 disabled:opacity-40"
+          className="text-sm px-4 py-2 rounded-lg text-gray-700 dark:text-zinc-200 hover:bg-gray-50 dark:hover:bg-zinc-700 disabled:opacity-40"
         >
           Ko'rish
         </button>

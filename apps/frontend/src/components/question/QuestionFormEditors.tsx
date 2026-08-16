@@ -22,7 +22,7 @@ export function TrueFalseEditor({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-gray-400">To'g'ri javobni tanlang:</p>
+      <p className="text-xs text-gray-400 dark:text-zinc-400">To'g'ri javobni tanlang:</p>
       <div className="flex gap-2">
         <button
           type="button"
@@ -30,7 +30,7 @@ export function TrueFalseEditor({
           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${
             tfCorrect === "true"
               ? "bg-green-500 text-white border-green-500"
-              : "border-border text-gray-500 hover:border-green-300 hover:text-green-600"
+              : "border-border dark:border-zinc-600 text-gray-500 dark:text-zinc-400 hover:border-green-300 hover:text-green-600"
           }`}
         >
           ✓ To'g'ri
@@ -41,7 +41,7 @@ export function TrueFalseEditor({
           className={`flex-1 flex items-center justify-center gap-2 px-3 py-2.5 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${
             tfCorrect === "false"
               ? "bg-red-400 text-white border-red-400"
-              : "border-border text-gray-500 hover:border-red-300 hover:text-red-500"
+              : "border-border dark:border-zinc-600 text-gray-500 dark:text-zinc-400 hover:border-red-300 hover:text-red-500"
           }`}
         >
           ✗ Noto'g'ri
@@ -60,15 +60,15 @@ export function FillBlankEditor({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-gray-400">
-        Savol matnida <code className="bg-gray-100 px-1 rounded">___</code>{" "}
+      <p className="text-xs text-gray-400 dark:text-zinc-400">
+        Savol matnida <code className="bg-gray-100 dark:bg-zinc-700 px-1 rounded">___</code>{" "}
         yozing, to'g'ri javobni kiriting:
       </p>
       <input
         value={correctAnswer}
         onChange={(e) => onChange(e.target.value)}
         placeholder="To'g'ri javob..."
-        className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+        className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500"
       />
     </div>
   );
@@ -87,10 +87,10 @@ export function SliderEditor({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-gray-400">Slider sozlamalari:</p>
+      <p className="text-xs text-gray-400 dark:text-zinc-400">Slider sozlamalari:</p>
       <div className="grid grid-cols-3 gap-2">
         <div>
-          <label className="text-[10px] text-gray-400">Min</label>
+          <label className="text-[10px] text-gray-400 dark:text-zinc-400">Min</label>
           <input
             type="number"
             placeholder="0"
@@ -102,11 +102,11 @@ export function SliderEditor({
                 opts[2] ?? { text: "", isCorrect: false },
               ])
             }
-            className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
           />
         </div>
         <div>
-          <label className="text-[10px] text-gray-400">Max</label>
+          <label className="text-[10px] text-gray-400 dark:text-zinc-400">Max</label>
           <input
             type="number"
             placeholder="100"
@@ -118,11 +118,11 @@ export function SliderEditor({
                 opts[2] ?? { text: "", isCorrect: false },
               ])
             }
-            className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
           />
         </div>
         <div>
-          <label className="text-[10px] text-gray-400">Qadam</label>
+          <label className="text-[10px] text-gray-400 dark:text-zinc-400">Qadam</label>
           <input
             type="number"
             placeholder="1"
@@ -134,18 +134,18 @@ export function SliderEditor({
                 { text: e.target.value, isCorrect: false },
               ])
             }
-            className="w-full rounded-lg border border-border bg-gray-50 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+            className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
           />
         </div>
       </div>
       <div>
-        <label className="text-[10px] text-gray-400">To'g'ri qiymat</label>
+        <label className="text-[10px] text-gray-400 dark:text-zinc-400">To'g'ri qiymat</label>
         <input
           type="number"
           value={correctAnswer}
           onChange={(e) => setCorrectAnswer(e.target.value)}
           placeholder="Masalan: 42"
-          className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
+          className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-cyan-400"
         />
       </div>
     </div>
@@ -162,8 +162,8 @@ export function MatchingEditor({
   return (
     <div className="flex flex-col gap-2">
       <div className="grid grid-cols-2 gap-1 mb-1">
-        <p className="text-xs text-gray-500 font-medium px-1">Chap (savol)</p>
-        <p className="text-xs text-gray-500 font-medium px-1">O'ng (javob)</p>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium px-1">Chap (savol)</p>
+        <p className="text-xs text-gray-500 dark:text-zinc-400 font-medium px-1">O'ng (javob)</p>
       </div>
       {matchPairs.map((pair, i) => (
         <div key={i} className="grid grid-cols-2 gap-2 items-center">
@@ -177,7 +177,7 @@ export function MatchingEditor({
               )
             }
             placeholder={`Savol ${i + 1}`}
-            className="border border-gray-300 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
+            className="border border-gray-300 dark:border-zinc-700 rounded-lg px-2 py-1.5 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100"
           />
           <div className="flex gap-1 items-center">
             <input
@@ -198,7 +198,7 @@ export function MatchingEditor({
                 onClick={() =>
                   setMatchPairs(matchPairs.filter((_, idx) => idx !== i))
                 }
-                className="text-gray-300 hover:text-red-400 shrink-0 cursor-pointer"
+                className="text-gray-300 dark:text-zinc-500 hover:text-red-400 shrink-0 cursor-pointer"
               >
                 <Trash2 size={13} />
               </button>
@@ -209,7 +209,7 @@ export function MatchingEditor({
       <button
         type="button"
         onClick={() => setMatchPairs([...matchPairs, { left: "", right: "" }])}
-        className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 cursor-pointer"
+        className="text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-zinc-100 self-start flex items-center gap-1 cursor-pointer"
       >
         <Plus size={12} /> Juft qo'shish
       </button>
@@ -226,14 +226,14 @@ export function ReorderEditor({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-gray-500 flex items-center gap-1">
+      <p className="text-xs text-gray-500 dark:text-zinc-400 flex items-center gap-1">
         <GripHorizontal size={12} /> To'g'ri tartibni kiriting (o'quvchi
         aralashtirilib beriladi)
       </p>
       <div className="flex flex-col gap-1.5">
         {correctTokens.map((tok, i) => (
           <div key={i} className="flex items-center gap-2">
-            <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
+            <span className="text-[10px] text-gray-400 dark:text-zinc-400 font-mono w-5 text-right shrink-0">
               {i + 1}.
             </span>
             <input
@@ -246,7 +246,7 @@ export function ReorderEditor({
                 )
               }
               placeholder={`Element ${i + 1}`}
-              className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
+              className="flex-1 border border-gray-300 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100"
             />
             {correctTokens.length > 2 && (
               <button
@@ -254,7 +254,7 @@ export function ReorderEditor({
                 onClick={() =>
                   setCorrectTokens(correctTokens.filter((_, idx) => idx !== i))
                 }
-                className="text-gray-300 hover:text-red-400 cursor-pointer"
+                className="text-gray-300 dark:text-zinc-500 hover:text-red-400 cursor-pointer"
               >
                 <Trash2 size={13} />
               </button>
@@ -264,14 +264,14 @@ export function ReorderEditor({
         <button
           type="button"
           onClick={() => setCorrectTokens([...correctTokens, ""])}
-          className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
+          className="text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-zinc-100 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
         >
           <Plus size={12} /> Element qo'shish
         </button>
       </div>
       {correctTokens.filter((t) => t.trim()).length >= 2 && (
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-[10px] text-gray-400 mb-2">
+        <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-3">
+          <p className="text-[10px] text-gray-400 dark:text-zinc-400 mb-2">
             O'quvchiga ko'rinishi (aralashtirilgan):
           </p>
           <div className="flex flex-wrap gap-1.5">
@@ -280,7 +280,7 @@ export function ReorderEditor({
               .map((tok, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
+                  className="px-2.5 py-1 bg-white dark:bg-zinc-700 rounded-lg text-sm text-gray-700 dark:text-zinc-200 "
                 >
                   {tok}
                 </span>
@@ -306,13 +306,13 @@ export function ArrangeEditor({
   return (
     <div className="flex flex-col gap-2">
       <div>
-        <p className="text-xs text-gray-500 mb-1.5 flex items-center gap-1">
+        <p className="text-xs text-gray-500 dark:text-zinc-400 mb-1.5 flex items-center gap-1">
           <GripHorizontal size={12} /> To'g'ri tartib (ketma-ketlikda kiriting)
         </p>
         <div className="flex flex-col gap-1.5">
           {correctTokens.map((tok, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-[10px] text-gray-400 font-mono w-5 text-right shrink-0">
+              <span className="text-[10px] text-gray-400 dark:text-zinc-400 font-mono w-5 text-right shrink-0">
                 {i + 1}.
               </span>
               <input
@@ -325,7 +325,7 @@ export function ArrangeEditor({
                   )
                 }
                 placeholder={`Bo'lak ${i + 1}`}
-                className="flex-1 border border-gray-300 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 bg-gray-50"
+                className="flex-1 border border-gray-300 dark:border-zinc-700 rounded-lg px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100"
               />
               {correctTokens.length > 2 && (
                 <button
@@ -335,7 +335,7 @@ export function ArrangeEditor({
                       correctTokens.filter((_, idx) => idx !== i),
                     )
                   }
-                  className="text-gray-300 hover:text-red-400 cursor-pointer"
+                  className="text-gray-300 dark:text-zinc-500 hover:text-red-400 cursor-pointer"
                 >
                   <Trash2 size={13} />
                 </button>
@@ -345,7 +345,7 @@ export function ArrangeEditor({
           <button
             type="button"
             onClick={() => setCorrectTokens([...correctTokens, ""])}
-            className="text-xs text-gray-700 hover:text-gray-900 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
+            className="text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-zinc-100 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
           >
             <Plus size={12} /> Bo'lak qo'shish
           </button>
@@ -353,7 +353,7 @@ export function ArrangeEditor({
       </div>
 
       <div>
-        <p className="text-xs text-gray-400 mb-1.5">
+        <p className="text-xs text-gray-400 dark:text-zinc-400 mb-1.5">
           Chalg'ituvchi bo'laklar (ixtiyoriy)
         </p>
         <div className="flex flex-col gap-1.5">
@@ -369,14 +369,14 @@ export function ArrangeEditor({
                   )
                 }
                 placeholder={`Chalg'ituvchi ${i + 1}`}
-                className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-300"
+                className="flex-1 rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-300 dark:focus:ring-zinc-500"
               />
               <button
                 type="button"
                 onClick={() =>
                   setDistractors(distractors.filter((_, idx) => idx !== i))
                 }
-                className="text-gray-300 hover:text-red-400 cursor-pointer"
+                className="text-gray-300 dark:text-zinc-500 hover:text-red-400 cursor-pointer"
               >
                 <Trash2 size={13} />
               </button>
@@ -385,7 +385,7 @@ export function ArrangeEditor({
           <button
             type="button"
             onClick={() => setDistractors([...distractors, ""])}
-            className="text-xs text-gray-400 hover:text-gray-600 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
+            className="text-xs text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 self-start flex items-center gap-1 mt-0.5 cursor-pointer"
           >
             <Plus size={12} /> Chalg'ituvchi qo'shish
           </button>
@@ -393,8 +393,8 @@ export function ArrangeEditor({
       </div>
 
       {correctTokens.filter((t) => t.trim()).length >= 2 && (
-        <div className="bg-gray-50 rounded-xl p-3">
-          <p className="text-[10px] text-gray-400 mb-2">Ko'rinishi:</p>
+        <div className="bg-gray-50 dark:bg-zinc-800/60 rounded-xl p-3">
+          <p className="text-[10px] text-gray-400 dark:text-zinc-400 mb-2">Ko'rinishi:</p>
           <div className="flex flex-wrap gap-1.5">
             {[
               ...correctTokens.filter((t) => t.trim()),
@@ -404,7 +404,7 @@ export function ArrangeEditor({
               .map((tok, i) => (
                 <span
                   key={i}
-                  className="px-2.5 py-1 bg-white rounded-lg text-sm text-gray-700 "
+                  className="px-2.5 py-1 bg-white dark:bg-zinc-700 rounded-lg text-sm text-gray-700 dark:text-zinc-200 "
                 >
                   {tok}
                 </span>
@@ -429,7 +429,7 @@ export function OpenEditor({
 }) {
   return (
     <div className="flex flex-col gap-2">
-      <p className="text-xs text-gray-400">
+      <p className="text-xs text-gray-400 dark:text-zinc-400">
         To'g'ri javoblar (agar o'quvchi yozsa — to'g'ri hisoblanadi):
       </p>
       {opts
@@ -452,7 +452,7 @@ export function OpenEditor({
             <button
               type="button"
               onClick={() => setOpts(opts.filter((o) => o !== opt))}
-              className="text-gray-300 hover:text-red-400 text-lg leading-none cursor-pointer"
+              className="text-gray-300 dark:text-zinc-500 hover:text-red-400 text-lg leading-none cursor-pointer"
             >
               ×
             </button>
@@ -467,11 +467,11 @@ export function OpenEditor({
       </button>
       <div className="mt-1">
         <div className="flex items-center justify-between mb-1">
-          <p className="text-xs text-gray-400">
+          <p className="text-xs text-gray-400 dark:text-zinc-400">
             AI uchun qo'shimcha ko'rsatma (ixtiyoriy):
           </p>
           <span
-            className={`text-[10px] ${correctAnswer.length > 30 ? "text-red-400" : "text-gray-300"}`}
+            className={`text-[10px] ${correctAnswer.length > 30 ? "text-red-400" : "text-gray-300 dark:text-zinc-500"}`}
           >
             {correctAnswer.length}/30
           </span>
@@ -482,9 +482,9 @@ export function OpenEditor({
             if (e.target.value.length <= 30) setCorrectAnswer(e.target.value);
           }}
           placeholder="Masalan: O'zbekiston poytaxti..."
-          className="w-full rounded-lg border border-border bg-gray-50 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+          className="w-full rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500"
         />
-        <p className="text-[10px] text-gray-400 mt-1">
+        <p className="text-[10px] text-gray-400 dark:text-zinc-400 mt-1">
           Agar o'quvchi javobi yuqoridagi variantlarga mos kelmasa, AI shu
           ko'rsatma asosida tekshiradi.
         </p>
@@ -529,12 +529,12 @@ export function SingleMultiEditor({
               )
             }
             placeholder={`Variant ${i + 1}`}
-            className="flex-1 rounded-lg border border-border bg-gray-50 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+            className="flex-1 rounded-lg border border-border dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800/60 text-gray-900 dark:text-zinc-100 px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-gray-400 dark:focus:ring-zinc-500"
           />
           <button
             type="button"
             onClick={() => onRemoveOption(i)}
-            className="text-gray-300 hover:text-red-400 text-lg leading-none cursor-pointer"
+            className="text-gray-300 dark:text-zinc-500 hover:text-red-400 text-lg leading-none cursor-pointer"
           >
             ×
           </button>
@@ -543,7 +543,7 @@ export function SingleMultiEditor({
       <button
         type="button"
         onClick={onAddOption}
-        className="text-xs text-gray-700 hover:text-gray-900 self-start cursor-pointer"
+        className="text-xs text-gray-700 dark:text-zinc-300 hover:text-gray-900 dark:hover:text-zinc-100 self-start cursor-pointer"
       >
         + Variant qo'shish
       </button>

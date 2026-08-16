@@ -1,13 +1,19 @@
-type CompletableLesson = {completed: boolean};
+type UnlockableModule = {lessons: {id: string; completed: boolean}[]};
 
-export function computeMaxUnlockedIndex(lessons: CompletableLesson[]): number {
-  if (lessons.length === 0) return -1;
-  let idx = 0;
-  for (let i = 0; i < lessons.length - 1; i++) {
-    if (!lessons[i].completed) break;
-    idx = i + 1;
+export function computeUnlockedLessonIds(modules: UnlockableModule[]): Set<string> {
+  const unlocked = new Set<string>();
+  for (const module of modules) {
+    for (let i = 0; i < module.lessons.length; i++) {
+      const lesson = module.lessons[i];
+      if (i === 0) {
+        unlocked.add(lesson.id);
+        continue;
+      }
+      if (module.lessons[i - 1].completed) unlocked.add(lesson.id);
+      else break;
+    }
   }
-  return idx;
+  return unlocked;
 }
 
 type PassableLesson = {

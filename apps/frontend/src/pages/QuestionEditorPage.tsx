@@ -51,14 +51,14 @@ function InlineQuestionCard({
 
   if (editing) {
     return (
-      <div className="bg-white rounded-xl border border-gray-300 p-4">
+      <div className="bg-white dark:bg-[#30313a] rounded-xl border border-gray-300 dark:border-zinc-700 p-4">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs text-gray-400 dark:text-zinc-400">
             {index + 1}. savol — tahrirlash
           </span>
           <button
             onClick={() => setEditing(false)}
-            className="text-gray-300 hover:text-gray-500"
+            className="text-gray-300 dark:text-zinc-500 hover:text-gray-500 dark:hover:text-zinc-300"
           >
             <X size={16} />
           </button>
@@ -95,11 +95,11 @@ function InlineQuestionCard({
   }
 
   return (
-    <div className="bg-white rounded-xl p-4">
+    <div className="bg-white dark:bg-[#30313a] rounded-xl p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <span className="text-xs text-gray-400 mr-2">{index + 1}.</span>
-          <span className="text-sm text-gray-800">{q.text}</span>
+          <span className="text-xs text-gray-400 dark:text-zinc-400 mr-2">{index + 1}.</span>
+          <span className="text-sm text-gray-800 dark:text-zinc-200">{q.text}</span>
           <span
             className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${q.type === "single"
               ? "bg-blue-100 text-blue-600"
@@ -156,13 +156,13 @@ function InlineQuestionCard({
         <div className="flex items-center gap-1 shrink-0">
           <button
             onClick={() => setEditing(true)}
-            className="p-1.5 text-gray-300 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors"
+            className="p-1.5 text-gray-300 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-700/60 rounded-lg transition-colors"
           >
             <Pencil size={14} />
           </button>
           <button
             onClick={onDelete}
-            className="p-1.5 text-gray-300 hover:text-red-400 hover:bg-red-50 rounded-lg transition-colors"
+            className="p-1.5 text-gray-300 dark:text-zinc-500 hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-colors"
           >
             <Trash2 size={14} />
           </button>
@@ -191,7 +191,7 @@ function InlineQuestionCard({
               .map((o, i) => (
                 <span
                   key={o.id}
-                  className="flex items-center gap-1 text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-lg"
+                  className="flex items-center gap-1 text-xs bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 px-2 py-0.5 rounded-lg"
                 >
                   <span className="text-green-400 font-mono">{i + 1}.</span>{" "}
                   {o.text}
@@ -205,7 +205,7 @@ function InlineQuestionCard({
                 .map((o) => (
                   <span
                     key={o.id}
-                    className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-lg"
+                    className="text-xs bg-gray-100 dark:bg-zinc-700/60 text-gray-400 dark:text-zinc-400 px-2 py-0.5 rounded-lg"
                   >
                     {o.text}
                   </span>
@@ -218,7 +218,7 @@ function InlineQuestionCard({
           {q.options.map((o) => (
             <li
               key={o.id}
-              className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${o.isCorrect ? "bg-green-50 text-green-700" : "text-gray-400"}`}
+              className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${o.isCorrect ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400" : "text-gray-400 dark:text-zinc-400"}`}
             >
               {o.isCorrect ? (
                 <Check size={10} />
@@ -353,19 +353,19 @@ export function QuestionEditorPage() {
   return (
     <AppShell>
       <div className="min-h-screen flex flex-col">
-        <div className="flex-1 p-3 w-full max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl">
+        <div className="flex-1 p-3 w-full max-[1024px]:bg-transparent min-[1025px]:bg-white min-[1025px]:dark:bg-[#30313a] rounded-2xl">
           <div className="flex items-center gap-2 mb-4">
             <button
               onClick={() => navigate(`/folders/${test?.folderId}`)}
-              className="text-gray-400 hover:text-gray-600 text-sm"
+              className="text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 text-sm"
             >
               ← Orqaga
             </button>
-            <span className="text-gray-400">/</span>
-            <h2 className="text-sm font-medium text-gray-700">
+            <span className="text-gray-400 dark:text-zinc-400">/</span>
+            <h2 className="text-sm font-medium text-gray-700 dark:text-zinc-200">
               {test?.name ?? "Test"}
             </h2>
-            <span className="text-xs text-gray-400 ml-auto">
+            <span className="text-xs text-gray-400 dark:text-zinc-400 ml-auto">
               {questions.length} ta savol
             </span>
           </div>
@@ -393,7 +393,7 @@ export function QuestionEditorPage() {
 
           {questions.length > 0 && (
             <div className="mt-6 flex flex-col gap-2">
-              <h3 className="text-sm font-medium text-gray-700">
+              <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-200">
                 Savollar ({questions.length})
               </h3>
               {questions.map((q, i) => (
