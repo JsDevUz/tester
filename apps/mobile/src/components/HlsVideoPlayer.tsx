@@ -32,10 +32,6 @@ import {API_URL} from '../config/env';
 import {disableSecureScreen, enableSecureScreen} from '../lib/secureScreen';
 import {useAuthStore} from '../store/authStore';
 
-// playback.manifestUrl is API-relative (/videos/:id/manifest.m3u8?token=...),
-// so it must be appended to the full API base - stripping /api/v1 here made
-// ExoPlayer fetch the SPA's HTML shell instead of the playlist, which then
-// failed with "Input does not start with the #EXTM3U header".
 const API_BASE = API_URL.replace(/\/$/, '');
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
@@ -115,27 +111,31 @@ function parseTime(timeStr: string): number {
 function parseSubtitles(content: string): SubtitleCue[] {
   const cues: SubtitleCue[] = [];
   const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-  const blocks = normalized.split(/\n\s*\n/);
+  const lines = normalized.split('\n');
+  let i = 0;
 
-  for (const block of blocks) {
-    const lines = block.trim().split('\n');
-    for (let i = 0; i < lines.length; i++) {
-      const line = lines[i].trim();
-      if (line.includes('-->')) {
-        const [startStr, endPart] = line.split('-->');
-        const start = parseTime(startStr);
-        const end = parseTime(endPart.trim().split(/\s+/)[0]);
-        const textLines = lines.slice(i + 1).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
-        if (textLines.length > 0 && !isNaN(start) && !isNaN(end) && end > start) {
-          cues.push({
-            start,
-            end,
-            text: textLines.join('\n'),
-          });
-        }
-        break;
+  while (i < lines.length) {
+    const line = lines[i].trim();
+    if (line.includes('-->')) {
+      const [startStr, endPart] = line.split('-->');
+      const start = parseTime(startStr);
+      const end = parseTime(endPart.trim().split(/\s+/)[0]);
+      i++;
+      const textLines: string[] = [];
+      while (i < lines.length && lines[i].trim() !== '') {
+        const cleanText = lines[i].replace(/<[^>]*>/g, '').trim();
+        if (cleanText) textLines.push(cleanText);
+        i++;
+      }
+      if (textLines.length > 0 && !isNaN(start) && !isNaN(end) && end > start) {
+        cues.push({
+          start,
+          end,
+          text: textLines.join('\n'),
+        });
       }
     }
+    i++;
   }
   return cues;
 }
@@ -166,9 +166,6 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
 
-  // resizeMode="contain" letterboxes the picture in portrait fullscreen mode.
-  // Map percentages strictly into the active video frame (38% to 60% of screen height)
-  // so the watermark text is always INSIDE the video picture, never in the black bars outside.
   const renderedMarkPosition = isFullscreen
     ? isLandscape
       ? {
@@ -201,8 +198,8 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
   }, []);
 
   useEffect(() => {
-    StatusBar.setHidden(isFullscreen);
-    return () => StatusBar.setHidden(false);
+    StatusBar.setHidden(isFullscreen, 'fade');
+    return () => StatusBar.setHidden(false, 'fade');
   }, [isFullscreen]);
 
   useEffect(() => {
@@ -224,7 +221,7 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     };
   }, [blockId]);
 
-  // Load and parse subtitles via JS to avoid ExoPlayer / AVPlayer textTrack crashes
+  // Robust Subtitle Fetching and Parsing
   useEffect(() => {
     if (!subtitleUrl) {
       setSubtitleCues([]);
@@ -235,10 +232,16 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     const fullUrl = subtitleUrl.startsWith('http') ? subtitleUrl : `${API_BASE}${subtitleUrl}`;
     const curToken = useAuthStore.getState().token;
 
-    fetch(fullUrl, {
-      headers: curToken ? {Authorization: `Bearer ${curToken}`} : undefined,
-    })
-      .then(res => (res.ok ? res.text() : Promise.reject(new Error('Subtitle fetch failed'))))
+    fetch(fullUrl)
+      .then(res => {
+        if (res.ok) return res.text();
+        if (curToken) {
+          return fetch(fullUrl, {headers: {Authorization: `Bearer ${curToken}`}}).then(r =>
+            r.ok ? r.text() : Promise.reject(new Error('Subtitle error')),
+          );
+        }
+        return Promise.reject(new Error('Subtitle fetch failed'));
+      })
       .then(text => {
         if (cancelled) return;
         const cues = parseSubtitles(text);
@@ -300,7 +303,8 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
   const closeCurrentRange = useCallback(() => {
     const range = currentRangeRef.current;
     if (range && range.end > range.start && range.end > lastSavedEndRef.current) {
-      void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end)).then(data => {
+      const dur = durationRef.current && durationRef.current > 0 ? Math.round(durationRef.current) : undefined;
+      void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end), dur).then(data => {
         setWatchedPercent(data.watchedPercent);
         setWatchedSegments(data.segments);
       });
@@ -318,7 +322,6 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     currentTimeRef.current = currentTime;
   }, [currentTime]);
 
-  // Controls fade out while playing, and stay put while paused or scrubbing.
   const bumpControls = useCallback(() => {
     setControlsVisible(true);
     if (hideTimerRef.current) clearTimeout(hideTimerRef.current);
@@ -386,7 +389,9 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
   }
 
   function handleLoad(data: OnLoadData) {
-    if (!isNaN(data.duration) && isFinite(data.duration)) setVideoDuration(data.duration);
+    if (!isNaN(data.duration) && isFinite(data.duration)) {
+      setVideoDuration(data.duration);
+    }
     const resumeAt = resumeTimeRef.current;
     if (resumeAt > 0) {
       videoRef.current?.seek(resumeAt);
@@ -422,16 +427,15 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     return () => closeCurrentRange();
   }, [closeCurrentRange]);
 
-  const fullscreenFillStyle = {
-    width: windowWidth,
-    height: windowHeight,
-    backgroundColor: 'black',
-  } as const;
-
   // Active Subtitle Cue
   const activeCue = captionsOn
     ? subtitleCues.find(cue => currentTime >= cue.start && currentTime <= cue.end)
     : null;
+
+  const dynamicPercent =
+    videoDuration !== null && videoDuration > 0
+      ? Math.min(100, Math.round((computeTotalWatchedSeconds(watchedSegments, null) / videoDuration) * 100))
+      : watchedPercent;
 
   const mediaSurface = (
     <>
@@ -450,6 +454,9 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
           style={StyleSheet.absoluteFill}
           paused={paused}
           resizeMode="contain"
+          progressUpdateInterval={500}
+          preventsDisplaySleepDuringVideoPlayback
+          ignoreSilentSwitch="ignore"
           onLoad={handleLoad}
           onProgress={handleProgress}
           onError={e => {
@@ -490,7 +497,7 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
             alignItems: 'center',
             zIndex: 25,
           }}>
-          <View className="rounded-md bg-black/80 px-2.5 py-1">
+          <View className="rounded-md bg-black/80 px-2.5 py-1 shadow-md border border-white/10">
             <Text className="text-center text-[11px] sm:text-[13px] font-medium text-white leading-4">
               {activeCue.text}
             </Text>
@@ -508,86 +515,87 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
 
           {controlsVisible ? (
             <>
-              {subtitleUrl && (
+              {subtitleUrl ? (
                 <Pressable
                   onPress={() => setCaptionsOn(v => !v)}
-                  className={`absolute right-14 top-3 z-20 h-9 w-9 items-center justify-center rounded-full ${
-                    captionsOn ? 'bg-white' : 'bg-black/45'
+                  className={`absolute right-14 top-3 z-20 h-8 px-2.5 flex-row items-center gap-1 rounded-lg ${
+                    captionsOn ? 'bg-indigo-600' : 'bg-black/60'
                   }`}>
-                  <Captions size={17} color={captionsOn ? '#000' : '#fff'} />
+                  <Captions size={15} color="#fff" />
+                  <Text className="text-[11px] font-bold text-white">Subtitr</Text>
                 </Pressable>
-              )}
+              ) : null}
+
               <Pressable
                 onPress={() => {
                   resumeTimeRef.current = currentTimeRef.current;
                   setIsFullscreen(v => !v);
                 }}
-                className="absolute right-3 top-3 z-20 h-9 w-9 items-center justify-center rounded-full bg-black/45">
-                {isFullscreen ? <Minimize2 size={17} color="white" /> : <Maximize2 size={17} color="white" />}
+                className="absolute right-3 top-3 z-20 h-8 w-8 items-center justify-center rounded-lg bg-black/60">
+                {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
               </Pressable>
 
               <View className="absolute inset-0 z-10 flex-row items-center justify-center gap-8">
                 <Pressable
-                  onPress={() => skipBy(-5)}
-                  className="h-12 w-12 items-center justify-center rounded-full bg-black/50">
+                  onPress={() => skipBy(-10)}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/60">
                   <RotateCcw size={20} color="white" />
-                  <Text className="absolute text-[8px] font-bold text-white">5</Text>
+                  <Text className="absolute text-[8px] font-bold text-white">10</Text>
                 </Pressable>
                 <Pressable
                   onPress={() => {
                     setPaused(value => !value);
                     bumpControls();
                   }}
-                  className="h-16 w-16 items-center justify-center rounded-full bg-black/50">
+                  className="h-14 w-14 items-center justify-center rounded-full bg-black/65">
                   {paused ? (
-                    <Play size={28} color="white" fill="white" />
+                    <Play size={26} color="white" fill="white" />
                   ) : (
-                    <Pause size={28} color="white" fill="white" />
+                    <Pause size={26} color="white" fill="white" />
                   )}
                 </Pressable>
                 <Pressable
-                  onPress={() => skipBy(5)}
-                  className="h-12 w-12 items-center justify-center rounded-full bg-black/50">
+                  onPress={() => skipBy(10)}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/60">
                   <RotateCw size={20} color="white" />
-                  <Text className="absolute text-[8px] font-bold text-white">5</Text>
+                  <Text className="absolute text-[8px] font-bold text-white">10</Text>
                 </Pressable>
               </View>
 
-              <View className="absolute inset-x-0 bottom-0 z-20 bg-black/55 px-3 pb-3 pt-3">
-                <View className="flex-row items-center gap-3">
-                  <Text className="font-mono text-[11px] text-white">
-                    {formatClock(scrubTime ?? currentTime)}
+              {/* Compact Bottom Timeline Bar */}
+              <View className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-2">
+                <View className="flex-row justify-end pr-0.5 mb-1">
+                  <Text className="font-mono text-[10px] text-white/90">
+                    {formatClock(scrubTime ?? currentTime)} / {formatClock(videoDuration ?? 0)}
                   </Text>
-                  <View
-                    className="h-8 flex-1 justify-center"
-                    onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
-                    {...scrubResponder.panHandlers}>
-                    <View className="h-1 w-full overflow-hidden rounded-full bg-white/25">
-                      <View
-                        className="h-full rounded-full bg-white"
-                        style={{
-                          width: videoDuration
-                            ? `${Math.min(100, ((scrubTime ?? currentTime) / videoDuration) * 100)}%`
-                            : '0%',
-                        }}
-                      />
-                    </View>
+                </View>
+
+                <View
+                  className="h-5 justify-center"
+                  onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
+                  {...scrubResponder.panHandlers}>
+                  <View className="h-1 w-full overflow-hidden rounded-full bg-white/25">
                     <View
-                      pointerEvents="none"
-                      className="absolute h-3 w-3 rounded-full bg-white"
+                      className="h-full rounded-full bg-white"
                       style={{
-                        left: videoDuration
-                          ? Math.max(
-                              0,
-                              Math.min(barWidth - 12, ((scrubTime ?? currentTime) / videoDuration) * barWidth - 6),
-                            )
-                          : 0,
+                        width: videoDuration
+                          ? `${Math.min(100, ((scrubTime ?? currentTime) / videoDuration) * 100)}%`
+                          : '0%',
                       }}
                     />
                   </View>
-                  <Text className="font-mono text-[11px] text-white/70">
-                    {formatClock(videoDuration ?? 0)}
-                  </Text>
+                  <View
+                    pointerEvents="none"
+                    className="absolute h-3 w-3 rounded-full bg-white"
+                    style={{
+                      left: videoDuration
+                        ? Math.max(
+                            0,
+                            Math.min(barWidth - 12, ((scrubTime ?? currentTime) / videoDuration) * barWidth - 6),
+                          )
+                        : 0,
+                    }}
+                  />
                 </View>
               </View>
             </>
@@ -604,9 +612,12 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
           visible
           transparent={false}
           statusBarTranslucent
+          animationType="fade"
           supportedOrientations={['portrait', 'landscape']}
           onRequestClose={() => setIsFullscreen(false)}>
-          <View style={fullscreenFillStyle}>{mediaSurface}</View>
+          <View style={{width: windowWidth, height: windowHeight, backgroundColor: 'black'}}>
+            {mediaSurface}
+          </View>
         </Modal>
       ) : (
         <View className="mt-3 aspect-video w-full overflow-hidden rounded-2xl bg-black">
@@ -626,9 +637,9 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
                 <ChevronDown size={14} color={isDark ? '#a4a7b2' : '#64748b'} />
               )}
             </View>
-            {watchedPercent !== null && (
+            {dynamicPercent !== null && (
               <Text className="text-xs font-medium text-slate-500 dark:text-dark-muted">
-                {watchedPercent}% ko'rilgan
+                {dynamicPercent}% ko'rilgan
               </Text>
             )}
           </Pressable>
@@ -639,8 +650,8 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
                   key={`${seg.startSec}-${seg.endSec}`}
                   className="absolute h-full rounded-full bg-brand"
                   style={{
-                    left: `${(seg.startSec / videoDuration) * 100}%`,
-                    width: `${((seg.endSec - seg.startSec) / videoDuration) * 100}%`,
+                    left: `${Math.min(100, Math.max(0, (seg.startSec / videoDuration) * 100))}%`,
+                    width: `${Math.min(100, Math.max(1, ((seg.endSec - seg.startSec) / videoDuration) * 100))}%`,
                   }}
                 />
               ))}

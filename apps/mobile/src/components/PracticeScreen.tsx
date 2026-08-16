@@ -274,7 +274,9 @@ export function PracticeScreen({
                       <Pressable
                         onPress={() => onStartPractice(block)}
                         className="w-full items-center rounded-xl bg-brand py-2.5">
-                        <Text className="text-xs font-bold text-white">Qayta o'tish</Text>
+                        <Text className="text-xs font-bold text-white">
+                          {block.submissions.length > 0 ? "Qayta o'tish" : "Amaliyotni boshlash"}
+                        </Text>
                       </Pressable>
                       {block.attemptsRemaining !== null && (
                         <Text className="mt-1.5 text-center text-[11px] text-slate-400 dark:text-dark-muted">

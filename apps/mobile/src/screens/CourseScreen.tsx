@@ -16,6 +16,7 @@ import {
 } from 'lucide-react-native';
 import {useColorScheme} from 'nativewind';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
+import {useFocusEffect} from '@react-navigation/native';
 import type {RootStackParamList} from '../navigation/types';
 import type {ApiMyCourseDetail, ApiMyLesson, ApiMyPracticeBlock} from '../types/api';
 import {apiGetMyCourseDetail, apiMarkLessonComplete} from '../api/groups';
@@ -43,10 +44,10 @@ export function CourseScreen({route, navigation}: Props) {
   const insets = useSafeAreaInsets();
   const {courseId} = route.params;
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [stale, setStale] = useState(false);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [showPractice, setShowPractice] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [stale, setStale] = useState(false);
   const [lessonsListOpen, setLessonsListOpen] = useState(false);
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -54,11 +55,12 @@ export function CourseScreen({route, navigation}: Props) {
 
   const load = useCallback(async () => {
     try {
-      const r = await cached(`course:${courseId}`, () => apiGetMyCourseDetail(courseId));
-      setCourse(r.data);
-      setStale(r.stale);
-      if (!r.stale && !selectedLessonId) {
-        const allLessons = r.data.modules.flatMap(m => m.lessons);
+      const data = await apiGetMyCourseDetail(courseId);
+      setCourse(data);
+      setStale(false);
+      await storage.set(`cache:course:${courseId}`, {data, savedAt: Date.now()});
+      if (!selectedLessonId) {
+        const allLessons = data.modules.flatMap(m => m.lessons);
         const lastViewedId = await storage.get<string>(`course:${courseId}:lastLessonId`);
         const lastViewedLesson = allLessons.find(l => l.id === lastViewedId);
         if (lastViewedLesson) {
@@ -73,15 +75,22 @@ export function CourseScreen({route, navigation}: Props) {
         const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
         if (resumeLesson) setSelectedLessonId(resumeLesson.id);
       }
+    } catch {
+      const snapshot = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(`cache:course:${courseId}`);
+      if (snapshot) {
+        setCourse(snapshot.data);
+        setStale(true);
+      }
     } finally {
       setLoading(false);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [courseId]);
+  }, [courseId, selectedLessonId]);
 
-  useEffect(() => {
-    void load();
-  }, [load]);
+  useFocusEffect(
+    useCallback(() => {
+      void load();
+    }, [load]),
+  );
 
   const lessons = useMemo(
     () =>
