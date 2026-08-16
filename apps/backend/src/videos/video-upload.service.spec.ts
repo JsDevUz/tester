@@ -156,6 +156,59 @@ describe('VideoUploadService.completeUpload', () => {
   });
 });
 
+describe('VideoUploadService.retry', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('S3da manba fayl mavjud bolsa jobni qayta ishga tushiradi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', sourceKey: 'videos/l1/block-1/source/x.mp4', lessonId: 'lesson-1',
+    });
+    setupOwnership();
+    mockedDb.update.mockReturnValue({ set: () => ({ where: async () => {} }) });
+    const storage = makeStorage();
+    storage.headObject.mockResolvedValue({ sizeBytes: 1024, contentType: 'video/mp4' });
+    const jobService = makeJobService();
+    const service = new VideoUploadService(storage as any, jobService as any);
+
+    await service.retry('block-1', 'teacher-1');
+
+    expect(storage.headObject).toHaveBeenCalledWith('videos/l1/block-1/source/x.mp4');
+    expect(jobService.enqueue).toHaveBeenCalledWith('block-1');
+  });
+
+  it('manba fayl S3da topilmasa rad etadi va jobni ishga tushirmaydi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', sourceKey: 'videos/l1/block-1/source/x.mp4', lessonId: 'lesson-1',
+    });
+    setupOwnership();
+    const storage = makeStorage();
+    storage.headObject.mockResolvedValue(null);
+    const jobService = makeJobService();
+    const service = new VideoUploadService(storage as any, jobService as any);
+
+    await expect(service.retry('block-1', 'teacher-1')).rejects.toThrow(BadRequestException);
+    expect(jobService.enqueue).not.toHaveBeenCalled();
+  });
+
+  it('begona ustoz uchun taqiqlanadi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', sourceKey: 'videos/l1/block-1/source/x.mp4', lessonId: 'lesson-1',
+    });
+    mockedDb.query.lessons.findFirst.mockResolvedValue({ id: 'lesson-1', moduleId: 'mod-1' });
+    mockedDb.query.modules.findFirst.mockResolvedValue({ id: 'mod-1', courseId: 'course-1' });
+    mockedDb.query.courses.findFirst.mockResolvedValue(undefined);
+    const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
+
+    await expect(service.retry('block-1', 'begona-teacher')).rejects.toThrow(NotFoundException);
+  });
+
+  it('video bolmagan blok uchun topilmadi xatosi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({ id: 'block-1', type: 'editor' });
+    const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
+    await expect(service.retry('block-1', 'teacher-1')).rejects.toThrow(NotFoundException);
+  });
+});
+
 describe('VideoUploadService.uploadSubtitle', () => {
   beforeEach(() => jest.clearAllMocks());
 

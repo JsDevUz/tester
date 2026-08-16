@@ -146,6 +146,20 @@ export class VideoUploadService {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
     if (!block || block.type !== 'video') throw new NotFoundException('Video block not found');
     await this.assertLessonOwnership(block.lessonId, adminId);
+
+    // Qayta urinishdan oldin manba fayl S3'da haqiqatan borligini tekshiramiz —
+    // aks holda dastlabki yuklash muvaffaqiyatsiz tugagan bo'lsa, transcode job
+    // "Key not found" bilan cheksiz qulab tushaveradi va foydalanuvchi nima
+    // qilishni bilmay qoladi.
+    if (block.sourceKey) {
+      const info = await this.storageService.headObject(block.sourceKey);
+      if (!info) {
+        throw new BadRequestException(
+          "Manba video fayl topilmadi — dastlabki yuklash yakunlanmagan. Videoni qaytadan yuklang.",
+        );
+      }
+    }
+
     await db
       .update(contentBlocks)
       .set({ processingStatus: 'pending', errorMessage: null })
