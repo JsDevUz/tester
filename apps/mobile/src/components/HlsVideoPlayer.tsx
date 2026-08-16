@@ -68,6 +68,29 @@ function extractWatermarkPhone(phone?: string | null): string {
   return base64Encode(withoutCountryCode);
 }
 
+function computeTotalWatchedSeconds(segments: WatchSegment[], live: WatchSegment | null): number {
+  const all: WatchSegment[] = segments.map(s => ({startSec: s.startSec, endSec: s.endSec}));
+  if (live && live.endSec > live.startSec) {
+    all.push({startSec: live.startSec, endSec: live.endSec});
+  }
+  if (all.length === 0) return 0;
+
+  all.sort((a, b) => a.startSec - b.startSec);
+
+  const merged: WatchSegment[] = [{startSec: all[0].startSec, endSec: all[0].endSec}];
+  for (let i = 1; i < all.length; i++) {
+    const prev = merged[merged.length - 1];
+    const curr = all[i];
+    if (curr.startSec <= prev.endSec) {
+      prev.endSec = Math.max(prev.endSec, curr.endSec);
+    } else {
+      merged.push({startSec: curr.startSec, endSec: curr.endSec});
+    }
+  }
+
+  return merged.reduce((sum, s) => sum + Math.max(0, s.endSec - s.startSec), 0);
+}
+
 function quietWatermarkPosition() {
   const leftZones = [14 + Math.random() * 14, 72 + Math.random() * 14];
   const topZones = [18 + Math.random() * 12, 68 + Math.random() * 14];
@@ -389,13 +412,8 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
 
     const inProgress = currentRangeRef.current;
     const liveSegment = {startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end)};
-    if (videoDuration) {
-      const nonOverlapping = watchedSegmentsRef.current.filter(
-        s => s.endSec < liveSegment.startSec - 2 || s.startSec > liveSegment.endSec + 2,
-      );
-      const totalCovered =
-        nonOverlapping.reduce((sum, s) => sum + (s.endSec - s.startSec), 0) +
-        (liveSegment.endSec - liveSegment.startSec);
+    if (videoDuration && videoDuration > 0) {
+      const totalCovered = computeTotalWatchedSeconds(watchedSegmentsRef.current, liveSegment);
       setWatchedPercent(Math.min(100, Math.round((totalCovered / videoDuration) * 100)));
     }
   }

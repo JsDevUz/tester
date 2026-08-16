@@ -1073,23 +1073,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             }}
           >
             {/* Scrubber Base Track */}
-            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/20 transition-[height] group-hover/track:h-2">
+            <div className="relative h-1.5 w-full overflow-hidden rounded-full bg-white/25 transition-[height] group-hover/track:h-2">
               {/* Buffered Bar */}
               <div
-                className="absolute top-0 bottom-0 left-0 bg-white/30 rounded-full"
+                className="absolute top-0 bottom-0 left-0 bg-white/35 rounded-full transition-[width]"
                 style={{ width: `${bufferPercent}%` }}
               />
-              {/* Watched Segments */}
-              {watchedSegments.map((seg) => (
-                <div
-                  key={`${seg.startSec}-${seg.endSec}`}
-                  className="absolute top-0 bottom-0 bg-indigo-400/40 rounded-full"
-                  style={{
-                    left: `${duration ? (seg.startSec / duration) * 100 : 0}%`,
-                    width: `${duration ? ((seg.endSec - seg.startSec) / duration) * 100 : 0}%`,
-                  }}
-                />
-              ))}
               {/* Played Fill */}
               <div
                 className="absolute top-0 bottom-0 left-0 bg-indigo-500 rounded-full"
