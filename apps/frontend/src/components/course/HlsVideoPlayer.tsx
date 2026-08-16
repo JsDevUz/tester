@@ -74,7 +74,7 @@ function formatTime(seconds: number): string {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function parseVttTime(timeStr: string): number {
+function parseTime(timeStr: string): number {
   const cleanStr = timeStr.trim().replace(',', '.');
   const parts = cleanStr.split(':');
   if (parts.length === 3) {
@@ -86,17 +86,18 @@ function parseVttTime(timeStr: string): number {
   return parseFloat(cleanStr) || 0;
 }
 
-function parseWebVtt(vttContent: string): SubtitleCue[] {
+function parseSubtitles(content: string): SubtitleCue[] {
   const cues: SubtitleCue[] = [];
-  const lines = vttContent.replace(/\r\n/g, '\n').replace(/\r/g, '\n').split('\n');
+  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const lines = normalized.split('\n');
   let i = 0;
 
   while (i < lines.length) {
     const line = lines[i].trim();
     if (line.includes('-->')) {
       const [startStr, endPart] = line.split('-->');
-      const start = parseVttTime(startStr);
-      const end = parseVttTime(endPart.trim().split(/\s+/)[0]);
+      const start = parseTime(startStr);
+      const end = parseTime(endPart.trim().split(/\s+/)[0]);
       i++;
       const textLines: string[] = [];
       while (i < lines.length && lines[i].trim() !== '') {
@@ -122,11 +123,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const doubleTapTimerRef = useRef<{ time: number; x: number; timer: ReturnType<typeof setTimeout> | null }>({
-    time: 0,
-    x: 0,
-    timer: null,
-  });
+  const lastTapRef = useRef<{ time: number; x: number }>({ time: 0, x: 0 });
 
   const admin = useAuthStore((s) => s.admin);
 
@@ -182,7 +179,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       controlsTimeoutRef.current = setTimeout(() => {
         setControlsVisible(false);
         setSpeedMenuOpen(false);
-      }, 3000);
+      }, 3500);
     }
   }, []);
 
@@ -238,7 +235,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     };
   }, [blockId, isFullscreen]);
 
-  // Prevent iOS / mobile native fullscreen from taking over video
+  // Prevent iOS native fullscreen takeover
   useEffect(() => {
     const video = videoRef.current as (HTMLVideoElement & {
       webkitExitFullscreen?: () => void;
@@ -299,7 +296,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     };
   }, [isFullscreen]);
 
-  // Fetch and parse WebVTT Subtitles directly (avoiding native <track> elements)
+  // Fetch and parse Subtitles directly without CORS preflight failures
   useEffect(() => {
     if (!subtitleUrl) {
       setSubtitleCues([]);
@@ -308,18 +305,25 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
     let cancelled = false;
     const fullUrl = subtitleUrl.startsWith('http') ? subtitleUrl : `${getApiBaseUrl()}${subtitleUrl}`;
-    const token = localStorage.getItem('token');
 
-    fetch(fullUrl, {
-      headers: token ? { Authorization: `Bearer ${token}` } : undefined,
-    })
-      .then((res) => (res.ok ? res.text() : Promise.reject(new Error('Failed to load subtitles'))))
-      .then((vttText) => {
+    fetch(fullUrl)
+      .then((res) => {
+        if (res.ok) return res.text();
+        const token = localStorage.getItem('token');
+        if (token) {
+          return fetch(fullUrl, { headers: { Authorization: `Bearer ${token}` } }).then((r) =>
+            r.ok ? r.text() : Promise.reject(new Error('Subtitle fetch error')),
+          );
+        }
+        return Promise.reject(new Error('Subtitle fetch failed'));
+      })
+      .then((text) => {
         if (cancelled) return;
-        const cues = parseWebVtt(vttText);
+        const cues = parseSubtitles(text);
         setSubtitleCues(cues);
       })
-      .catch(() => {
+      .catch((err) => {
+        console.warn('Failed to load subtitle file:', err);
         if (!cancelled) setSubtitleCues([]);
       });
 
@@ -350,6 +354,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
             },
             capLevelToPlayerSize: true,
+            autoStartLoad: true,
           });
 
           hls.on(Hls.Events.ERROR, (_event, data) => {
@@ -368,15 +373,19 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             }
           });
 
+          hls.on(Hls.Events.MANIFEST_PARSED, () => {
+            setIsBuffering(false);
+          });
+
           hls.loadSource(manifestUrl);
           hls.attachMedia(videoRef.current);
-          setIsBuffering(false);
           return;
         }
 
-        // Native Safari HLS playback fallback
+        // Native Safari HLS playback fallback (iOS Safari)
         if (videoRef.current.canPlayType('application/vnd.apple.mpegurl')) {
           videoRef.current.src = manifestUrl;
+          videoRef.current.load();
           setIsBuffering(false);
           return;
         }
@@ -442,7 +451,6 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       const current = video.currentTime;
       setCurrentTime(current);
 
-      // Buffered ranges
       if (video.buffered.length > 0) {
         for (let i = 0; i < video.buffered.length; i++) {
           if (video.buffered.start(i) <= current && current <= video.buffered.end(i)) {
@@ -498,6 +506,11 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     }
 
     function handlePlaying() {
+      setIsPlaying(false);
+      setIsBuffering(false);
+    }
+
+    function handleCanPlay() {
       setIsBuffering(false);
     }
 
@@ -512,6 +525,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     video.addEventListener('pause', handlePause);
     video.addEventListener('waiting', handleWaiting);
     video.addEventListener('playing', handlePlaying);
+    video.addEventListener('canplay', handleCanPlay);
+    video.addEventListener('loadeddata', handleCanPlay);
     video.addEventListener('ended', closeCurrentRange);
 
     return () => {
@@ -524,6 +539,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       video.removeEventListener('pause', handlePause);
       video.removeEventListener('waiting', handleWaiting);
       video.removeEventListener('playing', handlePlaying);
+      video.removeEventListener('canplay', handleCanPlay);
+      video.removeEventListener('loadeddata', handleCanPlay);
       video.removeEventListener('ended', closeCurrentRange);
     };
   }, [blockId]);
@@ -556,15 +573,26 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     };
   }, [watermark, watermarkText]);
 
-  // Playback Controls
+  // Direct Play/Pause
   const togglePlay = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
 
     if (video.paused) {
-      void video.play();
+      const playPromise = video.play();
+      if (playPromise !== undefined) {
+        playPromise
+          .then(() => {
+            setIsPlaying(true);
+            setIsBuffering(false);
+          })
+          .catch((err) => {
+            console.warn('Video play error:', err);
+          });
+      }
     } else {
       video.pause();
+      setIsPlaying(false);
     }
   }, []);
 
@@ -693,39 +721,40 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     window.addEventListener('pointerup', onPointerUp);
   }, [duration, handleScrubberPointer, handleSeek]);
 
-  // Double-tap on mobile for +/- 10s skip
-  const handleOverlayTouch = useCallback((e: React.TouchEvent<HTMLDivElement>) => {
-    const touch = e.changedTouches[0];
-    if (!touch || !wrapperRef.current) return;
+  // Screen tap handling
+  const handleScreenTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const wrapper = wrapperRef.current;
+    if (!wrapper) return;
 
-    const rect = wrapperRef.current.getBoundingClientRect();
-    const clickX = touch.clientX - rect.left;
+    const rect = wrapper.getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
     const widthRatio = clickX / rect.width;
     const now = Date.now();
 
-    if (now - doubleTapTimerRef.current.time < 300 && Math.abs(clickX - doubleTapTimerRef.current.x) < 60) {
-      if (doubleTapTimerRef.current.timer) clearTimeout(doubleTapTimerRef.current.timer);
-      doubleTapTimerRef.current.time = 0;
-
-      if (widthRatio < 0.4) {
+    if (now - lastTapRef.current.time < 300 && Math.abs(clickX - lastTapRef.current.x) < 80) {
+      lastTapRef.current.time = 0;
+      if (widthRatio < 0.35) {
         seekRelative(-10);
         setDoubleTapAnimation('left');
         setTimeout(() => setDoubleTapAnimation(null), 600);
-      } else if (widthRatio > 0.6) {
+        return;
+      }
+      if (widthRatio > 0.65) {
         seekRelative(10);
         setDoubleTapAnimation('right');
         setTimeout(() => setDoubleTapAnimation(null), 600);
-      } else {
-        togglePlay();
+        return;
       }
-    } else {
-      doubleTapTimerRef.current.time = now;
-      doubleTapTimerRef.current.x = clickX;
-      doubleTapTimerRef.current.timer = setTimeout(() => {
-        setControlsVisible((prev) => !prev);
-      }, 300);
     }
-  }, [seekRelative, togglePlay]);
+
+    lastTapRef.current = { time: now, x: clickX };
+
+    if (!isPlaying) {
+      togglePlay();
+    } else {
+      setControlsVisible((v) => !v);
+    }
+  }, [isPlaying, seekRelative, togglePlay]);
 
   // Keyboard Shortcuts
   useEffect(() => {
@@ -776,7 +805,6 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     ? { left: Math.max(18, Math.min(82, markPosition.left)), top: 58 + (markPosition.top / 100) * 22 }
     : markPosition;
 
-  // Active Subtitle Cue Calculation
   const activeCue = captionsOn
     ? subtitleCues.find((cue) => currentTime >= cue.start && currentTime <= cue.end)
     : null;
@@ -790,11 +818,14 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             ? 'fixed inset-0 z-[999999] flex h-screen h-[100dvh] w-screen max-h-[100dvh] items-center justify-center rounded-none'
             : 'aspect-video w-full rounded-2xl'
         }`}
+        data-yandex-video-player="false"
+        data-yandex-ignore="true"
+        data-yandex-subtitle="disabled"
         onMouseMove={showControls}
         onMouseLeave={hideControlsNow}
         onContextMenu={(e) => e.preventDefault()}
       >
-        {/* Core Video Element - Fully Custom (Native Controls & Native Track Elements Disabled) */}
+        {/* Core Video Element */}
         <video
           ref={videoRef}
           playsInline
@@ -802,7 +833,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           x5-playsinline="true"
           disablePictureInPicture
           disableRemotePlayback
-          preload="metadata"
+          preload="auto"
+          controlsList="nodownload nofullscreen noremoteplayback"
+          data-yandex-video-player="false"
+          data-yandex-ignore="true"
+          data-yandex-subtitles-disable="true"
+          data-disable-pip="true"
           className={`pointer-events-none h-full w-full object-contain ${isFullscreen ? 'h-full w-full' : 'rounded-2xl'}`}
         />
 
@@ -818,17 +854,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           </div>
         )}
 
-        {/* Touch / Click Gestures Overlay */}
+        {/* Tap/Click Gestures Overlay */}
         <div
-          className="absolute inset-0 z-10"
-          onClick={() => {
-            if (controlsVisible) {
-              togglePlay();
-            } else {
-              showControls();
-            }
-          }}
-          onTouchEnd={handleOverlayTouch}
+          className="absolute inset-0 z-10 cursor-pointer"
+          onClick={handleScreenTap}
         />
 
         {/* Buffering Indicator */}
@@ -838,10 +867,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           </div>
         )}
 
-        {/* Custom Clean Subtitle Overlay (No Native Black Bars or Browser Toolbar Clutter) */}
+        {/* Custom Clean Subtitle Overlay */}
         {captionsOn && activeCue && (
           <div
-            className={`pointer-events-none absolute left-1/2 z-25 -translate-x-1/2 px-4 py-1 text-center max-w-[90%] transition-all duration-200 ${
+            className={`pointer-events-none absolute left-1/2 z-35 -translate-x-1/2 px-4 py-1 text-center max-w-[90%] transition-all duration-200 ${
               controlsVisible ? 'bottom-16 sm:bottom-20' : 'bottom-6 sm:bottom-8'
             }`}
           >
@@ -880,7 +909,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           </div>
         )}
 
-        {/* Center Play/Pause & Skip Overlay (Visible on Hover/Pause) */}
+        {/* Center Play/Pause & Skip Overlay (White Icons) */}
         <div
           className={`pointer-events-none absolute inset-0 z-25 flex items-center justify-center gap-6 transition-opacity duration-200 ${
             controlsVisible || !isPlaying ? 'opacity-100' : 'opacity-0'
@@ -892,10 +921,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               e.stopPropagation();
               seekRelative(-10);
             }}
-            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white/90 shadow-lg backdrop-blur transition hover:scale-110 hover:bg-black/80 active:scale-95 sm:h-12 sm:w-12"
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur transition hover:scale-110 hover:bg-black/80 active:scale-95 sm:h-12 sm:w-12 border border-white/10"
             aria-label="10 soniya orqaga"
           >
-            <RotateCcw size={20} />
+            <RotateCcw size={20} className="text-white" />
           </button>
 
           <button
@@ -904,10 +933,14 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               e.stopPropagation();
               togglePlay();
             }}
-            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-white text-black shadow-2xl transition hover:scale-105 active:scale-95 sm:h-16 sm:w-16"
+            className="pointer-events-auto flex h-14 w-14 items-center justify-center rounded-full bg-black/65 text-white shadow-2xl backdrop-blur transition hover:scale-110 hover:bg-black/85 active:scale-95 sm:h-16 sm:w-16 border border-white/25"
             aria-label={isPlaying ? 'Pauza' : 'Ijro etish'}
           >
-            {isPlaying ? <Pause size={28} className="fill-black" /> : <Play size={28} className="ml-1 fill-black" />}
+            {isPlaying ? (
+              <Pause size={28} className="fill-white text-white" />
+            ) : (
+              <Play size={28} className="ml-1 fill-white text-white" />
+            )}
           </button>
 
           <button
@@ -916,10 +949,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               e.stopPropagation();
               seekRelative(10);
             }}
-            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white/90 shadow-lg backdrop-blur transition hover:scale-110 hover:bg-black/80 active:scale-95 sm:h-12 sm:w-12"
+            className="pointer-events-auto flex h-11 w-11 items-center justify-center rounded-full bg-black/60 text-white shadow-lg backdrop-blur transition hover:scale-110 hover:bg-black/80 active:scale-95 sm:h-12 sm:w-12 border border-white/10"
             aria-label="10 soniya oldinga"
           >
-            <RotateCw size={20} />
+            <RotateCw size={20} className="text-white" />
           </button>
         </div>
 
@@ -947,15 +980,15 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               <button
                 type="button"
                 onClick={() => setCaptionsOn((v) => !v)}
-                className={`flex h-8 px-2.5 items-center gap-1.5 rounded-lg text-xs font-semibold backdrop-blur transition ${
+                className={`flex h-8 px-2.5 items-center gap-1.5 rounded-lg text-xs font-semibold backdrop-blur transition text-white ${
                   captionsOn
-                    ? 'bg-white text-black hover:bg-white/90'
-                    : 'bg-black/60 text-white/80 hover:bg-black/80 hover:text-white'
+                    ? 'bg-indigo-600 hover:bg-indigo-700 shadow-md border border-indigo-400/40'
+                    : 'bg-black/60 hover:bg-black/80'
                 }`}
                 aria-label="Subtitr"
               >
-                <Captions size={15} />
-                <span className="hidden sm:inline">Subtitr</span>
+                <Captions size={15} className="text-white" />
+                <span className="text-white">Subtitr</span>
               </button>
             )}
 
@@ -964,7 +997,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               <button
                 type="button"
                 onClick={() => setSpeedMenuOpen((v) => !v)}
-                className="flex h-8 px-2.5 items-center rounded-lg bg-black/60 text-xs font-semibold text-white/90 backdrop-blur transition hover:bg-black/80 hover:text-white"
+                className="flex h-8 px-2.5 items-center rounded-lg bg-black/60 text-xs font-semibold text-white backdrop-blur transition hover:bg-black/80"
                 aria-label="Tezlik"
               >
                 {playbackSpeed}x
@@ -991,7 +1024,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
             <button
               type="button"
               onClick={toggleFullscreen}
-              className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white/90 backdrop-blur transition hover:bg-black/80 hover:text-white active:scale-95"
+              className="flex h-8 w-8 items-center justify-center rounded-lg bg-black/60 text-white backdrop-blur transition hover:bg-black/80 active:scale-95"
               aria-label={isFullscreen ? 'Kichik ekran' : 'To‘liq ekran'}
             >
               {isFullscreen ? <Minimize2 size={16} /> : <Maximize2 size={16} />}
@@ -1044,9 +1077,9 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               />
             </div>
 
-            {/* Scrubber Thumb Handle */}
+            {/* Scrubber Thumb Handle (White Dot) */}
             <div
-              className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-white shadow-lg transition-transform group-hover/track:scale-125"
+              className="pointer-events-none absolute h-3.5 w-3.5 -translate-x-1/2 rounded-full bg-white shadow-md transition-transform group-hover/track:scale-125 border border-black/20"
               style={{ left: `${progressPercent}%` }}
             />
 
@@ -1067,28 +1100,28 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               <button
                 type="button"
                 onClick={togglePlay}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15"
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
                 aria-label={isPlaying ? 'Pauza' : 'Ijro etish'}
               >
-                {isPlaying ? <Pause size={18} className="fill-white" /> : <Play size={18} className="ml-0.5 fill-white" />}
+                {isPlaying ? <Pause size={18} className="fill-white text-white" /> : <Play size={18} className="ml-0.5 fill-white text-white" />}
               </button>
 
               <button
                 type="button"
                 onClick={() => seekRelative(-10)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15"
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
                 aria-label="10 soniya orqaga"
               >
-                <RotateCcw size={16} />
+                <RotateCcw size={16} className="text-white" />
               </button>
 
               <button
                 type="button"
                 onClick={() => seekRelative(10)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15"
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
                 aria-label="10 soniya oldinga"
               >
-                <RotateCw size={16} />
+                <RotateCw size={16} className="text-white" />
               </button>
 
               {/* Volume Slider (Desktop) */}
@@ -1096,10 +1129,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
                 <button
                   type="button"
                   onClick={toggleMute}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15"
+                  className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
                   aria-label={isMuted ? 'Ovozni yoqish' : 'Ovozni o‘chirish'}
                 >
-                  {isMuted || volume === 0 ? <VolumeX size={17} /> : <Volume2 size={17} />}
+                  {isMuted || volume === 0 ? <VolumeX size={17} className="text-white" /> : <Volume2 size={17} className="text-white" />}
                 </button>
                 <input
                   type="range"
@@ -1108,7 +1141,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
                   step="0.05"
                   value={isMuted ? 0 : volume}
                   onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  className="hidden h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/30 accent-indigo-500 sm:block"
+                  className="hidden h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/30 accent-white sm:block"
                   aria-label="Ovoz balandligi"
                 />
               </div>
@@ -1117,17 +1150,6 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
               <div className="text-xs font-semibold tabular-nums text-white/90">
                 {formatTime(currentTime)} <span className="text-white/50">/</span> {formatTime(duration)}
               </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={toggleFullscreen}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15"
-                aria-label={isFullscreen ? 'Kichik ekran' : 'To‘liq ekran'}
-              >
-                {isFullscreen ? <Minimize2 size={18} /> : <Maximize2 size={18} />}
-              </button>
             </div>
           </div>
         </div>

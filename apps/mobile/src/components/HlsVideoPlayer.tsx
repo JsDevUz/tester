@@ -14,8 +14,6 @@ import Video, {
   type OnLoadData,
   type OnProgressData,
   type VideoRef,
-  TextTrackType,
-  SelectedTrackType,
 } from 'react-native-video';
 import {
   Captions,
@@ -42,9 +40,12 @@ const API_BASE = API_URL.replace(/\/$/, '');
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
-// React Native has no global btoa - this mirrors apps/frontend's
-// extractWatermarkPhone(), which base64-encodes the phone (minus the 998
-// country code) so the on-screen mark isn't plainly readable at a glance.
+interface SubtitleCue {
+  start: number;
+  end: number;
+  text: string;
+}
+
 function base64Encode(input: string): string {
   let output = '';
   for (let i = 0; i < input.length; i += 3) {
@@ -76,9 +77,50 @@ function quietWatermarkPosition() {
   };
 }
 
+function parseTime(timeStr: string): number {
+  const cleanStr = timeStr.trim().replace(',', '.');
+  const parts = cleanStr.split(':');
+  if (parts.length === 3) {
+    return parseFloat(parts[0]) * 3600 + parseFloat(parts[1]) * 60 + parseFloat(parts[2]);
+  }
+  if (parts.length === 2) {
+    return parseFloat(parts[0]) * 60 + parseFloat(parts[1]);
+  }
+  return parseFloat(cleanStr) || 0;
+}
+
+function parseSubtitles(content: string): SubtitleCue[] {
+  const cues: SubtitleCue[] = [];
+  const normalized = content.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+  const blocks = normalized.split(/\n\s*\n/);
+
+  for (const block of blocks) {
+    const lines = block.trim().split('\n');
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      if (line.includes('-->')) {
+        const [startStr, endPart] = line.split('-->');
+        const start = parseTime(startStr);
+        const end = parseTime(endPart.trim().split(/\s+/)[0]);
+        const textLines = lines.slice(i + 1).map(l => l.replace(/<[^>]*>/g, '').trim()).filter(Boolean);
+        if (textLines.length > 0 && !isNaN(start) && !isNaN(end) && end > start) {
+          cues.push({
+            start,
+            end,
+            text: textLines.join('\n'),
+          });
+        }
+        break;
+      }
+    }
+  }
+  return cues;
+}
+
 export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; watermark?: boolean}) {
   const [manifestUrl, setManifestUrl] = useState<string | null>(null);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const [captionsOn, setCaptionsOn] = useState(false);
   const [error, setError] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
@@ -158,6 +200,36 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
       cancelled = true;
     };
   }, [blockId]);
+
+  // Load and parse subtitles via JS to avoid ExoPlayer / AVPlayer textTrack crashes
+  useEffect(() => {
+    if (!subtitleUrl) {
+      setSubtitleCues([]);
+      return;
+    }
+
+    let cancelled = false;
+    const fullUrl = subtitleUrl.startsWith('http') ? subtitleUrl : `${API_BASE}${subtitleUrl}`;
+    const curToken = useAuthStore.getState().token;
+
+    fetch(fullUrl, {
+      headers: curToken ? {Authorization: `Bearer ${curToken}`} : undefined,
+    })
+      .then(res => (res.ok ? res.text() : Promise.reject(new Error('Subtitle fetch failed'))))
+      .then(text => {
+        if (cancelled) return;
+        const cues = parseSubtitles(text);
+        setSubtitleCues(cues);
+      })
+      .catch(err => {
+        console.warn('Failed to load subtitles:', err);
+        if (!cancelled) setSubtitleCues([]);
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [subtitleUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -292,9 +364,6 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
 
   function handleLoad(data: OnLoadData) {
     if (!isNaN(data.duration) && isFinite(data.duration)) setVideoDuration(data.duration);
-    // Toggling fullscreen moves <Video> between the inline container and the
-    // Modal, which remounts it and restarts playback from 0 - seek back to
-    // where the viewer actually was.
     const resumeAt = resumeTimeRef.current;
     if (resumeAt > 0) {
       videoRef.current?.seek(resumeAt);
@@ -335,64 +404,82 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     return () => closeCurrentRange();
   }, [closeCurrentRange]);
 
-  // position:'absolute' resolves against the enclosing ScrollView, not the
-  // screen, so fullscreen used to stay boxed inside the lesson content. A
-  // Modal gives a real screen-level surface; the same <Video> element is
-  // moved into it so playback isn't restarted on toggle.
   const fullscreenFillStyle = {
     width: windowWidth,
     height: windowHeight,
     backgroundColor: 'black',
   } as const;
 
+  // Active Subtitle Cue
+  const activeCue = captionsOn
+    ? subtitleCues.find(cue => currentTime >= cue.start && currentTime <= cue.end)
+    : null;
+
   const mediaSurface = (
     <>
-        {error ? (
-          <View style={StyleSheet.absoluteFill} className="items-center justify-center">
-            <Text className="text-xs font-semibold text-white/70">Video hozircha ochilmadi</Text>
+      {error ? (
+        <View style={StyleSheet.absoluteFill} className="items-center justify-center">
+          <Text className="text-xs font-semibold text-white/70">Video hozircha ochilmadi</Text>
+        </View>
+      ) : !manifestUrl ? (
+        <View style={StyleSheet.absoluteFill} className="items-center justify-center">
+          <ActivityIndicator color="white" />
+        </View>
+      ) : (
+        <Video
+          ref={videoRef}
+          source={{uri: manifestUrl, headers: token ? {Authorization: `Bearer ${token}`} : undefined}}
+          style={StyleSheet.absoluteFill}
+          paused={paused}
+          resizeMode="contain"
+          onLoad={handleLoad}
+          onProgress={handleProgress}
+          onError={e => {
+            console.warn('React Native Video Error:', e);
+            setError(true);
+          }}
+          onEnd={() => {
+            closeCurrentRange();
+            setPaused(true);
+          }}
+        />
+      )}
+
+      {/* Watermark */}
+      {watermarkText ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            left: `${renderedMarkPosition.left}%`,
+            top: `${renderedMarkPosition.top}%`,
+            opacity: markVisible ? 1 : 0,
+            zIndex: 30,
+          }}>
+          <Text className="text-[10px] font-bold tracking-wide text-white/70 shadow-sm">{watermarkText}</Text>
+        </View>
+      ) : null}
+
+      {/* Custom Subtitle Overlay */}
+      {captionsOn && activeCue ? (
+        <View
+          pointerEvents="none"
+          style={{
+            position: 'absolute',
+            bottom: controlsVisible ? (isFullscreen ? 75 : 48) : (isFullscreen ? 32 : 12),
+            left: 20,
+            right: 20,
+            alignItems: 'center',
+            zIndex: 25,
+          }}>
+          <View className="rounded-xl bg-black/80 px-3.5 py-1.5 border border-white/10 shadow-lg">
+            <Text className="text-center text-xs sm:text-sm font-semibold text-white leading-5">
+              {activeCue.text}
+            </Text>
           </View>
-        ) : !manifestUrl ? (
-          <View style={StyleSheet.absoluteFill} className="items-center justify-center">
-            <ActivityIndicator color="white" />
-          </View>
-        ) : (
-          <Video
-            ref={videoRef}
-            source={{uri: manifestUrl, headers: token ? {Authorization: `Bearer ${token}`} : undefined}}
-            style={StyleSheet.absoluteFill}
-            paused={paused}
-            resizeMode="contain"
-            textTracks={
-              subtitleUrl
-                ? [{title: 'Subtitle', language: 'uz', type: TextTrackType.VTT, uri: subtitleUrl}]
-                : undefined
-            }
-            selectedTextTrack={
-              captionsOn
-                ? {type: SelectedTrackType.TITLE, value: 'Subtitle'}
-                : {type: SelectedTrackType.DISABLED}
-            }
-            onLoad={handleLoad}
-            onProgress={handleProgress}
-            onEnd={() => {
-              closeCurrentRange();
-              setPaused(true);
-            }}
-          />
-        )}
-        {watermarkText ? (
-          <View
-            pointerEvents="none"
-            style={{
-              position: 'absolute',
-              left: `${renderedMarkPosition.left}%`,
-              top: `${renderedMarkPosition.top}%`,
-              opacity: markVisible ? 1 : 0,
-              zIndex: 30,
-            }}>
-            <Text className="text-[10px] font-bold tracking-wide text-white/70 shadow-sm">{watermarkText}</Text>
-          </View>
-        ) : null}
+        </View>
+      ) : null}
+
       {manifestUrl && !error ? (
         <>
           {/* Tap anywhere to reveal the controls (or hide them again). */}
