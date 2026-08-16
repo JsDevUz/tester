@@ -290,6 +290,13 @@ export function LessonBlock({
           renderersProps={{
             img: {
               enableExperimentalPercentWidth: true,
+              // Lesson images rarely ship width/height attributes, so
+              // react-native-render-html falls back to a 100x100 box and
+              // resizes once it fetches the real dimensions - that jump
+              // shifts everything below it and drags the scroll position
+              // with it. A 16:9 placeholder close to the eventual size
+              // keeps the layout stable while the real size loads.
+              initialDimensions: { width: width - 32, height: ((width - 32) * 9) / 16 },
             },
             table: {
               cssRules: TABLE_CSS_RULES,
