@@ -460,20 +460,20 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
         </View>
       ) : null}
 
-      {/* Custom Subtitle Overlay */}
+      {/* Custom Native-Style Subtitle Overlay */}
       {captionsOn && activeCue ? (
         <View
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: controlsVisible ? (isFullscreen ? 75 : 48) : (isFullscreen ? 32 : 12),
-            left: 20,
-            right: 20,
+            bottom: controlsVisible ? (isFullscreen ? 65 : 44) : (isFullscreen ? 18 : 6),
+            left: 12,
+            right: 12,
             alignItems: 'center',
             zIndex: 25,
           }}>
-          <View className="rounded-xl bg-black/80 px-3.5 py-1.5 border border-white/10 shadow-lg">
-            <Text className="text-center text-xs sm:text-sm font-semibold text-white leading-5">
+          <View className="rounded-md bg-black/80 px-2.5 py-1">
+            <Text className="text-center text-[11px] sm:text-[13px] font-medium text-white leading-4">
               {activeCue.text}
             </Text>
           </View>

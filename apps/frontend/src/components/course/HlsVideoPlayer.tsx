@@ -813,10 +813,10 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     <>
       <div
         ref={wrapperRef}
-        className={`group/player relative bg-black select-none overflow-hidden transition-all duration-200 ${
+        className={`group/player bg-black select-none overflow-hidden transition-all duration-200 ${
           isFullscreen
-            ? 'fixed inset-0 z-[999999] flex h-screen h-[100dvh] w-screen max-h-[100dvh] items-center justify-center rounded-none'
-            : 'aspect-video w-full rounded-2xl'
+            ? '!fixed !inset-0 !top-0 !left-0 !right-0 !bottom-0 z-[9999999] flex h-screen h-[100dvh] w-screen max-h-[100dvh] items-center justify-center rounded-none m-0'
+            : 'relative aspect-video w-full rounded-2xl'
         }`}
         data-yandex-video-player="false"
         data-yandex-ignore="true"
@@ -867,14 +867,17 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           </div>
         )}
 
-        {/* Custom Clean Subtitle Overlay */}
+        {/* Custom Native-Style Subtitle Overlay */}
         {captionsOn && activeCue && (
           <div
-            className={`pointer-events-none absolute left-1/2 z-35 -translate-x-1/2 px-4 py-1 text-center max-w-[90%] transition-all duration-200 ${
-              controlsVisible ? 'bottom-16 sm:bottom-20' : 'bottom-6 sm:bottom-8'
+            className={`pointer-events-none absolute inset-x-0 z-35 flex justify-center px-4 transition-all duration-200 ${
+              controlsVisible ? 'bottom-12 sm:bottom-14' : 'bottom-2 sm:bottom-3'
             }`}
           >
-            <span className="inline-block rounded-xl bg-black/85 px-4 py-2 text-xs sm:text-base font-medium text-white shadow-2xl backdrop-blur border border-white/10 leading-relaxed whitespace-pre-line">
+            <span
+              className="inline-block max-w-[92%] rounded-md bg-black/80 px-2.5 py-0.5 text-[11px] sm:text-[13px] font-medium leading-snug text-white shadow-md backdrop-blur-sm whitespace-pre-line text-center"
+              style={{ textShadow: '0 1px 2px rgba(0,0,0,0.8)' }}
+            >
               {activeCue.text}
             </span>
           </div>
