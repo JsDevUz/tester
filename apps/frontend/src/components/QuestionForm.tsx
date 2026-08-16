@@ -262,7 +262,7 @@ export function QuestionForm({
   return (
     <form
       onSubmit={handleSubmit}
-      className="max-[1024px]:bg-transparent min-[1025px]:bg-white min-[1025px]:dark:bg-[#30313a] rounded-2xl flex flex-col gap-2"
+      className="max-[1024px]:bg-transparent min-[1025px]:bg-white min-[1025px]:dark:bg-[#30313a] min-[1025px]:border min-[1025px]:border-gray-200 min-[1025px]:dark:border-zinc-700 rounded-2xl flex flex-col gap-2 min-[1025px]:p-4"
     >
       <textarea
         value={text}

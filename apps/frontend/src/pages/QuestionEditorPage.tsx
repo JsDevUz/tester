@@ -95,7 +95,7 @@ function InlineQuestionCard({
   }
 
   return (
-    <div className="bg-white dark:bg-[#30313a] rounded-xl p-4">
+    <div className="bg-white dark:bg-[#30313a] rounded-xl border border-gray-300 dark:border-zinc-700 p-4">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
           <span className="text-xs text-gray-400 dark:text-zinc-400 mr-2">{index + 1}.</span>
@@ -392,7 +392,7 @@ export function QuestionEditorPage() {
           </div>
 
           {questions.length > 0 && (
-            <div className="mt-6 flex flex-col gap-2">
+            <div className="mt-6 flex flex-col gap-2 border-t border-gray-200 dark:border-zinc-700 pt-6">
               <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-200">
                 Savollar ({questions.length})
               </h3>
