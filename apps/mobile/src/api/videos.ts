@@ -2,7 +2,7 @@ import {api} from '../lib/api';
 
 export async function apiStartVideoPlayback(
   blockId: string,
-): Promise<{token: string; manifestUrl: string; expiresAt: string}> {
+): Promise<{token: string; manifestUrl: string; expiresAt: string; subtitleUrl: string | null}> {
   const res = await api.post(`/videos/${blockId}/play`);
   return res.data;
 }

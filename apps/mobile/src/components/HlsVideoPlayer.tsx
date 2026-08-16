@@ -10,8 +10,15 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import Video, {type OnLoadData, type OnProgressData, type VideoRef} from 'react-native-video';
+import Video, {
+  type OnLoadData,
+  type OnProgressData,
+  type VideoRef,
+  TextTrackType,
+  SelectedTrackType,
+} from 'react-native-video';
 import {
+  Captions,
   ChevronDown,
   ChevronUp,
   Maximize2,
@@ -71,6 +78,8 @@ function quietWatermarkPosition() {
 
 export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; watermark?: boolean}) {
   const [manifestUrl, setManifestUrl] = useState<string | null>(null);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [captionsOn, setCaptionsOn] = useState(false);
   const [error, setError] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
@@ -137,7 +146,10 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     setError(false);
     apiStartVideoPlayback(blockId)
       .then(playback => {
-        if (!cancelled) setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+        if (!cancelled) {
+          setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+          setSubtitleUrl(playback.subtitleUrl);
+        }
       })
       .catch(() => {
         if (!cancelled) setError(true);
@@ -350,6 +362,16 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
             style={StyleSheet.absoluteFill}
             paused={paused}
             resizeMode="contain"
+            textTracks={
+              subtitleUrl
+                ? [{title: 'Subtitle', language: 'uz', type: TextTrackType.VTT, uri: subtitleUrl}]
+                : undefined
+            }
+            selectedTextTrack={
+              captionsOn
+                ? {type: SelectedTrackType.TITLE, value: 'Subtitle'}
+                : {type: SelectedTrackType.DISABLED}
+            }
             onLoad={handleLoad}
             onProgress={handleProgress}
             onEnd={() => {
@@ -381,6 +403,15 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
 
           {controlsVisible ? (
             <>
+              {subtitleUrl && (
+                <Pressable
+                  onPress={() => setCaptionsOn(v => !v)}
+                  className={`absolute right-14 top-3 z-20 h-9 w-9 items-center justify-center rounded-full ${
+                    captionsOn ? 'bg-white' : 'bg-black/45'
+                  }`}>
+                  <Captions size={17} color={captionsOn ? '#000' : '#fff'} />
+                </Pressable>
+              )}
               <Pressable
                 onPress={() => {
                   resumeTimeRef.current = currentTimeRef.current;
