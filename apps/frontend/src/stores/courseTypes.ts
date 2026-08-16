@@ -31,6 +31,8 @@ export interface ContentBlock {
   hlsMasterKey?: string;
   hlsBaseKey?: string;
   aesKeyRef?: string;
+  subtitleKey?: string;
+  subtitleFileName?: string;
   durationSec?: number;
   errorMessage?: string;
   processedAt?: string;
@@ -159,6 +161,8 @@ export interface CourseState {
   refreshLessonBlocks: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   loadLessonBlocks: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   retryVideoBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
+  uploadSubtitleBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string, file: File) => Promise<void>;
+  removeSubtitleBlock: (courseId: string, moduleId: string, lessonId: string, blockId: string) => Promise<void>;
 
   setLessonPracticeEnabled: (courseId: string, moduleId: string, lessonId: string, enabled: boolean) => void;
   addPracticeBlock: (courseId: string, moduleId: string, lessonId: string, type?: PracticeBlockType) => Promise<void>;

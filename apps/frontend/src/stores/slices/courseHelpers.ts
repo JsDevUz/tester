@@ -27,6 +27,8 @@ export function toFrontendBlock(b: ApiContentBlock): ContentBlock {
     hlsMasterKey: b.hlsMasterKey ?? undefined,
     hlsBaseKey: b.hlsBaseKey ?? undefined,
     aesKeyRef: b.aesKeyRef ?? undefined,
+    subtitleKey: b.subtitleKey ?? undefined,
+    subtitleFileName: b.subtitleFileName ?? undefined,
     durationSec: b.durationSec ?? undefined,
     errorMessage: b.errorMessage ?? undefined,
     processedAt: b.processedAt ?? undefined,

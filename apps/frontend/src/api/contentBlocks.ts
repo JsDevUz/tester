@@ -21,6 +21,8 @@ export interface ApiContentBlock {
   hlsMasterKey: string | null;
   hlsBaseKey: string | null;
   aesKeyRef: string | null;
+  subtitleKey: string | null;
+  subtitleFileName: string | null;
   durationSec: number | null;
   errorMessage: string | null;
   processedAt: string | null;
@@ -173,9 +175,23 @@ export async function apiRetryVideoBlock(blockId: string): Promise<ApiContentBlo
   return res.data;
 }
 
+export async function apiUploadSubtitle(blockId: string, file: File): Promise<ApiContentBlock> {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await client.post(`/blocks/${blockId}/subtitles`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' },
+  });
+  return res.data;
+}
+
+export async function apiDeleteSubtitle(blockId: string): Promise<ApiContentBlock> {
+  const res = await client.delete(`/blocks/${blockId}/subtitles`);
+  return res.data;
+}
+
 export async function apiStartVideoPlayback(
   blockId: string,
-): Promise<{ token: string; manifestUrl: string; expiresAt: string }> {
+): Promise<{ token: string; manifestUrl: string; expiresAt: string; subtitleUrl: string | null }> {
   const res = await client.post(`/videos/${blockId}/play`);
   return res.data;
 }

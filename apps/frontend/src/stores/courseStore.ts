@@ -26,6 +26,8 @@ import {
   apiRemoveMessageLine,
   apiReorderMessageLines,
   apiRetryVideoBlock,
+  apiUploadSubtitle,
+  apiDeleteSubtitle,
 } from '../api/contentBlocks';
 import {
   apiListGroups,
@@ -1000,6 +1002,56 @@ export const useCourseStore = create<CourseState>((set, get) => ({
   },
   retryVideoBlock: async (courseId, moduleId, lessonId, blockId) => {
     const row = await apiRetryVideoBlock(blockId);
+    const updated = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : { ...l, blocks: l.blocks.map((b) => (b.id === blockId ? updated : b)) },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  uploadSubtitleBlock: async (courseId, moduleId, lessonId, blockId, file) => {
+    const row = await apiUploadSubtitle(blockId, file);
+    const updated = toFrontendBlock(row);
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId
+                  ? m
+                  : {
+                      ...m,
+                      lessons: m.lessons.map((l) =>
+                        l.id !== lessonId
+                          ? l
+                          : { ...l, blocks: l.blocks.map((b) => (b.id === blockId ? updated : b)) },
+                      ),
+                    },
+              ),
+            },
+      ),
+    });
+  },
+  removeSubtitleBlock: async (courseId, moduleId, lessonId, blockId) => {
+    const row = await apiDeleteSubtitle(blockId);
     const updated = toFrontendBlock(row);
     set({
       courses: get().courses.map((c) =>
