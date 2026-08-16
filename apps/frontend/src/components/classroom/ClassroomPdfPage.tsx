@@ -43,7 +43,7 @@ import { useClassroomPageTextEditor } from "./useClassroomPageTextEditor";
 import { useClassroomPageConnectors } from "./useClassroomPageConnectors";
 import { useClassroomShapeTransform } from "./useClassroomShapeTransform";
 import { useClassroomPagePointerGestures } from "./useClassroomPagePointerGestures";
-import { useClassroomCanvasRenderer, renderClassroomCanvas } from "./useClassroomCanvasRenderer";
+import { useClassroomCanvasRenderer } from "./useClassroomCanvasRenderer";
 
 export {
   CLASSROOM_PAGE_CLIPBOARD_KEY,

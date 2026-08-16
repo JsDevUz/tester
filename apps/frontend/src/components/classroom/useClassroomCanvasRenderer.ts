@@ -304,7 +304,7 @@ export function useClassroomCanvasRenderer({
   // pointerMove handlerlar renderClassroomCanvas()ni to'g'ridan-to'g'ri
   // chaqirganda ham eng so'nggi parametrlarni ko'rishi uchun — closure'da
   // eskirgan qiymat qolib ketmasligi kerak.
-  const latestParamsRef = useRef<Omit<RenderClassroomCanvasParams, "canvas">>();
+  const latestParamsRef = useRef<Omit<RenderClassroomCanvasParams, "canvas"> | undefined>(undefined);
   latestParamsRef.current = {
     size,
     strokes,
