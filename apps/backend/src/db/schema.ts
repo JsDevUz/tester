@@ -123,6 +123,8 @@ export const contentBlocks = pgTable('content_blocks', {
   hlsMasterKey: text('hls_master_key'),
   hlsBaseKey: text('hls_base_key'),
   aesKeyRef: text('aes_key_ref'),
+  subtitleKey: text('subtitle_key'),
+  subtitleFileName: text('subtitle_file_name'),
   durationSec: integer('duration_sec'),
   errorMessage: text('error_message'),
   processedAt: timestamp('processed_at', { withTimezone: true }),
