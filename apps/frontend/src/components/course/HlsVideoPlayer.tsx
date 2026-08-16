@@ -489,13 +489,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       const inProgress = currentRangeRef.current;
       const liveSegment = { startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end) };
       setLiveRange(liveSegment);
-      if (video.duration && isFinite(video.duration)) {
-        const nonOverlapping = watchedSegmentsRef.current.filter(
-          (s) => s.endSec < liveSegment.startSec - 2 || s.startSec > liveSegment.endSec + 2,
-        );
-        const totalCovered =
-          nonOverlapping.reduce((sum, s) => sum + (s.endSec - s.startSec), 0) +
-          (liveSegment.endSec - liveSegment.startSec);
+      if (video.duration && isFinite(video.duration) && video.duration > 0) {
+        const totalCovered = computeTotalWatchedSeconds(watchedSegmentsRef.current, liveSegment);
         setWatchedPercent(Math.min(100, Math.round((totalCovered / video.duration) * 100)));
       }
     }
