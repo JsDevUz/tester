@@ -69,8 +69,15 @@ export class VideoProgressService {
     blockId: string,
     viewer: { id: string; role: 'student' | 'teacher' | 'super' },
     range: WatchSegment,
+    durationSec?: number,
   ) {
     const { block } = await this.assertAccess(blockId, viewer);
+
+    let effectiveDuration = block.durationSec;
+    if (durationSec && durationSec > 0 && (!block.durationSec || block.durationSec !== durationSec)) {
+      await db.update(contentBlocks).set({ durationSec }).where(eq(contentBlocks.id, blockId));
+      effectiveDuration = durationSec;
+    }
 
     const existingRows = await db.query.videoWatchSegments.findMany({
       where: and(eq(videoWatchSegments.contentBlockId, blockId), eq(videoWatchSegments.studentId, viewer.id)),
@@ -87,7 +94,7 @@ export class VideoProgressService {
       );
     }
 
-    return { segments: merged, watchedPercent: computeWatchedPercent(merged, block.durationSec) };
+    return { segments: merged, watchedPercent: computeWatchedPercent(merged, effectiveDuration) };
   }
 
   async getProgress(blockId: string, viewer: { id: string; role: 'student' | 'teacher' | 'super' }) {

@@ -205,8 +205,9 @@ export async function apiSaveWatchProgress(
   blockId: string,
   startSec: number,
   endSec: number,
+  durationSec?: number,
 ): Promise<{ segments: WatchSegment[]; watchedPercent: number | null }> {
-  const res = await client.post(`/videos/${blockId}/watch-progress`, { startSec, endSec });
+  const res = await client.post(`/videos/${blockId}/watch-progress`, { startSec, endSec, durationSec });
   return res.data;
 }
 

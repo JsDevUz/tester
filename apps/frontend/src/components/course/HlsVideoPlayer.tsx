@@ -456,7 +456,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     function closeCurrentRange() {
       const range = currentRangeRef.current;
       if (range && range.end > range.start && range.end > lastSavedEndRef.current) {
-        void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end)).then((data) => {
+        const dur = video && video.duration && isFinite(video.duration) ? Math.round(video.duration) : undefined;
+        void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end), dur).then((data) => {
           setWatchedPercent(data.watchedPercent);
           setWatchedSegments(data.segments);
           setLiveRange(null);
@@ -522,7 +523,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
     }
 
     function handlePlaying() {
-      setIsPlaying(false);
+      setIsPlaying(true);
       setIsBuffering(false);
     }
 
@@ -1114,45 +1115,54 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       {/* Progress tracking summary below the player */}
       {duration > 0 && !isFullscreen && (
         <div className="mt-2.5">
-          <button
-            type="button"
-            onClick={() => setProgressOpen((v) => !v)}
-            className="flex w-full items-center justify-between text-xs font-semibold text-gray-500 hover:text-gray-700 transition"
-          >
-            <span className="inline-flex items-center gap-1.5">
-              Mening video ko'rishim
-              {progressOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </span>
-            {watchedPercent !== null && <span className="text-indigo-600 font-bold">{watchedPercent}% ko'rilgan</span>}
-          </button>
-          {progressOpen && (
-            <div className="video-watch-progress-track relative mt-2 h-2.5 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
-              {watchedSegments
-                .filter(
-                  (s) => !liveRange || s.endSec < liveRange.startSec - 2 || s.startSec > liveRange.endSec + 2,
-                )
-                .map((seg) => (
-                  <div
-                    key={`${seg.startSec}-${seg.endSec}`}
-                    className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out bg-indigo-600"
-                    style={{
-                      left: `${(seg.startSec / duration) * 100}%`,
-                      width: `${((seg.endSec - seg.startSec) / duration) * 100}%`,
-                    }}
-                  />
-                ))}
-              {liveRange && (
-                <div
-                  key="live"
-                  className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-300 ease-out bg-indigo-600"
-                  style={{
-                    left: `${(liveRange.startSec / duration) * 100}%`,
-                    width: `${((liveRange.endSec - liveRange.startSec) / duration) * 100}%`,
-                  }}
-                />
-              )}
-            </div>
-          )}
+          {(() => {
+            const dynamicPercent =
+              duration > 0 && isFinite(duration)
+                ? Math.min(100, Math.round((computeTotalWatchedSeconds(watchedSegments, liveRange) / duration) * 100))
+                : watchedPercent;
+
+            return (
+              <>
+                <button
+                  type="button"
+                  onClick={() => setProgressOpen((v) => !v)}
+                  className="flex w-full items-center justify-between text-xs font-semibold text-gray-500 hover:text-gray-700 transition"
+                >
+                  <span className="inline-flex items-center gap-1.5">
+                    Mening video ko'rishim
+                    {progressOpen ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                  </span>
+                  {dynamicPercent !== null && (
+                    <span className="text-indigo-600 font-bold">{dynamicPercent}% ko'rilgan</span>
+                  )}
+                </button>
+                {progressOpen && (
+                  <div className="video-watch-progress-track relative mt-2 h-2 w-full overflow-hidden rounded-full bg-gray-200 dark:bg-gray-800">
+                    {watchedSegments.map((seg) => (
+                      <div
+                        key={`${seg.startSec}-${seg.endSec}`}
+                        className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-200 ease-out bg-indigo-600"
+                        style={{
+                          left: `${Math.min(100, Math.max(0, (seg.startSec / duration) * 100))}%`,
+                          width: `${Math.min(100, Math.max(0.5, ((seg.endSec - seg.startSec) / duration) * 100))}%`,
+                        }}
+                      />
+                    ))}
+                    {liveRange && liveRange.endSec > liveRange.startSec && (
+                      <div
+                        key="live"
+                        className="video-watch-progress-fill absolute h-full rounded-full transition-[left,width] duration-200 ease-out bg-indigo-500"
+                        style={{
+                          left: `${Math.min(100, Math.max(0, (liveRange.startSec / duration) * 100))}%`,
+                          width: `${Math.min(100, Math.max(0.5, ((liveRange.endSec - liveRange.startSec) / duration) * 100))}%`,
+                        }}
+                      />
+                    )}
+                  </div>
+                )}
+              </>
+            );
+          })()}
         </div>
       )}
     </>

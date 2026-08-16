@@ -15,7 +15,7 @@ import {
   UseInterceptors,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
-import { IsIn, IsInt, IsString, Min, MinLength } from 'class-validator';
+import { IsIn, IsInt, IsOptional, IsString, Min, MinLength } from 'class-validator';
 import type { Response } from 'express';
 import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -28,6 +28,7 @@ import { VideoUploadService } from './video-upload.service';
 class SaveWatchProgressDto {
   @IsInt() @Min(0) startSec: number;
   @IsInt() @Min(0) endSec: number;
+  @IsOptional() @IsInt() @Min(1) durationSec?: number;
 }
 
 class InitiateVideoUploadDto {
@@ -165,6 +166,7 @@ export class VideosController {
       blockId,
       { id: req.user.id, role: req.user.role },
       { startSec: dto.startSec, endSec: dto.endSec },
+      dto.durationSec,
     );
   }
 
