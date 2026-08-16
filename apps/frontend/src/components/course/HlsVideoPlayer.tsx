@@ -11,8 +11,6 @@ import {
   Play,
   RotateCcw,
   RotateCw,
-  Volume2,
-  VolumeX,
   X,
 } from 'lucide-react';
 import {
@@ -36,6 +34,14 @@ interface SubtitleCue {
 }
 
 const SPEED_OPTIONS = [0.75, 1, 1.25, 1.5, 1.75, 2];
+
+function isIOS() {
+  if (typeof navigator === 'undefined') return false;
+  return (
+    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
+  );
+}
 
 function extractWatermarkPhone(phone?: string | null) {
   const rawPhone = phone?.replace(/\D/g, '') ?? '';
