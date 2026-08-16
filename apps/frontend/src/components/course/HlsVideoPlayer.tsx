@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import Hls from 'hls.js';
-import { ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
+import { Captions, ChevronDown, ChevronUp, Maximize2, Minimize2 } from 'lucide-react';
 import { apiStartVideoPlayback, apiSaveWatchProgress, apiGetWatchProgress, type WatchSegment } from '../../api/contentBlocks';
 import { getApiBaseUrl } from '../../api/baseUrl';
 import { useAuthStore } from '../../stores/authStore';
@@ -44,6 +44,8 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const admin = useAuthStore((s) => s.admin);
   const [error, setError] = useState<string | null>(null);
+  const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
+  const [captionsOn, setCaptionsOn] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [fullscreenTop, setFullscreenTop] = useState(0);
   const nativeFullscreenRef = useRef(false);
@@ -159,6 +161,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         const playback = await apiStartVideoPlayback(blockId);
         if (cancelled || !videoRef.current) return;
 
+        setSubtitleUrl(playback.subtitleUrl);
         const manifestUrl = `${getApiBaseUrl()}${playback.manifestUrl}`;
         const token = localStorage.getItem('token');
 
@@ -189,6 +192,11 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
       hls?.destroy();
     };
   }, [blockId]);
+
+  useEffect(() => {
+    const track = videoRef.current?.textTracks?.[0];
+    if (track) track.mode = captionsOn ? 'showing' : 'hidden';
+  }, [captionsOn, subtitleUrl]);
 
   useEffect(() => {
     let cancelled = false;
@@ -382,7 +390,11 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         disablePictureInPicture
         playsInline
         className={`hls-video-player ${isFullscreen ? 'h-full w-full object-contain' : 'aspect-video w-full rounded-2xl'}`}
-      />
+      >
+        {subtitleUrl && (
+          <track kind="subtitles" src={subtitleUrl} srcLang="uz" label="Subtitle" default={false} />
+        )}
+      </video>
       {watermark && watermarkText && (
         <div
           className={`pointer-events-none absolute z-10 px-1 py-0.5 text-[10px] font-semibold tracking-wide text-white/55 transition-opacity duration-700 ${
@@ -400,6 +412,18 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         >
           <span className="block truncate">{watermarkText}</span>
         </div>
+      )}
+      {subtitleUrl && (
+        <button
+          type="button"
+          onClick={() => setCaptionsOn((v) => !v)}
+          className={`absolute right-14 top-3 z-[999999] flex h-9 w-9 items-center justify-center rounded-full shadow-lg backdrop-blur transition ${
+            captionsOn ? 'bg-white text-black hover:bg-white/90' : 'bg-black/55 text-white/80 hover:bg-black/70 hover:text-white'
+          }`}
+          aria-label="Subtitle"
+        >
+          <Captions size={17} />
+        </button>
       )}
       <button
         type="button"

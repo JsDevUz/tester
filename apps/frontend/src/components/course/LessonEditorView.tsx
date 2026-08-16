@@ -80,6 +80,8 @@ export function LessonEditorView({
     moveBlock,
     refreshLessonBlocks,
     retryVideoBlock,
+    uploadSubtitleBlock,
+    removeSubtitleBlock,
     setLessonPracticeEnabled,
     setLessonCompletionScore,
   } = useCourseStore();
@@ -319,6 +321,8 @@ export function LessonEditorView({
                       }
                       onPickFile={(file) => handleBlockPickFile(block.id, file)}
                       onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
+                      onUploadSubtitle={(file) => void uploadSubtitleBlock(courseId, moduleId, lessonId, block.id, file)}
+                      onRemoveSubtitle={() => void removeSubtitleBlock(courseId, moduleId, lessonId, block.id)}
                       onRemove={() =>
                         void removeBlock(courseId, moduleId, lessonId, block.id)
                       }

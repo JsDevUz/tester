@@ -1,7 +1,7 @@
 import {
   Film, Image as ImageIcon, Paperclip, LayoutGrid, Radio, ChevronUp, ChevronDown,
   X, Link2, Plus, ArrowUp, ArrowDown, Loader2, ExternalLink, MousePointer2,
-  MessageSquareText, Trash2,
+  MessageSquareText, Trash2, Captions,
 } from 'lucide-react';
 import type { ContentBlock } from '../../stores/courseStore';
 import { EditorBlock } from './EditorBlock';
@@ -34,6 +34,8 @@ interface ContentBlockViewProps {
   onMoveUp: () => void;
   onMoveDown: () => void;
   onRetryVideo?: () => void;
+  onUploadSubtitle?: (file: File) => void;
+  onRemoveSubtitle?: () => void;
 }
 
 const TYPE_META: Record<ContentBlock['type'], { label: string; icon: typeof Film }> = {
@@ -49,7 +51,7 @@ const TYPE_META: Record<ContentBlock['type'], { label: string; icon: typeof Film
 export function ContentBlockView({
   index, isFirst, isLast, block, collapsed, onToggleCollapse, onChangeHtml, onChangeEmbedUrl, onChangeLabel,
   onChangeButtonProps, onAddMessageLine, onChangeMessageLine, onRemoveMessageLine, onMoveMessageLine,
-  onPickFile, onRemove, onMoveUp, onMoveDown, onRetryVideo,
+  onPickFile, onRemove, onMoveUp, onMoveDown, onRetryVideo, onUploadSubtitle, onRemoveSubtitle,
 }: ContentBlockViewProps) {
   const meta = TYPE_META[block.type];
   const Icon = meta.icon;
@@ -301,6 +303,42 @@ export function ContentBlockView({
 
               {!block.embedUrl && block.type === 'video' && block.processingStatus === 'ready' && (
                 <HlsVideoPlayer blockId={block.id} />
+              )}
+
+              {!block.embedUrl && block.type === 'video' && block.processingStatus === 'ready' && (
+                <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
+                  <Captions size={15} className="shrink-0 text-gray-500" />
+                  {block.subtitleFileName ? (
+                    <>
+                      <span className="min-w-0 flex-1 truncate text-xs font-medium text-gray-700">
+                        {block.subtitleFileName}
+                      </span>
+                      {onRemoveSubtitle && (
+                        <button
+                          type="button"
+                          onClick={onRemoveSubtitle}
+                          className="shrink-0 rounded-full p-1 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                        >
+                          <X size={14} />
+                        </button>
+                      )}
+                    </>
+                  ) : (
+                    <label className="flex-1 cursor-pointer text-xs font-semibold text-gray-700 hover:text-gray-900">
+                      Subtitle yuklash (.srt)
+                      <input
+                        type="file"
+                        accept=".srt"
+                        className="hidden"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file && onUploadSubtitle) onUploadSubtitle(file);
+                          e.target.value = '';
+                        }}
+                      />
+                    </label>
+                  )}
+                </div>
               )}
 
               {!block.embedUrl &&
