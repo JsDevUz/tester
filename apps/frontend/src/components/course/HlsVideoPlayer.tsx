@@ -45,12 +45,27 @@ function extractWatermarkPhone(phone?: string | null) {
   return btoa(withoutCountryCode);
 }
 
-function isIOS() {
-  if (typeof navigator === 'undefined') return false;
-  return (
-    /iPad|iPhone|iPod/.test(navigator.userAgent) ||
-    (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1)
-  );
+function computeTotalWatchedSeconds(segments: WatchSegment[], live: WatchSegment | null): number {
+  const all: WatchSegment[] = segments.map((s) => ({ startSec: s.startSec, endSec: s.endSec }));
+  if (live && live.endSec > live.startSec) {
+    all.push({ startSec: live.startSec, endSec: live.endSec });
+  }
+  if (all.length === 0) return 0;
+
+  all.sort((a, b) => a.startSec - b.startSec);
+
+  const merged: WatchSegment[] = [{ startSec: all[0].startSec, endSec: all[0].endSec }];
+  for (let i = 1; i < all.length; i++) {
+    const prev = merged[merged.length - 1];
+    const curr = all[i];
+    if (curr.startSec <= prev.endSec) {
+      prev.endSec = Math.max(prev.endSec, curr.endSec);
+    } else {
+      merged.push({ startSec: curr.startSec, endSec: curr.endSec });
+    }
+  }
+
+  return merged.reduce((sum, s) => sum + Math.max(0, s.endSec - s.startSec), 0);
 }
 
 function quietWatermarkPosition() {
@@ -1035,17 +1050,24 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           </div>
         </div>
 
-        {/* Bottom Control Bar */}
+        {/* Compact Bottom Control Bar */}
         <div
-          className={`absolute bottom-0 left-0 right-0 z-30 flex flex-col gap-2 p-3 bg-gradient-to-t from-black/90 via-black/60 to-transparent transition-opacity duration-200 ${
+          className={`absolute bottom-0 left-0 right-0 z-30 flex flex-col gap-1.5 px-4 pb-3 pt-6 bg-gradient-to-t from-black/90 via-black/50 to-transparent transition-opacity duration-200 ${
             controlsVisible || !isPlaying ? 'opacity-100' : 'pointer-events-none opacity-0'
           }`}
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Time Info above Progress Bar on the Right */}
+          <div className="flex justify-end pr-0.5">
+            <div className="text-[11px] font-semibold tabular-nums text-white/90 drop-shadow-sm">
+              {formatTime(currentTime)} <span className="text-white/50">/</span> {formatTime(duration)}
+            </div>
+          </div>
+
           {/* Custom Interactive Scrubber / Progress Bar */}
           <div
             ref={progressBarRef}
-            className="group/track relative flex h-6 w-full cursor-pointer touch-none items-center"
+            className="group/track relative flex h-4 w-full cursor-pointer touch-none items-center"
             onPointerDown={handleScrubberDown}
             onPointerMove={handleScrubberPointer}
             onPointerLeave={() => {
@@ -1095,65 +1117,6 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
                 {formatTime(hoverScrubTime)}
               </div>
             )}
-          </div>
-
-          {/* Bottom Control Actions Row */}
-          <div className="flex items-center justify-between gap-2 text-white">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={togglePlay}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
-                aria-label={isPlaying ? 'Pauza' : 'Ijro etish'}
-              >
-                {isPlaying ? <Pause size={18} className="fill-white text-white" /> : <Play size={18} className="ml-0.5 fill-white text-white" />}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => seekRelative(-10)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
-                aria-label="10 soniya orqaga"
-              >
-                <RotateCcw size={16} className="text-white" />
-              </button>
-
-              <button
-                type="button"
-                onClick={() => seekRelative(10)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
-                aria-label="10 soniya oldinga"
-              >
-                <RotateCw size={16} className="text-white" />
-              </button>
-
-              {/* Volume Slider (Desktop) */}
-              <div className="group/volume flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={toggleMute}
-                  className="flex h-8 w-8 items-center justify-center rounded-lg transition hover:bg-white/15 text-white"
-                  aria-label={isMuted ? 'Ovozni yoqish' : 'Ovozni o‘chirish'}
-                >
-                  {isMuted || volume === 0 ? <VolumeX size={17} className="text-white" /> : <Volume2 size={17} className="text-white" />}
-                </button>
-                <input
-                  type="range"
-                  min="0"
-                  max="1"
-                  step="0.05"
-                  value={isMuted ? 0 : volume}
-                  onChange={(e) => handleVolumeChange(parseFloat(e.target.value))}
-                  className="hidden h-1 w-16 cursor-pointer appearance-none rounded-full bg-white/30 accent-white sm:block"
-                  aria-label="Ovoz balandligi"
-                />
-              </div>
-
-              {/* Time Display */}
-              <div className="text-xs font-semibold tabular-nums text-white/90">
-                {formatTime(currentTime)} <span className="text-white/50">/</span> {formatTime(duration)}
-              </div>
-            </div>
           </div>
         </div>
       </div>
