@@ -89,6 +89,7 @@ export class VideoPlaybackService {
       token,
       expiresAt: new Date(exp * 1000).toISOString(),
       manifestUrl: `/videos/${blockId}/manifest.m3u8?token=${encodeURIComponent(token)}`,
+      subtitleUrl: block.subtitleKey ? this.storageService.getPublicUrl(block.subtitleKey) : null,
     };
   }
 

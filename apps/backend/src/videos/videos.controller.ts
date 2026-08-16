@@ -2,6 +2,7 @@ import {
   BadRequestException,
   Body,
   Controller,
+  Delete,
   Get,
   Header,
   Param,
@@ -86,6 +87,32 @@ export class VideosController {
   @Roles('teacher', 'super')
   retry(@Param('blockId') blockId: string, @Req() req: any) {
     return this.videoUploadService.retry(blockId, req.admin.id);
+  }
+
+  @Post('blocks/:blockId/subtitles')
+  @Roles('teacher', 'super')
+  @UseInterceptors(
+    FileInterceptor('file', {
+      storage: memoryStorage(),
+      limits: { fileSize: 2 * 1024 * 1024 },
+      fileFilter: (_req, file, cb) => {
+        if (/\.srt$/i.test(file.originalname)) cb(null, true);
+        else cb(new BadRequestException('Faqat .srt fayllar qabul qilinadi'), false);
+      },
+    }),
+  )
+  uploadSubtitle(
+    @Param('blockId') blockId: string,
+    @UploadedFile() file: Express.Multer.File,
+    @Req() req: any,
+  ) {
+    return this.videoUploadService.uploadSubtitle(blockId, req.admin.id, file);
+  }
+
+  @Delete('blocks/:blockId/subtitles')
+  @Roles('teacher', 'super')
+  removeSubtitle(@Param('blockId') blockId: string, @Req() req: any) {
+    return this.videoUploadService.removeSubtitle(blockId, req.admin.id);
   }
 
   @Post('videos/:blockId/play')
