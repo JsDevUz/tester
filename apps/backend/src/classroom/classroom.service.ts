@@ -748,7 +748,11 @@ export class ClassroomService implements OnModuleInit {
     }
     const payload = { page, strokeId, x, y, pane, mode };
     this.recordHistoryEvent(s, 'stroke:update', payload);
-    this.broadcaster.toRoom(sessionId, 'stroke:update', payload);
+    // excludeSender=true: frontend moveStroke() drag paytida optimistic
+    // ravishda local state'ni allaqachon yangilaydi (useClassroomSession.ts)
+    // — server aks-sadosi hostga qaytsa, tarmoq kechikishi tufayli eskirgan
+    // qiymat bilan yangi o'zgarishni bosib yuborishi mumkin edi.
+    this.broadcaster.toRoom(sessionId, 'stroke:update', payload, true);
     this.onBoardMutation(s);
   }
 
@@ -765,7 +769,9 @@ export class ClassroomService implements OnModuleInit {
     pushUndoEntry(s, { type: 'stroke:text', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] }, groupId });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:textUpdate', payload);
-    this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload);
+    // excludeSender=true — commitText() ham frontend'da optimistic update
+    // qiladi (bir xil sabab bilan yuqoridagi izohga qarang).
+    this.broadcaster.toRoom(sessionId, 'stroke:textUpdate', payload, true);
     this.onBoardMutation(s);
   }
 
@@ -782,7 +788,9 @@ export class ClassroomService implements OnModuleInit {
     pushUndoEntry(s, { type: 'stroke:style', mode, page, pane, strokeId: stroke.id, before, after: { ...stroke, points: [...stroke.points] }, groupId });
     const payload = { page, stroke, pane, mode };
     this.recordHistoryEvent(s, 'stroke:shapeUpdate', payload);
-    this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload);
+    // excludeSender=true — updateSelectedShape() (opacity/qalinlik/rang
+    // slайderlari) ham frontend'da optimistic update qiladi.
+    this.broadcaster.toRoom(sessionId, 'stroke:shapeUpdate', payload, true);
     this.onBoardMutation(s);
   }
 

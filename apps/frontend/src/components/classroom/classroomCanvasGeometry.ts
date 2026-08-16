@@ -87,6 +87,30 @@ function hitTestShape(
   );
 }
 
+// Chiziq/o'q UCHLARIDA (ulanish nuqtalari joylashgan joyda) tanani hover/
+// select qilish o'chiriladi — o'sha joyda alohida connector-drag tugmalari
+// (DOM) bor, ular o'z ushlash zonasini boshqaradi. Bu zona bo'lmasa, tanaga
+// yaqin uchki nuqqa hover qilinganda ham "shape tanasi" hisoblanib, ustuvor
+// tanlanib qolardi.
+const END_EXCLUSION_RATIO = 0.08;
+
+function isNearEndpoint(
+  px: number,
+  py: number,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
+  const len = Math.hypot(x1 - x0, y1 - y0);
+  if (len === 0) return false;
+  const exclusionDist = len * END_EXCLUSION_RATIO;
+  return (
+    Math.hypot(px - x0, py - y0) <= exclusionDist ||
+    Math.hypot(px - x1, py - y1) <= exclusionDist
+  );
+}
+
 function hitTestLineOrArrow(
   stroke: CsStroke,
   px: number,
@@ -98,6 +122,8 @@ function hitTestLineOrArrow(
   const [x0, y0, x1, y1] = stroke.points;
   const shape = stroke.lineShape ?? "straight";
   const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
+
+  if (isNearEndpoint(px, py, x0, y0, x1, y1)) return false;
 
   // Hit radiusni foydalanuvchi qulay va oson ushlab olishi uchun sezgir qilamiz
   const radius = Math.max(hitRadius, 0.01);

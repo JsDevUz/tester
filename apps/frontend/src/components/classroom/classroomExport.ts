@@ -47,6 +47,18 @@ function drawNotebookBackground(
       ctx.lineTo(w, y);
       ctx.stroke();
     }
+  } else if (style === "dot") {
+    // Nuqtali (Excalidraw uslubi) — web (width / 40) bilan 1:1 bir xil oraliq.
+    ctx.fillStyle = "rgba(148,163,184,0.28)";
+    const step = w / 40;
+    const radius = 1 * (w / EXPORT_WIDTH);
+    for (let x = step; x < w; x += step) {
+      for (let y = step; y < h; y += step) {
+        ctx.beginPath();
+        ctx.arc(x, y, radius, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
   } else {
     // Kataklar (grid) — web (width / 24) va mobile bilan 1:1 bir xil
     ctx.strokeStyle = "rgba(148,163,184,0.12)";

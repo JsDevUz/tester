@@ -20,7 +20,7 @@ export function ClassroomNotebookBackground({
   const bgColor = isDark ? '#232733' : '#ffffff';
   const gridLineColor = isDark ? 'rgba(255, 255, 255, 0.08)' : 'rgba(148, 163, 184, 0.12)';
   const linedLineColor = isDark ? 'rgba(255, 255, 255, 0.10)' : 'rgba(148, 163, 184, 0.14)';
-  const dotColor = isDark ? 'rgba(255, 255, 255, 0.22)' : 'rgba(148, 163, 184, 0.25)';
+  const dotColor = isDark ? 'rgba(255, 255, 255, 0.14)' : 'rgba(148, 163, 184, 0.28)';
 
   if (width <= 0 || height <= 0 || style === 'plain') {
     return <View style={{width: '100%', height: '100%', backgroundColor: bgColor}} />;
@@ -28,6 +28,7 @@ export function ClassroomNotebookBackground({
 
   const cellSize = width / 24;
   const lineSpacing = width / 22;
+  const dotSpacing = width / 40;
 
   if (style === 'grid') {
     const patternId = `notebook-grid-pattern-${pageIndex}-${theme}`;
@@ -68,17 +69,17 @@ export function ClassroomNotebookBackground({
     );
   }
 
-  if (style === 'dots') {
+  if (style === 'dot') {
     const patternId = `notebook-dots-pattern-${pageIndex}-${theme}`;
     return (
       <Svg width={width} height={height} style={{position: 'absolute', top: 0, left: 0}}>
         <Defs>
           <Pattern
             id={patternId}
-            width={cellSize}
-            height={cellSize}
+            width={dotSpacing}
+            height={dotSpacing}
             patternUnits="userSpaceOnUse">
-            <Circle cx={cellSize / 2} cy={cellSize / 2} r="1" fill={dotColor} />
+            <Circle cx={dotSpacing / 2} cy={dotSpacing / 2} r="1" fill={dotColor} />
           </Pattern>
         </Defs>
         <Rect width={width} height={height} fill={bgColor} />

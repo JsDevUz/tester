@@ -343,7 +343,6 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
             hostOnline={state.hostOnline}
             hostUserId={state.hostUserId}
             hostName={state.hostName || "Ustoz"}
-            hidden={true}
           />
         </div>
       )}
@@ -356,6 +355,9 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
         audioInputs={voice.audioInputs}
         activeAudioInputId={voice.activeAudioInputId}
         onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+        audioOutputs={voice.audioOutputs}
+        activeAudioOutputId={voice.activeAudioOutputId}
+        onSwitchAudioOutput={(deviceId) => void voice.switchAudioOutput(deviceId)}
         micDisabled={(!admin && !isGuestUser) || !voice.voiceAvailable}
         onEndCall={() => navigate("/")}
         endCallTitle="Darsdan chiqish"

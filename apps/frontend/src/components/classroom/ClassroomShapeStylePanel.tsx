@@ -209,6 +209,11 @@ export interface ShapeStylePanelProps {
   rotation?: number;
   strokeTool?: CsTool;
   style?: React.CSSProperties;
+  // Toolbar shape OSTIDA ochilganda ("openBelow", ClassroomPageSelectionOverlay
+  // hisoblaydi) ichki dropdown popup'lar ham pastga emas, TEPAGA ochilishi
+  // kerak — aks holda ular sahifadan tashqariga chiqib ketishi yoki shape'ning
+  // o'zini yana bir marta to'sib qo'yishi mumkin.
+  dropdownDirection?: "down" | "up";
 
   // Text props
   text?: string;
@@ -255,6 +260,7 @@ export function ShapeStylePanel({
   rotation: _rotation = 0,
   strokeTool = "rectangle",
   style: customStyle,
+  dropdownDirection = "down",
 
   // Text props
   text: _text = "",
@@ -343,6 +349,12 @@ export function ShapeStylePanel({
     );
   };
 
+  // Barcha ichki dropdown popup'lar shu bitta klass juftidan foydalanadi —
+  // dropdownDirection="up" bo'lganda ular tugma TEPASIDA (bottom-full mb-2)
+  // ochiladi, aks holda odatdagidek OSTIDA (top-full mt-2).
+  const dropdownClass =
+    dropdownDirection === "up" ? "absolute bottom-full mb-2" : "absolute top-full mt-2";
+
   return (
     <div
       ref={panelRef}
@@ -370,7 +382,7 @@ export function ShapeStylePanel({
 
             {startArrowOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-0 w-48 rounded-2xl border border-gray-200 bg-white p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 tracking-wider">
@@ -441,7 +453,7 @@ export function ShapeStylePanel({
 
             {endArrowOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-0 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="px-2.5 py-1 text-[10px] font-bold uppercase text-gray-400 dark:text-zinc-400 tracking-wider">
@@ -511,7 +523,7 @@ export function ShapeStylePanel({
 
             {lineTypeOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-4 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Thickness Slider */}
@@ -661,7 +673,7 @@ export function ShapeStylePanel({
 
             {arrowColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {SHAPE_STROKE_COLORS.map((c) => (
@@ -697,7 +709,7 @@ export function ShapeStylePanel({
 
             {opacityOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between text-gray-700 dark:text-zinc-200 font-bold text-xs mb-1">
@@ -738,7 +750,7 @@ export function ShapeStylePanel({
             </button>
             {shapeToolOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-34 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-0 w-34 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-1 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <button
@@ -788,7 +800,7 @@ export function ShapeStylePanel({
             </button>
             {fontFamilyOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-36 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-0 w-36 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {FONT_FAMILY_OPTIONS.map((f) => (
@@ -826,7 +838,7 @@ export function ShapeStylePanel({
             </button>
             {fontSizeOpen && (
               <div
-                className="absolute left-0 top-full mt-2 w-24 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-0 w-24 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {[12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 64].map((sz) => (
@@ -880,7 +892,7 @@ export function ShapeStylePanel({
             </button>
             {textAlignOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-44 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Horizontal align row */}
@@ -981,7 +993,7 @@ export function ShapeStylePanel({
             </button>
             {textColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-48 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2.5 shadow-2xl z-50 flex flex-wrap gap-1.5 animate-in fade-in zoom-in-95 duration-100`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {SHAPE_STROKE_COLORS.map((c) => (
@@ -1031,7 +1043,7 @@ export function ShapeStylePanel({
 
             {borderStyleOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-64 rounded-2xl border border-gray-200 bg-white p-4 shadow-2xl z-50 flex flex-col gap-3.5 animate-in fade-in zoom-in-95 duration-100 select-none`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 {/* Stroke Style (Solid, Dashed, Dotted) */}
@@ -1189,7 +1201,7 @@ export function ShapeStylePanel({
 
             {fillColorOpen && (
               <div
-                className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-56 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 select-none"
+                className={`${dropdownClass} left-1/2 -translate-x-1/2 w-56 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-3 shadow-2xl z-50 flex flex-col gap-2.5 animate-in fade-in zoom-in-95 duration-100 select-none`}
                 onPointerDown={(e) => e.stopPropagation()}
               >
                 <div className="flex items-center justify-between text-xs font-semibold text-gray-700 dark:text-zinc-200">
@@ -1279,7 +1291,7 @@ export function ShapeStylePanel({
 
         {moreOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} right-0 w-52 rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 p-2 shadow-2xl text-xs z-50 flex flex-col gap-1.5 animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 dark:text-zinc-400 tracking-wider">

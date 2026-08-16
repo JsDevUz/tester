@@ -43,7 +43,7 @@ import { useClassroomPageTextEditor } from "./useClassroomPageTextEditor";
 import { useClassroomPageConnectors } from "./useClassroomPageConnectors";
 import { useClassroomShapeTransform } from "./useClassroomShapeTransform";
 import { useClassroomPagePointerGestures } from "./useClassroomPagePointerGestures";
-import { useClassroomCanvasRenderer } from "./useClassroomCanvasRenderer";
+import { useClassroomCanvasRenderer, renderClassroomCanvas } from "./useClassroomCanvasRenderer";
 
 export {
   CLASSROOM_PAGE_CLIPBOARD_KEY,
@@ -420,6 +420,7 @@ export function ClassroomPdfPage({
     notebook,
     canvasRef,
     textEditor,
+    editingTextId,
     lastTextStyleRef,
     selectedGroupIds,
     selectedGroupBounds,
@@ -587,11 +588,22 @@ export function ClassroomPdfPage({
                           "linear-gradient(rgba(148,163,184,.14) 1px, transparent 1px)",
                         backgroundSize: `100% ${size.w > 0 ? size.w / 22 : 32}px`,
                       }
-                    : {
-                        backgroundImage:
-                          "linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px)",
-                        backgroundSize: `${size.w > 0 ? size.w / 24 : 32}px ${size.w > 0 ? size.w / 24 : 32}px`,
-                      }
+                    : notebookStyle === "dot"
+                      ? {
+                          // Excalidraw uslubidagi nuqta-naqsh — grid'dan
+                          // zichroq oraliqda (size.w / 40, grid'ning size.w/24
+                          // katagiga nisbatan sezilarli ko'proq nuqta beradi).
+                          // Nuqta kichik va och rangda — sahifa foniga yaqin,
+                          // ko'zga tashlanmaydi, faqat mo'ljal sifatida sezilib turadi.
+                          backgroundImage:
+                            "radial-gradient(circle, rgba(148,163,184,.28) 1px, transparent 1px)",
+                          backgroundSize: `${size.w > 0 ? size.w / 40 : 20}px ${size.w > 0 ? size.w / 40 : 20}px`,
+                        }
+                      : {
+                          backgroundImage:
+                            "linear-gradient(rgba(148,163,184,.12) 1px, transparent 1px), linear-gradient(90deg, rgba(148,163,184,.12) 1px, transparent 1px)",
+                          backgroundSize: `${size.w > 0 ? size.w / 24 : 32}px ${size.w > 0 ? size.w / 24 : 32}px`,
+                        }
               }
             />
           ) : (

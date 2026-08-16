@@ -4,6 +4,7 @@ import {
   Copy,
   Eraser,
   Grid3x3,
+  Grip,
   MoreVertical,
   Plus,
   Square,
@@ -206,6 +207,19 @@ export function ClassroomPageActionControls({
               className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
             >
               <AlignJustify size={14} /> Yo'l-yo'l
+            </button>
+            <button
+              type="button"
+              onClick={() => {
+                setShowStylePopup(false);
+                if (stylePopupMode === "insert")
+                  onInsertPage?.(pageNumber, "dot", insertOrientation);
+                else onSetNotebookStyle?.(pageNumber, "dot");
+              }}
+              title="Nuqtali"
+              className="flex items-center gap-2 rounded-lg px-2 py-1 text-xs text-gray-600 hover:bg-gray-100"
+            >
+              <Grip size={14} /> Nuqtali
             </button>
             <button
               type="button"

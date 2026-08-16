@@ -1,4 +1,4 @@
-import type { RefObject } from "react";
+import { useMemo, type RefObject } from "react";
 import type {
   CsFontFamily,
   CsStroke,
@@ -6,11 +6,14 @@ import type {
 import {
   REF_WIDTH,
   getFontFamilyString,
+  getMeasureCtx,
+  wrapTextLines,
 } from "./classroomCanvasText";
 import {
   TextStylePanel,
   applyRichStyleToSelection,
 } from "./ClassroomTextStylePanel";
+import { AutoFlipPositioner } from "./AutoFlipPositioner";
 
 export interface ActiveTextEditorState {
   x: number;
@@ -64,6 +67,57 @@ export function ClassroomPageTextEditor({
   commitText,
   onUpdateShapeStroke,
 }: ClassroomPageTextEditorProps) {
+  const shapePadding = editingShapeForPanel
+    ? Math.max(6, 12 * (size.w / REF_WIDTH))
+    : 0;
+
+  // Oddiy matn (tool: "text") uchun tahrirlash PAYTIDA har doim TEPADAN
+  // boshlanadi — box foydalanuvchi bosgan nuqtadan pastga o'sadi, boshlang'ich
+  // nuqta qo'zg'almaydi. Agar bu yerda ham verticalAlign (middle/bottom)
+  // qo'llansa, box balandligi matn kontentiga qarab o'sganda/qisqarganda
+  // matnning MARKAZI bosilgan nuqtada qoladi — bosilgan nuqtaning o'zi esa
+  // pastga (yoki yuqoriga) "suriladi", chunki endi u nuqta box tepasi emas,
+  // markazi bo'lib qoladi. verticalAlign faqat COMMIT qilingach (statik,
+  // tahrirlanmayotgan holatda) mazmunga ega — o'sha payt box o'lchami
+  // barqaror, "surilish" xavfi yo'q. Shape (rectangle/ellipse) ichidagi matn
+  // bunga kirmaydi: u yerda box o'lchami foydalanuvchi tomonidan qat'iy
+  // belgilangan (statik), shuning uchun middle/bottom u yerda xavfsiz.
+  const verticalPaddingTop = useMemo(() => {
+    if (!editingShapeForPanel) return 0;
+    const containerHeightPx =
+      typeof editorHeight === "number" ? editorHeight : parseFloat(String(editorHeight)) || 0;
+    const containerWidthPx =
+      typeof editorWidth === "number" ? editorWidth : parseFloat(String(editorWidth)) || 0;
+    const fontSizePx =
+      typeof editorFontSize === "number" ? editorFontSize : parseFloat(String(editorFontSize)) || 16;
+    if (containerHeightPx <= 0 || containerWidthPx <= 0) return 0;
+    const innerWidthPx = Math.max(1, containerWidthPx - shapePadding * 2);
+    const innerHeightPx = Math.max(1, containerHeightPx - shapePadding * 2);
+    const ctx = getMeasureCtx();
+    ctx.font = `${textEditor.fontWeight} ${fontSizePx}px ${getFontFamilyString(textEditor.fontFamily)}`;
+    const lines = wrapTextLines(ctx, textEditor.text || "", innerWidthPx);
+    const lineHeightPx = fontSizePx * 1.25;
+    const textBlockHeightPx = Math.max(lineHeightPx, lines.length * lineHeightPx);
+    const verticalAlign = textEditor.verticalAlign ?? "middle";
+    const blockTop =
+      verticalAlign === "top"
+        ? 0
+        : verticalAlign === "bottom"
+          ? innerHeightPx - textBlockHeightPx
+          : (innerHeightPx - textBlockHeightPx) / 2;
+    return Math.max(0, blockTop);
+  }, [
+    editingShapeForPanel,
+    editorHeight,
+    editorWidth,
+    editorFontSize,
+    shapePadding,
+    textEditor.fontWeight,
+    textEditor.fontFamily,
+    textEditor.text,
+    textEditor.verticalAlign,
+  ]);
+
   return (
     <>
       <div
@@ -73,16 +127,12 @@ export function ClassroomPageTextEditor({
           top: `${textEditor.y * 100}%`,
           width: editorWidth,
           height: editorHeight,
-          padding: editingShapeForPanel
-            ? `${Math.max(6, 12 * (size.w / REF_WIDTH))}px`
-            : 0,
+          paddingLeft: shapePadding,
+          paddingRight: shapePadding,
+          paddingBottom: shapePadding,
+          paddingTop: shapePadding + verticalPaddingTop,
           boxSizing: "border-box",
-          justifyContent:
-            textEditor.verticalAlign === "top"
-              ? "flex-start"
-              : textEditor.verticalAlign === "bottom"
-                ? "flex-end"
-                : "center",
+          justifyContent: "flex-start",
         }}
         onPointerDown={(event) => event.stopPropagation()}
         onPointerMove={(event) => event.stopPropagation()}
@@ -127,6 +177,18 @@ export function ClassroomPageTextEditor({
       </div>
 
       {showStylePanel && !selectedShape && (
+        <AutoFlipPositioner
+          anchorLeft={`${textEditor.x * 100}%`}
+          anchorTopPx={textEditor.y * size.h}
+          anchorBottomPx={
+            textEditor.y * size.h +
+            (typeof editorHeight === "number"
+              ? editorHeight
+              : parseFloat(String(editorHeight)) || 0)
+          }
+          centered={false}
+        >
+          {(openBelow) => (
         <TextStylePanel
           color={textEditor.color}
           fontFamily={textEditor.fontFamily}
@@ -135,17 +197,7 @@ export function ClassroomPageTextEditor({
           textAlign={textEditor.textAlign}
           verticalAlign={textEditor.verticalAlign ?? "middle"}
           rotation={0}
-          style={(() => {
-            const PANEL_H = 52;
-            const GAP = 8;
-            const textTopPx = textEditor.y * size.h;
-            const panelTop = Math.max(GAP, textTopPx - PANEL_H - GAP);
-            return {
-              left: `${textEditor.x * 100}%`,
-              top: `${panelTop}px`,
-              transform: "none",
-            };
-          })()}
+          dropdownDirection={openBelow ? "up" : "down"}
           onColorChange={(nextColor) => {
             applyRichStyleToSelection("color", nextColor);
             setTextEditor((current) =>
@@ -191,6 +243,8 @@ export function ClassroomPageTextEditor({
             }
           }}
         />
+          )}
+        </AutoFlipPositioner>
       )}
     </>
   );

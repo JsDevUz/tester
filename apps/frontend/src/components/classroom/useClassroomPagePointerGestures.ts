@@ -9,6 +9,7 @@ import {
   findStrokeAt,
   findStrokesInLasso,
 } from "./classroomCanvasGeometry";
+import { renderClassroomCanvas } from "./useClassroomCanvasRenderer";
 
 const CONNECTOR_SNAP_DISTANCE_PX = 14;
 const DOUBLE_CLICK_MS = 400;
@@ -25,6 +26,7 @@ interface UseClassroomPagePointerGesturesParams {
   notebook: boolean;
   canvasRef: React.RefObject<HTMLCanvasElement | null>;
   textEditor: any;
+  editingTextId: string | null;
   lastTextStyleRef: React.RefObject<any>;
   selectedGroupIds: Set<string>;
   selectedGroupBounds: { left: number; top: number; right: number; bottom: number } | null;
@@ -64,6 +66,7 @@ export function useClassroomPagePointerGestures({
   notebook,
   canvasRef,
   textEditor,
+  editingTextId,
   lastTextStyleRef,
   selectedGroupIds,
   selectedGroupBounds,
@@ -114,6 +117,65 @@ export function useClassroomPagePointerGestures({
     dy: number;
   } | null>(null);
   const lastClickRef = useRef<{ id: string; atMs: number } | null>(null);
+
+  // Drag paytida (matn/shape/pen ko'chirish) canvas'ni React render tsiklidan
+  // MUSTAQIL, to'g'ridan-to'g'ri ctx orqali yangilaydi — forceRedraw()ni
+  // (React state) har pointermove'da chaqirish butun sahifa daraxtini qayta
+  // render qilib, reconciliation xarajati tufayli drag paytida "qaltirash"
+  // (dropped frame) keltirib chiqargan edi. forceRedraw endi faqat drag
+  // TUGAGACH (finishStroke) chaqiriladi — shu bilan boshqa overlay/panel
+  // proplari (masalan selection box koordinatalari) bir marta yangilanadi.
+  const renderNow = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    renderClassroomCanvas({
+      canvas,
+      size,
+      strokes,
+      editingTextId,
+      textEditor,
+      hoveredStrokeId,
+      strokeWidth,
+      draftPoints: draftRef.current,
+      draftPressures: draftPressuresRef.current,
+      tool,
+      color,
+      shapeStyle,
+      connectorDraftPoints: connectorDraftRef.current?.points ?? null,
+      showPointer: false,
+      pointer: null,
+      lassoDraftPoints: lassoDraftRef.current,
+      eraserCursor: eraserCursorRef.current,
+    });
+  }, [
+    canvasRef,
+    size,
+    strokes,
+    editingTextId,
+    textEditor,
+    hoveredStrokeId,
+    strokeWidth,
+    tool,
+    color,
+    shapeStyle,
+    connectorDraftRef,
+  ]);
+
+  // Drag paytida boshqa foydalanuvchilarga (yoki ikkinchi pane'ga) ham
+  // real-time ko'rinishi uchun onMoveStroke/onUpdateShapeStroke'ni chaqirish
+  // kerak, lekin buni har pointermove'da (60-120fps) qilish backend'dagi
+  // setState orqali butun sahifa daraxtini shu chastotada qayta render
+  // qilib, hostning o'zida "qaltirash"ni qaytarardi. requestAnimationFrame
+  // bilan freymga bittadan cheklab — mahalliy canvas (renderNow) darhol,
+  // tarmoq-broadcast esa ekran yangilanish chastotasida (kamroq) yuboriladi.
+  const broadcastMoveFrameRef = useRef<number | null>(null);
+  const scheduleMoveBroadcast = useCallback((fn: () => void) => {
+    if (broadcastMoveFrameRef.current !== null) return;
+    broadcastMoveFrameRef.current = window.requestAnimationFrame(() => {
+      broadcastMoveFrameRef.current = null;
+      fn();
+    });
+  }, []);
 
   const isEraser = tool === "eraser-pixel" || tool === "eraser-stroke";
 
@@ -211,6 +273,7 @@ export function useClassroomPagePointerGestures({
         y: p[1],
         text: "",
         color,
+        verticalAlign: "middle",
         textBoxWidth: 4,
         textBoxHeight: Math.max(
           1,
@@ -269,6 +332,7 @@ export function useClassroomPagePointerGestures({
             fontSize: existingFontSize,
             fontWeight: existingFontWeight,
             textAlign: existing.textAlign ?? "left",
+            verticalAlign: existing.verticalAlign ?? "middle",
             textBoxWidth:
               existing.textBoxWidth ??
               Math.max(4, (existing.text?.length ?? 1) * existingFontSize * 0.6),
@@ -441,28 +505,30 @@ export function useClassroomPagePointerGestures({
         if (stroke.controlX !== undefined) stroke.controlX += offsetX;
         if (stroke.controlY !== undefined) stroke.controlY += offsetY;
       }
-      forceRedraw((n) => n + 1);
+      renderNow();
       return;
     }
     if (lassoDraftRef.current) {
       lassoDraftRef.current.push(p[0], p[1]);
-      forceRedraw((n) => n + 1);
+      renderNow();
       return;
     }
     if (draggingTextRef.current) {
-      // draggingShapeRef bilan bir xil naqsh: har pointermove'da onMoveStroke
-      // (React state + WebSocket) chaqirish katta state daraxtini o'sha
-      // chastotada (~60-120fps) qayta yaratadi — bu esa mahalliy forceRedraw
-      // orqali darhol chizilgan canvas bilan to'qnashib, drag paytida
-      // "qaltirash" (jerkiness) his qildiradi. Shuning uchun move paytida
-      // faqat mutable stroke va mahalliy canvas yangilanadi; global state
-      // finishStroke'da (pointer up) bir marta commit qilinadi.
+      // Mahalliy: mutable stroke + renderNow() darhol, har freymda ishlaydi
+      // (React state'ga tegmaydi, hostning o'zida qaltiramaydi). Tarmoqqa
+      // esa scheduleMoveBroadcast orqali freymga bittadan (throttled)
+      // onMoveStroke yuboriladi — shu bilan boshqa foydalanuvchilar/pane
+      // ham drag TUGAGUNCHA emas, real vaqtda (kamroq chastotada) ko'radi.
       const { stroke, dx, dy } = draggingTextRef.current;
       const nextX = Math.max(0, Math.min(1, p[0] - dx));
       const nextY = Math.max(0, Math.min(1, p[1] - dy));
       stroke.points[0] = nextX;
       stroke.points[1] = nextY;
-      forceRedraw((n) => n + 1);
+      renderNow();
+      scheduleMoveBroadcast(() => {
+        if (!draggingTextRef.current) return;
+        onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
+      });
       return;
     }
     if (draggingShapeRef.current) {
@@ -478,10 +544,24 @@ export function useClassroomPagePointerGestures({
       stroke.points = [nextX0, nextY0, nextX0 + width, nextY0 + height];
       if (stroke.controlX !== undefined) stroke.controlX += offsetX;
       if (stroke.controlY !== undefined) stroke.controlY += offsetY;
-      forceRedraw((n) => n + 1);
+      renderNow();
+      scheduleMoveBroadcast(() => {
+        if (!draggingShapeRef.current) return;
+        onUpdateShapeStroke?.(pageNumber, {
+          ...stroke,
+          points: [...stroke.points],
+          ...(stroke.controlX !== undefined ? { controlX: stroke.controlX } : {}),
+          ...(stroke.controlY !== undefined ? { controlY: stroke.controlY } : {}),
+        });
+      });
       return;
     }
     if (draggingStrokeRef.current) {
+      // Bu blok avval onMoveStroke'ni HAR pointermove'da to'g'ridan-to'g'ri
+      // chaqirardi (boshqa drag turlaridan farqli, throttle qilinmagan) —
+      // shuning uchun pen/marker chizmalarini ko'chirishda "qaltirash" aniq
+      // sezilarli edi. Endi boshqalari kabi: mahalliy renderNow() har
+      // freymda, tarmoq-broadcast esa scheduleMoveBroadcast orqali cheklangan.
       const { stroke, dx, dy } = draggingStrokeRef.current;
       const nextX = p[0] - dx;
       const nextY = p[1] - dy;
@@ -492,14 +572,17 @@ export function useClassroomPagePointerGestures({
       );
       if (moved.every((value) => value >= 0 && value <= 1)) {
         stroke.points = moved;
-        onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
-        forceRedraw((n) => n + 1);
+        renderNow();
+        scheduleMoveBroadcast(() => {
+          if (!draggingStrokeRef.current) return;
+          onMoveStroke?.(pageNumber, stroke.id, stroke.points[0], stroke.points[1]);
+        });
       }
       return;
     }
     if (tool === "eraser-pixel" || tool === "eraser-stroke") {
       eraserCursorRef.current = p;
-      forceRedraw((n) => n + 1);
+      renderNow();
     }
     if (tool === "eraser-pixel") {
       if (draggingEraserRef.current) erasePixelAt(p[0], p[1]);
@@ -608,7 +691,7 @@ export function useClassroomPagePointerGestures({
       }
       draft[2] = nextX;
       draft[3] = nextY;
-      forceRedraw((n) => n + 1);
+      renderNow();
       return;
     }
     const lastX = draft[draft.length - 2];
@@ -620,12 +703,19 @@ export function useClassroomPagePointerGestures({
         Math.max(0.01, Math.min(1, e.pressure || 0.5)),
       );
     }
-    forceRedraw((n) => n + 1);
+    renderNow();
   };
 
   const finishStroke = () => {
     if (!editable) return;
     onPointerMove?.(pageNumber, 0, 0, false);
+    // Drag paytida navbatda qolgan throttled broadcast (agar bo'lsa) endi
+    // keraksiz — pastdagi har bir tugatish bloki yakuniy holatni DARHOL
+    // yuboradi, shuning uchun eskirgan rAF'ni bekor qilamiz.
+    if (broadcastMoveFrameRef.current !== null) {
+      window.cancelAnimationFrame(broadcastMoveFrameRef.current);
+      broadcastMoveFrameRef.current = null;
+    }
     if (isEraser) {
       draggingEraserRef.current = false;
       eraserGroupIdRef.current = null;

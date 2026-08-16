@@ -13,6 +13,7 @@ import {
   Plus,
   Repeat2,
   RotateCcw as ResetZoom,
+  Square,
 } from "lucide-react";
 import { toast } from "sonner";
 import type {
@@ -807,10 +808,10 @@ export function ClassroomPdfViewer({
         type="button"
         onClick={toggleSplit}
         disabled={!isHost && synced}
-        title="Ekranni ikkiga bo‘lish"
-        className={`rounded-full p-1.5 shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-60 ${displayLayout === "split" ? "bg-indigo-600 text-white hover:bg-indigo-700" : "bg-white/90 text-indigo-600 backdrop-blur-sm hover:bg-indigo-50"}`}
+        title={displayLayout === "split" ? "Bitta ekranga qaytish" : "Ekranni ikkiga bo‘lish"}
+        className="rounded-full bg-white/90 p-1.5 text-gray-500 shadow-md backdrop-blur-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        <Columns2 size={15} />
+        {displayLayout === "split" ? <Square size={15} /> : <Columns2 size={15} />}
       </button>
     ) : null;
   const swapButton =
@@ -820,7 +821,7 @@ export function ClassroomPdfViewer({
         onClick={swapSplitPanes}
         disabled={!isHost && synced}
         title="PDF va daftar joyini almashtirish"
-        className="rounded-full bg-white/90 p-1.5 text-indigo-600 shadow-md backdrop-blur-sm transition-colors hover:bg-indigo-50 disabled:cursor-not-allowed disabled:opacity-60"
+        className="rounded-full bg-white/90 p-1.5 text-gray-500 shadow-md backdrop-blur-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
       >
         <Repeat2 size={15} />
       </button>

@@ -2,7 +2,7 @@ export type ClassroomTool = 'pen' | 'highlighter' | 'laser' | 'arrow' | 'line' |
 export type ClassroomBoardMode = 'pdf' | 'notebook';
 export type ClassroomBoardLayout = 'single' | 'split';
 export type ClassroomTheme = 'light' | 'dark';
-export type ClassroomNotebookStyle = 'grid' | 'lined' | 'plain';
+export type ClassroomNotebookStyle = 'grid' | 'lined' | 'dot' | 'plain';
 export type ClassroomNotebookOrientation = 'portrait' | 'landscape';
 
 export type ClassroomFontFamily = 'Inter' | 'Arial' | 'Georgia' | 'Comic Sans MS' | 'Nunito';
@@ -284,8 +284,18 @@ export interface ClassroomSnapshot {
   subtitles?: ClassroomSubtitleCue[];
 }
 
-// Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi
+// Gateway service ga shu interfeys orqali ulanadi — testlarda fake beriladi.
+// excludeSender=true FAQAT amal frontend'da optimistic-update qilingan
+// joylarda (masalan moveStroke/updateShapeStroke — frontend socket
+// yuborishdan oldin local state'ni allaqachon o'zgartirgan) ishlatiladi —
+// bu holda serverdan qaytgan aks-sado hostga keraksiz, hatto zararli (eski
+// qiymat bilan yangi o'zgarishni bosib yuborishi mumkin). Optimistic
+// update qilinmagan amallarda (page insert/remove/style va h.k. — frontend
+// faqat socket eventini yuborib, natijani SERVERDAN qaytgan shu eventdan
+// kutadi) excludeSender HECH QACHON true bo'lmasligi kerak — aks holda
+// hostning o'zida hech narsa yangilanmay qoladi (faqat refresh'da sync
+// bo'ladi, "real-time ishlamayapti" degan simptom shu).
 export interface ClassroomBroadcaster {
-  toRoom(sessionId: string, event: string, payload: unknown): void;
+  toRoom(sessionId: string, event: string, payload: unknown, excludeSender?: boolean): void;
   toSocket(socketId: string, event: string, payload: unknown): void;
 }

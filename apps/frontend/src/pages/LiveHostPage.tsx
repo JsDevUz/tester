@@ -314,6 +314,9 @@ export function LiveHostPage() {
             audioInputs={voice.audioInputs}
             activeAudioInputId={voice.activeAudioInputId}
             onSwitchAudioInput={(deviceId) => void voice.switchAudioInput(deviceId)}
+            audioOutputs={voice.audioOutputs}
+            activeAudioOutputId={voice.activeAudioOutputId}
+            onSwitchAudioOutput={(deviceId) => void voice.switchAudioOutput(deviceId)}
             disabled={!voice.connected}
           />
         </div>

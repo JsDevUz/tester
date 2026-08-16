@@ -71,7 +71,7 @@ export function ParticipantsPanelToggle({
 
   // Trigger button — theme-aware pill
   const btnCls = isDark
-    ? `flex items-center transition-colors shadow-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-white/10 ${open ? "bg-[#5c5e62] text-white" : "bg-[#3c4043] text-white hover:bg-[#4a4d51]"}`
+    ? `flex items-center transition-colors shadow-md backdrop-blur-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-white/10 ${open ? "bg-[#35363a]/90" : "bg-[#1f2023]/80 hover:bg-[#2a2b2f]/90"} text-white`
     : `flex items-center transition-colors shadow-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-gray-100 ${open ? "bg-indigo-100 text-indigo-700" : "bg-white text-gray-500 hover:bg-gray-100"}`;
 
   return (

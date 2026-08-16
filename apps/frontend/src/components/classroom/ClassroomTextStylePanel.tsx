@@ -87,6 +87,7 @@ export interface TextStylePanelProps {
   verticalAlign?: "top" | "middle" | "bottom";
   rotation?: number;
   style?: React.CSSProperties;
+  dropdownDirection?: "down" | "up";
   onColorChange?: (color: string) => void;
   onFontFamilyChange: (fontFamily: CsFontFamily) => void;
   onFontSizeChange: (fontSize: number) => void;
@@ -106,6 +107,7 @@ export function TextStylePanel({
   verticalAlign = "middle",
   rotation: _rotation = 0,
   style: customStyle,
+  dropdownDirection = "down",
   onColorChange,
   onFontFamilyChange,
   onFontSizeChange,
@@ -140,6 +142,9 @@ export function TextStylePanel({
     return () => window.removeEventListener("pointerdown", handler);
   }, [activeMenu]);
 
+  const dropdownClass =
+    dropdownDirection === "up" ? "absolute bottom-full mb-2" : "absolute top-full mt-2";
+
   return (
     <div
       ref={panelRef}
@@ -168,7 +173,7 @@ export function TextStylePanel({
         </button>
         {fontFamilyOpen && (
           <div
-            className="absolute left-0 top-full mt-2 w-36 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} left-0 w-36 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {FONT_FAMILY_OPTIONS.map((f) => (
@@ -210,7 +215,7 @@ export function TextStylePanel({
         </button>
         {fontSizeOpen && (
           <div
-            className="absolute left-0 top-full mt-2 w-24 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} left-0 w-24 rounded-2xl border border-gray-200 bg-white p-1.5 shadow-2xl z-50 flex flex-col gap-0.5 max-h-48 overflow-y-auto animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {[12, 14, 16, 18, 20, 22, 24, 28, 32, 36, 48, 64].map((sz) => (
@@ -270,7 +275,7 @@ export function TextStylePanel({
         </button>
         {textAlignOpen && (
           <div
-            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-44 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} left-1/2 -translate-x-1/2 w-44 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {/* Horizontal align row */}
@@ -415,7 +420,7 @@ export function TextStylePanel({
         </button>
         {textColorOpen && (
           <div
-            className="absolute left-1/2 -translate-x-1/2 top-full mt-2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} left-1/2 -translate-x-1/2 w-48 rounded-2xl border border-gray-200 bg-white p-3 shadow-2xl z-50 flex flex-wrap gap-2 animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             {SHAPE_STROKE_COLORS.map((c) => (
@@ -455,7 +460,7 @@ export function TextStylePanel({
 
         {moreOpen && (
           <div
-            className="absolute right-0 top-full mt-2 w-52 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl text-xs z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100"
+            className={`${dropdownClass} right-0 w-52 rounded-2xl border border-gray-200 bg-white p-2.5 shadow-2xl text-xs z-50 flex flex-col gap-2 animate-in fade-in zoom-in-95 duration-100`}
             onPointerDown={(e) => e.stopPropagation()}
           >
             <div className="px-2 py-0.5 text-[10px] font-bold uppercase text-gray-400 tracking-wider">

@@ -319,7 +319,7 @@ export async function apiMuteParticipant(sessionId: string, userId: string): Pro
 export type CsTool = 'pen' | 'highlighter' | 'laser' | 'arrow' | 'line' | 'text' | 'rectangle' | 'ellipse';
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
-export type CsNotebookStyle = 'grid' | 'lined' | 'plain';
+export type CsNotebookStyle = 'grid' | 'lined' | 'dot' | 'plain';
 export type CsNotebookOrientation = 'portrait' | 'landscape';
 
 export type CsFontFamily = "Inter" | "Arial" | "Georgia" | "Comic Sans MS" | "Nunito";

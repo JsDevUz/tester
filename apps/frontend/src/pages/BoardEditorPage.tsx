@@ -2,7 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { useHotkeys } from "react-hotkeys-hook";
 import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import {
-  ArrowLeft, Maximize2, Minimize2, Check, PenLine, Download,
+  ArrowLeft, Maximize2, Minimize2, Check, PenLine, Download, Sun, Moon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { useClassroomSession } from "../hooks/useClassroomSession";
@@ -316,6 +316,19 @@ export function BoardEditorPage() {
             <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
               Faqat ko'rish
             </span>
+          )}
+
+          {!isViewOnly && (
+            <button
+              type="button"
+              onClick={() =>
+                hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")
+              }
+              className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-1.5 text-gray-500 shadow-xs transition-colors hover:bg-gray-50 hover:text-gray-900"
+              title={state.classroomTheme === "dark" ? "Yorug'lik rejimi" : "Tungi rejim"}
+            >
+              {state.classroomTheme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
+            </button>
           )}
 
           <button

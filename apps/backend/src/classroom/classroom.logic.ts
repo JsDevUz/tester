@@ -313,7 +313,7 @@ export function insertNotebookPageIntoSession(
   style: ClassroomNotebookStyle,
   orientation: ClassroomNotebookOrientation = 'portrait',
 ): boolean {
-  if (!['grid', 'lined', 'plain'].includes(style)) return false;
+  if (!['grid', 'lined', 'dot', 'plain'].includes(style)) return false;
   if (!['portrait', 'landscape'].includes(orientation)) return false;
   const previousMode = session.boardMode;
   session.boardMode = 'notebook';

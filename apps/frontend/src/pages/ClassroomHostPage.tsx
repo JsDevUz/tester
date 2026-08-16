@@ -533,8 +533,12 @@ export function ClassroomHostPage() {
         </div>
       )}
 
-      {/* Floating Top Right Actions */}
-      {!fullscreen.isFullscreen && (
+      {/* Floating Top Right Actions — faqat doska YOPIQ bo'lganda: doska
+          ochiq bo'lsa bu bandlar ClassroomTopParticipantBar/toolbarActions
+          ichida allaqachon ko'rsatiladi (pastda), ikkalasini bir vaqtda
+          render qilish RaisedHandsControl'ni ikki marta (bittasi to'g'ri
+          joyda, bittasi tepa-o'ng burchakda "ortiqcha") ko'rsatardi. */}
+      {!fullscreen.isFullscreen && !state.isBoardOpen && (
         <div className="absolute top-4 right-4 z-[60] flex items-center gap-1.5 pointer-events-auto">
           <RaisedHandsControl
             raisedHands={state.raisedHands ?? []}
@@ -554,7 +558,6 @@ export function ClassroomHostPage() {
             theme={state.classroomTheme}
             hostOnline={true}
             hostName={admin?.name || "Ustoz"}
-            hidden={true}
           />
         </div>
       )}
@@ -569,6 +572,9 @@ export function ClassroomHostPage() {
         onSwitchAudioInput={(deviceId) =>
           void voice.switchAudioInput(deviceId)
         }
+        audioOutputs={voice.audioOutputs}
+        activeAudioOutputId={voice.activeAudioOutputId}
+        onSwitchAudioOutput={(deviceId) => void voice.switchAudioOutput(deviceId)}
         micDisabled={!voice.voiceAvailable}
         onEndCall={() => setConfirmEnd(true)}
         endCallTitle="Darsni yakunlash"

@@ -16,6 +16,9 @@ interface VoiceState {
   // Foydalanuvchi tanlashi mumkin bo'lgan mikrofon (audioinput) qurilmalari
   audioInputs: MediaDeviceInfo[];
   activeAudioInputId: string | null;
+  // Foydalanuvchi tanlashi mumkin bo'lgan karnay (audiooutput) qurilmalari
+  audioOutputs: MediaDeviceInfo[];
+  activeAudioOutputId: string | null;
 }
 
 function setsAreEqual(a: Set<string>, b: Set<string>): boolean {
@@ -38,6 +41,8 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     needsAudioUnlock: false,
     audioInputs: [],
     activeAudioInputId: null,
+    audioOutputs: [],
+    activeAudioOutputId: null,
   });
   const pendingAudioElsRef = useRef<Set<HTMLMediaElement>>(new Set());
 
@@ -51,6 +56,15 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       if (activeId) setState((s) => ({ ...s, activeAudioInputId: activeId }));
     } catch (e) {
       console.error("Mikrofon qurilmalarini olib bo'lmadi:", e);
+    }
+    // Karnay (audiooutput) — setSinkId qo'llab-quvvatlanmasa ro'yxat bo'sh qoladi.
+    try {
+      const outputs = await Room.getLocalDevices("audiooutput");
+      setState((s) => ({ ...s, audioOutputs: outputs }));
+      const activeOutId = room.getActiveDevice("audiooutput");
+      if (activeOutId) setState((s) => ({ ...s, activeAudioOutputId: activeOutId }));
+    } catch (e) {
+      console.error("Karnay qurilmalarini olib bo'lmadi:", e);
     }
   }, []);
 
@@ -283,6 +297,19 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     }
   }, []);
 
+  // Foydalanuvchi boshqa karnay qurilmasini tanlaganda — LiveKit barcha
+  // remote audio elementlarga setSinkId orqali jonli almashadi.
+  const switchAudioOutput = useCallback(async (deviceId: string) => {
+    const room = roomRef.current;
+    if (!room) return;
+    try {
+      await room.switchActiveDevice("audiooutput", deviceId);
+      setState((s) => ({ ...s, activeAudioOutputId: deviceId }));
+    } catch (e) {
+      console.error("Karnay qurilmasini almashtirib bo'lmadi:", e);
+    }
+  }, []);
+
   const getLocalAudioStream = useCallback(() => {
     const room = roomRef.current;
     if (!room) return null;
@@ -295,6 +322,6 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
     return new MediaStream([mediaStreamTrack]);
   }, []);
 
-  return { ...state, toggleMic, unlockAudio, switchAudioInput, getLocalAudioStream };
+  return { ...state, toggleMic, unlockAudio, switchAudioInput, switchAudioOutput, getLocalAudioStream };
 }
 

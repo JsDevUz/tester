@@ -27,7 +27,7 @@ export interface StickerReactionItem {
 }
 export type CsBoardMode = 'pdf' | 'notebook';
 export type CsBoardLayout = 'single' | 'split';
-export type CsNotebookStyle = 'grid' | 'lined' | 'plain';
+export type CsNotebookStyle = 'grid' | 'lined' | 'dot' | 'plain';
 export type CsNotebookOrientation = 'portrait' | 'landscape';
 
 export type CsFontFamily = 'Inter' | 'Arial' | 'Georgia' | 'Comic Sans MS' | 'Nunito' | string;

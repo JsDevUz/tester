@@ -10,6 +10,9 @@ interface Props {
   audioInputs: MediaDeviceInfo[];
   activeAudioInputId: string | null;
   onSwitchAudioInput: (deviceId: string) => void;
+  audioOutputs?: MediaDeviceInfo[];
+  activeAudioOutputId?: string | null;
+  onSwitchAudioOutput?: (deviceId: string) => void;
   micDisabled: boolean;
   onEndCall: () => void;
   endCallTitle: string;
@@ -23,16 +26,17 @@ interface Props {
 
 export function ClassroomCallBar({
   micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput,
+  audioOutputs, activeAudioOutputId, onSwitchAudioOutput,
   micDisabled, onEndCall, endCallTitle, hidden, menu, theme = 'light',
   onSendReaction, handRaised, onToggleHandRaise,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
   const isDark = theme === 'dark';
 
-  // Barcha tugmalar uchun birlashgan base klass — MicControl bilan bir xil hajm
+  // Barcha tugmalar uchun birlashgan base klass — MicControl bilan bir xil hajm, glass effekt
   const btnBase = isDark
-    ? 'flex items-center justify-center h-11 w-11 rounded-full bg-[#3c4043] text-white shadow-md hover:bg-[#4a4d51] transition-all active:scale-95'
-    : 'flex items-center justify-center h-11 w-11 rounded-full bg-[#f1f3f4] text-[#3c4043] shadow-md hover:bg-[#e8eaed] border border-gray-200/70 transition-all active:scale-95';
+    ? 'flex items-center justify-center h-11 w-11 rounded-full bg-[#1f2023]/80 backdrop-blur-md text-white shadow-md ring-1 ring-white/10 hover:bg-[#2a2b2f]/90 transition-all active:scale-95'
+    : 'flex items-center justify-center h-11 w-11 rounded-full bg-[#f1f3f4]/85 backdrop-blur-md text-[#1f2023] shadow-md ring-1 ring-black/5 hover:bg-[#e8eaed]/95 transition-all active:scale-95';
 
   return (
     <div
@@ -41,8 +45,8 @@ export function ClassroomCallBar({
     >
       {/* Emoji picker popover */}
       {pickerOpen && (
-        <div className={`absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl backdrop-blur-md border max-w-[90vw] overflow-x-auto no-scrollbar touch-pan-x ${
-          isDark ? 'bg-[#28292c] border-white/10' : 'bg-white border-gray-200'
+        <div className={`absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl backdrop-blur-xl border max-w-[90vw] overflow-x-auto no-scrollbar touch-pan-x ${
+          isDark ? 'bg-[#1f2023]/90 border-white/10' : 'bg-white/90 border-gray-200'
         }`}>
           {STICKER_EMOJIS.map((emoji) => (
             <button
@@ -67,6 +71,9 @@ export function ClassroomCallBar({
         audioInputs={audioInputs}
         activeAudioInputId={activeAudioInputId}
         onSwitchAudioInput={onSwitchAudioInput}
+        audioOutputs={audioOutputs}
+        activeAudioOutputId={activeAudioOutputId}
+        onSwitchAudioOutput={onSwitchAudioOutput}
         disabled={micDisabled}
         theme={theme}
       />
@@ -77,7 +84,7 @@ export function ClassroomCallBar({
           type="button"
           onClick={() => setPickerOpen((v) => !v)}
           className={pickerOpen
-            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-indigo-600 text-white shadow-md transition-all active:scale-95'
+            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-indigo-600/70 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md transition-all active:scale-95'
             : btnBase}
           title="Reaksiya bildirish"
         >
@@ -91,7 +98,7 @@ export function ClassroomCallBar({
           type="button"
           onClick={onToggleHandRaise}
           className={handRaised
-            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-500/30 transition-all active:scale-95'
+            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-emerald-600/70 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md shadow-emerald-500/30 transition-all active:scale-95'
             : btnBase}
           title={handRaised ? "Qo'lni tushirish" : "Qo'l ko'tarish"}
         >
@@ -112,7 +119,7 @@ export function ClassroomCallBar({
       <button
         type="button"
         onClick={onEndCall}
-        className="flex items-center justify-center h-11 w-11 rounded-full bg-red-500 text-white shadow-md hover:bg-red-600 transition-all active:scale-95"
+        className="flex items-center justify-center h-11 w-11 rounded-full bg-red-500/80 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md hover:bg-red-600/90 transition-all active:scale-95"
         title={endCallTitle}
       >
         <PhoneOff size={20} />

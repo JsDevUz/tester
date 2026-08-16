@@ -8,6 +8,7 @@ import {
 import { connectorCurvePoint } from "./classroomShapeBindings";
 import { TextStylePanel } from "./ClassroomTextStylePanel";
 import { ShapeStylePanel } from "./ClassroomShapeStylePanel";
+import { AutoFlipPositioner } from "./AutoFlipPositioner";
 import type { DrawTool } from "./ClassroomPdfPage";
 
 interface ClassroomPageSelectionOverlayProps {
@@ -219,19 +220,22 @@ export function ClassroomPageSelectionOverlay({
                 (w / 2) * Math.abs(Math.sin(rad)) +
                 (h / 2) * Math.abs(Math.cos(rad));
               const topY = cy - halfRotH;
+              const bottomY = cy + halfRotH;
               return (
+                <AutoFlipPositioner
+                  anchorLeft={`${cx}px`}
+                  anchorTopPx={topY}
+                  anchorBottomPx={bottomY}
+                >
+                  {(openBelow) => (
                 <TextStylePanel
+                  dropdownDirection={openBelow ? "up" : "down"}
                   color={selectedText.color}
                   fontFamily={selectedText.fontFamily ?? "Inter"}
                   fontSize={selectedText.fontSize ?? 24}
                   fontWeight={selectedText.fontWeight ?? 600}
                   textAlign={selectedText.textAlign ?? "left"}
                   rotation={0}
-                  style={{
-                    left: `${cx}px`,
-                    top: `${Math.max(12, topY - 48)}px`,
-                    transform: "translate(-50%, -100%)",
-                  }}
                   onColorChange={(nextColor) =>
                     updateSelectedText({ color: nextColor })
                   }
@@ -256,6 +260,8 @@ export function ClassroomPageSelectionOverlay({
                     setSelectedTextId(null);
                   }}
                 />
+                  )}
+                </AutoFlipPositioner>
               );
             })()}
           </>
@@ -535,8 +541,16 @@ export function ClassroomPageSelectionOverlay({
                 (w / 2) * Math.abs(Math.sin(rad)) +
                 (h / 2) * Math.abs(Math.cos(rad));
               const topY = cy - halfRotH;
+              const bottomY = cy + halfRotH;
               return (
+                <AutoFlipPositioner
+                  anchorLeft={`${cx}px`}
+                  anchorTopPx={topY}
+                  anchorBottomPx={bottomY}
+                >
+                  {(openBelow) => (
                 <ShapeStylePanel
+                  dropdownDirection={openBelow ? "up" : "down"}
                   color={selectedShape.color}
                   textColor={selectedShape.textColor || selectedShape.color}
                   backgroundColor={
@@ -589,11 +603,6 @@ export function ClassroomPageSelectionOverlay({
                   onToolChange={(nextTool) =>
                     updateSelectedShape({ tool: nextTool })
                   }
-                  style={{
-                    left: `${cx}px`,
-                    top: `${Math.max(12, topY - 48)}px`,
-                    transform: "translate(-50%, -100%)",
-                  }}
                   onColorChange={(nextColor, nextStrokeStyle) => {
                     if (
                       nextStrokeStyle &&
@@ -687,6 +696,8 @@ export function ClassroomPageSelectionOverlay({
                     onReorderStroke?.(pageNumber, [selectedShape.id], op)
                   }
                 />
+                  )}
+                </AutoFlipPositioner>
               );
             })()}
         </>

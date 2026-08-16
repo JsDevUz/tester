@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { Grid3x3, AlignJustify, Square, Check } from "lucide-react";
+import { Grid3x3, AlignJustify, Grip, Square, Check } from "lucide-react";
 import type { CsNotebookStyle } from "../../api/classroom";
 
 const OPTIONS: Array<{ value: CsNotebookStyle; label: string; icon: typeof Grid3x3 }> = [
   { value: "grid", label: "Katakli", icon: Grid3x3 },
   { value: "lined", label: "Yo'l-yo'l", icon: AlignJustify },
+  { value: "dot", label: "Nuqtali", icon: Grip },
   { value: "plain", label: "Naqshsiz", icon: Square },
 ];
 
