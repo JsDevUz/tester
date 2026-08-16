@@ -6,6 +6,7 @@ import { db } from '../db';
 import { contentBlocks, courses, lessons, modules } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { VideoJobService } from './video-job.service';
+import { srtToVtt } from './srt-to-vtt';
 
 const CONTENT_BLOCK_LIMIT = 7;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.mkv'];
@@ -151,5 +152,45 @@ export class VideoUploadService {
       .where(eq(contentBlocks.id, blockId));
     this.videoJobService.enqueue(blockId);
     return db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+  }
+
+  async uploadSubtitle(blockId: string, adminId: string, file: Express.Multer.File) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'video') throw new NotFoundException('Video block not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+
+    let vttText: string;
+    try {
+      vttText = srtToVtt(file.buffer.toString('utf-8'));
+    } catch {
+      throw new BadRequestException("SRT fayl noto'g'ri formatda");
+    }
+
+    const subtitleKey = `videos/${block.lessonId}/${block.id}/subtitles/subtitle.vtt`;
+    await this.storageService.uploadBuffer(subtitleKey, Buffer.from(vttText, 'utf-8'), 'text/vtt');
+
+    const [updated] = await db
+      .update(contentBlocks)
+      .set({ subtitleKey, subtitleFileName: file.originalname })
+      .where(eq(contentBlocks.id, blockId))
+      .returning();
+    return updated;
+  }
+
+  async removeSubtitle(blockId: string, adminId: string) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'video') throw new NotFoundException('Video block not found');
+    await this.assertLessonOwnership(block.lessonId, adminId);
+
+    if (block.subtitleKey) {
+      await this.storageService.deleteFile(block.subtitleKey);
+    }
+
+    const [updated] = await db
+      .update(contentBlocks)
+      .set({ subtitleKey: null, subtitleFileName: null })
+      .where(eq(contentBlocks.id, blockId))
+      .returning();
+    return updated;
   }
 }

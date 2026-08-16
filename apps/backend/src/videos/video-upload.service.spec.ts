@@ -29,6 +29,7 @@ function makeStorage() {
     createPresignedUploadUrl: jest.fn().mockResolvedValue('https://signed.example/put'),
     headObject: jest.fn(),
     uploadBuffer: jest.fn(),
+    deleteFile: jest.fn(),
   };
 }
 
@@ -152,5 +153,133 @@ describe('VideoUploadService.completeUpload', () => {
     mockedDb.query.contentBlocks.findFirst.mockResolvedValue({ id: 'block-1', type: 'editor', sourceKey: null });
     const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
     await expect(service.completeUpload('block-1', 'teacher-1')).rejects.toThrow(NotFoundException);
+  });
+});
+
+describe('VideoUploadService.uploadSubtitle', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  const validSrt = Buffer.from(
+    '1\n00:00:01,000 --> 00:00:02,000\nSalom\n',
+    'utf-8',
+  );
+
+  it('SRTni VTTga aylantirib S3ga yuklaydi va blokni yangilaydi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1',
+    });
+    setupOwnership();
+    mockedDb.update.mockReturnValue({
+      set: (data: any) => ({
+        where: () => ({
+          returning: async () => [{ id: 'block-1', ...data }],
+        }),
+      }),
+    });
+    const storage = makeStorage();
+    const service = new VideoUploadService(storage as any, makeJobService() as any);
+
+    const file = { originalname: 'subs.srt', buffer: validSrt } as Express.Multer.File;
+    const result = await service.uploadSubtitle('block-1', 'teacher-1', file);
+
+    expect(storage.uploadBuffer).toHaveBeenCalledWith(
+      'videos/lesson-1/block-1/subtitles/subtitle.vtt',
+      expect.any(Buffer),
+      'text/vtt',
+    );
+    expect(result.subtitleKey).toBe('videos/lesson-1/block-1/subtitles/subtitle.vtt');
+    expect(result.subtitleFileName).toBe('subs.srt');
+  });
+
+  it('video bolmagan blok uchun topilmadi xatosi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({ id: 'block-1', type: 'editor' });
+    const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
+    const file = { originalname: 'subs.srt', buffer: validSrt } as Express.Multer.File;
+    await expect(service.uploadSubtitle('block-1', 'teacher-1', file)).rejects.toThrow(NotFoundException);
+  });
+
+  it('begona ustoz uchun taqiqlanadi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1',
+    });
+    mockedDb.query.lessons.findFirst.mockResolvedValue({ id: 'lesson-1', moduleId: 'mod-1' });
+    mockedDb.query.modules.findFirst.mockResolvedValue({ id: 'mod-1', courseId: 'course-1' });
+    mockedDb.query.courses.findFirst.mockResolvedValue(undefined);
+    const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
+    const file = { originalname: 'subs.srt', buffer: validSrt } as Express.Multer.File;
+    await expect(service.uploadSubtitle('block-1', 'begona-teacher', file)).rejects.toThrow(NotFoundException);
+  });
+
+  it("noto'g'ri formatdagi SRTni rad etadi", async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1',
+    });
+    setupOwnership();
+    const storage = makeStorage();
+    const service = new VideoUploadService(storage as any, makeJobService() as any);
+    const badFile = { originalname: 'subs.srt', buffer: Buffer.from('not a subtitle', 'utf-8') } as Express.Multer.File;
+
+    await expect(service.uploadSubtitle('block-1', 'teacher-1', badFile)).rejects.toThrow(BadRequestException);
+    expect(storage.uploadBuffer).not.toHaveBeenCalled();
+  });
+});
+
+describe('VideoUploadService.removeSubtitle', () => {
+  beforeEach(() => jest.clearAllMocks());
+
+  it('mavjud subtitleni S3dan ochiradi va blokni tozalaydi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1',
+      subtitleKey: 'videos/lesson-1/block-1/subtitles/subtitle.vtt',
+    });
+    setupOwnership();
+    mockedDb.update.mockReturnValue({
+      set: (data: any) => ({
+        where: () => ({
+          returning: async () => [{ id: 'block-1', ...data }],
+        }),
+      }),
+    });
+    const storage = makeStorage();
+    storage.deleteFile = jest.fn().mockResolvedValue(true);
+    const service = new VideoUploadService(storage as any, makeJobService() as any);
+
+    const result = await service.removeSubtitle('block-1', 'teacher-1');
+
+    expect(storage.deleteFile).toHaveBeenCalledWith('videos/lesson-1/block-1/subtitles/subtitle.vtt');
+    expect(result.subtitleKey).toBeNull();
+    expect(result.subtitleFileName).toBeNull();
+  });
+
+  it('subtitle mavjud bolmasa S3ni chaqirmaydi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1', subtitleKey: null,
+    });
+    setupOwnership();
+    mockedDb.update.mockReturnValue({
+      set: (data: any) => ({
+        where: () => ({
+          returning: async () => [{ id: 'block-1', ...data }],
+        }),
+      }),
+    });
+    const storage = makeStorage();
+    storage.deleteFile = jest.fn().mockResolvedValue(true);
+    const service = new VideoUploadService(storage as any, makeJobService() as any);
+
+    await service.removeSubtitle('block-1', 'teacher-1');
+
+    expect(storage.deleteFile).not.toHaveBeenCalled();
+  });
+
+  it('begona ustoz uchun taqiqlanadi', async () => {
+    mockedDb.query.contentBlocks.findFirst.mockResolvedValue({
+      id: 'block-1', type: 'video', lessonId: 'lesson-1', subtitleKey: null,
+    });
+    mockedDb.query.lessons.findFirst.mockResolvedValue({ id: 'lesson-1', moduleId: 'mod-1' });
+    mockedDb.query.modules.findFirst.mockResolvedValue({ id: 'mod-1', courseId: 'course-1' });
+    mockedDb.query.courses.findFirst.mockResolvedValue(undefined);
+    const service = new VideoUploadService(makeStorage() as any, makeJobService() as any);
+    await expect(service.removeSubtitle('block-1', 'begona-teacher')).rejects.toThrow(NotFoundException);
   });
 });
