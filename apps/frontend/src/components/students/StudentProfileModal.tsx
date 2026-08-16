@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Check, GraduationCap, KeyRound, MoreVertical, Pencil, Star, UserRound, X } from 'lucide-react';
+import { AlertTriangle, Check, GraduationCap, KeyRound, MoreVertical, Pencil, Star, UserRound, UserX, X } from 'lucide-react';
 import { apiListCourses, type ApiCourse } from '../../api/courses';
 import { apiListGroups, apiEnrollStudent, apiUpdateGroupMember, type ApiGroup } from '../../api/groups';
-import { apiListEnrollments, apiUpdateStudentName, apiUpdateStudentPassword, type ApiSchoolEnrollment } from '../../api/school';
+import { apiListEnrollments, apiRemoveStudent, apiUpdateStudentName, apiUpdateStudentPassword, type ApiSchoolEnrollment } from '../../api/school';
 import { apiListLaunches, type ApiPricingPlan } from '../../api/launches';
 import { useAuthStore } from '../../stores/authStore';
 import { UserAvatar } from '../UserAvatar';
@@ -16,6 +16,7 @@ interface StudentProfileModalProps {
   onClose: () => void;
   onEnrolled: () => void;
   onNameUpdated: (name: string) => void;
+  onRemoved: () => void;
 }
 
 const AVATAR_PALETTES = [
@@ -39,7 +40,7 @@ function progressColor(pct: number) {
   return 'text-gray-400';
 }
 
-export function StudentProfileModal({ studentId, studentName, studentTelegramName, studentPhone, studentAvatarUrl, onClose, onEnrolled, onNameUpdated }: StudentProfileModalProps) {
+export function StudentProfileModal({ studentId, studentName, studentTelegramName, studentPhone, studentAvatarUrl, onClose, onEnrolled, onNameUpdated, onRemoved }: StudentProfileModalProps) {
   const admin = useAuthStore((s) => s.admin);
   const canManageCourses = admin?.role === 'teacher' || admin?.role === 'super';
   const [enrollments, setEnrollments] = useState<ApiSchoolEnrollment[]>([]);
@@ -65,6 +66,9 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordError, setPasswordError] = useState<string | null>(null);
   const [passwordSuccess, setPasswordSuccess] = useState(false);
+  const [removeConfirmOpen, setRemoveConfirmOpen] = useState(false);
+  const [removing, setRemoving] = useState(false);
+  const [removeError, setRemoveError] = useState<string | null>(null);
 
   function refreshEnrollments() {
     setLoadingEnrollments(true);
@@ -205,6 +209,20 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
     }
   }
 
+  async function handleRemoveStudent() {
+    if (removing) return;
+    setRemoving(true);
+    setRemoveError(null);
+    try {
+      await apiRemoveStudent(studentId);
+      onRemoved();
+      onClose();
+    } catch (error: any) {
+      setRemoveError(error?.response?.data?.message ?? "O'quvchini chetlashtirib bo'lmadi.");
+      setRemoving(false);
+    }
+  }
+
   function closeEnrollFlow() {
     setEnrollFlowOpen(false);
     setCourseId('');
@@ -273,6 +291,15 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
                       >
                         <KeyRound size={16} className="text-gray-600" />
                         Parolni o'zgartirish
+                      </button>
+                      <div className="my-1 border-t border-gray-100" />
+                      <button
+                        type="button"
+                        onClick={() => { setActionsOpen(false); setRemoveError(null); setRemoveConfirmOpen(true); }}
+                        className="flex w-full items-center gap-2.5 px-4 py-2.5 text-left text-sm font-medium text-red-600 transition-colors hover:bg-red-50"
+                      >
+                        <UserX size={16} />
+                        Chetlashtirish
                       </button>
                     </div>
                   </>
@@ -369,6 +396,16 @@ export function StudentProfileModal({ studentId, studentName, studentTelegramNam
           )}
         </div>
       </div>
+
+      {removeConfirmOpen && (
+        <RemoveStudentConfirmModal
+          studentName={studentName}
+          removing={removing}
+          removeError={removeError}
+          onConfirm={handleRemoveStudent}
+          onClose={() => { if (!removing) setRemoveConfirmOpen(false); }}
+        />
+      )}
 
       {enrollFlowOpen && (
         <EnrollStudentModal
@@ -482,6 +519,63 @@ function EnrollStudentModal({
             className="mt-1 w-full rounded-xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-40"
           >
             {saving ? 'Biriktirilmoqda...' : 'Biriktirish'}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function RemoveStudentConfirmModal({
+  studentName,
+  removing,
+  removeError,
+  onConfirm,
+  onClose,
+}: {
+  studentName: string;
+  removing: boolean;
+  removeError: string | null;
+  onConfirm: () => void;
+  onClose: () => void;
+}) {
+  return (
+    <div
+      className="fixed inset-0 z-[60] flex items-end justify-center bg-black/20 sm:items-center"
+      onClick={(event) => { if (event.target === event.currentTarget) onClose(); }}
+    >
+      <div className="w-full rounded-t-3xl bg-white p-6 shadow-2xl sm:max-w-sm sm:rounded-3xl">
+        <div className="mb-4 flex items-start gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-red-50 text-red-500">
+            <AlertTriangle size={20} />
+          </div>
+          <div>
+            <h2 className="text-lg font-bold text-gray-900">O'quvchini chetlashtirish</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              <span className="font-semibold text-gray-700">{studentName}</span> maktabdan va barcha kurslardan chiqariladi.
+              Uning bajargan darslari, testlari va to'lov tarixi butunlay o'chib ketadi — bu amalni ortga qaytarib bo'lmaydi.
+            </p>
+          </div>
+        </div>
+
+        {removeError && <p className="mb-3 text-xs font-semibold text-red-500">{removeError}</p>}
+
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={removing}
+            className="flex-1 rounded-xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-200 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            Bekor qilish
+          </button>
+          <button
+            type="button"
+            onClick={onConfirm}
+            disabled={removing}
+            className="flex-1 rounded-xl bg-red-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-red-600 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            {removing ? 'Chetlashtirilmoqda...' : 'Chetlashtirish'}
           </button>
         </div>
       </div>

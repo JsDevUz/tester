@@ -466,6 +466,11 @@ export function StudentsPage() {
             setProfileTarget((current) => current ? { ...current, name } : current);
             setAllUsers((users) => users.map((user) => user.id === profileTarget.id ? { ...user, name } : user));
           }}
+          onRemoved={() => {
+            setPage(1);
+            setRefreshKey((value) => value + 1);
+            toast.success("O'quvchi maktabdan chetlashtirildi");
+          }}
         />
       )}
 

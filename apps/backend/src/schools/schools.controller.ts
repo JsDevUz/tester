@@ -131,6 +131,13 @@ export class SchoolsController {
 
   @UseGuards(JwtAuthGuard, RolesGuard)
   @Roles('teacher', 'super')
+  @Delete('school/students/:studentId')
+  removeStudent(@Req() req: any, @Param('studentId') studentId: string) {
+    return this.schoolsService.removeStudent(req.admin.id, studentId);
+  }
+
+  @UseGuards(JwtAuthGuard, RolesGuard)
+  @Roles('teacher', 'super')
   @Get('school/students/without-group')
   findStudentsWithoutGroup(@Req() req: any) {
     return this.schoolsService.findStudentsWithoutGroup(req.admin.id);

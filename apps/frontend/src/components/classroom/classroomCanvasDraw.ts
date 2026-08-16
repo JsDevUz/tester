@@ -492,11 +492,20 @@ export function drawStroke(
     const boxHeight =
       (s.textBoxHeight ?? Math.max(lineHeight, lines.length * lineHeight)) *
       (w / REF_WIDTH);
-    // Matn har doim box balandligining VERTIKAL MARKAZIDA chiziladi — box
-    // (textBoxHeight) qator soniga qarab matn balandligidan katta bo'lishi
-    // mumkin (masalan qo'lda resize qilingan yoki eski qiymat).
+    // Matn box (textBoxHeight) ichida verticalAlign bo'yicha joylashadi —
+    // box qator soniga qarab matn balandligidan katta bo'lishi mumkin
+    // (masalan qo'lda resize qilingan yoki eski qiymat). <textarea> (tahrirlash
+    // paytida ko'rinadigan holat) xuddi shu verticalAlign'ni CSS
+    // justify-content orqali qo'llaydi — bu ikkisi mos kelmasa, tahrirlash
+    // paytidagi kursor matn joylashuvidan boshqa joyda ko'rinadi.
     const textBlockHeight = lines.length * lineHeight;
-    const blockTop = (boxHeight - textBlockHeight) / 2;
+    const verticalAlign = s.verticalAlign ?? "middle";
+    const blockTop =
+      verticalAlign === "top"
+        ? 0
+        : verticalAlign === "bottom"
+          ? boxHeight - textBlockHeight
+          : (boxHeight - textBlockHeight) / 2;
     const lineTopOffset = blockTop + (lineHeight - renderedFontSize) / 2;
     const align = s.textAlign ?? "left";
     const lineX = (line: string) => {

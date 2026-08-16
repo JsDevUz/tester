@@ -704,4 +704,16 @@ export class SchoolsService {
     await this.assertStaffOwnership(memberId, adminId);
     await db.delete(schoolMembers).where(eq(schoolMembers.id, memberId));
   }
+
+  async removeStudent(adminId: string, studentId: string) {
+    const school = await this.getOrCreateSchool(adminId);
+    const member = await db.query.schoolMembers.findFirst({
+      where: and(eq(schoolMembers.schoolId, school.id), eq(schoolMembers.studentId, studentId), eq(schoolMembers.role, 'student')),
+    });
+    if (!member) throw new NotFoundException('Student not found in this school');
+    // groupEnrollments cascades on schoolMembers delete, taking course progress
+    // and payment history with it — the frontend warns the caller before this
+    // is called so the deletion is a deliberate, informed choice.
+    await db.delete(schoolMembers).where(eq(schoolMembers.id, member.id));
+  }
 }

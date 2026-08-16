@@ -450,12 +450,18 @@ export function useClassroomPagePointerGestures({
       return;
     }
     if (draggingTextRef.current) {
+      // draggingShapeRef bilan bir xil naqsh: har pointermove'da onMoveStroke
+      // (React state + WebSocket) chaqirish katta state daraxtini o'sha
+      // chastotada (~60-120fps) qayta yaratadi — bu esa mahalliy forceRedraw
+      // orqali darhol chizilgan canvas bilan to'qnashib, drag paytida
+      // "qaltirash" (jerkiness) his qildiradi. Shuning uchun move paytida
+      // faqat mutable stroke va mahalliy canvas yangilanadi; global state
+      // finishStroke'da (pointer up) bir marta commit qilinadi.
       const { stroke, dx, dy } = draggingTextRef.current;
       const nextX = Math.max(0, Math.min(1, p[0] - dx));
       const nextY = Math.max(0, Math.min(1, p[1] - dy));
       stroke.points[0] = nextX;
       stroke.points[1] = nextY;
-      onMoveStroke?.(pageNumber, stroke.id, nextX, nextY);
       forceRedraw((n) => n + 1);
       return;
     }

@@ -17,6 +17,7 @@ import {
 import {useColorScheme} from 'nativewind';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
+import axios from 'axios';
 import type {RootStackParamList} from '../navigation/types';
 import type {ApiMyCourseDetail, ApiMyLesson, ApiMyPracticeBlock} from '../types/api';
 import {apiGetMyCourseDetail, apiMarkLessonComplete} from '../api/groups';
@@ -48,6 +49,7 @@ export function CourseScreen({route, navigation}: Props) {
   const [showPractice, setShowPractice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
+  const [accessError, setAccessError] = useState<string | null>(null);
   const [lessonsListOpen, setLessonsListOpen] = useState(false);
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -58,6 +60,7 @@ export function CourseScreen({route, navigation}: Props) {
       const data = await apiGetMyCourseDetail(courseId);
       setCourse(data);
       setStale(false);
+      setAccessError(null);
       await storage.set(`cache:course:${courseId}`, {data, savedAt: Date.now()});
       if (!selectedLessonId) {
         const allLessons = data.modules.flatMap(m => m.lessons);
@@ -75,11 +78,24 @@ export function CourseScreen({route, navigation}: Props) {
         const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
         if (resumeLesson) setSelectedLessonId(resumeLesson.id);
       }
-    } catch {
-      const snapshot = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(`cache:course:${courseId}`);
-      if (snapshot) {
-        setCourse(snapshot.data);
-        setStale(true);
+    } catch (err) {
+      // A server response (as opposed to a network failure) means the
+      // backend deliberately denied access - e.g. payment_required/
+      // forced_closed from studentAccessService. Falling back to the
+      // locally cached snapshot in that case would let a student whose
+      // payment lapsed keep watching lessons offline forever, so only
+      // genuine connectivity failures (no response at all) use the cache.
+      if (axios.isAxiosError(err) && err.response) {
+        setCourse(null);
+        setStale(false);
+        await storage.remove(`cache:course:${courseId}`);
+        setAccessError(getApiErrorMessage(err, "To'lov muddati kelgan, lekin to'lanmagan"));
+      } else {
+        const snapshot = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(`cache:course:${courseId}`);
+        if (snapshot) {
+          setCourse(snapshot.data);
+          setStale(true);
+        }
       }
     } finally {
       setLoading(false);
@@ -218,6 +234,19 @@ export function CourseScreen({route, navigation}: Props) {
   }
 
   if (loading) return <Loading />;
+
+  if (accessError) {
+    return (
+      <Screen>
+        <View className="flex-1 items-center justify-center px-8">
+          <Lock size={32} color="#cbd5e1" />
+          <Text className="mt-3 text-center text-sm font-semibold text-slate-400">
+            {accessError}
+          </Text>
+        </View>
+      </Screen>
+    );
+  }
 
   if (!course || lessons.length === 0) {
     return (

@@ -98,6 +98,10 @@ export async function apiUpdateStudentPassword(studentId: string, password: stri
   return res.data;
 }
 
+export async function apiRemoveStudent(studentId: string): Promise<void> {
+  await client.delete(`/school/students/${studentId}`);
+}
+
 export interface ApiSchoolEnrollment {
   studentId: string;
   studentName: string;

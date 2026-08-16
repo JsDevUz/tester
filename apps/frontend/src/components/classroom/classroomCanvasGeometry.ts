@@ -100,7 +100,7 @@ function hitTestLineOrArrow(
   const ctrlX = stroke.controlX ?? (x0 + x1) / 2;
 
   // Hit radiusni foydalanuvchi qulay va oson ushlab olishi uchun sezgir qilamiz
-  const radius = Math.max(hitRadius, 0.025);
+  const radius = Math.max(hitRadius, 0.01);
 
   if (shape === "elbow") {
     const d1 = distToSegment(px, py, x0, y0, ctrlX, y0);

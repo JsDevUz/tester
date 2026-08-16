@@ -76,19 +76,25 @@ export function useClassroomCanvasRenderer({
           ? {
               ...rendered,
               text: textEditor.text,
-              color: textEditor.color,
               fontFamily: textEditor.fontFamily,
               fontSize: textEditor.fontSize,
               fontWeight: textEditor.fontWeight,
               textAlign: textEditor.textAlign,
               verticalAlign: textEditor.verticalAlign,
+              // "text" strokelarda color matnning o'zi rangi, shuning uchun
+              // to'g'ridan-to'g'ri yangilanadi. rectangle/ellipse'da color
+              // shape BORDER'i — matn rangi alohida textColor maydonida
+              // saqlanadi (commitText'dagi kabi), aks holda tahrirlash
+              // paytida matn rangini o'zgartirish shape border'ini ham
+              // o'sha rangga bo'yab qo'yadi.
               ...(s.tool === "text"
                 ? {
+                    color: textEditor.color,
                     points: [textEditor.x, textEditor.y],
                     textBoxWidth: textEditor.textBoxWidth,
                     textBoxHeight: textEditor.textBoxHeight,
                   }
-                : {}),
+                : { textColor: textEditor.color }),
             }
           : rendered;
       drawStroke(

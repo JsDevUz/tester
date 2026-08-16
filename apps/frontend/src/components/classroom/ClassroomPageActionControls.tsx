@@ -68,7 +68,12 @@ export function ClassroomPageActionControls({
           <MoreVertical size={13} />
         </button>
         {showPageMenu && (
-          <div className="absolute bottom-8 right-0 flex min-w-36 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowPageMenu(false)}
+            />
+            <div className="absolute bottom-8 right-0 z-20 flex min-w-36 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
             {isHost && (
               <button
                 type="button"
@@ -138,10 +143,16 @@ export function ClassroomPageActionControls({
                 <Trash2 size={14} /> O'chirish
               </button>
             )}
-          </div>
+            </div>
+          </>
         )}
         {showStylePopup && notebook && (
-          <div className="absolute bottom-8 right-0 flex min-w-44 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+          <>
+            <div
+              className="fixed inset-0 z-10"
+              onClick={() => setShowStylePopup(false)}
+            />
+            <div className="absolute bottom-8 right-0 z-20 flex min-w-44 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
             {stylePopupMode === "insert" && (
               <div className="mb-1 grid grid-cols-2 gap-1 border-b border-gray-100 pb-1">
                 {(["portrait", "landscape"] as const).map((orientation) => (
@@ -209,7 +220,8 @@ export function ClassroomPageActionControls({
             >
               <Square size={14} /> Naqshsiz
             </button>
-          </div>
+            </div>
+          </>
         )}
       </div>
 

@@ -35,8 +35,9 @@ export function PaymentsPage() {
   const [query, setQuery] = useState("");
   const [activeTab, setActiveTab] = useState<PaymentTab>("all");
   const [modalOpen, setModalOpen] = useState(false);
-  const [monthFilter, setMonthFilter] = useState("");
-  const [yearFilter, setYearFilter] = useState("");
+  const now = new Date();
+  const [monthFilter, setMonthFilter] = useState(String(now.getMonth() + 1).padStart(2, "0"));
+  const [yearFilter, setYearFilter] = useState(String(now.getFullYear()));
   const [courseFilter, setCourseFilter] = useState("");
   const [cancellingId, setCancellingId] = useState<string | null>(null);
   const [receiptPreview, setReceiptPreview] = useState<{ src: string; alt: string } | null>(null);
@@ -55,7 +56,7 @@ export function PaymentsPage() {
   );
   const yearOptions = useMemo(
     () =>
-      Array.from(new Set(rows.map((row) => new Date(row.periodMonth).getUTCFullYear())))
+      Array.from(new Set([now.getFullYear(), ...rows.map((row) => new Date(row.periodMonth).getUTCFullYear())]))
         .sort((a, b) => b - a),
     [rows],
   );
