@@ -22,17 +22,10 @@ interface Props {
 export function MicControl({
   micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput,
   audioOutputs = [], activeAudioOutputId = null, onSwitchAudioOutput,
-  disabled, theme = 'light',
+  disabled, theme: _theme = 'light',
 }: Props) {
   const [menuOpen, setMenuOpen] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const isDark = theme === 'dark';
-
-  // Mikrofon yoqilgan holda fon: dark → shaffof brand (glass), light → shaffof oq
-  // Mikrofon o'chirilganda har doim qizg'ish
-  const pillBg = micEnabled
-    ? (isDark ? 'rgba(31,32,35,0.85)' : 'rgba(241,243,244,0.9)')
-    : 'oklch(63.7% .237 25.331 / 0.92)';
 
   useEffect(() => {
     if (!menuOpen) return;
@@ -44,44 +37,57 @@ export function MicControl({
   }, [menuOpen]);
 
   const hasOutputs = audioOutputs.length > 0 && !!onSwitchAudioOutput;
-  const hasDevices = audioInputs.length > 1 || hasOutputs;
 
   return (
-    <div ref={wrapRef} className="relative">
+    <div ref={wrapRef} className="relative inline-flex items-center select-none">
+      {/* Google Meet style Split Pill Button */}
       <div
-        className={`flex items-center rounded-full shadow-md backdrop-blur-md ring-1 h-[44px] p-0 transition-colors ${hasDevices ? "gap-0.5" : ""} ${isDark ? "ring-white/10" : "ring-black/5"}`}
-        style={{ backgroundColor: pillBg }}
+        className={`flex items-center h-11 rounded-full overflow-hidden shadow-lg transition-all duration-200 ${
+          micEnabled
+            ? "bg-[#37393e] text-white"
+            : "bg-[#601410] text-[#fce8e6]"
+        }`}
       >
-        {hasDevices && (
-          <button
-            type="button"
-            onClick={() => setMenuOpen((v) => !v)}
-            disabled={disabled}
-            className={`flex items-center justify-center p-2.5 ml-1 rounded-full disabled:opacity-40 ${micEnabled
-              ? (isDark ? "text-gray-300 hover:bg-white/10" : "text-gray-500 hover:bg-gray-200")
-              : "text-white hover:bg-red-100"
-              }`}
-            title="Audio qurilmalarni tanlash"
-          >
-            {menuOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-          </button>
-        )}
+        {/* Left Segment: Audio Settings Chevron */}
+        <button
+          type="button"
+          onClick={() => setMenuOpen((v) => !v)}
+          disabled={disabled}
+          className={`flex h-full w-9 sm:w-10 items-center justify-center transition-colors disabled:opacity-40 cursor-pointer ${
+            micEnabled
+              ? "bg-[#37393e] hover:bg-[#43464c] text-[#c4c7c5] hover:text-white"
+              : "bg-[#601410] hover:bg-[#731915] text-[#fce8e6]"
+          }`}
+          title="Audio settings"
+        >
+          {menuOpen ? <ChevronDown size={17} strokeWidth={2.5} /> : <ChevronUp size={17} strokeWidth={2.5} />}
+        </button>
+
+        {/* Right Segment: Microphone Toggle Button */}
         <button
           type="button"
           onClick={onToggleMic}
           disabled={disabled}
-          className={`flex items-center justify-center rounded-full disabled:opacity-40 disabled:cursor-not-allowed p-3 ${micEnabled
-            ? (isDark ? "text-white hover:bg-white/10" : "text-[#1f2023] hover:bg-gray-200")
-            : "bg-red-700 text-white"
-            }`}
+          className={`flex h-full w-12 sm:w-13 items-center justify-center rounded-r-full rounded-l-xl transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer ${
+            micEnabled
+              ? "bg-[#45474f] hover:bg-[#50535c] text-white"
+              : "bg-[#f9d8d6] hover:bg-[#fad0cd] text-[#601410]"
+          }`}
           title={disabled ? "Ovoz o'chirilgan" : micEnabled ? "Mikrofonni o'chirish" : "Mikrofonni yoqish"}
         >
-          {micEnabled ? <Mic size={18} /> : <MicOff size={18} />}
+          {micEnabled ? (
+            <Mic size={19} strokeWidth={2.2} />
+          ) : (
+            <MicOff size={19} strokeWidth={2.2} />
+          )}
         </button>
       </div>
 
       {menuOpen && (
-        <div className="classroom-panel-in absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-40 w-72 max-w-[85vw] rounded-2xl bg-[#1f2023]/90 backdrop-blur-xl shadow-2xl ring-1 ring-white/10 overflow-hidden text-white">
+        <div className="classroom-panel-in glass-card absolute bottom-full mb-3 left-1/2 -translate-x-1/2 z-50 w-72 max-w-[88vw] rounded-3xl p-2.5 shadow-2xl text-[var(--text-primary)] overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+          <div className="px-3 pt-1 pb-2 border-b border-black/5 dark:border-white/10">
+            <p className="text-xs font-bold text-[var(--text-primary)] tracking-wide">Audio settings</p>
+          </div>
           <DeviceSection
             icon={<Mic size={13} />}
             label="MIC"
@@ -120,12 +126,12 @@ function DeviceSection({
 }) {
   if (devices.length === 0) return null;
   return (
-    <div className={divider ? "border-t border-white/10" : ""}>
-      <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-1.5 text-[11px] font-semibold tracking-wide text-white/40">
-        {icon}
-        {label}
+    <div className={divider ? "border-t border-black/5 dark:border-white/10 mt-1" : ""}>
+      <div className="flex items-center gap-1.5 px-3.5 pt-3 pb-1.5 text-[11px] font-bold tracking-wider text-[var(--text-muted)]">
+        <span className="text-indigo-600 dark:text-indigo-400">{icon}</span>
+        <span>{label}</span>
       </div>
-      <div className="pb-2">
+      <div className="pb-1 flex flex-col gap-0.5">
         {devices.map((d) => {
           const active = d.deviceId === activeId;
           return (
@@ -133,13 +139,16 @@ function DeviceSection({
               key={d.deviceId}
               type="button"
               onClick={() => onSelect(d.deviceId)}
-              className={`flex w-full items-center gap-2.5 px-3.5 py-2 text-left text-sm transition-colors ${active ? "bg-white/10" : "hover:bg-white/5"
-                }`}
+              className={`flex w-full items-center gap-2.5 px-3 py-2 rounded-xl text-left text-xs transition-all cursor-pointer ${
+                active
+                  ? "bg-indigo-600 text-white font-bold shadow-md"
+                  : "text-[var(--text-secondary)] hover:bg-[var(--card-hover)] hover:text-[var(--text-primary)] font-medium"
+              }`}
             >
-              <span className={`flex h-4 w-4 shrink-0 items-center justify-center ${active ? "text-indigo-400" : "text-transparent"}`}>
-                <Check size={14} strokeWidth={3} />
+              <span className={`flex h-4 w-4 shrink-0 items-center justify-center ${active ? "text-white" : "text-transparent"}`}>
+                <Check size={13} strokeWidth={3} />
               </span>
-              <span className={`truncate ${active ? "text-white font-medium" : "text-white/70"}`}>
+              <span className="truncate">
                 {d.label || fallbackLabel}
               </span>
             </button>

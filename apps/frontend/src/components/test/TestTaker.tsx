@@ -546,7 +546,7 @@ export function TestTaker({ slug, submissionId: initialSubmissionId, practiceMod
   // ── RENDER ──────────────────────────────────────────────────────────────────
   return (
     <div
-      className="flex flex-col bg-white notranslate"
+      className="flex flex-col bg-[var(--app-bg)] text-[var(--text-primary)] notranslate"
       translate="no"
       style={
         {

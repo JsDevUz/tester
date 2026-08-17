@@ -32,21 +32,6 @@ export interface StudentRow {
   tariff: string | null;
 }
 
-const AVATAR_PALETTES = [
-  "bg-gray-200 text-gray-700",
-  "bg-amber-100 text-amber-600",
-  "bg-teal-100 text-teal-600",
-  "bg-rose-100 text-rose-600",
-  "bg-violet-100 text-violet-600",
-  "bg-cyan-100 text-cyan-600",
-];
-
-function paletteFor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++)
-    hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
-}
 
 // TODO: mock data — AddStudentToGroupModal hali shundan foydalanadi, /school/students/search ga o'tganda olib tashlanadi
 export const MOCK_STUDENTS: StudentRow[] = [
@@ -191,43 +176,48 @@ export function StudentsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen p-3 sm:p-4">
-        <div className="flex min-h-full flex-col gap-2">
-          <div className="rounded-2xl bg-white p-4">
-            <div className="flex flex-wrap items-start justify-between gap-2">
-              <div>
-                <h1 className="text-lg sm:text-xl font-bold text-gray-800">{title}</h1>
-                <p className="text-xs sm:text-sm text-gray-400 mt-0.5">{subtitle}</p>
-              </div>
-              {canCreateStudent && (
-                <button type="button" onClick={() => setShowAddStudent(true)} className="inline-flex shrink-0 items-center gap-2 rounded-xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white  transition-colors hover:bg-indigo-600">
-                  <Plus size={16} /> O'quvchi qo'shish
-                </button>
-              )}
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          {/* Top Header */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+            <div>
+              <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">{title}</h1>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">{subtitle}</p>
             </div>
+            {canCreateStudent && (
+              <button
+                type="button"
+                onClick={() => setShowAddStudent(true)}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
+              >
+                <Plus size={15} /> O'quvchi qo'shish
+              </button>
+            )}
           </div>
 
+          {/* Tabs */}
           <StudentsSectionTabs counts={tabCounts} />
 
-          <div className="flex flex-wrap items-center gap-2">
+          {/* Filters */}
+          <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative w-fit max-w-full">
               <Search
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
               />
               <input
                 type="text"
                 value={query}
                 onChange={(e) => handleSearch(e.target.value)}
                 placeholder="Ism yoki telefon raqami bo'yicha qidirish..."
-                className="w-[min(560px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+                className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-[var(--surface-bg)] py-2 pl-9 pr-4 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-indigo-500 transition-colors"
               />
             </div>
             {status === "list" && (
               <select
                 value={courseFilter}
                 onChange={(event) => { setCourseFilter(event.target.value); setPage(1); }}
-                className="w-[min(280px,calc(100vw-2rem))] rounded-xl bg-gray-50 px-4 py-2.5 text-sm font-medium text-gray-700 outline-none"
+                className="w-[min(240px,calc(100vw-2rem))] rounded-xl bg-[var(--surface-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
                 aria-label="Kurs bo'yicha filter"
               >
                 <option value="">Barcha kurslar</option>
@@ -236,57 +226,64 @@ export function StudentsPage() {
             )}
           </div>
 
+          {/* Content Table / List */}
           {loading ? (
             <DataLoadingState label="O'quvchilar yuklanmoqda..." className="min-h-80" />
           ) : loadError ? (
-            <div className="rounded-2xl bg-white py-16 text-center text-sm text-gray-400">{loadError}</div>
+            <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-xs font-semibold text-[var(--text-muted)] shadow-xs">{loadError}</div>
           ) : status === "list" ? (
-            <div className="rounded-2xl bg-white">
+            <div className="rounded-2xl bg-[var(--surface-bg)] shadow-xs overflow-hidden">
               {enrollmentsTotal === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                  <Inbox size={36} className="mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">
+                <div className="text-center py-16 text-[var(--text-muted)]">
+                  <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium">
                     {query ? "Hech narsa topilmadi." : "Hali o'quvchilar yo'q."}
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="md:hidden flex flex-col gap-2">
+                  {/* Mobile Cards */}
+                  <div className="md:hidden flex flex-col divide-y divide-black/5 dark:divide-white/5">
                     {enrollmentPageItems.map((e) => (
-                      <button type="button" onClick={() => setProgressTarget(e)} key={`${e.studentId}-${e.courseId}`} className="bg-white rounded-2xl px-3.5 py-3 text-left transition-colors hover:bg-gray-50">
-                        <div className="flex items-center gap-2">
-                          <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(e.studentId)}`} />
+                      <button
+                        type="button"
+                        onClick={() => setProgressTarget(e)}
+                        key={`${e.studentId}-${e.courseId}`}
+                        className="px-4 py-3 text-left transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className="h-9 w-9 shrink-0 rounded-full text-xs font-bold" />
                           <div className="flex-1 min-w-0">
                             <div className="flex items-center gap-1.5 min-w-0">
-                              <p className="text-sm font-semibold text-gray-800 truncate">
+                              <p className="text-xs font-bold text-[var(--text-primary)] truncate">
                                 {e.studentName}
                               </p>
                               {!e.active && (
-                                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">
+                                <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
                                   Faol emas
                                 </span>
                               )}
                             </div>
                             {e.studentTelegramName && (
-                              <p className="truncate text-xs font-medium text-indigo-500">tg: {e.studentTelegramName}</p>
+                              <p className="truncate text-[11px] font-semibold text-indigo-500">tg: {e.studentTelegramName}</p>
                             )}
-                            <p className="text-xs text-gray-400">{e.studentPhone ?? ""}</p>
+                            <p className="text-[11px] font-medium text-[var(--text-muted)]">{e.studentPhone ?? ""}</p>
                           </div>
                           <div className="text-right shrink-0">
-                            <p className="text-xs text-gray-400">{e.joinedAt ? formatDate(e.joinedAt) : ""}</p>
+                            <p className="text-[11px] font-medium text-[var(--text-muted)]">{e.joinedAt ? formatDate(e.joinedAt) : ""}</p>
                           </div>
                         </div>
-                        <div className="mt-2.5 pt-2.5 border-t border-border flex items-center justify-between gap-2 text-xs">
-                          <div className="min-w-0 flex items-center gap-1.5 text-gray-500">
-                            <span className="truncate">{e.courseTitle} • {e.groupName}</span>
+                        <div className="mt-2 pt-2 border-t border-black/5 dark:border-white/5 flex items-center justify-between gap-2 text-xs">
+                          <div className="min-w-0 flex items-center gap-1 text-[var(--text-secondary)]">
+                            <span className="truncate text-[11px] font-medium">{e.courseTitle} • {e.groupName}</span>
                           </div>
                           <div className="flex shrink-0 items-center gap-2">
                             {e.starsMax > 0 && (
-                              <span className="inline-flex items-center gap-1 font-semibold text-amber-500">
-                                <Star size={12} fill="currentColor" /> {e.starsEarned}/{e.starsMax}
+                              <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-500">
+                                <Star size={11} fill="currentColor" /> {e.starsEarned}/{e.starsMax}
                               </span>
                             )}
-                            <span className={`font-semibold ${progressColor(e.progressPercent)}`}>
+                            <span className={`text-[11px] font-bold ${progressColor(e.progressPercent)}`}>
                               {e.progressPercent}%
                             </span>
                           </div>
@@ -295,59 +292,66 @@ export function StudentsPage() {
                     ))}
                   </div>
 
+                  {/* Desktop Table */}
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full min-w-210 text-left">
-                      <thead className="text-sm font-medium text-gray-700">
+                    <table className="w-full min-w-[860px] text-left border-collapse">
+                      <thead className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         <tr>
-                          <th className="px-5 py-4">O'quvchi</th>
-                          <th className="px-5 py-4">Kurs / guruh</th>
-                          <th className="px-5 py-4">Tarif</th>
-                          <th className="px-5 py-4">Progress</th>
-                          <th className="px-5 py-4">Yulduzlar</th>
-                          <th className="px-5 py-4">Qo'shilgan sana</th>
+                          <th className="px-4 py-3.5">O'quvchi</th>
+                          <th className="px-4 py-3.5">Kurs / guruh</th>
+                          <th className="px-4 py-3.5">Tarif</th>
+                          <th className="px-4 py-3.5">Progress</th>
+                          <th className="px-4 py-3.5">Yulduzlar</th>
+                          <th className="px-4 py-3.5">Qo'shilgan sana</th>
                         </tr>
                       </thead>
                       <tbody>
                         {enrollmentPageItems.map((e) => (
-                          <tr key={`${e.studentId}-${e.courseId}`} onClick={() => setProgressTarget(e)} className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5">
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-2">
-                                <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(e.studentId)}`} />
+                          <tr
+                            key={`${e.studentId}-${e.courseId}`}
+                            onClick={() => setProgressTarget(e)}
+                            className="cursor-pointer transition-colors hover:bg-[var(--card-hover)]"
+                          >
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <UserAvatar name={e.studentName} avatarUrl={e.studentAvatarUrl} className="h-8.5 w-8.5 shrink-0 rounded-full text-xs font-bold" />
                                 <div className="min-w-0">
-                                  <div className="flex items-center gap-2 min-w-0">
-                                    <p className="text-sm font-semibold text-gray-800 truncate">{e.studentName}</p>
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <p className="text-xs font-bold text-[var(--text-primary)] truncate">{e.studentName}</p>
                                     {!e.active && (
-                                      <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-[10px] font-semibold text-gray-400">Faol emas</span>
+                                      <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">Faol emas</span>
                                     )}
                                   </div>
-                                  {e.studentTelegramName && (
-                                    <p className="truncate text-xs font-medium text-indigo-500">tg: {e.studentTelegramName}</p>
+                                  {e.studentTelegramName ? (
+                                    <p className="truncate text-[11px] font-semibold text-indigo-500">tg: {e.studentTelegramName}</p>
+                                  ) : (
+                                    <p className="truncate text-[11px] font-medium text-[var(--text-muted)]">{e.studentPhone ?? "—"}</p>
                                   )}
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-4 text-sm text-gray-600">
-                              {e.courseTitle} <span className="text-gray-400">• {e.groupName}</span>
+                            <td className="px-4 py-3.5 text-xs font-semibold text-[var(--text-primary)]">
+                              {e.courseTitle} <p className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">{e.groupName}</p>
                             </td>
-                            <td className="px-5 py-4 text-sm text-gray-600">
-                              {e.planName ?? <span className="text-gray-300">Tarifsiz</span>}
+                            <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-secondary)]">
+                              {e.planName ?? <span className="text-[var(--text-muted)]">Tarifsiz</span>}
                             </td>
-                            <td className="px-5 py-4">
-                              <span className={`text-sm font-semibold ${progressColor(e.progressPercent)}`}>
+                            <td className="px-4 py-3.5">
+                              <span className={`text-xs font-bold ${progressColor(e.progressPercent)}`}>
                                 {e.lessonsCompleted}/{e.lessonsTotal} • {e.progressPercent}%
                               </span>
                             </td>
-                            <td className="px-5 py-4">
+                            <td className="px-4 py-3.5">
                               {e.starsMax > 0 ? (
-                                <span className="inline-flex items-center gap-1 text-sm font-semibold text-amber-500">
-                                  <Star size={13} fill="currentColor" /> {e.starsEarned} / {e.starsMax}
+                                <span className="inline-flex items-center gap-1 text-xs font-bold text-amber-500">
+                                  <Star size={12} fill="currentColor" /> {e.starsEarned} / {e.starsMax}
                                 </span>
                               ) : (
-                                <span className="text-sm text-gray-300">—</span>
+                                <span className="text-xs text-[var(--text-muted)]">—</span>
                               )}
                             </td>
-                            <td className="px-5 py-4 text-sm text-gray-500">
-                              {e.joinedAt ? formatDate(e.joinedAt) : <span className="text-gray-300">—</span>}
+                            <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-muted)]">
+                              {e.joinedAt ? formatDate(e.joinedAt) : <span className="text-[var(--text-muted)]">—</span>}
                             </td>
                           </tr>
                         ))}
@@ -355,54 +359,58 @@ export function StudentsPage() {
                     </table>
                   </div>
 
-                  <PaginationControls page={page} pageCount={enrollmentPageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
+                  <div className="p-3.5">
+                    <PaginationControls page={page} pageCount={enrollmentPageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
+                  </div>
                 </>
               )}
             </div>
           ) : (
-            <div className="rounded-2xl bg-white">
+            <div className="rounded-2xl bg-[var(--surface-bg)] shadow-xs overflow-hidden">
               {allUsersTotal === 0 ? (
-                <div className="text-center py-16 text-gray-400">
-                  <Inbox size={36} className="mx-auto mb-3 opacity-30" />
-                  <p className="text-sm">
+                <div className="text-center py-16 text-[var(--text-muted)]">
+                  <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium">
                     {query ? "Hech narsa topilmadi." : "Hali foydalanuvchilar yo'q."}
                   </p>
                 </div>
               ) : (
                 <>
-                  <div className="md:hidden flex flex-col gap-2">
+                  {/* Mobile Users List */}
+                  <div className="md:hidden flex flex-col divide-y divide-black/5 dark:divide-white/5">
                     {pageItems.map((u) => (
                       <button
                         key={u.id}
                         type="button"
                         onClick={() => setProfileTarget({ id: u.id, name: u.name, telegramName: u.telegramName, phone: u.phone, avatarUrl: u.avatarUrl })}
-                        className="bg-white rounded-2xl px-3.5 py-3 flex items-center gap-2 text-left transition-colors hover:bg-gray-50"
+                        className="px-4 py-3 flex items-center gap-2.5 text-left transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
                       >
-                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(u.id)}`} />
+                        <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-9 w-9 shrink-0 rounded-full text-xs font-bold" />
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
-                          <p className={`truncate text-xs mt-0.5 ${u.telegramName ? "font-medium text-indigo-500" : "text-gray-400"}`}>
-                            {u.telegramName ? `tg: ${u.telegramName}` : "—"}
+                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">{u.name}</p>
+                          <p className={`truncate text-[11px] mt-0.5 ${u.telegramName ? "font-semibold text-indigo-500" : "font-medium text-[var(--text-muted)]"}`}>
+                            {u.telegramName ? `tg: ${u.telegramName}` : (u.phone ?? "—")}
                           </p>
                         </div>
                         <div className="text-right shrink-0">
-                          <span className="student-course-count-badge inline-flex items-center justify-center rounded-full px-2 py-0.5 text-xs font-bold">
-                            {u.productsCount}
+                          <span className="inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 px-2 text-[11px] font-bold text-[var(--text-primary)]">
+                            {u.productsCount} ta kurs
                           </span>
                         </div>
                       </button>
                     ))}
                   </div>
 
+                  {/* Desktop Users Table */}
                   <div className="hidden md:block overflow-x-auto">
-                    <table className="w-full min-w-210 text-left">
-                      <thead className="text-sm font-medium text-gray-700">
+                    <table className="w-full min-w-[860px] text-left border-collapse">
+                      <thead className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                         <tr>
-                          <th className="px-5 py-4">Foydalanuvchi</th>
-                          <th className="px-5 py-4">Tizimga kirish</th>
-                          <th className="px-5 py-4 text-center">Kurslar</th>
-                          <th className="px-5 py-4 text-center">Kuratorlar</th>
-                          <th className="px-5 py-4 text-center">Daromad</th>
+                          <th className="px-4 py-3.5">Foydalanuvchi</th>
+                          <th className="px-4 py-3.5">Tizimga kirish (Telefon)</th>
+                          <th className="px-4 py-3.5 text-center">Kurslar</th>
+                          <th className="px-4 py-3.5 text-center">Kuratorlar</th>
+                          <th className="px-4 py-3.5 text-center">Daromad</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -410,34 +418,28 @@ export function StudentsPage() {
                           <tr
                             key={u.id}
                             onClick={() => setProfileTarget({ id: u.id, name: u.name, telegramName: u.telegramName, phone: u.phone, avatarUrl: u.avatarUrl })}
-                            className="cursor-pointer transition-colors hover:bg-gray-50 rounded-2xl min-h-17.5"
+                            className="cursor-pointer transition-colors hover:bg-[var(--card-hover)]"
                           >
-                            <td className="px-5 py-4">
-                              <div className="flex items-center gap-2">
-                                <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(u.id)}`} />
+                            <td className="px-4 py-3.5">
+                              <div className="flex items-center gap-2.5">
+                                <UserAvatar name={u.name} avatarUrl={u.avatarUrl} className="h-8.5 w-8.5 shrink-0 rounded-full text-xs font-bold" />
                                 <div className="min-w-0">
-                                  <p className="text-sm font-semibold text-gray-800 truncate">{u.name}</p>
-                                  <p className={`truncate text-xs mt-0.5 ${u.telegramName ? "font-medium text-indigo-500" : "text-gray-400"}`}>
+                                  <p className="text-xs font-bold text-[var(--text-primary)] truncate">{u.name}</p>
+                                  <p className={`truncate text-[11px] mt-0.5 ${u.telegramName ? "font-semibold text-indigo-500" : "text-[var(--text-muted)]"}`}>
                                     {u.telegramName ? `tg: ${u.telegramName}` : "—"}
                                   </p>
                                 </div>
                               </div>
                             </td>
-                            <td className="px-5 py-4 text-sm text-gray-500">{u.phone}</td>
-                            <td className="px-5 py-4 text-center">
-                              {u.productsCount > 0 ? (
-                                <span className="student-course-count-badge student-course-count-badge--active inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
-                                  {u.productsCount}
-                                </span>
-                              ) : (
-                                <span className="student-course-count-badge inline-flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold">
-                                  0
-                                </span>
-                              )}
+                            <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-muted)]">{u.phone}</td>
+                            <td className="px-4 py-3.5 text-center">
+                              <span className="inline-flex h-5.5 min-w-5.5 items-center justify-center rounded-full bg-black/5 dark:bg-white/10 px-2 text-[11px] font-bold text-[var(--text-primary)]">
+                                {u.productsCount}
+                              </span>
                             </td>
-                            <td className="px-5 py-4 text-center text-sm text-gray-300">—</td>
-                            <td className="px-5 py-4 text-center text-sm text-gray-500">
-                              {u.totalPaid > 0 ? u.totalPaid.toLocaleString("uz-UZ") : "—"}
+                            <td className="px-4 py-3.5 text-center text-xs text-[var(--text-muted)]">—</td>
+                            <td className="px-4 py-3.5 text-center text-xs font-bold text-[var(--text-primary)]">
+                              {u.totalPaid > 0 ? `${u.totalPaid.toLocaleString("uz-UZ")} so'm` : "—"}
                             </td>
                           </tr>
                         ))}
@@ -445,7 +447,9 @@ export function StudentsPage() {
                     </table>
                   </div>
 
-                  <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
+                  <div className="p-3.5">
+                    <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
+                  </div>
                 </>
               )}
             </div>

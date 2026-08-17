@@ -19,28 +19,30 @@ export function SchoolSidePanel() {
   const navigate = useNavigate();
 
   return (
-    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-72">
-      <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-68">
+      <div className="flex flex-col gap-1 rounded-2xl bg-[var(--surface-bg)] p-2 shadow-xs">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const active = location.pathname === tab.path;
           return (
-            <div
+            <button
               key={tab.path}
-              role="button"
-              tabIndex={0}
+              type="button"
               onClick={() => navigate(tab.path)}
-              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm cursor-pointer ${active ? 'bg-gray-100 text-gray-900' : 'text-gray-500 hover:bg-gray-50'
-                }`}
+              className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs transition-colors cursor-pointer ${
+                active
+                  ? 'bg-indigo-600 text-white font-bold shadow-xs'
+                  : 'text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] font-semibold'
+              }`}
             >
-              <Icon size={18} className={`shrink-0 ${active ? 'text-gray-900' : 'text-gray-400'}`} />
+              <Icon size={16} className={`shrink-0 ${active ? 'text-white' : 'text-[var(--text-muted)]'}`} />
               <div className="min-w-0">
-                <p className={`truncate font-semibold ${active ? 'text-gray-900' : 'text-gray-700'}`}>
+                <p className={`truncate text-xs font-bold ${active ? 'text-white' : 'text-[var(--text-primary)]'}`}>
                   {tab.label}
                 </p>
-                <p className="truncate text-xs text-gray-300">{tab.description}</p>
+                <p className={`truncate text-[11px] font-medium mt-0.5 ${active ? 'text-white/80' : 'text-[var(--text-muted)]'}`}>{tab.description}</p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>

@@ -1,7 +1,9 @@
 import { useEffect, useLayoutEffect, useState } from "react";
 import { useNavigate, useSearchParams } from "react-router-dom";
 import {
+  Check,
   CheckCircle2,
+  X,
   XCircle,
   Circle,
   Clock,
@@ -45,92 +47,94 @@ function TestResultBody({
     <>
       <div className="text-center mb-8">
         <div
-          className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 ${isGood ? "bg-green-50" : isMid ? "bg-amber-50" : "bg-red-50"
-            }`}
+          className={`inline-flex items-center justify-center w-24 h-24 rounded-3xl mb-4 ${
+            isGood ? "bg-emerald-500/10 text-emerald-500" : isMid ? "bg-amber-500/10 text-amber-500" : "bg-red-500/10 text-red-500"
+          }`}
         >
           {isGood ? (
-            <Trophy size={40} className="text-green-400" />
+            <Trophy size={42} />
           ) : isMid ? (
-            <ThumbsUp size={40} className="text-amber-400" />
+            <ThumbsUp size={42} />
           ) : (
-            <BookOpen size={40} className="text-red-300" />
+            <BookOpen size={42} />
           )}
         </div>
         <p
-          className={`text-5xl font-black mb-1 ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"
-            }`}
+          className={`text-5xl font-black mb-1 ${
+            isGood ? "text-emerald-500" : isMid ? "text-amber-500" : "text-red-500"
+          }`}
         >
           {pct}%
         </p>
-        <p className="text-gray-400 text-sm">
+        <p className="text-[var(--text-muted)] text-sm font-semibold">
           {result.score} / {result.total} ta to'g'ri
         </p>
       </div>
 
       {/* Answers list */}
-      <div className="flex flex-col gap-2">
+      <div className="flex flex-col gap-2.5">
         {result.answers.map((a, i) => (
           <div
             key={a.questionId}
-            className={`rounded-2xl border px-4 py-4 ${a.isCorrect === true
-                ? "border-green-100 bg-green-50/50"
+            className={`rounded-2xl border p-4 transition-colors ${
+              a.isCorrect === true
+                ? "border-emerald-500/20 bg-emerald-500/5 text-[var(--text-primary)]"
                 : a.isCorrect === false
-                  ? "border-red-100 bg-red-50/50"
-                  : "border-border bg-gray-50/50"
-              }`}
+                ? "border-red-500/20 bg-red-500/5 text-[var(--text-primary)]"
+                : "border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 text-[var(--text-primary)]"
+            }`}
           >
             {/* Question header */}
-            <div className="flex items-start gap-2 mb-3">
-              <span className="w-6 h-6 rounded-lg bg-white text-xs font-bold text-gray-500 flex items-center justify-center shrink-0 mt-0.5">
+            <div className="flex items-start gap-2.5 mb-3">
+              <span className="w-6 h-6 rounded-lg bg-black/5 dark:bg-white/10 text-xs font-bold text-[var(--text-secondary)] flex items-center justify-center shrink-0 mt-0.5">
                 {i + 1}
               </span>
-              <p className="flex-1 text-sm font-semibold text-gray-800 leading-snug">
+              <p className="flex-1 text-sm font-bold text-[var(--text-primary)] leading-snug">
                 {a.questionText}
               </p>
               <span className="shrink-0">
                 {a.isCorrect === true ? (
-                  <CheckCircle2 size={18} className="text-green-500" />
+                  <CheckCircle2 size={18} className="text-emerald-500" />
                 ) : a.isCorrect === false ? (
-                  <XCircle size={18} className="text-red-400" />
+                  <XCircle size={18} className="text-red-500" />
                 ) : (
-                  <span className="text-gray-300 text-xs">—</span>
+                  <span className="text-[var(--text-muted)] text-xs">—</span>
                 )}
               </span>
             </div>
 
             {/* Answer detail */}
             {a.questionType === "open" || a.questionType === "fillblank" ? (
-              <div className="pl-9 flex flex-col gap-1">
-                <p className="text-xs italic text-gray-600 bg-white/80 px-3 py-2 rounded-xl border border-border">
+              <div className="pl-8 flex flex-col gap-1.5">
+                <p className="text-xs italic text-[var(--text-primary)] bg-black/5 dark:bg-black/30 px-3 py-2 rounded-xl border border-black/5 dark:border-white/10">
                   {a.textAnswer || "—"}
                 </p>
                 {a.isCorrect === null && (
-                  <p className="text-xs text-gray-400 px-1">
+                  <p className="text-xs text-[var(--text-muted)] px-1">
                     Tekshiruv yakunlanmadi
                   </p>
                 )}
                 {a.isCorrect === false && a.correctAnswer && (
-                  <p className="text-xs text-green-600 px-1">
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold px-1">
                     To'g'ri:{" "}
-                    <span className="font-medium">{a.correctAnswer}</span>
+                    <span className="font-bold">{a.correctAnswer}</span>
                   </p>
                 )}
               </div>
             ) : a.questionType === "slider" ? (
-              <div className="pl-9 text-xs text-gray-600 flex items-center gap-2">
-                <span className="bg-white/80 px-3 py-1.5 rounded-xl">
+              <div className="pl-8 text-xs text-[var(--text-secondary)] flex items-center gap-2">
+                <span className="bg-black/5 dark:bg-black/30 px-3 py-1.5 rounded-xl border border-black/5 dark:border-white/10">
                   Javob:{" "}
-                  <span className="font-medium">{a.textAnswer || "—"}</span>
+                  <span className="font-bold text-[var(--text-primary)]">{a.textAnswer || "—"}</span>
                 </span>
                 {a.isCorrect === false && a.correctAnswer && (
-                  <span className="text-green-600">
-                    To'g'ri:{" "}
-                    <span className="font-medium">{a.correctAnswer}</span>
+                  <span className="text-emerald-600 dark:text-emerald-400 font-bold">
+                    To'g'ri: {a.correctAnswer}
                   </span>
                 )}
               </div>
             ) : a.questionType === "droppin" ? (
-              <div className="pl-9">
+              <div className="pl-8">
                 {a.imageUrl ? (
                   (() => {
                     const imgSrc = a.imageUrl!.startsWith("http")
@@ -139,7 +143,7 @@ function TestResultBody({
                     const student = a.textAnswer?.split(",").map(Number);
                     const correct = a.correctAnswer?.split(",").map(Number);
                     return (
-                      <div className="relative inline-block w-full max-w-xs rounded-2xl overflow-hidden border border-border">
+                      <div className="relative inline-block w-full max-w-xs rounded-2xl overflow-hidden border border-black/5 dark:border-white/10">
                         <img src={imgSrc} alt="" className="w-full" />
                         {student && student.length === 2 && (
                           <div
@@ -150,149 +154,45 @@ function TestResultBody({
                             className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-md bg-red-500"
                           />
                         )}
-                        {correct &&
-                          correct.length === 2 &&
-                          a.isCorrect === false && (
-                            <div
-                              style={{
-                                left: `${correct[0] * 100}%`,
-                                top: `${correct[1] * 100}%`,
-                              }}
-                              className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-md bg-green-500"
-                            />
-                          )}
+                        {correct && correct.length === 2 && (
+                          <div
+                            style={{
+                              left: `${correct[0] * 100}%`,
+                              top: `${correct[1] * 100}%`,
+                            }}
+                            className="absolute w-5 h-5 -translate-x-1/2 -translate-y-1/2 rounded-full border border-white shadow-md bg-emerald-500"
+                          />
+                        )}
                       </div>
                     );
                   })()
                 ) : (
-                  <p className="text-xs text-gray-400">Rasm yo'q</p>
-                )}
-                {!a.textAnswer && (
-                  <p className="mt-1 text-xs text-rose-500">
-                    Siz joy belgilamadingiz
-                  </p>
+                  <span className="text-xs text-[var(--text-muted)]">—</span>
                 )}
               </div>
-            ) : a.questionType === "matching" ? (
-              <div className="pl-9 flex flex-col gap-1">
-                {(() => {
-                  const lefts = (a.options ?? []).filter(
-                    (o) => o.isCorrectOption,
-                  );
-                  const rights = (a.options ?? []).filter(
-                    (o) => !o.isCorrectOption,
-                  );
-                  // Talaba chap elementlarni istalgan tartibda tanlashi mumkin, shuning uchun
-                  // selectedOptionIds'dagi juftliklarni pozitsiya emas, ID orqali bog'laymiz.
-                  const studentPairs = new Map<string, string>();
-                  for (let i = 0; i < a.selectedOptionIds.length; i += 2) {
-                    studentPairs.set(
-                      a.selectedOptionIds[i],
-                      a.selectedOptionIds[i + 1],
-                    );
-                  }
-                  return lefts.map((left, idx) => {
-                    const correctRight = rights[idx];
-                    const studentRightId = studentPairs.get(left.id);
-                    const studentRight = (a.options ?? []).find(
-                      (o) => o.id === studentRightId,
-                    );
-                    const pairCorrect = studentRightId === correctRight?.id;
-                    return (
-                      <div
-                        key={left.id}
-                        className={`text-xs px-3 py-2 rounded-xl flex items-center gap-1.5 text-white ${pairCorrect ? "bg-emerald-500" : "bg-rose-500"}`}
-                      >
-                        <span className="font-medium">{left.text}</span>
-                        <span className="text-white/60">→</span>
-                        {pairCorrect ? (
-                          <span className="font-medium">
-                            {correctRight?.text}
-                          </span>
-                        ) : (
-                          <>
-                            <span className="line-through">
-                              {studentRight?.text ?? "—"}
-                            </span>
-                            <span className="ml-1">
-                              ({correctRight?.text})
-                            </span>
-                          </>
-                        )}
-                      </div>
-                    );
-                  });
-                })()}
-              </div>
-            ) : (a.questionType === "arrange" || a.questionType === "reorder") &&
-              a.options &&
-              a.options.length > 0 ? (
-              <div className="pl-9 flex flex-col gap-2">
-                {a.isCorrect === false && (
-                  <div className="flex flex-col gap-1">
-                    <p className="text-[11px] font-medium text-gray-400">
-                      Sizning tartibingiz
-                    </p>
-                    {a.selectedOptionIds.map((id, pos) => {
-                      const opt = a.options!.find((o) => o.id === id);
-                      const correctId = a.options![pos]?.id;
-                      const posCorrect = id === correctId;
-                      return (
-                        <div
-                          key={`student-${id}-${pos}`}
-                          className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl text-white ${posCorrect ? "bg-emerald-500" : "bg-rose-500"}`}
-                        >
-                          <span className="font-mono text-white/70">
-                            {pos + 1}.
-                          </span>
-                          <span>{opt?.text ?? "—"}</span>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-                <div className="flex flex-col gap-1">
-                  {a.isCorrect === false && (
-                    <p className="text-[11px] font-medium text-gray-400">
-                      To'g'ri tartib
-                    </p>
-                  )}
-                  {a.options.map((opt, pos) => (
-                    <div
-                      key={opt.id}
-                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${a.isCorrect === false
-                          ? "bg-emerald-500 text-white"
-                          : "bg-green-100/70 text-green-700 font-medium"
-                        }`}
-                    >
-                      <span
-                        className={`font-mono ${a.isCorrect === false ? "text-white/70" : "text-green-500"}`}
-                      >
-                        {pos + 1}.
-                      </span>
-                      <span>{opt.text}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            ) : a.options && a.options.length > 0 ? (
-              <div className="pl-9 flex flex-col gap-1">
+            ) : a.options ? (
+              <div className="pl-8 flex flex-col gap-1.5">
                 {a.options.map((opt) => {
-                  const selected = a.selectedOptionIds.includes(opt.id);
+                  const isUserChosen = a.selectedOptionIds?.includes(opt.id);
+                  const isCorrectOpt = opt.isCorrectOption;
                   return (
                     <div
                       key={opt.id}
-                      className={`flex items-center gap-2 text-xs px-3 py-2 rounded-xl ${opt.isCorrectOption
-                          ? "bg-emerald-500 text-white font-medium"
-                          : selected
-                            ? "bg-rose-500 text-white"
-                            : "text-gray-400"
-                        }`}
+                      className={`flex items-center gap-2 rounded-xl px-3 py-2 text-xs font-semibold ${
+                        isCorrectOpt
+                          ? "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20"
+                          : isUserChosen && !isCorrectOpt
+                          ? "bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20"
+                          : "bg-black/5 dark:bg-black/20 text-[var(--text-muted)] border border-transparent"
+                      }`}
                     >
-                      <Circle
-                        size={8}
-                        className={`shrink-0 ${selected || opt.isCorrectOption ? "fill-current" : "opacity-30"}`}
-                      />
+                      {isCorrectOpt ? (
+                        <Check size={14} className="text-emerald-500 shrink-0" />
+                      ) : isUserChosen ? (
+                        <X size={14} className="text-red-500 shrink-0" />
+                      ) : (
+                        <Circle size={10} className="text-[var(--text-muted)] opacity-40 shrink-0" />
+                      )}
                       <span>{opt.text}</span>
                     </div>
                   );
@@ -305,14 +205,14 @@ function TestResultBody({
     </>
   ) : result.showResults === "after_deadline" ? (
     <div className="flex flex-col items-center justify-center text-center py-16">
-      <div className="w-20 h-20 rounded-3xl bg-gray-100 flex items-center justify-center mb-5">
-        <Clock size={36} className="text-gray-500" />
+      <div className="w-20 h-20 rounded-3xl bg-amber-500/10 text-amber-500 flex items-center justify-center mb-5">
+        <Clock size={36} />
       </div>
-      <p className="text-xl font-bold text-gray-900 mb-2">Test topshirildi!</p>
-      <p className="text-sm text-gray-400 leading-relaxed">
+      <p className="text-xl font-bold text-[var(--text-primary)] mb-2">Test topshirildi!</p>
+      <p className="text-xs text-[var(--text-muted)] leading-relaxed">
         Natijalar{" "}
         {result.deadline ? (
-          <span className="text-gray-700 font-medium">
+          <span className="text-[var(--text-primary)] font-bold">
             {formatDateTime(result.deadline)}
           </span>
         ) : (
@@ -323,13 +223,13 @@ function TestResultBody({
     </div>
   ) : (
     <div className="flex flex-col items-center justify-center text-center py-16">
-      <div className="w-20 h-20 rounded-3xl bg-green-50 flex items-center justify-center mb-5">
-        <CheckCircle2 size={36} className="text-green-400" />
+      <div className="w-20 h-20 rounded-3xl bg-emerald-500/10 text-emerald-500 flex items-center justify-center mb-5">
+        <CheckCircle2 size={36} />
       </div>
-      <p className="text-xl font-bold text-gray-900 mb-2">
+      <p className="text-xl font-bold text-[var(--text-primary)] mb-2">
         Muvaffaqiyatli topshirildi!
       </p>
-      <p className="text-sm text-gray-400">Test qabul qilindi.</p>
+      <p className="text-xs font-semibold text-[var(--text-muted)]">Test qabul qilindi.</p>
     </div>
   );
 }
@@ -375,8 +275,8 @@ export function TestResultView({
 
   if (!result)
     return (
-      <div className="flex items-center justify-center min-h-screen bg-white">
-        <p className="text-gray-400">Natija topilmadi.</p>
+      <div className="flex items-center justify-center min-h-screen bg-[var(--app-bg)] text-[var(--text-primary)]">
+        <p className="text-[var(--text-muted)] font-semibold text-sm">Natija topilmadi.</p>
       </div>
     );
 
@@ -388,9 +288,9 @@ export function TestResultView({
 
   if (embedded) {
     return (
-      <div className="px-4 lg:px-8 pt-2 pb-8">
+      <div className="px-4 lg:px-8 pt-2 pb-8 text-[var(--text-primary)]">
         {isViolation && (
-          <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 text-center">
+          <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-500 text-center">
             {result.violationReason ??
               "Taqiqlangan harakat aniqlanganligi sababli yakunlandi."}
           </div>
@@ -400,7 +300,7 @@ export function TestResultView({
           <button
             type="button"
             onClick={onBack}
-            className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white"
+            className="mt-6 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-3.5 text-xs font-bold text-white transition-colors cursor-pointer"
           >
             Darsga qaytish
           </button>
@@ -411,7 +311,7 @@ export function TestResultView({
 
   return (
     <div
-      className="flex flex-col bg-white lg:bg-gray-50 notranslate"
+      className="flex flex-col bg-[var(--app-bg)] text-[var(--text-primary)] notranslate"
       translate="no"
       style={{
         minHeight: "100dvh",
@@ -419,16 +319,13 @@ export function TestResultView({
         paddingBottom: "max(24px, env(safe-area-inset-bottom))",
       }}
     >
-      {/* Top accent bar — mobile only, desktop card has its own */}
-      <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400 lg:hidden" />
-
-      <div className="flex-1 lg:flex lg:justify-center lg:py-10">
-        <div className="test-result-card lg:w-full lg:max-w-2xl lg:bg-white lg:rounded-3xl lg:shadow-xl lg:border lg:border-border lg:overflow-hidden lg:self-start">
-          <div className="hidden lg:block h-1.5 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
-          <div className="px-5 lg:px-8 pt-8 pb-4 lg:pb-10">
+      <div className="flex-1 lg:flex lg:justify-center p-4 sm:p-6 lg:py-10">
+        <div className="glass-card lg:w-full lg:max-w-2xl rounded-3xl shadow-xl border border-black/5 dark:border-white/10 overflow-hidden text-[var(--text-primary)] self-start">
+          <div className="h-1.5 bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+          <div className="px-5 lg:px-8 pt-8 pb-8">
             {/* Score hero */}
             {isViolation && (
-              <div className="mb-5 rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm font-medium text-red-600 text-center">
+              <div className="mb-5 rounded-2xl border border-red-500/20 bg-red-500/10 px-4 py-3 text-xs font-bold text-red-500 text-center">
                 {result.violationReason ??
                   "Taqiqlangan harakat aniqlanganligi sababli yakunlandi."}
               </div>
@@ -439,7 +336,7 @@ export function TestResultView({
               <button
                 type="button"
                 onClick={onBack}
-                className="mt-6 w-full rounded-xl bg-gray-900 px-4 py-3 text-sm font-bold text-white"
+                className="mt-6 w-full rounded-2xl bg-indigo-600 hover:bg-indigo-700 px-4 py-4 text-sm font-bold text-white transition-colors shadow-md cursor-pointer"
               >
                 Bosh sahifaga qaytish
               </button>

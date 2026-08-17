@@ -36,16 +36,16 @@ export function NewFolderModal({
   }
 
   return (
-    <div className="fixed inset-0 bg-black/30 backdrop-blur-sm flex items-center justify-center z-50">
-      <div className="bg-white rounded-2xl shadow-2xl p-6 w-80">
-        <h2 className="font-semibold text-gray-800 mb-4">{title}</h2>
+    <div className="fixed inset-0 bg-black/10 dark:bg-black/30 flex items-center justify-center z-50 p-4 animate-in fade-in duration-150" onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="glass-card w-full max-w-sm rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150">
+        <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight mb-4">{title}</h2>
         <form onSubmit={handleSubmit} className="flex flex-col gap-4">
           <input
             autoFocus
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder="Papka nomi"
-            className="border border-border rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+            className="rounded-xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-3.5 py-2.5 text-xs font-semibold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all placeholder:text-[var(--text-muted)]"
           />
           <div className="flex gap-2 flex-wrap">
             {COLORS.map((c) => (
@@ -53,25 +53,26 @@ export function NewFolderModal({
                 key={c}
                 type="button"
                 onClick={() => setColor(c)}
-                className="w-7 h-7 rounded-full border transition-transform hover:scale-110"
+                className={`w-7 h-7 rounded-full transition-transform hover:scale-110 cursor-pointer ${
+                  color === c ? "ring-2 ring-indigo-500 ring-offset-2 ring-offset-transparent scale-110" : ""
+                }`}
                 style={{
                   backgroundColor: c,
-                  borderColor: color === c ? "#000" : "transparent",
                 }}
               />
             ))}
           </div>
-          <div className="flex gap-2 justify-end">
+          <div className="flex gap-2 justify-end pt-1">
             <button
               type="button"
               onClick={onClose}
-              className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+              className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
             >
               Bekor qilish
             </button>
             <button
               type="submit"
-              className="px-4 py-2 text-sm bg-indigo-500 text-white rounded-lg hover:bg-indigo-600"
+              className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               {title === "Yangi papka" ? "Yaratish" : "Saqlash"}
             </button>

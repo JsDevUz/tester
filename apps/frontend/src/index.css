@@ -3,6 +3,70 @@
 
 @custom-variant dark (&:where([data-theme="dark"], [data-theme="dark"] *));
 
+/* ==========================================================================
+   Global Design Token CSS Variables
+   ========================================================================== */
+:root {
+  /* Brand */
+  --color-primary: #6366f1;
+  --color-primary-hover: #4f46e5;
+  --color-primary-light: #eef2ff;
+
+  /* Light Theme Canvas & Panels - Soft & Clean */
+  --app-bg: #f8fafc;
+  --surface-bg: #ffffff;
+  --card-bg: #f1f5f9;
+  --card-hover: #e2e8f0;
+  --card-active: #cbd5e1;
+
+  --border-subtle: rgba(0, 0, 0, 0.04);
+  --border-strong: rgba(0, 0, 0, 0.08);
+
+  --text-primary: #1e293b;
+  --text-secondary: #475569;
+  --text-muted: #64748b;
+
+  /* Glassmorphism Variables - Rich Frosted Glass */
+  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-card-bg: rgba(255, 255, 255, 0.82);
+  --glass-panel-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: transparent;
+  --glass-border-subtle: transparent;
+  --glass-blur: 24px;
+  --glass-shadow: 0 4px 20px 0 rgba(0, 0, 0, 0.06);
+  --glass-card-shadow: 0 6px 24px 0 rgba(0, 0, 0, 0.06);
+  --glass-panel-shadow: 0 16px 40px -10px rgba(15, 23, 42, 0.12);
+}
+
+:root[data-theme="dark"],
+html[data-theme="dark"],
+.dark {
+  /* Dark Theme Canvas & Panels */
+  --app-bg: #121316;
+  --surface-bg: #30313a;
+  --card-bg: #30313a;
+  --card-hover: #3a3c46;
+  --card-active: #454754;
+
+  --border-subtle: rgba(255, 255, 255, 0.05);
+  --border-strong: rgba(255, 255, 255, 0.10);
+
+  --text-primary: #ffffff;
+  --text-secondary: #e2e8f0;
+  --text-muted: #cbd5e1;
+
+  /* Glassmorphism Variables - Rich Frosted Glass in Dark Mode */
+  --glass-bg: rgba(30, 31, 38, 0.75);
+  --glass-card-bg: rgba(36, 37, 46, 0.85);
+  --glass-panel-bg: rgba(36, 37, 46, 0.85);
+  --glass-border: transparent;
+  --glass-border-subtle: transparent;
+  --glass-blur: 24px;
+  --glass-shadow: 0 10px 30px -5px rgba(0, 0, 0, 0.45);
+  --glass-card-shadow: 0 12px 35px -5px rgba(0, 0, 0, 0.45);
+  --glass-panel-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.65);
+}
+
 /* Global Scrollbar Hider — barcha elementlardagi scrollbarlarni butunlay yashirish */
 * {
   -ms-overflow-style: none !important;
@@ -201,26 +265,34 @@
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
-.practice-message-own {
-  background-color: #4f46e5 !important;
-  color: #ffffff !important;
-  border: none !important;
-  box-shadow: 0 2px 6px rgba(79, 70, 229, 0.3);
-}
-
 .practice-messenger-chat-active {
-  background-color: #e5e7eb !important;
+  background-color: rgba(0, 0, 0, 0.08) !important;
+  color: inherit !important;
 }
 
 .practice-messenger-avatar,
 .practice-messenger-accent-icon,
 .practice-messenger-primary {
   background-color: #4f46e5 !important;
-  color: #fff !important;
+  color: #ffffff !important;
 }
 
 .practice-messenger-primary:hover {
   background-color: #4338ca !important;
+}
+
+.practice-message-incoming {
+  background-color: #ffffff !important;
+  color: #0f172a !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
+  border: 1px solid rgba(0, 0, 0, 0.06) !important;
+}
+
+.practice-message-own {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border: none !important;
 }
 
 .practice-message-incoming .practice-messenger-result {
@@ -235,8 +307,8 @@
 
 .practice-message-reply-incoming {
   border-color: #6366f1 !important;
-  background-color: #f8fafc !important;
-  color: #475569 !important;
+  background-color: #f1f5f9 !important;
+  color: #334155 !important;
 }
 
 .practice-message-reply-incoming>p:first-child {
@@ -250,36 +322,16 @@
 
 .practice-messenger-replying {
   border-color: #6366f1 !important;
-  background-color: #f1f5f9 !important;
+  background-color: #f8fafc !important;
 }
 
 .practice-messenger-replying-title {
   color: #4f46e5 !important;
 }
 
-.practice-message-date span {
-  background: rgb(248 250 252 / 0.9);
-  color: #64748b !important;
-  border: none !important;
-  box-shadow: 0 1px 4px rgb(15 23 42 / 0.05);
-}
-
-:root[data-theme="dark"] .practice-message-incoming {
-  background-color: #2b2d39 !important;
-  border: none !important;
-  color: #f8fafc !important;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
-}
-
-:root[data-theme="dark"] .practice-message-own {
-  background-color: #4f46e5 !important;
-  border: none !important;
-  color: #ffffff !important;
-  box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
-}
-
 :root[data-theme="dark"] .practice-messenger-chat-active {
-  background-color: #30313a !important;
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: inherit !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-avatar,
@@ -293,9 +345,23 @@
   background-color: #4338ca !important;
 }
 
+:root[data-theme="dark"] .practice-message-incoming {
+  background-color: #30313a !important;
+  color: #ffffff !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2) !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+}
+
+:root[data-theme="dark"] .practice-message-own {
+  background-color: #4f46e5 !important;
+  color: #ffffff !important;
+  box-shadow: none !important;
+  border: none !important;
+}
+
 :root[data-theme="dark"] .practice-message-incoming .practice-messenger-result {
-  background-color: #1e1f26 !important;
-  color: #f8fafc !important;
+  background-color: rgba(0, 0, 0, 0.2) !important;
+  color: #ffffff !important;
 }
 
 :root[data-theme="dark"] .practice-message-own .practice-messenger-result {
@@ -305,8 +371,8 @@
 
 :root[data-theme="dark"] .practice-message-reply-incoming {
   border-color: #818cf8 !important;
-  background-color: #1e1f26 !important;
-  color: #cbd5e1 !important;
+  background-color: rgba(0, 0, 0, 0.25) !important;
+  color: #e2e8f0 !important;
 }
 
 :root[data-theme="dark"] .practice-message-reply-incoming>p:first-child {
@@ -334,7 +400,7 @@
 
 :root[data-theme="dark"] .practice-messenger-replying {
   border-color: #818cf8 !important;
-  background-color: #2b2d39 !important;
+  background-color: #262730 !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-replying-title {
@@ -342,9 +408,9 @@
 }
 
 :root[data-theme="dark"] .practice-message-date span {
-  background: rgb(30 31 38 / 0.85);
-  color: #94a3b8 !important;
-  border: none !important;
+  background: #30313a;
+  color: #cbd5e1 !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
   box-shadow: none;
 }
 
@@ -369,63 +435,9 @@
     box-shadow: 0 2px 8px rgba(79, 70, 229, 0.35);
   }
 
-  :root:not([data-theme="light"]) .practice-messenger-chat-active {
-    background-color: #30313a !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-messenger-avatar,
-  :root:not([data-theme="light"]) .practice-messenger-accent-icon,
-  :root:not([data-theme="light"]) .practice-messenger-primary {
-    background-color: #4f46e5 !important;
-    color: #ffffff !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-messenger-primary:hover {
-    background-color: #4338ca !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-incoming .practice-messenger-result {
-    background-color: #1e1f26 !important;
-    color: #f8fafc !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-own .practice-messenger-result {
-    background-color: rgba(255, 255, 255, 0.2) !important;
-    color: #ffffff !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-reply-incoming {
-    border-color: #818cf8 !important;
-    background-color: #1e1f26 !important;
-    color: #cbd5e1 !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-reply-incoming>p:first-child {
-    color: #818cf8 !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-reply-incoming>p:last-child {
-    color: #cbd5e1 !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own {
-    background-color: rgba(255, 255, 255, 0.15) !important;
-    border-color: rgba(255, 255, 255, 0.9) !important;
-    color: #ffffff !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-message-own .practice-message-reply-own p {
-    color: #ffffff !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-messenger-highlighted {
-    background-color: rgb(79 70 229 / 0.25) !important;
-    box-shadow: 0 0 0 2px rgb(99 102 241 / 0.6);
-  }
-
   :root:not([data-theme="light"]) .practice-messenger-replying {
     border-color: #818cf8 !important;
-    background-color: #2b2d39 !important;
+    background-color: #262730 !important;
   }
 
   :root:not([data-theme="light"]) .practice-messenger-replying-title {
@@ -433,9 +445,9 @@
   }
 
   :root:not([data-theme="light"]) .practice-message-date span {
-    background: rgb(30 31 38 / 0.85);
-    color: #94a3b8 !important;
-    border: none !important;
+    background: #30313a;
+    color: #cbd5e1 !important;
+    border: 1px solid rgba(255, 255, 255, 0.08) !important;
     box-shadow: none;
   }
 
@@ -941,57 +953,91 @@ select::-ms-expand {
   color: #9ca3af;
 }
 
-.practice-messenger-root,
-.practice-messenger-list {
+.practice-messenger-root {
   background-color: #ffffff;
 }
 
-.practice-messenger-thread {
-  background-color: #f3f4f6 !important;
+.practice-messenger-list {
+  background-color: #ffffff !important;
+  border-right: 1px solid rgba(0, 0, 0, 0.08);
 }
 
-:root[data-theme="dark"] .practice-messenger-root,
+.practice-messenger-thread {
+  background-color: #eef2f7 !important;
+}
+
+.practice-messenger-header {
+  background-color: #ffffff !important;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.practice-messenger-composer {
+  background-color: #ffffff !important;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+:root[data-theme="dark"] .practice-messenger-root {
+  background-color: #30313a !important;
+}
+
 :root[data-theme="dark"] .practice-messenger-list {
-  background-color: #1e1f26 !important;
+  background-color: #30313a !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 :root[data-theme="dark"] .practice-messenger-thread {
-  background-color: #24252c !important;
+  background-color: #1a1b22 !important;
+}
+
+:root[data-theme="dark"] .practice-messenger-header {
+  background-color: #262730 !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+:root[data-theme="dark"] .practice-messenger-composer {
+  background-color: #262730 !important;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 }
 
 @media (max-width: 1024px) {
+
   .practice-messenger-root,
   .practice-messenger-list {
     background-color: transparent !important;
   }
+
   :root[data-theme="dark"] .practice-messenger-root,
   :root[data-theme="dark"] .practice-messenger-list {
     background-color: transparent !important;
   }
 }
 
+.practice-messenger-pins {
+  background-color: var(--card-bg);
+}
+
 :root[data-theme="dark"] .practice-messenger-pins {
-  background-color: #3a3c47 !important;
+  background-color: var(--card-bg) !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-pins:hover {
-  background-color: #454752 !important;
+  background-color: var(--card-hover) !important;
 }
 
 .practice-messenger-send-button:disabled {
-  background-color: #e5e7eb !important;
-  color: #9ca3af !important;
+  background-color: var(--card-hover) !important;
+  color: var(--text-muted) !important;
 }
 
 :root[data-theme="dark"] .practice-messenger-send-button:disabled {
-  background-color: #454752 !important;
-  color: #858995 !important;
+  background-color: var(--card-hover) !important;
+  color: var(--text-muted) !important;
 }
 
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) .practice-messenger-send-button:disabled {
-    background-color: #454752 !important;
-    color: #858995 !important;
+    background-color: var(--card-hover) !important;
+    color: var(--text-muted) !important;
   }
 }
 
@@ -1072,10 +1118,21 @@ select::-ms-expand {
 
 /* BlockNote quote rangi kutubxonada doimiy xira kulrang berilgan. Light va
    dark rejimlarda matn hamda chap chiziq kontrastini alohida sozlaymiz. */
-.course-editor blockquote,
-.lesson-reader-html blockquote {
-  color: #4b5563 !important;
-  border-left-color: #9ca3af !important;
+.lesson-reader-html {
+  color: var(--text-primary);
+}
+
+.lesson-reader-html strong,
+.lesson-reader-html b {
+  color: var(--text-primary);
+  font-weight: 700;
+}
+
+.lesson-reader-html h1,
+.lesson-reader-html h2,
+.lesson-reader-html h3,
+.lesson-reader-html h4 {
+  color: var(--text-primary);
 }
 
 .lesson-reader-html p,
@@ -1084,8 +1141,8 @@ select::-ms-expand {
 .lesson-reader-html .bn-block-content,
 .lesson-reader-html .bn-inline-content,
 .lesson-reader-html [data-content-type] {
-  width: fit-content !important;
-  max-width: 100% !important;
+  width: 100%;
+  max-width: 100%;
 }
 
 .lesson-reader-html iframe,
@@ -1466,24 +1523,6 @@ select::-ms-expand {
     background-color: #3a3c47 !important;
   }
 
-  @media (min-width: 1025px) {
-    :root:not([data-theme="light"]) .practice-messenger-root,
-    :root:not([data-theme="light"]) .practice-messenger-list,
-    :root:not([data-theme="light"]) .practice-messenger-thread,
-    :root:not([data-theme="light"]) .practice-messenger-header,
-    :root:not([data-theme="light"]) .practice-messenger-composer {
-      background-color: #30313a !important;
-    }
-  }
-
-  :root:not([data-theme="light"]) .practice-messenger-pins {
-    background-color: #3a3c47 !important;
-  }
-
-  :root:not([data-theme="light"]) .practice-messenger-pins:hover {
-    background-color: #454752 !important;
-  }
-
   :root:not([data-theme="light"]) .bg-indigo-50,
   :root:not([data-theme="light"]) .bg-indigo-50\/30,
   :root:not([data-theme="light"]) .bg-indigo-50\/40,
@@ -1629,7 +1668,7 @@ select::-ms-expand {
    wrapperini canvas bilan birlashtiramiz. Faqat main'ning bevosita bolasi
    nishonga olinadi — ichki kartalar, modallar va input surface'lari oq qoladi. */
 @media (max-width: 1024px) {
-  .student-main-content > .bg-white {
+  .student-main-content>.bg-white {
     background-color: transparent !important;
   }
 }
@@ -1663,6 +1702,7 @@ select::-ms-expand {
     padding: 0;
     margin: 0 0 1.25rem 0;
   }
+
   :root[data-theme="dark"] .student-page-header {
     background-color: transparent !important;
     border-bottom: none !important;
@@ -1677,81 +1717,99 @@ select::-ms-expand {
 
 @media (min-width: 1025px) {
   .student-responsive-panel {
-    border-radius: 1rem;
-    background-color: #ffffff;
+    border-radius: 1.5rem;
+    background-color: var(--glass-card-bg);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+    box-shadow: var(--glass-card-shadow);
+    color: var(--text-primary);
   }
 
-  .student-responsive-panel > .student-responsive-panel-section {
+  .student-responsive-panel>.student-responsive-panel-section {
     background-color: transparent !important;
   }
 
   .student-responsive-card,
   .student-responsive-panel .student-course-card,
   .student-responsive-panel .student-responsive-card {
-    border: 1px solid #e2e8f0 !important;
-    background-color: #f3f4f6 !important;
-    box-shadow: none !important;
+    border: 1px solid rgba(0, 0, 0, 0.06) !important;
+    background-color: #ffffff !important;
+    color: var(--text-primary) !important;
+    box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.04) !important;
   }
 
   .student-responsive-card:hover,
   .student-responsive-panel .student-course-card:hover,
   .student-responsive-panel .student-responsive-card:hover {
-    border-color: #cbd5e1 !important;
-    background-color: #e5e7eb !important;
-    box-shadow: none !important;
-  }
-
-  :root[data-theme="dark"] .student-responsive-panel {
-    background-color: #30313a;
+    border-color: rgba(0, 0, 0, 0.10) !important;
+    background-color: #ffffff !important;
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.06), 0 2px 4px -2px rgba(0, 0, 0, 0.04) !important;
   }
 
   :root[data-theme="dark"] .student-responsive-card,
   :root[data-theme="dark"] .student-responsive-panel .student-course-card,
   :root[data-theme="dark"] .student-responsive-panel .student-responsive-card {
-    border-color: #3f414c !important;
-    background-color: #24252c !important;
-    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.08) !important;
+    background-color: rgba(255, 255, 255, 0.04) !important;
+    box-shadow: 0 4px 12px -2px rgba(0, 0, 0, 0.25) !important;
   }
 
   :root[data-theme="dark"] .student-responsive-card:hover,
   :root[data-theme="dark"] .student-responsive-panel .student-course-card:hover,
   :root[data-theme="dark"] .student-responsive-panel .student-responsive-card:hover {
-    border-color: #525462 !important;
-    background-color: #292a32 !important;
-    box-shadow: none !important;
+    border-color: rgba(255, 255, 255, 0.14) !important;
+    background-color: rgba(255, 255, 255, 0.07) !important;
   }
 }
 
-@media (prefers-color-scheme: dark) and (min-width: 1025px) {
-  :root:not([data-theme="light"]) .student-responsive-panel {
-    background-color: #30313a;
-  }
-
-  :root:not([data-theme="light"])
-    .student-responsive-panel
-    .student-course-card,
-  :root:not([data-theme="light"])
-    .student-responsive-panel
-    .student-responsive-card {
-    border-color: #3f414c !important;
-    background-color: #24252c !important;
-  }
-
-  :root:not([data-theme="light"])
-    .student-responsive-panel
-    .student-course-card:hover,
-  :root:not([data-theme="light"])
-    .student-responsive-panel
-    .student-responsive-card:hover {
-    background-color: #292a32 !important;
-  }
+/* ==========================================================================
+   Global Glassmorphic Utilities (Ultra-easy to use everywhere)
+   ========================================================================== */
+.glass,
+.glassContainer {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: none;
+  box-shadow: var(--glass-shadow);
+  color: var(--text-primary);
 }
 
-@media (prefers-color-scheme: dark) {
-  :root:not([data-theme="light"]) .student-course-card,
-  :root:not([data-theme="light"]) .challenge-detail-card,
-  :root:not([data-theme="light"]) .challenge-detail-card:hover {
-    border-color: #454752 !important;
-    background-color: #30313a !important;
-  }
+.glass-panel {
+  background-color: var(--glass-panel-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(160%);
+  border: none;
+  box-shadow: var(--glass-panel-shadow);
+  color: var(--text-primary);
+}
+
+.glass-card {
+  background-color: var(--glass-card-bg);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  backdrop-filter: blur(16px) saturate(160%);
+  border: none;
+  box-shadow: var(--glass-card-shadow);
+  border-radius: 1.25rem;
+  color: var(--text-primary);
+  transition: all 0.2s ease-in-out;
+}
+
+.glass-btn {
+  background-color: var(--glass-bg);
+  -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  backdrop-filter: blur(var(--glass-blur)) saturate(150%);
+  border: none;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+  color: var(--text-primary);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.glass-btn:hover {
+  filter: brightness(1.05);
+  transform: translateY(-1px);
 }

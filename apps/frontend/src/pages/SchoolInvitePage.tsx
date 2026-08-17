@@ -49,7 +49,7 @@ export function SchoolInvitePage() {
     return (
       <AppShell>
         <div className="flex min-h-screen items-center justify-center">
-          <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+          <p className="text-xs font-semibold text-[var(--text-muted)]">Yuklanmoqda...</p>
         </div>
       </AppShell>
     );
@@ -57,56 +57,63 @@ export function SchoolInvitePage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-2 p-6 sm:flex-row">
-        <div className="min-w-0 flex-1">
-          <h1 className="mb-1 text-lg font-bold text-gray-800">Ro'yxatdan o'tish</h1>
-          <p className="mb-4 text-sm text-gray-400">
-            Ushbu havola orqali o'quvchilar maktabingizga ro'yxatdan o'tishlari mumkin
-          </p>
-
-          <div className="mb-4 rounded-2xl bg-white p-5">
-            <p className="mb-1.5 text-sm text-gray-500">Taklif havolasi</p>
-            <div className="flex items-center gap-2">
-              <input
-                readOnly
-                value={inviteLink}
-                className="w-full min-w-0 flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-              />
-              <button
-                type="button"
-                onClick={handleCopy}
-                className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
-              >
-                {copied ? <Check size={16} /> : <Copy size={16} />}
-                {copied ? 'Nusxalandi!' : 'Nusxalash'}
-              </button>
-            </div>
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          {/* Top Header */}
+          <div className="px-1 py-1">
+            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Ro'yxatdan o'tish</h1>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+              Ushbu havola orqali o'quvchilar maktabingizga ro'yxatdan o'tishlari mumkin
+            </p>
           </div>
 
-          <div className="rounded-2xl bg-white p-5">
-            <h2 className="mb-4 text-lg font-bold text-gray-800">Amallar</h2>
-            <button
-              type="button"
-              onClick={() => setConfirmRegenerate(true)}
-              disabled={inviteRegenerationsRemaining <= 0}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:bg-gray-100 disabled:text-gray-400"
-            >
-              <RotateCcw size={16} /> Havolani yangilash
-            </button>
-            <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs">
-              <span className={inviteRegenerationsRemaining > 0 ? 'text-gray-400' : 'font-medium text-red-500'}>
-                24 soat ichida yana {inviteRegenerationsRemaining} marta yangilash mumkin
-              </span>
-              {inviteRegenerationResetAt && inviteRegenerationsRemaining <= 0 && (
-                <span className="text-gray-400">
-                  Qayta ochiladi: {new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(inviteRegenerationResetAt))}
-                </span>
-              )}
+          <div className="flex flex-col gap-3 sm:flex-row items-start">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs space-y-3">
+                <p className="text-xs font-bold text-[var(--text-primary)]">Taklif havolasi</p>
+                <div className="flex items-center gap-2">
+                  <input
+                    readOnly
+                    value={inviteLink}
+                    className="w-full min-w-0 flex-1 rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCopy}
+                    className="inline-flex shrink-0 items-center justify-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
+                  >
+                    {copied ? <Check size={15} /> : <Copy size={15} />}
+                    {copied ? 'Nusxalandi!' : 'Nusxalash'}
+                  </button>
+                </div>
+              </div>
+
+              <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                <h2 className="mb-3 text-xs font-bold text-[var(--text-primary)]">Amallar</h2>
+                <button
+                  type="button"
+                  onClick={() => setConfirmRegenerate(true)}
+                  disabled={inviteRegenerationsRemaining <= 0}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 transition-colors hover:bg-red-500/20 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                >
+                  <RotateCcw size={15} /> Havolani yangilash
+                </button>
+                <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-[11px]">
+                  <span className={inviteRegenerationsRemaining > 0 ? 'text-[var(--text-muted)] font-medium' : 'font-semibold text-red-500'}>
+                    24 soat ichida yana {inviteRegenerationsRemaining} marta yangilash mumkin
+                  </span>
+                  {inviteRegenerationResetAt && inviteRegenerationsRemaining <= 0 && (
+                    <span className="text-[var(--text-muted)] font-medium">
+                      Qayta ochiladi: {new Intl.DateTimeFormat('uz-UZ', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' }).format(new Date(inviteRegenerationResetAt))}
+                    </span>
+                  )}
+                </div>
+              </div>
             </div>
+
+            <SchoolSidePanel />
           </div>
         </div>
-
-        <SchoolSidePanel />
       </div>
 
       {confirmRegenerate && (

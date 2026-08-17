@@ -71,30 +71,86 @@ export function AddStudentModal({ onClose, onSubmit }: AddStudentModalProps) {
   }
 
   return (
-    <div className="fixed inset-0 z-[120] flex items-center justify-center bg-black/50 p-4 backdrop-blur-sm" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
-      <div className="w-full max-w-md rounded-2xl bg-white p-5 text-gray-900 shadow-2xl sm:p-6">
+    <div
+      className="fixed inset-0 z-[120] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget && !saving) onClose();
+      }}
+    >
+      <div className="glass-card w-full max-w-md rounded-3xl p-6 shadow-2xl animate-in zoom-in-95 duration-150 text-[var(--text-primary)]">
         <div className="mb-5 flex items-center justify-between">
           <div>
-            <h2 className="text-lg font-bold">O'quvchi qo'shish</h2>
-            <p className="mt-1 text-xs text-gray-400">O'quvchi avtomatik ravishda maktabingizga qo'shiladi.</p>
+            <h2 className="text-lg font-bold text-[var(--text-primary)]">O'quvchi qo'shish</h2>
+            <p className="mt-1 text-xs font-medium text-[var(--text-muted)]">O'quvchi avtomatik ravishda maktabingizga qo'shiladi.</p>
           </div>
-          <button type="button" onClick={onClose} disabled={saving} className="rounded-full p-2 text-gray-400 hover:bg-gray-100 disabled:opacity-40" aria-label="Yopish">
+          <button
+            type="button"
+            onClick={onClose}
+            disabled={saving}
+            className="flex h-9 w-9 items-center justify-center rounded-full text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors disabled:opacity-40 cursor-pointer"
+            aria-label="Yopish"
+          >
             <X size={18} />
           </button>
         </div>
-        <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-          <input autoFocus value={name} onChange={(event) => setName(event.target.value)} placeholder="Ism" maxLength={120} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
-          <input value={phone} onChange={(event) => setPhone(maskUzPhone(event.target.value))} placeholder="+998 XX XXX XX XX" maxLength={17} inputMode="tel" autoComplete="tel" className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3">
+          <input
+            autoFocus
+            value={name}
+            onChange={(event) => setName(event.target.value)}
+            placeholder="Ism va familiya"
+            maxLength={120}
+            className="w-full rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 px-4 py-3 text-xs sm:text-sm font-semibold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/30 transition-all"
+          />
+
+          <input
+            value={phone}
+            onChange={(event) => setPhone(maskUzPhone(event.target.value))}
+            placeholder="+998 XX XXX XX XX"
+            maxLength={17}
+            inputMode="tel"
+            autoComplete="tel"
+            className="w-full rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 px-4 py-3 text-xs sm:text-sm font-semibold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/30 transition-all"
+          />
+
           <div className="relative">
-            <input value={password} onChange={(event) => setPassword(event.target.value)} placeholder="Parol" type={showPassword ? "text" : "password"} maxLength={128} className="w-full rounded-xl border border-border bg-gray-50 px-4 py-3 pr-11 text-sm outline-none focus:border-indigo-400 focus:bg-white" />
-            <button type="button" onClick={() => setShowPassword((value) => !value)} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400" aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}>
+            <input
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="Parol"
+              type={showPassword ? "text" : "password"}
+              maxLength={128}
+              className="w-full rounded-2xl border border-black/10 dark:border-white/10 bg-black/5 dark:bg-white/5 px-4 py-3 pr-11 text-xs sm:text-sm font-semibold text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:ring-2 focus:ring-indigo-500/30 transition-all"
+            />
+            <button
+              type="button"
+              onClick={() => setShowPassword((value) => !value)}
+              className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
+              aria-label={showPassword ? "Parolni yashirish" : "Parolni ko'rsatish"}
+            >
               {showPassword ? <EyeOff size={17} /> : <Eye size={17} />}
             </button>
           </div>
-          {error && <p className="text-xs font-medium text-red-500">{error}</p>}
-          <div className="mt-2 flex justify-end gap-2">
-            <button type="button" onClick={onClose} disabled={saving} className="rounded-xl px-4 py-2.5 text-sm font-semibold text-gray-500 hover:bg-gray-100 disabled:opacity-40">Bekor qilish</button>
-            <button type="submit" disabled={saving} className="rounded-xl bg-indigo-500 px-5 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 disabled:cursor-not-allowed disabled:opacity-50">{saving ? "Yaratilmoqda..." : "Yaratish"}</button>
+
+          {error && <p className="text-xs font-semibold text-red-500 mt-1">{error}</p>}
+
+          <div className="mt-2 flex justify-end gap-2.5">
+            <button
+              type="button"
+              onClick={onClose}
+              disabled={saving}
+              className="rounded-xl px-4 py-2.5 text-xs sm:text-sm font-bold text-[var(--text-primary)] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 transition-colors disabled:opacity-40 cursor-pointer"
+            >
+              Bekor qilish
+            </button>
+            <button
+              type="submit"
+              disabled={saving}
+              className="rounded-xl bg-indigo-600 px-5 py-2.5 text-xs sm:text-sm font-bold text-white shadow-md shadow-indigo-600/30 hover:bg-indigo-500 transition-all disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
+            >
+              {saving ? "Yaratilmoqda..." : "Yaratish"}
+            </button>
           </div>
         </form>
       </div>

@@ -225,13 +225,13 @@ export function ClassroomReplayPage() {
           className="absolute right-3 top-3 z-30 flex items-start gap-1.5 transition-transform duration-300 ease-in-out"
           style={{ transform: controlsVisible ? "translateY(0)" : "translateY(-150%)" }}
         >
-          <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`flex h-[29px] items-center gap-1 rounded-full border px-2 text-[11px] font-medium shadow-md backdrop-blur transition-colors ${attendanceOpen ? "border-indigo-200 bg-indigo-100 text-indigo-700" : "border-gray-100 bg-white/95 text-gray-600 hover:bg-white"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
+          <button type="button" onClick={() => setAttendanceOpen((open) => !open)} className={`glass flex h-8 items-center gap-1.5 rounded-full px-3 text-[11px] font-semibold shadow-md transition-all active:scale-95 cursor-pointer ${attendanceOpen ? "text-indigo-600 dark:text-indigo-400 bg-black/10 dark:bg-white/15" : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"}`} aria-label="Davomatni ochish" aria-expanded={attendanceOpen}>
             <Users size={14} /> <span className="hidden sm:inline">Davomat</span>
           </button>
-          <button type="button" onClick={() => setDownloadModalOpen(true)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Yuklab olish" title="Yuklab olish">
+          <button type="button" onClick={() => setDownloadModalOpen(true)} className="glass flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer" aria-label="Yuklab olish" title="Yuklab olish">
             <Download size={14} />
           </button>
-          <button type="button" onClick={() => navigate(-1)} className="flex h-[29px] w-[29px] items-center justify-center rounded-full border border-gray-100 bg-white/95 text-gray-600 shadow-md backdrop-blur hover:bg-white" aria-label="Replay'dan chiqish" title="Chiqish">
+          <button type="button" onClick={() => navigate(-1)} className="glass flex h-8 w-8 items-center justify-center rounded-full text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-red-500/10 hover:text-red-600 cursor-pointer" aria-label="Replay'dan chiqish" title="Chiqish">
             <X size={15} />
           </button>
         </div>

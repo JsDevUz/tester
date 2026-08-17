@@ -24,26 +24,31 @@ function PracticeToggleCard({
   onToggle: () => void;
 }) {
   return (
-    <div className="flex items-center gap-2 rounded-2xl bg-white p-4">
-      <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gray-100 text-gray-700">
-        <Brain size={18} />
+    <div className="flex items-center gap-2.5 rounded-2xl bg-[var(--surface-bg)] p-3.5 shadow-xs">
+      <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
+        <Brain size={16} />
       </div>
       <div className="min-w-0 flex-1">
-        <p className="truncate text-sm font-semibold text-gray-800">
+        <p className="truncate text-xs font-bold text-[var(--text-primary)]">
           Darsning amaliy qismi
         </p>
-        <p className="truncate text-xs text-gray-400">
+        <p className="truncate text-[11px] font-medium text-[var(--text-muted)] mt-0.5">
           Bilimlarni mustahkamlash
         </p>
       </div>
       <button
         type="button"
+        role="switch"
+        aria-checked={enabled}
         onClick={onToggle}
-        className={`relative inline-block h-6 w-11 shrink-0 rounded-full p-0 transition-colors ${enabled ? "bg-gray-900" : "bg-gray-200"}`}
+        className={`relative inline-flex h-6 w-11 shrink-0 items-center rounded-full transition-colors cursor-pointer focus:outline-none ${
+          enabled ? "bg-indigo-600" : "bg-gray-300 dark:bg-zinc-700"
+        }`}
       >
         <span
-          className={`absolute top-0.5 block h-5 w-5 rounded-full bg-white shadow transition-transform ${enabled ? "translate-x-5" : "translate-x-0.5"
-            }`}
+          className={`inline-block h-5 w-5 rounded-full bg-white shadow-md transition-transform ${
+            enabled ? "translate-x-5.5" : "translate-x-0.5"
+          }`}
         />
       </button>
     </div>
@@ -217,9 +222,9 @@ export function LessonEditorView({
   }
 
   return (
-    <div className="flex flex-col gap-2 p-6 lg:flex-row">
-      <div className="min-w-0 flex-1">
-        <div className="mx-auto min-w-0 max-w-5xl">
+    <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+      <div className="flex min-h-full flex-col gap-3">
+        <div className="px-1 py-1">
           <Breadcrumb
             items={[
               { label: "Kurslar", onClick: onBackToList },
@@ -228,160 +233,151 @@ export function LessonEditorView({
               { label: lesson.title },
             ]}
           />
-          <div className="mb-6 flex items-center justify-between gap-2">
-            <div className="min-w-0 flex-1">
+        </div>
+
+        <div className="flex flex-col gap-3 sm:flex-row items-start">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
               <input
                 value={lesson.title}
                 onChange={(e) =>
                   void renameLesson(courseId, moduleId, lessonId, e.target.value)
                 }
-                className="min-w-0 w-full rounded-xl bg-transparent px-1 py-1 text-xl font-bold text-gray-900 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
+                className="min-w-0 w-full rounded-xl bg-black/5 dark:bg-black/25 border border-black/10 dark:border-white/10 px-4 py-2.5 text-base sm:text-lg font-bold text-[var(--text-primary)] outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
               />
-              <p className="mt-1 px-1 text-xs font-medium text-gray-400">
+              <p className="mt-1.5 px-1 text-xs font-medium text-[var(--text-muted)]">
                 Dars nomini o'zgartirish uchun sarlavha ustiga bosing.
               </p>
             </div>
+
+            {activeTab === "content" ? (
+              <>
+                <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                  <p className="mb-1 text-xs font-bold text-[var(--text-primary)]">
+                    Darsni tamomlash uchun yulduz
+                  </p>
+                  <p className="mb-3 text-[11px] font-medium text-[var(--text-muted)]">
+                    O'quvchi darsni tugatganda beriladigan ball. Amaliyot balidan mustaqil.
+                  </p>
+                  <input
+                    type="number"
+                    min={0}
+                    value={lesson.completionScore ?? ""}
+                    onChange={(e) => {
+                      const raw = e.target.value;
+                      if (raw === "") {
+                        void setLessonCompletionScore(courseId, moduleId, lessonId, null);
+                        return;
+                      }
+                      const num = Number(raw);
+                      if (isNaN(num)) return;
+                      void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
+                    }}
+                    placeholder="Masalan: 5"
+                    className="w-full rounded-xl bg-black/5 dark:bg-black/25 border border-black/10 dark:border-white/10 py-2.5 px-4 text-xs font-medium text-[var(--text-primary)] outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
+                  />
+                </div>
+
+                {lesson.blocks.length === 0 && (
+                  <div className="rounded-2xl bg-[var(--surface-bg)] py-14 text-center shadow-xs">
+                    <NotebookPen
+                      size={30}
+                      className="mx-auto mb-2 text-[var(--text-muted)] opacity-40"
+                    />
+                    <p className="text-xs font-bold text-[var(--text-primary)]">
+                      Bu dars hozircha bo'sh
+                    </p>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                      Pastdagi tugmalar orqali bloklar qo'shing
+                    </p>
+                  </div>
+                )}
+
+                {lesson.blocks.length > 0 && (
+                  <div className="flex flex-col gap-2">
+                    {lesson.blocks.map((block, index) => (
+                      <ContentBlockView
+                        key={block.id}
+                        index={index}
+                        isFirst={index === 0}
+                        isLast={index === lesson.blocks.length - 1}
+                        block={block}
+                        collapsed={collapsedBlockIds.has(block.id)}
+                        onToggleCollapse={() => toggleCollapse(block.id)}
+                        onChangeHtml={(html) => handleChangeBlockHtml(block.id, html)}
+                        onChangeEmbedUrl={(embedUrl) => handleChangeBlockEmbedUrl(block.id, embedUrl)}
+                        onChangeLabel={(label) => handleChangeBlockLabel(block.id, label)}
+                        onChangeButtonProps={(data) => void updateBlock(courseId, moduleId, lessonId, block.id, data)}
+                        onAddMessageLine={() => void addMessageLine(courseId, moduleId, lessonId, block.id)}
+                        onChangeMessageLine={(lineId, text) => void updateMessageLine(courseId, moduleId, lessonId, block.id, lineId, text)}
+                        onRemoveMessageLine={(lineId) => void removeMessageLine(courseId, moduleId, lessonId, block.id, lineId)}
+                        onMoveMessageLine={(lineId, direction) => void moveMessageLine(courseId, moduleId, lessonId, block.id, lineId, direction)}
+                        onPickFile={(file) => handleBlockPickFile(block.id, file)}
+                        onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
+                        onUploadSubtitle={(file) => void uploadSubtitleBlock(courseId, moduleId, lessonId, block.id, file)}
+                        onRemoveSubtitle={() => void removeSubtitleBlock(courseId, moduleId, lessonId, block.id)}
+                        onRemove={() => void removeBlock(courseId, moduleId, lessonId, block.id)}
+                        onMoveUp={() => void moveBlock(courseId, moduleId, lessonId, block.id, "up")}
+                        onMoveDown={() => void moveBlock(courseId, moduleId, lessonId, block.id, "down")}
+                      />
+                    ))}
+                  </div>
+                )}
+
+                <div className="pt-2">
+                  <p className="mb-2.5 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] px-1">
+                    Blok qo'shish {lesson.blocks.length > 0 && `(${lesson.blocks.length}/30)`}
+                  </p>
+                  {contentLimitReached && (
+                    <p className="mb-3 rounded-xl bg-amber-500/10 px-3 py-2 text-xs font-medium text-amber-600 dark:text-amber-400">
+                      Bitta darsga maksimal 30 ta blok qo'shish mumkin. Yangi blok qo'shish uchun avval mavjud bloklardan birini o'chiring.
+                    </p>
+                  )}
+                  <BlockPicker
+                    onPickEditor={handlePickEditor}
+                    onPickFile={handlePickFile}
+                    onPickFileFromLibrary={handlePickFileFromLibrary}
+                    onPickLiveClass={handlePickLiveClass}
+                    onPickButton={handlePickButton}
+                    onPickMessage={handlePickMessage}
+                    disabled={contentLimitReached}
+                    limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
+                  />
+                </div>
+              </>
+            ) : (
+              <PracticeSection
+                courseId={courseId}
+                moduleId={moduleId}
+                lessonId={lessonId}
+              />
+            )}
           </div>
 
-          {activeTab === "content" ? (
-            <>
-              <div className="mb-4 rounded-2xl bg-white p-4">
-                <p className="mb-1.5 text-sm font-semibold text-gray-700">
-                  Darsni tamomlash uchun yulduz
-                </p>
-                <p className="mb-3 text-xs text-gray-400">
-                  O'quvchi darsni tugatganda beriladigan ball. Amaliyot balidan mustaqil.
-                </p>
-                <input
-                  type="number"
-                  min={0}
-                  value={lesson.completionScore ?? ""}
-                  onChange={(e) => {
-                    const raw = e.target.value;
-                    if (raw === "") {
-                      void setLessonCompletionScore(courseId, moduleId, lessonId, null);
-                      return;
-                    }
-                    const num = Number(raw);
-                    if (isNaN(num)) return;
-                    void setLessonCompletionScore(courseId, moduleId, lessonId, Math.max(0, num));
-                  }}
-                  placeholder="Masalan: 5"
-                  className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-                />
-              </div>
-
-              {lesson.blocks.length === 0 && (
-                <div className="mb-6 rounded-2xl bg-white py-14 text-center">
-                  <NotebookPen
-                    size={30}
-                    className="mx-auto mb-3 text-gray-300"
-                  />
-                  <p className="text-sm font-semibold text-gray-700">
-                    Ichki kontentini to'ldiring
-                  </p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    Bu yer hozircha bo'sh, pastroqda birinchi blokni qo'shing
-                  </p>
-                </div>
-              )}
-
-              {lesson.blocks.length > 0 && (
-                <div className="mb-6 flex flex-col gap-2">
-                  {lesson.blocks.map((block, index) => (
-                    <ContentBlockView
-                      key={block.id}
-                      index={index}
-                      isFirst={index === 0}
-                      isLast={index === lesson.blocks.length - 1}
-                      block={block}
-                      collapsed={collapsedBlockIds.has(block.id)}
-                      onToggleCollapse={() => toggleCollapse(block.id)}
-                      onChangeHtml={(html) =>
-                        handleChangeBlockHtml(block.id, html)
-                      }
-                      onChangeEmbedUrl={(embedUrl) =>
-                        handleChangeBlockEmbedUrl(block.id, embedUrl)
-                      }
-                      onChangeLabel={(label) =>
-                        handleChangeBlockLabel(block.id, label)
-                      }
-                      onChangeButtonProps={(data) =>
-                        void updateBlock(courseId, moduleId, lessonId, block.id, data)
-                      }
-                      onAddMessageLine={() => void addMessageLine(courseId, moduleId, lessonId, block.id)}
-                      onChangeMessageLine={(lineId, text) =>
-                        void updateMessageLine(courseId, moduleId, lessonId, block.id, lineId, text)
-                      }
-                      onRemoveMessageLine={(lineId) =>
-                        void removeMessageLine(courseId, moduleId, lessonId, block.id, lineId)
-                      }
-                      onMoveMessageLine={(lineId, direction) =>
-                        void moveMessageLine(courseId, moduleId, lessonId, block.id, lineId, direction)
-                      }
-                      onPickFile={(file) => handleBlockPickFile(block.id, file)}
-                      onRetryVideo={() => void retryVideoBlock(courseId, moduleId, lessonId, block.id)}
-                      onUploadSubtitle={(file) => void uploadSubtitleBlock(courseId, moduleId, lessonId, block.id, file)}
-                      onRemoveSubtitle={() => void removeSubtitleBlock(courseId, moduleId, lessonId, block.id)}
-                      onRemove={() =>
-                        void removeBlock(courseId, moduleId, lessonId, block.id)
-                      }
-                      onMoveUp={() =>
-                        void moveBlock(courseId, moduleId, lessonId, block.id, "up")
-                      }
-                      onMoveDown={() =>
-                        void moveBlock(courseId, moduleId, lessonId, block.id, "down")
-                      }
-                    />
-                  ))}
-                </div>
-              )}
-
-              <BlockPicker
-                onPickEditor={handlePickEditor}
-                onPickFile={handlePickFile}
-                onPickFileFromLibrary={handlePickFileFromLibrary}
-                onPickLiveClass={handlePickLiveClass}
-                onPickButton={handlePickButton}
-                onPickMessage={handlePickMessage}
-                disabled={contentLimitReached}
-                limitText={`Kontentda maksimal ${CONTENT_BLOCK_LIMIT} ta blok`}
-              />
-            </>
-          ) : (
-            <PracticeSection
-              courseId={courseId}
-              moduleId={moduleId}
-              lessonId={lessonId}
+          <div className="flex w-full shrink-0 flex-col gap-2 sm:w-68">
+            <PracticeToggleCard
+              enabled={lesson.practiceEnabled}
+              onToggle={handleTogglePractice}
             />
-          )}
+            <CourseSidePanel
+              onBackToList={onBackToList}
+              variant="lesson"
+              practiceEnabled={lesson.practiceEnabled}
+              activeTab={activeTab}
+              onSelectContent={() => setActiveTab("content")}
+              onSelectPractice={() => setActiveTab("practice")}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="sticky top-6 self-start w-full shrink-0 lg:mt-25 lg:w-72">
-        <div className="mb-3">
-          <PracticeToggleCard
-            enabled={lesson.practiceEnabled}
-            onToggle={handleTogglePractice}
+        {liveClassPickerOpen && (
+          <LiveClassPickerModal
+            courseId={courseId}
+            onSelect={handleSelectLiveClass}
+            onClose={() => setLiveClassPickerOpen(false)}
           />
-        </div>
-        <CourseSidePanel
-          onBackToList={onBackToList}
-          variant="lesson"
-          practiceEnabled={lesson.practiceEnabled}
-          activeTab={activeTab}
-          onSelectContent={() => setActiveTab("content")}
-          onSelectPractice={() => setActiveTab("practice")}
-        />
+        )}
       </div>
-
-      {liveClassPickerOpen && (
-        <LiveClassPickerModal
-          courseId={courseId}
-          onSelect={handleSelectLiveClass}
-          onClose={() => setLiveClassPickerOpen(false)}
-        />
-      )}
     </div>
   );
 }

@@ -11,21 +11,21 @@ interface BreadcrumbProps {
 
 export function Breadcrumb({ items }: BreadcrumbProps) {
   return (
-    <div className="mb-4 flex flex-wrap items-center gap-1.5 text-sm">
+    <div className="flex flex-wrap items-center gap-1.5 text-xs font-semibold">
       {items.map((item, i) => {
         const isLast = i === items.length - 1;
         return (
           <span key={i} className="flex items-center gap-1.5">
-            {i > 0 && <ChevronRight size={14} className="shrink-0 text-gray-300" />}
+            {i > 0 && <ChevronRight size={13} className="shrink-0 text-[var(--text-muted)] opacity-60" />}
             {isLast || !item.onClick ? (
-              <span className={isLast ? 'font-semibold text-gray-800' : 'text-gray-400'}>
+              <span className={isLast ? 'font-bold text-[var(--text-primary)]' : 'text-[var(--text-muted)]'}>
                 {item.label}
               </span>
             ) : (
               <button
                 type="button"
                 onClick={item.onClick}
-                className="text-gray-400 transition-colors hover:text-gray-700"
+                className="text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] cursor-pointer"
               >
                 {item.label}
               </button>

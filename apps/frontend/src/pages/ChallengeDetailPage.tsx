@@ -452,22 +452,22 @@ export function ChallengeDetailPage() {
       </div>
 
       {requiredTestModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-2xl dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 animate-in fade-in zoom-in-95 duration-150">
-            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-50 dark:bg-amber-950/40">
-              <ClipboardCheck size={24} className="text-amber-600 dark:text-amber-400" />
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150" onClick={(e) => { if (e.target === e.currentTarget) setRequiredTestModal(null); }}>
+          <div className="glass-card w-full max-w-md rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150">
+            <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-amber-500/10 text-amber-600 dark:text-amber-400">
+              <ClipboardCheck size={24} />
             </div>
-            <h3 className="text-center text-lg font-extrabold text-gray-900 dark:text-white">
+            <h3 className="text-center text-base font-bold text-[var(--text-primary)] tracking-tight">
               Majburiy test mavjud
             </h3>
-            <p className="mt-2 text-center text-sm leading-relaxed text-gray-600 dark:text-zinc-300">
+            <p className="mt-2 text-center text-xs leading-relaxed text-[var(--text-muted)] font-medium">
               Ushbu bet uchun {requiredTestModal.name ? `"${requiredTestModal.name}"` : ""} testi mavjud. Testni ishlasangiz, kiritilgan bet qabul qilinadi. Testni boshlaysizmi?
             </p>
             <div className="mt-6 flex gap-3">
               <button
                 type="button"
                 onClick={() => setRequiredTestModal(null)}
-                className="flex-1 rounded-xl bg-gray-100 py-3 text-xs font-bold text-gray-700 hover:bg-gray-200 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700 transition-colors"
+                className="flex-1 rounded-xl px-4 py-2.5 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -478,7 +478,7 @@ export function ChallengeDetailPage() {
                   setRequiredTestModal(null);
                   navigate(`/t/${slug}`);
                 }}
-                className="flex-1 rounded-xl bg-indigo-600 py-3 text-xs font-bold text-white shadow-sm hover:bg-indigo-700 transition-colors"
+                className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 Testni boshlash
               </button>

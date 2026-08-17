@@ -309,7 +309,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
                       type="button"
                       onClick={() => void fullscreen.toggle()}
                       title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
-                      className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                      className="glass flex items-center justify-center rounded-full px-2.5 py-1.5 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
                     >
                       {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>

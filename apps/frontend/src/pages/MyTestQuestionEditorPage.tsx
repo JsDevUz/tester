@@ -1,10 +1,11 @@
 import { useEffect, useState } from "react";
 import { useParams, useNavigate } from "react-router-dom";
-import { Check, Circle, Pencil, Trash2, X, Image, Music, ArrowLeft } from "lucide-react";
+import { Check, Pencil, Trash2, X, Image, Music, ArrowLeft } from "lucide-react";
 import { StudentShell } from "../components/student/StudentShell";
 import { QuestionForm } from "../components/QuestionForm";
 import { BulkImportTab } from "../components/BulkImportTab";
 import { SegmentedControl } from "../components/student/SegmentedControl";
+import { ConfirmDeleteModal } from "../components/course/ConfirmDeleteModal";
 import {
   apiGetStudentTest,
   apiAddStudentQuestion,
@@ -45,14 +46,14 @@ function InlineQuestionCard({
 
   if (editing) {
     return (
-      <div className="bg-white rounded-xl border border-gray-300 p-4">
+      <div className="glass-card rounded-2xl p-4 transition-all text-[var(--text-primary)]">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-400">
+          <span className="text-xs font-semibold text-[var(--text-muted)]">
             {index + 1}. savol — tahrirlash
           </span>
           <button
             onClick={() => setEditing(false)}
-            className="text-gray-300 hover:text-gray-500"
+            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -74,25 +75,25 @@ function InlineQuestionCard({
   }
 
   return (
-    <div className="bg-white rounded-xl border border-gray-100 p-4 hover:border-gray-200 transition-colors">
+    <div className="glass-card rounded-2xl p-4 transition-all text-[var(--text-primary)]">
       <div className="flex items-start justify-between gap-2 mb-2">
         <div className="flex items-start gap-2 flex-1">
-          <span className="text-xs font-semibold text-gray-400 shrink-0 mt-0.5">
+          <span className="text-xs font-bold text-[var(--text-muted)] shrink-0 mt-0.5">
             {index + 1}.
           </span>
           <div>
-            <p className="text-sm font-medium text-gray-800 leading-snug">
+            <p className="text-xs font-semibold text-[var(--text-primary)] leading-snug">
               {q.text}
             </p>
             {(q.imageUrl || q.audioUrl) && (
               <div className="flex items-center gap-2 mt-1">
                 {q.imageUrl && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-indigo-500 bg-indigo-50 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-indigo-500 bg-indigo-500/10 px-2 py-0.5 rounded-full">
                     <Image size={11} /> Rasm
                   </span>
                 )}
                 {q.audioUrl && (
-                  <span className="inline-flex items-center gap-1 text-[11px] text-purple-500 bg-purple-50 px-2 py-0.5 rounded-full">
+                  <span className="inline-flex items-center gap-1 text-[10px] font-bold text-purple-500 bg-purple-500/10 px-2 py-0.5 rounded-full">
                     <Music size={11} /> Audio
                   </span>
                 )}
@@ -102,40 +103,45 @@ function InlineQuestionCard({
         </div>
         <div className="flex items-center gap-1 shrink-0">
           <button
+            type="button"
             onClick={() => setEditing(true)}
-            className="p-1 text-gray-400 hover:text-gray-600 rounded-lg hover:bg-gray-50"
+            className="p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] rounded-xl hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
           >
             <Pencil size={15} />
           </button>
           <button
+            type="button"
             onClick={onDelete}
-            className="p-1 text-gray-400 hover:text-red-500 rounded-lg hover:bg-red-50"
+            className="p-1.5 text-[var(--text-muted)] hover:text-red-500 rounded-xl hover:bg-red-500/10 transition-colors cursor-pointer"
           >
             <Trash2 size={15} />
           </button>
         </div>
       </div>
 
-      {q.options && q.options.length > 0 && (
-        <div className="grid grid-cols-2 gap-1.5 mt-3 pt-3 border-t border-gray-50">
-          {q.options.map((opt) => (
-            <div
-              key={opt.id}
-              className={`flex items-center gap-2 px-2.5 py-1.5 rounded-lg text-xs ${opt.isCorrect
-                ? "bg-emerald-50 text-emerald-700 font-medium"
-                : "bg-gray-50 text-gray-500"
-                }`}
+      <div className="flex flex-col gap-1.5 mt-2">
+        {q.options.map((opt) => (
+          <div
+            key={opt.id}
+            className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs ${
+              opt.isCorrect
+                ? "bg-green-500/10 text-green-600 dark:text-green-400 font-bold"
+                : "bg-black/5 dark:bg-white/5 text-[var(--text-secondary)]"
+            }`}
+          >
+            <span
+              className={`w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 ${
+                opt.isCorrect
+                  ? "bg-green-500 text-white"
+                  : "border border-black/10 dark:border-white/10"
+              }`}
             >
-              {opt.isCorrect ? (
-                <Check size={13} className="text-emerald-500 shrink-0" />
-              ) : (
-                <Circle size={13} className="text-gray-300 shrink-0" />
-              )}
-              <span className="truncate">{opt.text}</span>
-            </div>
-          ))}
-        </div>
-      )}
+              {opt.isCorrect && <Check size={10} strokeWidth={3} />}
+            </span>
+            <span className="truncate">{opt.text}</span>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
@@ -145,45 +151,44 @@ export function MyTestQuestionEditorPage() {
   const navigate = useNavigate();
   const [test, setTest] = useState<StudentTestDetail | null>(null);
   const [questions, setQuestions] = useState<Question[]>([]);
-  const [tab, setTab] = useState<"manual" | "bulk">("manual");
+  const [tab, setTab] = useState("manual");
+  const [confirmDeleteQuestion, setConfirmDeleteQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
-    if (testId) {
-      void apiGetStudentTest(testId).then((t) => {
+    if (!testId) return;
+    apiGetStudentTest(testId)
+      .then((t) => {
         setTest(t);
         setQuestions(t.questions ?? []);
       });
-    }
   }, [testId]);
 
   async function handleAddQuestion(data: SaveData) {
     if (!testId) return;
-    const added = await apiAddStudentQuestion(testId, {
-      text: data.text,
-      type: data.type as any,
-      options: data.options,
-      imageUrl: data.imageUrl ?? undefined,
-      audioUrl: data.audioUrl ?? undefined,
-      correctAnswer: data.correctAnswer ?? undefined,
-    });
-    setQuestions((prev) => [...prev, added]);
+    const q = await apiAddStudentQuestion(testId, data);
+    setQuestions([...questions, q]);
   }
 
   async function handleSaveQuestion(q: Question, data: SaveData) {
-    const updated = await apiUpdateStudentQuestion(q.id, {
-      text: data.text,
-      type: data.type as any,
-      options: data.options,
-      imageUrl: data.imageUrl ?? undefined,
-      audioUrl: data.audioUrl ?? undefined,
-      correctAnswer: data.correctAnswer ?? undefined,
-    });
-    setQuestions((prev) => prev.map((item) => (item.id === q.id ? updated : item)));
+    const updated = await apiUpdateStudentQuestion(q.id, data);
+    setQuestions(questions.map((item) => (item.id === q.id ? updated : item)));
   }
 
-  async function deleteQuestion(qId: string) {
-    await apiDeleteStudentQuestion(qId);
-    setQuestions((prev) => prev.filter((q) => q.id !== qId));
+  async function deleteQuestion(id: string) {
+    await apiDeleteStudentQuestion(id);
+    setQuestions(questions.filter((item) => item.id !== id));
+  }
+
+  function questionsToBulkText(): string {
+    return questions
+      .map((q) => {
+        const lines = [`# ${q.text}`];
+        for (const o of q.options) {
+          lines.push(`${o.isCorrect ? "+" : "-"} ${o.text}`);
+        }
+        return lines.join("\n");
+      })
+      .join("\n\n");
   }
 
   async function handleBulkImport(text: string): Promise<number> {
@@ -213,36 +218,23 @@ export function MyTestQuestionEditorPage() {
     return count;
   }
 
-  function questionsToBulkText(): string {
-    return questions
-      .map((q) => {
-        const typePrefix =
-          q.type === "multi" ? "#multi\n" : q.type === "open" ? "#open\n" : "";
-        const optionsText = q.options
-          .map((o) => `${o.isCorrect ? "+" : "-"} ${o.text}`)
-          .join("\n");
-        return `${typePrefix}${q.text}\n${optionsText}`;
-      })
-      .join("\n\n");
-  }
-
   return (
     <StudentShell>
       <div className="student-responsive-panel flex flex-col p-4 min-[1025px]:p-6">
-        <div className="flex-1 p-3 w-full max-[1024px]:bg-transparent min-[1025px]:bg-white rounded-2xl">
-          <div className="flex items-center gap-2 mb-4">
+        <div className="flex-1 w-full text-[var(--text-primary)]">
+          <div className="flex items-center gap-2 mb-5">
             <button
               type="button"
               onClick={() => navigate(`/my-tests/${test?.folderId}`)}
-              className="flex items-center gap-1 text-sm font-semibold text-gray-500 hover:text-gray-700"
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               <ArrowLeft size={16} /> Testlar
             </button>
-            <span className="text-gray-300">/</span>
-            <h2 className="text-sm font-medium text-gray-700">
+            <span className="text-xs text-[var(--text-muted)]">/</span>
+            <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
               {test?.name ?? "Test"}
             </h2>
-            <span className="text-xs text-gray-400 ml-auto">
+            <span className="text-xs text-[var(--text-muted)] font-medium ml-auto">
               {questions.length} ta savol
             </span>
           </div>
@@ -257,7 +249,7 @@ export function MyTestQuestionEditorPage() {
             ]}
           />
 
-          <div>
+          <div className="glass-card rounded-3xl p-5 sm:p-7 mb-6 text-[var(--text-primary)]">
             {tab === "manual" ? (
               <QuestionForm key="new" hideAiTypes onSubmit={handleAddQuestion} />
             ) : (
@@ -269,8 +261,8 @@ export function MyTestQuestionEditorPage() {
           </div>
 
           {questions.length > 0 && (
-            <div className="mt-6 flex flex-col gap-2">
-              <h3 className="text-sm font-medium text-gray-700">
+            <div className="mt-6 flex flex-col gap-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
                 Savollar ({questions.length})
               </h3>
               {questions.map((q, i) => (
@@ -279,12 +271,24 @@ export function MyTestQuestionEditorPage() {
                   index={i}
                   question={q}
                   onSave={(data) => handleSaveQuestion(q, data)}
-                  onDelete={() => deleteQuestion(q.id)}
+                  onDelete={() => setConfirmDeleteQuestion(q)}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {confirmDeleteQuestion && (
+          <ConfirmDeleteModal
+            title="Savolni o'chirish"
+            description={`"${confirmDeleteQuestion.text}" savoli o'chirilsinmi?`}
+            onConfirm={() => {
+              deleteQuestion(confirmDeleteQuestion.id);
+              setConfirmDeleteQuestion(null);
+            }}
+            onClose={() => setConfirmDeleteQuestion(null)}
+          />
+        )}
       </div>
     </StudentShell>
   );

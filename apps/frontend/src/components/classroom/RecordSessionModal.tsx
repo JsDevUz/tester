@@ -33,14 +33,14 @@ interface Props {
 export function RecordSessionModal({ onSelect, onClose }: Props) {
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-96 rounded-3xl bg-white p-6">
-        <p className="mb-1 text-sm font-semibold text-gray-800">Yozib olish</p>
-        <p className="mb-5 text-sm text-gray-400">
+      <div className="glass-card w-full max-w-sm rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150">
+        <p className="mb-1 text-base font-bold text-[var(--text-primary)] tracking-tight">Yozib olish</p>
+        <p className="mb-4 text-xs text-[var(--text-muted)] leading-relaxed">
           Chizma holati har doim avtomatik saqlanadi. Ovoz yozish uchun tanlang:
         </p>
         <div className="flex flex-col gap-2">
@@ -49,22 +49,23 @@ export function RecordSessionModal({ onSelect, onClose }: Props) {
               key={mode}
               type="button"
               onClick={() => onSelect(mode)}
-              className="flex items-start gap-2 rounded-2xl border border-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-50"
+              className="flex items-start gap-3 rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-4 py-3 text-left transition-colors hover:bg-black/10 dark:hover:bg-white/10 cursor-pointer"
             >
-              <Icon size={18} className="mt-0.5 shrink-0 text-gray-400" />
+              <Icon size={18} className="mt-0.5 shrink-0 text-indigo-500" />
               <div className="min-w-0">
-                <p className="text-sm font-medium text-gray-700">{label}</p>
-                <p className="mt-0.5 text-xs leading-relaxed text-gray-400">
+                <p className="text-xs font-bold text-[var(--text-primary)]">{label}</p>
+                <p className="mt-0.5 text-[11px] leading-relaxed text-[var(--text-muted)] font-medium">
                   {description}
                 </p>
               </div>
             </button>
           ))}
         </div>
-        <div className="mt-5 flex justify-end">
+        <div className="mt-4 flex justify-end">
           <button
+            type="button"
             onClick={onClose}
-            className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700"
+            className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
           >
             Bekor qilish
           </button>

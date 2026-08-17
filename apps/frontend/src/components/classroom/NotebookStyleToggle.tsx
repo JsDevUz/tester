@@ -36,23 +36,23 @@ export function NotebookStyleToggle({
         type="button"
         onClick={() => setOpen((v) => !v)}
         title="Daftar foni"
-        className={`flex items-center justify-center rounded-full border px-2 py-1.5 shadow-md transition-colors ${open ? "border-indigo-300 bg-indigo-50 text-indigo-600" : "border-gray-100 bg-white text-gray-500 hover:bg-gray-100"}`}
+        className={`glass flex items-center justify-center rounded-full px-2.5 py-1.5 shadow-md transition-all active:scale-95 cursor-pointer ${open ? "text-indigo-600 dark:text-indigo-400 scale-105" : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"}`}
       >
         <Active size={14} />
       </button>
       {open && (
-        <div className="absolute right-0 top-full z-30 mt-2 w-40 overflow-hidden rounded-2xl border border-gray-200/80 bg-white/95 p-1.5 shadow-xl backdrop-blur-sm">
-          <p className="px-2.5 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-gray-400">Daftar foni</p>
+        <div className="glass-card absolute right-0 top-full z-30 mt-2 w-40 p-1.5 shadow-2xl text-[var(--text-primary)]">
+          <p className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wide text-[var(--text-muted)]">Daftar foni</p>
           {OPTIONS.map((option) => (
             <button
               key={option.value}
               type="button"
               onClick={() => { onChange(option.value); setOpen(false); }}
-              className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-sm font-medium transition-colors ${style === option.value ? "bg-gray-100 text-gray-900" : "text-gray-600 hover:bg-gray-50"}`}
+              className={`flex w-full items-center gap-2 rounded-xl px-2.5 py-2 text-left text-xs font-semibold transition-colors cursor-pointer ${style === option.value ? "bg-indigo-600 text-white shadow-xs" : "text-[var(--text-primary)] hover:bg-[var(--card-hover)]"}`}
             >
               <option.icon size={14} className="shrink-0" />
               <span className="flex-1">{option.label}</span>
-              {style === option.value && <Check size={14} className="text-indigo-600" />}
+              {style === option.value && <Check size={14} className="text-white" />}
             </button>
           ))}
         </div>

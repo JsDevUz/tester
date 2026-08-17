@@ -23,23 +23,23 @@ export const STATUS_META: Record<
 > = {
   paid: {
     label: "To'langan",
-    className: "bg-green-50 text-green-600",
-    dot: "bg-green-500",
+    className: "bg-emerald-500/10 text-emerald-600 dark:text-emerald-400",
+    dot: "bg-emerald-500",
   },
   partial: {
     label: "Qisman",
-    className: "bg-amber-50 text-amber-600",
+    className: "bg-amber-500/10 text-amber-600 dark:text-amber-400",
     dot: "bg-amber-500",
   },
   debt: {
     label: "Qarzdor",
-    className: "bg-red-50 text-red-500",
+    className: "bg-red-500/10 text-red-600 dark:text-red-400",
     dot: "bg-red-500",
   },
   pending: {
     label: "Kutilmoqda",
-    className: "bg-gray-100 text-gray-600",
-    dot: "bg-gray-500",
+    className: "bg-slate-500/10 text-slate-600 dark:text-zinc-400",
+    dot: "bg-slate-400",
   },
 };
 

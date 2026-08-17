@@ -122,9 +122,13 @@ export function PracticeMessageBubble({
 
             {activeMessageActionsId === message.id && (
               <div
-                className={`absolute top-full mt-1.5 z-50 w-44 rounded-2xl bg-white p-1.5 shadow-xl border border-gray-100 dark:bg-zinc-800 dark:border-zinc-700 ${
+                className={`glass-panel absolute top-full mt-1.5 z-50 w-44 rounded-2xl p-1.5 shadow-2xl border border-black/10 dark:border-white/10 ${
                   own ? "right-0" : "left-0"
                 }`}
+                style={{
+                  backdropFilter: "blur(20px)",
+                  WebkitBackdropFilter: "blur(20px)",
+                }}
               >
                 <button
                   type="button"
@@ -132,9 +136,9 @@ export function PracticeMessageBubble({
                     onToggleActions(null);
                     onReply(message);
                   }}
-                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700/60 transition-colors"
+                  className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                 >
-                  <Reply size={15} className="text-gray-400 dark:text-zinc-400" />
+                  <Reply size={15} className="text-[var(--text-muted)]" />
                   <span>Javob berish</span>
                 </button>
 
@@ -146,13 +150,13 @@ export function PracticeMessageBubble({
                         onToggleActions(null);
                         onStartEditing(message);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-gray-700 hover:bg-gray-100 dark:text-zinc-200 dark:hover:bg-zinc-700/60 transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
                     >
-                      <Pencil size={15} className="text-gray-400 dark:text-zinc-400" />
+                      <Pencil size={15} className="text-[var(--text-muted)]" />
                       <span>Tahrirlash</span>
                     </button>
 
-                    <div className="my-1 h-px bg-gray-100 dark:bg-zinc-700/60" />
+                    <div className="my-1 h-px bg-black/5 dark:bg-white/10" />
 
                     <button
                       type="button"
@@ -160,7 +164,7 @@ export function PracticeMessageBubble({
                         onToggleActions(null);
                         onDeletePrompt(message);
                       }}
-                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-50 dark:text-red-400 dark:hover:bg-red-950/40 transition-colors"
+                      className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2 text-xs font-semibold text-red-600 hover:bg-red-500/10 dark:text-red-400 transition-colors cursor-pointer"
                     >
                       <Trash2 size={15} className="text-red-500 dark:text-red-400" />
                       <span>O‘chirish</span>
@@ -174,16 +178,16 @@ export function PracticeMessageBubble({
 
         {message.replyTo && (
           <div
-            className={`practice-message-reply mb-2 rounded-[10px] border-l-[3px] px-3 py-1.5 text-left ${
+            className={`practice-message-reply mb-2 rounded-xl border-l-[3px] px-3 py-1.5 text-left ${
               own
                 ? "practice-message-reply-own border-white bg-white/15 text-white"
-                : "practice-message-reply-incoming bg-white/65 text-gray-700"
+                : "practice-message-reply-incoming bg-black/5 dark:bg-white/10 text-[var(--text-primary)]"
             }`}
           >
-            <p className={`truncate text-sm font-semibold ${own ? "text-white" : ""}`}>
+            <p className={`truncate text-xs font-bold ${own ? "text-white" : "text-indigo-600 dark:text-indigo-400"}`}>
               {message.replyTo.senderName}
             </p>
-            <p className="line-clamp-2 text-sm leading-5 opacity-90">
+            <p className="line-clamp-2 text-xs font-medium opacity-90">
               {message.replyTo.content}
             </p>
           </div>

@@ -36,10 +36,10 @@ export function TestTakerHeader({
   return (
     <>
       <div
-        className="shrink-0 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4 bg-white lg:border-b lg:border-border"
+        className="shrink-0 px-4 lg:px-6 flex items-center justify-between gap-2 lg:gap-4 bg-transparent text-[var(--text-primary)]"
         style={{
           paddingTop: "env(safe-area-inset-top)",
-          height: "calc(52px + env(safe-area-inset-top))",
+          height: "calc(54px + env(safe-area-inset-top))",
         }}
       >
         <div className="flex-1 flex items-center min-w-0">
@@ -47,7 +47,7 @@ export function TestTakerHeader({
             type="button"
             onClick={onExit}
             disabled={submitting}
-            className="shrink-0 flex items-center gap-1 text-xs font-bold text-gray-500 hover:text-gray-700 cursor-pointer disabled:opacity-50"
+            className="shrink-0 flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl px-2.5 py-1.5 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
           >
             ← Orqaga
           </button>
@@ -55,21 +55,21 @@ export function TestTakerHeader({
 
         <div className="shrink-0 flex items-center justify-center">
           {/* Test nomi — faqat desktop */}
-          <span className="hidden lg:block text-sm font-semibold text-gray-700 truncate max-w-xs">
+          <span className="hidden lg:block text-sm font-bold text-[var(--text-primary)] truncate max-w-xs">
             {testName}
           </span>
 
           {/* Progress counter */}
           {isOneByOne ? (
-            <span className="text-sm font-semibold text-gray-700">
+            <span className="text-xs font-bold text-[var(--text-primary)] bg-black/5 dark:bg-white/5 px-3 py-1 rounded-full">
               {currentIdx + 1}
-              <span className="text-gray-300 font-normal">
+              <span className="text-[var(--text-muted)] font-normal">
                 {" "}
                 / {totalQuestions}
               </span>
             </span>
           ) : (
-            <span className="text-sm font-medium text-gray-600 truncate max-w-[160px] lg:hidden">
+            <span className="text-xs font-bold text-[var(--text-primary)] truncate max-w-[160px] lg:hidden">
               {testName}
             </span>
           )}
@@ -81,7 +81,7 @@ export function TestTakerHeader({
             type="button"
             onClick={onToggleSound}
             title={soundEnabled ? "Ovozni o'chirish" : "Ovozni yoqish"}
-            className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 shrink-0 transition-colors cursor-pointer"
+            className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 shrink-0 transition-colors cursor-pointer"
           >
             {soundEnabled ? <Volume2 size={16} /> : <VolumeX size={16} />}
           </button>
@@ -91,14 +91,14 @@ export function TestTakerHeader({
             <button
               type="button"
               onClick={() => onChangeFontSize(-2)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-xs font-bold select-none transition-colors cursor-pointer"
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 text-xs font-bold select-none transition-colors cursor-pointer"
             >
               A-
             </button>
             <button
               type="button"
               onClick={() => onChangeFontSize(2)}
-              className="w-8 h-8 flex items-center justify-center rounded-xl text-gray-400 hover:bg-gray-100 text-sm font-bold select-none transition-colors cursor-pointer"
+              className="w-8 h-8 flex items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-black/5 dark:hover:bg-white/10 text-sm font-bold select-none transition-colors cursor-pointer"
             >
               A+
             </button>
@@ -107,11 +107,11 @@ export function TestTakerHeader({
           {/* Timer */}
           {timeLeft !== null && (
             <span
-              className={`shrink-0 font-mono text-sm font-medium ${
-                timeLeft < 60 ? "text-red-500" : "text-gray-500"
+              className={`shrink-0 font-mono text-xs font-bold px-2.5 py-1 rounded-lg ${
+                timeLeft < 60 ? "bg-red-500/10 text-red-500" : "bg-black/5 dark:bg-white/5 text-[var(--text-secondary)]"
               }`}
             >
-              <Clock size={12} className="inline mr-0.5 -mt-0.5" />
+              <Clock size={12} className="inline mr-1 -mt-0.5" />
               {formatTime(timeLeft)}
             </span>
           )}
@@ -120,9 +120,9 @@ export function TestTakerHeader({
 
       {/* ── PROGRESS BAR ── */}
       {isOneByOne && (
-        <div className="shrink-0 h-1.5 bg-gray-100 mx-4 rounded-full overflow-hidden">
+        <div className="shrink-0 h-1 bg-black/5 dark:bg-white/10 mx-4 mt-2 rounded-full overflow-hidden">
           <div
-            className="h-full bg-indigo-500 rounded-full transition-all duration-500"
+            className="h-full bg-indigo-600 rounded-full transition-all duration-500"
             style={{
               width: `${((currentIdx + 1) / Math.max(1, totalQuestions)) * 100}%`,
             }}

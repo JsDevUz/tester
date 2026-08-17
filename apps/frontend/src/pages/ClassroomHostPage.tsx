@@ -296,14 +296,14 @@ export function ClassroomHostPage() {
 
   if (state.error) {
     return (
-      <div className="min-h-screen bg-gray-50 flex flex-col items-center justify-center gap-4 p-6">
-        <p className="text-gray-600">
+      <div className="min-h-screen bg-[var(--app-bg)] text-[var(--text-primary)] flex flex-col items-center justify-center gap-4 p-6">
+        <p className="text-gray-600 dark:text-zinc-400">
           {ERROR_TEXT[state.error] ?? "Xatolik yuz berdi"}
         </p>
         <button
           type="button"
           onClick={() => navigate(-1)}
-          className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-medium"
+          className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
         >
           Orqaga
         </button>
@@ -314,14 +314,14 @@ export function ClassroomHostPage() {
   if (!state.joined) return <RouteLoadingScreen />;
 
   return (
-    <div ref={pageRef} className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden">
+    <div ref={pageRef} className="relative h-dvh bg-[var(--app-bg)] text-[var(--text-primary)] flex flex-col overflow-hidden">
       {voice.needsAudioUnlock && (
         <button
           type="button"
           onClick={voice.unlockAudio}
-          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-sm px-4 py-2 rounded-full shadow-md flex items-center gap-2 font-medium hover:bg-indigo-700"
+          className="absolute top-3 left-1/2 -translate-x-1/2 z-20 bg-indigo-600 text-white text-xs px-4 py-2 rounded-full shadow-md flex items-center gap-2 font-semibold hover:bg-indigo-700 cursor-pointer"
         >
-          <Volume2 size={16} />
+          <Volume2 size={15} />
           Ovozni yoqish uchun bosing
         </button>
       )}
@@ -508,7 +508,7 @@ export function ClassroomHostPage() {
                       type="button"
                       onClick={() => void fullscreen.toggle()}
                       title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
-                      className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                      className="glass flex items-center justify-center rounded-full px-2.5 py-1.5 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
                     >
                       {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
                     </button>
@@ -522,7 +522,7 @@ export function ClassroomHostPage() {
                       hostActions.setBoardOpen(false);
                     }}
                     title="Doskani yopish"
-                    className="flex items-center justify-center rounded-full border border-gray-100 bg-white p-1.5 text-gray-500 shadow-md transition-colors hover:bg-red-50 hover:text-red-600"
+                    className="glass flex items-center justify-center rounded-full p-2 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-red-500/10 hover:text-red-600 cursor-pointer"
                   >
                     <X size={14} />
                   </button>
@@ -695,22 +695,29 @@ export function ClassroomHostPage() {
       )}
 
       {confirmEnd && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-2xl shadow-xl p-6 max-w-sm w-full flex flex-col gap-4">
-            <h2 className="font-semibold text-gray-800">
+        <div
+          className="fixed inset-0 bg-black/30 flex items-center justify-center p-4 z-50 animate-in fade-in duration-200"
+          onClick={(e) => {
+            if (e.target === e.currentTarget && !endingLesson) {
+              setConfirmEnd(false);
+            }
+          }}
+        >
+          <div className="glass-panel rounded-3xl p-6 max-w-sm w-full flex flex-col gap-4 shadow-2xl">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">
               Darsni yakunlaysizmi?
             </h2>
-            <p className="text-sm text-gray-500">
+            <p className="text-xs sm:text-sm font-medium text-[var(--text-muted)] leading-relaxed">
               {state.isFree
                 ? "Barcha ishtirokchilar darsdan chiqariladi."
                 : "Barcha o'quvchilar darsdan chiqariladi va davomat yakunlanadi."}
             </p>
-            <div className="flex gap-2 justify-end">
+            <div className="flex gap-2 justify-end pt-1">
               <button
                 type="button"
                 disabled={endingLesson}
                 onClick={() => setConfirmEnd(false)}
-                className="px-4 py-2 rounded-xl text-sm font-medium text-gray-600 hover:bg-gray-100 disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl text-xs font-bold text-[var(--text-primary)] bg-black/5 dark:bg-white/10 hover:bg-black/10 dark:hover:bg-white/15 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -718,7 +725,7 @@ export function ClassroomHostPage() {
                 type="button"
                 disabled={endingLesson}
                 onClick={handleEnd}
-                className="px-4 py-2 rounded-xl bg-red-600 text-white text-sm font-medium hover:bg-red-700 disabled:opacity-50"
+                className="px-4 py-2.5 rounded-xl bg-red-600 text-white text-xs font-bold hover:bg-red-700 disabled:opacity-50 shadow-md shadow-red-600/30 transition-all cursor-pointer"
               >
                 {endingLesson ? "Yakunlanmoqda..." : "Yakunlash"}
               </button>

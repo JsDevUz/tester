@@ -149,22 +149,26 @@ export function ClassroomToolbar({
   }, [onToolChange]);
 
   const iconBtn = (active: boolean, disabled: boolean = false) =>
-    `relative p-1.5 rounded-xl transition-colors ${
+    `relative p-1.5 rounded-xl transition-all duration-150 ${
       disabled
-        ? "text-gray-300 cursor-not-allowed opacity-40 pointer-events-none"
+        ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-40 pointer-events-none"
         : active
-        ? "bg-gray-200 text-gray-900"
-        : "text-gray-500 hover:bg-gray-100"
+        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.05]"
+        : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
     }`;
 
-  const shortcut = (key: string) => (
-    <kbd className="pointer-events-none absolute bottom-0.6 right-1 text-[8px] font-bold leading-none text-gray-500">
+  const shortcut = (key: string, active: boolean = false) => (
+    <kbd
+      className={`pointer-events-none absolute bottom-0.5 right-1 text-[8px] font-bold leading-none ${
+        active ? "text-indigo-100" : "text-gray-500 dark:text-gray-400"
+      }`}
+    >
       {key}
     </kbd>
   );
 
   return (
-    <div className="inline-flex max-w-full items-center gap-1 overflow-x-auto overscroll-contain rounded-full border border-gray-100 bg-white px-0.5 py-0.5 shadow-md scrollbar-none [-ms-overflow-style:none]">
+    <div className="glass inline-flex max-w-full items-center gap-1 overflow-x-auto overscroll-contain rounded-full px-2 py-1 shadow-lg scrollbar-none [-ms-overflow-style:none]">
       <button
         type="button"
         className={iconBtn(tool === "select")}
@@ -172,7 +176,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("select")}
       >
         <MousePointer2 size={15} />
-        {shortcut("1")}
+        {shortcut("1", tool === "select")}
       </button>
       <button
         type="button"
@@ -181,7 +185,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("pen")}
       >
         <Pen size={15} />
-        {shortcut("2")}
+        {shortcut("2", tool === "pen")}
       </button>
       <button
         type="button"
@@ -190,7 +194,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("text")}
       >
         <Type size={15} />
-        {shortcut("3")}
+        {shortcut("3", tool === "text")}
       </button>
       <button
         type="button"
@@ -211,7 +215,7 @@ export function ClassroomToolbar({
           <path d="m9 11-6 6v3h9l3-3" />
           <path d="m22 12-4.6 4.6a2 2 0 0 1-2.8 0l-5.2-5.2a2 2 0 0 1 0-2.8L14 4" />
         </svg>
-        {shortcut("4")}
+        {shortcut("4", tool === "highlighter")}
       </button>
       <button
         type="button"
@@ -232,7 +236,7 @@ export function ClassroomToolbar({
           <path d="M4 17c2-3 4-8 7-8s4 5 7 5 3-4 4-6" />
           <circle cx="21" cy="7" r="1.5" fill="currentColor" />
         </svg>
-        {shortcut("Z")}
+        {shortcut("Z", tool === "laser")}
       </button>
       <button
         type="button"
@@ -241,7 +245,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("arrow")}
       >
         <ArrowUpRight size={15} />
-        {shortcut("5")}
+        {shortcut("5", tool === "arrow")}
       </button>
       <button
         type="button"
@@ -250,7 +254,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("line")}
       >
         <Minus size={15} />
-        {shortcut("-")}
+        {shortcut("-", tool === "line")}
       </button>
       <button
         type="button"
@@ -259,7 +263,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("rectangle")}
       >
         <Square size={15} />
-        {shortcut("6")}
+        {shortcut("6", tool === "rectangle")}
       </button>
       <button
         type="button"
@@ -268,7 +272,7 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("ellipse")}
       >
         <Circle size={15} />
-        {shortcut("7")}
+        {shortcut("7", tool === "ellipse")}
       </button>
 
       <div className="flex items-center gap-0.5">
@@ -279,15 +283,20 @@ export function ClassroomToolbar({
           onClick={() => onToolChange("eraser-pixel")}
         >
           <Eraser size={15} />
-          {shortcut("8")}
+          {shortcut("8", tool === "eraser-pixel")}
         </button>
-        <button type="button" className={iconBtn(tool === "eraser-stroke")} title="Chizma o'chirg'ich (9)" onClick={() => onToolChange("eraser-stroke")}>
+        <button
+          type="button"
+          className={iconBtn(tool === "eraser-stroke")}
+          title="Chizma o'chirg'ich (9)"
+          onClick={() => onToolChange("eraser-stroke")}
+        >
           <CircleDashed size={15} />
-          {shortcut("9")}
+          {shortcut("9", tool === "eraser-stroke")}
         </button>
       </div>
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <button
         type="button"
@@ -296,10 +305,10 @@ export function ClassroomToolbar({
         onClick={() => onToolChange("lasso")}
       >
         <Lasso size={15} />
-        {shortcut("0")}
+        {shortcut("0", tool === "lasso")}
       </button>
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <div className="flex items-center gap-1.5 px-0.5">
         {COLORS.map((c) => (
@@ -308,15 +317,15 @@ export function ClassroomToolbar({
             type="button"
             onClick={() => onColorChange(c)}
             className={`h-4 w-4 rounded-full border transition-transform ${color.toLowerCase() === c.toLowerCase()
-                ? "scale-125 border-gray-900 ring-2 ring-indigo-500/40"
-                : "border-gray-300 hover:scale-110"
+                ? "scale-125 border-gray-900 dark:border-white ring-2 ring-indigo-500/40"
+                : "border-black/20 dark:border-white/20 hover:scale-110"
               }`}
             style={{ backgroundColor: c }}
             title={`Rang: ${c}`}
           />
         ))}
         <label
-          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-gray-300 transition-transform hover:scale-110 overflow-hidden ${!COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
+          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-black/20 dark:border-white/20 transition-transform hover:scale-110 overflow-hidden ${!COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
               ? "ring-2 ring-indigo-500/40 scale-125"
               : ""
             }`}
@@ -335,27 +344,40 @@ export function ClassroomToolbar({
         </label>
       </div>
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <div className="flex items-center gap-1.5 px-0.5">
-        {WIDTHS.map((w, index) => (
-          <button
-            key={w}
-            type="button"
-            onClick={() => onStrokeWidthChange(w)}
-            className="relative p-1 rounded-full hover:bg-gray-100"
-            title={`Chiziq qalinligi (${["S", "M", "L"][index]})`}
-          >
-            <span
-              className={`block rounded-full ${strokeWidth === w ? "bg-gray-900" : "bg-gray-300"}`}
-              style={{ width: 5 + w, height: 5 + w }}
-            />
-            {shortcut(["S", "M", "L"][index])}
-          </button>
-        ))}
+        {WIDTHS.map((w, index) => {
+          const isActive = strokeWidth === w;
+          return (
+            <button
+              key={w}
+              type="button"
+              onClick={() => onStrokeWidthChange(w)}
+              className={`relative flex h-7 w-7 items-center justify-center rounded-xl transition-all duration-150 cursor-pointer ${
+                isActive
+                  ? "bg-indigo-600 shadow-md shadow-indigo-500/20 scale-[1.05]"
+                  : "hover:bg-black/10 dark:hover:bg-white/15"
+              }`}
+              title={`Chiziq qalinligi (${["S", "M", "L"][index]})`}
+            >
+              <span
+                className={`block rounded-full transition-colors ${
+                  isActive ? "bg-white" : "bg-gray-900 dark:bg-white"
+                }`}
+                style={{
+                  width: 4 + w,
+                  height: 4 + w,
+                  opacity: isActive ? 1 : 0.85,
+                }}
+              />
+              {shortcut(["S", "M", "L"][index], isActive)}
+            </button>
+          );
+        })}
       </div>
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <button
         type="button"
@@ -385,20 +407,20 @@ export function ClassroomToolbar({
       </button>
       {confirmClearOpen && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
           role="presentation"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) setConfirmClearOpen(false);
           }}
         >
-          <div className="flex w-full max-w-sm flex-col gap-3 rounded-2xl bg-white p-6 shadow-xl" role="dialog" aria-modal="true" aria-label="Butun doskani tozalash">
-            <h3 className="text-base font-semibold text-gray-900">Butun doskani tozalash</h3>
-            <p className="text-sm text-gray-600">Daftardagi va PDFdagi barcha sahifalar chizmalari to'liq o'chiriladi. Davom etilsinmi?</p>
+          <div className="classroom-panel-in glass-card flex w-full max-w-sm flex-col gap-3 rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]" role="dialog" aria-modal="true" aria-label="Butun doskani tozalash">
+            <h3 className="text-base font-bold tracking-tight">Butun doskani tozalash</h3>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">Daftardagi va PDFdagi barcha sahifalar chizmalari to'liq o'chiriladi. Davom etilsinmi?</p>
             <div className="mt-2 flex justify-end gap-2">
               <button
                 type="button"
                 onClick={() => setConfirmClearOpen(false)}
-                className="rounded-xl px-4 py-2 text-sm font-medium text-gray-600 hover:bg-gray-100"
+                className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -408,7 +430,7 @@ export function ClassroomToolbar({
                   onClear();
                   setConfirmClearOpen(false);
                 }}
-                className="rounded-xl bg-red-600 px-4 py-2 text-sm font-medium text-white hover:bg-red-700"
+                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-xs transition-colors cursor-pointer"
               >
                 Barchasini tozalash
               </button>
@@ -418,7 +440,7 @@ export function ClassroomToolbar({
         document.body,
       )}
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <button
         type="button"
@@ -429,7 +451,7 @@ export function ClassroomToolbar({
         <Upload size={15} />
       </button>
 
-      <div className="w-px h-5 bg-gray-200 mx-0.5" />
+      <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
       <button
         type="button"
@@ -442,7 +464,7 @@ export function ClassroomToolbar({
 
       {onToggleHistory && (
         <>
-          <div className="w-px h-5 bg-gray-200 mx-0.5" />
+          <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
           <button
             type="button"
             className={iconBtn(!!historyOpen)}
@@ -455,24 +477,24 @@ export function ClassroomToolbar({
       )}
       {infoOpen && createPortal(
         <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/40 p-4"
+          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
           role="presentation"
           onPointerDown={(event) => {
             if (event.target === event.currentTarget) setInfoOpen(false);
           }}
         >
           <div
-            className="flex max-h-[80vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-2xl bg-white p-6 shadow-xl"
+            className="classroom-panel-in glass-card flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]"
             role="dialog"
             aria-modal="true"
             aria-label="Yordam va shortcutlar"
           >
-            <div className="flex items-center justify-between gap-2">
-              <h2 className="text-base font-semibold text-gray-900">Yordam va shortcutlar</h2>
+            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+              <h2 className="text-base font-bold tracking-tight">Yordam va shortcutlar</h2>
               <button
                 type="button"
                 onClick={() => setInfoOpen(false)}
-                className="rounded-lg p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
+                className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
                 aria-label="Yopish"
               >
                 <X size={16} />
@@ -480,21 +502,21 @@ export function ClassroomToolbar({
             </div>
             <div className="flex flex-col gap-4">
               {SHORTCUT_GROUPS.map((group) => (
-                <div key={group.title} className="flex flex-col gap-1.5">
-                  <p className="text-xs font-semibold uppercase tracking-wide text-gray-400">{group.title}</p>
-                  <div className="flex flex-col gap-1">
+                <div key={group.title} className="flex flex-col gap-2">
+                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{group.title}</p>
+                  <div className="flex flex-col gap-1.5">
                     {group.items.map((item) => (
-                      <div key={item.label} className="flex items-start gap-2.5 text-sm text-gray-700">
+                      <div key={item.label} className="flex items-start gap-2.5 text-xs">
                         {item.icon ? (
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-md border border-gray-200 bg-gray-50 text-gray-600">
+                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/5 dark:bg-white/10 shadow-xs">
                             <item.icon size={12} />
                           </span>
                         ) : (
-                          <kbd className="mt-0.5 shrink-0 rounded-md border border-gray-200 bg-gray-50 px-1.5 py-0.5 text-xs font-semibold text-gray-600">
+                          <kbd className="mt-0.5 shrink-0 min-w-[20px] text-center rounded-lg bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-mono text-xs font-bold text-[var(--text-primary)] shadow-xs">
                             {item.key}
                           </kbd>
                         )}
-                        <span className="min-w-0">{item.label}</span>
+                        <span className="min-w-0 leading-relaxed text-[var(--text-secondary)]">{item.label}</span>
                       </div>
                     ))}
                   </div>

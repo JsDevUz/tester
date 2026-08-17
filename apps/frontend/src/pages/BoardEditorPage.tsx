@@ -238,7 +238,7 @@ export function BoardEditorPage() {
           <button
             type="button"
             onClick={() => navigate("/boards")}
-            className="px-4 py-2 rounded-xl bg-gray-100 text-gray-700 text-sm font-medium hover:bg-gray-200 transition-colors"
+            className="px-4 py-2 rounded-xl bg-indigo-600 text-white text-sm font-semibold hover:bg-indigo-700 transition-colors"
           >
             Doskalar ro'yxatiga qaytish
           </button>
@@ -252,11 +252,11 @@ export function BoardEditorPage() {
   return (
     <div
       ref={pageRef}
-      className="relative h-dvh bg-gray-50 flex flex-col overflow-hidden"
+      className="relative h-dvh bg-[var(--app-bg)] text-[var(--text-primary)] flex flex-col overflow-hidden"
     >
       {/* Top Bar */}
       {!fullscreen.isFullscreen && (
-        <div className="flex items-center gap-2 px-3 py-2 bg-white border-b border-gray-100 shrink-0 z-10">
+        <div className="glass flex items-center gap-2 px-3 py-2 shrink-0 z-10 border-b border-black/5 dark:border-white/10">
           <button
             type="button"
             onClick={() => {
@@ -265,13 +265,13 @@ export function BoardEditorPage() {
               }
               navigate("/boards");
             }}
-            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-sm text-gray-500 hover:bg-gray-100 hover:text-gray-800 transition-colors"
+            className="flex items-center gap-1.5 rounded-xl px-2.5 py-1.5 text-xs font-semibold text-gray-700 dark:text-zinc-200 hover:bg-black/5 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
             <ArrowLeft size={16} />
             <span className="hidden sm:inline">Doskalar</span>
           </button>
 
-          <div className="h-4 w-px bg-gray-200 shrink-0" />
+          <div className="h-4 w-px bg-black/10 dark:bg-white/10 shrink-0" />
 
           {/* Inline title edit */}
           {!isViewOnly && editingTitle ? (
@@ -285,13 +285,13 @@ export function BoardEditorPage() {
                   if (e.key === "Escape") setEditingTitle(false);
                 }}
                 autoFocus
-                className="flex-1 min-w-0 rounded-lg border border-indigo-300 bg-indigo-50 px-2.5 py-1 text-sm font-semibold text-gray-900 focus:outline-none"
+                className="flex-1 min-w-0 rounded-lg border border-indigo-300 dark:border-indigo-700 bg-white dark:bg-zinc-800 px-2.5 py-1 text-xs font-semibold text-gray-900 dark:text-zinc-100 focus:outline-none"
               />
               <button
                 type="button"
                 onClick={() => void handleTitleSave()}
                 disabled={savingTitle}
-                className="shrink-0 rounded-lg bg-indigo-600 p-1.5 text-white hover:bg-indigo-700 disabled:opacity-50"
+                className="shrink-0 rounded-lg bg-indigo-600 p-1.5 text-white hover:bg-indigo-700 disabled:opacity-50 cursor-pointer"
               >
                 <Check size={14} />
               </button>
@@ -305,7 +305,7 @@ export function BoardEditorPage() {
                   setEditingTitle(true);
                 }
               }}
-              className={`flex-1 min-w-0 text-left px-2 py-1 rounded-lg text-sm font-semibold text-gray-800 truncate ${isViewOnly ? "cursor-default" : "hover:bg-gray-100"}`}
+              className={`flex-1 min-w-0 text-left px-2 py-1 rounded-lg text-xs font-bold text-[var(--text-primary)] truncate ${isViewOnly ? "cursor-default" : "hover:bg-black/5 dark:hover:bg-white/10 cursor-pointer"}`}
               title={isViewOnly ? "Faqat ko'rish" : "Nomni tahrirlash"}
             >
               {boardTitle}
@@ -313,10 +313,12 @@ export function BoardEditorPage() {
           )}
 
           {isViewOnly && (
-            <span className="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-xs font-medium text-gray-500">
+            <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-1 text-xs font-semibold text-[var(--text-muted)]">
               Faqat ko'rish
             </span>
           )}
+
+          <div className="flex-1" />
 
           {!isViewOnly && (
             <button
@@ -324,7 +326,7 @@ export function BoardEditorPage() {
               onClick={() =>
                 hostActions.setTheme(state.classroomTheme === "dark" ? "light" : "dark")
               }
-              className="flex items-center justify-center rounded-xl border border-gray-200 bg-white p-1.5 text-gray-500 shadow-xs transition-colors hover:bg-gray-50 hover:text-gray-900"
+              className="glass flex items-center justify-center rounded-xl p-2 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
               title={state.classroomTheme === "dark" ? "Yorug'lik rejimi" : "Tungi rejim"}
             >
               {state.classroomTheme === "dark" ? <Sun size={14} /> : <Moon size={14} />}
@@ -334,10 +336,10 @@ export function BoardEditorPage() {
           <button
             type="button"
             onClick={() => setDownloadModalOpen(true)}
-            className="flex items-center gap-1.5 rounded-xl border border-gray-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-gray-700 shadow-xs transition-colors hover:bg-gray-50 hover:text-gray-900"
+            className="glass flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
             title="PDF yoki Daftar yuklab olish"
           >
-            <Download size={14} className="text-gray-500" />
+            <Download size={14} className="text-indigo-600 dark:text-indigo-400" />
             <span className="hidden sm:inline">Yuklab olish</span>
           </button>
         </div>
@@ -468,7 +470,7 @@ export function BoardEditorPage() {
                 type="button"
                 onClick={() => void fullscreen.toggle()}
                 title={fullscreen.isFullscreen ? "To'liq ekrandan chiqish" : "To'liq ekran"}
-                className="flex items-center justify-center rounded-full border border-gray-100 bg-white px-2 py-1.5 text-gray-500 shadow-md transition-colors hover:bg-gray-100"
+                className="glass flex items-center justify-center rounded-full px-2.5 py-1.5 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
               >
                 {fullscreen.isFullscreen ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
               </button>

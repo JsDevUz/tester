@@ -127,33 +127,32 @@ export function PaymentsPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen p-3 sm:p-4">
-        <div className="flex min-h-full flex-col gap-2">
-          <div className="rounded-2xl bg-white p-4">
-            <div className="flex flex-col gap-2 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <h1 className="text-lg font-bold text-gray-800">To'lovlar</h1>
-                <p className="mt-0.5 text-xs text-gray-400">
-                  O'quvchilar to'lovlari, qarzdorlik va oylik tushumlar
-                </p>
-              </div>
-              <div className="flex flex-col gap-2 sm:flex-row">
-                <button
-                  type="button"
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-100"
-                >
-                  <Download size={16} />
-                  Eksport
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModalOpen(true)}
-                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-green-500 px-3 py-2 text-sm font-semibold text-white transition-colors hover:bg-green-600"
-                >
-                  <CreditCard size={16} />
-                  To'lov qabul qilish
-                </button>
-              </div>
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          {/* Top Header */}
+          <div className="flex flex-col gap-3 px-1 py-1 lg:flex-row lg:items-center lg:justify-between">
+            <div>
+              <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">To'lovlar</h1>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                O'quvchilar to'lovlari, qarzdorlik va oylik tushumlar
+              </p>
+            </div>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <button
+                type="button"
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--surface-bg)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+              >
+                <Download size={15} />
+                Eksport
+              </button>
+              <button
+                type="button"
+                onClick={() => setModalOpen(true)}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
+              >
+                <CreditCard size={15} />
+                To'lov qabul qilish
+              </button>
             </div>
           </div>
 
@@ -189,8 +188,8 @@ export function PaymentsPage() {
             />
           </div>
 
-          <div className="w-fit max-w-full overflow-x-auto rounded-2xl bg-gray-50 p-1">
-            <div className="flex w-max gap-1.5">
+          <div className="w-fit max-w-full overflow-x-auto rounded-2xl bg-[var(--card-bg)] p-1">
+            <div className="flex w-max gap-1">
               {TABS.map((tab) => {
                 const active = activeTab === tab.key;
                 const count =
@@ -202,10 +201,11 @@ export function PaymentsPage() {
                     key={tab.key}
                     type="button"
                     onClick={() => setActiveTab(tab.key)}
-                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors ${active
-                        ? "bg-white text-gray-900"
-                        : "text-gray-900 hover:bg-white/60"
-                      }`}
+                    className={`inline-flex shrink-0 items-center gap-1.5 rounded-xl px-3.5 py-1.5 text-xs transition-all cursor-pointer ${
+                      active
+                        ? "bg-[var(--surface-bg)] text-[var(--text-primary)] font-bold shadow-xs"
+                        : "text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] font-semibold"
+                    }`}
                   >
                     <span>
                       {tab.label} ({count.toLocaleString("uz-UZ")})
@@ -215,23 +215,24 @@ export function PaymentsPage() {
               })}
             </div>
           </div>
+
           <div className="flex flex-wrap items-center gap-2.5">
             <div className="relative w-fit max-w-full">
               <Search
-                size={18}
-                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400"
+                size={16}
+                className="absolute left-3.5 top-1/2 -translate-y-1/2 text-[var(--text-muted)]"
               />
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
                 placeholder="O'quvchi, telefon yoki kurs bo'yicha qidirish..."
-                className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-gray-50 py-2.5 pl-10 pr-4 text-sm font-medium text-gray-700 outline-none placeholder:text-gray-400"
+                className="w-[min(420px,calc(100vw-2rem))] rounded-xl bg-[var(--surface-bg)] py-2 pl-9 pr-4 text-xs font-medium text-[var(--text-primary)] outline-none placeholder:text-[var(--text-muted)] focus:ring-1 focus:ring-indigo-500 transition-colors"
               />
             </div>
             <select
               value={courseFilter}
               onChange={(e) => setCourseFilter(e.target.value)}
-              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              className="rounded-xl bg-[var(--surface-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
             >
               <option value="">Barcha kurslar</option>
               {courseOptions.map((title) => (
@@ -243,7 +244,7 @@ export function PaymentsPage() {
             <select
               value={monthFilter}
               onChange={(e) => setMonthFilter(e.target.value)}
-              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              className="rounded-xl bg-[var(--surface-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
             >
               <option value="">Barcha oylar</option>
               {Array.from({ length: 12 }, (_, i) => String(i + 1).padStart(2, "0")).map((m) => (
@@ -255,7 +256,7 @@ export function PaymentsPage() {
             <select
               value={yearFilter}
               onChange={(e) => setYearFilter(e.target.value)}
-              className="rounded-xl bg-gray-50 py-2.5 px-3 text-sm font-medium text-gray-700 outline-none"
+              className="rounded-xl bg-[var(--surface-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
             >
               <option value="">Barcha yillar</option>
               {yearOptions.map((y) => (
@@ -266,65 +267,65 @@ export function PaymentsPage() {
             </select>
           </div>
 
-          <div className="hidden overflow-x-auto rounded-2xl bg-white md:block">
-            <table className="w-full min-w-[920px] text-left">
-              <thead className="text-sm font-semibold text-gray-400">
+          <div className="hidden overflow-x-auto rounded-2xl bg-[var(--surface-bg)] shadow-xs md:block">
+            <table className="w-full min-w-[920px] text-left border-collapse">
+              <thead className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                 <tr>
-                  <th className="px-4 py-4">O'quvchi</th>
-                  <th className="px-4 py-4">Kurs / guruh</th>
-                  <th className="px-4 py-4">Oy</th>
-                  <th className="px-4 py-4">Summa</th>
-                  <th className="px-4 py-4">To'langan</th>
-                  <th className="px-4 py-4">Holat</th>
-                  <th className="px-4 py-4">Sana</th>
-                  <th className="px-4 py-4"></th>
+                  <th className="px-4 py-3.5">O'quvchi</th>
+                  <th className="px-4 py-3.5">Kurs / guruh</th>
+                  <th className="px-4 py-3.5">Oy</th>
+                  <th className="px-4 py-3.5">Summa</th>
+                  <th className="px-4 py-3.5">To'langan</th>
+                  <th className="px-4 py-3.5">Holat</th>
+                  <th className="px-4 py-3.5">Sana</th>
+                  <th className="px-4 py-3.5"></th>
                 </tr>
               </thead>
               <tbody>
                 {filtered.map((row) => (
                   <tr
                     key={row.id}
-                    className="border-t border-gray-50 transition-colors hover:bg-gray-50"
+                    className="transition-colors hover:bg-[var(--card-hover)]"
                   >
                     <td className="px-4 py-3.5">
-                      <p className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                      <p className="flex items-center gap-1.5 text-xs font-bold text-[var(--text-primary)]">
                         {row.studentName}
                         {row.removedAt && (
-                          <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-[10px] font-medium text-gray-500">
+                          <span className="rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px] font-semibold text-[var(--text-muted)]">
                             Chetlashtirilgan
                           </span>
                         )}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">
                         {row.studentPhone ?? ""}
                       </p>
                     </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-sm font-medium text-gray-700">
+                      <p className="text-xs font-semibold text-[var(--text-primary)]">
                         {row.courseTitle}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">
                         {row.groupName} • {row.planName ?? "Tarifsiz"}
                       </p>
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-gray-500">
+                    <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-secondary)]">
                       {formatMonthLabel(row.periodMonth)}
                     </td>
-                    <td className="px-4 py-3.5 text-sm font-semibold text-gray-700">
+                    <td className="px-4 py-3.5 text-xs font-bold text-[var(--text-primary)]">
                       {formatMoney(dueAmount(row))}
                     </td>
                     <td className="px-4 py-3.5">
-                      <p className="text-sm font-semibold text-gray-700">
+                      <p className="text-xs font-bold text-[var(--text-primary)]">
                         {formatMoney(row.paidAmount)}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-500">
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">
                         {row.paymentMethod ? METHOD_LABEL[row.paymentMethod as PaymentMethod] : "—"}
                       </p>
                     </td>
                     <td className="px-4 py-3.5">
                       <StatusBadge status={row.status} />
                     </td>
-                    <td className="px-4 py-3.5 text-sm text-gray-500">
+                    <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-secondary)]">
                       <p>{new Intl.DateTimeFormat("uz-UZ", { day: "2-digit", month: "2-digit", year: "numeric" }).format(new Date(row.updatedAt))}</p>
                       {row.receiptUrl && (
                         <button
@@ -333,7 +334,7 @@ export function PaymentsPage() {
                             src: row.receiptUrl!,
                             alt: `${row.studentName} — to'lov cheki`,
                           })}
-                          className="mt-0.5 inline-flex items-center gap-1 text-xs font-medium text-gray-600 hover:underline"
+                          className="mt-0.5 inline-flex items-center gap-1 text-[11px] font-semibold text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                         >
                           <ImageIcon size={12} /> Chek
                         </button>
@@ -345,7 +346,7 @@ export function PaymentsPage() {
                           type="button"
                           onClick={() => void handleCancelPayment(row.id)}
                           disabled={cancellingId === row.id}
-                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                          className="rounded-lg px-2.5 py-1.5 text-xs font-semibold text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                         >
                           {cancellingId === row.id ? "..." : "Bekor qilish"}
                         </button>
@@ -357,15 +358,15 @@ export function PaymentsPage() {
             </table>
           </div>
 
-          <div className="flex flex-col gap-2 rounded-2xl bg-white p-3 md:hidden">
+          <div className="flex flex-col gap-2 rounded-2xl bg-[var(--surface-bg)] p-3 md:hidden">
             {filtered.map((row) => (
-              <div key={row.id} className="rounded-2xl bg-gray-50 p-3">
+              <div key={row.id} className="rounded-2xl bg-[var(--card-bg)] p-3">
                 <div className="mb-3 flex items-start justify-between gap-2">
                   <div className="min-w-0">
-                    <p className="truncate text-sm font-bold text-gray-800">
+                    <p className="truncate text-xs font-bold text-[var(--text-primary)]">
                       {row.studentName}
                     </p>
-                    <p className="mt-0.5 text-xs text-gray-400">{row.studentPhone ?? ""}</p>
+                    <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">{row.studentPhone ?? ""}</p>
                   </div>
                   <StatusBadge status={row.status} />
                 </div>
@@ -382,7 +383,7 @@ export function PaymentsPage() {
                       src: row.receiptUrl!,
                       alt: `${row.studentName} — to'lov cheki`,
                     })}
-                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-white py-2 text-xs font-semibold text-gray-600 transition-colors hover:bg-gray-100"
+                    className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-[var(--surface-bg)] py-2 text-xs font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
                   >
                     <ImageIcon size={14} /> Chekni ko'rish
                   </button>
@@ -392,7 +393,7 @@ export function PaymentsPage() {
                     type="button"
                     onClick={() => void handleCancelPayment(row.id)}
                     disabled={cancellingId === row.id}
-                    className="mt-3 w-full rounded-xl bg-gray-100 py-2 text-xs font-semibold text-gray-500 transition-colors hover:bg-red-50 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50"
+                    className="mt-3 w-full rounded-xl bg-[var(--surface-bg)] py-2 text-xs font-semibold text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
                   >
                     {cancellingId === row.id ? "..." : "Bekor qilish"}
                   </button>

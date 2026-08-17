@@ -174,35 +174,35 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="test-pin-modal-title"
-        className="flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-2xl bg-white shadow-2xl"
+        className="glass-card flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150"
       >
-        <div className="flex items-center justify-between gap-2 border-b border-gray-100 px-6 py-4">
-          <h2 id="test-pin-modal-title" className="text-sm font-semibold text-gray-800 truncate">{testName} — Guruhga tayinlash</h2>
-          <button onClick={onClose} className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-100" aria-label="Yopish">
+        <div className="flex items-center justify-between gap-2 border-b border-black/5 dark:border-white/10 pb-4">
+          <h2 id="test-pin-modal-title" className="text-base font-bold text-[var(--text-primary)] tracking-tight truncate">{testName} — Guruhga tayinlash</h2>
+          <button onClick={onClose} className="shrink-0 rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer" aria-label="Yopish">
             <X size={18} />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto py-4">
           {loading ? (
             <div role="status" className="flex justify-center py-12">
-              <div aria-hidden="true" className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
+              <div aria-hidden="true" className="w-7 h-7 rounded-full border-2 border-indigo-500/20 border-t-indigo-600 animate-spin" />
               <span className="sr-only">Yuklanmoqda</span>
             </div>
           ) : loadError ? (
             <div role="alert" className="flex flex-col items-center gap-2 py-10 text-center">
-              <p className="text-sm text-gray-600">Tayinlash ma'lumotlarini yuklab bo'lmadi.</p>
+              <p className="text-xs text-[var(--text-muted)] font-medium">Tayinlash ma'lumotlarini yuklab bo'lmadi.</p>
               <button
                 type="button"
                 onClick={() => setLoadAttempt((attempt) => attempt + 1)}
-                className="rounded-lg bg-indigo-500 px-4 py-2 text-sm font-medium text-white hover:bg-indigo-600"
+                className="rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white hover:bg-indigo-700 transition-colors cursor-pointer"
               >
                 Qayta urinish
               </button>
@@ -210,12 +210,12 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
           ) : (
             <div className="flex flex-col gap-4">
               <div>
-                <label htmlFor="test-pin-course" className="mb-1 block text-xs font-semibold text-gray-600">Kurs</label>
+                <label htmlFor="test-pin-course" className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Kurs</label>
                 <select
                   id="test-pin-course"
                   value={courseId}
                   onChange={(e) => { setCourseId(e.target.value); setSelectedGroupIds([]); }}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all"
                 >
                   <option value="">Tanlang</option>
                   {courses.map((c) => (
@@ -226,32 +226,34 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
 
               {courseId && (
                 <div>
-                  <span className="mb-1 block text-xs font-semibold text-gray-600">Guruhlar</span>
-                  <label htmlFor="test-pin-all-groups" className="mb-2 flex items-center gap-2 text-sm text-gray-700">
+                  <span className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Guruhlar</span>
+                  <label htmlFor="test-pin-all-groups" className="mb-2 flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)] cursor-pointer">
                     <input
                       id="test-pin-all-groups"
                       type="checkbox"
                       checked={allGroups}
                       disabled={groupsLoading}
                       onChange={(e) => setAllGroups(e.target.checked)}
+                      className="w-4 h-4 rounded cursor-pointer accent-indigo-600"
                     />
                     Barchasi
                   </label>
                   {!allGroups && (
-                    <div aria-busy={groupsLoading} className="flex flex-col gap-1.5 rounded-lg border border-border p-2">
+                    <div aria-busy={groupsLoading} className="flex flex-col gap-1.5 rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 p-2.5">
                       {groupsLoading ? (
-                        <p role="status" className="text-xs text-gray-400 px-1 py-1">Guruhlar yuklanmoqda...</p>
+                        <p role="status" className="text-xs text-[var(--text-muted)] px-1 py-1">Guruhlar yuklanmoqda...</p>
                       ) : groups.length === 0 ? (
-                        <p className="text-xs text-gray-400 px-1 py-1">Guruhlar topilmadi</p>
+                        <p className="text-xs text-[var(--text-muted)] px-1 py-1">Guruhlar topilmadi</p>
                       ) : null}
                       {groups.map((g) => (
-                        <label key={g.id} htmlFor={`test-pin-group-${g.id}`} className="flex items-center gap-2 text-sm text-gray-700">
+                        <label key={g.id} htmlFor={`test-pin-group-${g.id}`} className="flex items-center gap-2 text-xs font-semibold text-[var(--text-primary)] cursor-pointer">
                           <input
                             id={`test-pin-group-${g.id}`}
                             type="checkbox"
                             checked={selectedGroupIds.includes(g.id)}
                             disabled={groupsLoading}
                             onChange={() => toggleGroup(g.id)}
+                            className="w-4 h-4 rounded cursor-pointer accent-indigo-600"
                           />
                           {g.name}
                         </label>
@@ -262,23 +264,23 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
               )}
 
               <div>
-                <label htmlFor="test-pin-starts-at" className="mb-1 block text-xs font-semibold text-gray-600">Boshlanish vaqti</label>
+                <label htmlFor="test-pin-starts-at" className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Boshlanish vaqti</label>
                 <input
                   id="test-pin-starts-at"
                   type="datetime-local"
                   value={startsAt}
                   onChange={(e) => setStartsAt(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all"
                 />
               </div>
               <div>
-                <label htmlFor="test-pin-ends-at" className="mb-1 block text-xs font-semibold text-gray-600">Tugash vaqti</label>
+                <label htmlFor="test-pin-ends-at" className="mb-1 block text-xs font-semibold text-[var(--text-secondary)]">Tugash vaqti</label>
                 <input
                   id="test-pin-ends-at"
                   type="datetime-local"
                   value={endsAt}
                   onChange={(e) => setEndsAt(e.target.value)}
-                  className="w-full rounded-lg border border-border px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-gray-400"
+                  className="w-full rounded-xl border border-black/5 dark:border-white/10 bg-black/5 dark:bg-white/5 px-3.5 py-2 text-xs font-semibold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all"
                 />
               </div>
             </div>
@@ -286,13 +288,13 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
         </div>
 
         {!loading && !loadError && (
-          <div className="flex gap-2 border-t border-gray-100 px-6 py-4">
+          <div className="flex gap-2 border-t border-black/5 dark:border-white/10 pt-4">
             {hasExistingPin && (
               <button
                 type="button"
                 onClick={handleRemove}
                 disabled={saving}
-                className="flex-1 rounded-lg border border-red-200 py-2 text-sm font-medium text-red-500 hover:bg-red-50 disabled:opacity-50"
+                className="flex-1 rounded-xl bg-red-500/10 py-2.5 text-xs font-bold text-red-500 hover:bg-red-500/20 disabled:opacity-50 transition-colors cursor-pointer"
               >
                 Olib tashlash
               </button>
@@ -301,7 +303,7 @@ export function TestPinModal({ testId, testName, onClose, onSaved, onRemoved }: 
               type="button"
               onClick={handleSave}
               disabled={saving || groupsLoading}
-              className="flex-1 rounded-lg bg-indigo-500 py-2 text-sm font-medium text-white hover:bg-indigo-600 disabled:opacity-50"
+              className="flex-1 rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors cursor-pointer"
             >
               {hasExistingPin ? "Saqlash" : "Tayinlash"}
             </button>

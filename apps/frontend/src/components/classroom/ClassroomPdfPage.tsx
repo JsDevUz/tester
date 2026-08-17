@@ -558,16 +558,16 @@ export function ClassroomPdfPage({
                 onClick={() => setShowNotebookMenu((visible) => !visible)}
                 title="Daftar amallari"
                 aria-label="Daftar amallari"
-                className="flex items-center justify-center rounded-full bg-white/90 p-1 text-gray-400 shadow-md backdrop-blur-sm transition-colors hover:bg-indigo-50 hover:text-indigo-500"
+                className="glass flex items-center justify-center rounded-full p-1.5 text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
               >
                 <MoreHorizontal size={13} />
               </button>
               {showNotebookMenu && (
-                <div className="absolute left-0 top-8 flex min-w-40 flex-col gap-1 rounded-xl bg-white p-1.5 shadow-xl">
+                <div className="glass-card absolute left-0 top-8 flex min-w-40 flex-col gap-1 p-1.5 shadow-2xl text-[var(--text-primary)]">
                   <button
                     type="button"
                     onClick={copyAllNotebookPages}
-                    className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-gray-600 hover:bg-indigo-50 hover:text-indigo-600"
+                    className="flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs text-[var(--text-primary)] hover:bg-[var(--card-hover)] hover:text-indigo-600 dark:hover:text-indigo-400 transition-colors cursor-pointer"
                   >
                     <Copy size={14} /> To'liq nusxalash
                   </button>

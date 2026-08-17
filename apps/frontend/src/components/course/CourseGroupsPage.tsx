@@ -99,398 +99,415 @@ export function CourseGroupsPage({ courseId, onBackToList, onSelectContent, onSe
     const pageStudents = students.slice((currentStudentPage - 1) * 7, currentStudentPage * 7);
 
     return (
-      <div className="flex flex-col gap-2 p-6 sm:flex-row">
-        <div className="min-w-0 flex-1">
-          <Breadcrumb
-            items={[
-              { label: 'Kurslar', onClick: onBackToList },
-              { label: course.title, onClick: onSelectContent },
-              { label: 'Guruhlar', onClick: () => setSelectedGroupId(null) },
-              { label: group.name },
-            ]}
-          />
-
-          <div className="mb-4 flex gap-2 rounded-2xl bg-white p-2">
-            <button
-              type="button"
-              onClick={() => setInnerTab('students')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${innerTab === 'students' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-                }`}
-            >
-              O'quvchilar
-            </button>
-            <button
-              type="button"
-              onClick={() => setInnerTab('settings')}
-              className={`flex-1 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors ${innerTab === 'settings' ? 'bg-gray-900 text-white' : 'text-gray-500 hover:bg-gray-50'
-                }`}
-            >
-              Sozlamalar
-            </button>
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          <div className="px-1 py-1">
+            <Breadcrumb
+              items={[
+                { label: 'Kurslar', onClick: onBackToList },
+                { label: course.title, onClick: onSelectContent },
+                { label: 'Guruhlar', onClick: () => setSelectedGroupId(null) },
+                { label: group.name },
+              ]}
+            />
           </div>
 
-          {innerTab === 'students' ? (
-            <div className="rounded-2xl bg-white p-5">
-              <div className="mb-4 flex items-center gap-2">
-                <p className="text-sm font-semibold uppercase tracking-wide text-gray-400">Barcha o'quvchilar</p>
-                <span className="inline-flex items-center justify-center rounded-full bg-gray-900 px-2 py-0.5 text-xs font-bold text-white">
-                  {students.length}
-                </span>
+          <div className="flex flex-col gap-3 sm:flex-row items-start">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="flex gap-1.5 rounded-2xl bg-[var(--surface-bg)] p-1.5 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setInnerTab('students')}
+                  className={`flex-1 rounded-xl py-2 text-xs font-bold transition-colors cursor-pointer ${
+                    innerTab === 'students' ? 'bg-[var(--card-bg)] text-[var(--text-primary)] shadow-2xs' : 'text-[var(--text-secondary)] hover:bg-[var(--card-hover)]'
+                  }`}
+                >
+                  O'quvchilar
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setInnerTab('settings')}
+                  className={`flex-1 rounded-xl py-2 text-xs font-bold transition-colors cursor-pointer ${
+                    innerTab === 'settings' ? 'bg-[var(--card-bg)] text-[var(--text-primary)] shadow-2xs' : 'text-[var(--text-secondary)] hover:bg-[var(--card-hover)]'
+                  }`}
+                >
+                  Sozlamalar
+                </button>
               </div>
 
-              {students.length === 0 ? (
-                <div className="rounded-2xl bg-gray-50 py-14 text-center">
-                  <Users size={30} className="mx-auto mb-3 text-gray-300" />
-                  <p className="text-sm font-semibold text-gray-700">O'quvchilar topilmadi</p>
-                  <p className="mt-1 text-xs text-gray-400">
-                    Ular yuqoridagi havola orqali guruhga qo'shilgach paydo bo'ladi
-                  </p>
-                </div>
-              ) : (
-                <div className="flex flex-col gap-2">
-                  {pageStudents.map((m) => (
-                    <div key={m.id} className="flex items-center gap-2 rounded-2xl bg-gray-50 px-3.5 py-3">
-                      <UserAvatar name={m.studentName} avatarUrl={m.studentAvatarUrl} className={`h-9 w-9 rounded-full text-xs font-bold ${paletteFor(m.id)}`} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-semibold text-gray-800">{m.studentName}</p>
-                        <p className="text-xs text-gray-400">{m.studentPhone ?? ''}</p>
-                      </div>
-                      {m.latestPaymentStatus && (
-                        <span
-                          className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${m.latestPaymentStatus === 'paid'
-                              ? 'bg-green-100 text-green-600'
-                              : m.latestPaymentStatus === 'partial'
-                                ? 'bg-amber-100 text-amber-600'
-                                : m.latestPaymentStatus === 'debt'
-                                  ? 'bg-red-100 text-red-600'
-                                  : 'bg-gray-200 text-gray-500'
-                            }`}
-                        >
-                          {m.latestPaymentStatus === 'paid'
-                            ? "To'landi"
-                            : m.latestPaymentStatus === 'partial'
-                              ? 'Qisman'
-                              : m.latestPaymentStatus === 'debt'
-                                ? 'Qarz'
-                                : 'Kutilmoqda'}
-                        </span>
-                      )}
-                      <span className="shrink-0 rounded-lg bg-gray-100 px-2 py-1.5 text-xs font-medium text-gray-500">
-                        {group.plans.find((p) => p.id === m.selectedPlanId)?.name ?? 'Tarifsiz'}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={() => void setMemberForcedClosed(courseId, group.id, m.id, !m.forcedClosed)}
-                        title={m.forcedClosed ? 'Ochish' : 'Majburiy yopish'}
-                        className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-colors ${m.forcedClosed ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-gray-100 text-gray-500 hover:bg-gray-200'
-                          }`}
-                      >
-                        {m.forcedClosed ? 'Yopiq' : 'Ochiq'}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => void removeStudentFromGroup(courseId, group.id, m.id)}
-                        className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                        aria-label="Guruhdan olib tashlash"
-                      >
-                        <X size={16} />
-                      </button>
+              {innerTab === 'students' ? (
+                <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                  <div className="mb-4 flex items-center gap-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">Barcha o'quvchilar</p>
+                    <span className="inline-flex items-center justify-center rounded-full bg-indigo-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                      {students.length}
+                    </span>
+                  </div>
+
+                  {students.length === 0 ? (
+                    <div className="rounded-2xl bg-[var(--card-bg)] py-14 text-center">
+                      <Users size={30} className="mx-auto mb-2 text-[var(--text-muted)] opacity-40" />
+                      <p className="text-xs font-bold text-[var(--text-primary)]">O'quvchilar topilmadi</p>
+                      <p className="mt-0.5 text-[11px] text-[var(--text-muted)]">
+                        Ular yuqoridagi havola orqali guruhga qo'shilgach paydo bo'ladi
+                      </p>
                     </div>
-                  ))}
-                  {studentPageCount > 1 && (
-                    <div className="flex items-center justify-center gap-1.5 pt-3">
-                      <button
-                        type="button"
-                        onClick={() => setStudentPage((page) => Math.max(1, page - 1))}
-                        disabled={currentStudentPage === 1}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Oldingi sahifa"
-                      >
-                        <ChevronLeft size={16} />
-                      </button>
-                      {Array.from({ length: studentPageCount }, (_, index) => index + 1).map((page) => (
-                        <button
-                          key={page}
-                          type="button"
-                          onClick={() => setStudentPage(page)}
-                          className={`h-8 w-8 rounded-xl text-sm font-semibold transition-colors ${page === currentStudentPage
-                              ? 'bg-gray-900 text-white'
-                              : 'text-gray-500 hover:bg-gray-100'
+                  ) : (
+                    <div className="flex flex-col gap-2">
+                      {pageStudents.map((m) => (
+                        <div key={m.id} className="flex items-center gap-3 rounded-2xl bg-[var(--card-bg)] px-4 py-3">
+                          <UserAvatar name={m.studentName} avatarUrl={m.studentAvatarUrl} className={`h-8 w-8 rounded-full text-xs font-bold ${paletteFor(m.id)}`} />
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-xs font-bold text-[var(--text-primary)]">{m.studentName}</p>
+                            <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">{m.studentPhone ?? ''}</p>
+                          </div>
+                          {m.latestPaymentStatus && (
+                            <span
+                              className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${
+                                m.latestPaymentStatus === 'paid'
+                                  ? 'bg-emerald-500/10 text-emerald-500'
+                                  : m.latestPaymentStatus === 'partial'
+                                    ? 'bg-amber-500/10 text-amber-500'
+                                    : m.latestPaymentStatus === 'debt'
+                                      ? 'bg-red-500/10 text-red-500'
+                                      : 'bg-[var(--surface-bg)] text-[var(--text-muted)]'
+                              }`}
+                            >
+                              {m.latestPaymentStatus === 'paid'
+                                ? "To'landi"
+                                : m.latestPaymentStatus === 'partial'
+                                  ? 'Qisman'
+                                  : m.latestPaymentStatus === 'debt'
+                                    ? 'Qarz'
+                                    : 'Kutilmoqda'}
+                            </span>
+                          )}
+                          <span className="shrink-0 rounded-lg bg-[var(--surface-bg)] px-2 py-1 text-[11px] font-semibold text-[var(--text-secondary)]">
+                            {group.plans.find((p) => p.id === m.selectedPlanId)?.name ?? 'Tarifsiz'}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => void setMemberForcedClosed(courseId, group.id, m.id, !m.forcedClosed)}
+                            title={m.forcedClosed ? 'Ochish' : 'Majburiy yopish'}
+                            className={`shrink-0 rounded-lg px-2.5 py-1 text-[11px] font-bold transition-colors cursor-pointer ${
+                              m.forcedClosed ? 'bg-red-500/10 text-red-600 hover:bg-red-500/20' : 'bg-[var(--surface-bg)] text-[var(--text-secondary)] hover:bg-[var(--card-hover)]'
                             }`}
-                        >
-                          {page}
-                        </button>
+                          >
+                            {m.forcedClosed ? 'Yopiq' : 'Ochiq'}
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => void removeStudentFromGroup(courseId, group.id, m.id)}
+                            className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
+                            aria-label="Guruhdan olib tashlash"
+                          >
+                            <X size={15} />
+                          </button>
+                        </div>
                       ))}
-                      <button
-                        type="button"
-                        onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))}
-                        disabled={currentStudentPage === studentPageCount}
-                        className="rounded-xl p-2 text-gray-400 transition-colors hover:bg-gray-100 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-30"
-                        aria-label="Keyingi sahifa"
-                      >
-                        <ChevronRight size={16} />
-                      </button>
+                      {studentPageCount > 1 && (
+                        <div className="flex items-center justify-center gap-1.5 pt-3">
+                          <button
+                            type="button"
+                            onClick={() => setStudentPage((page) => Math.max(1, page - 1))}
+                            disabled={currentStudentPage === 1}
+                            className="rounded-xl p-1.5 text-[var(--text-muted)] hover:bg-[var(--card-hover)] disabled:opacity-30 cursor-pointer"
+                            aria-label="Oldingi sahifa"
+                          >
+                            <ChevronLeft size={16} />
+                          </button>
+                          {Array.from({ length: studentPageCount }, (_, index) => index + 1).map((page) => (
+                            <button
+                              key={page}
+                              type="button"
+                              onClick={() => setStudentPage(page)}
+                              className={`h-7 w-7 rounded-xl text-xs font-bold transition-colors cursor-pointer ${
+                                page === currentStudentPage
+                                  ? 'bg-indigo-600 text-white'
+                                  : 'text-[var(--text-secondary)] hover:bg-[var(--card-hover)]'
+                              }`}
+                            >
+                              {page}
+                            </button>
+                          ))}
+                          <button
+                            type="button"
+                            onClick={() => setStudentPage((page) => Math.min(studentPageCount, page + 1))}
+                            disabled={currentStudentPage === studentPageCount}
+                            className="rounded-xl p-1.5 text-[var(--text-muted)] hover:bg-[var(--card-hover)] disabled:opacity-30 cursor-pointer"
+                            aria-label="Keyingi sahifa"
+                          >
+                            <ChevronRight size={16} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
-              )}
-            </div>
-          ) : (
-            <div className="flex flex-col gap-4">
-              <div className="rounded-2xl bg-white p-5">
-                <h3 className="mb-4 text-base font-bold text-gray-800">Asosiy sozlamalar</h3>
-                <p className="mb-1.5 text-sm text-gray-500">Guruh nomi</p>
-                <input
-                  value={group.name}
-                  onChange={(e) => void renameGroup(courseId, group.id, e.target.value)}
-                  className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-                />
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                    <h3 className="mb-4 text-sm font-bold text-[var(--text-primary)]">Asosiy sozlamalar</h3>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Guruh nomi</label>
+                    <input
+                      value={group.name}
+                      onChange={(e) => void renameGroup(courseId, group.id, e.target.value)}
+                      className="mb-4 w-full rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+                    />
 
-                <p className="mb-1.5 text-sm text-gray-500">Oylik to'lov kuni (har oyning qaysi sanasida)</p>
-                <select
-                  value={group.paymentDay ?? 1}
-                  onChange={(e) => void setGroupPaymentDay(courseId, group.id, parseInt(e.target.value, 10) || 1)}
-                  className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none cursor-pointer"
-                >
-                  {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
-                    <option key={day} value={day}>
-                      Har oyning {day}-sanasi
-                    </option>
-                  ))}
-                </select>
-
-                <div className="flex items-center gap-2 py-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">Guruh chati</p>
-                    <p className="text-xs text-gray-400">Alohida chat o'quvchilar va kuratorlar uchun</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled
-                    title="Tez orada"
-                    className="relative inline-block h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-100 p-0"
-                  >
-                    <span className="absolute top-0.5 block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow" />
-                  </button>
-                </div>
-
-                <div className="flex items-center gap-2 py-2">
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-semibold text-gray-800">Guruh kanali</p>
-                    <p className="text-xs text-gray-400">Alohida kanal, faqat maktab xodimlari yoza oladi</p>
-                  </div>
-                  <button
-                    type="button"
-                    disabled
-                    title="Tez orada"
-                    className="relative inline-block h-6 w-11 shrink-0 cursor-not-allowed rounded-full bg-gray-100 p-0"
-                  >
-                    <span className="absolute top-0.5 block h-5 w-5 translate-x-0.5 rounded-full bg-white shadow" />
-                  </button>
-                </div>
-              </div>
-
-              <div className="rounded-2xl bg-white p-5">
-                <h3 className="mb-4 text-base font-bold text-gray-800">Guruh kuratorlari</h3>
-                <p className="mb-3 text-xs text-gray-400">
-                  Maktab xodimlaridan birini tanlang — a'zo bo'lmasa avtomatik guruhga qo'shiladi. Kuratorlik butun maktab bo'yicha beriladi, faqat shu guruhga emas.
-                </p>
-
-                {curators.length === 0 ? (
-                  <p className="mb-2 text-xs text-gray-400">Hozircha kurator tayinlanmagan</p>
-                ) : (
-                  <div className="mb-3 flex flex-col gap-2">
-                    {curators.map((m) => (
-                      <div key={m.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2">
-                        <p className="min-w-0 flex-1 truncate text-sm font-medium text-gray-700">{m.studentName}</p>
-                        <button
-                          type="button"
-                          onClick={() => handleRemoveCurator(m.id)}
-                          className="shrink-0 rounded-lg p-1 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                          aria-label="Kuratorlikni bekor qilish"
-                        >
-                          <X size={14} />
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-
-                {staff.length > 0 && (
-                  <select
-                    value=""
-                    onChange={(e) => e.target.value && void assignCurator(courseId, group.id, e.target.value)}
-                    className="w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none"
-                  >
-                    <option value="">Xodimni kurator qilish...</option>
-                    {staff
-                      .filter((s) => !curators.some((c) => c.studentId === s.studentId))
-                      .map((s) => (
-                        <option key={s.id} value={s.studentId}>{s.name}</option>
+                    <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Oylik to'lov kuni (har oyning qaysi sanasida)</label>
+                    <select
+                      value={group.paymentDay ?? 1}
+                      onChange={(e) => void setGroupPaymentDay(courseId, group.id, parseInt(e.target.value, 10) || 1)}
+                      className="mb-4 w-full rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
+                    >
+                      {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                        <option key={day} value={day}>
+                          Har oyning {day}-sanasi
+                        </option>
                       ))}
-                  </select>
-                )}
-              </div>
+                    </select>
 
-              <div className="rounded-2xl bg-white p-5">
-                <h3 className="mb-4 text-base font-bold text-gray-800">To'lovlar tarixi</h3>
-                {payments.length === 0 ? (
-                  <p className="text-xs text-gray-400">Hozircha to'lov yozuvlari yo'q</p>
-                ) : (
-                  <div className="flex flex-col gap-2">
-                    {payments.map((p) => {
-                      const member = group.members.find((m) => m.id === p.groupMemberId);
-                      return (
-                        <div key={p.id} className="flex items-center gap-2 rounded-xl bg-gray-50 px-3 py-2 text-sm">
-                          <span className="min-w-0 flex-1 truncate text-gray-700">
-                            {member?.studentName ?? 'Noma\'lum'} — {new Date(p.periodMonth).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })}
-                          </span>
-                          <span className="shrink-0 text-xs text-gray-400">
-                            {p.paidAmount}/{p.expectedAmount - p.discountAmount}
-                          </span>
-                        </div>
-                      );
-                    })}
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[var(--text-primary)]">Guruh chati</p>
+                        <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">Alohida chat o'quvchilar va kuratorlar uchun</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled
+                        title="Tez orada"
+                        className="relative inline-block h-5 w-9 shrink-0 cursor-not-allowed rounded-full bg-[var(--card-bg)] p-0 opacity-50"
+                      >
+                        <span className="absolute top-0.5 block h-4 w-4 translate-x-0.5 rounded-full bg-white/50 shadow-xs" />
+                      </button>
+                    </div>
+
+                    <div className="flex items-center gap-2 py-2">
+                      <div className="min-w-0 flex-1">
+                        <p className="text-xs font-bold text-[var(--text-primary)]">Guruh kanali</p>
+                        <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">Alohida kanal, faqat maktab xodimlari yoza oladi</p>
+                      </div>
+                      <button
+                        type="button"
+                        disabled
+                        title="Tez orada"
+                        className="relative inline-block h-5 w-9 shrink-0 cursor-not-allowed rounded-full bg-[var(--card-bg)] p-0 opacity-50"
+                      >
+                        <span className="absolute top-0.5 block h-4 w-4 translate-x-0.5 rounded-full bg-white/50 shadow-xs" />
+                      </button>
+                    </div>
                   </div>
-                )}
-              </div>
 
-              <div className="rounded-2xl bg-white p-5">
-                <h3 className="mb-4 text-base font-bold text-gray-800">Amallar</h3>
-                <button
-                  type="button"
-                  onClick={() => setConfirmDelete(true)}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
-                >
-                  <Trash2 size={16} /> Guruhni o'chirish
-                </button>
-              </div>
+                  <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                    <h3 className="mb-2 text-sm font-bold text-[var(--text-primary)]">Guruh kuratorlari</h3>
+                    <p className="mb-3 text-[11px] font-medium text-[var(--text-muted)]">
+                      Maktab xodimlaridan birini tanlang — a'zo bo'lmasa avtomatik guruhga qo'shiladi.
+                    </p>
+
+                    {curators.length === 0 ? (
+                      <p className="mb-3 text-xs font-medium text-[var(--text-muted)]">Hozircha kurator tayinlanmagan</p>
+                    ) : (
+                      <div className="mb-3 flex flex-col gap-2">
+                        {curators.map((m) => (
+                          <div key={m.id} className="flex items-center gap-2 rounded-xl bg-[var(--card-bg)] px-3 py-2">
+                            <p className="min-w-0 flex-1 truncate text-xs font-bold text-[var(--text-primary)]">{m.studentName}</p>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveCurator(m.id)}
+                              className="shrink-0 flex h-6 w-6 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
+                              aria-label="Kuratorlikni bekor qilish"
+                            >
+                              <X size={14} />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {staff.length > 0 && (
+                      <select
+                        value=""
+                        onChange={(e) => e.target.value && void assignCurator(courseId, group.id, e.target.value)}
+                        className="w-full rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
+                      >
+                        <option value="">Xodimni kurator qilish...</option>
+                        {staff
+                          .filter((s) => !curators.some((c) => c.studentId === s.studentId))
+                          .map((s) => (
+                            <option key={s.id} value={s.studentId}>{s.name}</option>
+                          ))}
+                      </select>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                    <h3 className="mb-3 text-sm font-bold text-[var(--text-primary)]">To'lovlar tarixi</h3>
+                    {payments.length === 0 ? (
+                      <p className="text-xs font-medium text-[var(--text-muted)]">Hozircha to'lov yozuvlari yo'q</p>
+                    ) : (
+                      <div className="flex flex-col gap-2">
+                        {payments.map((p) => {
+                          const member = group.members.find((m) => m.id === p.groupMemberId);
+                          return (
+                            <div key={p.id} className="flex items-center gap-2 rounded-xl bg-[var(--card-bg)] px-3 py-2 text-xs font-medium text-[var(--text-primary)]">
+                              <span className="min-w-0 flex-1 truncate">
+                                {member?.studentName ?? 'Noma\'lum'} — {new Date(p.periodMonth).toLocaleDateString('uz-UZ', { year: 'numeric', month: 'long' })}
+                              </span>
+                              <span className="shrink-0 text-xs font-bold text-[var(--text-muted)]">
+                                {p.paidAmount}/{p.expectedAmount - p.discountAmount}
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                    <h3 className="mb-3 text-sm font-bold text-[var(--text-primary)]">Amallar</h3>
+                    <button
+                      type="button"
+                      onClick={() => setConfirmDelete(true)}
+                      className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/20 cursor-pointer"
+                    >
+                      <Trash2 size={15} /> Guruhni o'chirish
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              <button
+                type="button"
+                onClick={() => setSelectedGroupId(null)}
+                className="w-full rounded-2xl bg-[var(--surface-bg)] py-2.5 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+              >
+                Guruhlarga qaytish
+              </button>
             </div>
+
+            <CourseSidePanel
+              onBackToList={onBackToList}
+              activeFullTab="groups"
+              onSelectContent={onSelectContent}
+              onSelectSettings={onSelectSettings}
+              onSelectLaunch={onSelectLaunch}
+              onSelectGroups={() => { }}
+              onSelectClasses={onSelectClasses}
+              onSelectChallenges={onSelectChallenges}
+            />
+          </div>
+
+          {confirmDelete && (
+            <ConfirmDeleteModal
+              title="Guruhni o'chirish"
+              description={`"${group.name}" guruhi o'chiriladi. Chat, kanal va a'zolik ma'lumotlari ham yo'qoladi.`}
+              onConfirm={handleConfirmDeleteGroup}
+              onClose={() => setConfirmDelete(false)}
+            />
           )}
-
-          <button
-            type="button"
-            onClick={() => setSelectedGroupId(null)}
-            className="mt-4 w-full rounded-2xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-200"
-          >
-            Guruhlarga qaytish
-          </button>
         </div>
-
-        <CourseSidePanel
-          onBackToList={onBackToList}
-          activeFullTab="groups"
-          onSelectContent={onSelectContent}
-          onSelectSettings={onSelectSettings}
-          onSelectLaunch={onSelectLaunch}
-          onSelectGroups={() => { }}
-          onSelectClasses={onSelectClasses}
-          onSelectChallenges={onSelectChallenges}
-        />
-
-        {confirmDelete && (
-          <ConfirmDeleteModal
-            title="Guruhni o'chirish"
-            description={`"${group.name}" guruhi o'chiriladi. Chat, kanal va a'zolik ma'lumotlari ham yo'qoladi.`}
-            onConfirm={handleConfirmDeleteGroup}
-            onClose={() => setConfirmDelete(false)}
-          />
-        )}
       </div>
     );
   }
 
   // ─── Holat A: guruhlar ro'yxati ────────────────────────────────────
   return (
-    <div className="flex flex-col gap-2 p-6 sm:flex-row">
-      <div className="min-w-0 flex-1">
-        <Breadcrumb
-          items={[
-            { label: 'Kurslar', onClick: onBackToList },
-            { label: course.title, onClick: onSelectContent },
-            { label: 'Guruhlar' },
-          ]}
-        />
-
-        <div className="mb-4 rounded-2xl bg-white p-5">
-          <h2 className="mb-1 text-lg font-bold text-gray-800">Guruhlarni boshqarish</h2>
-          <p className="mb-4 text-sm text-gray-400">
-            O'quvchilarni ajratish orqali o'quv jarayonini soddalashtirish
-          </p>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={handleCreateGroup}
-              disabled={course.groups.length >= 4}
-              title={course.groups.length >= 4 ? "Bitta kursga maksimal 4 ta guruh ochish mumkin" : undefined}
-              className="flex items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
-            >
-              <Plus size={16} /> Guruh yaratish
-            </button>
-            <p className="text-xs text-gray-400">{course.groups.length} ta guruh</p>
-          </div>
-          {course.groups.length >= 4 && (
-            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-              Bu kursda maksimal 4 ta guruh mavjud. Yangi guruh yaratish uchun avval mavjud guruhlardan birini o'chiring.
-            </p>
-          )}
+    <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+      <div className="flex min-h-full flex-col gap-3">
+        <div className="px-1 py-1">
+          <Breadcrumb
+            items={[
+              { label: 'Kurslar', onClick: onBackToList },
+              { label: course.title, onClick: onSelectContent },
+              { label: 'Guruhlar' },
+            ]}
+          />
         </div>
 
-        {course.groups.length === 0 ? (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
-            <Inbox size={32} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Hali guruh yo'q</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {course.groups.map((g) => {
-              const curatorNames = g.members.filter((m) => m.role === 'curator').map((m) => m.studentName);
-              const studentCount = g.members.filter((m) => m.role === 'student').length;
-              return (
+        <div className="flex flex-col gap-3 sm:flex-row items-start">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+              <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Guruhlarni boshqarish</h2>
+              <p className="mt-0.5 mb-4 text-xs text-[var(--text-muted)]">
+                O'quvchilarni ajratish orqali o'quv jarayonini soddalashtirish
+              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <button
-                  key={g.id}
                   type="button"
-                  onClick={() => { setSelectedGroupId(g.id); setInnerTab('students'); }}
-                  className="w-full rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
+                  onClick={handleCreateGroup}
+                  disabled={course.groups.length >= 4}
+                  title={course.groups.length >= 4 ? "Bitta kursga maksimal 4 ta guruh ochish mumkin" : undefined}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
                 >
-                  <div className="mb-1.5 flex items-center gap-1.5 text-xs text-gray-400">
-                    <Users size={13} />
-                    {studentCount} ta ishtirokchi
-                  </div>
-                  <p className="mb-1.5 text-base font-bold text-gray-800">{g.name}</p>
-                  <div className="flex flex-wrap items-center gap-1.5 text-xs text-gray-400">
-                    <span>Har oyning {g.paymentDay}-sanasi</span>
-                    <span>•</span>
-                    <span>
-                      {curatorNames.length === 0
-                        ? 'Kuratorsiz'
-                        : curatorNames.length === 1
-                          ? curatorNames[0]
-                          : `${curatorNames[0]} +${curatorNames.length - 1}`}
-                    </span>
-                    {g.groupChatEnabled && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">Chat</span>
-                    )}
-                    {g.groupChannelEnabled && (
-                      <span className="rounded-full bg-gray-100 px-2 py-0.5 font-medium text-gray-600">Kanal</span>
-                    )}
-                  </div>
+                  <Plus size={15} /> Guruh yaratish
                 </button>
-              );
-            })}
-          </div>
-        )}
-      </div>
+                <p className="text-xs font-semibold text-[var(--text-muted)]">{course.groups.length} ta guruh</p>
+              </div>
+              {course.groups.length >= 4 && (
+                <p className="mt-3 rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  Bu kursda maksimal 4 ta guruh mavjud. Yangi guruh yaratish uchun avval mavjud guruhlardan birini o'chiring.
+                </p>
+              )}
+            </div>
 
-      <CourseSidePanel
-        onBackToList={onBackToList}
-        activeFullTab="groups"
-        onSelectContent={onSelectContent}
-        onSelectLaunch={onSelectLaunch}
-        onSelectGroups={() => { }}
-        onSelectClasses={onSelectClasses}
-        onSelectChallenges={onSelectChallenges}
-      />
+            {course.groups.length === 0 ? (
+              <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+                <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-xs font-medium">Hali guruh yo'q</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {course.groups.map((g) => {
+                  const curatorNames = g.members.filter((m) => m.role === 'curator').map((m) => m.studentName);
+                  const studentCount = g.members.filter((m) => m.role === 'student').length;
+                  return (
+                    <button
+                      key={g.id}
+                      type="button"
+                      onClick={() => { setSelectedGroupId(g.id); setInnerTab('students'); }}
+                      className="w-full rounded-2xl bg-[var(--surface-bg)] p-4 text-left shadow-xs transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+                    >
+                      <div className="mb-1.5 flex items-center gap-1.5 text-xs font-semibold text-[var(--text-muted)]">
+                        <Users size={13} />
+                        {studentCount} ta ishtirokchi
+                      </div>
+                      <p className="mb-1.5 text-sm font-bold text-[var(--text-primary)]">{g.name}</p>
+                      <div className="flex flex-wrap items-center gap-1.5 text-[11px] font-medium text-[var(--text-muted)]">
+                        <span>Har oyning {g.paymentDay}-sanasi</span>
+                        <span>•</span>
+                        <span>
+                          {curatorNames.length === 0
+                            ? 'Kuratorsiz'
+                            : curatorNames.length === 1
+                              ? curatorNames[0]
+                              : `${curatorNames[0]} +${curatorNames.length - 1}`}
+                        </span>
+                        {g.groupChatEnabled && (
+                          <span className="rounded-full bg-[var(--card-bg)] px-2 py-0.5 font-semibold text-[var(--text-secondary)]">Chat</span>
+                        )}
+                        {g.groupChannelEnabled && (
+                          <span className="rounded-full bg-[var(--card-bg)] px-2 py-0.5 font-semibold text-[var(--text-secondary)]">Kanal</span>
+                        )}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          <CourseSidePanel
+            onBackToList={onBackToList}
+            activeFullTab="groups"
+            onSelectContent={onSelectContent}
+            onSelectLaunch={onSelectLaunch}
+            onSelectGroups={() => { }}
+            onSelectClasses={onSelectClasses}
+            onSelectChallenges={onSelectChallenges}
+          />
+        </div>
+      </div>
     </div>
   );
 }

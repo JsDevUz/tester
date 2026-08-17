@@ -33,10 +33,10 @@ export function StudentSubmissionDetailPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
+      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-6">
         <button
           onClick={() => navigate(-1)}
-          className="mb-4 inline-flex items-center gap-1.5 text-xs font-semibold text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+          className="mb-4 inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
           <ChevronLeft size={16} />
           Natijalar
@@ -44,31 +44,31 @@ export function StudentSubmissionDetailPage() {
 
         {loading && (
           <div className="flex justify-center py-12">
-            <div className="h-7 w-7 animate-spin rounded-full border-2 border-indigo-600 border-t-transparent" />
+            <div className="h-7 w-7 animate-spin rounded-full border-2 border-black/10 dark:border-white/15 border-t-indigo-600" />
           </div>
         )}
 
         {error && (
-          <p className="py-12 text-center text-sm text-red-400">
+          <p className="py-12 text-center text-xs font-semibold text-red-400">
             Natija topilmadi.
           </p>
         )}
 
         {detail && (
           <>
-            <section className="student-course-card challenge-detail-card mb-4 rounded-3xl p-5">
-              <p className="text-xl font-extrabold text-gray-900 dark:text-zinc-100">
+            <section className="glass-card mb-4 rounded-3xl p-5 sm:p-6">
+              <p className="text-xl font-bold text-[var(--text-primary)] tracking-tight">
                 {detail.testName ?? "Test"}
               </p>
-              <p className="mt-1 text-sm font-semibold text-gray-500 dark:text-zinc-400">
-                {detail.score} / {detail.total} ball · {pct}%
+              <p className="mt-1 text-xs font-bold text-[var(--text-secondary)]">
+                {detail.score} / {detail.total} ball · <span className="text-indigo-600 dark:text-indigo-400">{pct}%</span>
               </p>
             </section>
 
             {!canShowAnswers && (
-              <section className="student-course-card challenge-detail-card flex flex-col items-center p-8 text-center rounded-3xl">
-                <Clock size={32} className="mb-3 text-gray-300 dark:text-zinc-600" />
-                <p className="text-sm font-medium text-gray-500 dark:text-zinc-400">
+              <section className="glass-card flex flex-col items-center p-8 text-center rounded-3xl">
+                <Clock size={32} className="mb-3 text-[var(--text-muted)] opacity-40" />
+                <p className="text-xs font-semibold text-[var(--text-muted)]">
                   {detail.showResults === "after_deadline"
                     ? "Natijalar muddat tugagandan keyin ochiladi."
                     : "Natijalar yashirin."}
@@ -77,7 +77,7 @@ export function StudentSubmissionDetailPage() {
             )}
 
             {canShowAnswers && detail.answers.length === 0 && (
-              <p className="py-8 text-center text-sm text-gray-400">
+              <p className="py-8 text-center text-xs font-semibold text-[var(--text-muted)]">
                 Javoblar topilmadi.
               </p>
             )}

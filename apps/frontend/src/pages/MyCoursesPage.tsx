@@ -80,114 +80,113 @@ export function MyCoursesPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel w-full p-4 sm:p-5">
+      <div className="student-responsive-panel w-full p-4 sm:p-6 text-[var(--text-primary)]">
         {schoolId ? (
-          <div className="mb-4 flex items-center gap-2">
+          <div className="mb-5 flex items-center gap-3">
             <button
               type="button"
               onClick={() => navigate("/schools")}
               aria-label="Maktablarga qaytish"
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900"
+              className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-black/5 dark:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
             >
-              <ArrowLeft size={20} />
+              <ArrowLeft size={18} />
             </button>
-            <h1 className="text-lg font-bold text-gray-800">Kurslar</h1>
+            <h1 className="text-xl font-extrabold text-[var(--text-primary)]">Kurslar</h1>
           </div>
         ) : (
-          <h1 className="mb-4 text-lg font-bold text-gray-800">
+          <h1 className="mb-5 text-xl font-extrabold text-[var(--text-primary)]">
             Mening kurslarim
           </h1>
         )}
 
-        <StudentActiveBanners className="mb-4" />
+        <StudentActiveBanners className="mb-5" />
 
-        {loading && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
+        {loading && <p className="text-sm font-medium text-[var(--text-muted)]">Yuklanmoqda...</p>}
 
         {!loading && loadError && courses.length === 0 && (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-400">
-            <p className="mx-auto max-w-xs text-sm leading-6">{loadError}</p>
-            <p className="mt-3 text-xs text-gray-300">
+          <div className="glass-card rounded-3xl py-16 text-center text-[var(--text-muted)] border border-black/5 dark:border-white/10">
+            <p className="mx-auto max-w-xs text-sm font-medium leading-6">{loadError}</p>
+            <p className="mt-3 text-xs opacity-60">
               Yangilash uchun yuqoridan pastga torting
             </p>
           </div>
         )}
 
         {!loading && !loadError && courses.length === 0 && (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
-            <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Hali hech qanday kursga qo'shilmagansiz</p>
+          <div className="glass-card rounded-3xl py-16 text-center text-[var(--text-muted)] border border-black/5 dark:border-white/10">
+            <BookOpen size={36} className="mx-auto mb-3 text-indigo-500 opacity-60" />
+            <p className="text-sm font-semibold text-[var(--text-primary)]">Hali hech qanday kursga qo'shilmagansiz</p>
           </div>
         )}
 
         {!loading && !loadError && courses.length > 0 && (
-          <div className="grid grid-cols-1 gap-2 md:grid-cols-2 2xl:grid-cols-3">
+          <div className="grid grid-cols-1 gap-3.5 md:grid-cols-2 2xl:grid-cols-3">
             {courses.map((c) => (
               <div
                 key={`${c.courseId}-${c.groupName}`}
-                className="student-course-card flex min-h-[150px] flex-col rounded-3xl p-4 sm:min-h-[185px] sm:p-5"
+                className="glass-card flex min-h-[160px] flex-col rounded-3xl p-5 sm:min-h-[190px] border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition-all group"
               >
                 <button
                   type="button"
                   onClick={() => setSelectedCourseId(c.courseId)}
-                  className="flex flex-1 w-full flex-col justify-between gap-6 text-left"
+                  className="flex flex-1 w-full flex-col justify-between gap-5 text-left cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-4">
                     <div className="min-w-0 flex-1">
                       <div className="mb-3 flex flex-wrap items-center gap-2">
                         {c.starsMax > 0 && (
-                          <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2 py-2 text-sm font-bold text-white">
-                            <span className="grid h-5 w-5 place-items-center rounded-full bg-white text-gray-900">
-                              <Star size={13} fill="currentColor" />
-                            </span>
+                          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 px-3 py-1 text-xs font-bold">
+                            <Star size={12} fill="currentColor" />
                             {c.starsEarned} / {c.starsMax}
                           </span>
                         )}
-                        <span className="inline-flex items-center gap-1.5 text-sm font-medium text-gray-900">
-                          <UserRound size={16} className="text-gray-700" />
-                          {c.studentCount}
+                        <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                          <UserRound size={14} className="text-[var(--text-muted)]" />
+                          {c.studentCount} o'quvchi
                         </span>
                       </div>
 
-                      <p className="line-clamp-2 text-lg font-bold leading-tight text-gray-950 sm:text-xl">
+                      <p className="line-clamp-2 text-base font-bold leading-snug text-[var(--text-primary)] sm:text-lg group-hover:text-indigo-600 dark:group-hover:text-indigo-400 transition-colors">
                         {c.courseTitle}
                       </p>
                     </div>
 
-                    <div className="student-course-card-icon grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl sm:h-16 sm:w-16">
-                      <BookOpen size={23} className="text-gray-400" />
+                    <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-bold group-hover:scale-105 transition-transform">
+                      <BookOpen size={20} />
                     </div>
                   </div>
 
                   <div>
-                    <div className="mb-3 flex min-w-0 items-center gap-2 text-xs font-medium text-gray-950 sm:text-sm">
-                      <Zap size={16} />
-                      <span className="shrink-0">
-                        {c.lessonsCompleted} / {c.lessonsTotal}
-                      </span>
-                      <span className="shrink-0">•</span>
-                      <span className="shrink-0">{c.progressPercent}%</span>
+                    <div className="mb-2 flex min-w-0 items-center justify-between text-xs font-semibold text-[var(--text-secondary)]">
+                      <div className="flex items-center gap-1.5">
+                        <Zap size={14} className="text-amber-500" />
+                        <span>
+                          {c.lessonsCompleted} / {c.lessonsTotal} dars
+                        </span>
+                      </div>
+                      <span className="font-bold text-[var(--text-primary)]">{c.progressPercent}%</span>
                     </div>
 
-                    <div className="h-1.5 overflow-hidden rounded-full bg-slate-400/35 sm:h-2">
+                    <div className="h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
                       <div
-                        className="h-full rounded-full bg-[var(--color-indigo-500)]"
+                        className="h-full rounded-full bg-indigo-600 transition-all duration-500"
                         style={{ width: `${c.progressPercent}%` }}
                       />
                     </div>
                   </div>
                 </button>
-                <div className="mt-3 flex flex-wrap items-center gap-2">
+                <div className="mt-4 pt-3 border-t border-black/5 dark:border-white/5 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
                     onClick={() => setLeaderboardCourse(c)}
-                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition-all cursor-pointer"
                   >
                     <Trophy size={14} className="text-amber-500" /> Peshqadamlar
                   </button>
                   <button
                     type="button"
                     onClick={() => navigate("/challanges")}
-                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-lg bg-white/80 px-2.5 py-1.5 text-xs font-semibold text-gray-700 transition-colors hover:bg-white"
+                    className="inline-flex w-fit shrink-0 items-center gap-1.5 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-3 py-1.5 text-xs font-semibold text-[var(--text-primary)] transition-all cursor-pointer"
                   >
                     <BookOpen size={14} className="text-indigo-500" /> Challenge-lar
                   </button>
@@ -452,25 +451,25 @@ function StudentCourseReader({
 
   if (loading) {
     return (
-      <div className="flex min-h-[100dvh] items-center justify-center bg-white">
-        <Loader2 className="animate-spin text-gray-900" size={28} />
+      <div className="flex min-h-[100dvh] items-center justify-center bg-[var(--app-bg)] text-[var(--text-primary)]">
+        <Loader2 className="animate-spin text-indigo-600 dark:text-indigo-400" size={32} />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-[100dvh] bg-white p-5">
+      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 text-[var(--text-primary)]">
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500"
+          className="mb-6 inline-flex items-center gap-2 rounded-xl bg-black/5 dark:bg-white/5 px-3 py-2 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
         >
-          <ArrowLeft size={18} /> Kurslarga qaytish
+          <ArrowLeft size={16} /> Kurslarga qaytish
         </button>
-        <div className="rounded-2xl bg-gray-50 py-20 text-center text-gray-400">
-          <Lock size={34} className="mx-auto mb-3 opacity-50" />
-          <p className="text-sm font-semibold">{error}</p>
+        <div className="glass-card rounded-3xl py-20 text-center text-[var(--text-muted)] border border-black/5 dark:border-white/10">
+          <Lock size={36} className="mx-auto mb-3 text-red-500 opacity-70" />
+          <p className="text-sm font-bold text-[var(--text-primary)]">{error}</p>
         </div>
       </div>
     );
@@ -478,17 +477,17 @@ function StudentCourseReader({
 
   if (!course || lessons.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-white p-5">
+      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 text-[var(--text-primary)]">
         <button
           type="button"
           onClick={onBack}
-          className="mb-6 inline-flex items-center gap-2 text-sm font-semibold text-gray-500"
+          className="mb-6 inline-flex items-center gap-2 rounded-xl bg-black/5 dark:bg-white/5 px-3 py-2 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
         >
-          <ArrowLeft size={18} /> Kurslarga qaytish
+          <ArrowLeft size={16} /> Kurslarga qaytish
         </button>
-        <div className="rounded-2xl bg-gray-50 py-20 text-center text-gray-400">
-          <BookOpen size={34} className="mx-auto mb-3 opacity-50" />
-          <p className="text-sm font-semibold">Bu kursda hozircha ochiq dars yo‘q</p>
+        <div className="glass-card rounded-3xl py-20 text-center text-[var(--text-muted)] border border-black/5 dark:border-white/10">
+          <BookOpen size={36} className="mx-auto mb-3 text-indigo-500 opacity-70" />
+          <p className="text-sm font-bold text-[var(--text-primary)]">Bu kursda hozircha ochiq dars yo‘q</p>
         </div>
       </div>
     );
@@ -496,32 +495,32 @@ function StudentCourseReader({
 
   return (
     <div
-      className="min-h-[100dvh] select-none bg-white text-gray-900"
+      className="min-h-[100dvh] select-none bg-[var(--app-bg)] text-[var(--text-primary)]"
       onContextMenu={(e) => e.preventDefault()}
     >
       {!activeTest && (
-        <div className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-3 py-2.5 backdrop-blur lg:hidden">
+        <div className="glass-card sticky top-0 z-30 border-b border-black/5 dark:border-white/10 px-4 py-3 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onBack}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
-              <ArrowLeft size={21} />
+              <ArrowLeft size={18} />
             </button>
             <button
               type="button"
               onClick={() => setMobileLessonsOpen((value) => !value)}
-              className="flex min-w-0 items-center gap-1.5 text-base font-semibold text-gray-900"
+              className="flex min-w-0 items-center gap-1.5 text-sm font-bold text-[var(--text-primary)] cursor-pointer"
             >
               <span className="truncate">Darslar Tartibi</span>
               {mobileLessonsOpen ? (
-                <ChevronUp size={20} className="text-gray-700" />
+                <ChevronUp size={18} className="text-[var(--text-muted)]" />
               ) : (
-                <ChevronDown size={20} className="text-gray-700" />
+                <ChevronDown size={18} className="text-[var(--text-muted)]" />
               )}
             </button>
-            <span className="shrink-0 rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
+            <span className="shrink-0 rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">
               {progressCount} / {lessons.length}
             </span>
           </div>
@@ -529,37 +528,37 @@ function StudentCourseReader({
       )}
 
       {!activeTest && mobileLessonsOpen && (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-gray-50 px-3 pb-24 pt-3 lg:hidden">
-          <div className="mb-3 flex items-center justify-between gap-2">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-[var(--app-bg)] px-4 pb-24 pt-4 lg:hidden">
+          <div className="mb-4 flex items-center justify-between gap-2">
             <button
               type="button"
               onClick={onBack}
-              className="flex h-8 w-8 items-center justify-center rounded-full text-gray-600"
+              className="flex h-9 w-9 items-center justify-center rounded-xl bg-black/5 dark:bg-white/5 text-[var(--text-secondary)] hover:text-[var(--text-primary)] cursor-pointer"
             >
-              <ArrowLeft size={21} />
+              <ArrowLeft size={18} />
             </button>
             <button
               type="button"
               onClick={() => setMobileLessonsOpen(false)}
-              className="flex items-center gap-1.5 text-base font-semibold text-gray-900"
+              className="flex items-center gap-1.5 text-sm font-bold text-[var(--text-primary)] cursor-pointer"
             >
-              Darslar Tartibi <ChevronUp size={20} />
+              Darslar Tartibi <ChevronUp size={18} />
             </button>
-            <span className="rounded-full bg-gray-900 px-2.5 py-1 text-xs font-bold text-white">
+            <span className="rounded-full bg-indigo-600 px-3 py-1 text-xs font-bold text-white">
               {progressCount} / {lessons.length}
             </span>
           </div>
 
-          <div className="mb-4 rounded-2xl border border-gray-100 bg-white p-3">
-            <div className="mb-2 flex items-center justify-between">
-              <span className="text-sm font-bold">Jarayon</span>
-              <span className="text-xs font-bold text-gray-500">
+          <div className="glass-card mb-4 rounded-3xl border border-black/5 dark:border-white/10 p-4 shadow-sm">
+            <div className="mb-2.5 flex items-center justify-between">
+              <span className="text-xs font-bold text-[var(--text-primary)]">Jarayon</span>
+              <span className="text-xs font-bold text-indigo-600 dark:text-indigo-400">
                 {progressCount} / {lessons.length}
               </span>
             </div>
-            <div className="h-2 overflow-hidden rounded-full bg-gray-100">
+            <div className="h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
               <div
-                className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+                className="h-full rounded-full bg-indigo-600 transition-all duration-500"
                 style={{ width: `${progressPercent}%` }}
               />
             </div>
@@ -568,7 +567,7 @@ function StudentCourseReader({
           <div className="space-y-3">
             {course.modules.map((module, moduleIndex) => (
               <div key={module.id} className="space-y-2">
-                <div className="flex items-center gap-1.5 px-1 text-[11px] font-bold uppercase tracking-wide text-gray-400">
+                <div className="flex items-center gap-1.5 px-1 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
                   <Layers3 size={13} />
                   <span>{module.title || `Modul ${moduleIndex + 1}`}</span>
                 </div>
@@ -579,11 +578,11 @@ function StudentCourseReader({
             ))}
           </div>
 
-          <div className="fixed bottom-0 left-0 right-0 border-t border-gray-100 bg-white/95 p-3 backdrop-blur">
+          <div className="glass-card fixed bottom-0 left-0 right-0 border-t border-black/5 dark:border-white/10 p-3.5 backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setMobileLessonsOpen(false)}
-              className="h-11 w-full rounded-xl bg-gray-100 text-sm font-semibold text-gray-700"
+              className="h-11 w-full rounded-2xl bg-indigo-600 text-xs font-bold text-white hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               Yopish
             </button>

@@ -21,16 +21,16 @@ function LiveClassBlockTile({ classSessionId }: { classSessionId: string }) {
     <button
       type="button"
       onClick={() => navigate(`/classroom-history/${classSessionId}/replay`)}
-      className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
+      className="glass-card flex w-fit max-w-full items-center gap-3 rounded-2xl border border-black/5 dark:border-white/10 px-4 py-3 text-left transition-colors hover:border-indigo-500/30 sm:max-w-md cursor-pointer"
     >
-      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-indigo-600 text-white">
+      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-white">
         <Radio size={18} />
       </span>
       <span className="min-w-0 flex-1 text-left">
-        <span className="block truncate text-sm font-bold text-gray-900">
+        <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
           Jonli dars
         </span>
-        <span className="block text-xs font-semibold text-gray-400">
+        <span className="block text-xs font-semibold text-[var(--text-muted)]">
           Yozuvni ko'rish
         </span>
       </span>
@@ -47,7 +47,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
     return (
       <>
         <div
-          className="lesson-reader-html max-w-full overflow-hidden text-sm leading-7 text-gray-900 sm:text-base [&_p]:w-fit [&_p]:max-w-full [&_div]:w-fit [&_div]:max-w-full [&_.bn-block-outer]:w-fit [&_.bn-block-content]:w-fit [&_[data-content-type]]:w-fit [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
+          className="lesson-reader-html max-w-full text-sm leading-relaxed text-[var(--text-primary)] sm:text-base [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-2xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
           dangerouslySetInnerHTML={{ __html: block.html ?? "" }}
           onClick={(e) => {
             const target = e.target as HTMLElement;
@@ -66,7 +66,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
   if (block.type === "video") {
     if (block.embedUrl) {
       return (
-        <div className="max-w-full overflow-hidden rounded-2xl bg-black">
+        <div className="max-w-full overflow-hidden rounded-2xl bg-black shadow-md">
           <iframe
             src={block.embedUrl}
             title={block.label ?? block.fileName ?? "Video"}
@@ -97,7 +97,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
           />
         </button>
         {block.label && (
-          <figcaption className="mt-2 text-xs font-semibold text-gray-400">
+          <figcaption className="mt-2 text-xs font-semibold text-[var(--text-muted)]">
             {block.label}
           </figcaption>
         )}
@@ -127,20 +127,20 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
             if (isPdf) setPdfSheetOpen(true);
             else window.open(block.previewUrl!, "_blank", "noopener,noreferrer");
           }}
-          className="flex w-fit max-w-full items-center gap-2 rounded-xl bg-gray-100 px-4 py-3 text-left transition-colors hover:bg-gray-200 sm:max-w-md"
+          className="glass-card flex w-fit max-w-full items-center gap-3 rounded-2xl border border-black/5 dark:border-white/10 px-4 py-3 text-left transition-colors hover:border-black/20 dark:hover:border-white/20 sm:max-w-md cursor-pointer"
         >
-          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-gray-900 text-[11px] font-black text-white">
+          <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-indigo-600 text-[11px] font-black text-white">
             {ext.slice(0, 4)}
           </span>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-gray-900">
+            <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
               {block.label || block.fileName || "Fayl"}
             </span>
-            <span className="block text-xs font-semibold text-gray-400">
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">
               {isPdf ? "Ko'rish" : "Yuklab olish"}
             </span>
           </span>
-          <Download size={18} className="text-gray-400" />
+          <Download size={18} className="text-[var(--text-muted)]" />
         </button>
         {isPdf && pdfSheetOpen && (
           <PdfViewerSheet
@@ -188,7 +188,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
             avatarUrl={block.messageSender.avatarUrl}
             className="h-8 w-8 rounded-full text-xs font-bold"
           />
-          <span className="text-xs font-bold text-gray-600">
+          <span className="text-xs font-bold text-[var(--text-secondary)]">
             {block.messageSender.name}
           </span>
         </div>
@@ -198,7 +198,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
             .map((line) => (
               <div
                 key={line.id}
-                className="max-w-[85%] rounded-2xl rounded-tl-sm bg-gray-100 px-3.5 py-2.5 text-sm text-gray-800"
+                className="max-w-[85%] rounded-2xl rounded-tl-sm bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-4 py-2.5 text-sm text-[var(--text-primary)]"
               >
                 {line.text}
               </div>
@@ -209,7 +209,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
   }
 
   return (
-    <div className="flex items-center gap-2 rounded-xl bg-gray-50 px-4 py-4 text-sm font-semibold text-gray-400">
+    <div className="glass-card flex items-center gap-2 rounded-2xl border border-black/5 dark:border-white/10 px-4 py-4 text-sm font-semibold text-[var(--text-muted)]">
       {block.type === "image" ? <ImageIcon size={18} /> : <FileText size={18} />}
       <span>Kontent ochilmadi</span>
     </div>
@@ -251,58 +251,62 @@ export function LessonReader({
   );
 
   return (
-    <article className="mx-auto w-full max-w-full overflow-hidden pb-12 text-gray-900">
-      <div className="-mx-4 mb-4 bg-white/95 px-4 pb-3 pt-2 backdrop-blur sm:-mx-6 sm:mb-6 sm:px-6 lg:sticky lg:top-0 lg:z-10 lg:-mx-10 lg:px-10">
+    <article className="mx-auto w-full max-w-full overflow-hidden pb-12 text-[var(--text-primary)]">
+      {/* Seamless Lesson Header */}
+      <div className="mb-6">
         <div className="min-w-0">
-          <p className="truncate text-[11px] font-semibold text-gray-400 sm:text-xs">
+          <p className="truncate text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
             {moduleTitle}
           </p>
-          <h1 className="mt-1.5 text-xl font-black leading-tight text-gray-950 sm:mt-3 sm:text-4xl">
+          <h1 className="mt-1.5 text-2xl font-extrabold text-[var(--text-primary)] sm:text-3xl">
             {lesson.title}
           </h1>
         </div>
       </div>
 
+      {/* Curator Message Card */}
       <button
         type="button"
         onClick={onOpenMessenger}
-        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-100 px-3 py-3 text-left transition-colors sm:mb-6 sm:px-4 lg:rounded-xl hover:bg-gray-200"
+        className="glass-card mb-6 flex w-full items-center justify-between rounded-2xl border border-black/5 dark:border-white/10 p-3.5 sm:p-4 text-left transition-all hover:border-black/15 dark:hover:border-white/20 cursor-pointer"
       >
-        <span className="flex min-w-0 items-center gap-2">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-gray-900 text-white sm:h-9 sm:w-9">
-            <MessageCircle size={16} />
+        <span className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
+            <MessageCircle size={18} />
           </span>
           <span className="min-w-0">
-            <span className="block text-xs font-bold text-gray-900">
+            <span className="block text-xs font-bold text-[var(--text-primary)]">
               {curatorName ? `${curatorName} bilan suhbatlashish` : "Ustozga murojaat"}
             </span>
-            <span className="block truncate text-[11px] font-semibold text-gray-500">
+            <span className="block truncate text-[11px] font-semibold text-[var(--text-muted)]">
               {curatorName
                 ? "Kuratorga savolingizni berishingiz mumkin"
                 : "Kurator biriktirilmaguncha ustozingizga yozishingiz mumkin"}
             </span>
           </span>
         </span>
-        <MessageCircle size={18} className="shrink-0 text-gray-700" />
+        <MessageCircle size={18} className="shrink-0 text-[var(--text-muted)]" />
       </button>
 
+      {/* Lesson Blocks */}
       <div className="space-y-5 sm:space-y-6">
         {readyBlocks.length === 0 ? (
-          <div className="rounded-2xl bg-gray-50 py-16 text-center text-gray-400">
-            <BookOpen size={30} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm font-semibold">Dars kontenti hozircha tayyor emas</p>
+          <div className="glass-card rounded-3xl border border-black/5 dark:border-white/10 py-16 text-center text-[var(--text-muted)]">
+            <BookOpen size={32} className="mx-auto mb-3 opacity-50" />
+            <p className="text-sm font-bold text-[var(--text-primary)]">Dars kontenti hozircha tayyor emas</p>
           </div>
         ) : (
           readyBlocks.map((block) => <LessonBlock key={block.id} block={block} />)
         )}
       </div>
 
+      {/* Navigation Footer */}
       <div className="mt-8 flex items-center justify-between gap-2 sm:mt-10 sm:gap-4">
         <button
           type="button"
           onClick={onPrev}
           disabled={lessonNumber <= 1}
-          className="rounded-xl bg-gray-100 px-3.5 py-2.5 text-xs font-bold text-gray-700 disabled:cursor-not-allowed disabled:opacity-40 sm:px-4"
+          className="rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-5 py-3 text-xs font-bold text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/10 transition-colors disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
         >
           Orqaga
         </button>
@@ -313,10 +317,10 @@ export function LessonReader({
             else void onNext();
           }}
           disabled={!hasPractice && blockedByThreshold}
-          className={`rounded-xl px-3.5 py-2.5 text-xs font-bold text-white sm:px-4 ${
+          className={`rounded-2xl px-6 py-3 text-xs font-bold text-white transition-colors shadow-md cursor-pointer ${
             !hasPractice && blockedByThreshold
-              ? "cursor-not-allowed bg-gray-200 text-gray-400"
-              : "bg-[var(--color-indigo-500)]"
+              ? "cursor-not-allowed bg-black/10 dark:bg-white/10 text-[var(--text-muted)]"
+              : "bg-indigo-600 hover:bg-indigo-700"
           }`}
         >
           {hasPractice

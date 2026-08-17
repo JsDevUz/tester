@@ -109,19 +109,21 @@ export function FolderViewPage() {
           <div className="flex items-center justify-between mb-6">
             <div className="flex items-center gap-2">
               <button
+                type="button"
                 onClick={() => navigate("/")}
-                className="text-gray-400 hover:text-gray-600 text-sm"
+                className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
               >
                 ← Papkalar
               </button>
-              <span className="text-gray-400">/</span>
-              <h2 className="text-sm font-medium text-gray-700">
+              <span className="text-[var(--text-muted)] text-xs">/</span>
+              <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
                 {folder?.name ?? "Folder"}
               </h2>
             </div>
             <button
+              type="button"
               onClick={() => setShowModal(true)}
-              className="text-sm bg-indigo-500 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-600"
+              className="rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 transition-colors cursor-pointer"
             >
               + Yangi test
             </button>
@@ -209,37 +211,36 @@ export function FolderViewPage() {
           />
         )}
         {confirmDelete && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/20"
-              onClick={() => setConfirmDelete(null)}
-            />
-            <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
-              <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
-                <p className="text-sm text-gray-700 mb-1 font-medium">
-                  Testni o'chirish
-                </p>
-                <p className="text-sm text-gray-400 mb-5">
-                  "{confirmDelete.name}" o'chirilsinmi? Bu amalni qaytarib
-                  bo'lmaydi.
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => setConfirmDelete(null)}
-                    className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700"
-                  >
-                    Bekor qilish
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="text-sm px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600"
-                  >
-                    O'chirish
-                  </button>
-                </div>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
+            onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
+          >
+            <div className="glass-card w-full max-w-sm rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150 flex flex-col gap-3.5">
+              <p className="text-base font-bold text-[var(--text-primary)] tracking-tight">
+                Testni o'chirish
+              </p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                <span className="font-bold text-[var(--text-primary)]">"{confirmDelete.name}"</span> o'chirilsinmi? Bu amalni qaytarib
+                bo'lmaydi.
+              </p>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
+                >
+                  O'chirish
+                </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </AppShell>

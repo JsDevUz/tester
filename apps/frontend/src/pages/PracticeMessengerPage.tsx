@@ -526,7 +526,7 @@ function PracticeMessengerContent() {
   }
 
   return (
-    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden bg-[#f1f5f9] max-[1024px]:bg-[#f1f5f9] lg:rounded-2xl border border-gray-200/60 dark:bg-zinc-950 dark:border-zinc-800">
+    <div className="practice-messenger-root flex h-full min-h-0 flex-col overflow-hidden lg:rounded-3xl shadow-none border border-black/10 dark:border-white/10">
       {activeMessageActionsId && (
         <div
           className="fixed inset-0 z-40 bg-transparent"
@@ -549,15 +549,15 @@ function PracticeMessengerContent() {
         />
 
         <section
-          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden bg-[#f3f4f6] dark:bg-zinc-900 lg:flex ${
+          className={`practice-messenger-thread min-h-0 min-w-0 flex-col overflow-hidden lg:flex ${
             mobileThreadOpen ? "flex" : "hidden"
           }`}
         >
           {!selectedChat ? (
-            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-gray-400">
-              <MessageCircle size={48} className="mb-3 text-gray-200" />
-              <p className="font-semibold text-gray-600">Amalyot chatini tanlang</p>
-              <p className="mt-1 text-sm">Yangi topshiriqlar va xabarlar shu yerda turadi.</p>
+            <div className="flex flex-1 flex-col items-center justify-center px-6 text-center text-[var(--text-muted)]">
+              <MessageCircle size={48} className="mb-3 opacity-30 text-[var(--text-primary)]" />
+              <p className="font-bold text-[var(--text-primary)]">Amaliyot chatini tanlang</p>
+              <p className="mt-1 text-sm text-[var(--text-muted)]">Yangi topshiriqlar va xabarlar shu yerda turadi.</p>
             </div>
           ) : (
             <>
@@ -580,14 +580,14 @@ function PracticeMessengerContent() {
                 className="min-h-0 flex-1 overflow-y-auto overscroll-contain p-4 sm:p-5"
               >
                 {loadingChat ? (
-                  <div className="flex justify-center py-12 text-gray-400">
+                  <div className="flex justify-center py-12 text-[var(--text-muted)]">
                     <Loader2 className="animate-spin" size={24} />
                   </div>
                 ) : (
                   <>
                     {loadingOlderMessages && (
                       <div className="sticky top-1 z-10 mb-2 flex justify-center">
-                        <span className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1.5 text-xs font-semibold text-gray-500 ">
+                        <span className="flex items-center gap-2 rounded-full bg-[var(--card-bg)] px-3 py-1.5 text-xs font-semibold text-[var(--text-muted)]">
                           <Loader2 className="animate-spin" size={14} /> Oldingi xabarlar yuklanmoqda...
                         </span>
                       </div>
@@ -602,7 +602,7 @@ function PracticeMessengerContent() {
                           <Fragment key={message.id}>
                             {startsDateGroup && (
                               <div className="practice-message-date sticky top-0 z-[1] flex justify-center py-1.5">
-                                <span className="rounded-full px-3 py-1 text-xs font-semibold text-gray-500 backdrop-blur-sm">
+                                <span className="rounded-full bg-[var(--card-bg)] px-3 py-1 text-xs font-semibold text-[var(--text-muted)]">
                                   {messageDateLabel(message.createdAt)}
                                 </span>
                               </div>
@@ -664,9 +664,9 @@ function PracticeMessengerContent() {
             }
           }}
         >
-          <div className="w-full max-w-sm rounded-2xl bg-white p-5 shadow-2xl">
-            <h2 className="text-base font-bold text-gray-900">Xabarni o‘chirish</h2>
-            <p className="mt-2 text-sm leading-5 text-gray-500">
+          <div className="w-full max-w-sm rounded-3xl bg-[var(--surface-bg)] p-6 shadow-2xl">
+            <h2 className="text-base font-bold text-[var(--text-primary)]">Xabarni o‘chirish</h2>
+            <p className="mt-2 text-sm leading-5 text-[var(--text-muted)]">
               Bu xabarni o‘chirmoqchimisiz? Bu amalni ortga qaytarib bo‘lmaydi.
             </p>
             <div className="mt-5 flex justify-end gap-2">
@@ -674,7 +674,7 @@ function PracticeMessengerContent() {
                 type="button"
                 onClick={() => setMessagePendingDelete(null)}
                 disabled={deletingMessage}
-                className="rounded-xl border border-gray-200 px-4 py-2.5 text-sm font-bold text-gray-700 transition-colors hover:bg-gray-100 disabled:opacity-50"
+                className="rounded-xl bg-black/5 dark:bg-white/5 px-4 py-2.5 text-sm font-bold text-[var(--text-primary)] transition-colors hover:bg-black/10 dark:hover:bg-white/10 disabled:opacity-50 cursor-pointer"
               >
                 Bekor qilish
               </button>
@@ -682,7 +682,7 @@ function PracticeMessengerContent() {
                 type="button"
                 onClick={() => void deleteMessage(messagePendingDelete)}
                 disabled={deletingMessage}
-                className="inline-flex min-w-24 items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60"
+                className="inline-flex min-w-24 items-center justify-center rounded-xl bg-red-600 px-4 py-2.5 text-sm font-bold text-white transition-colors hover:bg-red-700 disabled:opacity-60 cursor-pointer"
               >
                 {deletingMessage ? <Loader2 size={16} className="animate-spin" /> : "O‘chirish"}
               </button>
@@ -715,12 +715,12 @@ function PracticeMessengerContent() {
 
       {(loadingTestDetail || testDetail) && (
         <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/50 p-4">
-          <div className="flex max-h-[min(720px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-            <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
+          <div className="flex max-h-[min(720px,calc(100vh-2rem))] w-full max-w-2xl flex-col overflow-hidden rounded-3xl bg-[var(--surface-bg)] shadow-2xl">
+            <div className="flex items-center justify-between border-b border-black/5 dark:border-white/5 px-6 py-4">
               <div>
-                <p className="text-base font-bold text-gray-900">Test natijasi</p>
+                <p className="text-base font-bold text-[var(--text-primary)]">Test natijasi</p>
                 {testDetail && (
-                  <p className="mt-0.5 text-xs text-gray-400">
+                  <p className="mt-0.5 text-xs text-[var(--text-muted)]">
                     {testDetail.score ?? 0} / {testDetail.total ?? 0} yulduz
                   </p>
                 )}
@@ -728,15 +728,15 @@ function PracticeMessengerContent() {
               <button
                 type="button"
                 onClick={() => setTestDetail(null)}
-                className="rounded-lg p-1.5 text-gray-400 hover:bg-gray-100 hover:text-gray-700"
+                className="rounded-lg p-1.5 text-[var(--text-muted)] hover:bg-black/5 dark:hover:bg-white/10 hover:text-[var(--text-primary)] transition-colors cursor-pointer"
                 aria-label="Natijani yopish"
               >
                 <X size={20} />
               </button>
             </div>
-            <div className="min-h-0 flex-1 overflow-y-auto p-4">
+            <div className="min-h-0 flex-1 overflow-y-auto p-5">
               {loadingTestDetail ? (
-                <div className="flex justify-center py-12 text-gray-400">
+                <div className="flex justify-center py-12 text-[var(--text-muted)]">
                   <Loader2 className="animate-spin" size={24} />
                 </div>
               ) : testDetail?.answers.length ? (
@@ -746,7 +746,7 @@ function PracticeMessengerContent() {
                   ))}
                 </div>
               ) : (
-                <p className="py-10 text-center text-sm text-gray-400">Javoblar topilmadi.</p>
+                <p className="py-10 text-center text-sm text-[var(--text-muted)]">Javoblar topilmadi.</p>
               )}
             </div>
           </div>

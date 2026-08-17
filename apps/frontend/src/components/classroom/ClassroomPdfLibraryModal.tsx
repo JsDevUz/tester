@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileText, Loader2, RefreshCw, Trash2, Upload, X } from "lucide-react";
+import { FileText, Loader2, RotateCcw, Trash2, Upload, X } from "lucide-react";
 import { toast } from "sonner";
 import {
   apiDeletePdfFromLibrary, apiListPdfLibrary, apiPdfLibraryUsage, apiRetryPdfProcessing,
@@ -19,8 +19,8 @@ function formatBytes(bytes: number): string {
 
 function statusLabel(status: string | null): { text: string; cls: string } | null {
   if (status === 'ready' || status === null) return null;
-  if (status === 'processing' || status === 'pending') return { text: 'Tayyorlanmoqda...', cls: 'text-amber-600 bg-amber-50' };
-  if (status.startsWith('failed')) return { text: 'Xatolik', cls: 'text-red-600 bg-red-50' };
+  if (status === 'processing' || status === 'pending') return { text: 'Tayyorlanmoqda...', cls: 'text-amber-600 bg-amber-500/10' };
+  if (status.startsWith('failed')) return { text: 'Xatolik', cls: 'text-red-600 bg-red-500/10' };
   return null;
 }
 
@@ -32,6 +32,7 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
   const [usage, setUsage] = useState<PdfLibraryUsage | null>(null);
   const [loading, setLoading] = useState(true);
   const [uploading, setUploading] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [displayCount, setDisplayCount] = useState(10);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const pollRef = useRef<number | null>(null);
@@ -112,12 +113,15 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
   }
 
   async function handleDelete(assetId: string) {
+    setDeletingId(assetId);
     try {
       await apiDeletePdfFromLibrary(assetId);
       toast.success("Fayl o'chirildi");
       await reload();
     } catch {
       toast.error("O'chirib bo'lmadi");
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -137,31 +141,31 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm p-4"
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex w-full max-w-lg flex-col overflow-hidden rounded-2xl bg-white shadow-2xl">
-        <div className="flex items-center justify-between border-b border-gray-100 px-5 py-4">
-          <h2 className="text-sm font-bold text-gray-800">PDF tanlash</h2>
-          <button type="button" onClick={onClose} className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-gray-100">
-            <X size={18} />
+      <div className="glass-card flex w-full max-w-lg flex-col overflow-hidden rounded-3xl shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150">
+        <div className="flex items-center justify-between border-b border-[var(--border-subtle)] px-6 py-4">
+          <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">PDF tanlash</h2>
+          <button type="button" onClick={onClose} className="rounded-xl p-1.5 text-[var(--text-muted)] transition-colors hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] cursor-pointer">
+            <X size={16} />
           </button>
         </div>
 
         {usage && (
-          <div className={`px-5 py-2.5 text-xs border-b border-gray-100 ${nearLimit ? "bg-amber-50 text-amber-700" : "text-gray-400"}`}>
+          <div className={`px-6 py-2.5 text-xs border-b border-[var(--border-subtle)] ${nearLimit ? "bg-amber-500/10 text-amber-600 dark:text-amber-400" : "text-[var(--text-muted)]"}`}>
             Kutubxona: {formatBytes(usage.totalBytes)} / {formatBytes(usage.maxTotalBytes)} · {usage.fileCount} / {usage.maxFileCount} fayl
             {nearLimit && " — chegaraga yaqin, keraksiz fayllarni o'chiring"}
           </div>
         )}
 
-        <div ref={bodyRef} className="max-h-[60vh] min-h-70 overflow-y-auto p-5">
+        <div ref={bodyRef} className="max-h-[60vh] min-h-70 overflow-y-auto p-6">
           {loading ? (
-            <p className="py-10 text-center text-sm text-gray-400">Yuklanmoqda...</p>
+            <p className="py-10 text-center text-xs font-medium text-[var(--text-muted)]">Yuklanmoqda...</p>
           ) : assets.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-center text-gray-400">
+            <div className="flex flex-col items-center gap-2 py-10 text-center text-[var(--text-muted)]">
               <FileText size={28} className="opacity-50" />
-              <p className="text-sm">Hali PDF yuklanmagan</p>
+              <p className="text-xs font-medium">Hali PDF yuklanmagan</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -172,36 +176,37 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
                   return (
                     <div
                       key={asset.id}
-                      className={`flex items-center gap-2 rounded-xl px-3.5 py-3 text-left transition-colors ${ready ? "bg-gray-50 hover:bg-gray-100 cursor-pointer" : "bg-gray-50"}`}
+                      className={`flex items-center gap-3 rounded-2xl p-3 text-left transition-colors border border-[var(--border-subtle)] ${ready ? "bg-[var(--card-bg)] hover:bg-[var(--card-hover)] cursor-pointer" : "bg-[var(--card-bg)]"}`}
                       onClick={() => ready && onSelect(asset)}
                     >
-                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-white text-gray-500">
+                      <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-indigo-500/10 text-indigo-500">
                         {status?.text === 'Tayyorlanmoqda...' ? <Loader2 size={16} className="animate-spin" /> : <FileText size={16} />}
                       </span>
                       <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold text-gray-800">{asset.originalName}</span>
-                        <span className="block truncate text-xs text-gray-400">
+                        <span className="block truncate text-xs font-bold text-[var(--text-primary)]">{asset.originalName}</span>
+                        <span className="block truncate text-[11px] font-medium text-[var(--text-muted)] mt-0.5">
                           {asset.uploaderName} · {formatBytes(asset.sizeBytes)}
                           {asset.pdfPageCount != null && ` · ${asset.pdfPageCount} sahifa`}
                         </span>
                       </span>
                       {status && (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[11px] font-medium ${status.cls}`}>{status.text}</span>
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-bold ${status.cls}`}>{status.text}</span>
                       )}
                       {status?.text === 'Xatolik' && (
                         <button
                           type="button"
                           onClick={(e) => { e.stopPropagation(); void handleRetry(asset.id); }}
-                          className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-gray-200 hover:text-gray-700"
+                          className="shrink-0 rounded-xl p-1.5 text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
                           title="Qayta urinish"
                         >
-                          <RefreshCw size={14} />
+                          <RotateCcw size={14} />
                         </button>
                       )}
                       <button
                         type="button"
                         onClick={(e) => { e.stopPropagation(); void handleDelete(asset.id); }}
-                        className="shrink-0 rounded-lg p-1.5 text-gray-400 hover:bg-red-50 hover:text-red-600"
+                        disabled={deletingId === asset.id}
+                        className="shrink-0 rounded-xl p-1.5 text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500 disabled:opacity-40 cursor-pointer transition-colors"
                         title="O'chirish"
                       >
                         <Trash2 size={14} />
@@ -212,20 +217,20 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
               </div>
 
               {displayCount < assets.length && (
-                <div ref={sentinelRef} className="flex items-center justify-center py-3 text-xs text-indigo-600 gap-2 font-medium">
-                  <Loader2 size={15} className="animate-spin" />
-                  <span>Ko'proq PDF fayllar yuklanmoqda...</span>
+                <div ref={sentinelRef} className="flex items-center justify-center py-2 text-xs font-semibold text-indigo-500">
+                  <Loader2 size={14} className="animate-spin mr-1.5" />
+                  Ko'proq yuklanmoqda...
                 </div>
               )}
             </div>
           )}
         </div>
 
-        <div className="border-t border-gray-100 p-5">
+        <div className="flex items-center justify-between border-t border-[var(--border-subtle)] px-6 py-4">
           <input
             ref={fileInputRef}
             type="file"
-            accept=".pdf"
+            accept="application/pdf"
             className="hidden"
             onChange={handleFileChange}
             disabled={uploading}
@@ -234,10 +239,17 @@ export function ClassroomPdfLibraryModal({ onSelect, onClose }: Props) {
             type="button"
             onClick={() => fileInputRef.current?.click()}
             disabled={uploading}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:opacity-60"
+            className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-colors cursor-pointer"
           >
-            <Upload size={16} />
-            {uploading ? "Yuklanmoqda..." : "Yangi PDF yuklash"}
+            {uploading ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+            <span>{uploading ? "Yuklanmoqda..." : "Yangi PDF yuklash"}</span>
+          </button>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+          >
+            Yopish
           </button>
         </div>
       </div>

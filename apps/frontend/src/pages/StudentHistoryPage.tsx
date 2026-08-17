@@ -89,10 +89,10 @@ export function StudentHistoryPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel w-full overflow-hidden">
-        <div className="student-responsive-panel-section bg-white px-4 py-5 lg:p-5">
-          <h1 className="text-2xl font-extrabold text-gray-900">Amaliyotlar</h1>
-          <div className="mt-4 flex items-center gap-2">
+      <div className="student-responsive-panel w-full overflow-hidden rounded-3xl">
+        <div className="student-responsive-panel-section px-4 py-5 lg:p-6">
+          <h1 className="text-xl sm:text-2xl font-bold text-[var(--text-primary)] tracking-tight">Amaliyotlar</h1>
+          <div className="mt-4 flex items-center gap-2.5">
             <input
               value={codeInput}
               onChange={(e) => setCodeInput(e.target.value)}
@@ -102,45 +102,45 @@ export function StudentHistoryPage() {
               placeholder="Test kodini kiriting"
               autoCapitalize="none"
               autoCorrect="off"
-              className="h-11 flex-1 rounded-xl bg-gray-100 px-4 text-sm text-gray-900 outline-none placeholder:text-gray-400"
+              className="h-11 flex-1 rounded-xl bg-white dark:bg-black/30 border border-black/10 dark:border-white/10 px-4 text-xs font-semibold text-[var(--text-primary)] outline-none focus:border-indigo-500 focus:ring-2 focus:ring-indigo-500/20 shadow-xs placeholder:text-[var(--text-muted)] transition-all"
             />
             <button
               type="button"
               onClick={openTestByCode}
               disabled={!extractTestCode(codeInput)}
-              className="grid h-11 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600 text-white disabled:opacity-40"
+              className="grid h-11 w-12 shrink-0 place-items-center rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white shadow-xs disabled:cursor-not-allowed disabled:opacity-40 transition-colors cursor-pointer"
             >
-              <Search size={19} />
+              <Search size={18} />
             </button>
           </div>
         </div>
 
-        <div className="px-4 pt-3.5 lg:px-5">
+        <div className="px-4 pt-2 lg:px-6">
           <StudentActiveBanners />
         </div>
 
-        <div className="student-responsive-panel-section px-4 pb-5 pt-4 lg:px-5">
-          <div className="mb-3 lg:mb-4">
-            <h2 className="text-xs font-bold uppercase tracking-wide text-gray-400">
+        <div className="student-responsive-panel-section px-4 pb-6 pt-4 lg:px-6">
+          <div className="mb-3.5">
+            <h2 className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
               Amaliyotlar tarixi
             </h2>
           </div>
 
           {loading ? (
             <div className="flex justify-center py-12">
-              <div className="h-7 w-7 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
+              <div className="h-7 w-7 animate-spin rounded-full border-2 border-black/10 dark:border-white/15 border-t-indigo-600" />
             </div>
           ) : error && submissions.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">
-              <p className="mx-auto max-w-xs text-sm leading-6">{error}</p>
-              <p className="mt-3 text-xs text-gray-300">
+            <div className="py-16 text-center text-[var(--text-muted)]">
+              <p className="mx-auto max-w-xs text-xs leading-5">{error}</p>
+              <p className="mt-2 text-[11px] text-[var(--text-muted)] opacity-70">
                 Yangilash uchun yuqoridan pastga torting
               </p>
             </div>
           ) : submissions.length === 0 ? (
-            <div className="py-16 text-center text-gray-400">
+            <div className="py-16 text-center text-[var(--text-muted)]">
               <BookOpen size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Hali ishlangan testlar yo'q.</p>
+              <p className="text-xs font-semibold">Hali ishlangan testlar yo'q.</p>
             </div>
           ) : (
             <div className="flex flex-col gap-2">
@@ -154,46 +154,46 @@ export function StudentHistoryPage() {
                   <button
                     key={s.id}
                     onClick={() => navigate(`/history/${s.id}`)}
-                    className="student-responsive-card flex w-full items-center gap-2 rounded-2xl bg-white p-4 text-left transition-all hover:bg-gray-50 active:scale-[0.99]"
+                    className="student-responsive-card flex w-full items-center gap-3 rounded-2xl p-4 text-left transition-all hover:bg-[var(--card-hover)] active:scale-[0.99] cursor-pointer"
                   >
                     <div
-                      className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl ${isGood
-                        ? "bg-green-50"
+                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${isGood
+                        ? "bg-emerald-500/10 text-emerald-500"
                         : isMid
-                          ? "bg-amber-50"
-                          : "bg-red-50"
+                          ? "bg-amber-500/10 text-amber-500"
+                          : "bg-red-500/10 text-red-500"
                         }`}
                     >
                       {isGood ? (
-                        <Trophy size={18} className="text-green-400" />
+                        <Trophy size={18} />
                       ) : isMid ? (
-                        <ThumbsUp size={18} className="text-amber-400" />
+                        <ThumbsUp size={18} />
                       ) : (
-                        <BookOpen size={18} className="text-red-300" />
+                        <BookOpen size={18} />
                       )}
                     </div>
                     <div className="flex-1 min-w-0">
-                      <p className="truncate text-[15px] font-bold text-gray-900">
+                      <p className="truncate text-xs font-bold text-[var(--text-primary)]">
                         {s.testName ?? "Test"}
                       </p>
-                      <p className="mt-0.5 text-xs text-gray-400">
+                      <p className="mt-0.5 text-[11px] font-medium text-[var(--text-muted)]">
                         {s.submittedAt
                           ? formatDateTime(s.submittedAt)
                           : "Topshirilmagan"}
                       </p>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
+                    <div className="flex items-center gap-2.5 shrink-0">
                       <div className="text-right">
                         <p
-                          className={`text-base font-bold lg:text-sm ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
+                          className={`text-xs font-bold ${isGood ? "text-emerald-500" : isMid ? "text-amber-500" : "text-red-400"}`}
                         >
                           {pct}%
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-[11px] font-medium text-[var(--text-muted)]">
                           {s.score ?? 0}/{s.total ?? 0}
                         </p>
                       </div>
-                      <ChevronRight size={16} className="text-gray-300" />
+                      <ChevronRight size={15} className="text-[var(--text-muted)] opacity-60" />
                     </div>
                   </button>
                 );
@@ -201,10 +201,10 @@ export function StudentHistoryPage() {
 
               <div ref={sentinelRef} className="flex justify-center py-2">
                 {loadingMore && (
-                  <div className="h-6 w-6 animate-spin rounded-full border border-gray-200 border-t-gray-900" />
+                  <div className="h-6 w-6 animate-spin rounded-full border-2 border-black/10 dark:border-white/15 border-t-indigo-600" />
                 )}
                 {!hasMore && submissions.length > 0 && (
-                  <p className="text-xs text-gray-300">Hammasi yuklandi</p>
+                  <p className="text-[11px] font-semibold text-[var(--text-muted)]">Hammasi yuklandi</p>
                 )}
               </div>
             </div>

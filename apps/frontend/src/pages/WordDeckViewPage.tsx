@@ -177,16 +177,16 @@ function BulkImportModal({ deckId, onClose, onImported }: { deckId: string; onCl
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div className="w-full max-w-lg rounded-2xl bg-white p-6">
-        <div className="mb-1 flex items-center justify-between">
-          <h3 className="font-bold text-gray-800">Ommaviy import</h3>
-          <button type="button" onClick={onClose}><X size={18} /></button>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="glass-card w-full max-w-lg rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150">
+        <div className="mb-2 flex items-center justify-between">
+          <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Ommaviy import</h3>
+          <button type="button" onClick={onClose} className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"><X size={16} /></button>
         </div>
-        <p className="mb-4 text-xs text-gray-400">Har qatorda: <code>so'z - tarjima</code></p>
-        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={9} placeholder={"apple - olma\nbook - kitob"} className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-3 text-sm outline-none" />
-        <button type="button" disabled={!text.trim() || importing} onClick={() => void submit()} className="w-full rounded-2xl bg-gray-900 py-3 text-sm font-semibold text-white disabled:bg-gray-200">
-          Import qilish
+        <p className="mb-4 text-xs text-[var(--text-muted)] leading-relaxed">Har qatorda: <code>so'z - tarjima</code></p>
+        <textarea value={text} onChange={(e) => setText(e.target.value)} rows={9} placeholder={"apple - olma\nbook - kitob"} className="mb-4 w-full rounded-2xl bg-black/5 dark:bg-white/5 border border-black/5 dark:border-white/10 px-4 py-3 text-xs font-semibold text-[var(--text-primary)] outline-none focus:ring-2 focus:ring-indigo-500/40 transition-all placeholder:text-[var(--text-muted)]" />
+        <button type="button" disabled={!text.trim() || importing} onClick={() => void submit()} className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-40 transition-colors cursor-pointer">
+          {importing ? "Import qilinmoqda..." : "Import qilish"}
         </button>
       </div>
     </div>

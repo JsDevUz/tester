@@ -31,12 +31,9 @@ export function ClassroomCallBar({
   onSendReaction, handRaised, onToggleHandRaise,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
-  const isDark = theme === 'dark';
 
-  // Barcha tugmalar uchun birlashgan base klass — MicControl bilan bir xil hajm, glass effekt
-  const btnBase = isDark
-    ? 'flex items-center justify-center h-11 w-11 rounded-full bg-[#1f2023]/80 backdrop-blur-md text-white shadow-md ring-1 ring-white/10 hover:bg-[#2a2b2f]/90 transition-all active:scale-95'
-    : 'flex items-center justify-center h-11 w-11 rounded-full bg-[#f1f3f4]/85 backdrop-blur-md text-[#1f2023] shadow-md ring-1 ring-black/5 hover:bg-[#e8eaed]/95 transition-all active:scale-95';
+  // Barcha tugmalar uchun birlashgan base klass — glass effekt
+  const btnBase = 'glass flex items-center justify-center h-11 w-11 rounded-full text-[var(--text-primary)] shadow-md hover:bg-black/10 dark:hover:bg-white/15 transition-all active:scale-95 cursor-pointer';
 
   return (
     <div
@@ -45,9 +42,7 @@ export function ClassroomCallBar({
     >
       {/* Emoji picker popover */}
       {pickerOpen && (
-        <div className={`absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl backdrop-blur-xl border max-w-[90vw] overflow-x-auto no-scrollbar touch-pan-x ${
-          isDark ? 'bg-[#1f2023]/90 border-white/10' : 'bg-white/90 border-gray-200'
-        }`}>
+        <div className="glass-card absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl max-w-[90vw] overflow-x-auto no-scrollbar touch-pan-x">
           {STICKER_EMOJIS.map((emoji) => (
             <button
               key={emoji}
@@ -56,7 +51,7 @@ export function ClassroomCallBar({
                 onSendReaction?.(emoji);
                 setPickerOpen(false);
               }}
-              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl transition-transform hover:scale-125 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-xl transition-transform hover:scale-125 hover:bg-black/10 dark:hover:bg-white/15 active:scale-95 cursor-pointer"
             >
               {emoji}
             </button>
@@ -84,8 +79,8 @@ export function ClassroomCallBar({
           type="button"
           onClick={() => setPickerOpen((v) => !v)}
           className={pickerOpen
-            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-indigo-600/70 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md transition-all active:scale-95'
-            : btnBase}
+            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-indigo-600 text-white shadow-md transition-all active:scale-95 cursor-pointer'
+            : `${btnBase} cursor-pointer`}
           title="Reaksiya bildirish"
         >
           <Smile size={20} />
@@ -98,8 +93,8 @@ export function ClassroomCallBar({
           type="button"
           onClick={onToggleHandRaise}
           className={handRaised
-            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-emerald-600/70 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md shadow-emerald-500/30 transition-all active:scale-95'
-            : btnBase}
+            ? 'flex items-center justify-center h-11 w-11 rounded-full bg-emerald-600 text-white shadow-md shadow-emerald-500/30 transition-all active:scale-95 cursor-pointer'
+            : `${btnBase} cursor-pointer`}
           title={handRaised ? "Qo'lni tushirish" : "Qo'l ko'tarish"}
         >
           <Hand size={20} />
@@ -109,8 +104,6 @@ export function ClassroomCallBar({
       {/* Menu (uchta nuqta) */}
       {menu && (
         <div className="relative">
-          {/* menu o'z trigger tugmasini o'zi chiqaradi,
-              lekin agar u faqat popover bo'lsa — wrapper chiqaramiz */}
           {menu}
         </div>
       )}
@@ -119,7 +112,7 @@ export function ClassroomCallBar({
       <button
         type="button"
         onClick={onEndCall}
-        className="flex items-center justify-center h-11 w-11 rounded-full bg-red-500/80 backdrop-blur-md ring-1 ring-white/15 text-white shadow-md hover:bg-red-600/90 transition-all active:scale-95"
+        className="flex items-center justify-center h-11 w-11 rounded-full bg-red-600 text-white shadow-md hover:bg-red-700 transition-all active:scale-95 cursor-pointer"
         title={endCallTitle}
       >
         <PhoneOff size={20} />

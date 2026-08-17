@@ -9,22 +9,10 @@ import { UserAvatar } from '../components/UserAvatar';
 import { DataLoadingState } from '../components/DataLoadingState';
 import { PaginationControls } from '../components/PaginationControls';
 
-const AVATAR_PALETTES = [
-  'bg-gray-200 text-gray-700',
-  'bg-amber-100 text-amber-600',
-  'bg-teal-100 text-teal-600',
-  'bg-rose-100 text-rose-600',
-];
-
-function paletteFor(id: string) {
-  let hash = 0;
-  for (let i = 0; i < id.length; i++) hash = (hash * 31 + id.charCodeAt(i)) >>> 0;
-  return AVATAR_PALETTES[hash % AVATAR_PALETTES.length];
-}
 
 const ROLE_BADGE: Record<SchoolStaffRole, { label: string; className: string }> = {
-  teacher_staff: { label: "O'qituvchi", className: 'bg-teal-100 text-teal-600' },
-  curator: { label: 'Kurator', className: 'bg-amber-100 text-amber-600' },
+  teacher_staff: { label: "O'qituvchi", className: 'bg-indigo-500/15 text-indigo-600 dark:text-indigo-400' },
+  curator: { label: 'Kurator', className: 'bg-amber-500/15 text-amber-600 dark:text-amber-400' },
 };
 
 export function SchoolStaffPage() {
@@ -55,79 +43,91 @@ export function SchoolStaffPage() {
 
   return (
     <AppShell>
-      <div className="flex flex-col gap-2 p-6 sm:flex-row">
-        <div className="min-w-0 flex-1">
-          <div className="mb-4 flex items-center justify-between gap-2">
-            <h1 className="text-lg font-bold text-gray-800">Mening xodimlarim</h1>
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          {/* Top Header */}
+          <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+            <div>
+              <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Mening xodimlarim</h1>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">
+                Maktabingiz o'qituvchi va kuratorlari ro'yxati ({staffTotal}/30)
+              </p>
+            </div>
             <button
               type="button"
               onClick={() => setModalOpen(true)}
               disabled={staffLimitReached}
               title={staffLimitReached ? "Bitta maktabga maksimal 30 ta xodim qo'shish mumkin" : undefined}
-              className="flex shrink-0 items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400"
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
             >
-              <Plus size={16} /> Xodim qo'shish
+              <Plus size={15} /> Xodim qo'shish
             </button>
           </div>
 
-          {staffLimitReached && (
-            <p className="mb-4 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-              Maksimal 30 ta xodim qo'shilgan. Yangi xodim qo'shish uchun avval mavjud xodimlardan birini olib tashlang.
-            </p>
-          )}
+          <div className="flex flex-col gap-3 sm:flex-row items-start">
+            <div className="min-w-0 flex-1 space-y-3">
+              {staffLimitReached && (
+                <p className="rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  Maksimal 30 ta xodim qo'shilgan. Yangi xodim qo'shish uchun avval mavjud xodimlardan birini olib tashlang.
+                </p>
+              )}
 
-          {staffLoading && !staffLoaded ? (
-            <DataLoadingState label="Xodimlar yuklanmoqda..." />
-          ) : staffError && staff.length === 0 ? (
-            <div className="rounded-2xl bg-white py-16 text-center text-sm text-gray-400">
-              <p>{staffError}</p>
-              <button type="button" onClick={() => void loadStaff(pageSize, (page - 1) * pageSize).catch(() => undefined)} className="mt-3 rounded-lg bg-gray-900 px-3 py-2 text-xs font-semibold text-white">Qayta urinish</button>
-            </div>
-          ) : staffLoaded && staff.length === 0 ? (
-            <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
-              <Inbox size={32} className="mx-auto mb-3 opacity-50" />
-              <p className="text-sm">Hali xodim yo'q</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {pageStaff.map((s) => {
-                const badge = ROLE_BADGE[s.role];
-                return (
-                  <div key={s.id} className="flex items-center gap-2 rounded-2xl bg-white px-4 py-3.5">
-                    <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className={`h-10 w-10 rounded-full text-sm font-bold ${paletteFor(s.id)}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-semibold text-gray-800">{s.name}</p>
-                      <p className="truncate text-xs text-gray-400">{s.phone}</p>
-                    </div>
-                    <span className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ${badge.className}`}>
-                      {badge.label}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => void removeStaff(s.id)}
-                      className="shrink-0 rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-500"
-                      aria-label="Xodimni olib tashlash"
-                    >
-                      <X size={16} />
-                    </button>
+              {staffLoading && !staffLoaded ? (
+                <DataLoadingState label="Xodimlar yuklanmoqda..." className="min-h-60" />
+              ) : staffError && staff.length === 0 ? (
+                <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-xs font-semibold text-[var(--text-muted)] shadow-xs">
+                  <p>{staffError}</p>
+                  <button type="button" onClick={() => void loadStaff(pageSize, (page - 1) * pageSize).catch(() => undefined)} className="mt-3 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 cursor-pointer">Qayta urinish</button>
+                </div>
+              ) : staffLoaded && staff.length === 0 ? (
+                <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+                  <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                  <p className="text-xs font-medium">Hali xodim yo'q</p>
+                </div>
+              ) : (
+                <div className="flex flex-col gap-2">
+                  {pageStaff.map((s) => {
+                    const badge = ROLE_BADGE[s.role];
+                    return (
+                      <div key={s.id} className="flex items-center gap-3 rounded-2xl bg-[var(--surface-bg)] px-4 py-3 shadow-xs transition-colors hover:bg-[var(--card-hover)]">
+                        <UserAvatar name={s.name} avatarUrl={s.avatarUrl} className="h-9 w-9 shrink-0 rounded-full text-xs font-bold" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-[var(--text-primary)]">{s.name}</p>
+                          <p className="truncate text-[11px] font-medium text-[var(--text-muted)] mt-0.5">{s.phone}</p>
+                        </div>
+                        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold ${badge.className}`}>
+                          {badge.label}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => void removeStaff(s.id)}
+                          className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
+                          aria-label="Xodimni olib tashlash"
+                        >
+                          <X size={15} />
+                        </button>
+                      </div>
+                    );
+                  })}
+                  <div className="p-2">
+                    <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
                   </div>
-                );
-              })}
-              <PaginationControls page={page} pageCount={pageCount} pageSize={pageSize} onPageChange={setPage} onPageSizeChange={(nextSize) => { setPageSize(nextSize); setPage(1); }} />
+                </div>
+              )}
             </div>
-          )}
+
+            <SchoolSidePanel />
+          </div>
         </div>
 
-        <SchoolSidePanel />
+        {modalOpen && (
+          <AddStaffModal
+            onSearch={searchStudents}
+            onConfirm={handleAddStaff}
+            onClose={() => setModalOpen(false)}
+          />
+        )}
       </div>
-
-      {modalOpen && (
-        <AddStaffModal
-          onSearch={searchStudents}
-          onConfirm={handleAddStaff}
-          onClose={() => setModalOpen(false)}
-        />
-      )}
     </AppShell>
   );
 }

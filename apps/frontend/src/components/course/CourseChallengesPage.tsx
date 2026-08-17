@@ -55,139 +55,151 @@ export function CourseChallengesPage({
 
   if (selectedId && detail && detail.id === selectedId) {
     return (
-      <div className="flex flex-col gap-2 p-6 sm:flex-row">
-        <div className="min-w-0 flex-1">
-          <Breadcrumb
-            items={[
-              { label: 'Kurslar', onClick: onBackToList },
-              { label: course.title, onClick: onSelectContent },
-              { label: 'Challenges', onClick: () => setSelectedId(null) },
-              { label: detail.name },
-            ]}
-          />
-
-          <div className="mb-4 rounded-2xl bg-white p-5">
-            <h2 className="mb-1 text-lg font-bold text-gray-800">{detail.name}</h2>
-            <p className="text-sm text-gray-400">{detail.description || 'Tavsif kiritilmagan'}</p>
+      <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-3">
+          <div className="px-1 py-1">
+            <Breadcrumb
+              items={[
+                { label: 'Kurslar', onClick: onBackToList },
+                { label: course.title, onClick: onSelectContent },
+                { label: 'Challenges', onClick: () => setSelectedId(null) },
+                { label: detail.name },
+              ]}
+            />
           </div>
 
-          {detail.type === 'soz_yodlash' ? (
-            <CourseChallengeWordsPanel challengeId={detail.id} />
-          ) : (
-            <BooksPanel
-              books={detail.books}
-              allTests={allTests}
-              onAddBook={(title, totalPages) => void addBook(detail.id, { title, totalPages })}
-              onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
-              onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
-              onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
+          <div className="flex flex-col gap-3 sm:flex-row items-start">
+            <div className="min-w-0 flex-1 space-y-3">
+              <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">{detail.name}</h2>
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">{detail.description || 'Tavsif kiritilmagan'}</p>
+              </div>
+
+              {detail.type === 'soz_yodlash' ? (
+                <CourseChallengeWordsPanel challengeId={detail.id} />
+              ) : (
+                <BooksPanel
+                  books={detail.books}
+                  allTests={allTests}
+                  onAddBook={(title, totalPages) => void addBook(detail.id, { title, totalPages })}
+                  onDeleteBook={(bookId) => void deleteBook(detail.id, bookId)}
+                  onSetTest={(bookId, data) => void setBookTest(detail.id, bookId, data)}
+                  onRemoveTest={(bookId) => void removeBookTest(detail.id, bookId)}
+                />
+              )}
+
+              <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(true)}
+                  className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-red-500/10 py-2.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/20 cursor-pointer"
+                >
+                  <Trash2 size={15} /> Challenge-ni o'chirish
+                </button>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setSelectedId(null)}
+                className="w-full rounded-2xl bg-[var(--surface-bg)] py-2.5 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+              >
+                Challenges-ga qaytish
+              </button>
+            </div>
+
+            <CourseSidePanel
+              onBackToList={onBackToList}
+              activeFullTab="challenges"
+              onSelectContent={onSelectContent}
+              onSelectSettings={onSelectSettings}
+              onSelectLaunch={onSelectLaunch}
+              onSelectGroups={onSelectGroups}
+              onSelectClasses={onSelectClasses}
+              onSelectChallenges={() => { }}
+            />
+          </div>
+
+          {confirmDelete && (
+            <ConfirmDeleteModal
+              title="Challenge-ni o'chirish"
+              description={`"${detail.name}" o'chiriladi. Barcha kitoblar va o'quvchi tarixi ham yo'qoladi.`}
+              onConfirm={() => {
+                void deleteChallenge(courseId, detail.id);
+                setSelectedId(null);
+                setConfirmDelete(false);
+              }}
+              onClose={() => setConfirmDelete(false)}
             />
           )}
-
-          <div className="mt-4 rounded-2xl bg-white p-5">
-            <button
-              type="button"
-              onClick={() => setConfirmDelete(true)}
-              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-red-50 py-3 text-sm font-semibold text-red-600 transition-colors hover:bg-red-100"
-            >
-              <Trash2 size={16} /> Challenge-ni o'chirish
-            </button>
-          </div>
-
-          <button
-            type="button"
-            onClick={() => setSelectedId(null)}
-            className="mt-4 w-full rounded-2xl bg-gray-100 py-3 text-sm font-semibold text-gray-600 transition-colors hover:bg-gray-200"
-          >
-            Challenges-ga qaytish
-          </button>
         </div>
-
-        <CourseSidePanel
-          onBackToList={onBackToList}
-          activeFullTab="challenges"
-          onSelectContent={onSelectContent}
-          onSelectSettings={onSelectSettings}
-          onSelectLaunch={onSelectLaunch}
-          onSelectGroups={onSelectGroups}
-          onSelectClasses={onSelectClasses}
-          onSelectChallenges={() => { }}
-        />
-
-        {confirmDelete && (
-          <ConfirmDeleteModal
-            title="Challenge-ni o'chirish"
-            description={`"${detail.name}" o'chiriladi. Barcha kitoblar va o'quvchi tarixi ham yo'qoladi.`}
-            onConfirm={() => {
-              void deleteChallenge(courseId, detail.id);
-              setSelectedId(null);
-              setConfirmDelete(false);
-            }}
-            onClose={() => setConfirmDelete(false)}
-          />
-        )}
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col gap-2 p-6 sm:flex-row">
-      <div className="min-w-0 flex-1">
-        <Breadcrumb items={[{ label: 'Kurslar', onClick: onBackToList }, { label: course.title, onClick: onSelectContent }, { label: 'Challenges' }]} />
-
-        <div className="mb-4 rounded-2xl bg-white p-5">
-          <h2 className="mb-1 text-lg font-bold text-gray-800">Challenges</h2>
-          <p className="mb-4 text-sm text-gray-400">Kitobxonlik challenge yarating, o'quvchilar avtomatik ko'radi</p>
-          <button
-            type="button"
-            onClick={() => setCreating(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-green-500 px-4 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-green-600"
-          >
-            <Plus size={16} /> Yangi challenge
-          </button>
+    <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+      <div className="flex min-h-full flex-col gap-3">
+        <div className="px-1 py-1">
+          <Breadcrumb items={[{ label: 'Kurslar', onClick: onBackToList }, { label: course.title, onClick: onSelectContent }, { label: 'Challenges' }]} />
         </div>
 
-        {challenges.length === 0 ? (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
-            <Inbox size={32} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Hali challenge yo'q</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {challenges.map((c) => (
+        <div className="flex flex-col gap-3 sm:flex-row items-start">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+              <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Challenges</h2>
+              <p className="mt-0.5 mb-3.5 text-xs text-[var(--text-muted)]">Kitobxonlik challenge yarating, o'quvchilar avtomatik ko'radi</p>
               <button
-                key={c.id}
                 type="button"
-                onClick={() => setSelectedId(c.id)}
-                className="flex w-full items-center gap-2 rounded-2xl bg-white p-4 text-left transition-colors hover:bg-gray-50"
+                onClick={() => setCreating(true)}
+                className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
               >
-                {c.imageUrl ? (
-                  <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
-                ) : (
-                  <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100">
-                    <BookOpen size={20} className="text-gray-400" />
-                  </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-base font-bold text-gray-800">{c.name}</p>
-                  <p className="truncate text-xs text-gray-400">{c.type}</p>
-                </div>
+                <Plus size={15} /> Yangi challenge
               </button>
-            ))}
-          </div>
-        )}
-      </div>
+            </div>
 
-      <CourseSidePanel
-        onBackToList={onBackToList}
-        activeFullTab="challenges"
-        onSelectContent={onSelectContent}
-        onSelectSettings={onSelectSettings}
-        onSelectLaunch={onSelectLaunch}
-        onSelectGroups={onSelectGroups}
-        onSelectClasses={onSelectClasses}
-        onSelectChallenges={() => { }}
-      />
+            {challenges.length === 0 ? (
+              <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+                <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-xs font-medium">Hali challenge yo'q</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {challenges.map((c) => (
+                  <button
+                    key={c.id}
+                    type="button"
+                    onClick={() => setSelectedId(c.id)}
+                    className="flex w-full items-center gap-3 rounded-2xl bg-[var(--surface-bg)] p-4 text-left shadow-xs transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+                  >
+                    {c.imageUrl ? (
+                      <img src={c.imageUrl} alt="" className="h-11 w-12 shrink-0 rounded-xl object-cover" />
+                    ) : (
+                      <div className="flex h-11 w-12 shrink-0 items-center justify-center rounded-xl bg-[var(--card-bg)]">
+                        <BookOpen size={20} className="text-[var(--text-muted)]" />
+                      </div>
+                    )}
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-xs font-bold text-[var(--text-primary)]">{c.name}</p>
+                      <p className="truncate text-[11px] font-medium text-[var(--text-muted)] mt-0.5">{c.type}</p>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          <CourseSidePanel
+            onBackToList={onBackToList}
+            activeFullTab="challenges"
+            onSelectContent={onSelectContent}
+            onSelectSettings={onSelectSettings}
+            onSelectLaunch={onSelectLaunch}
+            onSelectGroups={onSelectGroups}
+            onSelectClasses={onSelectClasses}
+            onSelectChallenges={() => { }}
+          />
+        </div>
+      </div>
 
       {creating && <CreateChallengeModal onCreate={handleCreate} onClose={() => setCreating(false)} />}
     </div>
@@ -217,29 +229,51 @@ function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, 
   }
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
-      <div className="w-full max-w-md rounded-2xl bg-white p-6">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center backdrop-blur-xs bg-black/25 dark:bg-black/60 p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="glass-panel w-full max-w-md rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]">
         <div className="mb-4 flex items-center justify-between">
-          <h3 className="text-base font-bold text-gray-800">Yangi challenge</h3>
-          <button type="button" onClick={onClose} className="rounded-lg p-1 text-gray-400 hover:bg-gray-100">
-            <X size={18} />
+          <h3 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Yangi challenge</h3>
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex h-7 w-7 items-center justify-center rounded-xl text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] cursor-pointer"
+          >
+            <X size={16} />
           </button>
         </div>
 
-        <label className="mb-1.5 block text-sm text-gray-500">Turi</label>
-        <select value={type} onChange={(event) => setType(event.target.value)} className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm text-gray-500 outline-none">
+        <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Turi</label>
+        <select
+          value={type}
+          onChange={(event) => setType(event.target.value)}
+          className="mb-4 w-full rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
+        >
           <option value="kitobxonlik">Kitobxonlik</option>
           <option value="soz_yodlash">So'z yodlash</option>
         </select>
 
-        <label className="mb-1.5 block text-sm text-gray-500">Nomi</label>
-        <input value={name} onChange={(e) => setName(e.target.value)} className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" placeholder="Yoz mutolaasi 2026" />
+        <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Nomi</label>
+        <input
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          className="mb-4 w-full rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+          placeholder="Yoz mutolaasi 2026"
+        />
 
-        <label className="mb-1.5 block text-sm text-gray-500">Tavsif</label>
-        <textarea value={description} onChange={(e) => setDescription(e.target.value)} className="mb-4 w-full rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" rows={3} />
+        <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Tavsif</label>
+        <textarea
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="mb-4 w-full resize-none rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+          rows={3}
+          placeholder="Challenge haqida qisqacha..."
+        />
 
-        <label className="mb-1.5 block text-sm text-gray-500">Rasm</label>
-        <label className="mb-4 flex h-24 w-full cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-gray-200 bg-gray-50 text-gray-400">
+        <label className="mb-1.5 block text-xs font-bold text-[var(--text-primary)]">Rasm</label>
+        <label className="mb-5 flex h-24 w-full cursor-pointer items-center justify-center rounded-2xl border-2 border-dashed border-[var(--card-border)] bg-[var(--card-bg)] text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors">
           {imageUrl ? <img src={imageUrl} alt="" className="h-full w-full rounded-2xl object-cover" /> : <ImagePlus size={22} />}
           <input type="file" accept="image/*" onChange={handleImageChange} className="hidden" disabled={uploading} />
         </label>
@@ -248,7 +282,7 @@ function CreateChallengeModal({ onCreate, onClose }: { onCreate: (name: string, 
           type="button"
           disabled={!name.trim()}
           onClick={() => onCreate(name.trim(), description.trim(), imageUrl, type)}
-          className="w-full rounded-2xl bg-gray-900 py-3 text-sm font-semibold text-white transition-colors hover:bg-gray-800 disabled:cursor-not-allowed disabled:bg-gray-200"
+          className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
         >
           Yaratish
         </button>
@@ -271,17 +305,29 @@ function BooksPanel({
   const [newPages, setNewPages] = useState('');
 
   return (
-    <div className="rounded-2xl bg-white p-5">
-      <h3 className="mb-4 text-base font-bold text-gray-800">Kitoblar</h3>
+    <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+      <h3 className="mb-3 text-sm font-bold text-[var(--text-primary)]">Kitoblar</h3>
 
       <div className="mb-4 flex gap-2">
-        <input value={newTitle} onChange={(e) => setNewTitle(e.target.value)} placeholder="Kitob nomi" className="flex-1 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" />
-        <input value={newPages} onChange={(e) => setNewPages(e.target.value)} placeholder="Jami bet" type="number" min={1} className="w-28 rounded-2xl bg-gray-50 px-4 py-2.5 text-sm outline-none" />
+        <input
+          value={newTitle}
+          onChange={(e) => setNewTitle(e.target.value)}
+          placeholder="Kitob nomi"
+          className="flex-1 rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+        />
+        <input
+          value={newPages}
+          onChange={(e) => setNewPages(e.target.value)}
+          placeholder="Jami bet"
+          type="number"
+          min={1}
+          className="w-24 rounded-xl bg-[var(--card-bg)] py-2 px-3 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors"
+        />
         <button
           type="button"
           disabled={!newTitle.trim() || !newPages}
           onClick={() => { onAddBook(newTitle.trim(), parseInt(newPages, 10)); setNewTitle(''); setNewPages(''); }}
-          className="shrink-0 rounded-2xl bg-gray-900 px-4 py-2.5 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-200"
+          className="shrink-0 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
         >
           Qo'shish
         </button>
@@ -289,14 +335,18 @@ function BooksPanel({
 
       <div className="flex flex-col gap-2">
         {books.map((book) => (
-          <div key={book.id} className="rounded-xl bg-gray-50 p-3.5">
+          <div key={book.id} className="rounded-xl bg-[var(--card-bg)] p-3.5">
             <div className="mb-2 flex items-center justify-between gap-2">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-sm font-semibold text-gray-800">{book.title}</p>
-                <p className="text-xs text-gray-400">{book.totalPages} bet</p>
+                <p className="truncate text-xs font-bold text-[var(--text-primary)]">{book.title}</p>
+                <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">{book.totalPages} bet</p>
               </div>
-              <button type="button" onClick={() => onDeleteBook(book.id)} className="shrink-0 rounded-lg p-1.5 text-gray-300 hover:bg-red-50 hover:text-red-500">
-                <Trash2 size={15} />
+              <button
+                type="button"
+                onClick={() => onDeleteBook(book.id)}
+                className="shrink-0 flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
+              >
+                <Trash2 size={14} />
               </button>
             </div>
 
@@ -321,8 +371,12 @@ function BookTestRow({
   const [forceNow, setForceNow] = useState(book.test?.forceNow ?? false);
 
   return (
-    <div className="flex flex-wrap items-center gap-2 border-t border-gray-100 pt-2.5">
-      <select value={testId} onChange={(e) => setTestId(e.target.value)} className="min-w-0 flex-1 rounded-xl bg-white px-3 py-2 text-xs outline-none">
+    <div className="flex flex-wrap items-center gap-2 border-t border-[var(--glass-border)] pt-2.5">
+      <select
+        value={testId}
+        onChange={(e) => setTestId(e.target.value)}
+        className="min-w-0 flex-1 rounded-xl bg-[var(--surface-bg)] py-1.5 px-2.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 transition-colors cursor-pointer"
+      >
         <option value="">Test tanlang...</option>
         {allTests.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}
       </select>
@@ -333,23 +387,32 @@ function BookTestRow({
         placeholder="Bet"
         type="number"
         min={1}
-        className="w-20 rounded-xl bg-white px-3 py-2 text-xs outline-none disabled:opacity-40"
+        className="w-18 rounded-xl bg-[var(--surface-bg)] py-1.5 px-2.5 text-xs font-medium text-[var(--text-primary)] outline-none focus:ring-1 focus:ring-indigo-500 disabled:opacity-40 transition-colors"
       />
-      <label className="flex items-center gap-1.5 text-xs text-gray-500">
-        <input type="checkbox" checked={forceNow} onChange={(e) => setForceNow(e.target.checked)} />
+      <label className="flex items-center gap-1.5 text-xs font-medium text-[var(--text-muted)] cursor-pointer">
+        <input
+          type="checkbox"
+          checked={forceNow}
+          onChange={(e) => setForceNow(e.target.checked)}
+          className="h-3.5 w-3.5 rounded text-indigo-600 cursor-pointer"
+        />
         Hozir majburiy
       </label>
       <button
         type="button"
         disabled={!testId}
-        onClick={() => onSetTest(book.id, { testId, triggerPage: forceNow ? undefined : (parseInt(triggerPage, 10) || undefined), forceNow })}
-        className="rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white disabled:cursor-not-allowed disabled:bg-gray-200"
+        onClick={() => onSetTest(book.id, { testId, triggerPage: triggerPage ? parseInt(triggerPage, 10) : undefined, forceNow })}
+        className="rounded-xl bg-indigo-600 px-3 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-40 cursor-pointer"
       >
         Saqlash
       </button>
       {book.test && (
-        <button type="button" onClick={() => onRemoveTest(book.id)} className="rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-600">
-          Olib tashlash
+        <button
+          type="button"
+          onClick={() => onRemoveTest(book.id)}
+          className="rounded-xl bg-red-500/10 px-2.5 py-1.5 text-xs font-bold text-red-600 dark:text-red-400 hover:bg-red-500/20 cursor-pointer"
+        >
+          Bekor qilish
         </button>
       )}
     </div>

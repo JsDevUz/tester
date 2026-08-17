@@ -37,11 +37,9 @@ interface Props {
 
 export function ClassroomParticipants({
   participants, speakingUserIds, unmutedUserIds = new Set(), isHost, myUserId,
-  onMute, userReactions, bare = false, theme = "light",
+  onMute, userReactions, bare = false, theme: _theme = "light",
   hostOnline = false, hostUserId = null, hostName = "Ustoz",
 }: Props) {
-  const isDark = theme === "dark";
-
   const sorted = [...participants].sort((a, b) => {
     // 1. Sort by online status first
     if (a.online && !b.online) return -1;
@@ -68,11 +66,11 @@ export function ClassroomParticipants({
   const onlineCount = participants.filter((p) => p.online).length;
 
   // Theme tokens
-  const nameCls = isDark ? "text-white" : "text-gray-900";
-  const nameOffCls = isDark ? "text-white/40" : "text-gray-400";
-  const rowHover = isDark ? "hover:bg-white/5" : "hover:bg-gray-50";
-  const speakBg = isDark ? "bg-indigo-500/20" : "bg-indigo-50";
-  const emptyCls = isDark ? "text-white/40" : "text-gray-400";
+  const nameCls = "text-[var(--text-primary)]";
+  const nameOffCls = "text-[var(--text-muted)]";
+  const rowHover = "hover:bg-[var(--card-hover)]";
+  const speakBg = "bg-indigo-500/10";
+  const emptyCls = "text-[var(--text-muted)]";
 
   // Host presence/audio status
   const hostSpeaking = isHost
@@ -86,7 +84,7 @@ export function ClassroomParticipants({
     <div className={bare ? "flex flex-col min-h-0" : ""}>
       {!bare && (
         <div className="flex items-center justify-between px-1 pb-2">
-          <span className={`text-xs font-medium ${isDark ? "text-white/50" : "text-gray-400"}`}>
+          <span className="text-xs font-semibold text-[var(--text-muted)]">
             {onlineCount}/{participants.length} onlayn
           </span>
         </div>
@@ -95,38 +93,38 @@ export function ClassroomParticipants({
       <div className="flex-1 overflow-y-auto flex flex-col gap-0.5">
         {/* Ustoz row at the very top */}
         {hostOnline && (
-          <div className="flex flex-col gap-0.5 border-b pb-2 mb-2 border-gray-100 dark:border-white/10">
+          <div className="flex flex-col gap-0.5 pb-1 mb-1.5">
             <div
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${hostSpeaking ? speakBg : ""}`}
+              className={`flex items-center gap-2.5 p-2.5 rounded-2xl transition-colors bg-white/50 dark:bg-white/5 shadow-xs backdrop-blur-xs ${rowHover} ${hostSpeaking ? speakBg : ""}`}
             >
               {/* Avatar */}
               <div className="relative shrink-0">
                 <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white bg-indigo-600"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white bg-indigo-600 shadow-xs"
                 >
                   U
                 </div>
                 {/* Online dot */}
                 <span
-                  className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-white dark:ring-[#202124] bg-emerald-500"
+                  className="absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--surface-bg)] bg-emerald-500"
                 />
               </div>
 
               {/* Name */}
-              <span className={`text-sm truncate flex-1 font-semibold ${nameCls}`}>
+              <span className={`text-xs truncate flex-1 font-bold ${nameCls}`}>
                 {hostName}
                 {isHost && (
-                  <span className={`ml-1 text-[11px] font-normal ${isDark ? "text-white/40" : "text-gray-400"}`}>(siz)</span>
+                  <span className="ml-1 text-[11px] font-normal text-[var(--text-muted)]">(siz)</span>
                 )}
               </span>
 
               {/* Host speaking indicator */}
               {hostSpeaking && (
-                <Volume2 size={14} className="text-indigo-400 shrink-0 animate-pulse" />
+                <Volume2 size={14} className="text-indigo-500 shrink-0 animate-pulse" />
               )}
 
               {/* Teacher label badge */}
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium bg-indigo-100 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400">
+              <span className="text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                 Ustoz
               </span>
 
@@ -134,7 +132,7 @@ export function ClassroomParticipants({
               <div className="flex items-center justify-center shrink-0">
                 <div
                   className={`p-1 shrink-0 ${hostMuted
-                      ? "text-gray-400 dark:text-white/30"
+                      ? "text-[var(--text-muted)]"
                       : "text-emerald-500"
                     }`}
                   title={hostMuted ? "Mikrofon o'chirilgan" : "Mikrofon yoqilgan"}
@@ -147,7 +145,7 @@ export function ClassroomParticipants({
         )}
 
         {sorted.length === 0 && !hostOnline && (
-          <p className={`text-sm py-6 text-center ${emptyCls}`}>
+          <p className={`text-xs py-6 text-center font-medium ${emptyCls}`}>
             Hozircha o'quvchi yo'q
           </p>
         )}
@@ -162,28 +160,27 @@ export function ClassroomParticipants({
           return (
             <div
               key={p.userId}
-              className={`flex items-center gap-2 px-3 py-2.5 rounded-xl transition-colors ${rowHover} ${speaking ? speakBg : ""}`}
+              className={`flex items-center gap-2.5 p-2.5 mb-1.5 rounded-2xl transition-colors bg-white/50 dark:bg-white/5 shadow-xs backdrop-blur-xs ${rowHover} ${speaking ? speakBg : ""}`}
             >
               {/* Avatar */}
               <div className="relative shrink-0">
                 <div
-                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white"
+                  className="flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white shadow-xs"
                   style={{ backgroundColor: avatarColor(p.name) }}
                 >
                   {initial}
                 </div>
                 {/* Online dot */}
                 <span
-                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ${isDark ? "ring-[#202124]" : "ring-white"
-                    } ${p.online ? "bg-emerald-500" : "bg-gray-400"}`}
+                  className={`absolute -bottom-0.5 -right-0.5 h-2.5 w-2.5 rounded-full ring-2 ring-[var(--surface-bg)] ${p.online ? "bg-emerald-500" : "bg-gray-400"}`}
                 />
               </div>
 
               {/* Name */}
-              <span className={`text-sm truncate flex-1 font-medium ${p.online ? nameCls : nameOffCls}`}>
+              <span className={`text-xs truncate flex-1 font-semibold ${p.online ? nameCls : nameOffCls}`}>
                 {p.name}
                 {p.userId === myUserId && (
-                  <span className={`ml-1 text-[11px] font-normal ${isDark ? "text-white/40" : "text-gray-400"}`}>(siz)</span>
+                  <span className="ml-1 text-[11px] font-normal text-[var(--text-muted)]">(siz)</span>
                 )}
               </span>
 
@@ -196,11 +193,11 @@ export function ClassroomParticipants({
 
               {/* Speaking indicator */}
               {speaking && (
-                <Volume2 size={14} className="text-indigo-400 shrink-0 animate-pulse" />
+                <Volume2 size={14} className="text-indigo-500 shrink-0 animate-pulse" />
               )}
 
               {/* Status badge */}
-              <span className={`text-[10px] px-1.5 py-0.5 rounded-full shrink-0 font-medium ${status.badgeCls}`}>
+              <span className={`text-[10px] px-2 py-0.5 rounded-full shrink-0 font-bold ${status.badgeCls}`}>
                 {status.text}
               </span>
 
@@ -212,9 +209,9 @@ export function ClassroomParticipants({
                       type="button"
                       disabled={isMuted}
                       onClick={() => onMute?.(p.userId)}
-                      className={`p-1 rounded-lg transition-colors shrink-0 ${isMuted
-                          ? "text-gray-400 dark:text-white/30 cursor-not-allowed"
-                          : "text-emerald-500 hover:text-red-500 hover:bg-red-500/10 dark:hover:bg-red-500/20"
+                      className={`p-1 rounded-xl transition-colors shrink-0 cursor-pointer ${isMuted
+                          ? "text-[var(--text-muted)] opacity-50 cursor-not-allowed"
+                          : "text-emerald-500 hover:text-red-500 hover:bg-red-500/10"
                         }`}
                       title={isMuted ? "Mikrofon o'chirilgan" : "Mikrofonni o'chirish"}
                     >
@@ -223,7 +220,7 @@ export function ClassroomParticipants({
                   ) : (
                     <div
                       className={`p-1 shrink-0 ${isMuted
-                          ? "text-gray-400 dark:text-white/30"
+                          ? "text-[var(--text-muted)]"
                           : "text-emerald-500"
                         }`}
                       title={isMuted ? "Mikrofon o'chirilgan" : "Mikrofon yoqilgan"}
@@ -240,9 +237,8 @@ export function ClassroomParticipants({
 
       {/* Mic hint for students */}
       {!isHost && (
-        <div className={`flex items-center gap-1.5 px-3 py-2.5 text-[11px] border-t ${isDark ? "border-white/10 text-white/30" : "border-gray-100 text-gray-400"
-          }`}>
-          <Mic size={11} />
+        <div className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-medium border-t border-[var(--border-subtle)] text-[var(--text-muted)]">
+          <Mic size={12} />
           Gapirish uchun mikrofon tugmasini yoqing
         </div>
       )}

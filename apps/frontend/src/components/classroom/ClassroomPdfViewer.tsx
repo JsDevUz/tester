@@ -740,7 +740,7 @@ export function ClassroomPdfViewer({
     const isNotebook = selectedMode === "notebook";
     return (
       <div
-        className={`inline-flex items-center gap-0.5 rounded-full bg-white/90 p-0.5 shadow-md backdrop-blur-sm ${disabled ? "opacity-60" : ""}`}
+        className={`glass inline-flex items-center gap-0.5 rounded-full p-1 shadow-lg ${disabled ? "opacity-60" : ""}`}
       >
         <button
           type="button"
@@ -748,9 +748,9 @@ export function ClassroomPdfViewer({
           onClick={() => {
             if (!pane) changeDisplayMode("pdf");
           }}
-          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${!isNotebook
-            ? "bg-indigo-600 text-white"
-            : "text-gray-500 hover:bg-gray-100"
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-all disabled:cursor-not-allowed cursor-pointer ${!isNotebook
+            ? "bg-indigo-600 text-white shadow-xs"
+            : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
             }`}
         >
           PDF
@@ -761,9 +761,9 @@ export function ClassroomPdfViewer({
           onClick={() => {
             if (!pane) changeDisplayMode("notebook");
           }}
-          className={`rounded-full px-2.5 py-1 text-xs font-medium transition-colors disabled:cursor-not-allowed ${isNotebook
-            ? "bg-indigo-600 text-white"
-            : "text-gray-500 hover:bg-gray-100"
+          className={`rounded-full px-3 py-1 text-xs font-semibold transition-all disabled:cursor-not-allowed cursor-pointer ${isNotebook
+            ? "bg-indigo-600 text-white shadow-xs"
+            : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
             }`}
         >
           Daftar
@@ -772,10 +772,10 @@ export function ClassroomPdfViewer({
     );
   };
   const rightZoomPanel = (
-    <div className="flex items-center gap-0.5 rounded-full bg-white/90 px-1 py-0.5 shadow-md backdrop-blur-sm">
+    <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-0.5 shadow-md">
       <button
         type="button"
-        className="rounded-full p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+        className="rounded-full p-1.5 text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 transition-colors cursor-pointer"
         disabled={rightZoom <= MIN_ZOOM || (!isHost && synced)}
         onClick={() => applyRightZoom(rightZoom - ZOOM_STEP)}
         title="Kichraytirish"
@@ -784,7 +784,7 @@ export function ClassroomPdfViewer({
       </button>
       <button
         type="button"
-        className="min-w-9 px-1 text-center text-[11px] font-medium text-gray-500 hover:text-gray-800 disabled:opacity-30 tabular-nums"
+        className="min-w-9 px-1 text-center text-[11px] font-bold text-[var(--text-primary)] hover:text-indigo-600 dark:hover:text-indigo-400 disabled:opacity-30 tabular-nums transition-colors cursor-pointer"
         disabled={!freeToMove}
         onClick={() => applyRightZoom(1)}
         title="Asl o'lchamga qaytarish"
@@ -793,7 +793,7 @@ export function ClassroomPdfViewer({
       </button>
       <button
         type="button"
-        className="rounded-full p-1 text-gray-500 hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-30"
+        className="rounded-full p-1.5 text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-30 transition-colors cursor-pointer"
         disabled={rightZoom >= MAX_ZOOM || (!isHost && synced)}
         onClick={() => applyRightZoom(rightZoom + ZOOM_STEP)}
         title="Kattalashtirish"
@@ -809,9 +809,9 @@ export function ClassroomPdfViewer({
         onClick={toggleSplit}
         disabled={!isHost && synced}
         title={displayLayout === "split" ? "Bitta ekranga qaytish" : "Ekranni ikkiga bo‘lish"}
-        className="rounded-full bg-white/90 p-1.5 text-gray-500 shadow-md backdrop-blur-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+        className="glass flex items-center justify-center h-8.5 w-8.5 rounded-full text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
       >
-        {displayLayout === "split" ? <Square size={15} /> : <Columns2 size={15} />}
+        {displayLayout === "split" ? <Square size={14} /> : <Columns2 size={14} />}
       </button>
     ) : null;
   const swapButton =
@@ -821,9 +821,9 @@ export function ClassroomPdfViewer({
         onClick={swapSplitPanes}
         disabled={!isHost && synced}
         title="PDF va daftar joyini almashtirish"
-        className="rounded-full bg-white/90 p-1.5 text-gray-500 shadow-md backdrop-blur-sm transition-colors hover:bg-gray-100 disabled:cursor-not-allowed disabled:opacity-60"
+        className="glass flex items-center justify-center h-8.5 w-8.5 rounded-full text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
       >
-        <Repeat2 size={15} />
+        <Repeat2 size={14} />
       </button>
     ) : null;
 
@@ -1257,12 +1257,12 @@ export function ClassroomPdfViewer({
 
       {(() => {
         const zoomPanel = (
-          <div className="flex items-center gap-0.5 rounded-full bg-white/90 backdrop-blur-sm shadow-md px-1 py-0.5">
+          <div className="glass flex items-center gap-0.5 rounded-full px-1.5 py-0.5 shadow-md">
             <button
               type="button"
               onClick={() => applyZoom(zoom - ZOOM_STEP)}
               disabled={zoom <= MIN_ZOOM || !freeToMove}
-              className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-full text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Kichraytirish"
             >
               <Minus size={13} />
@@ -1271,7 +1271,7 @@ export function ClassroomPdfViewer({
               type="button"
               onClick={() => applyZoom(1)}
               disabled={!freeToMove}
-              className="px-1 text-[11px] font-medium text-gray-500 hover:text-gray-800 min-w-9 text-center disabled:opacity-30 tabular-nums"
+              className="px-1 text-[11px] font-bold text-[var(--text-primary)] hover:text-indigo-600 dark:hover:text-indigo-400 min-w-9 text-center disabled:opacity-30 tabular-nums transition-colors cursor-pointer"
               title="Asl o'lchamga qaytarish"
             >
               {Math.round(zoom * 100)}%
@@ -1280,7 +1280,7 @@ export function ClassroomPdfViewer({
               type="button"
               onClick={() => applyZoom(zoom + ZOOM_STEP)}
               disabled={zoom >= MAX_ZOOM || !freeToMove}
-              className="p-1 rounded-full text-gray-500 hover:bg-gray-100 disabled:opacity-30 disabled:cursor-not-allowed"
+              className="p-1.5 rounded-full text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 disabled:opacity-30 disabled:cursor-not-allowed transition-colors cursor-pointer"
               title="Kattalashtirish"
             >
               <Plus size={13} />
@@ -1290,7 +1290,7 @@ export function ClassroomPdfViewer({
                 type="button"
                 onClick={() => applyZoom(1)}
                 disabled={!freeToMove}
-                className="p-1 rounded-full text-gray-400 hover:bg-gray-100 hover:text-gray-700 disabled:opacity-30"
+                className="p-1.5 rounded-full text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15 disabled:opacity-30 transition-colors cursor-pointer"
                 title="Reset"
               >
                 <ResetZoom size={12} />
@@ -1300,7 +1300,7 @@ export function ClassroomPdfViewer({
         );
 
         const pageInfoPanel = (
-          <div className="rounded-full bg-white/90 px-2.5 py-1.5 text-[11px] font-semibold text-gray-500 shadow-md backdrop-blur-sm tabular-nums">
+          <div className="glass flex items-center justify-center rounded-full px-3 py-1.5 text-[11px] font-bold text-[var(--text-primary)] shadow-md tabular-nums">
             {currentPage} /{" "}
             {visiblePageCount(
               displayLayout === "split" ? leftMode : displayMode,
@@ -1317,10 +1317,11 @@ export function ClassroomPdfViewer({
                 ? "Erkin harakatlanish (ustozdan mustaqil)"
                 : "Ustoz bilan sinxronlash"
             }
-            className={`rounded-xl p-1.5 shadow-md transition-colors ${synced
-              ? "bg-white text-gray-400 hover:bg-gray-50"
-              : "bg-indigo-600 text-white hover:bg-indigo-700"
-              }`}
+            className={`glass flex items-center justify-center h-8.5 w-8.5 rounded-full shadow-md transition-all active:scale-95 cursor-pointer ${
+              synced
+                ? "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
+                : "bg-indigo-600 text-white shadow-indigo-500/30"
+            }`}
           >
             <Move size={14} />
           </button>

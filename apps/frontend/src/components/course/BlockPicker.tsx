@@ -86,10 +86,10 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
           onClose={() => setLibraryOpen(false)}
         />
       )}
-      <p className="text-center text-xs text-gray-400 mb-3">
+      <p className="text-center text-[11px] font-semibold text-[var(--text-muted)] mb-3.5">
         {disabled ? (limitText ?? "Blok limiti to'ldi") : "Yangi blok qo'shish"}
       </p>
-      <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
         {BLOCK_ITEMS.map((item) => {
           const Icon = item.icon;
           const isDisabled = disabled || item.disabled;
@@ -99,20 +99,22 @@ export function BlockPicker({ onPickEditor, onPickFile, onPickFileFromLibrary, o
               type="button"
               disabled={isDisabled}
               onClick={() => handleClick(item)}
-              className={`group flex flex-col items-center gap-2.5 rounded-2xl px-4 py-5 text-sm font-medium transition-all duration-200 ${isDisabled
-                  ? 'cursor-not-allowed bg-gray-50/60 text-gray-300'
-                  : 'bg-white text-gray-600 hover:bg-gray-50'
-                }`}
+              className={`group flex flex-col items-center gap-2.5 rounded-2xl p-4 text-xs font-bold transition-all ${
+                isDisabled
+                  ? 'cursor-not-allowed opacity-30 bg-[var(--card-bg)]'
+                  : 'bg-[var(--card-bg)] hover:bg-[var(--card-hover)] text-[var(--text-primary)] hover:shadow-xs active:scale-[0.98] cursor-pointer'
+              }`}
             >
               <span
-                className={`flex h-10 w-10 items-center justify-center rounded-xl transition-colors ${isDisabled
-                    ? 'bg-gray-100 text-gray-300'
-                    : 'bg-gray-100 text-gray-700 group-hover:bg-gray-200'
-                  }`}
+                className={`flex h-11 w-11 items-center justify-center rounded-xl transition-transform ${
+                  isDisabled
+                    ? 'bg-[var(--card-hover)] text-[var(--text-muted)]'
+                    : 'bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-105'
+                }`}
               >
-                <Icon size={20} />
+                <Icon size={18} />
               </span>
-              {item.label}
+              <span className="truncate max-w-full">{item.label}</span>
             </button>
           );
         })}

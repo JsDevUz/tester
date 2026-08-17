@@ -64,10 +64,13 @@ export class PaymentsService {
     if (payment.status === 'cancelled') {
       throw new BadRequestException('Bekor qilingan to\'lovga pul kiritib bo\'lmaydi');
     }
-    if (amount <= 0) {
-      throw new BadRequestException('Summa musbat son bo\'lishi kerak');
+    if (amount < 0) {
+      throw new BadRequestException('Summa manfiy bo\'lmasligi kerak');
     }
     const nextDiscountAmount = discount ?? payment.discountAmount;
+    if (amount === 0 && payment.expectedAmount > 0 && nextDiscountAmount < payment.expectedAmount) {
+      throw new BadRequestException('Summa musbat son bo\'lishi kerak');
+    }
     if (nextDiscountAmount < 0 || nextDiscountAmount > payment.expectedAmount) {
       throw new BadRequestException(
         `Chegirma 0 dan kurs narxigacha (${payment.expectedAmount}) bo'lishi kerak`,

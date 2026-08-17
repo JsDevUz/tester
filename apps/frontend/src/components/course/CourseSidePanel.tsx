@@ -134,40 +134,39 @@ export function CourseSidePanel({
   }
 
   return (
-    <div className="sticky top-6 self-start flex w-full shrink-0 flex-col gap-2 sm:w-72">
-      <div className="flex flex-col gap-1.5 rounded-2xl bg-white p-2">
+    <div className="flex w-full shrink-0 flex-col gap-2 sm:w-68">
+      <div className="flex flex-col gap-1 rounded-2xl bg-[var(--surface-bg)] p-2 shadow-xs">
         {tabs.map((tab) => {
           const Icon = tab.icon;
           const active = isTabActive(tab.key);
           const clickable = isTabClickable(tab.key);
           return (
-            <div
+            <button
               key={tab.key}
-              role={clickable ? "button" : undefined}
-              tabIndex={clickable ? 0 : undefined}
+              type="button"
+              disabled={!clickable}
               onClick={() => handleTabClick(tab.key)}
-              className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-sm ${active
-                  ? "bg-gray-100 text-gray-900"
+              className={`flex items-center gap-2.5 rounded-xl px-3.5 py-2.5 text-left text-xs transition-colors ${
+                active
+                  ? "bg-indigo-600 text-white font-bold shadow-xs"
                   : clickable
-                    ? "cursor-pointer text-gray-500 hover:bg-gray-50"
-                    : "cursor-not-allowed text-gray-300"
-                }`}
+                    ? "cursor-pointer text-[var(--text-secondary)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] font-semibold"
+                    : "cursor-not-allowed opacity-40 text-[var(--text-muted)]"
+              }`}
             >
               <Icon
-                size={18}
-                className={`shrink-0 ${active ? "text-gray-900" : clickable ? "text-gray-400" : "text-gray-300"}`}
+                size={16}
+                className={`shrink-0 ${active ? "text-white" : "text-[var(--text-muted)]"}`}
               />
               <div className="min-w-0">
-                <p
-                  className={`truncate font-semibold ${active ? "text-gray-900" : clickable ? "text-gray-700" : "text-gray-400"}`}
-                >
+                <p className={`truncate text-xs font-bold ${active ? "text-white" : "text-[var(--text-primary)]"}`}>
                   {tab.label}
                 </p>
-                <p className="truncate text-xs text-gray-300">
+                <p className={`truncate text-[11px] font-medium mt-0.5 ${active ? "text-white/80" : "text-[var(--text-muted)]"}`}>
                   {tab.description}
                 </p>
               </div>
-            </div>
+            </button>
           );
         })}
       </div>
@@ -175,9 +174,9 @@ export function CourseSidePanel({
       <button
         type="button"
         onClick={onBackToList}
-        className="flex items-center justify-center gap-2 rounded-2xl bg-gray-900 py-3 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-gray-800"
+        className="inline-flex items-center justify-center gap-2 rounded-2xl bg-[var(--surface-bg)] hover:bg-[var(--card-hover)] py-2.5 text-xs font-bold text-[var(--text-primary)] shadow-xs transition-colors cursor-pointer"
       >
-        <ArrowLeft size={16} /> Kurslarga qaytish
+        <ArrowLeft size={15} /> Kurslarga qaytish
       </button>
     </div>
   );

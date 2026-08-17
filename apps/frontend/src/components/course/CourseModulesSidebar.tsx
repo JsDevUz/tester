@@ -64,39 +64,27 @@ export function CourseModulesSidebar({
           onSelectLesson(lesson.id);
         }}
         disabled={locked}
-        className={
-          mobile
-            ? `flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-                locked
-                  ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
-                  : active
-                  ? "border-gray-900 bg-white text-gray-900"
-                  : "border-transparent bg-white text-gray-900 hover:border-gray-300"
-              }`
-            : `flex w-full items-center gap-2.5 rounded-xl border bg-white p-2.5 text-left transition-colors ${
-                locked
-                  ? "cursor-not-allowed border-transparent text-gray-300 opacity-70"
-                  : active
-                  ? "border-gray-900 text-gray-900"
-                  : "border-transparent text-gray-900 hover:border-gray-300"
-              }`
-        }
+        className={`flex w-full items-center gap-3 rounded-2xl p-3 text-left transition-all ${
+          locked
+            ? "cursor-not-allowed opacity-40 bg-transparent text-[var(--text-muted)]"
+            : active
+            ? "bg-indigo-500/10 border border-indigo-500/30 text-indigo-600 dark:text-indigo-400 shadow-xs font-bold"
+            : "bg-black/5 dark:bg-white/5 border border-transparent text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/10 hover:border-black/5 dark:hover:border-white/10 cursor-pointer"
+        }`}
       >
         <div
-          className={`${
-            mobile ? "h-11 w-11 rounded-xl" : "h-11 w-11 rounded-xl"
-          } relative flex shrink-0 items-center justify-center bg-gray-100 text-gray-300`}
+          className="h-10 w-10 relative flex shrink-0 items-center justify-center rounded-xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]"
         >
           {locked ? (
-            <Lock size={mobile ? 18 : 18} />
+            <Lock size={16} />
           ) : hasVideo ? (
-            <Film size={mobile ? 19 : 19} />
+            <Film size={18} />
           ) : (
-            <BookOpen size={mobile ? 19 : 19} />
+            <BookOpen size={18} />
           )}
           {hasVideo && !locked && (
-            <span className="absolute -bottom-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full border-2 border-white bg-blue-500 text-white">
-              <Play size={10} fill="currentColor" />
+            <span className="absolute -bottom-1 -right-1 flex h-4.5 w-4.5 items-center justify-center rounded-full border-2 border-[var(--surface-bg)] bg-indigo-600 text-white">
+              <Play size={8} fill="currentColor" />
             </span>
           )}
         </div>
@@ -105,7 +93,7 @@ export function CourseModulesSidebar({
             className={`${
               mobile ? "text-sm" : "text-xs"
             } line-clamp-2 font-bold ${
-              active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"
+              active ? "text-indigo-600 dark:text-indigo-400" : locked ? "text-[var(--text-muted)]" : "text-[var(--text-primary)]"
             }`}
           >
             {lesson.title}
@@ -113,16 +101,16 @@ export function CourseModulesSidebar({
           <div
             className={`${
               mobile ? "text-xs" : "text-[11px]"
-            } mt-0.5 flex flex-wrap items-center gap-1.5 font-semibold text-gray-400`}
+            } mt-0.5 flex flex-wrap items-center gap-1.5 font-semibold text-[var(--text-muted)]`}
           >
             <span>Modul {moduleIndex + 1}</span>
             {videoDurationLabel && (
-              <span className="rounded-full bg-gray-100 px-1.5 py-0.5 text-gray-500">
+              <span className="rounded-full bg-black/5 dark:bg-white/10 px-1.5 py-0.5 text-[10px]">
                 {videoDurationLabel}
               </span>
             )}
             {hasPractice && (
-              <span className="rounded-full bg-orange-100 px-1.5 py-0.5 text-orange-600">
+              <span className="rounded-full bg-amber-500/10 text-amber-600 dark:text-amber-400 px-1.5 py-0.5 text-[10px]">
                 Amaliyot
               </span>
             )}
@@ -130,17 +118,17 @@ export function CourseModulesSidebar({
         </div>
         <div className="flex shrink-0 items-center gap-2">
           {totalStars > 0 && (
-            <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 text-[11px] font-bold text-amber-500">
+            <span className="inline-flex items-center gap-1 rounded-full bg-amber-500/10 px-2 py-0.5 text-[11px] font-bold text-amber-600 dark:text-amber-400">
               <Star size={11} fill="currentColor" /> {totalStars}
             </span>
           )}
-          <span className="text-gray-400">
+          <span className="text-[var(--text-muted)]">
             {locked ? (
-              <Lock size={mobile ? 18 : 15} />
+              <Lock size={15} />
             ) : isDone ? (
-              <CheckCircle2 size={mobile ? 18 : 16} className="text-green-500" />
+              <CheckCircle2 size={16} className="text-emerald-500" />
             ) : (
-              <ChevronRight size={mobile ? 18 : 16} />
+              <ChevronRight size={16} />
             )}
           </span>
         </div>
@@ -149,33 +137,33 @@ export function CourseModulesSidebar({
   };
 
   return (
-    <aside className="hidden max-w-full overflow-hidden border-b border-gray-200 bg-gray-100/80 p-3 lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
-      <div className="mb-4 flex items-center justify-between gap-2">
+    <aside className="hidden max-w-full overflow-hidden border-b border-black/5 dark:border-white/10 bg-[var(--surface-bg)] p-4 text-[var(--text-primary)] lg:sticky lg:top-0 lg:block lg:h-screen lg:overflow-y-auto lg:border-b-0 lg:border-r">
+      <div className="mb-5 flex items-center justify-between gap-2">
         <button
           type="button"
           onClick={onBack}
-          className="inline-flex items-center gap-2 rounded-xl bg-white px-3 py-2 text-xs font-semibold text-gray-600"
+          className="inline-flex items-center gap-2 rounded-xl bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 px-3.5 py-2 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
         >
           <ArrowLeft size={16} /> Kurslar
         </button>
         {courseStars.max > 0 && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1.5 text-xs font-bold text-amber-500">
+          <span className="inline-flex items-center gap-1.5 rounded-full bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-600 dark:text-amber-400">
             <Star size={13} fill="currentColor" /> {courseStars.earned} /{" "}
             {courseStars.max}
           </span>
         )}
       </div>
 
-      <div className="mb-3 rounded-2xl bg-white p-3 sm:mb-4">
+      <div className="glass-card mb-4 rounded-3xl p-4 shadow-sm border border-black/5 dark:border-white/10">
         <div className="mb-2.5 flex items-center justify-between gap-2">
-          <span className="text-xs font-bold text-gray-900">Jarayon</span>
-          <span className="rounded-full bg-gray-900 px-2.5 py-0.5 text-[11px] font-bold text-white">
+          <span className="text-xs font-bold text-[var(--text-primary)]">Jarayon</span>
+          <span className="rounded-full bg-indigo-600 px-2.5 py-0.5 text-[11px] font-bold text-white">
             {progressCount} / {totalLessons}
           </span>
         </div>
-        <div className="h-1.5 overflow-hidden rounded-full bg-gray-100">
+        <div className="h-2 overflow-hidden rounded-full bg-black/5 dark:bg-white/10">
           <div
-            className="h-full rounded-full bg-[var(--color-indigo-500)] transition-all"
+            className="h-full rounded-full bg-indigo-600 transition-all duration-500"
             style={{ width: `${progressPercent}%` }}
           />
         </div>
@@ -184,11 +172,11 @@ export function CourseModulesSidebar({
       <div className="-mx-3 flex max-w-[100vw] gap-2 overflow-x-auto px-3 pb-1 sm:gap-2 lg:mx-0 lg:max-w-none lg:flex-col lg:overflow-visible lg:px-0 lg:pb-0">
         {course.modules.map((module, moduleIndex) => (
           <div key={module.id} className="contents lg:block">
-            <div className="mb-2 hidden items-center gap-2 px-1 text-xs font-bold uppercase tracking-wide text-gray-400 lg:flex">
+            <div className="mb-2.5 hidden items-center gap-2 px-1 text-xs font-bold uppercase tracking-wider text-[var(--text-muted)] lg:flex">
               <Layers3 size={14} />
               <span>{module.title || `Modul ${moduleIndex + 1}`}</span>
             </div>
-            <div className="contents lg:block lg:space-y-2.5">
+            <div className="contents lg:block lg:space-y-2">
               {module.lessons.map((lesson) =>
                 renderLessonButton(moduleIndex, lesson),
               )}

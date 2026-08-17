@@ -138,25 +138,33 @@ export function MyTestFolderViewPage() {
         />
       )}
       {confirmDelete && (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/20" onClick={() => setConfirmDelete(null)} />
-          <div className="fixed z-50 inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-80 rounded-2xl bg-white p-6 shadow-2xl pointer-events-auto">
-              <p className="mb-1 text-sm font-medium text-gray-700">Testni o'chirish</p>
-              <p className="mb-5 text-sm text-gray-400">
-                "{confirmDelete.name}" o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.
-              </p>
-              <div className="flex justify-end gap-2">
-                <button onClick={() => setConfirmDelete(null)} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700">
-                  Bekor qilish
-                </button>
-                <button onClick={() => void handleDelete()} className="rounded-lg bg-red-500 px-4 py-2 text-sm text-white hover:bg-red-600">
-                  O'chirish
-                </button>
-              </div>
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
+          onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
+        >
+          <div className="glass-card w-full max-w-sm rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150 flex flex-col gap-3.5">
+            <p className="text-base font-bold text-[var(--text-primary)] tracking-tight">Testni o'chirish</p>
+            <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+              <span className="font-bold text-[var(--text-primary)]">"{confirmDelete.name}"</span> o'chirilsinmi? Bu amalni qaytarib bo'lmaydi.
+            </p>
+            <div className="flex justify-end gap-2 pt-2">
+              <button
+                type="button"
+                onClick={() => setConfirmDelete(null)}
+                className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+              >
+                Bekor qilish
+              </button>
+              <button
+                type="button"
+                onClick={() => void handleDelete()}
+                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
+              >
+                O'chirish
+              </button>
             </div>
           </div>
-        </>
+        </div>
       )}
     </StudentShell>
   );

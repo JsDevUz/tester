@@ -9,15 +9,10 @@ export interface MenuItem {
   subMenu?: MenuItem[];
 }
 
-export function ClassroomCallBarMenu({ items, theme = 'light' }: { items: MenuItem[]; theme?: 'light' | 'dark' }) {
+export function ClassroomCallBarMenu({ items }: { items: MenuItem[]; theme?: 'light' | 'dark' }) {
   const [open, setOpen] = useState(false);
   const [activeSubMenuKey, setActiveSubMenuKey] = useState<string | null>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-  const isDark = theme === 'dark';
-
-  const btnBase = isDark
-    ? 'bg-[#1f2023]/80 backdrop-blur-md ring-1 ring-white/10 text-white hover:bg-[#2a2b2f]/90'
-    : 'bg-[#f1f3f4]/85 backdrop-blur-md ring-1 ring-black/5 text-[#1f2023] hover:bg-[#e8eaed]/95 border border-gray-200/70';
 
   useEffect(() => {
     if (!open) return;
@@ -31,6 +26,8 @@ export function ClassroomCallBarMenu({ items, theme = 'light' }: { items: MenuIt
     return () => document.removeEventListener("pointerdown", handlePointerDown);
   }, [open]);
 
+  const activeItem = items.find((i) => i.key === activeSubMenuKey && i.subMenu && i.subMenu.length > 0);
+
   return (
     <div ref={wrapRef} className="relative">
       <button
@@ -41,37 +38,30 @@ export function ClassroomCallBarMenu({ items, theme = 'light' }: { items: MenuIt
         }}
         title="Ko'proq"
         aria-label="Ko'proq"
-        className={`flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-all active:scale-95 ${
+        className={`glass flex h-11 w-11 items-center justify-center rounded-full shadow-md transition-all active:scale-95 cursor-pointer ${
           open
-            ? (isDark ? 'bg-[#35363a]/80 backdrop-blur-md ring-1 ring-white/15 text-white' : 'bg-gray-300 text-gray-900')
-            : btnBase
+            ? 'bg-black/15 dark:bg-white/20 text-indigo-600 dark:text-indigo-400'
+            : 'text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15'
         }`}
       >
         <MoreVertical size={18} />
       </button>
 
       {open && (
-        <div className="absolute bottom-full right-0 z-30 mb-2 w-56 rounded-2xl border border-gray-200/80 bg-white/90 p-1.5 shadow-xl backdrop-blur-xl">
-          {/* Main Menu Items */}
-          {items.map((item) => {
-            const hasSub = Boolean(item.subMenu && item.subMenu.length > 0);
-            const isActiveSub = activeSubMenuKey === item.key;
-            return (
-              <div
-                key={item.key}
-                className="relative"
-                onMouseEnter={() => {
-                  if (hasSub) setActiveSubMenuKey(item.key);
-                  else setActiveSubMenuKey(null);
-                }}
-                onMouseLeave={(e) => {
-                  if (hasSub && !e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setActiveSubMenuKey(null);
-                  }
-                }}
-              >
+        <div className="absolute bottom-full right-0 z-30 mb-2 w-56">
+          {/* Main Menu Panel */}
+          <div className="glass-card w-56 rounded-2xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-100 text-[var(--text-primary)] flex flex-col">
+            {items.map((item) => {
+              const hasSub = Boolean(item.subMenu && item.subMenu.length > 0);
+              const isActiveSub = activeSubMenuKey === item.key;
+              return (
                 <button
+                  key={item.key}
                   type="button"
+                  onMouseEnter={() => {
+                    if (hasSub) setActiveSubMenuKey(item.key);
+                    else setActiveSubMenuKey(null);
+                  }}
                   onClick={() => {
                     if (hasSub) {
                       setActiveSubMenuKey((prev) => (prev === item.key ? null : item.key));
@@ -81,47 +71,42 @@ export function ClassroomCallBarMenu({ items, theme = 'light' }: { items: MenuIt
                       setActiveSubMenuKey(null);
                     }
                   }}
-                  className={`flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors ${
+                  className={`group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold transition-colors cursor-pointer ${
                     isActiveSub
-                      ? "bg-indigo-50 text-indigo-600"
-                      : "text-gray-700 hover:bg-gray-50"
+                      ? "bg-indigo-600/20 text-indigo-600 dark:text-white font-bold"
+                      : "text-[var(--text-primary)] hover:bg-[var(--card-hover)] hover:text-indigo-600 dark:hover:text-white"
                   }`}
                 >
-                  <span className="shrink-0 text-gray-500">{item.icon}</span>
+                  <span className={`shrink-0 transition-colors ${isActiveSub ? "text-indigo-600 dark:text-white" : "text-[var(--text-muted)] group-hover:text-indigo-600 dark:group-hover:text-white"}`}>{item.icon}</span>
                   <span className="flex-1 truncate">{item.label}</span>
                   {hasSub && (
-                    <ChevronRight size={15} className={`shrink-0 transition-transform ${isActiveSub ? "text-indigo-600 rotate-180 sm:rotate-0" : "text-gray-400"}`} />
+                    <ChevronRight size={14} className={`shrink-0 transition-transform ${isActiveSub ? "text-indigo-600 dark:text-white rotate-180 sm:rotate-0" : "text-[var(--text-muted)] group-hover:text-indigo-600 dark:group-hover:text-white"}`} />
                   )}
                 </button>
+              );
+            })}
+          </div>
 
-                {/* Submenu Popover — 8px visual gap with invisible hover bridge */}
-                {hasSub && isActiveSub && item.subMenu && (
-                  <div
-                    onMouseEnter={() => setActiveSubMenuKey(item.key)}
-                    className="absolute left-full top-0 pl-2.5 z-40 w-[234px] animate-in fade-in zoom-in-95 duration-150"
-                  >
-                    <div className="w-56 overflow-hidden rounded-2xl border border-gray-200/80 bg-white/90 p-1.5 shadow-xl backdrop-blur-xl">
-                      {item.subMenu.map((subItem) => (
-                        <button
-                          key={subItem.key}
-                          type="button"
-                          onClick={() => {
-                            subItem.onSelect?.();
-                            setOpen(false);
-                            setActiveSubMenuKey(null);
-                          }}
-                          className="flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-gray-700 transition-colors hover:bg-indigo-50 hover:text-indigo-600"
-                        >
-                          <span className="shrink-0 text-gray-500">{subItem.icon}</span>
-                          <span className="flex-1 truncate">{subItem.label}</span>
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-              </div>
-            );
-          })}
+          {/* Submenu Panel (Absolute sibling positioned to the right without shifting main menu) */}
+          {activeItem && activeItem.subMenu && (
+            <div className="glass-card absolute left-[calc(100%+8px)] top-0 z-40 w-56 rounded-2xl p-1.5 shadow-2xl animate-in fade-in zoom-in-95 duration-150 text-[var(--text-primary)] flex flex-col">
+              {activeItem.subMenu.map((subItem) => (
+                <button
+                  key={subItem.key}
+                  type="button"
+                  onClick={() => {
+                    subItem.onSelect?.();
+                    setOpen(false);
+                    setActiveSubMenuKey(null);
+                  }}
+                  className="group flex w-full items-center gap-2.5 rounded-xl px-3 py-2.5 text-left text-xs font-semibold text-[var(--text-primary)] transition-colors hover:bg-[var(--card-hover)] hover:text-indigo-600 dark:hover:text-white cursor-pointer"
+                >
+                  <span className="shrink-0 text-[var(--text-muted)] group-hover:text-indigo-600 dark:group-hover:text-white transition-colors">{subItem.icon}</span>
+                  <span className="flex-1 truncate">{subItem.label}</span>
+                </button>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

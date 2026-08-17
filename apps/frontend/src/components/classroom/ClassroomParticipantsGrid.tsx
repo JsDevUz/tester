@@ -211,17 +211,14 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
               <div
                 key={p.userId}
                 onClick={() => window.dispatchEvent(new CustomEvent("open-participants-panel"))}
-                className={`relative w-full aspect-video min-h-[160px] sm:min-h-[220px] max-h-[360px] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center transition-all duration-200 overflow-hidden group border cursor-pointer hover:border-indigo-500/50 ${isDark
-                  ? "bg-[#28292d] border-white/5 shadow-md text-white"
-                  : "bg-white border-gray-200/80 shadow-md text-gray-800"
-                  }`}
+                className="glass-card relative w-full aspect-video min-h-[160px] sm:min-h-[220px] max-h-[360px] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center transition-all duration-200 overflow-hidden group cursor-pointer hover:border-indigo-500/50 shadow-xl"
               >
                 {/* Overlapping Avatars Container */}
                 <div className="flex items-center justify-center -space-x-4 sm:-space-x-5 mb-4 group-hover:scale-105 transition-transform duration-300">
                   {hUsers.map((hu, index) => (
                     <div
                       key={index}
-                      className="flex items-center justify-center rounded-full text-white font-bold text-lg sm:text-xl shadow-md border-2 border-[#28292d] dark:border-[#28292d]"
+                      className="flex items-center justify-center rounded-full text-white font-bold text-lg sm:text-xl shadow-md border-2 border-white dark:border-zinc-800"
                       style={{
                         backgroundColor: hu.bgHex,
                         width: "48px",
@@ -233,7 +230,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
                   ))}
                   {/* Fallback if empty */}
                   {hUsers.length === 0 && (
-                    <div className="flex h-11 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold ">
+                    <div className="flex h-11 w-12 items-center justify-center rounded-full bg-indigo-600/10 text-indigo-500 font-bold">
                       <Users size={20} />
                     </div>
                   )}
@@ -241,8 +238,7 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
 
                 {/* Centered text label */}
                 <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center w-[90%]">
-                  <div className={`px-4 py-1.5 rounded-full text-sm font-semibold ${isDark ? "bg-black/25 text-white" : "bg-gray-100 text-gray-800"
-                    }`}>
+                  <div className="glass px-4 py-1.5 rounded-full text-xs sm:text-sm font-semibold text-gray-800 dark:text-zinc-200">
                     {p.name}
                   </div>
                 </div>
@@ -253,20 +249,19 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
           return (
             <div
               key={p.userId}
-              className={`relative w-full aspect-video min-h-[160px] sm:min-h-[220px] max-h-[360px] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center transition-all duration-200 overflow-hidden group border ${isSpeaking
-                ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.25)] ring-2 ring-emerald-500/80"
-                : isDark
-                  ? "bg-[#28292d] border-white/5 shadow-md"
-                  : "bg-white border-gray-200/80 shadow-md"
-                } ${isSpeaking ? (isDark ? "bg-[#28292d]" : "bg-white") : ""}`}
+              className={`glass-card relative w-full aspect-video min-h-[160px] sm:min-h-[220px] max-h-[360px] rounded-2xl sm:rounded-3xl flex flex-col items-center justify-center transition-all duration-200 overflow-hidden group shadow-xl ${
+                isSpeaking
+                  ? "border-emerald-500 shadow-[0_0_15px_rgba(16,185,129,0.35)] ring-2 ring-emerald-500/80"
+                  : ""
+              }`}
             >
               {/* Centered Avatar Circle */}
               <div
-                className={`relative flex items-center justify-center rounded-full text-white font-bold text-2xl sm:text-4xl shadow-lg transition-transform duration-300 ease-out ${isSpeaking
-                  ? `ring-4 ring-emerald-500 ring-offset-4 scale-110 ${isDark ? "ring-offset-[#28292d]" : "ring-offset-white"
-                  }`
-                  : "scale-100 group-hover:scale-105"
-                  }`}
+                className={`relative flex items-center justify-center rounded-full text-white font-bold text-2xl sm:text-4xl shadow-lg transition-transform duration-300 ease-out ${
+                  isSpeaking
+                    ? "ring-4 ring-emerald-500 ring-offset-4 ring-offset-black/20 scale-110"
+                    : "scale-100 group-hover:scale-105"
+                }`}
                 style={{
                   backgroundColor: bgHex,
                   width: total <= 2 ? "100px" : "80px",
@@ -282,15 +277,13 @@ export const ClassroomParticipantsGrid: React.FC<Props> = ({
 
               {/* Bottom Centered Participant Name & Mic Status Pill */}
               <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center justify-center pointer-events-none w-[90%]">
-                <div className={`flex items-center gap-2 backdrop-blur-md px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-medium max-w-full  ${isDark ? "bg-black/10 text-white " : "bg-white/95 text-gray-800"
+                <div className="glass flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs sm:text-sm font-semibold max-w-full text-gray-800 dark:text-zinc-200">
+                  <span className="truncate max-w-[90%]">{displayName}</span>
+                  <div className={`flex items-center justify-center shrink-0 ${
+                    p.isMuted
+                      ? "text-gray-400 dark:text-zinc-500"
+                      : "text-emerald-500"
                   }`}>
-                  <span className="truncate max-w-[90%] sm:max-w-[90%]">{displayName}</span>
-                  <div className={`flex items-center justify-center shrink-0 ${p.isMuted
-                    ? isDark
-                      ? "text-white/60"
-                      : "text-gray-400"
-                    : "text-emerald-500"
-                    }`}>
                     {p.isMuted ? <MicOff size={13} /> : <Mic size={13} />}
                   </div>
                 </div>

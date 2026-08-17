@@ -6,7 +6,7 @@ import { Roles } from '../auth/roles.decorator';
 import { IsDateString, IsIn, IsInt, IsOptional, IsString, Min } from 'class-validator';
 
 class RecordPaymentDto {
-  @IsInt() @Min(1) amount: number;
+  @IsInt() @Min(0) amount: number;
   @IsOptional() @IsInt() @Min(0) discount?: number;
   @IsOptional() @IsIn(['cash', 'click', 'payme', 'card', 'other']) method?: string;
   @IsOptional() @IsString() note?: string;

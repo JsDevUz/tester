@@ -30,7 +30,6 @@ export function ParticipantsPanelToggle({
   const panelRef = useRef<HTMLDivElement>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
   const onlineCount = participants.filter((p) => p.online).length;
-  const isDark = theme === "dark";
 
   // Global event listener to open from elsewhere (like clicking + others tile)
   useEffect(() => {
@@ -57,23 +56,6 @@ export function ParticipantsPanelToggle({
     };
   }, [open]);
 
-  // Theme tokens — RaisedHandsControl bilan bir xil
-  const panelBg = isDark ? "bg-gray-50" : "bg-white";
-  const borderCls = isDark ? "border-white/10" : "border-gray-200";
-  const titleCls = isDark ? "text-white" : "text-gray-900";
-  const closeCls = isDark
-    ? "text-white/60 hover:bg-white/10 hover:text-white"
-    : "text-gray-400 hover:bg-gray-100 hover:text-gray-700";
-  const dragHandleCls = isDark ? "bg-white/20" : "bg-gray-300";
-  const countBadgeCls = isDark
-    ? "bg-white/10 text-white"
-    : "bg-gray-900 text-white";
-
-  // Trigger button — theme-aware pill
-  const btnCls = isDark
-    ? `flex items-center transition-colors shadow-md backdrop-blur-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-white/10 ${open ? "bg-[#35363a]/90" : "bg-[#1f2023]/80 hover:bg-[#2a2b2f]/90"} text-white`
-    : `flex items-center transition-colors shadow-md gap-1 rounded-full px-2 py-1.5 text-xs font-medium border border-gray-100 ${open ? "bg-indigo-100 text-indigo-700" : "bg-white text-gray-500 hover:bg-gray-100"}`;
-
   return (
     <div className="relative">
       {!hidden && (
@@ -85,10 +67,10 @@ export function ParticipantsPanelToggle({
           aria-haspopup="dialog"
           aria-label="O'quvchilar ro'yxati"
           title="O'quvchilar"
-          className={btnCls}
+          className="glass flex items-center gap-2 rounded-full px-3 py-2 text-xs font-bold text-[var(--text-primary)] shadow-md transition-all active:scale-95 hover:bg-black/10 dark:hover:bg-white/15 cursor-pointer"
         >
-          <Users size={14} />
-          <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-semibold ${countBadgeCls}`}>
+          <Users size={15} />
+          <span className="rounded-full px-2 py-0.5 text-[10px] font-bold bg-indigo-600 text-white shadow-xs">
             {onlineCount}/{participants.length}
           </span>
         </button>
@@ -96,9 +78,9 @@ export function ParticipantsPanelToggle({
 
       {open && createPortal(
         <>
-          {/* Mobil overlay */}
+          {/* Overlay */}
           <div
-            className="sm:hidden fixed inset-0 z-[70] bg-black/40"
+            className="fixed inset-0 z-[70] bg-black/10 dark:bg-black/30 transition-opacity animate-in fade-in duration-150"
             onClick={() => setOpen(false)}
             aria-hidden="true"
           />
@@ -108,31 +90,20 @@ export function ParticipantsPanelToggle({
             ref={panelRef}
             role="dialog"
             aria-label="O'quvchilar ro'yxati"
-            className={`classroom-panel-in z-[80] fixed inset-x-0 bottom-0 rounded-t-2xl shadow-2xl h-[86vh] max-h-[86vh] sm:h-auto sm:max-h-none sm:inset-x-auto sm:bottom-auto sm:rounded-2xl sm:w-80 sm:origin-top-right border ${panelBg} ${borderCls}`}
-            style={
-              typeof window !== "undefined" && window.innerWidth >= 640
-                ? { top: "1vh", right: "16px" }
-                : undefined
-            }
+            className="classroom-panel-in glass-card z-[80] fixed inset-x-4 bottom-4 top-auto max-h-[85vh] sm:top-14 sm:right-4 sm:left-auto sm:bottom-auto sm:w-88 rounded-3xl p-5 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150 flex flex-col"
           >
-            {/* Drag handle — mobile only */}
-            <div className="sm:hidden flex justify-center pt-3 pb-1">
-              <div className={`w-10 h-1 rounded-full ${dragHandleCls}`} />
-            </div>
-
             {/* Header */}
-            <div className={`flex items-center justify-between px-4 py-3 border-b ${borderCls}`}>
+            <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
               <div className="flex items-center gap-2">
-                <h4 className={`text-base font-semibold ${titleCls}`}>O'quvchilar</h4>
-                <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${isDark ? "bg-white/10 text-white/70" : "bg-gray-100 text-gray-500"
-                  }`}>
+                <h4 className="text-base font-bold tracking-tight text-[var(--text-primary)]">O'quvchilar</h4>
+                <span className="text-xs px-2 py-0.5 rounded-full font-bold bg-indigo-500/10 text-indigo-600 dark:text-indigo-400">
                   {onlineCount}/{participants.length}
                 </span>
               </div>
               <button
                 type="button"
                 onClick={() => setOpen(false)}
-                className={`rounded-full p-1.5 transition-colors ${closeCls}`}
+                className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
                 aria-label="Yopish"
               >
                 <X size={16} />
@@ -140,10 +111,7 @@ export function ParticipantsPanelToggle({
             </div>
 
             {/* Content */}
-            <div
-              className="overflow-y-auto px-2 py-2"
-              style={{ maxHeight: "calc(86vh - 80px)" }}
-            >
+            <div className="overflow-y-auto pt-2 flex-1 max-h-[60vh]">
               <ClassroomParticipants
                 participants={participants}
                 speakingUserIds={speakingUserIds}

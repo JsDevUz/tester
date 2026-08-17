@@ -224,7 +224,7 @@ export function EditorBlock({ html, onChange }: EditorBlockProps) {
   }
 
   return (
-    <div className="course-editor rounded-2xl bg-white py-2">
+    <div className="course-editor rounded-2xl bg-black/5 dark:bg-black/25 border border-black/10 dark:border-white/10 py-3 transition-all focus-within:border-indigo-500/50 focus-within:ring-2 focus-within:ring-indigo-500/20">
       <BlockNoteView editor={editor} onChange={handleChange} theme="light" slashMenu={false}>
         <SuggestionMenuController
           triggerCharacter="/"

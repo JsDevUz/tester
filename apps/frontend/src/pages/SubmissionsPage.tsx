@@ -15,6 +15,7 @@ import {
 import { formatDateTime, formatElapsedDuration } from "../utils/date";
 import { exportSubmissionsToPdf } from "../utils/submissionsPdf";
 import { TestStatsModal } from "../components/TestStatsModal";
+import { DataLoadingState } from "../components/DataLoadingState";
 
 const PAGE_SIZE = 20;
 
@@ -158,46 +159,49 @@ export function SubmissionsPage() {
 
   return (
     <AppShell>
-      <div className="h-full min-h-0 flex flex-col">
-        <div className="flex-1 w-full px-4 py-4 sm:px-6 sm:py-5 bg-white rounded-2xl">
-          {/* Header */}
-          <button
-            onClick={() => navigate(-1)}
-            className="flex items-center gap-1 text-xs sm:text-sm text-gray-400 hover:text-gray-600 mb-3 transition-colors"
-          >
-            <ChevronLeft size={15} /> Orqaga
-          </button>
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-            <h2 className="text-base sm:text-lg font-bold text-gray-800 leading-snug">{test?.name ?? "Test"} — Natijalar</h2>
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setStatsOpen(true)}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50"
-              >
-                <BarChart3 size={15} />
-                <span className="hidden sm:inline">Statistika</span>
-              </button>
-              <button
-                type="button"
-                onClick={() => void handleExportPdf()}
-                disabled={exporting || submissions.length === 0}
-                className="flex items-center gap-1.5 rounded-xl border border-gray-200 px-3 py-2 text-xs sm:text-sm font-medium text-gray-600 transition-colors hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-40"
-              >
-                {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
-                <span className="hidden sm:inline">{exporting ? "Tayyorlanmoqda..." : "Yuklab olish"}</span>
-              </button>
+      <div className="min-h-screen p-4 sm:p-6 text-[var(--text-primary)]">
+        <div className="flex min-h-full flex-col gap-4">
+          {/* Top Header */}
+          <div className="mb-2">
+            <button
+              onClick={() => navigate(-1)}
+              className="flex items-center gap-1 text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] mb-2.5 transition-colors cursor-pointer"
+            >
+              <ChevronLeft size={15} /> Orqaga
+            </button>
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <div>
+                <h1 className="text-lg font-bold text-[var(--text-primary)] tracking-tight">{test?.name ?? "Test"} — Natijalar</h1>
+                <p className="mt-0.5 text-xs text-[var(--text-muted)]">O'quvchilar test topshirish natijalari va statistikasi</p>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setStatsOpen(true)}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-[var(--card-bg)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+                >
+                  <BarChart3 size={15} />
+                  <span>Statistika</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => void handleExportPdf()}
+                  disabled={exporting || submissions.length === 0}
+                  className="inline-flex items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                >
+                  {exporting ? <Loader2 size={15} className="animate-spin" /> : <Download size={15} />}
+                  <span>{exporting ? "Tayyorlanmoqda..." : "Yuklab olish"}</span>
+                </button>
+              </div>
             </div>
           </div>
 
           {loading ? (
-            <div className="flex justify-center py-12">
-              <div className="w-7 h-7 rounded-full border border-gray-200 border-t-gray-900 animate-spin" />
-            </div>
+            <DataLoadingState label="Natijalar yuklanmoqda..." className="min-h-80" />
           ) : submissions.length === 0 ? (
-            <div className="text-center py-16 text-gray-400">
-              <Inbox size={36} className="mx-auto mb-3 opacity-30" />
-              <p className="text-sm">Hali natijalar yo'q.</p>
+            <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+              <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+              <p className="text-xs font-medium">Hali natijalar yo'q.</p>
             </div>
           ) : (
             <div>
@@ -207,6 +211,7 @@ export function SubmissionsPage() {
                 <SortButton field="score" label="Ball" sort={sort} dir={dir} onChange={handleSortChange} />
               </div>
 
+              {/* Mobile Cards */}
               <div className="md:hidden flex flex-col gap-2">
                 {submissions.map((sub) => {
                   const pct = sub.total
@@ -219,36 +224,36 @@ export function SubmissionsPage() {
                     <div
                       key={sub.id}
                       onClick={() => navigate(`/submissions/${sub.id}`)}
-                      className="bg-white rounded-xl px-3.5 py-3 flex items-center gap-2 cursor-pointer active:scale-[0.99] transition-transform"
+                      className="rounded-2xl bg-[var(--surface-bg)] px-4 py-3 shadow-xs flex items-center gap-2.5 cursor-pointer transition-colors hover:bg-[var(--card-hover)]"
                     >
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center gap-1.5 min-w-0">
-                          <p className="text-sm font-semibold text-gray-800 truncate">
+                          <p className="text-xs font-bold text-[var(--text-primary)] truncate">
                             {sub.studentName}
                           </p>
                           {isViolation && (
-                            <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-0.5 text-[10px] font-semibold text-red-500 shrink-0">
+                            <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-1.5 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400 shrink-0">
                               <AlertTriangle size={11} />
                               Taqiqlangan
                             </span>
                           )}
                         </div>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">
                           {sub.submittedAt
                             ? formatDateTime(sub.submittedAt)
                             : "Topshirilmagan"}
                         </p>
-                        <p className="text-xs text-gray-400 mt-0.5">
+                        <p className="text-[11px] font-medium text-[var(--text-muted)] mt-0.5">
                           Ishlash vaqti: {elapsedLabel(sub)}
                         </p>
                       </div>
                       <div className="text-right shrink-0">
                         <p
-                          className={`text-sm font-bold ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
+                          className={`text-xs font-bold ${isGood ? "text-emerald-500" : isMid ? "text-amber-500" : "text-red-400"}`}
                         >
                           {pct}%
                         </p>
-                        <p className="text-xs text-gray-400">
+                        <p className="text-[11px] font-medium text-[var(--text-muted)]">
                           {sub.score ?? 0}/{sub.total ?? 0}
                         </p>
                       </div>
@@ -257,7 +262,7 @@ export function SubmissionsPage() {
                           e.stopPropagation();
                           setConfirmDelete(sub);
                         }}
-                        className="rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                        className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
                         aria-label="Natijani o'chirish"
                       >
                         <Trash2 size={15} />
@@ -267,24 +272,25 @@ export function SubmissionsPage() {
                 })}
               </div>
 
-              <div className="hidden md:block overflow-x-auto rounded-2xl border border-gray-200 bg-gray-50 ">
-                <table className="w-full min-w-[820px] text-left">
-                  <thead className="border-b border-gray-200 bg-gray-50 text-sm font-medium text-gray-700">
+              {/* Desktop Table */}
+              <div className="hidden md:block overflow-x-auto rounded-2xl bg-[var(--surface-bg)] shadow-xs">
+                <table className="w-full min-w-[820px] text-left border-collapse">
+                  <thead className="text-[11px] font-bold uppercase tracking-wider text-[var(--text-muted)]">
                     <tr>
-                      <th className="px-5 py-4">O'quvchi</th>
-                      <th className="px-5 py-4">
+                      <th className="px-4 py-3.5">O'quvchi</th>
+                      <th className="px-4 py-3.5">
                         <SortButton field="submittedAt" label="Topshirgan vaqti" sort={sort} dir={dir} onChange={handleSortChange} />
                       </th>
-                      <th className="px-5 py-4">Ishlash vaqti</th>
-                      <th className="px-5 py-4 text-right">Foiz</th>
-                      <th className="px-5 py-4 text-right">
+                      <th className="px-4 py-3.5">Ishlash vaqti</th>
+                      <th className="px-4 py-3.5 text-right">Foiz</th>
+                      <th className="px-4 py-3.5 text-right">
                         <SortButton field="score" label="Ball" sort={sort} dir={dir} onChange={handleSortChange} align="right" />
                       </th>
-                      <th className="w-16 px-4 py-4 text-right">Amal</th>
+                      <th className="w-16 px-4 py-3.5 text-right">Amal</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {submissions.map((sub, index) => {
+                    {submissions.map((sub) => {
                       const pct = sub.total
                         ? Math.round(((sub.score ?? 0) / sub.total) * 100)
                         : 0;
@@ -295,49 +301,49 @@ export function SubmissionsPage() {
                         <tr
                           key={sub.id}
                           onClick={() => navigate(`/submissions/${sub.id}`)}
-                          className={`group cursor-pointer border-b border-gray-100 transition-colors last:border-b-0 hover:bg-gray-50 ${index % 2 === 1 ? "bg-gray-50/70" : "bg-white"}`}
+                          className="cursor-pointer transition-colors hover:bg-[var(--card-hover)]"
                         >
-                          <td className="px-5 py-4">
+                          <td className="px-4 py-3.5">
                             <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold text-gray-800">
+                              <p className="text-xs font-bold text-[var(--text-primary)]">
                                 {sub.studentName}
                               </p>
                               {isViolation && (
-                                <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2 py-1 text-xs font-semibold text-red-500">
-                                  <AlertTriangle size={12} />
+                                <span className="inline-flex items-center gap-1 rounded-full bg-red-500/15 px-2 py-0.5 text-[10px] font-bold text-red-600 dark:text-red-400">
+                                  <AlertTriangle size={11} />
                                   Taqiqlangan harakat
                                 </span>
                               )}
                             </div>
                           </td>
-                          <td className="px-5 py-4 text-sm text-gray-500">
+                          <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-muted)]">
                             {sub.submittedAt
                               ? formatDateTime(sub.submittedAt)
                               : "Topshirilmagan"}
                           </td>
-                          <td className="px-5 py-4 text-sm text-gray-500 tabular-nums">
+                          <td className="px-4 py-3.5 text-xs font-medium text-[var(--text-muted)] tabular-nums">
                             {elapsedLabel(sub)}
                           </td>
-                          <td className="px-5 py-4 text-right">
+                          <td className="px-4 py-3.5 text-right">
                             <span
-                              className={`text-sm font-bold ${isGood ? "text-green-500" : isMid ? "text-amber-500" : "text-red-400"}`}
+                              className={`text-xs font-bold ${isGood ? "text-emerald-500" : isMid ? "text-amber-500" : "text-red-400"}`}
                             >
                               {pct}%
                             </span>
                           </td>
-                          <td className="px-5 py-4 text-right text-sm text-gray-500">
+                          <td className="px-4 py-3.5 text-right text-xs font-medium text-[var(--text-muted)]">
                             {sub.score ?? 0}/{sub.total ?? 0}
                           </td>
-                          <td className="px-4 py-4 text-right">
+                          <td className="px-4 py-3.5 text-right">
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
                                 setConfirmDelete(sub);
                               }}
-                              className="rounded-lg p-2 text-gray-400 transition-colors hover:bg-red-50 hover:text-red-500"
+                              className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer ml-auto"
                               aria-label="Natijani o'chirish"
                             >
-                              <Trash2 size={16} />
+                              <Trash2 size={15} />
                             </button>
                           </td>
                         </tr>
@@ -365,36 +371,35 @@ export function SubmissionsPage() {
         )}
 
         {confirmDelete && (
-          <>
-            <div
-              className="fixed inset-0 z-40 bg-black/20"
-              onClick={() => setConfirmDelete(null)}
-            />
-            <div className="fixed inset-0 z-50 flex items-center justify-center pointer-events-none">
-              <div className="bg-white rounded-2xl shadow-2xl p-6 w-80 pointer-events-auto">
-                <p className="text-sm font-semibold text-gray-800 mb-1">
-                  Natijani o'chirish
-                </p>
-                <p className="text-sm text-gray-400 mb-5">
-                  "{confirmDelete.studentName}" natijasi o'chiriladimi?
-                </p>
-                <div className="flex gap-2 justify-end">
-                  <button
-                    onClick={() => setConfirmDelete(null)}
-                    className="text-sm px-4 py-2 text-gray-500 hover:text-gray-700"
-                  >
-                    Bekor qilish
-                  </button>
-                  <button
-                    onClick={handleDelete}
-                    className="text-sm px-4 py-2 bg-red-500 text-white rounded-xl hover:bg-red-600"
-                  >
-                    O'chirish
-                  </button>
-                </div>
+          <div
+            className="fixed inset-0 z-50 flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 animate-in fade-in duration-150"
+            onClick={(e) => { if (e.target === e.currentTarget) setConfirmDelete(null); }}
+          >
+            <div className="glass-card w-full max-w-sm rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150 flex flex-col gap-3.5">
+              <p className="text-base font-bold text-[var(--text-primary)] tracking-tight">
+                Natijani o'chirish
+              </p>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                <span className="font-bold text-[var(--text-primary)]">"{confirmDelete.studentName}"</span> natijasi o'chiriladimi?
+              </p>
+              <div className="flex gap-2 justify-end pt-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmDelete(null)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDelete}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs hover:bg-red-700 transition-colors cursor-pointer"
+                >
+                  O'chirish
+                </button>
               </div>
             </div>
-          </>
+          </div>
         )}
       </div>
     </AppShell>

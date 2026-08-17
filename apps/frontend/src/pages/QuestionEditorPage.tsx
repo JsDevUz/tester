@@ -5,6 +5,7 @@ import { AppShell } from "../components/AppShell";
 import { QuestionForm } from "../components/QuestionForm";
 import { BulkImportTab } from "../components/BulkImportTab";
 import { SegmentedControl } from "../components/student/SegmentedControl";
+import { ConfirmDeleteModal } from "../components/course/ConfirmDeleteModal";
 import { useQuestionStore } from "../stores/questionStore";
 import { apiGetTest } from "../api/tests";
 import type { TestDetail } from "../api/tests";
@@ -51,14 +52,14 @@ function InlineQuestionCard({
 
   if (editing) {
     return (
-      <div className="bg-white dark:bg-[#30313a] rounded-xl border border-gray-300 dark:border-zinc-700 p-4">
+      <div className="glass-card rounded-2xl p-4 transition-all text-[var(--text-primary)]">
         <div className="flex items-center justify-between mb-3">
-          <span className="text-xs text-gray-400 dark:text-zinc-400">
+          <span className="text-xs font-semibold text-[var(--text-muted)]">
             {index + 1}. savol — tahrirlash
           </span>
           <button
             onClick={() => setEditing(false)}
-            className="text-gray-300 dark:text-zinc-500 hover:text-gray-500 dark:hover:text-zinc-300"
+            className="rounded-lg p-1 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
           >
             <X size={16} />
           </button>
@@ -95,11 +96,11 @@ function InlineQuestionCard({
   }
 
   return (
-    <div className="bg-white dark:bg-[#30313a] rounded-xl border border-gray-300 dark:border-zinc-700 p-4">
+    <div className="glass-card rounded-2xl p-4 transition-all text-[var(--text-primary)]">
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <span className="text-xs text-gray-400 dark:text-zinc-400 mr-2">{index + 1}.</span>
-          <span className="text-sm text-gray-800 dark:text-zinc-200">{q.text}</span>
+          <span className="text-xs font-bold text-[var(--text-muted)] mr-2">{index + 1}.</span>
+          <span className="text-xs font-semibold text-[var(--text-primary)]">{q.text}</span>
           <span
             className={`ml-2 text-[10px] px-2 py-0.5 rounded-full ${q.type === "single"
               ? "bg-blue-100 text-blue-600"
@@ -218,14 +219,17 @@ function InlineQuestionCard({
           {q.options.map((o) => (
             <li
               key={o.id}
-              className={`text-xs px-2 py-1 rounded-lg flex items-center gap-1 ${o.isCorrect ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400" : "text-gray-400 dark:text-zinc-400"}`}
+              className={`flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs ${o.isCorrect
+                ? "bg-green-50 dark:bg-green-500/10 text-green-700 dark:text-green-400 font-medium"
+                : "bg-gray-50 dark:bg-zinc-800/60 text-gray-600 dark:text-zinc-400"
+                }`}
             >
               {o.isCorrect ? (
-                <Check size={10} />
+                <Check size={12} className="text-green-500 shrink-0" />
               ) : (
-                <Circle size={10} className="opacity-30" />
+                <Circle size={12} className="text-gray-300 dark:text-zinc-600 shrink-0" />
               )}
-              {o.text}
+              <span>{o.text}</span>
             </li>
           ))}
         </ul>
@@ -247,6 +251,7 @@ export function QuestionEditorPage() {
   } = useQuestionStore();
   const [test, setTest] = useState<TestDetail | null>(null);
   const [tab, setTab] = useState<"manual" | "bulk">("manual");
+  const [confirmDeleteQuestion, setConfirmDeleteQuestion] = useState<Question | null>(null);
 
   useEffect(() => {
     if (!testId) return;
@@ -352,20 +357,21 @@ export function QuestionEditorPage() {
 
   return (
     <AppShell>
-      <div className="min-h-screen flex flex-col">
-        <div className="flex-1 p-3 w-full max-[1024px]:bg-transparent min-[1025px]:bg-white min-[1025px]:dark:bg-[#30313a] rounded-2xl">
-          <div className="flex items-center gap-2 mb-4">
+      <div className="min-h-screen flex flex-col p-4 sm:p-6">
+        <div className="flex-1 w-full text-[var(--text-primary)]">
+          <div className="flex items-center gap-2 mb-5">
             <button
+              type="button"
               onClick={() => navigate(`/folders/${test?.folderId}`)}
-              className="text-gray-400 dark:text-zinc-400 hover:text-gray-600 dark:hover:text-zinc-200 text-sm"
+              className="text-xs font-semibold text-[var(--text-muted)] hover:text-[var(--text-primary)] transition-colors cursor-pointer"
             >
               ← Orqaga
             </button>
-            <span className="text-gray-400 dark:text-zinc-400">/</span>
-            <h2 className="text-sm font-medium text-gray-700 dark:text-zinc-200">
+            <span className="text-xs text-[var(--text-muted)]">/</span>
+            <h2 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
               {test?.name ?? "Test"}
             </h2>
-            <span className="text-xs text-gray-400 dark:text-zinc-400 ml-auto">
+            <span className="text-xs text-[var(--text-muted)] font-medium ml-auto">
               {questions.length} ta savol
             </span>
           </div>
@@ -380,7 +386,7 @@ export function QuestionEditorPage() {
             ]}
           />
 
-          <div>
+          <div className="glass-card rounded-3xl p-5 sm:p-7 mb-6 text-[var(--text-primary)]">
             {tab === "manual" ? (
               <QuestionForm key="new" onSubmit={handleAddQuestion} />
             ) : (
@@ -392,8 +398,8 @@ export function QuestionEditorPage() {
           </div>
 
           {questions.length > 0 && (
-            <div className="mt-6 flex flex-col gap-2 border-t border-gray-200 dark:border-zinc-700 pt-6">
-              <h3 className="text-sm font-medium text-gray-700 dark:text-zinc-200">
+            <div className="mt-6 flex flex-col gap-3">
+              <h3 className="text-sm font-bold text-[var(--text-primary)] tracking-tight">
                 Savollar ({questions.length})
               </h3>
               {questions.map((q, i) => (
@@ -402,12 +408,24 @@ export function QuestionEditorPage() {
                   index={i}
                   question={q}
                   onSave={(data) => handleSaveQuestion(q, data)}
-                  onDelete={() => deleteQuestion(q.id)}
+                  onDelete={() => setConfirmDeleteQuestion(q)}
                 />
               ))}
             </div>
           )}
         </div>
+
+        {confirmDeleteQuestion && (
+          <ConfirmDeleteModal
+            title="Savolni o'chirish"
+            description={`"${confirmDeleteQuestion.text}" savoli o'chirilsinmi?`}
+            onConfirm={() => {
+              deleteQuestion(confirmDeleteQuestion.id);
+              setConfirmDeleteQuestion(null);
+            }}
+            onClose={() => setConfirmDeleteQuestion(null)}
+          />
+        )}
       </div>
     </AppShell>
   );

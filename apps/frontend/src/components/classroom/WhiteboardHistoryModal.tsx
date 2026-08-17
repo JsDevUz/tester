@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import { X, ChevronDown, Clock, RotateCcw, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 import {
@@ -46,6 +47,25 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
   const [savingCheckpoint, setSavingCheckpoint] = useState(false);
 
   const observerRef = useRef<IntersectionObserver | null>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
+
+  // Outside click & Escape listener
+  useEffect(() => {
+    function handlePointerDown(e: PointerEvent) {
+      if (panelRef.current && !panelRef.current.contains(e.target as Node)) {
+        onClose();
+      }
+    }
+    function handleKeyDown(e: KeyboardEvent) {
+      if (e.key === "Escape") onClose();
+    }
+    document.addEventListener("pointerdown", handlePointerDown);
+    document.addEventListener("keydown", handleKeyDown);
+    return () => {
+      document.removeEventListener("pointerdown", handlePointerDown);
+      document.removeEventListener("keydown", handleKeyDown);
+    };
+  }, [onClose]);
 
   // Initial Load & Tab Change
   useEffect(() => {
@@ -173,73 +193,86 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
     groupedActivities[group].push(act);
   }
 
-  return (
+  return createPortal(
     <div
-      className="fixed top-14 right-4 z-[100] w-84 sm:w-96 overflow-hidden rounded-2xl border border-gray-200 bg-white text-gray-900 shadow-2xl animate-in fade-in zoom-in-95 duration-150"
-      onClick={(e) => e.stopPropagation()}
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
+      role="presentation"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-5 pt-4 pb-3 border-b border-gray-100">
-        <h2 className="text-base font-bold text-gray-900 tracking-tight">Whiteboard history</h2>
-        <button
-          type="button"
-          onClick={onClose}
-          className="flex h-7 w-7 items-center justify-center rounded-lg text-gray-400 hover:bg-gray-100 hover:text-gray-700 transition-colors"
-        >
-          <X size={16} />
-        </button>
-      </div>
-
-      {/* Segmented Control Tabs */}
-      <div className="px-5 pt-3 pb-3">
-        <div className="flex rounded-xl bg-gray-100 p-1 border border-gray-200/80">
+      <div
+        ref={panelRef}
+        className="classroom-panel-in glass-card flex max-h-[85vh] w-full max-w-md flex-col overflow-hidden rounded-3xl p-6 shadow-2xl text-[var(--text-primary)] animate-in zoom-in-95 duration-150"
+        role="dialog"
+        aria-modal="true"
+        aria-label="Whiteboard tarixi va faoliyati"
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between pb-3 border-b border-[var(--border-subtle)]">
+          <h2 className="text-base font-bold tracking-tight text-[var(--text-primary)]">Whiteboard history</h2>
           <button
             type="button"
-            onClick={() => setActiveTab("activity")}
-            className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${activeTab === "activity"
-              ? "bg-white text-gray-900 "
-              : "text-gray-500 hover:text-gray-900"
-              }`}
+            onClick={onClose}
+            className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+            aria-label="Yopish"
           >
-            Activity
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab("versions")}
-            className={`flex-1 rounded-lg py-1.5 text-xs font-semibold transition-all ${activeTab === "versions"
-              ? "bg-white text-gray-900 "
-              : "text-gray-500 hover:text-gray-900"
-              }`}
-          >
-            Versions
+            <X size={16} />
           </button>
         </div>
-      </div>
 
-      {/* Body Content */}
-      <div className="max-h-[65vh] overflow-y-auto px-5 pb-5">
+        {/* Segmented Control Tabs */}
+        <div className="pt-1 pb-1">
+          <div className="flex rounded-xl bg-black/[0.04] dark:bg-white/5 p-1">
+            <button
+              type="button"
+              onClick={() => setActiveTab("activity")}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "activity"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              Activity
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("versions")}
+              className={`flex-1 rounded-lg py-1.5 text-xs font-bold transition-all cursor-pointer ${
+                activeTab === "versions"
+                  ? "bg-indigo-600 text-white shadow-xs"
+                  : "text-[var(--text-secondary)] hover:text-[var(--text-primary)]"
+              }`}
+            >
+              Versions
+            </button>
+          </div>
+        </div>
+
+        {/* Body Content */}
+        <div className="flex-1 overflow-y-auto pr-1">
         {loading ? (
           <div className="flex flex-col gap-2.5 py-6">
             {Array.from({ length: 4 }).map((_, i) => (
-              <div key={i} className="h-11 animate-pulse rounded-xl bg-gray-100" />
+              <div key={i} className="h-11 animate-pulse rounded-2xl bg-black/5 dark:bg-white/5" />
             ))}
           </div>
         ) : activeTab === "activity" ? (
           Object.keys(groupedActivities).length === 0 ? (
-            <div className="py-12 text-center text-gray-400">
-              <Clock size={28} className="mx-auto mb-2 opacity-50 text-gray-400" />
+            <div className="py-12 text-center text-[var(--text-muted)]">
+              <Clock size={28} className="mx-auto mb-2 opacity-50" />
               <p className="text-xs font-medium">Hali faoliyatlar mavjud emas</p>
             </div>
           ) : (
             <div className="flex flex-col gap-4 pt-1">
               {Object.entries(groupedActivities).map(([dateLabel, items]) => (
                 <div key={dateLabel} className="flex flex-col gap-2">
-                  <div className="flex items-center gap-1.5 text-[11px] font-semibold text-gray-500">
+                  <div className="flex items-center gap-1.5 text-[11px] font-bold text-[var(--text-muted)]">
                     <ChevronDown size={13} />
                     <span>{dateLabel}</span>
                   </div>
 
-                  <div className="flex flex-col gap-1.5">
+                  <div className="flex flex-col gap-1">
                     {items.map((item) => {
                       const isSelected = selectedActivityId === item.id;
                       const initial = (item.userName || "U").charAt(0).toUpperCase();
@@ -252,25 +285,26 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                             setSelectedActivityId(item.id);
                             if (onSelectActivity) onSelectActivity(item);
                           }}
-                          className={`flex items-center justify-between gap-2 rounded-xl p-2.5 cursor-pointer transition-all border ${isSelected
-                            ? "bg-indigo-50 border-indigo-300 text-indigo-950 "
-                            : "bg-gray-50 border-gray-200/80 hover:bg-gray-100/80 hover:border-gray-300 text-gray-800"
-                            }`}
+                          className={`flex items-center justify-between gap-2 rounded-xl px-3 py-2 cursor-pointer transition-all ${
+                            isSelected
+                              ? "bg-indigo-500/15 text-indigo-600 dark:text-indigo-300 font-bold"
+                              : "text-[var(--text-primary)] hover:bg-[var(--card-hover)]"
+                          }`}
                         >
                           <div className="flex items-center gap-2.5 min-w-0 flex-1">
-                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold  ${avatarBg}`}>
+                            <div className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-xs font-bold ${avatarBg}`}>
                               {initial}
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-xs font-semibold text-gray-900 leading-tight">
+                              <p className="truncate text-xs font-bold text-[var(--text-primary)] leading-tight">
                                 {item.userName}
                               </p>
-                              <p className="truncate text-[11px] text-gray-600 mt-0.5">
+                              <p className="truncate text-[11px] text-[var(--text-muted)] mt-0.5 font-medium">
                                 {item.description}
                               </p>
                             </div>
                           </div>
-                          <span className="shrink-0 text-[10px] text-gray-400 font-medium">
+                          <span className="shrink-0 text-[10px] text-[var(--text-muted)] font-medium">
                             {fmtTimeAmPm(item.timestampMs)}
                           </span>
                         </div>
@@ -283,8 +317,8 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
               {/* Infinite Scroll Sentinel */}
               <div ref={lastElementRef} className="py-2 text-center">
                 {loadingMore && (
-                  <div className="flex items-center justify-center gap-2 text-xs text-gray-500 font-medium">
-                    <Loader2 size={14} className="animate-spin text-indigo-600" />
+                  <div className="flex items-center justify-center gap-2 text-xs text-[var(--text-muted)] font-medium">
+                    <Loader2 size={14} className="animate-spin text-indigo-500" />
                     <span>Yana yuklanmoqda...</span>
                   </div>
                 )}
@@ -298,7 +332,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
               type="button"
               onClick={() => void handleSaveCheckpoint()}
               disabled={savingCheckpoint}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white  hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98]"
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-indigo-600 px-4 py-2.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 transition-all active:scale-[0.98] cursor-pointer"
             >
               {savingCheckpoint ? (
                 <Loader2 size={14} className="animate-spin text-white" />
@@ -309,33 +343,33 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
             </button>
 
             {versions.length === 0 ? (
-              <div className="py-12 text-center text-gray-400">
-                <Clock size={28} className="mx-auto mb-2 opacity-50 text-gray-400" />
+              <div className="py-12 text-center text-[var(--text-muted)]">
+                <Clock size={28} className="mx-auto mb-2 opacity-50" />
                 <p className="text-xs font-medium">Versiyalar tarixi topilmadi</p>
               </div>
             ) : (
-              <div className="flex flex-col gap-2.5">
+              <div className="flex flex-col gap-2">
                 {versions.map((ver) => {
                   const isRestoring = restoringId === ver.id;
                   const isCurrent = !!ver.isCurrent;
                   return (
                     <div
                       key={ver.id}
-                      className="flex items-center justify-between gap-2 rounded-xl border border-gray-200/80 bg-gray-50 p-3 transition-all hover:bg-gray-100/80"
+                      className="flex items-center justify-between gap-2 rounded-xl px-3 py-2.5 transition-colors hover:bg-[var(--card-hover)] text-[var(--text-primary)]"
                     >
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-semibold text-xs text-gray-900">{ver.label}</span>
+                          <span className="font-bold text-xs text-[var(--text-primary)]">{ver.label}</span>
                           {isCurrent && (
-                            <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 border border-emerald-200">
+                            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-bold text-emerald-600 dark:text-emerald-400">
                               Joriy
                             </span>
                           )}
                         </div>
-                        <p className="mt-1 text-[11px] text-gray-500">
+                        <p className="mt-1 text-[11px] text-[var(--text-muted)] font-medium">
                           {fmtDateGroup(ver.timestampMs)} · {fmtTimeAmPm(ver.timestampMs)}
                         </p>
-                        <p className="mt-1 text-[10px] text-gray-400 font-medium">
+                        <p className="mt-0.5 text-[10px] text-[var(--text-muted)] font-medium">
                           {ver.pageCount} sahifa · {ver.strokeCount} chizma
                         </p>
                       </div>
@@ -345,7 +379,7 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
                           type="button"
                           onClick={() => void handleRestore(ver.id)}
                           disabled={restoringId !== null}
-                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-indigo-700 disabled:opacity-50 shrink-0 transition-all active:scale-95"
+                          className="flex items-center gap-1.5 rounded-xl bg-indigo-600 px-3.5 py-1.5 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 disabled:opacity-50 shrink-0 transition-all active:scale-95 cursor-pointer"
                         >
                           {isRestoring ? (
                             <span className="h-3 w-3 rounded-full border-2 border-white/40 border-t-white animate-spin" />
@@ -363,6 +397,8 @@ export function WhiteboardHistoryModal({ boardId, onClose, onSelectActivity, onR
           </div>
         )}
       </div>
-    </div>
+      </div>
+    </div>,
+    document.body,
   );
 }

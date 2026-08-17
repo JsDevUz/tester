@@ -98,175 +98,180 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
   }
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-2 p-6 sm:flex-row">
-      <div className="min-w-0 flex-1 overflow-y-auto sm:h-full">
-        <Breadcrumb
-          items={[
-            { label: 'Kurslar', onClick: onBackToList },
-            { label: course.title },
-            { label: 'Kontent' },
-          ]}
-        />
-
-        <div className="mb-4 rounded-2xl bg-white p-5">
-          <h2 className="mb-1 text-lg font-bold text-gray-800">Mundarija</h2>
-          <p className="mb-4 text-sm text-gray-400">
-            Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz, nashr qilishingiz yoki
-            o'chirishingiz mumkin.
-          </p>
-          <div className="flex items-center justify-between gap-2">
-            <button
-              type="button"
-              onClick={() => setModal({ type: 'newModule' })}
-              disabled={moduleLimitReached}
-              title={moduleLimitReached ? "Bitta kursga maksimal 30 ta modul qo'shish mumkin" : undefined}
-              className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg transition-colors hover:bg-indigo-600 disabled:cursor-not-allowed disabled:bg-gray-200 disabled:text-gray-400 disabled:shadow-none"
-            >
-              <Plus size={16} /> Modul qo'shish
-            </button>
-            <p className="text-xs text-gray-400">
-              {course.modules.length} modul • {lessonCount} dars
-            </p>
-          </div>
-          {moduleLimitReached && (
-            <p className="mt-3 rounded-xl bg-amber-50 px-3 py-2 text-xs font-medium text-amber-700">
-              Bu kursda maksimal 30 ta modul mavjud. Yangi modul yaratish uchun avval mavjud modullardan birini o'chiring.
-            </p>
-          )}
+    <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+      <div className="flex min-h-full flex-col gap-3">
+        <div className="px-1 py-1">
+          <Breadcrumb
+            items={[
+              { label: 'Kurslar', onClick: onBackToList },
+              { label: course.title },
+              { label: 'Kontent' },
+            ]}
+          />
         </div>
 
-        {course.modules.length === 0 ? (
-          <div className="rounded-2xl bg-white py-16 text-center text-gray-300">
-            <Inbox size={32} className="mx-auto mb-3 opacity-50" />
-            <p className="text-sm">Hali modul yo'q</p>
-          </div>
-        ) : (
-          <div className="flex flex-col gap-2">
-            {course.modules.map((module) => {
-              const collapsed = collapsedModuleIds.has(module.id);
-              return (
-                <div key={module.id} className="rounded-2xl bg-white">
-                  <div className="group flex items-center gap-2 px-4 py-3">
-                    <button type="button" onClick={() => toggleModule(module.id)} className="text-gray-400">
-                      {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                    <Layers size={16} className="shrink-0 text-gray-400" />
-                    <input
-                      value={module.title}
-                      onChange={(e) => void renameModule(courseId, module.id, e.target.value)}
-                      onClick={(e) => e.stopPropagation()}
-                      className="min-w-0 flex-1 truncate rounded-lg bg-transparent px-1 py-0.5 text-sm font-semibold text-gray-700 outline-none transition-colors hover:bg-gray-50 focus:bg-gray-50"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setDeleteTarget({ type: 'module', moduleId: module.id, title: module.title })}
-                      className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  </div>
+        <div className="flex flex-col gap-3 sm:flex-row items-start">
+          <div className="min-w-0 flex-1 space-y-3">
+            <div className="rounded-2xl bg-[var(--surface-bg)] p-4 sm:p-5 shadow-xs">
+              <h2 className="text-base font-bold text-[var(--text-primary)] tracking-tight">Mundarija</h2>
+              <p className="mt-0.5 mb-3.5 text-xs text-[var(--text-muted)]">
+                Bu yerda siz modullar va darslarni tahrirlashingiz, tartiblashingiz, nashr qilishingiz yoki
+                o'chirishingiz mumkin.
+              </p>
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <button
+                  type="button"
+                  onClick={() => setModal({ type: 'newModule' })}
+                  disabled={moduleLimitReached}
+                  title={moduleLimitReached ? "Bitta kursga maksimal 30 ta modul qo'shish mumkin" : undefined}
+                  className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-40 cursor-pointer"
+                >
+                  <Plus size={15} /> Modul qo'shish
+                </button>
+                <p className="text-xs font-semibold text-[var(--text-muted)]">
+                  {course.modules.length} modul • {lessonCount} dars
+                </p>
+              </div>
+              {moduleLimitReached && (
+                <p className="mt-3 rounded-xl bg-amber-500/10 px-3.5 py-2.5 text-xs font-medium text-amber-600 dark:text-amber-400">
+                  Bu kursda maksimal 30 ta modul mavjud. Yangi modul yaratish uchun avval mavjud modullardan birini o'chiring.
+                </p>
+              )}
+            </div>
 
-                  {!collapsed && (
-                    <div className="px-2 py-2">
-                      {module.lessons.map((lesson) => (
-                        <div
-                          key={lesson.id}
-                          className="group flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm transition-colors hover:bg-gray-50"
+            {course.modules.length === 0 ? (
+              <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+                <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+                <p className="text-xs font-medium">Hali modul yo'q</p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-2">
+                {course.modules.map((module) => {
+                  const collapsed = collapsedModuleIds.has(module.id);
+                  return (
+                    <div key={module.id} className="rounded-2xl bg-[var(--surface-bg)] shadow-xs overflow-hidden">
+                      <div className="group flex items-center gap-2 px-4 py-3">
+                        <button type="button" onClick={() => toggleModule(module.id)} className="text-[var(--text-muted)] hover:text-[var(--text-primary)] cursor-pointer">
+                          {collapsed ? <ChevronRight size={16} /> : <ChevronDown size={16} />}
+                        </button>
+                        <Layers size={16} className="shrink-0 text-indigo-500" />
+                        <input
+                          value={module.title}
+                          onChange={(e) => void renameModule(courseId, module.id, e.target.value)}
+                          onClick={(e) => e.stopPropagation()}
+                          className="min-w-0 flex-1 truncate rounded-lg bg-transparent px-1.5 py-0.5 text-xs font-bold text-[var(--text-primary)] outline-none transition-colors hover:bg-[var(--card-hover)] focus:bg-[var(--card-bg)]"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setDeleteTarget({ type: 'module', moduleId: module.id, title: module.title })}
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
                         >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
+
+                      {!collapsed && (
+                        <div className="px-2 pb-2 space-y-1">
+                          {module.lessons.map((lesson) => (
+                            <div
+                              key={lesson.id}
+                              className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors hover:bg-[var(--card-hover)]"
+                            >
+                              <button
+                                type="button"
+                                onClick={() => onOpenLesson(module.id, lesson.id)}
+                                className="flex flex-1 items-center gap-2 truncate text-left cursor-pointer"
+                              >
+                                <FileText size={14} className="shrink-0 text-[var(--text-muted)]" />
+                                <span className="truncate text-xs font-semibold text-[var(--text-primary)]">{lesson.title}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void toggleLessonStatus(courseId, module.id, lesson.id)}
+                                title={lesson.status === 'published' ? "E'lon qilingan — bosib qoralamaga o'tkazish" : "Qoralama — bosib e'lon qilish"}
+                                className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-lg transition-colors cursor-pointer ${
+                                  lesson.status === 'published'
+                                    ? 'text-emerald-500 hover:bg-emerald-500/10'
+                                    : 'text-[var(--text-muted)] hover:bg-[var(--card-bg)]'
+                                }`}
+                              >
+                                {lesson.status === 'published' ? <Eye size={15} /> : <EyeOff size={15} />}
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setDeleteTarget({ type: 'lesson', moduleId: module.id, lessonId: lesson.id, title: lesson.title })}
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
+                              >
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          ))}
                           <button
                             type="button"
-                            onClick={() => onOpenLesson(module.id, lesson.id)}
-                            className="flex flex-1 items-center gap-2 truncate text-left"
+                            onClick={() => setModal({ type: 'newLesson', moduleId: module.id })}
+                            disabled={module.lessons.length >= 100}
+                            title={module.lessons.length >= 100 ? "Bitta modulga maksimal 100 ta dars qo'shish mumkin" : undefined}
+                            className="w-full rounded-xl px-3 py-2 text-left text-xs font-bold text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors disabled:cursor-not-allowed cursor-pointer"
                           >
-                            <FileText size={14} className="shrink-0 text-gray-300" />
-                            <span className="truncate text-gray-700">{lesson.title}</span>
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void toggleLessonStatus(courseId, module.id, lesson.id)}
-                            title={lesson.status === 'published' ? "E'lon qilingan — bosib qoralamaga o'tkazish" : "Qoralama — bosib e'lon qilish"}
-                            className={`shrink-0 rounded-lg p-1.5 transition-colors ${lesson.status === 'published'
-                                ? 'text-green-500 hover:bg-green-50'
-                                : 'text-gray-300 hover:bg-gray-100 hover:text-gray-400'
-                              }`}
-                          >
-                            {lesson.status === 'published' ? <Eye size={15} /> : <EyeOff size={15} />}
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => setDeleteTarget({ type: 'lesson', moduleId: module.id, lessonId: lesson.id, title: lesson.title })}
-                            className="rounded-lg p-1.5 text-gray-300 transition-colors hover:bg-red-50 hover:text-red-400"
-                          >
-                            <Trash2 size={13} />
+                            {module.lessons.length >= 100 ? "100 ta dars limiti to'ldi" : "+ Dars qo'shish"}
                           </button>
                         </div>
-                      ))}
-                      <button
-                        type="button"
-                        onClick={() => setModal({ type: 'newLesson', moduleId: module.id })}
-                        disabled={module.lessons.length >= 100}
-                        title={module.lessons.length >= 100 ? "Bitta modulga maksimal 100 ta dars qo'shish mumkin" : undefined}
-                        className="w-full rounded-xl px-3 py-2.5 text-left text-xs font-medium text-gray-500 hover:bg-gray-50 disabled:cursor-not-allowed disabled:bg-amber-50 disabled:text-amber-600"
-                      >
-                        {module.lessons.length >= 100 ? "100 ta dars limiti to'ldi" : "+ Dars qo'shish"}
-                      </button>
+                      )}
                     </div>
-                  )}
-                </div>
-              );
-            })}
+                  );
+                })}
+              </div>
+            )}
           </div>
+
+          <CourseSidePanel
+            onBackToList={onBackToList}
+            activeFullTab="content"
+            onSelectContent={() => { }}
+            onSelectSettings={onSelectSettings}
+            onSelectLaunch={onSelectLaunch}
+            onSelectGroups={onSelectGroups}
+            onSelectClasses={onSelectClasses}
+            onSelectChallenges={onSelectChallenges}
+          />
+        </div>
+
+        {modal?.type === 'newModule' && (
+          <PromptModal
+            title="Yangi modul"
+            placeholder="Modul nomi"
+            confirmLabel="Yaratish"
+            onConfirm={handleCreateModule}
+            onClose={() => setModal(null)}
+          />
+        )}
+        {modal?.type === 'newLesson' && (
+          <PromptModal
+            title="Yangi dars"
+            placeholder="Dars nomi"
+            confirmLabel="Yaratish"
+            onConfirm={handleCreateLesson}
+            onClose={() => setModal(null)}
+          />
+        )}
+
+        {deleteTarget?.type === 'module' && (
+          <ConfirmDeleteModal
+            title="Modulni o'chirish"
+            description={`"${deleteTarget.title}" moduli va undagi barcha darslar o'chiriladi.`}
+            onConfirm={handleConfirmDelete}
+            onClose={() => setDeleteTarget(null)}
+          />
+        )}
+        {deleteTarget?.type === 'lesson' && (
+          <ConfirmDeleteModal
+            title="Darsni o'chirish"
+            description={`"${deleteTarget.title}" darsi va uning kontenti o'chiriladi.`}
+            onConfirm={handleConfirmDelete}
+            onClose={() => setDeleteTarget(null)}
+          />
         )}
       </div>
-
-      <div className="shrink-0 sm:sticky sm:top-0 sm:self-start">
-        <CourseSidePanel
-          onBackToList={onBackToList}
-          activeFullTab="content"
-          onSelectContent={() => { }}
-          onSelectSettings={onSelectSettings}
-          onSelectLaunch={onSelectLaunch}
-          onSelectGroups={onSelectGroups}
-          onSelectClasses={onSelectClasses}
-          onSelectChallenges={onSelectChallenges}
-        />
-      </div>
-
-      {modal?.type === 'newModule' && (
-        <PromptModal
-          title="Yangi modul"
-          placeholder="Modul nomi"
-          confirmLabel="Yaratish"
-          onConfirm={handleCreateModule}
-          onClose={() => setModal(null)}
-        />
-      )}
-      {modal?.type === 'newLesson' && (
-        <PromptModal
-          title="Yangi dars"
-          placeholder="Dars nomi"
-          confirmLabel="Yaratish"
-          onConfirm={handleCreateLesson}
-          onClose={() => setModal(null)}
-        />
-      )}
-
-      {deleteTarget?.type === 'module' && (
-        <ConfirmDeleteModal
-          title="Modulni o'chirish"
-          description={`"${deleteTarget.title}" moduli va undagi barcha darslar o'chiriladi.`}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteTarget(null)}
-        />
-      )}
-      {deleteTarget?.type === 'lesson' && (
-        <ConfirmDeleteModal
-          title="Darsni o'chirish"
-          description={`"${deleteTarget.title}" darsi va uning kontenti o'chiriladi.`}
-          onConfirm={handleConfirmDelete}
-          onClose={() => setDeleteTarget(null)}
-        />
-      )}
     </div>
   );
 }

@@ -44,126 +44,131 @@ export function CourseGrid({ onOpenCourse }: CourseGridProps) {
   }
 
   return (
-    <div className="p-4">
-      <ActiveClassBanner />
+    <div className="min-h-screen p-3 sm:p-4 text-[var(--text-primary)]">
+      <div className="flex min-h-full flex-col gap-3">
+        <ActiveClassBanner />
 
-      <div className="mb-6 flex items-center justify-between gap-2">
-        <h2 className="text-lg font-bold text-gray-800 dark:text-zinc-100">Kurslar</h2>
-        <div className="flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => setShowStartClass(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-red-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-red-100 dark:shadow-none transition-colors hover:bg-red-600"
-          >
-            <Radio size={16} /> Jonli dars
-          </button>
-          <button
-            type="button"
-            onClick={() => navigate("/free-classes")}
-            className="flex items-center gap-1.5 rounded-2xl border border-gray-200 bg-white px-4 py-2.5 text-sm font-semibold text-gray-700 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-700"
-          >
-            <PenTool size={16} /> Erkin darslar
-          </button>
-          <button
-            type="button"
-            onClick={() => setShowModal(true)}
-            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-indigo-100 dark:shadow-none transition-colors hover:bg-indigo-600"
-          >
-            <Plus size={16} /> Yangi kurs
-          </button>
+        {/* Top Header */}
+        <div className="flex flex-wrap items-center justify-between gap-3 px-1 py-1">
+          <div>
+            <h1 className="text-xl font-bold text-[var(--text-primary)] tracking-tight">Kurslar</h1>
+            <p className="mt-0.5 text-xs text-[var(--text-muted)]">O'quv kurslari va guruhlarni boshqarish</p>
+          </div>
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setShowStartClass(true)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-red-700 cursor-pointer"
+            >
+              <Radio size={15} /> Jonli dars
+            </button>
+            <button
+              type="button"
+              onClick={() => navigate("/free-classes")}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-[var(--surface-bg)] px-3.5 py-2 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
+            >
+              <PenTool size={15} /> Erkin darslar
+            </button>
+            <button
+              type="button"
+              onClick={() => setShowModal(true)}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-indigo-600 px-4 py-2 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
+            >
+              <Plus size={15} /> Yangi kurs
+            </button>
+          </div>
         </div>
+
+        {coursesLoading && !coursesLoaded ? (
+          <DataLoadingState label="Kurslar yuklanmoqda..." className="min-h-64" />
+        ) : coursesError && courses.length === 0 ? (
+          <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-2xl bg-[var(--surface-bg)] text-center text-xs text-[var(--text-muted)] shadow-xs">
+            <p>{coursesError}</p>
+            <button
+              type="button"
+              onClick={() => void loadCourses().catch(() => undefined)}
+              className="inline-flex items-center gap-2 rounded-xl bg-indigo-600 px-3.5 py-2 text-xs font-bold text-white shadow-xs hover:bg-indigo-700 cursor-pointer"
+            >
+              <RefreshCw size={14} /> Qayta urinish
+            </button>
+          </div>
+        ) : coursesLoaded && courses.length === 0 ? (
+          <div className="rounded-2xl bg-[var(--surface-bg)] py-16 text-center text-[var(--text-muted)] shadow-xs">
+            <Inbox size={32} className="mx-auto mb-2 opacity-30" />
+            <p className="text-xs font-medium">Hali kurs yaratilmagan</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-[repeat(auto-fill,minmax(280px,420px))]">
+            {courses.map((course) => {
+              const lessonCount = course.modules.reduce(
+                (sum, m) => sum + m.lessons.length,
+                0,
+              );
+              const groupCount =
+                (course as { groups?: unknown[] }).groups?.length ?? 0;
+              const totalStars = Math.max(lessonCount * 5, 1);
+
+              return (
+                <button
+                  key={course.id}
+                  type="button"
+                  onClick={() => onOpenCourse(course.id)}
+                  className="relative flex min-h-[170px] cursor-pointer flex-col overflow-hidden rounded-3xl bg-[var(--surface-bg)] p-5 text-left shadow-xs transition-colors hover:bg-[var(--card-hover)]"
+                >
+                  <div className="flex items-center gap-3 pr-20 text-xs font-semibold">
+                    <span className="inline-flex items-center gap-1.5 rounded-full bg-[var(--app-bg)] px-3 py-1.5 text-xs font-bold text-[var(--text-primary)]">
+                      <Star size={13} fill="currentColor" />0 / {totalStars}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                      <Users size={15} />
+                      {groupCount}
+                    </span>
+                    <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-[var(--text-secondary)]">
+                      <ThumbsUp size={15} />
+                      5.0
+                    </span>
+                  </div>
+
+                  <div className="absolute right-5 top-5 flex h-16 w-16 items-center justify-center rounded-2xl bg-[var(--app-bg)] text-[var(--text-primary)]">
+                    <GraduationCap size={28} />
+                    <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-full bg-black/40 dark:bg-black/70 text-white shadow-xs">
+                      <Play size={12} fill="currentColor" />
+                    </span>
+                  </div>
+
+                  <div className="min-w-0 my-auto py-2">
+                    <p className="max-w-[calc(100%-5rem)] text-lg sm:text-xl font-bold leading-tight text-[var(--text-primary)]">
+                      {course.title}
+                    </p>
+                  </div>
+
+                  <div className="mt-auto flex flex-wrap items-center gap-x-4 gap-y-1.5 pt-3 text-xs font-semibold text-[var(--text-secondary)]">
+                    <span className="inline-flex items-center gap-1.5">
+                      <Play
+                        size={13}
+                        fill="currentColor"
+                      />
+                      1
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Users size={14} />
+                      {groupCount} guruh
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <Layers size={14} />
+                      {course.modules.length} modul
+                    </span>
+                    <span className="inline-flex items-center gap-1.5">
+                      <BookOpen size={14} />
+                      {lessonCount} dars
+                    </span>
+                  </div>
+                </button>
+              );
+            })}
+          </div>
+        )}
       </div>
-
-      {coursesLoading && !coursesLoaded ? (
-        <DataLoadingState label="Kurslar yuklanmoqda..." className="min-h-64" />
-      ) : coursesError && courses.length === 0 ? (
-        <div className="flex min-h-64 flex-col items-center justify-center gap-2 rounded-2xl bg-white text-center text-gray-400">
-          <p className="text-sm">{coursesError}</p>
-          <button
-            type="button"
-            onClick={() => void loadCourses().catch(() => undefined)}
-            className="inline-flex items-center gap-2 rounded-xl bg-gray-900 px-3 py-2 text-xs font-semibold text-white"
-          >
-            <RefreshCw size={14} /> Qayta urinish
-          </button>
-        </div>
-      ) : coursesLoaded && courses.length === 0 ? (
-        <div className="py-16 text-center text-gray-300">
-          <Inbox size={32} className="mx-auto mb-3 opacity-50" />
-          <p className="text-sm">Hali kurs yaratilmagan</p>
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-[repeat(auto-fill,minmax(280px,420px))]">
-          {courses.map((course) => {
-            const lessonCount = course.modules.reduce(
-              (sum, m) => sum + m.lessons.length,
-              0,
-            );
-            const groupCount =
-              (course as { groups?: unknown[] }).groups?.length ?? 0;
-            const totalStars = Math.max(lessonCount * 5, 1);
-
-            return (
-              <button
-                key={course.id}
-                type="button"
-                onClick={() => onOpenCourse(course.id)}
-                className="relative flex min-h-37 cursor-pointer flex-col overflow-hidden rounded-[22px] bg-white p-4 text-left transition-colors hover:bg-gray-50"
-              >
-                <div className="flex items-center gap-2 pr-20 text-xs font-semibold">
-                  <span className="inline-flex items-center gap-1 rounded-full bg-gray-900 px-2.5 py-1 text-white">
-                    <Star size={13} fill="currentColor" />0 / {totalStars}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-gray-500">
-                    <Users size={14} className="text-gray-700" />
-                    {groupCount}
-                  </span>
-                  <span className="inline-flex items-center gap-1 text-gray-500">
-                    <ThumbsUp size={14} className="text-gray-700" />
-                    5.0
-                  </span>
-                </div>
-
-                <div className="absolute right-4 top-4 flex h-16 w-16 items-center justify-center rounded-2xl bg-gray-100 text-gray-700">
-                  <GraduationCap size={28} />
-                  <span className="absolute -bottom-1 -right-1 flex h-7 w-7 items-center justify-center rounded-xl bg-gray-900 text-white">
-                    <Play size={14} fill="currentColor" />
-                  </span>
-                </div>
-
-                <div className="min-w-0">
-                  <p className="mt-4 max-w-[calc(100%-5rem)] text-[17px] font-bold leading-snug text-gray-900">
-                    {course.title}
-                  </p>
-                </div>
-
-                <div className="mt-auto flex flex-wrap items-center gap-x-3 gap-y-1 pt-8 text-xs font-semibold text-gray-500">
-                  <span className="inline-flex items-center gap-1">
-                    <Play
-                      size={14}
-                      className="text-gray-700"
-                      fill="currentColor"
-                    />
-                    1
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Users size={14} className="text-gray-700" />
-                    {groupCount} guruh
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <Layers size={14} className="text-gray-700" />
-                    {course.modules.length} modul
-                  </span>
-                  <span className="inline-flex items-center gap-1">
-                    <BookOpen size={14} className="text-gray-700" />
-                    {lessonCount} dars
-                  </span>
-                </div>
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {showModal && (
         <PromptModal

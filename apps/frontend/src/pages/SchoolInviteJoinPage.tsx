@@ -48,23 +48,23 @@ export function SchoolInviteJoinPage() {
 
   if (checkingSession) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-        <p className="text-sm text-gray-400">Yuklanmoqda...</p>
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-4">
+        <p className="text-xs font-semibold text-[var(--text-muted)]">Yuklanmoqda...</p>
       </div>
     );
   }
 
   if (!student) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-        <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center">
-          <p className="mb-4 text-sm text-gray-600">
+      <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-4 text-[var(--text-primary)]">
+        <div className="glass-panel w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl space-y-4">
+          <p className="text-xs font-medium text-[var(--text-muted)]">
             Maktabga qo'shilish uchun avval tizimga kiring.
           </p>
           <button
             type="button"
             onClick={() => navigate('/login')}
-            className="w-full rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+            className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
           >
             Kirish
           </button>
@@ -74,32 +74,34 @@ export function SchoolInviteJoinPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gray-50 p-6">
-      <div className="w-full max-w-sm rounded-3xl bg-white p-6 text-center">
+    <div className="flex min-h-screen items-center justify-center bg-[var(--app-bg)] p-4 text-[var(--text-primary)]">
+      <div className="glass-panel w-full max-w-sm rounded-3xl p-6 text-center shadow-2xl space-y-4">
         {error && (
           <>
-            <p className="mb-4 text-sm text-red-500">{error}</p>
+            <p className="text-xs font-semibold text-red-500">{error}</p>
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="w-full rounded-2xl bg-gray-100 py-3 text-sm font-semibold text-gray-700 transition-colors hover:bg-gray-200"
+              className="w-full rounded-xl bg-[var(--card-bg)] py-2.5 text-xs font-semibold text-[var(--text-secondary)] transition-colors hover:bg-[var(--card-hover)] cursor-pointer"
             >
               Orqaga qaytish
             </button>
           </>
         )}
 
-        {!error && !preview && <p className="text-sm text-gray-400">Yuklanmoqda...</p>}
+        {!error && !preview && <p className="text-xs font-semibold text-[var(--text-muted)]">Yuklanmoqda...</p>}
 
         {preview && !joined && (
           <>
-            <p className="mb-1 text-lg font-bold text-gray-800">{preview.schoolName}</p>
-            <p className="mb-4 text-sm text-gray-500">Ushbu maktabga qo'shilasiz</p>
+            <div>
+              <p className="text-base font-bold text-[var(--text-primary)] tracking-tight">{preview.schoolName}</p>
+              <p className="mt-0.5 text-xs text-[var(--text-muted)]">Ushbu maktabga qo'shilasiz</p>
+            </div>
             <button
               type="button"
               onClick={handleJoin}
               disabled={joining}
-              className="w-full rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600 disabled:opacity-50"
+              className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50 cursor-pointer"
             >
               {joining ? "Qo'shilmoqda..." : "Maktabga qo'shilish"}
             </button>
@@ -108,13 +110,13 @@ export function SchoolInviteJoinPage() {
 
         {joined && (
           <>
-            <p className="mb-4 text-sm font-semibold text-green-600">
+            <p className="text-xs font-bold text-emerald-500">
               Muvaffaqiyatli qo'shildingiz!
             </p>
             <button
               type="button"
               onClick={() => navigate('/')}
-              className="w-full rounded-2xl bg-indigo-500 py-3 text-sm font-semibold text-white transition-colors hover:bg-indigo-600"
+              className="w-full rounded-xl bg-indigo-600 py-2.5 text-xs font-bold text-white shadow-xs transition-colors hover:bg-indigo-700 cursor-pointer"
             >
               Davom etish
             </button>
