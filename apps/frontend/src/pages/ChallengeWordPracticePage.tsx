@@ -168,30 +168,36 @@ function Flashcards({
   direction: Direction;
   setWords: (words: ApiStudentChallengeWord[]) => void;
 }) {
-  const [deck, setDeck] = useState(() => words.filter((word) => !word.known));
+  const [deck, setDeck] = useState(() => words.filter((w) => !w.known));
   const [revealed, setRevealed] = useState(false);
+  const [resetting, setResetting] = useState(false);
+  const [exiting, setExiting] = useState<"again" | "known" | null>(null);
   const [dragX, setDragX] = useState(0);
   const [dragging, setDragging] = useState(false);
-  const [exiting, setExiting] = useState<"known" | "again" | null>(null);
-  const [resetting, setResetting] = useState(false);
   const [repeatCount, setRepeatCount] = useState(0);
-  const startX = useRef(0);
-  const current = deck[0];
 
-  function commit(known: boolean) {
-    if (!current || exiting) return;
-    const swiped = current;
+  const startX = useRef(0);
+  const startY = useRef(0);
+  const isDrag = useRef(false);
+  const currentRef = useRef(deck[0]);
+  const wordsRef = useRef(words);
+
+  useEffect(() => { currentRef.current = deck[0]; }, [deck]);
+  useEffect(() => { wordsRef.current = words; }, [words]);
+
+  const commit = (known: boolean) => {
+    const swiped = currentRef.current;
+    if (!swiped || exiting) return;
     const previousKnown = swiped.known;
-    if (!known) {
-      setRepeatCount((count) => count + 1);
-    }
+
+    if (!known) setRepeatCount((count) => count + 1);
+
     setExiting(known ? "known" : "again");
-    setWords(
-      words.map((word) => (word.id === swiped.id ? { ...word, known } : word)),
-    );
-    window.setTimeout(() => {
+    setWords(wordsRef.current.map((w) => (w.id === swiped.id ? { ...w, known } : w)));
+
+    setTimeout(() => {
       setDeck((oldDeck) => {
-        const rest = oldDeck.filter((word) => word.id !== swiped.id);
+        const rest = oldDeck.filter((w) => w.id !== swiped.id);
         return known ? rest : [...rest, { ...swiped, known: false }];
       });
       setDragX(0);
@@ -199,40 +205,60 @@ function Flashcards({
       setExiting(null);
     }, 320);
 
-    void apiSetChallengeWordProgress(challengeId, swiped.id, known).catch(
-      () => {
-        setWords(
-          words.map((word) =>
-            word.id === swiped.id ? { ...word, known: previousKnown } : word,
-          ),
-        );
-        if (known)
-          setDeck((oldDeck) =>
-            oldDeck.some((word) => word.id === swiped.id)
-              ? oldDeck
-              : [{ ...swiped, known: previousKnown }, ...oldDeck],
-          );
-        toast.error("Natijani saqlab bo'lmadi");
-      },
-    );
-  }
+    void apiSetChallengeWordProgress(challengeId, swiped.id, known).catch(() => {
+      setWords(wordsRef.current.map((w) => (w.id === swiped.id ? { ...w, known: previousKnown } : w)));
+      if (known) {
+        setDeck((oldDeck) => (oldDeck.some((w) => w.id === swiped.id) ? oldDeck : [{ ...swiped, known: previousKnown }, ...oldDeck]));
+      }
+      toast.error("Natijani saqlab bo'lmadi");
+    });
+  };
 
   function pointerDown(event: React.PointerEvent<HTMLDivElement>) {
     if (exiting) return;
-    event.currentTarget.setPointerCapture(event.pointerId);
+    try {
+      event.currentTarget.setPointerCapture(event.pointerId);
+    } catch {
+      // ignore
+    }
     startX.current = event.clientX;
+    startY.current = event.clientY;
+    isDrag.current = false;
     setDragging(true);
   }
 
   function pointerMove(event: React.PointerEvent<HTMLDivElement>) {
-    if (dragging) setDragX(event.clientX - startX.current);
+    if (!dragging || exiting) return;
+    const dx = event.clientX - startX.current;
+    const dy = event.clientY - startY.current;
+    if (Math.hypot(dx, dy) > 8) {
+      isDrag.current = true;
+    }
+    setDragX(dx);
   }
 
-  function pointerUp() {
+  function pointerUp(event: React.PointerEvent<HTMLDivElement>) {
     if (!dragging) return;
+    try {
+      if (event.currentTarget.hasPointerCapture(event.pointerId)) {
+        event.currentTarget.releasePointerCapture(event.pointerId);
+      }
+    } catch {
+      // ignore
+    }
     setDragging(false);
-    if (Math.abs(dragX) > 35) commit(dragX > 0);
-    else setDragX(0);
+
+    if (!isDrag.current && !exiting) {
+      setRevealed((r) => !r);
+      setDragX(0);
+      return;
+    }
+
+    if (Math.abs(dragX) < 40) {
+      setDragX(0);
+    } else {
+      commit(dragX > 0);
+    }
   }
 
   async function resetDeck() {
@@ -259,138 +285,131 @@ function Flashcards({
     }
   }
 
+  const current = deck[0];
+  if (!current) {
+    return (
+      <div className="flex flex-1 flex-col items-center justify-center p-6 text-center">
+        <p className="text-3xl font-black text-gray-900 dark:text-zinc-100">🎉 Tugadi!</p>
+        <p className="mt-2 text-sm font-semibold text-gray-400">Barcha so'zlar yodlandi</p>
+        <button
+          type="button"
+          disabled={resetting}
+          onClick={() => void resetDeck()}
+          className="mt-6 flex items-center gap-2 rounded-full bg-indigo-600 px-6 py-3.5 font-bold text-white shadow-md hover:bg-indigo-700 disabled:opacity-40 transition-colors cursor-pointer"
+        >
+          <RotateCcw size={18} />
+          <span>Qayta boshlash</span>
+        </button>
+      </div>
+    );
+  }
+
+  const rotateDeg = (dragX / 200) * 14;
+  const bilamanOpacity = dragX > 0 ? Math.min(dragX / 80, 1) : 0;
+  const yanaOpacity = dragX < 0 ? Math.min(Math.abs(dragX) / 80, 1) : 0;
+
   return (
-    <div className="mx-auto max-w-md">
-      <div className="mb-2 text-center">
-        <h1 className="text-[22px] font-extrabold tracking-[2px] text-gray-900 dark:text-zinc-200">
+    <div className="flex flex-1 flex-col items-center px-4 pt-6 select-none">
+      <div className="w-full text-center">
+        <h1 className="text-[20px] font-extrabold tracking-[2px] text-gray-900 dark:text-zinc-200">
           ✦ So'z yodlash
         </h1>
-        <p className="mt-1 text-[11px] text-gray-400 dark:text-zinc-500">
+        <p className="mt-1 text-[11px] font-semibold text-gray-400">
           CHAPGA - TAKRORLASH · O'NGGA - BILAMAN
         </p>
       </div>
-      <div className="mx-auto mb-6 mt-4 flex w-fit gap-7 text-center">
-        <Stat
-          label="TAKRORLASH"
-          value={repeatCount}
-          color="text-rose-500 dark:text-rose-400"
-        />
-        <Stat
-          label="QOLGAN"
-          value={deck.length}
-          color="text-violet-500 dark:text-violet-400"
-        />
-        <Stat
-          label="BILAMAN"
-          value={words.filter((word) => word.known).length}
-          color="text-emerald-500 dark:text-emerald-400"
-        />
+
+      <div className="mb-6 mt-4 flex w-[250px] justify-between text-center">
+        <Stat label="TAKRORLASH" value={repeatCount} color="#ef4444" />
+        <Stat label="QOLGAN" value={deck.length} color="#6366f1" />
+        <Stat label="BILAMAN" value={words.filter((w) => w.known).length} color="#10b981" />
       </div>
-      {!current ? (
-        <div className="py-20 text-center">
-          <p className="text-2xl font-black">🎉 Tugadi!</p>
-          <p className="mt-2 text-sm text-gray-500 dark:text-zinc-500">
-            Barcha so'zlar yodlandi
-          </p>
-        </div>
-      ) : (
-        <div className="relative mx-auto h-[340px] w-[280px] touch-none select-none">
-          {deck
-            .slice(1, 6)
-            .reverse()
-            .map((word, reverseIndex, stack) => {
-              const depth = stack.length - reverseIndex;
-              const uid = words.findIndex((item) => item.id === word.id);
-              const seed = (uid * 137 + depth * 53) % 20;
-              const opacity =
-                depth <= 1 ? 1 : Math.max(1 - (depth - 1) * 0.16, 0.15);
-              return (
-                <div
-                  key={`stack-${word.id}-${depth}`}
-                  className="absolute inset-0 rounded-3xl border-2 border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800"
-                  style={{
-                    transform: `translateY(${-depth * 6}px) scale(${1 - depth * 0.05}) rotate(${seed - 10}deg)`,
-                    opacity,
-                    zIndex: 100 - depth,
-                    boxShadow: `0 ${20 - depth * 2}px ${60 - depth * 6}px rgba(15,23,42,0.16)`,
-                    transition:
-                      "transform 350ms cubic-bezier(.34,1.56,.64,1), opacity 350ms",
-                  }}
-                />
-              );
-            })}
-          <div
-            key={`top-${current.id}`}
-            onPointerDown={pointerDown}
-            onPointerMove={pointerMove}
-            onPointerUp={pointerUp}
-            onPointerCancel={pointerUp}
-            onClick={() =>
-              !dragging && Math.abs(dragX) < 5 && setRevealed(true)
-            }
-            className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-gray-200 bg-white p-6 text-center dark:border-zinc-700 dark:bg-zinc-800 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
-            style={{
-              transform:
-                exiting === "again"
-                  ? "translateX(0) translateY(90px) scale(0.6)"
-                  : exiting === "known"
-                    ? "translateX(560px) rotate(20deg)"
-                    : `translateX(${dragX}px) rotate(${dragX / 14}deg)`,
-              opacity: exiting ? 0 : 1,
-              transition: dragging
-                ? "none"
-                : exiting
-                  ? `transform 320ms ${exiting === "again" ? "ease-in" : "ease"}, opacity 320ms ${exiting === "again" ? "ease-in" : "ease"}`
-                  : "transform 350ms cubic-bezier(.34,1.56,.64,1)",
-              zIndex: exiting === "again" ? 1 : 100,
-              boxShadow: "0 20px 60px rgba(15,23,42,0.18)",
-            }}
-          >
-            {dragX > 0 && (
-              <span
-                className="absolute right-5 top-5 rotate-[-10deg] rounded-lg border-2 border-emerald-400 px-3.5 py-1 text-sm font-extrabold tracking-[1px] text-emerald-400"
-                style={{ opacity: Math.min(Math.abs(dragX) / 80, 1) }}
-              >
-                BILAMAN ✓
-              </span>
-            )}
-            {dragX < 0 && (
-              <span
-                className="absolute left-5 top-5 rotate-[10deg] rounded-lg border-2 border-red-400 px-3.5 py-1 text-sm font-extrabold tracking-[1px] text-red-400"
-                style={{ opacity: Math.min(Math.abs(dragX) / 80, 1) }}
-              >
-                YANA ✗
-              </span>
-            )}
-            <p className="text-4xl font-extrabold leading-[1.3] text-gray-900 dark:text-zinc-100">
-              {direction === "wordToTranslation"
-                ? current.word
-                : current.translation}
+
+      <div className="relative h-[340px] w-[280px] touch-none">
+        {deck.slice(1, 6).reverse().map((w, reverseIndex, stack) => {
+          const depth = stack.length - reverseIndex;
+          const uid = words.findIndex((item) => item.id === word?.id ?? w.id);
+          const seed = (uid * 137 + depth * 53) % 20;
+          const opacity = depth <= 1 ? 1 : Math.max(1 - (depth - 1) * 0.16, 0.15);
+          return (
+            <div
+              key={`stack-${w.id}-${depth}`}
+              className="absolute inset-0 rounded-3xl border-2 border-gray-200 bg-white dark:border-zinc-700 dark:bg-zinc-800 pointer-events-none"
+              style={{
+                transform: `translateY(${-depth * 6}px) scale(${1 - depth * 0.05}) rotate(${seed - 10}deg)`,
+                opacity,
+                zIndex: 100 - depth,
+              }}
+            />
+          );
+        })}
+
+        <div
+          key={`top-${current.id}`}
+          onPointerDown={pointerDown}
+          onPointerMove={pointerMove}
+          onPointerUp={pointerUp}
+          onPointerCancel={pointerUp}
+          className={`absolute inset-0 flex flex-col items-center justify-center overflow-hidden rounded-3xl border-2 border-gray-200 bg-white p-6 text-center shadow-xl dark:border-zinc-700 dark:bg-zinc-800 ${dragging ? "cursor-grabbing" : "cursor-grab"}`}
+          style={{
+            zIndex: exiting === "again" ? 1 : 100,
+            opacity: exiting ? 0 : 1,
+            transform:
+              exiting === "again"
+                ? "translateX(0) translateY(90px) scale(0.6)"
+                : exiting === "known"
+                ? "translateX(560px) rotate(20deg)"
+                : `translateX(${dragX}px) rotate(${rotateDeg}deg)`,
+            transition: dragging
+              ? "none"
+              : exiting
+              ? `transform 320ms ${exiting === "again" ? "ease-in" : "ease"}, opacity 320ms ${exiting === "again" ? "ease-in" : "ease"}`
+              : "transform 350ms cubic-bezier(.34,1.56,.64,1)",
+          }}
+        >
+          {dragX > 0 && (
+            <div
+              style={{ opacity: bilamanOpacity }}
+              className="absolute top-4 right-4 rotate-[-10deg] rounded-xl border-2 border-emerald-500 bg-white/90 px-3 py-1 dark:bg-zinc-800/90 z-20 pointer-events-none"
+            >
+              <span className="text-xs font-black tracking-wider text-emerald-600">BILAMAN ✓</span>
+            </div>
+          )}
+
+          {dragX < 0 && (
+            <div
+              style={{ opacity: yanaOpacity }}
+              className="absolute top-4 left-4 rotate-[10deg] rounded-xl border-2 border-rose-500 bg-white/90 px-3 py-1 dark:bg-zinc-800/90 z-20 pointer-events-none"
+            >
+              <span className="text-xs font-black tracking-wider text-rose-600">YANA ✗</span>
+            </div>
+          )}
+
+          <div className="flex-1 w-full h-full flex flex-col items-center justify-center pointer-events-none">
+            <p className="text-center text-3xl font-extrabold text-gray-900 dark:text-zinc-100">
+              {direction === "wordToTranslation" ? current.word : current.translation}
             </p>
             <div className="relative mt-4 flex min-h-6 w-full items-center justify-center">
               {revealed ? (
-                <p className="text-lg text-gray-700 dark:text-zinc-200">
-                  {direction === "wordToTranslation"
-                    ? current.translation
-                    : current.word}
+                <p className="text-lg text-center font-semibold text-gray-700 dark:text-zinc-200">
+                  {direction === "wordToTranslation" ? current.translation : current.word}
                 </p>
               ) : (
-                <p className="text-[10px] tracking-[1px] text-gray-400 dark:text-zinc-500">
-                  JAVOBNI KO'RSATISH
-                </p>
+                <p className="text-[10px] font-bold tracking-[1px] text-gray-400">JAVOBNI KO'RSATISH</p>
               )}
             </div>
           </div>
         </div>
-      )}
+      </div>
+
       <button
         type="button"
         disabled={resetting}
         onClick={() => void resetDeck()}
-        className="mx-auto mt-6 flex items-center gap-2 rounded-full bg-white px-5 py-3 text-sm font-bold text-gray-600 shadow-sm ring-1 ring-gray-200 transition hover:bg-gray-50 hover:text-gray-900 disabled:opacity-40 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-white"
+        className="mt-6 flex items-center gap-2 rounded-full bg-white px-5 py-3 border border-gray-200 dark:bg-zinc-800 dark:border-zinc-700 transition-colors hover:bg-gray-50 dark:hover:bg-zinc-700 disabled:opacity-40 cursor-pointer"
       >
-        <RotateCcw size={16} className={resetting ? "animate-spin" : ""} />
-        Yangilash
+        <RotateCcw size={16} color="#6366f1" className={resetting ? "animate-spin" : ""} />
+        <span className="font-bold text-gray-700 dark:text-zinc-200 text-sm">Yangilash</span>
       </button>
     </div>
   );

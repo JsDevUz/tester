@@ -15,12 +15,12 @@ export function ChallengesHubPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel w-full overflow-hidden">
-        <div className="student-responsive-panel-section bg-white dark:bg-[#30313a] px-4 py-5 lg:p-6 border-b border-gray-100 dark:border-zinc-800/60 lg:border-b-0">
-          <h1 className="mb-1 text-2xl font-extrabold text-gray-900 dark:text-zinc-100">
+      <div className="w-full overflow-hidden text-[var(--text-primary)]">
+        <div className="px-4 py-5 lg:px-6 lg:py-6">
+          <h1 className="mb-1 text-2xl font-extrabold text-[var(--text-primary)]">
             Jamm
           </h1>
-          <p className="text-sm text-gray-400 dark:text-zinc-400">
+          <p className="text-xs font-semibold text-[var(--text-muted)]">
             Bilim va musobaqalar markazi
           </p>
         </div>
@@ -29,111 +29,114 @@ export function ChallengesHubPage() {
           <StudentActiveBanners />
         </div>
 
-        <div className="student-responsive-panel-section px-4 pb-6 pt-4 lg:pt-0">
+        <div className="px-4 lg:px-6 pb-8">
           <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-2 lg:grid-cols-2 xl:grid-cols-3">
+            {/* Jonli Musobaqalar */}
             <button
               type="button"
               onClick={() => navigate("/live/join")}
-              className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-all"
+              className="glass-card flex min-h-[92px] items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <Radio size={22} className="text-red-500" />
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-red-500/10 text-red-500">
+                <Radio size={22} className="motion-safe:animate-pulse" />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
                   Jonli Musobaqalar
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
                   Real vaqtda musobaqa
                 </p>
               </div>
             </button>
 
-            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <FileText size={22} className="text-gray-700 dark:text-zinc-400" />
-              </div>
-              <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
-                  Mening testlarim
-                </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
-                  O'z testlaringizni tuzing
-                </p>
-              </div>
-              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
-                Tez orada
-              </span>
-            </div>
-
+            {/* Mening lug'atlarim */}
             <button
               type="button"
               onClick={() => navigate("/my-dictionaries")}
-              className="student-course-card flex min-h-[88px] items-center gap-4 rounded-3xl px-4 py-4 text-left transition-all"
+              className="glass-card flex min-h-[92px] items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 shadow-sm hover:shadow-md transition-all hover:scale-[1.01] cursor-pointer"
             >
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <Languages size={22} className="text-amber-500" />
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-amber-500/10 text-amber-500">
+                <Languages size={22} />
               </div>
               <div className="min-w-0">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
                   Mening lug'atlarim
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
                   O'z lug'atlaringizni tuzing
                 </p>
               </div>
             </button>
 
-            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <CheckCircle2
-                  size={22}
-                  className="text-gray-700 dark:text-zinc-400"
-                />
+            {/* Mening testlarim */}
+            <div className="glass-card flex min-h-[92px] cursor-not-allowed items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 opacity-50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]">
+                <FileText size={22} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
+                  Mening testlarim
+                </p>
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
+                  O'z testlaringizni tuzing
+                </p>
+              </div>
+              <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
+                Tez orada
+              </span>
+            </div>
+
+            {/* ODAT */}
+            <div className="glass-card flex min-h-[92px] cursor-not-allowed items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 opacity-50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]">
+                <CheckCircle2 size={22} />
+              </div>
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
                   ODAT
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
                   Kun tartibingizni rejalashtiring
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
+              <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
                 Tez orada
               </span>
             </div>
 
-            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <Mic size={22} className="text-gray-700 dark:text-zinc-400" />
+            {/* Ovozli suhbat */}
+            <div className="glass-card flex min-h-[92px] cursor-not-allowed items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 opacity-50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]">
+                <Mic size={22} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
                   Ovozli suhbat
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
                   Tez orada ishga tushadi
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
+              <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
                 Tez orada
               </span>
             </div>
 
-            <div className="student-course-card flex min-h-[88px] cursor-not-allowed items-center gap-4 rounded-3xl px-4 py-4 text-left opacity-60">
-              <div className="student-course-card-icon grid h-12 w-12 shrink-0 place-items-center rounded-2xl">
-                <Focus size={22} className="text-gray-700 dark:text-zinc-400" />
+            {/* Diqqat */}
+            <div className="glass-card flex min-h-[92px] cursor-not-allowed items-center gap-4 rounded-3xl p-4.5 text-left border border-black/5 dark:border-white/10 opacity-50">
+              <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-black/5 dark:bg-white/10 text-[var(--text-secondary)]">
+                <Focus size={22} />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-gray-950 dark:text-zinc-100">
+                <p className="text-sm font-bold text-[var(--text-primary)]">
                   Diqqat
                 </p>
-                <p className="mt-1 text-xs text-gray-500 dark:text-zinc-400">
+                <p className="mt-0.5 text-xs font-semibold text-[var(--text-muted)]">
                   Chalg'imasdan dars qiling
                 </p>
               </div>
-              <span className="shrink-0 rounded-full bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 text-[10px] font-semibold text-gray-500 dark:text-zinc-400">
+              <span className="shrink-0 rounded-full bg-black/5 dark:bg-white/10 px-2.5 py-0.5 text-[10px] font-bold text-[var(--text-muted)]">
                 Tez orada
               </span>
             </div>

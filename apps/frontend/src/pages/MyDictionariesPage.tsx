@@ -46,54 +46,61 @@ export function MyDictionariesPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-6">
-        <div className="student-page-header">
+      <div className="w-full px-4 py-5 lg:px-6 lg:py-6 text-[var(--text-primary)]">
+        <div className="mb-6">
           <button
             type="button"
             onClick={() => navigate("/jamm")}
-            className="mb-3 flex items-center gap-1.5 text-sm font-semibold text-gray-500 hover:text-gray-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+            className="mb-3 inline-flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl px-3 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
           >
-            <ArrowLeft size={16} /> Orqaga
+            <ArrowLeft size={14} /> Orqaga
           </button>
-          <h1 className="mb-1 text-2xl font-extrabold text-gray-900 dark:text-zinc-100">Mening lug'atlarim</h1>
-          <p className="text-sm text-gray-400 dark:text-zinc-400">So'z-tarjima lug'atlaringizni tuzing va ulashing</p>
+          <h1 className="mb-1 text-2xl font-extrabold text-[var(--text-primary)]">Mening lug'atlarim</h1>
+          <p className="text-xs font-semibold text-[var(--text-muted)]">So'z-tarjima lug'atlaringizni tuzing va ulashing</p>
         </div>
 
         <StudentActiveBanners className="mb-5" />
 
-        <div className="mb-6 flex gap-2">
+        <div className="mb-6 flex gap-2.5 max-w-lg">
           <input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" && newName.trim()) void handleCreate();
+            }}
             placeholder="Yangi lug'at nomi"
-            className="flex-1 rounded-2xl bg-gray-50 border border-gray-200/80 px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all dark:bg-zinc-800 dark:border-zinc-700 dark:text-zinc-100"
+            className="flex-1 rounded-2xl bg-black/5 dark:bg-black/25 border border-black/10 dark:border-white/10 px-4 py-3 text-sm font-semibold text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all"
           />
           <button
             type="button"
             disabled={!newName.trim() || creating}
             onClick={() => void handleCreate()}
-            className="flex items-center gap-1.5 rounded-2xl bg-indigo-500 px-4 py-2.5 text-sm font-semibold text-white hover:bg-indigo-600 active:bg-indigo-700 disabled:opacity-50 transition-all"
+            className="flex items-center gap-1.5 rounded-2xl bg-indigo-600 px-5 py-3 text-xs font-bold text-white hover:bg-indigo-700 disabled:opacity-40 transition-all shadow-md cursor-pointer shrink-0"
           >
             <Plus size={16} /> Yaratish
           </button>
         </div>
 
         {!decks ? (
-          <p className="py-16 text-center text-sm text-gray-400">Yuklanmoqda...</p>
+          <div className="glass-card rounded-3xl border border-black/5 dark:border-white/10 py-16 text-center text-sm font-bold text-[var(--text-muted)]">
+            Yuklanmoqda...
+          </div>
         ) : decks.length === 0 ? (
-          <p className="py-16 text-center text-sm text-gray-400">Hali lug'at yo'q. Yangisini yarating!</p>
+          <div className="glass-card rounded-3xl border border-black/5 dark:border-white/10 py-16 text-center text-sm font-bold text-[var(--text-muted)]">
+            Hali lug'at yo'q. Yangisini yarating!
+          </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3.5">
             {decks.map((deck) => (
               <div
                 key={deck.id}
                 onClick={() => navigate(`/my-dictionaries/${deck.id}`)}
-                className="student-responsive-card group relative flex cursor-pointer items-center gap-3 rounded-2xl bg-white border border-gray-200/80 p-4 transition-all hover:border-gray-300 dark:bg-zinc-800 dark:border-zinc-700 dark:hover:border-zinc-600"
+                className="glass-card group relative flex cursor-pointer items-center gap-3.5 rounded-2xl border border-black/5 dark:border-white/10 p-4 transition-all hover:scale-[1.01] hover:shadow-md"
               >
-                <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-amber-50 text-amber-500 dark:bg-amber-950/40 dark:text-amber-400">
-                  <Languages size={18} />
+                <div className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-amber-500/10 text-amber-500">
+                  <Languages size={20} />
                 </div>
-                <p className="min-w-0 flex-1 truncate text-sm font-bold text-gray-800 dark:text-zinc-100">{deck.name}</p>
+                <p className="min-w-0 flex-1 truncate text-sm font-bold text-[var(--text-primary)]">{deck.name}</p>
               </div>
             ))}
           </div>

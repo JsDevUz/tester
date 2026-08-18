@@ -24,49 +24,49 @@ export function LiveJoinPage() {
 
   return (
     <StudentShell>
-      <div className="student-responsive-panel flex min-h-[520px] flex-col overflow-hidden notranslate min-[1025px]:rounded-2xl" translate="no">
-      <div className="shrink-0 h-1 bg-linear-to-r from-gray-400 via-purple-400 to-pink-400" />
-      <div className="px-6 pt-4">
-        <button
-          type="button"
-          onClick={() => navigate('/jamm')}
-          className="flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
-        >
-          <ArrowLeft size={14} /> Orqaga
-        </button>
-      </div>
-      <form
-        onSubmit={handleJoin}
-        className="flex-1 flex flex-col items-center justify-center px-6"
-      >
-        <div className="w-16 h-16 rounded-2xl bg-gray-100 flex items-center justify-center mb-6">
-          <Radio size={28} className="text-gray-500" />
+      <div className="w-full p-4 lg:p-6 text-[var(--text-primary)]">
+        <div className="glass-card max-w-md mx-auto rounded-3xl border border-black/5 dark:border-white/10 overflow-hidden shadow-lg p-6 lg:p-8 text-[var(--text-primary)]">
+          <button
+            type="button"
+            onClick={() => navigate("/jamm")}
+            className="mb-6 flex items-center gap-1.5 text-xs font-bold text-[var(--text-secondary)] hover:text-[var(--text-primary)] rounded-xl px-3 py-1.5 bg-black/5 dark:bg-white/5 hover:bg-black/10 dark:hover:bg-white/10 transition-colors cursor-pointer"
+          >
+            <ArrowLeft size={14} /> Orqaga
+          </button>
+
+          <form
+            onSubmit={handleJoin}
+            className="flex flex-col items-center justify-center text-center"
+          >
+            <div className="w-16 h-16 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center mb-5">
+              <Radio size={30} className="motion-safe:animate-pulse" />
+            </div>
+            <h1 className="text-xl font-extrabold text-[var(--text-primary)] mb-1.5">
+              Jonli musobaqaga kirish
+            </h1>
+            <p className="text-xs font-semibold text-[var(--text-muted)] mb-6">
+              Ustoz bergan 6 xonali PIN kodni kiriting
+            </p>
+            <input
+              autoFocus
+              inputMode="numeric"
+              maxLength={6}
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              placeholder="000000"
+              className="w-full text-center text-3xl font-black tracking-[0.25em] bg-black/5 dark:bg-black/25 rounded-2xl border border-black/10 dark:border-white/10 px-4 py-3.5 text-[var(--text-primary)] placeholder:text-[var(--text-muted)] outline-none focus:border-indigo-500/50 focus:ring-2 focus:ring-indigo-500/20 transition-all mb-6"
+            />
+            <button
+              type="submit"
+              disabled={pin.length !== 6}
+              className="w-full py-3.5 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-bold text-sm flex items-center justify-center gap-2 disabled:opacity-40 transition-colors shadow-md cursor-pointer"
+            >
+              <span>Kirish</span>
+              <ChevronRight size={18} />
+            </button>
+          </form>
         </div>
-        <p className="text-xl font-bold text-gray-900 mb-2">
-          Jonli musobaqaga kirish
-        </p>
-        <p className="text-sm text-gray-400 mb-8">
-          Ustoz bergan 6 xonali PIN kodni kiriting
-        </p>
-        <input
-          autoFocus
-          inputMode="numeric"
-          maxLength={6}
-          value={pin}
-          onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-          placeholder="000000"
-          className="w-full max-w-xs text-center text-4xl font-black tracking-[0.3em] bg-gray-50 rounded-2xl border border-border px-4 py-4 outline-none focus:border-gray-400 focus:bg-white transition-colors mb-6"
-        />
-        <button
-          type="submit"
-          disabled={pin.length !== 6}
-          className="w-full max-w-xs py-4 bg-indigo-500 text-white rounded-2xl font-semibold flex items-center justify-center gap-2 hover:bg-indigo-600 disabled:opacity-40 transition-colors shadow-lg"
-        >
-          <span>Kirish</span>
-          <ChevronRight size={18} />
-        </button>
-      </form>
-    </div>
+      </div>
     </StudentShell>
   );
 }

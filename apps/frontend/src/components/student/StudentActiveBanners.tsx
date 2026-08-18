@@ -49,21 +49,23 @@ export function StudentActiveBanners({
           key={s.id}
           type="button"
           onClick={() => navigate(`/classroom/${s.id}`)}
-          className="flex w-full items-center gap-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-left transition-colors hover:bg-red-500/15"
+          className="glass-card flex w-full items-center gap-3 rounded-2xl bg-red-500/10 border border-red-500/25 px-4 py-3.5 text-left transition-all hover:bg-red-500/15 cursor-pointer shadow-sm"
         >
-          <Radio
-            size={20}
-            className="shrink-0 text-red-500 motion-safe:animate-pulse"
-          />
+          <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+            <Radio
+              size={20}
+              className="text-red-500 motion-safe:animate-pulse"
+            />
+          </div>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-gray-900 dark:text-zinc-100">
+            <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
               Jonli dars ketmoqda — {s.courseName}
             </span>
-            <span className="block text-xs text-gray-500 dark:text-zinc-400">
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">
               Darsga kirish uchun bosing
             </span>
           </span>
-          <span className="shrink-0 rounded-xl bg-red-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-red-600">
+          <span className="shrink-0 rounded-xl bg-red-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-red-600 transition-colors">
             Kirish
           </span>
         </button>
@@ -73,21 +75,23 @@ export function StudentActiveBanners({
           key={pin.testId}
           type="button"
           onClick={() => navigate(`/t/${pin.slug}`)}
-          className="flex w-full items-center gap-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 px-4 py-3 text-left transition-colors hover:bg-red-500/15"
+          className="glass-card flex w-full items-center gap-3 rounded-2xl bg-red-500/10 border border-red-500/25 px-4 py-3.5 text-left transition-all hover:bg-red-500/15 cursor-pointer shadow-sm"
         >
-          <Radio
-            size={20}
-            className="shrink-0 text-red-500 motion-safe:animate-pulse"
-          />
+          <div className="w-9 h-9 rounded-xl bg-red-500/20 flex items-center justify-center shrink-0">
+            <Radio
+              size={20}
+              className="text-red-500 motion-safe:animate-pulse"
+            />
+          </div>
           <span className="min-w-0 flex-1">
-            <span className="block truncate text-sm font-bold text-gray-900 dark:text-zinc-100">
+            <span className="block truncate text-sm font-bold text-[var(--text-primary)]">
               Imtihon boshlandi — {pin.testName}
             </span>
-            <span className="block text-xs text-gray-500 dark:text-zinc-400">
+            <span className="block text-xs font-semibold text-[var(--text-muted)]">
               Kirish uchun bosing
             </span>
           </span>
-          <span className="shrink-0 rounded-xl bg-red-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-red-600">
+          <span className="shrink-0 rounded-xl bg-red-500 px-3.5 py-1.5 text-xs font-bold text-white shadow-sm hover:bg-red-600 transition-colors">
             Kirish
           </span>
         </button>
