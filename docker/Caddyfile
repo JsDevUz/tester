@@ -1,11 +1,16 @@
 {
     email {$ACME_EMAIL:admin@example.com}
+    servers {
+        protocols h1 h2
+    }
 }
 
 {$DOMAIN:jamm.uz} {
     encode gzip zstd
 
     header {
+        # Brauzerlardagi eski QUIC (HTTP/3) keshini tozalash va to'g'ridan-to'g'ri HTTP/2 ishlatish
+        Alt-Svc "clear"
         # HSTS: force HTTPS for this domain (and subdomains) for a year.
         Strict-Transport-Security "max-age=31536000; includeSubDomains"
         X-Content-Type-Options "nosniff"
