@@ -459,7 +459,7 @@ function StudentCourseReader({
 
   if (error) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 text-[var(--text-primary)]">
+      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 pt-[max(20px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] text-[var(--text-primary)]">
         <button
           type="button"
           onClick={onBack}
@@ -477,7 +477,7 @@ function StudentCourseReader({
 
   if (!course || lessons.length === 0) {
     return (
-      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 text-[var(--text-primary)]">
+      <div className="min-h-[100dvh] bg-[var(--app-bg)] p-5 pt-[max(20px,env(safe-area-inset-top))] pb-[max(20px,env(safe-area-inset-bottom))] text-[var(--text-primary)]">
         <button
           type="button"
           onClick={onBack}
@@ -499,7 +499,7 @@ function StudentCourseReader({
       onContextMenu={(e) => e.preventDefault()}
     >
       {!activeTest && (
-        <div className="glass-card sticky top-0 z-30 border-b border-black/5 dark:border-white/10 px-4 py-3 backdrop-blur-xl lg:hidden">
+        <div className="glass-card sticky top-0 z-30 border-b border-black/5 dark:border-white/10 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3 backdrop-blur-xl lg:hidden">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
@@ -528,7 +528,7 @@ function StudentCourseReader({
       )}
 
       {!activeTest && mobileLessonsOpen && (
-        <div className="fixed inset-0 z-40 overflow-y-auto bg-[var(--app-bg)] px-4 pb-24 pt-4 lg:hidden">
+        <div className="fixed inset-0 z-40 overflow-y-auto bg-[var(--app-bg)] px-4 pb-28 pt-[max(16px,env(safe-area-inset-top))] lg:hidden">
           <div className="mb-4 flex items-center justify-between gap-2">
             <button
               type="button"
@@ -578,7 +578,7 @@ function StudentCourseReader({
             ))}
           </div>
 
-          <div className="glass-card fixed bottom-0 left-0 right-0 border-t border-black/5 dark:border-white/10 p-3.5 backdrop-blur-xl">
+          <div className="glass-card fixed bottom-0 left-0 right-0 border-t border-black/5 dark:border-white/10 p-3.5 pb-[max(14px,env(safe-area-inset-bottom))] backdrop-blur-xl">
             <button
               type="button"
               onClick={() => setMobileLessonsOpen(false)}

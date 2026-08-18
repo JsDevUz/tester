@@ -187,11 +187,11 @@ export function StudentShell({ children }: { children: ReactNode }) {
   return (
     <div
       style={messengerViewportStyle}
-      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-[var(--bg-primary)] lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-16"}`}
+      className={`student-shell-bg ${isMessenger ? `fixed inset-x-0 h-[100dvh] overflow-hidden lg:static lg:!h-[100dvh] lg:pb-4 ${messengerKeyboardOpen ? "pb-0" : "pb-[calc(60px+env(safe-area-inset-bottom))]"}` : "min-h-[100dvh]"} bg-[var(--bg-primary)] pt-[max(12px,env(safe-area-inset-top))] px-3 sm:px-4 lg:p-4 ${isInnerPage || isMessenger ? "" : "pb-[calc(88px+env(safe-area-inset-bottom))]"}`}
     >
       <div
         aria-hidden="true"
-        className="pointer-events-none fixed left-1/2 top-[max(10px,env(safe-area-inset-top))] z-[100] grid h-10 w-10 -translate-x-1/2 place-items-center rounded-full glass-card text-[var(--text-primary)] shadow-lg transition-opacity"
+        className="pointer-events-none fixed left-1/2 top-[max(12px,env(safe-area-inset-top))] z-[100] grid h-10 w-10 -translate-x-1/2 place-items-center rounded-full glass-card text-[var(--text-primary)] shadow-lg transition-opacity"
         style={{
           opacity: pullDistance > 8 ? 1 : 0,
           transform: `translate(-50%, ${Math.max(-48, pullDistance - 48)}px)`,
@@ -283,47 +283,49 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 glass-card border-t border-black/5 dark:border-white/10 px-2 pb-[max(6px,env(safe-area-inset-bottom))] pt-1 lg:hidden backdrop-blur-xl">
-          {NAV_ITEMS.map((item) => {
-            const Icon = item.icon;
-            const active = isNavActive(location.pathname, item.path);
-            return (
-              <button
-                key={item.path}
-                type="button"
-                onClick={() => {
-                  setProfileOpen(false);
-                  navigate(item.path);
-                }}
-                className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${active ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-                  }`}
-              >
-                <span className="relative">
-                  <Icon
-                    size={19}
-                    className={active ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)]"}
-                  />
-                  {item.path === "/messenger" && hasUnreadMessages && (
-                    <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
-                  )}
-                </span>
-                <span className="max-w-full truncate">{item.shortLabel}</span>
-              </button>
-            );
-          })}
-          <button
-            type="button"
-            onClick={() => setProfileOpen(true)}
-            className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1.5 text-[10px] font-bold transition-colors cursor-pointer ${profileOpen ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
-              }`}
-          >
-            <UserRound
-              size={19}
-              className={profileOpen ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)]"}
-            />
-            <span>Profil</span>
-          </button>
-        </nav>
+        <div className="fixed inset-x-0 bottom-0 z-40 px-3 pb-[max(10px,env(safe-area-inset-bottom))] pt-1 pointer-events-none lg:hidden">
+          <nav className="pointer-events-auto mx-auto max-w-lg grid grid-cols-5 glass-card border border-black/5 dark:border-white/10 px-2 py-1.5 backdrop-blur-2xl shadow-xl rounded-2xl">
+            {NAV_ITEMS.map((item) => {
+              const Icon = item.icon;
+              const active = isNavActive(location.pathname, item.path);
+              return (
+                <button
+                  key={item.path}
+                  type="button"
+                  onClick={() => {
+                    setProfileOpen(false);
+                    navigate(item.path);
+                  }}
+                  className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[10px] font-bold transition-colors cursor-pointer ${active ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                    }`}
+                >
+                  <span className="relative">
+                    <Icon
+                      size={19}
+                      className={active ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)]"}
+                    />
+                    {item.path === "/messenger" && hasUnreadMessages && (
+                      <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                  </span>
+                  <span className="max-w-full truncate">{item.shortLabel}</span>
+                </button>
+              );
+            })}
+            <button
+              type="button"
+              onClick={() => setProfileOpen(true)}
+              className={`flex min-w-0 flex-col items-center justify-center gap-0.5 rounded-xl px-1 py-1 text-[10px] font-bold transition-colors cursor-pointer ${profileOpen ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)] hover:text-[var(--text-primary)]"
+                }`}
+            >
+              <UserRound
+                size={19}
+                className={profileOpen ? "text-indigo-600 dark:text-indigo-400" : "text-[var(--text-muted)]"}
+              />
+              <span>Profil</span>
+            </button>
+          </nav>
+        </div>
       )}
 
       {profileOpen && (

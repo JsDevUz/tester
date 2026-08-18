@@ -301,7 +301,7 @@ export function LessonReader({
       </div>
 
       {/* Navigation Footer */}
-      <div className="mt-8 flex items-center justify-between gap-2 sm:mt-10 sm:gap-4">
+      <div className="mt-8 flex items-center justify-between gap-2 sm:mt-10 sm:gap-4 pb-[max(16px,env(safe-area-inset-bottom))]">
         <button
           type="button"
           onClick={onPrev}
