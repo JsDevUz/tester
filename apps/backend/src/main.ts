@@ -1,6 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
-import { ValidationPipe } from '@nestjs/common';
+import { Logger, ValidationPipe } from '@nestjs/common';
 import { NestExpressApplication } from '@nestjs/platform-express';
 import { join } from 'path';
 import { existsSync, mkdirSync } from 'fs';
@@ -10,6 +10,10 @@ import { getAllowedOrigins } from './cors';
 import { RedisIoAdapter } from './redis/redis-io.adapter';
 
 validateEnv();
+
+const bootstrapLogger = new Logger('Bootstrap');
+process.on('SIGTERM', () => bootstrapLogger.warn('SIGTERM qabul qilindi'));
+process.on('SIGINT', () => bootstrapLogger.warn('SIGINT qabul qilindi'));
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });

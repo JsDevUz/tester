@@ -135,8 +135,10 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
   // yo'qolishi mumkin edi. main.ts'da enableShutdownHooks() yoqilgach, bu
   // hook process SIGTERM bilan o'lishidan oldin barcha aktiv sessiyalarni
   // majburan saqlaydi.
-  async onApplicationShutdown(): Promise<void> {
+  async onApplicationShutdown(signal?: string): Promise<void> {
+    this.logger.log(`onApplicationShutdown(${signal ?? ''}): saqlanadigan aktiv sessiyalar soni = ${this.sessions.size}`);
     await this.snapshotSvc.autoSaveSnapshots(this.sessions);
+    this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
   }
 
   // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
