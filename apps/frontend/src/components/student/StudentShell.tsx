@@ -283,7 +283,7 @@ export function StudentShell({ children }: { children: ReactNode }) {
       </div>
 
       {!isInnerPage && !(isMessenger && messengerKeyboardOpen) && (
-        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 glass-card border-t border-black/5 dark:border-white/10 px-3 pt-2 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden backdrop-blur-xl">
+        <nav className="fixed inset-x-0 bottom-0 z-40 grid grid-cols-5 glass-card border-t border-black/5 dark:border-white/10 px-3 pt-2 pb-[max(12px,env(safe-area-inset-bottom))] lg:hidden backdrop-blur-xl m-[10px]">
           {NAV_ITEMS.map((item) => {
             const Icon = item.icon;
             const active = isNavActive(location.pathname, item.path);

@@ -264,7 +264,7 @@ function StudentCourseReader({
   function refreshCourseSilently() {
     return apiGetMyCourseDetail(courseId)
       .then(setCourse)
-      .catch(() => {});
+      .catch(() => { });
   }
 
   const lessons = useMemo(
@@ -371,8 +371,8 @@ function StudentCourseReader({
     const videoDurationLabel =
       videoBlock?.durationSec != null
         ? `${String(Math.floor(videoBlock.durationSec / 60)).padStart(2, "0")}:${String(
-            videoBlock.durationSec % 60,
-          ).padStart(2, "0")}`
+          videoBlock.durationSec % 60,
+        ).padStart(2, "0")}`
         : null;
 
     return (
@@ -385,13 +385,12 @@ function StudentCourseReader({
           setMobileLessonsOpen(false);
         }}
         disabled={locked}
-        className={`flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${
-          locked
+        className={`flex w-full items-center gap-2.5 rounded-xl border p-2.5 text-left transition-colors ${locked
             ? "cursor-not-allowed border-transparent bg-gray-50 text-gray-300 opacity-70"
             : active
-            ? "border-gray-900 bg-white text-gray-900"
-            : "border-transparent bg-white text-gray-900 hover:border-gray-300"
-        }`}
+              ? "border-gray-900 bg-white text-gray-900"
+              : "border-transparent bg-white text-gray-900 hover:border-gray-300"
+          }`}
       >
         <div className="h-11 w-11 rounded-xl relative flex shrink-0 items-center justify-center bg-gray-100 text-gray-300">
           {locked ? (
@@ -409,9 +408,8 @@ function StudentCourseReader({
         </div>
         <div className="min-w-0 flex-1">
           <p
-            className={`text-sm line-clamp-2 font-bold ${
-              active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"
-            }`}
+            className={`text-sm line-clamp-2 font-bold ${active ? "text-gray-900" : locked ? "text-gray-400" : "text-gray-900"
+              }`}
           >
             {lesson.title}
           </p>
@@ -499,7 +497,7 @@ function StudentCourseReader({
       onContextMenu={(e) => e.preventDefault()}
     >
       {!activeTest && (
-        <div className="glass-card sticky top-0 z-30 border-b border-black/5 dark:border-white/10 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3 backdrop-blur-xl lg:hidden">
+        <div className="glass-card sticky top-0 z-30 border-b border-black/5 dark:border-white/10 px-4 pt-[max(12px,env(safe-area-inset-top))] pb-3 backdrop-blur-xl lg:hidden mx-[10px]">
           <div className="flex items-center justify-between gap-2">
             <button
               type="button"
@@ -604,9 +602,8 @@ function StudentCourseReader({
         />
 
         <main
-          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${
-            activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
-          }`}
+          className={`min-w-0 overflow-hidden py-4 lg:py-6 ${activeTest ? "px-0 sm:px-4 lg:px-8" : "px-4 sm:px-6 lg:px-10"
+            }`}
         >
           {selected && activeTest ? (
             <TestTaker
