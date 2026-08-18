@@ -82,7 +82,7 @@ export function MyCoursesPage() {
     <StudentShell>
       <div className="student-responsive-panel w-full p-4 sm:p-6 text-[var(--text-primary)]">
         {schoolId ? (
-          <div className="mb-5 flex items-center gap-3">
+          <div className="mb-5 flex items-center gap-3 pt-[max(8px,env(safe-area-inset-top))]">
             <button
               type="button"
               onClick={() => navigate("/schools")}
@@ -94,7 +94,7 @@ export function MyCoursesPage() {
             <h1 className="text-xl font-extrabold text-[var(--text-primary)]">Kurslar</h1>
           </div>
         ) : (
-          <h1 className="mb-5 text-xl font-extrabold text-[var(--text-primary)]">
+          <h1 className="mb-5 text-xl font-extrabold text-[var(--text-primary)] pt-[max(8px,env(safe-area-inset-top))]">
             Mening kurslarim
           </h1>
         )}
