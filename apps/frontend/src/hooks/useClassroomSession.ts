@@ -70,6 +70,11 @@ const INITIAL: ClassroomState = {
 // sezmaydi. Throttle bo'lmasa server/tarmoq yuki keraksiz ravishda ortadi.
 const POINTER_THROTTLE_MS = 30;
 
+// Sahifadan chiqishda host:stroke kabi tasdiqlanmagan yozishlarni kutish
+// uchun maksimal vaqt — bundan ko'p kutish navigatsiyani sezilarli
+// sekinlashtiradi, tarmoq butunlay uzilgan holatda esa baribir foyda bermaydi.
+const WRITE_FLUSH_TIMEOUT_MS = 800;
+
 // Login qilmagan mehmon uchun barqaror ID — shu tab/sessiyada qayta
 // ulanishlarda bir xil qolishi uchun sessionStorage'da saqlanadi (login
 // qilingandan farqli, bu foydalanuvchi identifikatsiyasi emas — faqat
@@ -129,6 +134,13 @@ export function useClassroomSession(
   sessionIdRef.current = sessionId;
   const lastPointerSentRef = useRef(0);
   const pointerThrottleTimerRef = useRef<number | null>(null);
+  // host:stroke va boshqa yozish amallari ack kutmasdan otiladi (silliq
+  // chizish uchun) — lekin agar foydalanuvchi chizgandan zahoti boshqa
+  // sahifaga o'tsa, unmount socket'ni darhol yopadi va hali serverga
+  // yetmagan/tasdiqlanmagan emit yo'qolishi mumkin. Bu ref shu "hali
+  // tasdiqlanmagan" yozishlarni sanaydi; cleanup ular tugashini (yoki
+  // WRITE_FLUSH_TIMEOUT_MS gacha) kutib, keyin socket'ni yopadi.
+  const pendingWritesRef = useRef(0);
 
   useLayoutEffect(() => {
     clientUndoStackRef.current = [];
@@ -392,13 +404,32 @@ export function useClassroomSession(
       socket.off("hand:update");
       if (retryTimer) window.clearTimeout(retryTimer);
       if (pointerThrottleTimerRef.current) window.clearTimeout(pointerThrottleTimerRef.current);
-      closeClassroomSocket();
+      // Chizgandan zahoti boshqa sahifaga o'tilgan bo'lsa, host:stroke kabi
+      // yozishlar hali serverga yetib ulgurmagan/tasdiqlanmagan bo'lishi
+      // mumkin. Socket'ni darhol yopish ularni yo'qotishi mumkin, shuning
+      // uchun ack'lar tugashini (yoki WRITE_FLUSH_TIMEOUT_MS gacha) kutamiz.
+      const deadline = Date.now() + WRITE_FLUSH_TIMEOUT_MS;
+      const closeWhenFlushed = () => {
+        if (pendingWritesRef.current <= 0 || Date.now() >= deadline) {
+          closeClassroomSocket();
+          return;
+        }
+        window.setTimeout(closeWhenFlushed, 50);
+      };
+      closeWhenFlushed();
     };
   }, [sessionId, role, guestName]);
 
   const emitHost = useCallback((event: string, payload: Record<string, unknown> = {}) => {
     const socket = getClassroomSocket();
-    socket.emit(event, { sessionId: sessionIdRef.current, token: localStorage.getItem("token"), ...payload });
+    pendingWritesRef.current++;
+    socket.emit(
+      event,
+      { sessionId: sessionIdRef.current, token: localStorage.getItem("token"), ...payload },
+      () => {
+        pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+      },
+    );
   }, []);
 
   // Shape/matn sudralganda (resize/rotate/control-point) pointermove sekundiga
@@ -411,13 +442,20 @@ export function useClassroomSession(
   const pendingEmitRef = useRef<Map<string, { event: string; payload: Record<string, unknown> }>>(new Map());
   const emitFrameRef = useRef<number | null>(null);
   const emitHostThrottled = useCallback((coalesceKey: string, event: string, payload: Record<string, unknown> = {}) => {
+    // RAF navbatida turgan payt ham "pending" hisoblanadi — aks holda shu
+    // freymda unmount bo'lsa, closeWhenFlushed buni ko'rmay socket'ni yopib
+    // yuboradi va navbatdagi yozish hech qachon jo'natilmaydi.
+    if (!pendingEmitRef.current.has(coalesceKey)) pendingWritesRef.current++;
     pendingEmitRef.current.set(coalesceKey, { event, payload });
     if (emitFrameRef.current !== null) return;
     emitFrameRef.current = window.requestAnimationFrame(() => {
       emitFrameRef.current = null;
       const pending = pendingEmitRef.current;
       pendingEmitRef.current = new Map();
-      for (const { event: ev, payload: pl } of pending.values()) emitHost(ev, pl);
+      for (const { event: ev, payload: pl } of pending.values()) {
+        pendingWritesRef.current = Math.max(0, pendingWritesRef.current - 1);
+        emitHost(ev, pl);
+      }
     });
   }, [emitHost]);
 

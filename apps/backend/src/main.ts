@@ -13,6 +13,11 @@ validateEnv();
 
 async function bootstrap() {
   const app = await NestFactory.create<NestExpressApplication>(AppModule, { rawBody: true });
+  // SIGTERM kelganda (deploy/restart/docker stop) OnApplicationShutdown
+  // hooklari ishlashi uchun shart — bo'lmasa process darhol o'ladi va
+  // ClassroomService.onApplicationShutdown() aktiv doska/sessiya holatini
+  // DB'ga saqlab ulgurmaydi.
+  app.enableShutdownHooks();
   app.getHttpAdapter().getInstance().disable('x-powered-by');
   const redisAdapter = new RedisIoAdapter(app, process.env.REDIS_URL);
   await redisAdapter.connect();

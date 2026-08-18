@@ -1,7 +1,7 @@
 import { randomUUID } from 'crypto';
 import {
   ConflictException, ForbiddenException, forwardRef, Inject, Injectable, Logger, NotFoundException,
-  OnModuleInit, Optional, ServiceUnavailableException,
+  OnApplicationShutdown, OnModuleInit, Optional, ServiceUnavailableException,
 } from '@nestjs/common';
 import { Interval } from '@nestjs/schedule';
 import { ConfigService } from '@nestjs/config';
@@ -42,7 +42,7 @@ import { ClassroomSessionLifecycleService } from './classroom-session-lifecycle.
 const ATTENDANCE_STATUSES: AttendanceStatus[] = ['absent', 'present', 'late'];
 
 @Injectable()
-export class ClassroomService implements OnModuleInit {
+export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(ClassroomService.name);
   private sessions = new Map<string, ClassroomSession>();
   private broadcaster: ClassroomBroadcaster = { toRoom: () => {}, toSocket: () => {} };
@@ -127,6 +127,16 @@ export class ClassroomService implements OnModuleInit {
   // Server restartda aktiv sessiyalarni yopmaymiz. Ular DB snapshotdan
   onModuleInit() {
     // Boshlang'ich init logikasi (hozircha bo'sh — autosave @Interval orqali)
+  }
+
+  // Deploy/restart (SIGTERM) 15 soniyalik autoPersistActiveSessions
+  // oralig'ining istalgan o'rtasida kelishi mumkin — shu oraliqdagi eng
+  // so'nggi chizmalar hech qachon DB'ga yozilmasdan jarayon bilan birga
+  // yo'qolishi mumkin edi. main.ts'da enableShutdownHooks() yoqilgach, bu
+  // hook process SIGTERM bilan o'lishidan oldin barcha aktiv sessiyalarni
+  // majburan saqlaydi.
+  async onApplicationShutdown(): Promise<void> {
+    await this.snapshotSvc.autoSaveSnapshots(this.sessions);
   }
 
   // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
@@ -622,8 +632,15 @@ export class ClassroomService implements OnModuleInit {
         s.hostSocketId = null;
         this.broadcaster.toRoom(s.id, 'host:offline', {});
         this.broadcastPresence(s);
-        // Ustoz chiqib ketsa, doskani va uning yangi seans versiyasini DB ga saqlaymiz:
-        void this.createBoardVersionCheckpoint(s.id).catch(() => {});
+        // Joriy holatni darhol saqlaymiz (bu shunchaki "current" ustidan
+        // yoziladi, versiya tarixini buzmaydi). Ammo yangi VERSIYA checkpoint
+        // yaratishni bu yerda darhol qilmaymiz: host qisqa vaqtga (masalan
+        // WebSocket qayta ulanishi paytida, hali chizish tugallanmagan holda)
+        // uzilib qolsa, xotiradagi holat vaqtincha to'liq bo'lmasligi mumkin —
+        // shu holatni versiya sifatida "muzlatib qo'yish" avvalgi to'liq
+        // versiyani almashtirib, ma'lumot yo'qotadi. Shuning uchun versiya
+        // checkpoint faqat HOST_GRACE_MS kutib, host haqiqatan qaytmasa
+        // yaratiladi (pastda, timer ichida).
         void this.persistBoardSnapshot(s.id).catch(() => {});
         const persistentBoard = s.isBoard || !!(await db.query.classSessions.findFirst({
           where: and(eq(classSessions.id, s.id), eq(classSessions.isBoard, true)),
@@ -631,6 +648,13 @@ export class ClassroomService implements OnModuleInit {
         }));
         if (persistentBoard) {
           s.isBoard = true;
+          if (!s.hostDisconnectTimer) {
+            s.hostDisconnectTimer = setTimeout(() => {
+              s.hostDisconnectTimer = null;
+              if (s.hostSocketId !== null) return;
+              void this.createBoardVersionCheckpoint(s.id).catch(() => {});
+            }, HOST_GRACE_MS);
+          }
           return;
         }
         if (!s.hostDisconnectTimer) {
