@@ -206,7 +206,15 @@ export class StorageService {
   }
 
   async getObjectBuffer(key: string): Promise<Buffer> {
-    const stream = await this.getObjectStream(key);
+    this.assertConfigured();
+    const result = await this.s3Client.send(
+      new GetObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
+    );
+    if ((result.Body as any)?.transformToByteArray) {
+      const bytes = await (result.Body as any).transformToByteArray();
+      return Buffer.from(bytes);
+    }
+    const stream = result.Body as Readable;
     const chunks: Buffer[] = [];
     for await (const chunk of stream) {
       chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -215,7 +223,15 @@ export class StorageService {
   }
 
   async getObjectText(key: string): Promise<string> {
-    return (await this.getObjectBuffer(key)).toString('utf8');
+    this.assertConfigured();
+    const result = await this.s3Client.send(
+      new GetObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
+    );
+    if ((result.Body as any)?.transformToString) {
+      return (result.Body as any).transformToString('utf-8');
+    }
+    const buf = await this.getObjectBuffer(key);
+    return buf.toString('utf8');
   }
 
   async deletePrefix(prefix: string): Promise<void> {
