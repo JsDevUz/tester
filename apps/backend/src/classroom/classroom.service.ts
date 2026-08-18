@@ -137,8 +137,24 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
   // majburan saqlaydi.
   async onApplicationShutdown(signal?: string): Promise<void> {
     this.logger.log(`onApplicationShutdown(${signal ?? ''}): saqlanadigan aktiv sessiyalar soni = ${this.sessions.size}`);
-    await this.snapshotSvc.autoSaveSnapshots(this.sessions);
-    this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
+    // DB so'rovi biror sababdan (masalan tarmoq restart paytida "yarim
+    // ochiq" ulanish) osilib qolsa, docker'ning stop_grace_period'ini
+    // qanchalik oshirsak ham baribir SIGKILL bilan tugaydi — faqat
+    // sekinroq. Ichki timeout bilan buni tezroq va aniq log bilan
+    // muvaffaqiyatsizlikka uchratamiz, xotiradagi holatni tekshirish
+    // osonroq bo'lishi uchun.
+    const timeout = new Promise<void>((resolve) => {
+      setTimeout(() => {
+        this.logger.error('onApplicationShutdown: autoSaveSnapshots 8s ichida tugamadi, taslim bo\'ldik');
+        resolve();
+      }, 8_000).unref();
+    });
+    await Promise.race([
+      this.snapshotSvc.autoSaveSnapshots(this.sessions).then(() => {
+        this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
+      }),
+      timeout,
+    ]);
   }
 
   // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
