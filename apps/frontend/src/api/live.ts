@@ -7,7 +7,7 @@ let socket: Socket | null = null;
 
 export function getLiveSocket(): Socket {
   if (!socket) {
-    socket = io(`${BACKEND}/live`, { transports: ['websocket', 'polling'] });
+    socket = io(`${BACKEND}/live`, { transports: ['polling', 'websocket'], upgrade: true });
   }
   return socket;
 }

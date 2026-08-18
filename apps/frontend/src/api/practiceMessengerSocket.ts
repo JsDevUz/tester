@@ -18,7 +18,8 @@ export interface PracticeMessengerSocketPayload {
 export function connectPracticeMessengerSocket(token: string): Socket {
   if (socket) return socket;
   socket = io(`${BACKEND}/practice-messenger`, {
-    transports: ['websocket', 'polling'],
+    transports: ['polling', 'websocket'],
+    upgrade: true,
     auth: { token },
   });
   return socket;
