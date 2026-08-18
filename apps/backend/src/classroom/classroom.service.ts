@@ -46,6 +46,13 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
   private readonly logger = new Logger(ClassroomService.name);
   private sessions = new Map<string, ClassroomSession>();
   private broadcaster: ClassroomBroadcaster = { toRoom: () => {}, toSocket: () => {} };
+  // @Interval(15s) autosave va onApplicationShutdown paralel ishlab
+  // qolishi mumkin edi: agar interval eski (yangi chizishdan oldingi)
+  // xotira holatini o'qib ulgurib, lekin DB so'rovi sekinlashib qolsa,
+  // u SIGTERM'dan keyin, onApplicationShutdown'ning to'g'ri (yangi)
+  // yozuvidan KEYIN tugab, DB'ni eski holat bilan ustidan yozib
+  // yuborishi mumkin edi. Bu promise ikkalasini bir-biriga navbatlashtiradi.
+  private persistChain: Promise<void> = Promise.resolve();
 
   constructor(
     private readonly storage: StorageService,
@@ -151,22 +158,33 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
       }, 8_000);
       timeoutHandle.unref();
     });
-    await Promise.race([
-      this.snapshotSvc.autoSaveSnapshots(this.sessions).then(() => {
-        clearTimeout(timeoutHandle);
-        this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
-      }),
-      timeout,
-    ]);
+    // persistChain orqali navbatlashtiramiz: agar shu payt @Interval
+    // autosave hali DB so'rovini bajarayotgan bo'lsa (eski xotira
+    // holatidan), avval o'shani kutamiz, keyin o'zimizning (eng yangi)
+    // holatni saqlaymiz — aks holda eski yozuv bizning yozuvimizdan
+    // KEYIN tugab, uni ustidan bosib yozib yuborishi mumkin edi.
+    this.persistChain = this.persistChain.then(() =>
+      Promise.race([
+        this.snapshotSvc.autoSaveSnapshots(this.sessions).then(() => {
+          clearTimeout(timeoutHandle);
+          this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
+        }),
+        timeout,
+      ]),
+    );
+    await this.persistChain;
   }
 
   // Aktiv darslar doska holatini har 15 soniyada DB ga avtomatik saqlaydi —
   // ustoz to'satdan brauzerni yopib yuborsa ham saqlanmay qolib ketmaydi.
-  // NestJS @Interval dekoratori setInterval'dan farqli: lifecycle bilan
-  // integratsiya qilingan, graceful shutdown'da to'g'ri to'xtatiladi.
+  // persistChain orqali onApplicationShutdown bilan navbatlashadi — bo'lmasa
+  // interval'ning eski xotiradan olingan yozuvi shutdown'dagi yangi
+  // yozuvdan KEYIN tugab, uni ustidan bosib yozib yuborishi mumkin edi.
   @Interval(15_000)
-  private async autoPersistActiveSessions(): Promise<void> {
-    await this.snapshotSvc.autoSaveSnapshots(this.sessions);
+  private autoPersistActiveSessions(): void {
+    this.persistChain = this.persistChain.then(() =>
+      this.snapshotSvc.autoSaveSnapshots(this.sessions),
+    );
   }
 
   // ---------- REST: lifecycle ----------
