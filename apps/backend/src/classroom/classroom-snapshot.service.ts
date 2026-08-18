@@ -65,25 +65,46 @@ export class ClassroomSnapshotService {
       }
     }
     this.logger.log(`persistBoardSnapshot(${s.id}): strokeCount=${strokeCount} saqlanmoqda`);
-    await db
-      .update(classSessions)
-      .set({
-        boardSnapshot,
-        pdfName: s.pdfName,
-        pdfPages: s.pdfPages,
-      })
-      .where(eq(classSessions.id, s.id));
-
-    if (s.attachedBoardId) {
-      await db
+    await this.withQueryTimeout(
+      s.id,
+      db
         .update(classSessions)
         .set({
           boardSnapshot,
           pdfName: s.pdfName,
           pdfPages: s.pdfPages,
         })
-        .where(eq(classSessions.id, s.attachedBoardId));
+        .where(eq(classSessions.id, s.id)),
+    );
+
+    if (s.attachedBoardId) {
+      await this.withQueryTimeout(
+        s.attachedBoardId,
+        db
+          .update(classSessions)
+          .set({
+            boardSnapshot,
+            pdfName: s.pdfName,
+            pdfPages: s.pdfPages,
+          })
+          .where(eq(classSessions.id, s.attachedBoardId)),
+      );
     }
+  }
+
+  // Har bir sessiyaning DB yozuvini alohida cheklaydi — connect_timeout
+  // faqat YANGI ulanish o'rnatishga tegishli, allaqachon ochilgan lekin
+  // "yarim o'lik" (masalan tarmoq uzilishidan keyingi) ulanishdagi so'rov
+  // baribir abadiy kutishi mumkin edi. Bu, ayniqsa, bir nechta aktiv
+  // sessiya bo'lganda graceful shutdown'ning butun 8s byudjetini bitta
+  // "yopishib qolgan" sessiya yeb qo'yishining oldini oladi.
+  private async withQueryTimeout<T>(sessionId: string, query: Promise<T>): Promise<T> {
+    return Promise.race([
+      query,
+      new Promise<T>((_, reject) => {
+        setTimeout(() => reject(new Error(`persist timeout for session ${sessionId}`)), 5_000).unref();
+      }),
+    ]);
   }
 
   async autoSaveSnapshots(sessions: Map<string, ClassroomSession>): Promise<void> {
@@ -92,15 +113,20 @@ export class ClassroomSnapshotService {
     );
     if (active.length === 0) return;
 
-    for (const s of active) {
-      try {
-        await this.persistBoardSnapshot(s);
-      } catch (err) {
-        this.logger.warn(
-          `autoSaveSnapshots: session ${s.id} saqlashda xato: ${err}`,
-        );
-      }
-    }
+    // Ketma-ket (sequential) saqlash bitta sessiyaning DB so'rovi
+    // osilib/sekinlashib qolsa, undan keyingi barcha sessiyalarni ham
+    // saqlanmay qoldirar edi — bu graceful shutdown'da bir nechta aktiv
+    // doska bo'lganda ma'lumot yo'qotishning haqiqiy sababi bo'ldi.
+    // Parallel bajarish bilan har bir sessiya boshqalaridan mustaqil.
+    await Promise.allSettled(
+      active.map((s) =>
+        this.persistBoardSnapshot(s).catch((err) => {
+          this.logger.warn(
+            `autoSaveSnapshots: session ${s.id} saqlashda xato: ${err}`,
+          );
+        }),
+      ),
+    );
   }
 
   /**
