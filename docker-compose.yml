@@ -46,6 +46,12 @@ services:
       dockerfile: Dockerfile.backend
     restart: unless-stopped
     logging: *default-logging
+    # Docker'ning standart 10s SIGTERM->SIGKILL muddati graceful shutdown
+    # (ClassroomService.onApplicationShutdown — aktiv doska/dars holatini
+    # DB'ga majburan saqlash) tugashiga yetarli emas edi: DB yozish hali
+    # davom etayotgan payt jarayon SIGKILL bilan o'ldirilib, ma'lumot
+    # yo'qolgan. 30s bu operatsiyaga bemalol yetadi.
+    stop_grace_period: 30s
     environment:
       PORT: 3000
       NODE_OPTIONS: --max-old-space-size=2048
