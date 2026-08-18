@@ -328,7 +328,7 @@ function Flashcards({
       <div className="relative h-[340px] w-[280px] touch-none">
         {deck.slice(1, 6).reverse().map((w, reverseIndex, stack) => {
           const depth = stack.length - reverseIndex;
-          const uid = words.findIndex((item) => item.id === word?.id ?? w.id);
+          const uid = words.findIndex((item) => item.id === w.id);
           const seed = (uid * 137 + depth * 53) % 20;
           const opacity = depth <= 1 ? 1 : Math.max(1 - (depth - 1) * 0.16, 0.15);
           return (
