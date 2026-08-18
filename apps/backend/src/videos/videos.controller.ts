@@ -147,9 +147,14 @@ export class VideosController {
     res.send(key);
   }
 
+  // Segments are AES-128 encrypted per-video (see VideoTranscodeService) and
+  // immutable once transcoded, so caching the ciphertext at the CDN edge is
+  // safe even though the request itself carries a bearer-style token — unlike
+  // the key/manifest, the token isn't needed to make use of a cached segment.
   @Get('videos/:blockId/segments/:fileName')
   @Public()
   @Header('Content-Type', 'video/mp2t')
+  @Header('Cache-Control', 'public, max-age=86400, immutable')
   getSegment(
     @Param('blockId') blockId: string,
     @Param('fileName') fileName: string,

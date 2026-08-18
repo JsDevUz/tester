@@ -58,8 +58,7 @@ export class VideoPlaybackService {
   }
 
   private async getVideoContext(blockId: string) {
-    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
-    if (!block || block.type !== 'video') throw new NotFoundException('Video not found');
+    const block = await this.getVideoBlock(blockId);
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
     if (!lesson) throw new NotFoundException('Video not found');
     const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
@@ -67,6 +66,15 @@ export class VideoPlaybackService {
     const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
     if (!course) throw new NotFoundException('Video not found');
     return { block, lesson, module, course };
+  }
+
+  // Segment/key requests happen once per HLS chunk (every few seconds of playback)
+  // and are already authorized by the signed playback token, so unlike
+  // getVideoContext() they don't need the lesson/module/course chain.
+  private async getVideoBlock(blockId: string) {
+    const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
+    if (!block || block.type !== 'video') throw new NotFoundException('Video not found');
+    return block;
   }
 
   async startPlayback(blockId: string, viewer: { id: string; role: 'student' | 'teacher' | 'super' }) {
@@ -118,14 +126,14 @@ export class VideoPlaybackService {
 
   async getKey(blockId: string, token: string): Promise<Buffer> {
     this.verifyToken(token, blockId);
-    const { block } = await this.getVideoContext(blockId);
+    const block = await this.getVideoBlock(blockId);
     if (!block.aesKeyRef) throw new NotFoundException('Video key not found');
     return this.storageService.getObjectBuffer(block.aesKeyRef);
   }
 
   async getSegment(blockId: string, fileName: string, token: string): Promise<StreamableFile> {
     this.verifyToken(token, blockId);
-    const { block } = await this.getVideoContext(blockId);
+    const block = await this.getVideoBlock(blockId);
     if (!block.hlsBaseKey) throw new NotFoundException('Video segment not found');
     const safeFileName = fileName.replace(/[^a-zA-Z0-9_.-]/g, '');
     const stream = await this.storageService.getObjectStream(`${block.hlsBaseKey}/${safeFileName}`);
