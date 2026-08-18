@@ -143,14 +143,17 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
     // sekinroq. Ichki timeout bilan buni tezroq va aniq log bilan
     // muvaffaqiyatsizlikka uchratamiz, xotiradagi holatni tekshirish
     // osonroq bo'lishi uchun.
+    let timeoutHandle: NodeJS.Timeout;
     const timeout = new Promise<void>((resolve) => {
-      setTimeout(() => {
+      timeoutHandle = setTimeout(() => {
         this.logger.error('onApplicationShutdown: autoSaveSnapshots 8s ichida tugamadi, taslim bo\'ldik');
         resolve();
-      }, 8_000).unref();
+      }, 8_000);
+      timeoutHandle.unref();
     });
     await Promise.race([
       this.snapshotSvc.autoSaveSnapshots(this.sessions).then(() => {
+        clearTimeout(timeoutHandle);
         this.logger.log('onApplicationShutdown: autoSaveSnapshots tugadi');
       }),
       timeout,

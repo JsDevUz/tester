@@ -65,7 +65,7 @@ export class ClassroomSnapshotService {
       }
     }
     this.logger.log(`persistBoardSnapshot(${s.id}): strokeCount=${strokeCount} saqlanmoqda`);
-    await this.withQueryTimeout(
+    const updated = await this.withQueryTimeout(
       s.id,
       db
         .update(classSessions)
@@ -74,8 +74,10 @@ export class ClassroomSnapshotService {
           pdfName: s.pdfName,
           pdfPages: s.pdfPages,
         })
-        .where(eq(classSessions.id, s.id)),
+        .where(eq(classSessions.id, s.id))
+        .returning({ id: classSessions.id }),
     );
+    this.logger.log(`persistBoardSnapshot(${s.id}): UPDATE ${updated.length} qator qaytardi`);
 
     if (s.attachedBoardId) {
       await this.withQueryTimeout(
