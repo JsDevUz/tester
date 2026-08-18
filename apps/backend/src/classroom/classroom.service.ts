@@ -101,26 +101,8 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
     return this.lifecycleService ?? new ClassroomSessionLifecycleService(this.storage, this.notifications, this.snapshotSvc);
   }
 
-  private sessionKey(sessionId: string) { return `classroom:session:${sessionId}`; }
-
-  async withSession<T>(sessionId: string, action: () => Promise<T> | T): Promise<T> {
-    // Agar sessiya xotirada faol bo'lsa, har bir so'rovda Redis distributed lock
-    // va og'ir JSON.stringify / JSON.parse qilmasdan to'g'ridan-to'g'ri (0ms)
-    // bajarish xizmat tezligini minglab marta oshiradi.
-    if (this.sessions.has(sessionId)) {
-      return action();
-    }
-    const store = this.sessionStore;
-    if (!store) return action();
-    return store.transaction(this.sessionKey(sessionId), async () => {
-      const shared = await store.get<ClassroomSession>(this.sessionKey(sessionId));
-      if (shared) this.sessions.set(sessionId, shared);
-      const result = await action();
-      const current = this.sessions.get(sessionId);
-      if (current) await store.set(this.sessionKey(sessionId), current, 7 * 86_400);
-      else await store.delete(this.sessionKey(sessionId));
-      return result;
-    });
+  async withSession<T>(_sessionId: string, action: () => Promise<T> | T): Promise<T> {
+    return action();
   }
 
   private async indexSocket(socketId: string, sessionId: string) {
@@ -1626,6 +1608,8 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
       notebookPageCount: snapshot.notebookPageCount ?? 1,
       notebookPageStyles: snapshot.notebookPageStyles ?? {},
       notebookPageOrientations: snapshot.notebookPageOrientations ?? {},
+      activeVersionId: (snapshot as any).activeVersionId ?? 'current',
+      savedVersions: (snapshot as any).savedVersions ?? [],
       strokesByMode,
       participants: new Map(),
       startedAtMs: Date.now(),
