@@ -1495,7 +1495,22 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
         teacher: true,
       },
     });
-    if (!row) return null;
+    if (!row) {
+      this.logger.warn(`getOrRestoreSession(${sessionId}): DB'da qator topilmadi`);
+      return null;
+    }
+    {
+      const snap = row.boardSnapshot as any;
+      let strokeCount = 0;
+      if (snap?.strokesByMode) {
+        for (const m of Object.values(snap.strokesByMode as Record<string, Record<string, any[]>>)) {
+          for (const list of Object.values(m)) strokeCount += list?.length ?? 0;
+        }
+      }
+      this.logger.log(
+        `getOrRestoreSession(${sessionId}): DB'dan tiklanmoqda, status=${row.status}, isBoard=${row.isBoard}, strokeCount=${strokeCount}, savedVersions=${(snap?.savedVersions ?? []).length}`,
+      );
+    }
     if (row.status !== 'active') {
       const isBoard = row.isBoard === true || (row.courseId === null && row.title !== null);
       const isOwner = restoringHostId && (row.teacherId === restoringHostId || row.course?.adminId === restoringHostId);

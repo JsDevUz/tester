@@ -58,6 +58,13 @@ export class ClassroomSnapshotService {
 
   async persistBoardSnapshot(s: ClassroomSession): Promise<void> {
     const boardSnapshot = this.buildBoardSnapshot(s);
+    let strokeCount = 0;
+    if (boardSnapshot.strokesByMode) {
+      for (const m of Object.values(boardSnapshot.strokesByMode as Record<string, Record<string, any[]>>)) {
+        for (const list of Object.values(m)) strokeCount += list?.length ?? 0;
+      }
+    }
+    this.logger.log(`persistBoardSnapshot(${s.id}): strokeCount=${strokeCount} saqlanmoqda`);
     await db
       .update(classSessions)
       .set({
