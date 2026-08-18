@@ -367,13 +367,9 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
         setSubtitleUrl(playback.subtitleUrl);
         const manifestUrl = `${getApiBaseUrl()}${playback.manifestUrl}`;
-        const token = localStorage.getItem('token');
 
         if (Hls.isSupported()) {
           hls = new Hls({
-            xhrSetup: (xhr) => {
-              if (token) xhr.setRequestHeader('Authorization', `Bearer ${token}`);
-            },
             capLevelToPlayerSize: true,
             autoStartLoad: true,
           });
