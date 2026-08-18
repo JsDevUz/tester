@@ -20,7 +20,12 @@
     handle /socket.io/* {
         reverse_proxy {
             dynamic a tester-backend 3000
-            lb_policy round_robin
+            # Socket.IO handshake (polling -> sid -> websocket upgrade) barchasi
+            # bitta backend replica'da bo'lishi shart, chunki sid faqat o'sha
+            # instance xotirasida saqlanadi (Redis adapter faqat instance'lar
+            # orasidagi xabarlarni sinxronlaydi, sid state'ni emas). round_robin
+            # har so'rovni boshqa replica'ga yuborib, ulanishni uzib qo'yardi.
+            lb_policy cookie caddy_sio
             lb_try_duration 5s
             lb_try_interval 100ms
             lb_retry_match {
