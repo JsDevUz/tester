@@ -20,6 +20,7 @@ import Animated, {
 import {
   BookOpen,
   Check,
+  Film,
   HardDrive,
   Sparkles,
   Trash2,
@@ -34,6 +35,7 @@ import {
   getStorageUsageBreakdown,
   StorageBreakdown,
 } from '../lib/imageCache';
+import { useOfflineVideoStore } from '../store/offlineVideoStore';
 
 const SPRING = {damping: 22, stiffness: 260, mass: 0.7};
 
@@ -48,6 +50,15 @@ interface CategoryItem {
 }
 
 const CATEGORIES: CategoryItem[] = [
+  {
+    key: 'offline_videos',
+    title: 'Yuklangan videolar',
+    description: 'Internetsiz ko‘rish uchun saqlangan darslar',
+    icon: Film,
+    color: '#8b5cf6',
+    bgColor: 'bg-purple-50',
+    darkBgColor: 'dark:bg-purple-950/40',
+  },
   {
     key: 'classroom',
     title: 'Dars materiallari',
@@ -164,6 +175,7 @@ function StorageUsageContent({
   const [clearingKey, setClearingKey] = useState<string | null>(null);
   const [clearedSuccessKey, setClearedSuccessKey] = useState<string | null>(null);
   const [stats, setStats] = useState<StorageBreakdown>({
+    offline_videos: 0,
     classroom: 0,
     avatars: 0,
     challenges: 0,
@@ -200,6 +212,7 @@ function StorageUsageContent({
             setClearingKey(category);
             try {
               await clearCategoryCache(category);
+              await useOfflineVideoStore.getState().loadRegistry();
               await loadStats();
               setClearedSuccessKey(category);
               setTimeout(() => setClearedSuccessKey(null), 2000);

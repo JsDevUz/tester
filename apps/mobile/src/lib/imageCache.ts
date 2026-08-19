@@ -1,12 +1,14 @@
 import ReactNativeBlobUtil from 'react-native-blob-util';
+import { clearAllOfflineVideos, getOfflineVideosStorageSize } from './offlineVideoService';
 
-export type CacheCategory = 'classroom' | 'avatars' | 'challenges' | 'general';
+export type CacheCategory = 'classroom' | 'avatars' | 'challenges' | 'general' | 'offline_videos';
 
 export interface StorageBreakdown {
   classroom: number;
   avatars: number;
   challenges: number;
   general: number;
+  offline_videos: number;
   total: number;
 }
 
@@ -17,6 +19,7 @@ const CATEGORY_DIRS: Record<CacheCategory, string> = {
   avatars: `${BASE_CACHE_DIR}/avatars`,
   challenges: `${BASE_CACHE_DIR}/challenges`,
   general: `${BASE_CACHE_DIR}/general`,
+  offline_videos: `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/jamm_offline_videos`,
 };
 
 // In-flight download promises deduplication to avoid parallel duplicate downloads
@@ -151,19 +154,21 @@ async function getDirectorySize(dirPath: string): Promise<number> {
  * Retrieves storage usage breakdown across all categories.
  */
 export async function getStorageUsageBreakdown(): Promise<StorageBreakdown> {
-  const [classroom, avatars, challenges, general] = await Promise.all([
+  const [classroom, avatars, challenges, general, offline_videos] = await Promise.all([
     getDirectorySize(CATEGORY_DIRS.classroom),
     getDirectorySize(CATEGORY_DIRS.avatars),
     getDirectorySize(CATEGORY_DIRS.challenges),
     getDirectorySize(CATEGORY_DIRS.general),
+    getOfflineVideosStorageSize(),
   ]);
 
-  const total = classroom + avatars + challenges + general;
+  const total = classroom + avatars + challenges + general + offline_videos;
   return {
     classroom,
     avatars,
     challenges,
     general,
+    offline_videos,
     total,
   };
 }
@@ -179,6 +184,9 @@ export async function clearCategoryCache(category: CacheCategory | 'all'): Promi
       if (exists) {
         await ReactNativeBlobUtil.fs.unlink(BASE_CACHE_DIR);
       }
+      await clearAllOfflineVideos();
+    } else if (category === 'offline_videos') {
+      await clearAllOfflineVideos();
     } else {
       const dir = CATEGORY_DIRS[category];
       const exists = await ReactNativeBlobUtil.fs.exists(dir);

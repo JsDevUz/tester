@@ -1,6 +1,7 @@
 import React, {useCallback, useEffect, useRef, useState} from 'react';
 import {
   ActivityIndicator,
+  Alert,
   Modal,
   PanResponder,
   Pressable,
@@ -10,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
   type OnLoadData,
   type OnProgressData,
@@ -17,8 +19,10 @@ import Video, {
 } from 'react-native-video';
 import {
   Captions,
+  CheckCircle2,
   ChevronDown,
   ChevronUp,
+  Download,
   Maximize2,
   Minimize2,
   Pause,
@@ -31,6 +35,8 @@ import {apiGetWatchProgress, apiSaveWatchProgress, apiStartVideoPlayback, type W
 import {API_URL} from '../config/env';
 import {disableSecureScreen, enableSecureScreen} from '../lib/secureScreen';
 import {useAuthStore} from '../store/authStore';
+import {useOfflineVideoStore} from '../store/offlineVideoStore';
+import {getOfflineVideoMeta} from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
@@ -140,12 +146,25 @@ function parseSubtitles(content: string): SubtitleCue[] {
   return cues;
 }
 
-export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; watermark?: boolean}) {
+export function HlsVideoPlayer({
+  blockId,
+  watermark = true,
+  title,
+  lessonId,
+  courseId,
+}: {
+  blockId: string;
+  watermark?: boolean;
+  title?: string;
+  lessonId?: string;
+  courseId?: string;
+}) {
   const [manifestUrl, setManifestUrl] = useState<string | null>(null);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
   const [subtitleCues, setSubtitleCues] = useState<SubtitleCue[]>([]);
   const [captionsOn, setCaptionsOn] = useState(false);
   const [error, setError] = useState(false);
+  const [isOfflineMode, setIsOfflineMode] = useState(false);
   const [markVisible, setMarkVisible] = useState(false);
   const [markPosition, setMarkPosition] = useState(() => quietWatermarkPosition());
   const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
@@ -165,6 +184,23 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
   const [isFullscreen, setIsFullscreen] = useState(false);
   const {width: windowWidth, height: windowHeight} = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
+
+  const {
+    registry,
+    activeDownloads,
+    startDownload,
+    removeDownload,
+    loadRegistry,
+  } = useOfflineVideoStore();
+
+  const isDownloaded = Boolean(registry[blockId]);
+  const activeDownload = activeDownloads[blockId];
+  const isDownloading = activeDownload?.status === 'downloading';
+  const downloadProgress = activeDownload?.progress ?? 0;
+
+  useEffect(() => {
+    void loadRegistry();
+  }, [loadRegistry]);
 
   const renderedMarkPosition = isFullscreen
     ? isLandscape
@@ -206,22 +242,45 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     let cancelled = false;
     setManifestUrl(null);
     setError(false);
-    apiStartVideoPlayback(blockId)
-      .then(playback => {
-        if (!cancelled) {
-          setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
-          setSubtitleUrl(playback.subtitleUrl);
+    setIsOfflineMode(false);
+
+    // 1. Check if offline downloaded file is ready first
+    getOfflineVideoMeta(blockId)
+      .then(localMeta => {
+        if (cancelled) return;
+        if (localMeta && localMeta.localManifestPath) {
+          const localUri = localMeta.localManifestPath.startsWith('file://')
+            ? localMeta.localManifestPath
+            : `file://${localMeta.localManifestPath}`;
+          setManifestUrl(localUri);
+          if (localMeta.localSubtitlePath) {
+            const subUri = localMeta.localSubtitlePath.startsWith('file://')
+              ? localMeta.localSubtitlePath
+              : `file://${localMeta.localSubtitlePath}`;
+            setSubtitleUrl(subUri);
+          }
+          setIsOfflineMode(true);
+          return;
         }
+
+        // 2. Otherwise start online playback stream
+        return apiStartVideoPlayback(blockId).then(playback => {
+          if (!cancelled) {
+            setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+            setSubtitleUrl(playback.subtitleUrl);
+          }
+        });
       })
       .catch(() => {
         if (!cancelled) setError(true);
       });
+
     return () => {
       cancelled = true;
     };
   }, [blockId]);
 
-  // Robust Subtitle Fetching and Parsing
+  // Robust Subtitle Fetching and Parsing (supports both local file:// and remote URLs)
   useEffect(() => {
     if (!subtitleUrl) {
       setSubtitleCues([]);
@@ -229,6 +288,25 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
     }
 
     let cancelled = false;
+
+    if (subtitleUrl.startsWith('file://')) {
+      const rawPath = subtitleUrl.replace('file://', '');
+      ReactNativeBlobUtil.fs
+        .readFile(rawPath, 'utf8')
+        .then(text => {
+          if (!cancelled) {
+            setSubtitleCues(parseSubtitles(text));
+          }
+        })
+        .catch(err => {
+          console.warn('Failed to read local subtitle:', err);
+          if (!cancelled) setSubtitleCues([]);
+        });
+      return () => {
+        cancelled = true;
+      };
+    }
+
     const fullUrl = subtitleUrl.startsWith('http') ? subtitleUrl : `${API_BASE}${subtitleUrl}`;
     const curToken = useAuthStore.getState().token;
 
@@ -256,6 +334,72 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
       cancelled = true;
     };
   }, [subtitleUrl]);
+
+  const handleDownloadPress = useCallback(() => {
+    if (isDownloading) {
+      Alert.alert(
+        'Yuklab olish davom etmoqda',
+        `${downloadProgress}% yuklandi. Bekor qilmoqchimisiz?`,
+        [
+          {text: 'Yo‘q', style: 'cancel'},
+          {
+            text: 'Bekor qilish',
+            style: 'destructive',
+            onPress: () => {
+              useOfflineVideoStore.getState().cancelDownload(blockId);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    if (isDownloaded) {
+      Alert.alert(
+        'Yuklangan video',
+        'Ushbu video internetsiz ko‘rish uchun xotirada saqlangan. Xotiradan o‘chirmoqchimisiz?',
+        [
+          {text: 'Yo‘q', style: 'cancel'},
+          {
+            text: 'O‘chirish',
+            style: 'destructive',
+            onPress: () => {
+              void removeDownload(blockId);
+            },
+          },
+        ],
+      );
+      return;
+    }
+
+    // Start download
+    void startDownload(blockId, {
+      title,
+      lessonId,
+      courseId,
+      durationSec: videoDuration,
+    }).then(result => {
+      if (result) {
+        Alert.alert('Muvaffaqiyatli', 'Dars xavfsiz yuklab olindi va internetsiz ko‘rish uchun tayyor!');
+      } else {
+        const lastErr = useOfflineVideoStore.getState().activeDownloads[blockId]?.errorMessage;
+        if (lastErr) {
+          Alert.alert('Yuklab bo‘lmadi', lastErr);
+        }
+      }
+    });
+  }, [
+    isDownloading,
+    isDownloaded,
+    downloadProgress,
+    blockId,
+    title,
+    lessonId,
+    courseId,
+    videoDuration,
+    startDownload,
+    removeDownload,
+  ]);
 
   useEffect(() => {
     let cancelled = false;
@@ -515,25 +659,58 @@ export function HlsVideoPlayer({blockId, watermark = true}: {blockId: string; wa
 
           {controlsVisible ? (
             <>
-              {subtitleUrl ? (
+              {/* Top Right Action Bar */}
+              <View className="absolute right-3 top-3 z-20 flex-row items-center gap-1.5">
+                {/* Offline Download Button */}
                 <Pressable
-                  onPress={() => setCaptionsOn(v => !v)}
-                  className={`absolute right-14 top-3 z-20 h-8 px-2.5 flex-row items-center gap-1 rounded-lg ${
-                    captionsOn ? 'bg-indigo-600' : 'bg-black/60'
+                  onPress={handleDownloadPress}
+                  className={`h-8 px-2.5 flex-row items-center gap-1.5 rounded-lg ${
+                    isDownloaded
+                      ? 'bg-emerald-600/90'
+                      : isDownloading
+                      ? 'bg-indigo-600/90'
+                      : 'bg-black/60'
                   }`}>
-                  <Captions size={15} color="#fff" />
-                  <Text className="text-[11px] font-bold text-white">Subtitr</Text>
+                  {isDownloading ? (
+                    <>
+                      <ActivityIndicator size="small" color="#fff" />
+                      <Text className="text-[11px] font-bold text-white">{downloadProgress}%</Text>
+                    </>
+                  ) : isDownloaded ? (
+                    <>
+                      <CheckCircle2 size={14} color="#fff" />
+                      <Text className="text-[11px] font-bold text-white">Yuklangan</Text>
+                    </>
+                  ) : (
+                    <>
+                      <Download size={14} color="#fff" />
+                      <Text className="text-[11px] font-bold text-white">Yuklash</Text>
+                    </>
+                  )}
                 </Pressable>
-              ) : null}
 
-              <Pressable
-                onPress={() => {
-                  resumeTimeRef.current = currentTimeRef.current;
-                  setIsFullscreen(v => !v);
-                }}
-                className="absolute right-3 top-3 z-20 h-8 w-8 items-center justify-center rounded-lg bg-black/60">
-                {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
-              </Pressable>
+                {/* Subtitle Button */}
+                {subtitleUrl ? (
+                  <Pressable
+                    onPress={() => setCaptionsOn(v => !v)}
+                    className={`h-8 px-2.5 flex-row items-center gap-1 rounded-lg ${
+                      captionsOn ? 'bg-indigo-600' : 'bg-black/60'
+                    }`}>
+                    <Captions size={15} color="#fff" />
+                    <Text className="text-[11px] font-bold text-white">Subtitr</Text>
+                  </Pressable>
+                ) : null}
+
+                {/* Fullscreen Button */}
+                <Pressable
+                  onPress={() => {
+                    resumeTimeRef.current = currentTimeRef.current;
+                    setIsFullscreen(v => !v);
+                  }}
+                  className="h-8 w-8 items-center justify-center rounded-lg bg-black/60">
+                  {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
+                </Pressable>
+              </View>
 
               <View className="absolute inset-0 z-10 flex-row items-center justify-center gap-8">
                 <Pressable

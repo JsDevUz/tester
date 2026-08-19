@@ -5,10 +5,17 @@ import {
   getStorageUsageBreakdown,
 } from '../src/lib/imageCache';
 
+jest.mock('@react-native-async-storage/async-storage', () => ({
+  getItem: jest.fn(async () => null),
+  setItem: jest.fn(async () => {}),
+  removeItem: jest.fn(async () => {}),
+}));
+
 jest.mock('react-native-blob-util', () => {
   const mockFiles: Record<string, {type: string; size: number}> = {
     '/mock_cache/jamm_cache/classroom/cached_1_page1.jpg': {type: 'file', size: 1024 * 500},
     '/mock_cache/jamm_cache/avatars/cached_2_avatar.jpg': {type: 'file', size: 1024 * 100},
+    '/mock_docs/jamm_offline_videos/b1/local.m3u8': {type: 'file', size: 1024 * 50},
   };
 
   return {
@@ -17,6 +24,7 @@ jest.mock('react-native-blob-util', () => {
       fs: {
         dirs: {
           CacheDir: '/mock_cache',
+          DocumentDir: '/mock_docs',
         },
         exists: jest.fn(async (path: string) => Boolean(mockFiles[path])),
         mkdir: jest.fn(async () => {}),

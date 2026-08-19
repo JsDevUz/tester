@@ -29,6 +29,7 @@ import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
 import {PracticeScreen} from '../components/PracticeScreen';
 import {useNetwork} from '../providers/NetworkProvider';
+import {useOfflineVideoStore} from '../store/offlineVideoStore';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Course'>;
 
@@ -43,6 +44,12 @@ function videoDurationLabel(lesson: ApiMyLesson): string | null {
 
 export function CourseScreen({route, navigation}: Props) {
   const insets = useSafeAreaInsets();
+  const offlineRegistry = useOfflineVideoStore(s => s.registry);
+  const loadOfflineRegistry = useOfflineVideoStore(s => s.loadRegistry);
+
+  useEffect(() => {
+    void loadOfflineRegistry();
+  }, [loadOfflineRegistry]);
   const {courseId} = route.params;
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
@@ -469,6 +476,9 @@ export function CourseScreen({route, navigation}: Props) {
           const locked = !unlockedLessonIds.has(lesson.id);
           const active = lesson.id === selected?.lesson.id;
           const hasVideo = lesson.blocks.some(b => b.type === 'video');
+          const hasOfflineVideo = lesson.blocks.some(
+            b => b.type === 'video' && Boolean(offlineRegistry[b.id]),
+          );
           const totalStars =
             lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
             (lesson.completionScore ?? 0);
@@ -502,6 +512,13 @@ export function CourseScreen({route, navigation}: Props) {
                   <Text className="text-[11px] font-semibold text-slate-400 dark:text-dark-muted">
                     Modul {moduleIndex + 1}
                   </Text>
+                  {hasOfflineVideo && (
+                    <View className="rounded-full bg-emerald-100 px-1.5 py-0.5 dark:bg-emerald-500/15">
+                      <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
+                        Offline
+                      </Text>
+                    </View>
+                  )}
                   {duration && (
                     <View className="rounded-full bg-slate-100 px-1.5 py-0.5 dark:bg-dark-surface-2">
                       <Text className="text-[11px] font-semibold text-slate-500 dark:text-dark-muted">

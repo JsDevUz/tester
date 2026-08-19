@@ -102,7 +102,13 @@ describe('applyStrokeAdd', () => {
   });
 
   it('adds to the right pane when pane is right', () => {
-    const result = applyStrokeAdd(CLASSROOM_INITIAL_STATE, {page: 1, stroke: stroke('a'), pane: 'right'});
+    const state = {
+      ...CLASSROOM_INITIAL_STATE,
+      boardLayout: 'split' as const,
+      leftBoardMode: 'pdf' as const,
+      rightBoardMode: 'notebook' as const,
+    };
+    const result = applyStrokeAdd(state, {page: 1, stroke: stroke('a'), pane: 'right'});
     expect(result.rightStrokesByPage[1]).toHaveLength(1);
     expect(result.strokesByPage[1]).toBeUndefined();
   });

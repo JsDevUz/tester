@@ -336,7 +336,13 @@ export function LessonBlock({
         </View>
       );
     }
-    return <HlsVideoPlayer blockId={block.id} watermark />;
+    return (
+      <HlsVideoPlayer
+        blockId={block.id}
+        title={block.label || block.fileName || 'Video dars'}
+        watermark
+      />
+    );
   }
 
   if (block.type === 'image' && block.previewUrl) {

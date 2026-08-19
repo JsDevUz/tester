@@ -21,6 +21,7 @@ import { memoryStorage } from 'multer';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { Public, Roles } from '../auth/roles.decorator';
 import { RolesGuard } from '../auth/roles.guard';
+import { SkipThrottle } from '@nestjs/throttler';
 import { VideoPlaybackService } from './video-playback.service';
 import { VideoProgressService } from './video-progress.service';
 import { VideoUploadService } from './video-upload.service';
@@ -133,6 +134,7 @@ export class VideosController {
   // itself remains behind the guard.
   @Get('videos/:blockId/manifest.m3u8')
   @Public()
+  @SkipThrottle()
   @Header('Content-Type', 'application/vnd.apple.mpegurl')
   getManifest(@Param('blockId') blockId: string, @Query('token') token: string) {
     return this.videoPlaybackService.getManifest(blockId, token);
@@ -140,6 +142,7 @@ export class VideosController {
 
   @Get('videos/:blockId/key')
   @Public()
+  @SkipThrottle()
   async getKey(@Param('blockId') blockId: string, @Query('token') token: string, @Res() res: Response) {
     const key = await this.videoPlaybackService.getKey(blockId, token);
     res.setHeader('Content-Type', 'application/octet-stream');
@@ -153,6 +156,7 @@ export class VideosController {
   // the key/manifest, the token isn't needed to make use of a cached segment.
   @Get('videos/:blockId/segments/:fileName')
   @Public()
+  @SkipThrottle()
   @Header('Content-Type', 'video/mp2t')
   @Header('Cache-Control', 'public, max-age=86400, immutable')
   getSegment(
