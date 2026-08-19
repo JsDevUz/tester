@@ -163,7 +163,6 @@ async function downloadFileWithRetry(
 ): Promise<void> {
   let lastError: any;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
-    console.log('[downloadFileWithRetry] DEBUG attempt', attempt, 'url=', remoteUrl, 'path=', localPath);
     try {
       const res = await ReactNativeBlobUtil.config({
         path: localPath,
@@ -171,14 +170,7 @@ async function downloadFileWithRetry(
       }).fetch('GET', remoteUrl, token ? { Authorization: `Bearer ${token}` } : undefined);
 
       const status = res.info().status;
-      const headers = res.info().headers;
-      console.log('[downloadFileWithRetry] DEBUG response status=', status, 'content-length=', headers?.['Content-Length'] ?? headers?.['content-length']);
       if (status >= 200 && status < 300) {
-        const stat = await ReactNativeBlobUtil.fs.stat(localPath).catch((e) => {
-          console.log('[downloadFileWithRetry] DEBUG stat failed after success:', e?.message || e);
-          return null;
-        });
-        console.log('[downloadFileWithRetry] DEBUG file size on disk after success=', stat?.size);
         return;
       }
       if (status === 429) {
@@ -187,7 +179,6 @@ async function downloadFileWithRetry(
       throw new Error(`HTTP ${status}`);
     } catch (err: any) {
       lastError = err;
-      console.log('[downloadFileWithRetry] DEBUG attempt', attempt, 'failed:', err?.message || err);
       if (attempt < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
       }
