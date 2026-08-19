@@ -1,8 +1,8 @@
 diff --git a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
-index a98bde3..8184133 100644
+index a98bde3..be3ef96 100644
 --- a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
 +++ b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
-@@ -115,11 +115,25 @@ public class ReactNativeBlobUtilFileResp extends ResponseBody {
+@@ -115,14 +115,35 @@ public class ReactNativeBlobUtilFileResp extends ResponseBody {
      }
  
      private class ProgressReportingSource implements Source {
@@ -29,3 +29,13 @@ index a98bde3..8184133 100644
                  bytesDownloaded += read > 0 ? read : 0;
                  if (read > 0) {
                      ofStream.write(bytes, 0, (int) read);
++                    // Okio's Source contract requires the bytes we report as read to also be
++                    // written into `sink`. Without this the buffered wrapper sees an empty
++                    // sink, treats the stream as exhausted, and stops early -- which made
++                    // every response larger than a single read() chunk end up truncated and
++                    // reported as "Download interrupted", while tiny responses that fit in
++                    // one chunk happened to survive.
++                    sink.write(bytes, 0, (int) read);
+                 } else if (contentLength() == -1 && read == -1) {
+                     // End marker has been received for chunked download
+                     isEndMarkerReceived = true;
