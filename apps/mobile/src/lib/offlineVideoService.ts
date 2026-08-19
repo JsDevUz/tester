@@ -394,7 +394,13 @@ export async function downloadOfflineVideo(
     const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
     const manifestLocalPath = getLocalManifestPath(blockId);
 
-    const writeManifest = async (upToCount: number, complete: boolean) => {
+    // Always terminate the playlist with #EXT-X-ENDLIST, even mid-download. Without it,
+    // a VOD-typed playlist with no end marker is ambiguous HLS and AVPlayer treats it as
+    // a live stream awaiting more segments over the network — which fails outright with
+    // no connectivity (CoreMediaErrorDomain -12865). Marking it "ended" at whatever length
+    // has downloaded so far, and simply rewriting a longer "ended" playlist as more segments
+    // land, keeps every intermediate state a valid, offline-playable VOD asset.
+    const writeManifest = async (upToCount: number) => {
       const lines = [
         '#EXTM3U',
         '#EXT-X-VERSION:3',
@@ -404,7 +410,7 @@ export async function downloadOfflineVideo(
           `#EXTINF:${segmentDurations[i].toFixed(3)},`,
           `segment_${String(i).padStart(3, '0')}.ts`,
         ]),
-        ...(complete ? ['#EXT-X-ENDLIST'] : []),
+        '#EXT-X-ENDLIST',
         '',
       ];
       await ReactNativeBlobUtil.fs.writeFile(manifestLocalPath, lines.join('\n'), 'utf8');
@@ -435,7 +441,7 @@ export async function downloadOfflineVideo(
       }
 
       completedSegments++;
-      await writeManifest(completedSegments, completedSegments === totalSegments);
+      await writeManifest(completedSegments);
 
       const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
       onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
