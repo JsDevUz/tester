@@ -11,9 +11,9 @@ import {
   isOfflineVideoReady,
 } from '../src/lib/offlineVideoService';
 
-// iOS plays a single merged .ts (AVFoundation rejects local file:// HLS playlists);
-// Android plays the .m3u8 playlist. The tests assert against whichever the current
-// test platform selects so they stay meaningful under either Platform.OS.
+// iOS points at the merged .ts and Android at the .m3u8 playlist. The tests assert against
+// whichever the current test platform selects so they stay meaningful under either
+// Platform.OS. (iOS cannot actually play its file yet -- see offlineVideoService.)
 const EXPECTED_PLAYABLE =
   Platform.OS === 'ios'
     ? '/mock_docs/jamm_offline_videos/block-1/merged.ts'

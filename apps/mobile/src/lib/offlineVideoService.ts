@@ -9,13 +9,18 @@ import { useAuthStore } from '../store/authStore';
 const API_BASE = API_URL.replace(/\/$/, '');
 const OFFLINE_VIDEOS_STORAGE_KEY = '@jamm_offline_videos_v1';
 
-// iOS AVFoundation refuses to open a local HLS playlist over file:// -- it fails
-// asset validation with AVFoundationErrorDomain -11800 / OSStatus -16913
-// (assetProperty_MediaPlaybackValidation) no matter how well-formed the .m3u8 is.
-// The same segments concatenated into one MPEG-TS file open fine, as does a single
-// segment. Android's ExoPlayer, by contrast, plays the local playlist correctly and
-// gets proper seeking from it. So each platform gets the container it can actually
-// read: a merged .ts on iOS, the segment playlist on Android.
+// Android's ExoPlayer plays the downloaded HLS playlist straight off disk and gets proper
+// seeking from its #EXTINF durations, so that is the layout it gets.
+//
+// iOS offline playback is NOT supported yet. AVFoundation refuses both shapes that would be
+// natural here: a local .m3u8 over file:// fails asset validation (-11800 / OSStatus -16913),
+// and a standalone MPEG-TS file cannot be opened at all -- an AVURLAsset over one reports
+// isPlayable=false with zero tracks (verified against the iOS runtime; the same file opens
+// fine on macOS, which is what made this look like a fixable bug for a while). That also
+// rules out remuxing to MP4 via AVAssetExportSession: the export has to read the .ts first.
+// Getting iOS working needs the media in an MP4-based container before it reaches the
+// device -- fMP4 HLS segments from the backend, or a separate MP4 download -- which is a
+// backend change, tracked separately. Until then iOS simply falls back to online playback.
 const USE_MERGED_TS = Platform.OS === 'ios';
 
 export function getOfflineBaseDir(): string {
@@ -483,6 +488,8 @@ export async function downloadOfflineVideo(
 
       completedSegments++;
       if (!USE_MERGED_TS) {
+        // Rewrite the playlist after every segment so an interrupted download still leaves
+        // behind a playable file covering everything fetched so far.
         await writeManifest(completedSegments);
       }
 
