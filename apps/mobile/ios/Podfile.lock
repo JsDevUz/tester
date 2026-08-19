@@ -2122,6 +2122,8 @@ PODS:
     - React-utils (= 0.86.0)
     - ReactNativeDependencies
   - ReactNativeDependencies (0.86.0)
+  - RNDeviceInfo (10.3.0):
+    - React-Core
   - RNGestureHandler (3.1.0):
     - hermes-engine
     - RCTRequired
@@ -2496,6 +2498,7 @@ DEPENDENCIES:
   - ReactCodegen (from `build/generated/ios/ReactCodegen`)
   - ReactCommon/turbomodule/core (from `../../../node_modules/react-native/ReactCommon`)
   - ReactNativeDependencies (from `../../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
+  - RNDeviceInfo (from `../../../node_modules/react-native-device-info`)
   - RNGestureHandler (from `../../../node_modules/react-native-gesture-handler`)
   - RNReanimated (from `../../../node_modules/react-native-reanimated`)
   - RNScreens (from `../../../node_modules/react-native-screens`)
@@ -2679,6 +2682,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native/ReactCommon"
   ReactNativeDependencies:
     :podspec: "../../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec"
+  RNDeviceInfo:
+    :path: "../../../node_modules/react-native-device-info"
   RNGestureHandler:
     :path: "../../../node_modules/react-native-gesture-handler"
   RNReanimated:
@@ -2695,7 +2700,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AsyncStorage: 163ab23f6aa37a58b7f2379d0b4ee7ac84d6655c
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
-  hermes-engine: 11de92fbefc81ca9f4aa68acf115eac5dcb39219
+  hermes-engine: 801d5a444731c6d5b138e8845bfe1223a07213ec
   livekit-react-native: 8b8f3cb64195b11c40d3b724aa07c44d0eed20dc
   livekit-react-native-webrtc: 9f52dbcc5edee327cdc8c9b458b6d6fd8ece1561
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
@@ -2778,6 +2783,7 @@ SPEC CHECKSUMS:
   ReactCodegen: 21807c5e7d6d0e334667f755e23063834d581e62
   ReactCommon: d5c1bb4427bf51c443de5926aac332c89ddd9363
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
+  RNDeviceInfo: 32413a6eefa0de704834b9d2afe5be596b44a66d
   RNGestureHandler: a426f18ab9021991fe2cbc8bf1677b740e20e70c
   RNReanimated: 287d07d720c265159dca300c3528467bd2d17dbb
   RNScreens: 7118cd7715c226856125b5bece3c4d9abec90356
