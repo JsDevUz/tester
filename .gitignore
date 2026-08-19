@@ -51,3 +51,4 @@ apps/mobile/**/fastlane/test_output
 # Superpowers and ephemeral scratch
 .superpowers/
 .claude/
+.worktrees/
