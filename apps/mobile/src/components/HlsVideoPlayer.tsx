@@ -281,7 +281,7 @@ export function HlsVideoPlayer({
         title,
         lessonId,
         courseId,
-        durationSec: videoDuration,
+        durationSec: durationRef.current,
       });
     } catch (e: any) {
       console.log('[HlsVideoPlayer] online playback failed:', e?.message || e);
@@ -303,7 +303,7 @@ export function HlsVideoPlayer({
       }
       setError(true);
     }
-  }, [blockId, title, lessonId, courseId, videoDuration]);
+  }, [blockId, title, lessonId, courseId]);
 
   useEffect(() => {
     void loadPlayback();

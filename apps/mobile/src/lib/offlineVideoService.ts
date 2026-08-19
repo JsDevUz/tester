@@ -518,7 +518,9 @@ export function startAutoCacheVideo(
   autoCacheInProgress.add(blockId);
 
   downloadOfflineVideo(blockId, options ?? {})
-    .catch(() => { })
+    .catch((err) => {
+      console.warn('[offlineVideoService] startAutoCacheVideo failed:', blockId, err?.message || err);
+    })
     .finally(() => {
       autoCacheInProgress.delete(blockId);
     });
