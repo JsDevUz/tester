@@ -1,4 +1,5 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import aesjs from 'aes-js';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { apiStartVideoPlayback } from '../api/videos';
 import { API_URL } from '../config/env';
@@ -6,7 +7,30 @@ import { useAuthStore } from '../store/authStore';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 const OFFLINE_VIDEOS_STORAGE_KEY = '@jamm_offline_videos_v1';
-const BASE_OFFLINE_DIR = `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/jamm_offline_videos`;
+
+export function getOfflineBaseDir(): string {
+  return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/jamm_offline_videos`;
+}
+
+export function getOfflineVideoDir(blockId: string): string {
+  return `${getOfflineBaseDir()}/${blockId}`;
+}
+
+export function getLocalVideoPath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/video.ts`;
+}
+
+export function getLocalManifestPath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/video.ts`;
+}
+
+export function getLocalKeyPath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/enc.key`;
+}
+
+export function getLocalSubtitlePath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/subtitles.vtt`;
+}
 
 export interface OfflineVideoMeta {
   blockId: string;
@@ -65,16 +89,12 @@ async function saveOfflineVideosRegistry(registry: Record<string, OfflineVideoMe
  */
 export async function isOfflineVideoReady(blockId: string): Promise<boolean> {
   try {
-    const registry = await getOfflineVideosRegistry();
-    const meta = registry[blockId];
-    if (!meta || !meta.localManifestPath) return false;
+    const videoPath = getLocalVideoPath(blockId);
+    const exists = await ReactNativeBlobUtil.fs.exists(videoPath).catch(() => false);
+    if (!exists) return false;
 
-    const manifestExists = await ReactNativeBlobUtil.fs.exists(meta.localManifestPath);
-    if (!manifestExists) return false;
-
-    const keyPath = `${BASE_OFFLINE_DIR}/${blockId}/enc.key`;
-    const keyExists = await ReactNativeBlobUtil.fs.exists(keyPath);
-    return keyExists;
+    const stat = await ReactNativeBlobUtil.fs.stat(videoPath).catch(() => null);
+    return Boolean(stat && Number(stat.size) > 1000);
   } catch {
     return false;
   }
@@ -87,7 +107,22 @@ export async function getOfflineVideoMeta(blockId: string): Promise<OfflineVideo
   const ready = await isOfflineVideoReady(blockId);
   if (!ready) return null;
   const registry = await getOfflineVideosRegistry();
-  return registry[blockId] ?? null;
+  const meta = registry[blockId];
+  const videoPath = getLocalVideoPath(blockId);
+  const subPath = getLocalSubtitlePath(blockId);
+  const subExists = await ReactNativeBlobUtil.fs.exists(subPath).catch(() => false);
+
+  return {
+    blockId,
+    lessonId: meta?.lessonId,
+    courseId: meta?.courseId,
+    title: meta?.title || 'Video dars',
+    durationSec: meta?.durationSec,
+    totalBytes: meta?.totalBytes || 0,
+    downloadedAt: meta?.downloadedAt || new Date().toISOString(),
+    localManifestPath: videoPath,
+    localSubtitlePath: subExists ? subPath : null,
+  };
 }
 
 async function downloadFileWithRetry(
@@ -122,6 +157,120 @@ async function downloadFileWithRetry(
   throw lastError;
 }
 
+const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+function base64ToUint8Array(b64: string): Uint8Array {
+  if (typeof atob === 'function') {
+    const bin = atob(b64);
+    const u8 = new Uint8Array(bin.length);
+    for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
+    return u8;
+  }
+  const clean = b64.replace(/[^A-Za-z0-9+/]/g, '');
+  const len = clean.length;
+  const placeHolders = clean.endsWith('==') ? 2 : clean.endsWith('=') ? 1 : 0;
+  const bytes = new Uint8Array((len * 3) / 4 - placeHolders);
+  let j = 0;
+  for (let i = 0; i < len; i += 4) {
+    const a = B64_CHARS.indexOf(clean[i]);
+    const b = B64_CHARS.indexOf(clean[i + 1]);
+    const c = B64_CHARS.indexOf(clean[i + 2]);
+    const d = B64_CHARS.indexOf(clean[i + 3]);
+    bytes[j++] = (a << 2) | (b >> 4);
+    if (c !== -1 && j < bytes.length) bytes[j++] = ((b & 15) << 4) | (c >> 2);
+    if (d !== -1 && j < bytes.length) bytes[j++] = ((c & 3) << 6) | (d & 63);
+  }
+  return bytes;
+}
+
+function uint8ArrayToBase64(bytes: Uint8Array): string {
+  if (typeof btoa === 'function') {
+    let bin = '';
+    const chunk = 8192;
+    for (let i = 0; i < bytes.length; i += chunk) {
+      const sub = bytes.subarray(i, i + chunk);
+      for (let j = 0; j < sub.length; j++) bin += String.fromCharCode(sub[j]);
+    }
+    return btoa(bin);
+  }
+  let result = '';
+  let i;
+  const len = bytes.length;
+  for (i = 0; i < len - 2; i += 3) {
+    result += B64_CHARS[bytes[i] >> 2];
+    result += B64_CHARS[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+    result += B64_CHARS[((bytes[i + 1] & 15) << 2) | (bytes[i + 2] >> 6)];
+    result += B64_CHARS[bytes[i + 2] & 63];
+  }
+  if (i === len - 1) {
+    result += B64_CHARS[bytes[i] >> 2];
+    result += B64_CHARS[(bytes[i] & 3) << 4];
+    result += '==';
+  } else if (i === len - 2) {
+    result += B64_CHARS[bytes[i] >> 2];
+    result += B64_CHARS[((bytes[i] & 3) << 4) | (bytes[i + 1] >> 4)];
+    result += B64_CHARS[(bytes[i + 1] & 15) << 2];
+    result += '=';
+  }
+  return result;
+}
+
+function parseIv(ivStr: string | null, sequenceIndex: number): Uint8Array {
+  if (ivStr && ivStr.startsWith('0x')) {
+    const hex = ivStr.slice(2).padStart(32, '0');
+    const bytes = new Uint8Array(16);
+    for (let i = 0; i < 16; i++) {
+      bytes[i] = parseInt(hex.substr(i * 2, 2), 16);
+    }
+    return bytes;
+  }
+  const iv = new Uint8Array(16);
+  iv[12] = (sequenceIndex >> 24) & 0xff;
+  iv[13] = (sequenceIndex >> 16) & 0xff;
+  iv[14] = (sequenceIndex >> 8) & 0xff;
+  iv[15] = sequenceIndex & 0xff;
+  return iv;
+}
+
+function removePkcs7Padding(data: Uint8Array): Uint8Array {
+  const pad = data[data.length - 1];
+  if (pad > 0 && pad <= 16) {
+    let isValid = true;
+    for (let i = data.length - pad; i < data.length; i++) {
+      if (data[i] !== pad) {
+        isValid = false;
+        break;
+      }
+    }
+    if (isValid) {
+      return data.subarray(0, data.length - pad);
+    }
+  }
+  return data;
+}
+
+async function decryptAndAppendSegment(
+  encryptedLocalPath: string,
+  targetVideoPath: string,
+  keyBytes: Uint8Array,
+  iv: Uint8Array,
+  isFirst: boolean,
+): Promise<void> {
+  const base64Data = await ReactNativeBlobUtil.fs.readFile(encryptedLocalPath, 'base64');
+  const encryptedBytes = base64ToUint8Array(base64Data);
+
+  const aesCbc = new aesjs.ModeOfOperation.cbc(keyBytes, iv);
+  const decryptedBytes = aesCbc.decrypt(encryptedBytes);
+  const cleanBytes = removePkcs7Padding(decryptedBytes);
+
+  const cleanBase64 = uint8ArrayToBase64(cleanBytes);
+  if (isFirst) {
+    await ReactNativeBlobUtil.fs.writeFile(targetVideoPath, cleanBase64, 'base64');
+  } else {
+    await ReactNativeBlobUtil.fs.appendFile(targetVideoPath, cleanBase64, 'base64');
+  }
+}
+
 /**
  * Downloads all HLS assets (manifest, AES-128 key, segments, subtitle) for offline playback.
  */
@@ -138,8 +287,9 @@ export async function downloadOfflineVideo(
   const cancelToken = { cancelled: false };
   activeCancelTokens.set(blockId, cancelToken);
 
-  const blockDir = `${BASE_OFFLINE_DIR}/${blockId}`;
-  await ensureDir(BASE_OFFLINE_DIR);
+  const baseDir = getOfflineBaseDir();
+  const blockDir = getOfflineVideoDir(blockId);
+  await ensureDir(baseDir);
   await ensureDir(blockDir);
 
   try {
@@ -164,6 +314,7 @@ export async function downloadOfflineVideo(
 
     // 3. Parse key URI and segment filenames
     let keyRemoteUrl: string | null = null;
+    let keyIvHex: string | null = null;
     const segmentNames: string[] = [];
     const manifestLines = manifestText.split('\n');
 
@@ -177,6 +328,10 @@ export async function downloadOfflineVideo(
             ? rawKeyUri
             : `${API_BASE}/videos/${blockId}/${rawKeyUri}`;
         }
+        const ivMatch = trimmed.match(/IV=([^,\s]+)/);
+        if (ivMatch && ivMatch[1]) {
+          keyIvHex = ivMatch[1];
+        }
       } else if (trimmed && !trimmed.startsWith('#') && trimmed.includes('.ts')) {
         segmentNames.push(trimmed);
       }
@@ -186,13 +341,20 @@ export async function downloadOfflineVideo(
       throw new Error('Video segmentlari topilmadi');
     }
 
-    // 4. Download AES Key (reuse if already downloaded)
+    // 4. Download AES Key
+    let keyBytes: Uint8Array | null = null;
     if (keyRemoteUrl) {
       onProgress?.(15, 'Xavfsizlik kaliti yuklanmoqda...');
       const keyLocalPath = `${blockDir}/enc.key`;
       const keyStat = await ReactNativeBlobUtil.fs.stat(keyLocalPath).catch(() => null);
       if (!keyStat || Number(keyStat.size) === 0) {
         await downloadFileWithRetry(keyLocalPath, keyRemoteUrl);
+      }
+      try {
+        const keyBase64 = await ReactNativeBlobUtil.fs.readFile(keyLocalPath, 'base64');
+        keyBytes = base64ToUint8Array(keyBase64);
+      } catch {
+        // key read failed
       }
     }
 
@@ -217,58 +379,66 @@ export async function downloadOfflineVideo(
       }
     }
 
-    // 6. Download each segment in chunks with automatic resume & retry
+    // 6. Download and decrypt segments sequentially into video.ts
     const totalSegments = segmentNames.length;
     let completedSegments = 0;
-    const concurrency = 2; // 2 parallel requests to ensure stable connection without socket exhaustion
+    const videoLocalPath = getLocalVideoPath(blockId);
 
-    for (let i = 0; i < segmentNames.length; i += concurrency) {
+    // Check if starting clean or appending
+    const existingVideoStat = await ReactNativeBlobUtil.fs.stat(videoLocalPath).catch(() => null);
+    let isFirst = !existingVideoStat || Number(existingVideoStat.size) === 0;
+
+    for (let i = 0; i < segmentNames.length; i++) {
       if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
-      const chunk = segmentNames.slice(i, i + concurrency);
-      await Promise.all(
-        chunk.map(async (rawSegmentLine) => {
-          const segCleanName = rawSegmentLine.split('?')[0].split('/').pop() || `segment_${completedSegments}.ts`;
-          const segRemoteUrl = rawSegmentLine.startsWith('http')
-            ? rawSegmentLine
-            : `${API_BASE}/videos/${blockId}/${rawSegmentLine}`;
-          const segLocalPath = `${blockDir}/${segCleanName}`;
+      const rawSegmentLine = segmentNames[i];
+      const segRemoteUrl = rawSegmentLine.startsWith('http')
+        ? rawSegmentLine
+        : `${API_BASE}/videos/${blockId}/${rawSegmentLine}`;
+      const tempEncPath = `${blockDir}/temp_${i}.enc`;
 
-          // Check if already downloaded from previous attempt
-          const existingStat = await ReactNativeBlobUtil.fs.stat(segLocalPath).catch(() => null);
-          if (!existingStat || Number(existingStat.size) === 0) {
-            try {
-              await downloadFileWithRetry(segLocalPath, segRemoteUrl, null, 3);
-            } catch (err: any) {
-              throw new Error(`Segment yuklashda xatolik: ${segCleanName} (${err?.message || 'tarmoq uzildi'})`);
-            }
+      try {
+        await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 3);
+        if (keyBytes && keyBytes.length === 16) {
+          const iv = parseIv(keyIvHex, i);
+          await decryptAndAppendSegment(tempEncPath, videoLocalPath, keyBytes, iv, isFirst);
+        } else {
+          // Plain segment copy
+          const rawB64 = await ReactNativeBlobUtil.fs.readFile(tempEncPath, 'base64');
+          if (isFirst) {
+            await ReactNativeBlobUtil.fs.writeFile(videoLocalPath, rawB64, 'base64');
+          } else {
+            await ReactNativeBlobUtil.fs.appendFile(videoLocalPath, rawB64, 'base64');
           }
+        }
+        isFirst = false;
+        await ReactNativeBlobUtil.fs.unlink(tempEncPath).catch(() => { });
+      } catch (err: any) {
+        throw new Error(`Segment yuklashda xatolik: segment_${i}.ts (${err?.message || 'tarmoq uzildi'})`);
+      }
 
-          completedSegments++;
-          const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
-          onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
-        }),
-      );
+      completedSegments++;
+      const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
+      onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
+
+      // Save progressive metadata to registry
+      const partialMeta: OfflineVideoMeta = {
+        blockId,
+        lessonId: options.lessonId,
+        courseId: options.courseId,
+        title: options.title || 'Video dars',
+        durationSec: options.durationSec,
+        totalBytes: 0,
+        downloadedAt: new Date().toISOString(),
+        localManifestPath: videoLocalPath,
+        localSubtitlePath,
+      };
+      const reg = await getOfflineVideosRegistry();
+      reg[blockId] = partialMeta;
+      await saveOfflineVideosRegistry(reg);
     }
 
     if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
-
-    // 7. Generate clean local master.m3u8 with relative paths
-    const localManifestLines = manifestLines.map((line) => {
-      const trimmed = line.trim();
-      if (trimmed.startsWith('#EXT-X-KEY')) {
-        return trimmed.replace(/URI="[^"]+"/, 'URI="enc.key"');
-      }
-      if (trimmed && !trimmed.startsWith('#') && trimmed.includes('.ts')) {
-        const cleanName = trimmed.split('?')[0].split('/').pop();
-        return cleanName || trimmed;
-      }
-      return line;
-    });
-
-    const localManifestContent = localManifestLines.join('\n');
-    const localManifestPath = `${blockDir}/local.m3u8`;
-    await ReactNativeBlobUtil.fs.writeFile(localManifestPath, localManifestContent, 'utf8');
 
     // 8. Calculate total storage size
     let totalBytes = 0;
@@ -278,7 +448,7 @@ export async function downloadOfflineVideo(
       if (stat) totalBytes += Number(stat.size || 0);
     }
 
-    // 9. Save metadata in registry
+    // 9. Save final metadata in registry
     const meta: OfflineVideoMeta = {
       blockId,
       lessonId: options.lessonId,
@@ -287,7 +457,7 @@ export async function downloadOfflineVideo(
       durationSec: options.durationSec,
       totalBytes,
       downloadedAt: new Date().toISOString(),
-      localManifestPath,
+      localManifestPath: videoLocalPath,
       localSubtitlePath,
     };
 
@@ -302,6 +472,30 @@ export async function downloadOfflineVideo(
   } finally {
     activeCancelTokens.delete(blockId);
   }
+}
+
+const autoCacheInProgress = new Set<string>();
+
+/**
+ * Starts auto-caching a video in the background without blocking the UI.
+ */
+export function startAutoCacheVideo(
+  blockId: string,
+  options?: {
+    title?: string;
+    lessonId?: string;
+    courseId?: string;
+    durationSec?: number | null;
+  },
+): void {
+  if (autoCacheInProgress.has(blockId)) return;
+  autoCacheInProgress.add(blockId);
+
+  downloadOfflineVideo(blockId, options ?? {})
+    .catch(() => { })
+    .finally(() => {
+      autoCacheInProgress.delete(blockId);
+    });
 }
 
 /**
@@ -319,7 +513,7 @@ export function cancelOfflineDownload(blockId: string): void {
  */
 export async function deleteOfflineVideo(blockId: string): Promise<void> {
   cancelOfflineDownload(blockId);
-  const blockDir = `${BASE_OFFLINE_DIR}/${blockId}`;
+  const blockDir = getOfflineVideoDir(blockId);
   try {
     const exists = await ReactNativeBlobUtil.fs.exists(blockDir);
     if (exists) {
@@ -341,14 +535,15 @@ export async function deleteOfflineVideo(blockId: string): Promise<void> {
  */
 export async function clearAllOfflineVideos(): Promise<void> {
   try {
-    const exists = await ReactNativeBlobUtil.fs.exists(BASE_OFFLINE_DIR);
+    const baseDir = getOfflineBaseDir();
+    const exists = await ReactNativeBlobUtil.fs.exists(baseDir);
     if (exists) {
-      await ReactNativeBlobUtil.fs.unlink(BASE_OFFLINE_DIR);
+      await ReactNativeBlobUtil.fs.unlink(baseDir);
     }
   } catch {
     // ignore
   }
-  await AsyncStorage.removeItem(OFFLINE_VIDEOS_STORAGE_KEY).catch(() => {});
+  await AsyncStorage.removeItem(OFFLINE_VIDEOS_STORAGE_KEY).catch(() => { });
 }
 
 /**
@@ -356,13 +551,14 @@ export async function clearAllOfflineVideos(): Promise<void> {
  */
 export async function getOfflineVideosStorageSize(): Promise<number> {
   try {
-    const exists = await ReactNativeBlobUtil.fs.exists(BASE_OFFLINE_DIR);
+    const baseDir = getOfflineBaseDir();
+    const exists = await ReactNativeBlobUtil.fs.exists(baseDir);
     if (!exists) return 0;
 
-    const dirs = await ReactNativeBlobUtil.fs.ls(BASE_OFFLINE_DIR);
+    const dirs = await ReactNativeBlobUtil.fs.ls(baseDir);
     let total = 0;
     for (const d of dirs) {
-      const fullPath = `${BASE_OFFLINE_DIR}/${d}`;
+      const fullPath = `${baseDir}/${d}`;
       const stat = await ReactNativeBlobUtil.fs.stat(fullPath).catch(() => null);
       if (stat?.type === 'directory') {
         const files = await ReactNativeBlobUtil.fs.ls(fullPath).catch(() => []);

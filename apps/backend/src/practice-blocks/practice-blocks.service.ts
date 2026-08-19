@@ -351,7 +351,18 @@ export class PracticeBlocksService {
 
     if (existing) return { completedAt: existing.completedAt!.toISOString() };
 
-    const [created] = await db.insert(lessonCompletions).values({ lessonId, studentId }).returning();
+    const [created] = await db
+      .insert(lessonCompletions)
+      .values({ lessonId, studentId })
+      .onConflictDoNothing()
+      .returning();
+
+    if (!created) {
+      const current = await db.query.lessonCompletions.findFirst({
+        where: and(eq(lessonCompletions.lessonId, lessonId), eq(lessonCompletions.studentId, studentId)),
+      });
+      return { completedAt: current?.completedAt?.toISOString() || new Date().toISOString() };
+    }
     return { completedAt: created.completedAt!.toISOString() };
   }
 

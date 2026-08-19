@@ -102,6 +102,14 @@ export function CourseScreen({route, navigation}: Props) {
         if (snapshot) {
           setCourse(snapshot.data);
           setStale(true);
+          if (!selectedLessonId) {
+            const allLessons = snapshot.data.modules.flatMap(m => m.lessons);
+            const lastViewedId = await storage.get<string>(`course:${courseId}:lastLessonId`);
+            const lastViewedLesson = allLessons.find(l => l.id === lastViewedId);
+            if (lastViewedLesson) {
+              setSelectedLessonId(lastViewedLesson.id);
+            }
+          }
         }
       }
     } finally {

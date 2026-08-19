@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useRef, useState} from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -11,6 +11,7 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
   type OnLoadData,
@@ -30,13 +31,13 @@ import {
   RotateCcw,
   RotateCw,
 } from 'lucide-react-native';
-import {useColorScheme} from 'nativewind';
-import {apiGetWatchProgress, apiSaveWatchProgress, apiStartVideoPlayback, type WatchSegment} from '../api/videos';
-import {API_URL} from '../config/env';
-import {disableSecureScreen, enableSecureScreen} from '../lib/secureScreen';
-import {useAuthStore} from '../store/authStore';
-import {useOfflineVideoStore} from '../store/offlineVideoStore';
-import {getOfflineVideoMeta} from '../lib/offlineVideoService';
+import { useColorScheme } from 'nativewind';
+import { apiGetWatchProgress, apiSaveWatchProgress, apiStartVideoPlayback, type WatchSegment } from '../api/videos';
+import { API_URL } from '../config/env';
+import { disableSecureScreen, enableSecureScreen } from '../lib/secureScreen';
+import { useAuthStore } from '../store/authStore';
+import { useOfflineVideoStore } from '../store/offlineVideoStore';
+import { getOfflineVideoMeta, startAutoCacheVideo } from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
@@ -71,22 +72,22 @@ function extractWatermarkPhone(phone?: string | null): string {
 }
 
 function computeTotalWatchedSeconds(segments: WatchSegment[], live: WatchSegment | null): number {
-  const all: WatchSegment[] = segments.map(s => ({startSec: s.startSec, endSec: s.endSec}));
+  const all: WatchSegment[] = segments.map(s => ({ startSec: s.startSec, endSec: s.endSec }));
   if (live && live.endSec > live.startSec) {
-    all.push({startSec: live.startSec, endSec: live.endSec});
+    all.push({ startSec: live.startSec, endSec: live.endSec });
   }
   if (all.length === 0) return 0;
 
   all.sort((a, b) => a.startSec - b.startSec);
 
-  const merged: WatchSegment[] = [{startSec: all[0].startSec, endSec: all[0].endSec}];
+  const merged: WatchSegment[] = [{ startSec: all[0].startSec, endSec: all[0].endSec }];
   for (let i = 1; i < all.length; i++) {
     const prev = merged[merged.length - 1];
     const curr = all[i];
     if (curr.startSec <= prev.endSec) {
       prev.endSec = Math.max(prev.endSec, curr.endSec);
     } else {
-      merged.push({startSec: curr.startSec, endSec: curr.endSec});
+      merged.push({ startSec: curr.startSec, endSec: curr.endSec });
     }
   }
 
@@ -182,7 +183,9 @@ export function HlsVideoPlayer({
   const resumeTimeRef = useRef(0);
   const [progressOpen, setProgressOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
-  const {width: windowWidth, height: windowHeight} = useWindowDimensions();
+  const [isBuffering, setIsBuffering] = useState(false);
+  const insets = useSafeAreaInsets();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const isLandscape = windowWidth > windowHeight;
 
   const {
@@ -205,25 +208,25 @@ export function HlsVideoPlayer({
   const renderedMarkPosition = isFullscreen
     ? isLandscape
       ? {
-          left: Math.max(12, Math.min(80, markPosition.left)),
-          top: Math.max(12, Math.min(80, markPosition.top)),
-        }
+        left: Math.max(12, Math.min(80, markPosition.left)),
+        top: Math.max(12, Math.min(80, markPosition.top)),
+      }
       : {
-          left: Math.max(15, Math.min(75, markPosition.left)),
-          top: 38 + (markPosition.top / 100) * 22,
-        }
+        left: Math.max(15, Math.min(75, markPosition.left)),
+        top: 38 + (markPosition.top / 100) * 22,
+      }
     : {
-        left: Math.max(10, Math.min(75, markPosition.left)),
-        top: Math.max(15, Math.min(70, markPosition.top)),
-      };
-  const {colorScheme} = useColorScheme();
+      left: Math.max(10, Math.min(75, markPosition.left)),
+      top: Math.max(15, Math.min(70, markPosition.top)),
+    };
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === 'dark';
   const token = useAuthStore(s => s.token);
   const userPhone = useAuthStore(s => s.user?.phone);
   const watermarkText = watermark ? extractWatermarkPhone(userPhone) : '';
 
   const videoRef = useRef<VideoRef>(null);
-  const currentRangeRef = useRef<{start: number; end: number} | null>(null);
+  const currentRangeRef = useRef<{ start: number; end: number } | null>(null);
   const lastSavedEndRef = useRef(0);
   const lastTimeRef = useRef(0);
   const watchedSegmentsRef = useRef<WatchSegment[]>([]);
@@ -238,47 +241,73 @@ export function HlsVideoPlayer({
     return () => StatusBar.setHidden(false, 'fade');
   }, [isFullscreen]);
 
-  useEffect(() => {
-    let cancelled = false;
+  const loadPlayback = useCallback(async () => {
     setManifestUrl(null);
     setError(false);
     setIsOfflineMode(false);
 
-    // 1. Check if offline downloaded file is ready first
-    getOfflineVideoMeta(blockId)
-      .then(localMeta => {
-        if (cancelled) return;
-        if (localMeta && localMeta.localManifestPath) {
-          const localUri = localMeta.localManifestPath.startsWith('file://')
-            ? localMeta.localManifestPath
-            : `file://${localMeta.localManifestPath}`;
-          setManifestUrl(localUri);
+    console.log('[HlsVideoPlayer] loadPlayback start for blockId:', blockId);
+    try {
+      // 1. Check if offline downloaded file is ready first
+      const localMeta = await getOfflineVideoMeta(blockId);
+      console.log('[HlsVideoPlayer] localMeta check:', localMeta);
+      if (localMeta && localMeta.localManifestPath) {
+        const cleanPath = localMeta.localManifestPath.replace('file://', '');
+        const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
+        console.log('[HlsVideoPlayer] local video exists:', exists, 'path:', cleanPath);
+        if (exists) {
+          setManifestUrl(`file://${cleanPath}`);
           if (localMeta.localSubtitlePath) {
-            const subUri = localMeta.localSubtitlePath.startsWith('file://')
-              ? localMeta.localSubtitlePath
-              : `file://${localMeta.localSubtitlePath}`;
-            setSubtitleUrl(subUri);
+            const cleanSub = localMeta.localSubtitlePath.replace('file://', '');
+            const subExists = await ReactNativeBlobUtil.fs.exists(cleanSub).catch(() => false);
+            if (subExists) {
+              setSubtitleUrl(`file://${cleanSub}`);
+            }
           }
           setIsOfflineMode(true);
           return;
         }
+      }
 
-        // 2. Otherwise start online playback stream
-        return apiStartVideoPlayback(blockId).then(playback => {
-          if (!cancelled) {
-            setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
-            setSubtitleUrl(playback.subtitleUrl);
-          }
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setError(true);
+      // 2. Otherwise start online playback stream & background progressive caching
+      console.log('[HlsVideoPlayer] fetching online playback session...');
+      const playback = await apiStartVideoPlayback(blockId);
+      console.log('[HlsVideoPlayer] online manifestUrl:', playback.manifestUrl);
+      setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+      setSubtitleUrl(playback.subtitleUrl);
+
+      // Silently cache in background like Telegram
+      startAutoCacheVideo(blockId, {
+        title,
+        lessonId,
+        courseId,
+        durationSec: videoDuration,
       });
+    } catch (e: any) {
+      console.log('[HlsVideoPlayer] online playback failed:', e?.message || e);
+      // If offline/network failed, check if we have any partially cached local manifest
+      try {
+        const localMeta = await getOfflineVideoMeta(blockId);
+        if (localMeta && localMeta.localManifestPath) {
+          const cleanPath = localMeta.localManifestPath.replace('file://', '');
+          const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
+          if (exists) {
+            console.log('[HlsVideoPlayer] fallback to local video:', cleanPath);
+            setManifestUrl(`file://${cleanPath}`);
+            setIsOfflineMode(true);
+            return;
+          }
+        }
+      } catch {
+        // ignore
+      }
+      setError(true);
+    }
+  }, [blockId, title, lessonId, courseId, videoDuration]);
 
-    return () => {
-      cancelled = true;
-    };
-  }, [blockId]);
+  useEffect(() => {
+    void loadPlayback();
+  }, [loadPlayback]);
 
   // Robust Subtitle Fetching and Parsing (supports both local file:// and remote URLs)
   useEffect(() => {
@@ -314,7 +343,7 @@ export function HlsVideoPlayer({
       .then(res => {
         if (res.ok) return res.text();
         if (curToken) {
-          return fetch(fullUrl, {headers: {Authorization: `Bearer ${curToken}`}}).then(r =>
+          return fetch(fullUrl, { headers: { Authorization: `Bearer ${curToken}` } }).then(r =>
             r.ok ? r.text() : Promise.reject(new Error('Subtitle error')),
           );
         }
@@ -341,7 +370,7 @@ export function HlsVideoPlayer({
         'Yuklab olish davom etmoqda',
         `${downloadProgress}% yuklandi. Bekor qilmoqchimisiz?`,
         [
-          {text: 'Yo‘q', style: 'cancel'},
+          { text: 'Yo‘q', style: 'cancel' },
           {
             text: 'Bekor qilish',
             style: 'destructive',
@@ -359,7 +388,7 @@ export function HlsVideoPlayer({
         'Yuklangan video',
         'Ushbu video internetsiz ko‘rish uchun xotirada saqlangan. Xotiradan o‘chirmoqchimisiz?',
         [
-          {text: 'Yo‘q', style: 'cancel'},
+          { text: 'Yo‘q', style: 'cancel' },
           {
             text: 'O‘chirish',
             style: 'destructive',
@@ -409,7 +438,7 @@ export function HlsVideoPlayer({
         setWatchedSegments(data.segments);
         setWatchedPercent(data.watchedPercent);
       })
-      .catch(() => {});
+      .catch(() => { });
     return () => {
       cancelled = true;
     };
@@ -447,12 +476,18 @@ export function HlsVideoPlayer({
   const closeCurrentRange = useCallback(() => {
     const range = currentRangeRef.current;
     if (range && range.end > range.start && range.end > lastSavedEndRef.current) {
-      const dur = durationRef.current && durationRef.current > 0 ? Math.round(durationRef.current) : undefined;
-      void apiSaveWatchProgress(blockId, Math.floor(range.start), Math.floor(range.end), dur).then(data => {
-        setWatchedPercent(data.watchedPercent);
-        setWatchedSegments(data.segments);
-      });
-      lastSavedEndRef.current = range.end;
+      const startSec = Math.floor(range.start);
+      const endSec = Math.ceil(range.end);
+      if (endSec > startSec) {
+        const dur = durationRef.current && durationRef.current > 0 ? Math.round(durationRef.current) : undefined;
+        apiSaveWatchProgress(blockId, startSec, endSec, dur)
+          .then(data => {
+            setWatchedPercent(data.watchedPercent);
+            setWatchedSegments(data.segments);
+          })
+          .catch(() => { });
+        lastSavedEndRef.current = range.end;
+      }
     }
   }, [blockId]);
 
@@ -553,14 +588,14 @@ export function HlsVideoPlayer({
 
     if (jumped || !currentRangeRef.current) {
       closeCurrentRange();
-      currentRangeRef.current = {start: current, end: current};
+      currentRangeRef.current = { start: current, end: current };
       lastSavedEndRef.current = 0;
     } else {
       currentRangeRef.current.end = current;
     }
 
     const inProgress = currentRangeRef.current;
-    const liveSegment = {startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end)};
+    const liveSegment = { startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end) };
     if (videoDuration && videoDuration > 0) {
       const totalCovered = computeTotalWatchedSeconds(watchedSegmentsRef.current, liveSegment);
       setWatchedPercent(Math.min(100, Math.round((totalCovered / videoDuration) * 100)));
@@ -584,8 +619,18 @@ export function HlsVideoPlayer({
   const mediaSurface = (
     <>
       {error ? (
-        <View style={StyleSheet.absoluteFill} className="items-center justify-center">
-          <Text className="text-xs font-semibold text-white/70">Video hozircha ochilmadi</Text>
+        <View style={StyleSheet.absoluteFill} className="items-center justify-center p-6 bg-black z-30">
+          <Text className="text-xs font-semibold text-white/90 mb-1 text-center">
+            Internetga ulanmagansiz
+          </Text>
+          <Text className="text-[11px] text-white/50 mb-4 text-center">
+            Ushbu video hali xotiraga keshlanmagan. Ko‘rish uchun internetni yoqing.
+          </Text>
+          <Pressable
+            onPress={() => void loadPlayback()}
+            className="rounded-xl bg-indigo-600 px-5 py-2.5 active:opacity-80">
+            <Text className="text-xs font-bold text-white">Qayta urinish</Text>
+          </Pressable>
         </View>
       ) : !manifestUrl ? (
         <View style={StyleSheet.absoluteFill} className="items-center justify-center">
@@ -594,18 +639,40 @@ export function HlsVideoPlayer({
       ) : (
         <Video
           ref={videoRef}
-          source={{uri: manifestUrl, headers: token ? {Authorization: `Bearer ${token}`} : undefined}}
+          source={
+            manifestUrl.startsWith('file://')
+              ? { uri: manifestUrl }
+              : { uri: manifestUrl, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
+          }
           style={StyleSheet.absoluteFill}
           paused={paused}
           resizeMode="contain"
           progressUpdateInterval={500}
           preventsDisplaySleepDuringVideoPlayback
           ignoreSilentSwitch="ignore"
+          bufferConfig={{
+            minBufferMs: 15000,
+            maxBufferMs: 50000,
+            bufferForPlaybackMs: 2500,
+            bufferForPlaybackAfterRebufferMs: 5000,
+          }}
+          onBuffer={({ isBuffering: buffering }) => setIsBuffering(buffering)}
           onLoad={handleLoad}
           onProgress={handleProgress}
           onError={e => {
-            console.warn('React Native Video Error:', e);
-            setError(true);
+            console.warn('[HlsVideoPlayer] Video onError event:', JSON.stringify(e));
+            if (isOfflineMode) {
+              // Try online fallback if network allows
+              setIsOfflineMode(false);
+              apiStartVideoPlayback(blockId)
+                .then(playback => {
+                  setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+                  setSubtitleUrl(playback.subtitleUrl);
+                })
+                .catch(() => setError(true));
+            } else {
+              setError(true);
+            }
           }}
           onEnd={() => {
             closeCurrentRange();
@@ -613,6 +680,13 @@ export function HlsVideoPlayer({
           }}
         />
       )}
+
+      {/* Smooth buffering spinner */}
+      {isBuffering && !paused ? (
+        <View pointerEvents="none" style={StyleSheet.absoluteFill} className="items-center justify-center">
+          <ActivityIndicator color="white" size="small" />
+        </View>
+      ) : null}
 
       {/* Watermark */}
       {watermarkText ? (
@@ -635,9 +709,11 @@ export function HlsVideoPlayer({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: controlsVisible ? (isFullscreen ? 65 : 44) : (isFullscreen ? 18 : 6),
-            left: 12,
-            right: 12,
+            bottom: controlsVisible
+              ? (isFullscreen ? Math.max(75, insets.bottom + 65) : 44)
+              : (isFullscreen ? Math.max(25, insets.bottom + 12) : 6),
+            left: isFullscreen ? Math.max(24, insets.left + 16) : 12,
+            right: isFullscreen ? Math.max(24, insets.right + 16) : 12,
             alignItems: 'center',
             zIndex: 25,
           }}>
@@ -660,47 +736,13 @@ export function HlsVideoPlayer({
           {controlsVisible ? (
             <>
               {/* Top Right Action Bar */}
-              <View className="absolute right-3 top-3 z-20 flex-row items-center gap-1.5">
-                {/* Offline Download Button */}
-                <Pressable
-                  onPress={handleDownloadPress}
-                  className={`h-8 px-2.5 flex-row items-center gap-1.5 rounded-lg ${
-                    isDownloaded
-                      ? 'bg-emerald-600/90'
-                      : isDownloading
-                      ? 'bg-indigo-600/90'
-                      : 'bg-black/60'
-                  }`}>
-                  {isDownloading ? (
-                    <>
-                      <ActivityIndicator size="small" color="#fff" />
-                      <Text className="text-[11px] font-bold text-white">{downloadProgress}%</Text>
-                    </>
-                  ) : isDownloaded ? (
-                    <>
-                      <CheckCircle2 size={14} color="#fff" />
-                      <Text className="text-[11px] font-bold text-white">Yuklangan</Text>
-                    </>
-                  ) : (
-                    <>
-                      <Download size={14} color="#fff" />
-                      <Text className="text-[11px] font-bold text-white">Yuklash</Text>
-                    </>
-                  )}
-                </Pressable>
-
-                {/* Subtitle Button */}
-                {subtitleUrl ? (
-                  <Pressable
-                    onPress={() => setCaptionsOn(v => !v)}
-                    className={`h-8 px-2.5 flex-row items-center gap-1 rounded-lg ${
-                      captionsOn ? 'bg-indigo-600' : 'bg-black/60'
-                    }`}>
-                    <Captions size={15} color="#fff" />
-                    <Text className="text-[11px] font-bold text-white">Subtitr</Text>
-                  </Pressable>
-                ) : null}
-
+              <View
+                style={{
+                  position: 'absolute',
+                  top: isFullscreen ? Math.max(16, insets.top + 8) : 12,
+                  right: isFullscreen ? Math.max(20, insets.right + 12) : 12,
+                  zIndex: 20,
+                }}>
                 {/* Fullscreen Button */}
                 <Pressable
                   onPress={() => {
@@ -740,11 +782,33 @@ export function HlsVideoPlayer({
               </View>
 
               {/* Compact Bottom Timeline Bar */}
-              <View className="absolute inset-x-0 bottom-0 z-20 bg-gradient-to-t from-black/80 to-transparent px-3 pb-3 pt-2">
-                <View className="flex-row justify-end pr-0.5 mb-1">
+              <View
+                style={{
+                  position: 'absolute',
+                  left: 0,
+                  right: 0,
+                  bottom: 0,
+                  paddingLeft: isFullscreen ? Math.max(20, insets.left + 12) : 12,
+                  paddingRight: isFullscreen ? Math.max(20, insets.right + 12) : 12,
+                  paddingBottom: isFullscreen ? Math.max(16, insets.bottom + 8) : 12,
+                  paddingTop: 8,
+                  zIndex: 20,
+                }}
+                className="bg-gradient-to-t from-black/80 to-transparent">
+                <View className="flex-row items-center justify-between pr-0.5 mb-1">
                   <Text className="font-mono text-[10px] text-white/90">
                     {formatClock(scrubTime ?? currentTime)} / {formatClock(videoDuration ?? 0)}
                   </Text>
+
+                  {/* Subtitle Icon Button */}
+                  {subtitleUrl ? (
+                    <Pressable
+                      onPress={() => setCaptionsOn(v => !v)}
+                      className={`h-6 w-6 items-center justify-center rounded-md ${captionsOn ? 'bg-indigo-600' : 'bg-black/60'
+                        }`}>
+                      <Captions size={13} color="#fff" />
+                    </Pressable>
+                  ) : null}
                 </View>
 
                 <View
@@ -767,9 +831,9 @@ export function HlsVideoPlayer({
                     style={{
                       left: videoDuration
                         ? Math.max(
-                            0,
-                            Math.min(barWidth - 12, ((scrubTime ?? currentTime) / videoDuration) * barWidth - 6),
-                          )
+                          0,
+                          Math.min(barWidth - 12, ((scrubTime ?? currentTime) / videoDuration) * barWidth - 6),
+                        )
                         : 0,
                     }}
                   />
@@ -792,8 +856,21 @@ export function HlsVideoPlayer({
           animationType="fade"
           supportedOrientations={['portrait', 'landscape']}
           onRequestClose={() => setIsFullscreen(false)}>
-          <View style={{width: windowWidth, height: windowHeight, backgroundColor: 'black'}}>
+          <View style={{ width: windowWidth, height: windowHeight, backgroundColor: 'black' }}>
             {mediaSurface}
+            {(error || !manifestUrl) && (
+              <Pressable
+                onPress={() => setIsFullscreen(false)}
+                style={{
+                  position: 'absolute',
+                  top: Math.max(16, insets.top + 8),
+                  right: Math.max(20, insets.right + 12),
+                  zIndex: 60,
+                }}
+                className="h-9 w-9 items-center justify-center rounded-full bg-black/70 border border-white/20">
+                <Minimize2 size={18} color="white" />
+              </Pressable>
+            )}
           </View>
         </Modal>
       ) : (

@@ -21,8 +21,18 @@ client.interceptors.response.use(
     useLoadingStore.getState().dec();
     return res;
   },
-  (err) => {
+  async (err) => {
     useLoadingStore.getState().dec();
+    const config = err.config;
+    // Auto-retry once on network drops/QUIC idle timeouts
+    if (
+      config &&
+      !config._retry &&
+      (!err.response || err.code === 'ERR_NETWORK' || err.message?.includes('timeout') || err.message?.includes('Network Error'))
+    ) {
+      config._retry = true;
+      return client(config);
+    }
     if (err.response?.status === 401) {
       useAuthStore.getState().logout();
       window.location.href = "/login";
