@@ -16,12 +16,12 @@ export function getOfflineVideoDir(blockId: string): string {
   return `${getOfflineBaseDir()}/${blockId}`;
 }
 
-export function getLocalVideoPath(blockId: string): string {
-  return `${getOfflineVideoDir(blockId)}/video.ts`;
+export function getLocalManifestPath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/local.m3u8`;
 }
 
-export function getLocalManifestPath(blockId: string): string {
-  return `${getOfflineVideoDir(blockId)}/video.ts`;
+export function getLocalSegmentPath(blockId: string, index: number): string {
+  return `${getOfflineVideoDir(blockId)}/segment_${String(index).padStart(3, '0')}.ts`;
 }
 
 export function getLocalKeyPath(blockId: string): string {
@@ -89,12 +89,16 @@ async function saveOfflineVideosRegistry(registry: Record<string, OfflineVideoMe
  */
 export async function isOfflineVideoReady(blockId: string): Promise<boolean> {
   try {
-    const videoPath = getLocalVideoPath(blockId);
-    const exists = await ReactNativeBlobUtil.fs.exists(videoPath).catch(() => false);
+    const manifestPath = getLocalManifestPath(blockId);
+    const exists = await ReactNativeBlobUtil.fs.exists(manifestPath).catch(() => false);
     if (!exists) return false;
 
-    const stat = await ReactNativeBlobUtil.fs.stat(videoPath).catch(() => null);
-    return Boolean(stat && Number(stat.size) > 1000);
+    const stat = await ReactNativeBlobUtil.fs.stat(manifestPath).catch(() => null);
+    if (!stat || Number(stat.size) === 0) return false;
+
+    const firstSegmentPath = getLocalSegmentPath(blockId, 0);
+    const firstSegmentExists = await ReactNativeBlobUtil.fs.exists(firstSegmentPath).catch(() => false);
+    return firstSegmentExists;
   } catch {
     return false;
   }
@@ -108,7 +112,7 @@ export async function getOfflineVideoMeta(blockId: string): Promise<OfflineVideo
   if (!ready) return null;
   const registry = await getOfflineVideosRegistry();
   const meta = registry[blockId];
-  const videoPath = getLocalVideoPath(blockId);
+  const manifestPath = getLocalManifestPath(blockId);
   const subPath = getLocalSubtitlePath(blockId);
   const subExists = await ReactNativeBlobUtil.fs.exists(subPath).catch(() => false);
 
@@ -120,7 +124,7 @@ export async function getOfflineVideoMeta(blockId: string): Promise<OfflineVideo
     durationSec: meta?.durationSec,
     totalBytes: meta?.totalBytes || 0,
     downloadedAt: meta?.downloadedAt || new Date().toISOString(),
-    localManifestPath: videoPath,
+    localManifestPath: manifestPath,
     localSubtitlePath: subExists ? subPath : null,
   };
 }
@@ -249,12 +253,11 @@ function removePkcs7Padding(data: Uint8Array): Uint8Array {
   return data;
 }
 
-async function decryptAndAppendSegment(
+async function decryptSegmentToFile(
   encryptedLocalPath: string,
-  targetVideoPath: string,
+  targetSegmentPath: string,
   keyBytes: Uint8Array,
   iv: Uint8Array,
-  isFirst: boolean,
 ): Promise<void> {
   const base64Data = await ReactNativeBlobUtil.fs.readFile(encryptedLocalPath, 'base64');
   const encryptedBytes = base64ToUint8Array(base64Data);
@@ -264,11 +267,7 @@ async function decryptAndAppendSegment(
   const cleanBytes = removePkcs7Padding(decryptedBytes);
 
   const cleanBase64 = uint8ArrayToBase64(cleanBytes);
-  if (isFirst) {
-    await ReactNativeBlobUtil.fs.writeFile(targetVideoPath, cleanBase64, 'base64');
-  } else {
-    await ReactNativeBlobUtil.fs.appendFile(targetVideoPath, cleanBase64, 'base64');
-  }
+  await ReactNativeBlobUtil.fs.writeFile(targetSegmentPath, cleanBase64, 'base64');
 }
 
 /**
@@ -312,10 +311,12 @@ export async function downloadOfflineVideo(
 
     if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
-    // 3. Parse key URI and segment filenames
+    // 3. Parse key URI, segment filenames, and per-segment durations
     let keyRemoteUrl: string | null = null;
     let keyIvHex: string | null = null;
     const segmentNames: string[] = [];
+    const segmentDurations: number[] = [];
+    let pendingDuration = 0;
     const manifestLines = manifestText.split('\n');
 
     for (const line of manifestLines) {
@@ -332,8 +333,13 @@ export async function downloadOfflineVideo(
         if (ivMatch && ivMatch[1]) {
           keyIvHex = ivMatch[1];
         }
+      } else if (trimmed.startsWith('#EXTINF')) {
+        const durMatch = trimmed.match(/#EXTINF:([0-9.]+)/);
+        pendingDuration = durMatch ? parseFloat(durMatch[1]) : 0;
       } else if (trimmed && !trimmed.startsWith('#') && trimmed.includes('.ts')) {
         segmentNames.push(trimmed);
+        segmentDurations.push(pendingDuration);
+        pendingDuration = 0;
       }
     }
 
@@ -379,14 +385,9 @@ export async function downloadOfflineVideo(
       }
     }
 
-    // 6. Download and decrypt segments sequentially into video.ts
+    // 6. Download and decrypt segments sequentially, each into its own local .ts file
     const totalSegments = segmentNames.length;
     let completedSegments = 0;
-    const videoLocalPath = getLocalVideoPath(blockId);
-
-    // Check if starting clean or appending
-    const existingVideoStat = await ReactNativeBlobUtil.fs.stat(videoLocalPath).catch(() => null);
-    let isFirst = !existingVideoStat || Number(existingVideoStat.size) === 0;
 
     for (let i = 0; i < segmentNames.length; i++) {
       if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
@@ -396,22 +397,17 @@ export async function downloadOfflineVideo(
         ? rawSegmentLine
         : `${API_BASE}/videos/${blockId}/${rawSegmentLine}`;
       const tempEncPath = `${blockDir}/temp_${i}.enc`;
+      const segmentLocalPath = getLocalSegmentPath(blockId, i);
 
       try {
         await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 3);
         if (keyBytes && keyBytes.length === 16) {
           const iv = parseIv(keyIvHex, i);
-          await decryptAndAppendSegment(tempEncPath, videoLocalPath, keyBytes, iv, isFirst);
+          await decryptSegmentToFile(tempEncPath, segmentLocalPath, keyBytes, iv);
         } else {
-          // Plain segment copy
           const rawB64 = await ReactNativeBlobUtil.fs.readFile(tempEncPath, 'base64');
-          if (isFirst) {
-            await ReactNativeBlobUtil.fs.writeFile(videoLocalPath, rawB64, 'base64');
-          } else {
-            await ReactNativeBlobUtil.fs.appendFile(videoLocalPath, rawB64, 'base64');
-          }
+          await ReactNativeBlobUtil.fs.writeFile(segmentLocalPath, rawB64, 'base64');
         }
-        isFirst = false;
         await ReactNativeBlobUtil.fs.unlink(tempEncPath).catch(() => { });
       } catch (err: any) {
         throw new Error(`Segment yuklashda xatolik: segment_${i}.ts (${err?.message || 'tarmoq uzildi'})`);
@@ -420,23 +416,41 @@ export async function downloadOfflineVideo(
       completedSegments++;
       const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
       onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
-
-      // Save progressive metadata to registry
-      const partialMeta: OfflineVideoMeta = {
-        blockId,
-        lessonId: options.lessonId,
-        courseId: options.courseId,
-        title: options.title || 'Video dars',
-        durationSec: options.durationSec,
-        totalBytes: 0,
-        downloadedAt: new Date().toISOString(),
-        localManifestPath: videoLocalPath,
-        localSubtitlePath,
-      };
-      const reg = await getOfflineVideosRegistry();
-      reg[blockId] = partialMeta;
-      await saveOfflineVideosRegistry(reg);
     }
+
+    // 7. Write the local HLS playlist referencing the decrypted local segments
+    const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
+    const manifestLinesOut = [
+      '#EXTM3U',
+      '#EXT-X-VERSION:3',
+      `#EXT-X-TARGETDURATION:${targetDuration}`,
+      '#EXT-X-PLAYLIST-TYPE:VOD',
+      ...segmentNames.flatMap((_name, i) => [
+        `#EXTINF:${segmentDurations[i].toFixed(3)},`,
+        `segment_${String(i).padStart(3, '0')}.ts`,
+      ]),
+      '#EXT-X-ENDLIST',
+      '',
+    ];
+    const localManifestContent = manifestLinesOut.join('\n');
+    const manifestLocalPath = getLocalManifestPath(blockId);
+    await ReactNativeBlobUtil.fs.writeFile(manifestLocalPath, localManifestContent, 'utf8');
+
+    // Save progressive metadata to registry now that segments + manifest exist
+    const partialMeta: OfflineVideoMeta = {
+      blockId,
+      lessonId: options.lessonId,
+      courseId: options.courseId,
+      title: options.title || 'Video dars',
+      durationSec: options.durationSec,
+      totalBytes: 0,
+      downloadedAt: new Date().toISOString(),
+      localManifestPath: manifestLocalPath,
+      localSubtitlePath,
+    };
+    const reg = await getOfflineVideosRegistry();
+    reg[blockId] = partialMeta;
+    await saveOfflineVideosRegistry(reg);
 
     if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
@@ -457,7 +471,7 @@ export async function downloadOfflineVideo(
       durationSec: options.durationSec,
       totalBytes,
       downloadedAt: new Date().toISOString(),
-      localManifestPath: videoLocalPath,
+      localManifestPath: manifestLocalPath,
       localSubtitlePath,
     };
 

@@ -1,6 +1,8 @@
 import {
   clearAllOfflineVideos,
   deleteOfflineVideo,
+  getLocalManifestPath,
+  getLocalSegmentPath,
   getOfflineVideoMeta,
   getOfflineVideosRegistry,
   isOfflineVideoReady,
@@ -59,9 +61,28 @@ describe('offlineVideoService', () => {
     expect(registry).toEqual({});
   });
 
-  it('checks if offline video is ready correctly', async () => {
+  it('builds distinct manifest and segment paths', () => {
+    const manifestPath = getLocalManifestPath('block-1');
+    const segmentPath = getLocalSegmentPath('block-1', 0);
+    expect(manifestPath).toBe('/mock_docs/jamm_offline_videos/block-1/local.m3u8');
+    expect(segmentPath).toBe('/mock_docs/jamm_offline_videos/block-1/segment_000.ts');
+    expect(manifestPath).not.toBe(segmentPath);
+  });
+
+  it('checks if offline video is ready correctly for a non-existent block', async () => {
     const ready = await isOfflineVideoReady('non-existent');
     expect(ready).toBe(false);
+  });
+
+  it('reports ready when local.m3u8 exists with sufficient size', async () => {
+    const ready = await isOfflineVideoReady('block-1');
+    expect(ready).toBe(true);
+  });
+
+  it('returns meta with the m3u8 manifest path when ready', async () => {
+    const meta = await getOfflineVideoMeta('block-1');
+    expect(meta).not.toBeNull();
+    expect(meta?.localManifestPath).toBe('/mock_docs/jamm_offline_videos/block-1/local.m3u8');
   });
 
   it('handles deleteOfflineVideo gracefully', async () => {
