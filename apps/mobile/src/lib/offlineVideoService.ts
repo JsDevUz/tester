@@ -1,5 +1,6 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import aesjs from 'aes-js';
+import { Platform } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { apiStartVideoPlayback } from '../api/videos';
 import { API_URL } from '../config/env';
@@ -8,12 +9,30 @@ import { useAuthStore } from '../store/authStore';
 const API_BASE = API_URL.replace(/\/$/, '');
 const OFFLINE_VIDEOS_STORAGE_KEY = '@jamm_offline_videos_v1';
 
+// iOS AVFoundation refuses to open a local HLS playlist over file:// -- it fails
+// asset validation with AVFoundationErrorDomain -11800 / OSStatus -16913
+// (assetProperty_MediaPlaybackValidation) no matter how well-formed the .m3u8 is.
+// The same segments concatenated into one MPEG-TS file open fine, as does a single
+// segment. Android's ExoPlayer, by contrast, plays the local playlist correctly and
+// gets proper seeking from it. So each platform gets the container it can actually
+// read: a merged .ts on iOS, the segment playlist on Android.
+const USE_MERGED_TS = Platform.OS === 'ios';
+
 export function getOfflineBaseDir(): string {
   return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/jamm_offline_videos`;
 }
 
 export function getOfflineVideoDir(blockId: string): string {
   return `${getOfflineBaseDir()}/${blockId}`;
+}
+
+export function getLocalMergedVideoPath(blockId: string): string {
+  return `${getOfflineVideoDir(blockId)}/merged.ts`;
+}
+
+/** Path the player should be pointed at: merged .ts on iOS, .m3u8 playlist on Android. */
+export function getLocalPlayablePath(blockId: string): string {
+  return USE_MERGED_TS ? getLocalMergedVideoPath(blockId) : getLocalManifestPath(blockId);
 }
 
 export function getLocalManifestPath(blockId: string): string {
@@ -89,13 +108,20 @@ async function saveOfflineVideosRegistry(registry: Record<string, OfflineVideoMe
  */
 export async function isOfflineVideoReady(blockId: string): Promise<boolean> {
   try {
-    const manifestPath = getLocalManifestPath(blockId);
-    const exists = await ReactNativeBlobUtil.fs.exists(manifestPath).catch(() => false);
+    const playablePath = getLocalPlayablePath(blockId);
+    const exists = await ReactNativeBlobUtil.fs.exists(playablePath).catch(() => false);
     if (!exists) return false;
 
-    const stat = await ReactNativeBlobUtil.fs.stat(manifestPath).catch(() => null);
+    const stat = await ReactNativeBlobUtil.fs.stat(playablePath).catch(() => null);
     if (!stat || Number(stat.size) === 0) return false;
 
+    if (USE_MERGED_TS) {
+      // The merged file is the media itself, so a non-empty file is all we need.
+      // Guard against a truncated first write with a small floor.
+      return Number(stat.size) > 1024;
+    }
+
+    // The playlist only names segments, so segment 0 must exist for it to play.
     const firstSegmentPath = getLocalSegmentPath(blockId, 0);
     const firstSegmentExists = await ReactNativeBlobUtil.fs.exists(firstSegmentPath).catch(() => false);
     return firstSegmentExists;
@@ -112,7 +138,7 @@ export async function getOfflineVideoMeta(blockId: string): Promise<OfflineVideo
   if (!ready) return null;
   const registry = await getOfflineVideosRegistry();
   const meta = registry[blockId];
-  const manifestPath = getLocalManifestPath(blockId);
+  const manifestPath = getLocalPlayablePath(blockId);
   const subPath = getLocalSubtitlePath(blockId);
   const subExists = await ReactNativeBlobUtil.fs.exists(subPath).catch(() => false);
 
@@ -137,6 +163,7 @@ async function downloadFileWithRetry(
 ): Promise<void> {
   let lastError: any;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    console.log('[downloadFileWithRetry] DEBUG attempt', attempt, 'url=', remoteUrl, 'path=', localPath);
     try {
       const res = await ReactNativeBlobUtil.config({
         path: localPath,
@@ -144,15 +171,23 @@ async function downloadFileWithRetry(
       }).fetch('GET', remoteUrl, token ? { Authorization: `Bearer ${token}` } : undefined);
 
       const status = res.info().status;
+      const headers = res.info().headers;
+      console.log('[downloadFileWithRetry] DEBUG response status=', status, 'content-length=', headers?.['Content-Length'] ?? headers?.['content-length']);
       if (status >= 200 && status < 300) {
+        const stat = await ReactNativeBlobUtil.fs.stat(localPath).catch((e) => {
+          console.log('[downloadFileWithRetry] DEBUG stat failed after success:', e?.message || e);
+          return null;
+        });
+        console.log('[downloadFileWithRetry] DEBUG file size on disk after success=', stat?.size);
         return;
       }
       if (status === 429) {
         await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
       }
       throw new Error(`HTTP ${status}`);
-    } catch (err) {
+    } catch (err: any) {
       lastError = err;
+      console.log('[downloadFileWithRetry] DEBUG attempt', attempt, 'failed:', err?.message || err);
       if (attempt < maxAttempts) {
         await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
       }
@@ -393,6 +428,9 @@ export async function downloadOfflineVideo(
     let completedSegments = 0;
     const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
     const manifestLocalPath = getLocalManifestPath(blockId);
+    const mergedLocalPath = getLocalMergedVideoPath(blockId);
+    // Path stored in the registry / handed to the player, per platform.
+    const playableLocalPath = USE_MERGED_TS ? mergedLocalPath : manifestLocalPath;
 
     // Always terminate the playlist with #EXT-X-ENDLIST, even mid-download. Without it,
     // a VOD-typed playlist with no end marker is ambiguous HLS and AVPlayer treats it as
@@ -436,12 +474,26 @@ export async function downloadOfflineVideo(
           await ReactNativeBlobUtil.fs.writeFile(segmentLocalPath, rawB64, 'base64');
         }
         await ReactNativeBlobUtil.fs.unlink(tempEncPath).catch(() => { });
+
+        if (USE_MERGED_TS) {
+          // Append this segment's bytes onto the single merged file iOS will play,
+          // then drop the standalone segment so we don't keep two copies on disk.
+          const segB64 = await ReactNativeBlobUtil.fs.readFile(segmentLocalPath, 'base64');
+          if (i === 0) {
+            await ReactNativeBlobUtil.fs.writeFile(mergedLocalPath, segB64, 'base64');
+          } else {
+            await ReactNativeBlobUtil.fs.appendFile(mergedLocalPath, segB64, 'base64');
+          }
+          await ReactNativeBlobUtil.fs.unlink(segmentLocalPath).catch(() => { });
+        }
       } catch (err: any) {
         throw new Error(`Segment yuklashda xatolik: segment_${i}.ts (${err?.message || 'tarmoq uzildi'})`);
       }
 
       completedSegments++;
-      await writeManifest(completedSegments);
+      if (!USE_MERGED_TS) {
+        await writeManifest(completedSegments);
+      }
 
       const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
       onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
@@ -456,7 +508,7 @@ export async function downloadOfflineVideo(
         durationSec: options.durationSec,
         totalBytes: 0,
         downloadedAt: new Date().toISOString(),
-        localManifestPath: manifestLocalPath,
+        localManifestPath: playableLocalPath,
         localSubtitlePath,
       };
       const reg = await getOfflineVideosRegistry();
@@ -483,7 +535,7 @@ export async function downloadOfflineVideo(
       durationSec: options.durationSec,
       totalBytes,
       downloadedAt: new Date().toISOString(),
-      localManifestPath: manifestLocalPath,
+      localManifestPath: playableLocalPath,
       localSubtitlePath,
     };
 

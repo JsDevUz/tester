@@ -1,12 +1,23 @@
+import {Platform} from 'react-native';
 import {
   clearAllOfflineVideos,
   deleteOfflineVideo,
   getLocalManifestPath,
+  getLocalMergedVideoPath,
+  getLocalPlayablePath,
   getLocalSegmentPath,
   getOfflineVideoMeta,
   getOfflineVideosRegistry,
   isOfflineVideoReady,
 } from '../src/lib/offlineVideoService';
+
+// iOS plays a single merged .ts (AVFoundation rejects local file:// HLS playlists);
+// Android plays the .m3u8 playlist. The tests assert against whichever the current
+// test platform selects so they stay meaningful under either Platform.OS.
+const EXPECTED_PLAYABLE =
+  Platform.OS === 'ios'
+    ? '/mock_docs/jamm_offline_videos/block-1/merged.ts'
+    : '/mock_docs/jamm_offline_videos/block-1/local.m3u8';
 
 jest.mock('@react-native-async-storage/async-storage', () => {
   const store: Record<string, string> = {};
@@ -24,6 +35,7 @@ jest.mock('@react-native-async-storage/async-storage', () => {
 jest.mock('react-native-blob-util', () => {
   const mockFiles: Record<string, {type: string; size: number}> = {
     '/mock_docs/jamm_offline_videos/block-1/local.m3u8': {type: 'file', size: 1024},
+    '/mock_docs/jamm_offline_videos/block-1/merged.ts': {type: 'file', size: 1024 * 500},
     '/mock_docs/jamm_offline_videos/block-1/enc.key': {type: 'file', size: 16},
     '/mock_docs/jamm_offline_videos/block-1/segment_000.ts': {type: 'file', size: 1024 * 100},
   };
@@ -61,12 +73,18 @@ describe('offlineVideoService', () => {
     expect(registry).toEqual({});
   });
 
-  it('builds distinct manifest and segment paths', () => {
+  it('builds distinct manifest, merged and segment paths', () => {
     const manifestPath = getLocalManifestPath('block-1');
+    const mergedPath = getLocalMergedVideoPath('block-1');
     const segmentPath = getLocalSegmentPath('block-1', 0);
     expect(manifestPath).toBe('/mock_docs/jamm_offline_videos/block-1/local.m3u8');
+    expect(mergedPath).toBe('/mock_docs/jamm_offline_videos/block-1/merged.ts');
     expect(segmentPath).toBe('/mock_docs/jamm_offline_videos/block-1/segment_000.ts');
-    expect(manifestPath).not.toBe(segmentPath);
+    expect(new Set([manifestPath, mergedPath, segmentPath]).size).toBe(3);
+  });
+
+  it('picks the playable path the current platform can actually open', () => {
+    expect(getLocalPlayablePath('block-1')).toBe(EXPECTED_PLAYABLE);
   });
 
   it('checks if offline video is ready correctly for a non-existent block', async () => {
@@ -74,15 +92,15 @@ describe('offlineVideoService', () => {
     expect(ready).toBe(false);
   });
 
-  it('reports ready when local.m3u8 exists with sufficient size', async () => {
+  it('reports ready when the platform playable file exists with sufficient size', async () => {
     const ready = await isOfflineVideoReady('block-1');
     expect(ready).toBe(true);
   });
 
-  it('returns meta with the m3u8 manifest path when ready', async () => {
+  it('returns meta pointing at the platform playable path when ready', async () => {
     const meta = await getOfflineVideoMeta('block-1');
     expect(meta).not.toBeNull();
-    expect(meta?.localManifestPath).toBe('/mock_docs/jamm_offline_videos/block-1/local.m3u8');
+    expect(meta?.localManifestPath).toBe(EXPECTED_PLAYABLE);
   });
 
   it('handles deleteOfflineVideo gracefully', async () => {

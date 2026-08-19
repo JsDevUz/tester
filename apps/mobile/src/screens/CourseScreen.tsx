@@ -99,6 +99,7 @@ export function CourseScreen({route, navigation}: Props) {
         setAccessError(getApiErrorMessage(err, "To'lov muddati kelgan, lekin to'lanmagan"));
       } else {
         const snapshot = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(`cache:course:${courseId}`);
+        console.log('[CourseScreen] DEBUG offline branch, snapshot?', Boolean(snapshot), 'selectedLessonId=', selectedLessonId);
         if (snapshot) {
           setCourse(snapshot.data);
           setStale(true);
@@ -106,6 +107,7 @@ export function CourseScreen({route, navigation}: Props) {
             const allLessons = snapshot.data.modules.flatMap(m => m.lessons);
             const lastViewedId = await storage.get<string>(`course:${courseId}:lastLessonId`);
             const lastViewedLesson = allLessons.find(l => l.id === lastViewedId);
+            console.log('[CourseScreen] DEBUG offline resume: lastViewedId=', lastViewedId, 'found?', Boolean(lastViewedLesson), 'totalLessons=', allLessons.length);
             if (lastViewedLesson) {
               setSelectedLessonId(lastViewedLesson.id);
             }
