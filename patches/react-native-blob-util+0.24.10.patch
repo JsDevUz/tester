@@ -1,0 +1,31 @@
+diff --git a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
+index a98bde3..8184133 100644
+--- a/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
++++ b/node_modules/react-native-blob-util/android/src/main/java/com/ReactNativeBlobUtil/Response/ReactNativeBlobUtilFileResp.java
+@@ -115,11 +115,25 @@ public class ReactNativeBlobUtilFileResp extends ResponseBody {
+     }
+ 
+     private class ProgressReportingSource implements Source {
++        // originalBody.byteStream() must only be opened once. Calling it repeatedly (once
++        // per read()) re-wraps the underlying OkHttp stream on every call, which silently
++        // drops or corrupts data for large/streamed (chunked, no Content-Length) responses --
++        // observed on Android as every multi-KB download failing with "Download interrupted"
++        // while small fixed-length responses succeeded.
++        private java.io.InputStream cachedInputStream;
++
++        private java.io.InputStream getInputStream() {
++            if (cachedInputStream == null) {
++                cachedInputStream = originalBody.byteStream();
++            }
++            return cachedInputStream;
++        }
++
+         @Override
+         public long read(@NonNull Buffer sink, long byteCount) throws IOException {
+             try {
+                 byte[] bytes = new byte[(int) byteCount];
+-                long read = originalBody.byteStream().read(bytes, 0, (int) byteCount);
++                long read = getInputStream().read(bytes, 0, (int) byteCount);
+                 bytesDownloaded += read > 0 ? read : 0;
+                 if (read > 0) {
+                     ofStream.write(bytes, 0, (int) read);

@@ -15,9 +15,11 @@
     "android": "npm run android --workspace=apps/mobile",
     "cap:sync": "npm run cap:sync --workspace=apps/frontend",
     "cap:android": "npm run cap:android --workspace=apps/frontend",
-    "cap:ios": "npm run cap:ios --workspace=apps/frontend"
+    "cap:ios": "npm run cap:ios --workspace=apps/frontend",
+    "postinstall": "patch-package"
   },
   "devDependencies": {
-    "@types/multer": "^2.1.0"
+    "@types/multer": "^2.1.0",
+    "patch-package": "^8.0.1"
   }
 }
