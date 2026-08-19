@@ -385,9 +385,30 @@ export async function downloadOfflineVideo(
       }
     }
 
-    // 6. Download and decrypt segments sequentially, each into its own local .ts file
+    // 6. Download and decrypt segments sequentially, each into its own local .ts file.
+    // The manifest is rewritten after every segment (with #EXT-X-ENDLIST only once all
+    // segments are done) so a download interrupted partway still leaves a valid, playable
+    // HLS asset covering whatever was downloaded so far.
     const totalSegments = segmentNames.length;
     let completedSegments = 0;
+    const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
+    const manifestLocalPath = getLocalManifestPath(blockId);
+
+    const writeManifest = async (upToCount: number, complete: boolean) => {
+      const lines = [
+        '#EXTM3U',
+        '#EXT-X-VERSION:3',
+        `#EXT-X-TARGETDURATION:${targetDuration}`,
+        '#EXT-X-PLAYLIST-TYPE:VOD',
+        ...segmentNames.slice(0, upToCount).flatMap((_name, i) => [
+          `#EXTINF:${segmentDurations[i].toFixed(3)},`,
+          `segment_${String(i).padStart(3, '0')}.ts`,
+        ]),
+        ...(complete ? ['#EXT-X-ENDLIST'] : []),
+        '',
+      ];
+      await ReactNativeBlobUtil.fs.writeFile(manifestLocalPath, lines.join('\n'), 'utf8');
+    };
 
     for (let i = 0; i < segmentNames.length; i++) {
       if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
@@ -414,43 +435,28 @@ export async function downloadOfflineVideo(
       }
 
       completedSegments++;
+      await writeManifest(completedSegments, completedSegments === totalSegments);
+
       const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
       onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
+
+      // Save progressive metadata to registry so a partial download is already
+      // discoverable as playable (up to the segments downloaded so far).
+      const partialMeta: OfflineVideoMeta = {
+        blockId,
+        lessonId: options.lessonId,
+        courseId: options.courseId,
+        title: options.title || 'Video dars',
+        durationSec: options.durationSec,
+        totalBytes: 0,
+        downloadedAt: new Date().toISOString(),
+        localManifestPath: manifestLocalPath,
+        localSubtitlePath,
+      };
+      const reg = await getOfflineVideosRegistry();
+      reg[blockId] = partialMeta;
+      await saveOfflineVideosRegistry(reg);
     }
-
-    // 7. Write the local HLS playlist referencing the decrypted local segments
-    const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
-    const manifestLinesOut = [
-      '#EXTM3U',
-      '#EXT-X-VERSION:3',
-      `#EXT-X-TARGETDURATION:${targetDuration}`,
-      '#EXT-X-PLAYLIST-TYPE:VOD',
-      ...segmentNames.flatMap((_name, i) => [
-        `#EXTINF:${segmentDurations[i].toFixed(3)},`,
-        `segment_${String(i).padStart(3, '0')}.ts`,
-      ]),
-      '#EXT-X-ENDLIST',
-      '',
-    ];
-    const localManifestContent = manifestLinesOut.join('\n');
-    const manifestLocalPath = getLocalManifestPath(blockId);
-    await ReactNativeBlobUtil.fs.writeFile(manifestLocalPath, localManifestContent, 'utf8');
-
-    // Save progressive metadata to registry now that segments + manifest exist
-    const partialMeta: OfflineVideoMeta = {
-      blockId,
-      lessonId: options.lessonId,
-      courseId: options.courseId,
-      title: options.title || 'Video dars',
-      durationSec: options.durationSec,
-      totalBytes: 0,
-      downloadedAt: new Date().toISOString(),
-      localManifestPath: manifestLocalPath,
-      localSubtitlePath,
-    };
-    const reg = await getOfflineVideosRegistry();
-    reg[blockId] = partialMeta;
-    await saveOfflineVideosRegistry(reg);
 
     if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
