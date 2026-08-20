@@ -44,7 +44,7 @@ import {
   type ClassRecordingMode,
   type PdfLibraryAsset,
 } from "../api/classroom";
-import { apiCreateBoard } from "../api/boards";
+import { apiCreateBoard, apiCreateBoardVersionCheckpoint } from "../api/boards";
 
 function formatElapsed(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -127,6 +127,32 @@ export function ClassroomHostPage() {
         if (detail.title) setLessonTitle(detail.title);
       })
       .catch(() => {});
+  }, [id]);
+
+  // Snapshot the board on the way out. The server already checkpoints when the host socket
+  // stays gone for its grace period, but that is 90 seconds away and is lost entirely if the
+  // process restarts in the meantime -- so leaving the page saves immediately instead.
+  //
+  // Two exits to cover: navigating away within the app (cleanup) and closing or reloading the
+  // tab (pagehide), which cannot await a promise and needs sendBeacon-style fire-and-forget.
+  const isBoardOpenRef = useRef(state.isBoardOpen);
+  useEffect(() => {
+    isBoardOpenRef.current = state.isBoardOpen;
+  }, [state.isBoardOpen]);
+
+  useEffect(() => {
+    if (!id) return;
+
+    const checkpoint = () => {
+      if (!isBoardOpenRef.current) return;
+      void apiCreateBoardVersionCheckpoint(id).catch(() => {});
+    };
+
+    window.addEventListener('pagehide', checkpoint);
+    return () => {
+      window.removeEventListener('pagehide', checkpoint);
+      checkpoint();
+    };
   }, [id]);
 
   // Classroom toolbar shortcuts. `mod` maps to Ctrl on Windows/Linux and

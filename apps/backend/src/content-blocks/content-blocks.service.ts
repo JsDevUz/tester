@@ -5,6 +5,7 @@ import { and, eq, inArray } from 'drizzle-orm';
 import { StorageService } from '../storage/storage.service';
 import { extname } from 'path';
 import { randomUUID } from 'crypto';
+import { decodeUploadFilename } from '../upload/upload-filename';
 
 const CONTENT_BLOCK_LIMIT = 7;
 const DOCUMENT_EXTENSIONS = ['.pdf', '.doc', '.docx', '.ppt', '.pptx', '.xls', '.xlsx'];
@@ -80,8 +81,8 @@ export class ContentBlocksService {
         lessonId,
         type: 'file',
         orderIndex: existing.length,
-        fileName: file.originalname,
-        label: label?.trim() || file.originalname,
+        fileName: decodeUploadFilename(file.originalname),
+        label: label?.trim() || decodeUploadFilename(file.originalname),
       })
       .returning();
 

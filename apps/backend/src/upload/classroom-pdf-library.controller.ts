@@ -13,6 +13,7 @@ import { SchoolsService } from '../schools/schools.service';
 import { db } from '../db';
 import { mediaAssets } from '../db/schema';
 import { MediaLibraryService } from './media-library.service';
+import { decodeUploadFilename } from './upload-filename';
 
 // Umumiy media-kutubxonadan ataylab ajratilgan: jonli darsda kerak bo'lgan
 // narsa PDF faylning o'zi emas, uning sahifalarga aylantirilgan rasmlari —
@@ -60,6 +61,7 @@ export class ClassroomPdfLibraryController {
   )
   async upload(@UploadedFile() file: Express.Multer.File, @Req() req: any) {
     if (!file) throw new BadRequestException('Fayl topilmadi');
+    const originalName = decodeUploadFilename(file.originalname);
     const schoolAdminId = await this.schoolsService.resolveSchoolAdminIdForCaller(req.admin.id, req.admin.role);
     await this.mediaLibraryService.assertCanAdd(schoolAdminId, file.size);
 
@@ -73,7 +75,7 @@ export class ClassroomPdfLibraryController {
       url,
       key,
       type: 'file',
-      originalName: file.originalname,
+      originalName,
       folder: 'classroom-pdf',
       sizeBytes: file.size,
       pdfProcessingStatus: 'pending',

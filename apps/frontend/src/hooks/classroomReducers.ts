@@ -254,15 +254,26 @@ export function applyPageRemove(
   const currentCount = isPdf ? s.pages.length : s.notebookPageCount;
   if (currentCount <= 1) return s;
 
-  const key = right ? "rightStrokesByPage" : "strokesByPage";
-  const source = s[key];
-  const rebuilt: Record<number, CsStroke[]> = {};
-  for (const [pageStr, strokes] of Object.entries(source)) {
-    const pageNum = Number(pageStr);
-    if (pageNum < p.pageIndex) rebuilt[pageNum] = strokes;
-    else if (pageNum > p.pageIndex) rebuilt[pageNum - 1] = strokes;
-    // pageNum === p.pageIndex: dropped
-  }
+  // Reindex every pane showing the mode whose page went away, not just the pane the delete
+  // came from. The backend keeps strokes per MODE, so removing notebook page 2 shifts the
+  // notebook strokes once; a second pane also showing the notebook renders from its own
+  // per-PANE copy here, and leaving that copy alone strands its strokes on the old page
+  // numbers -- which is how a deleted page's drawing reappears on the page after it.
+  const reindex = (source: Record<number, CsStroke[]>): Record<number, CsStroke[]> => {
+    const rebuilt: Record<number, CsStroke[]> = {};
+    for (const [pageStr, strokes] of Object.entries(source)) {
+      const pageNum = Number(pageStr);
+      if (pageNum < p.pageIndex) rebuilt[pageNum] = strokes;
+      else if (pageNum > p.pageIndex) rebuilt[pageNum - 1] = strokes;
+      // pageNum === p.pageIndex: dropped
+    }
+    return rebuilt;
+  };
+
+  const leftShowsMode = s.leftBoardMode === p.mode;
+  const rightShowsMode = s.rightBoardMode === p.mode;
+  const nextLeftStrokes = leftShowsMode ? reindex(s.strokesByPage) : s.strokesByPage;
+  const nextRightStrokes = rightShowsMode ? reindex(s.rightStrokesByPage) : s.rightStrokesByPage;
 
   const pages = isPdf ? s.pages.filter((_, idx) => idx !== p.pageIndex - 1) : s.pages;
   const notebookPageCount = isPdf ? s.notebookPageCount : Math.max(1, s.notebookPageCount - 1);
@@ -290,7 +301,16 @@ export function applyPageRemove(
     if (currentPage > newCount) currentPage = newCount;
   }
 
-  return { ...s, [key]: rebuilt, pages, notebookPageCount, notebookPageStyles, notebookPageOrientations, currentPage };
+  return {
+    ...s,
+    strokesByPage: nextLeftStrokes,
+    rightStrokesByPage: nextRightStrokes,
+    pages,
+    notebookPageCount,
+    notebookPageStyles,
+    notebookPageOrientations,
+    currentPage,
+  };
 }
 
 // PDF'ga qo'shilgan yangi sahifa(lar) — afterPageIndex'dan keyingi barcha

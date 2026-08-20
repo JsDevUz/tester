@@ -126,4 +126,70 @@ describe("applyPageRemove — notebook page reindexing", () => {
     expect(next.notebookPageCount).toBe(3);
     expect(next.notebookPageStyles).toEqual({ 1: "grid", 2: "plain", 3: "grid" });
   });
+
+  // Reported: draw on notebook page 1, delete that page, and the drawing turns up on the
+  // page that took its place instead of being deleted with it.
+  it("drops the removed page's strokes instead of shifting them onto the next page", () => {
+    const next = applyPageRemove(baseState({
+      boardMode: "notebook",
+      leftBoardMode: "notebook",
+      notebookPageCount: 3,
+      strokesByPage: { 1: [stroke("a")], 2: [stroke("b")], 3: [stroke("c")] },
+    }), { mode: "notebook", pageIndex: 1 });
+
+    expect(next.notebookPageCount).toBe(2);
+    expect(next.strokesByPage[1]?.map((x) => x.id)).toEqual(["b"]);
+    expect(next.strokesByPage[2]?.map((x) => x.id)).toEqual(["c"]);
+    expect(next.strokesByPage[3]).toBeUndefined();
+  });
+
+  // Split view with the same mode in both panes: the backend shifts the mode's strokes once,
+  // but each pane renders from its own copy here. Reindexing only the pane the delete came
+  // from left the other pane's strokes on the old page numbers.
+  it("reindexes both panes when both are showing the mode being edited", () => {
+    const next = applyPageRemove(baseState({
+      boardMode: "notebook",
+      leftBoardMode: "notebook",
+      rightBoardMode: "notebook",
+      boardLayout: "split",
+      notebookPageCount: 3,
+      strokesByPage: { 1: [stroke("L1")], 2: [stroke("L2")] },
+      rightStrokesByPage: { 1: [stroke("R1")], 2: [stroke("R2")] },
+    }), { mode: "notebook", pageIndex: 1, pane: "left" });
+
+    expect(next.strokesByPage[1]?.map((x) => x.id)).toEqual(["L2"]);
+    expect(next.rightStrokesByPage[1]?.map((x) => x.id)).toEqual(["R2"]);
+    expect(next.rightStrokesByPage[2]).toBeUndefined();
+  });
+
+  it("leaves a pane alone when it is showing the other mode", () => {
+    const next = applyPageRemove(baseState({
+      boardMode: "notebook",
+      leftBoardMode: "notebook",
+      rightBoardMode: "pdf",
+      boardLayout: "split",
+      notebookPageCount: 3,
+      strokesByPage: { 1: [stroke("N1")], 2: [stroke("N2")] },
+      rightStrokesByPage: { 1: [stroke("P1")], 2: [stroke("P2")] },
+    }), { mode: "notebook", pageIndex: 1, pane: "left" });
+
+    expect(next.strokesByPage[1]?.map((x) => x.id)).toEqual(["N2"]);
+    // The pdf pane's pages did not move, so neither should its strokes.
+    expect(next.rightStrokesByPage[1]?.map((x) => x.id)).toEqual(["P1"]);
+    expect(next.rightStrokesByPage[2]?.map((x) => x.id)).toEqual(["P2"]);
+  });
+
+  it("does the same for pdf pages", () => {
+    const next = applyPageRemove(baseState({
+      boardMode: "pdf",
+      leftBoardMode: "pdf",
+      pages: ["p1.png", "p2.png", "p3.png"],
+      strokesByPage: { 1: [stroke("a")], 2: [stroke("b")], 3: [stroke("c")] },
+    }), { mode: "pdf", pageIndex: 1 });
+
+    expect(next.pages).toEqual(["p2.png", "p3.png"]);
+    expect(next.strokesByPage[1]?.map((x) => x.id)).toEqual(["b"]);
+    expect(next.strokesByPage[2]?.map((x) => x.id)).toEqual(["c"]);
+    expect(next.strokesByPage[3]).toBeUndefined();
+  });
 });

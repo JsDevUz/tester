@@ -90,13 +90,33 @@ export class MediaLibraryService {
       limit: 100,
       with: { uploader: true },
     });
+    // Assets uploaded before size_bytes existed default to 0 and would list as "0 B" forever.
+    // Backfill them from storage on the way past -- one HEAD each, only ever once per asset,
+    // and a failure just leaves the row as it was.
+    const missingSizes = assets.filter((asset) => !asset.sizeBytes && asset.key);
+    const backfilled = new Map<string, number>();
+    if (missingSizes.length > 0) {
+      await Promise.all(
+        missingSizes.map(async (asset) => {
+          const head = await this.storage.headObject(asset.key!).catch(() => null);
+          if (!head?.sizeBytes) return;
+          backfilled.set(asset.id, head.sizeBytes);
+          await db
+            .update(mediaAssets)
+            .set({ sizeBytes: head.sizeBytes })
+            .where(eq(mediaAssets.id, asset.id))
+            .catch(() => undefined);
+        }),
+      );
+    }
+
     return assets.map((asset) => ({
       id: asset.id,
       url: asset.url,
       type: asset.type,
       originalName: asset.originalName,
       uploaderName: (asset.uploader as unknown as { displayName: string }).displayName,
-      sizeBytes: asset.sizeBytes,
+      sizeBytes: backfilled.get(asset.id) ?? asset.sizeBytes,
       pdfPageCount: Array.isArray(asset.pdfPages) ? (asset.pdfPages as string[]).length : null,
       pdfProcessingStatus: asset.pdfProcessingStatus,
       createdAt: asset.createdAt!.toISOString(),

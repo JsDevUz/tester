@@ -1,6 +1,6 @@
 import { useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { CsStroke } from "../../api/classroom";
-import { REF_WIDTH } from "./classroomCanvasText";
+import { fitTextInShape, REF_WIDTH } from "./classroomCanvasText";
 import { snapRotationAngle } from "./classroomCanvasGeometry";
 import { nearestShapeBinding } from "./classroomShapeBindings";
 
@@ -293,8 +293,20 @@ export function useClassroomShapeTransform({
     current.stroke.points = [nextX0, nextY0, nextX1, nextY1];
 
     if (current.stroke.text?.trim() && current.startFontSize) {
-      const shapeScale = Math.min(newW / Math.max(0.001, startW), newH / Math.max(0.001, startH));
-      current.stroke.fontSize = Math.max(6, Math.min(96, Math.round(current.startFontSize * shapeScale)));
+      // Resizing never enlarges the text -- a wider shape means more room to wrap into, not
+      // bigger letters. It only shrinks, and only once the text genuinely cannot fit, which
+      // fitTextInShape decides from the wrapped line count.
+      // points are normalised 0..1; fitTextInShape measures in pixels.
+      const fitted = fitTextInShape({
+        text: current.stroke.text,
+        fontFamily: current.stroke.fontFamily ?? 'Inter',
+        fontSize: current.startFontSize,
+        fontWeight: current.stroke.fontWeight ?? 400,
+        shapeWidth: Math.abs(newW) * size.w,
+        shapeHeight: Math.abs(newH) * size.h,
+        maxShapeHeight: Math.abs(newH) * size.h,
+      });
+      current.stroke.fontSize = Math.min(current.startFontSize, fitted.fontSize);
     }
 
     forceRedraw((value) => value + 1);

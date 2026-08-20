@@ -115,6 +115,62 @@ export function getFontFamilyString(family?: CsFontFamily): string {
   }
 }
 
+/** Gap kept between a shape's edge and the text inside it. */
+export const SHAPE_TEXT_PADDING = 8;
+
+/** Smallest the text is allowed to shrink to before it simply overflows. */
+const MIN_SHAPE_FONT_SIZE = 8;
+
+/**
+ * Works out how a shape and the text inside it should accommodate each other.
+ *
+ * The order matters, and it is what a person expects while typing: the text wraps to the
+ * shape's width first, the shape grows taller to take the extra lines, and only when it is
+ * against its own maximum does the font start shrinking. The font never grows -- widening a
+ * shape gives the text more room, not bigger letters.
+ *
+ * Returns the font size to render at and the height the shape needs. Width is never changed:
+ * the user set it by dragging, and wrapping is what adapts to it.
+ */
+export function fitTextInShape(params: {
+  text: string;
+  fontFamily: CsFontFamily;
+  fontSize: number;
+  fontWeight: 400 | 500 | 600 | 700;
+  shapeWidth: number;
+  shapeHeight: number;
+  /** Cap on automatic growth; past this the font shrinks instead. */
+  maxShapeHeight?: number;
+}): { fontSize: number; shapeHeight: number } {
+  const { text, fontFamily, fontWeight, shapeWidth, shapeHeight } = params;
+  const innerWidth = Math.max(1, shapeWidth - SHAPE_TEXT_PADDING * 2);
+  const maxHeight = params.maxShapeHeight ?? shapeHeight * 3;
+
+  if (!text.trim()) return { fontSize: params.fontSize, shapeHeight };
+
+  const ctx = getMeasureCtx();
+  const measureAt = (size: number) => {
+    ctx.font = `${fontWeight} ${size}px ${getFontFamilyString(fontFamily)}`;
+    const lines = wrapTextLines(ctx, text, innerWidth);
+    return lines.length * size * 1.25 + SHAPE_TEXT_PADDING * 2;
+  };
+
+  // Step 1: at the requested size, does the shape just need to be taller?
+  const neededAtCurrentSize = measureAt(params.fontSize);
+  if (neededAtCurrentSize <= maxHeight) {
+    return {
+      fontSize: params.fontSize,
+      shapeHeight: Math.max(shapeHeight, Math.ceil(neededAtCurrentSize)),
+    };
+  }
+
+  // Step 2: the shape has grown as far as it may, so shrink the text to fit that height.
+  let size = params.fontSize;
+  while (size > MIN_SHAPE_FONT_SIZE && measureAt(size) > maxHeight) size -= 1;
+
+  return { fontSize: Math.max(MIN_SHAPE_FONT_SIZE, size), shapeHeight: Math.ceil(maxHeight) };
+}
+
 export function measureTextBox(
   text: string,
   fontFamily: CsFontFamily,

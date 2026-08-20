@@ -7,6 +7,7 @@ import { contentBlocks, courses, lessons, modules } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { VideoJobService } from './video-job.service';
 import { srtToVtt } from './srt-to-vtt';
+import { decodeUploadFilename } from '../upload/upload-filename';
 
 const CONTENT_BLOCK_LIMIT = 7;
 const VIDEO_EXTENSIONS = ['.mp4', '.mov', '.m4v', '.webm', '.mkv'];
@@ -51,8 +52,8 @@ export class VideoUploadService {
         lessonId,
         type: 'video',
         orderIndex: existing.length,
-        fileName: file.originalname,
-        label: label?.trim() || file.originalname,
+        fileName: decodeUploadFilename(file.originalname),
+        label: label?.trim() || decodeUploadFilename(file.originalname),
         processingStatus: 'pending',
       })
       .returning();

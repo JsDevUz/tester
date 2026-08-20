@@ -137,7 +137,7 @@ export function ClassroomPageSelectionOverlay({
                   key={corner}
                   type="button"
                   aria-label={`Matn o'lchamini ${corner} tomondan o'zgartirish`}
-                  className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
+                  className="pointer-events-auto absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
                   style={{
                     left: corner.includes("w") ? "0%" : "100%",
                     top: corner.includes("n") ? "0%" : "100%",
@@ -193,7 +193,7 @@ export function ClassroomPageSelectionOverlay({
               <button
                 type="button"
                 aria-label="Matnni aylantirish"
-                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white text-blue-600 shadow-md cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-600 bg-white text-blue-600 shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
                 style={{
                   left: "calc(100% + 22px)",
                   top: "-22px",
@@ -203,7 +203,7 @@ export function ClassroomPageSelectionOverlay({
                 onPointerUp={finishTextTransform}
                 onPointerCancel={finishTextTransform}
               >
-                <RotateCw size={12} className="stroke-[2.5]" />
+                <RotateCw size={12} className="stroke-2" />
               </button>
             </div>
             {showStylePanel && !isTransforming && (() => {
@@ -419,7 +419,7 @@ export function ClassroomPageSelectionOverlay({
                   dotY = Math.max(0.01, Math.min(0.99, dotY));
                   return (
                     <div
-                      className="pointer-events-auto absolute z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-indigo-500 bg-white cursor-grab shadow-md"
+                      className="pointer-events-auto absolute z-30 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border-2 border-indigo-500 bg-white cursor-grab shadow-md"
                       style={{
                         left: `${dotX * 100}%`,
                         top: `${dotY * 100}%`,
@@ -449,7 +449,7 @@ export function ClassroomPageSelectionOverlay({
                   key={corner}
                   type="button"
                   aria-label={`Shape o'lchamini ${corner} tomondan o'zgartirish`}
-                  className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
+                  className="pointer-events-auto absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border-2 border-blue-600 bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
                   style={{
                     left: corner.includes("w") ? "0%" : "100%",
                     top: corner.includes("n") ? "0%" : "100%",
@@ -505,7 +505,7 @@ export function ClassroomPageSelectionOverlay({
               <button
                 type="button"
                 aria-label="Shape'ni aylantirish"
-                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-blue-600 bg-white text-blue-600 shadow-md cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-600 bg-white text-blue-600 shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
                 style={{
                   left: "calc(100% + 22px)",
                   top: "-22px",
@@ -515,7 +515,7 @@ export function ClassroomPageSelectionOverlay({
                 onPointerUp={finishShapeTransform}
                 onPointerCancel={finishShapeTransform}
               >
-                <RotateCw size={12} className="stroke-[2.5]" />
+                <RotateCw size={12} className="stroke-2" />
               </button>
             </div>
           )}
