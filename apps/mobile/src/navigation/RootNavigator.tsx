@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Image, Platform, Pressable, View } from 'react-native';
+import { Image, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
@@ -102,7 +102,7 @@ function TabIcon({
   }
 
   const Icon = icons[routeName];
-  return <Icon color={color} size={size} strokeWidth={focused ? 2.4 : 2} />;
+  return <Icon color={color} size={size - 3} strokeWidth={focused ? 2.4 : 2} />;
 }
 
 function TabsWithProfile() {
@@ -121,31 +121,20 @@ function TabsWithProfile() {
           // mode it inverts to near-white for the same reason.
           tabBarActiveTintColor: isDark ? '#f4f4f5' : '#18181b',
           tabBarInactiveTintColor: isDark ? '#a4a7b2' : '#94a3b8',
-          // Floating pill rather than a bar pinned to the screen edge: it is detached from
-          // the bottom and sides, fully rounded, and lifted with a shadow, matching the web
-          // navigation. Absolute positioning is what frees it from the edge, so screens
-          // underneath need bottom padding to clear it -- see TAB_BAR_CLEARANCE.
+          // Edge-to-edge bar sitting on the bottom of the screen: square corners, full width,
+          // and part of the layout rather than floating above it. Because it reserves its own
+          // space again, screens no longer need to pad around it.
           tabBarStyle: {
-            position: 'absolute',
-            // left/right pin the pill's width; the margins are what actually inset it from
-            // the screen edges, since the navigator's own container spans the full width.
-            left: 0,
-            right: 0,
-            bottom: Math.max(insets.bottom, 10),
-            marginHorizontal: 16,
-            height: 64,
-            paddingTop: 8,
-            paddingBottom: 8,
-            borderRadius: 28,
-            borderTopWidth: 0,
+            height: 56 + insets.bottom,
+            paddingTop: 6,
+            paddingBottom: Math.max(insets.bottom, 6),
+            borderTopWidth: StyleSheet.hairlineWidth,
+            borderTopColor: isDark ? '#2a2b33' : '#e8eaee',
             backgroundColor: isDark ? '#1b1c22' : '#ffffff',
-            shadowColor: '#000',
-            shadowOpacity: isDark ? 0.4 : 0.12,
-            shadowRadius: 16,
-            shadowOffset: { width: 0, height: 6 },
-            elevation: 12,
+            elevation: 0,
           },
-          tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
+          tabBarLabelStyle: { fontSize: 10, fontWeight: '600', marginTop: 1 },
+          tabBarIconStyle: { marginBottom: -2 },
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon routeName={route.name as keyof typeof icons} color={color} size={size} focused={focused} />
           ),
