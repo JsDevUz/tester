@@ -1,4 +1,4 @@
-import { useEffect, useLayoutEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import {
   ArrowLeft,
@@ -38,12 +38,12 @@ import { CourseModulesSidebar } from "../components/course/CourseModulesSidebar"
 import { LessonReader } from "../components/course/LessonContentRenderer";
 
 export function MyCoursesPage() {
-  const { schoolId } = useParams<{ schoolId: string }>();
+  const { schoolId, courseId: routeCourseId, lessonId: routeLessonId } =
+    useParams<{ schoolId: string; courseId?: string; lessonId?: string }>();
   const navigate = useNavigate();
   const [courses, setCourses] = useState<ApiMyCourse[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
-  const [selectedCourseId, setSelectedCourseId] = useState<string | null>(null);
   const [leaderboardCourse, setLeaderboardCourse] = useState<ApiMyCourse | null>(null);
 
   function loadCourses() {
@@ -66,14 +66,24 @@ export function MyCoursesPage() {
     void loadCourses();
   }, [schoolId]);
 
-  if (selectedCourseId) {
+  // Stable identity: the reader syncs the URL from an effect, and a fresh callback each render
+  // would make that effect re-run forever.
+  const handleSelectLesson = useCallback(
+    (lessonId: string) =>
+      navigate(`/schools/${schoolId}/courses/${routeCourseId}/lessons/${lessonId}`, {
+        replace: true,
+      }),
+    [navigate, schoolId, routeCourseId],
+  );
+
+  if (routeCourseId) {
     return (
       <StudentCourseReader
-        courseId={selectedCourseId}
-        onBack={() => {
-          setSelectedCourseId(null);
-          void loadCourses();
-        }}
+        key={routeCourseId}
+        courseId={routeCourseId}
+        lessonIdFromUrl={routeLessonId ?? null}
+        onSelectLesson={handleSelectLesson}
+        onBack={() => navigate(`/schools/${schoolId}/courses`)}
       />
     );
   }
@@ -128,7 +138,7 @@ export function MyCoursesPage() {
               >
                 <button
                   type="button"
-                  onClick={() => setSelectedCourseId(c.courseId)}
+                  onClick={() => navigate(`/schools/${schoolId}/courses/${c.courseId}`)}
                   className="flex flex-1 w-full flex-col justify-between gap-5 text-left cursor-pointer"
                 >
                   <div className="flex items-start justify-between gap-4">
@@ -208,16 +218,21 @@ export function MyCoursesPage() {
 
 function StudentCourseReader({
   courseId,
+  lessonIdFromUrl,
+  onSelectLesson,
   onBack,
 }: {
   courseId: string;
+  /** Lesson the URL asks for, or null to fall back to where the student left off. */
+  lessonIdFromUrl: string | null;
+  onSelectLesson: (lessonId: string) => void;
   onBack: () => void;
 }) {
   const navigate = useNavigate();
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(lessonIdFromUrl);
   const [mobileLessonsOpen, setMobileLessonsOpen] = useState(false);
   const [showPractice, setShowPractice] = useState(false);
   const [activeTest, setActiveTest] = useState<{
@@ -234,6 +249,18 @@ function StudentCourseReader({
       .then((data) => {
         setCourse(data);
         const allLessons = data.modules.flatMap((m) => m.lessons);
+
+        // A lesson named in the URL wins: the student followed a link or reloaded the page,
+        // and either way that is the lesson they asked for. Resume only decides where to
+        // start when the URL carries no lesson.
+        const urlLesson = lessonIdFromUrl
+          ? allLessons.find((l) => l.id === lessonIdFromUrl)
+          : undefined;
+        if (urlLesson) {
+          setSelectedLessonId(urlLesson.id);
+          return;
+        }
+
         const lastViewedId = localStorage.getItem(`course:${courseId}:lastLessonId`);
         const lastViewedLesson = allLessons.find((l) => l.id === lastViewedId);
         if (lastViewedLesson) {
@@ -323,7 +350,11 @@ function StudentCourseReader({
   useEffect(() => {
     if (!selectedLessonId) return;
     localStorage.setItem(`course:${courseId}:lastLessonId`, selectedLessonId);
-  }, [courseId, selectedLessonId]);
+    // Keep the address bar on the lesson being read. This replaces rather than pushes: moving
+    // between lessons should not stack up history entries the Back button has to walk through
+    // one at a time before it can leave the course.
+    if (selectedLessonId !== lessonIdFromUrl) onSelectLesson(selectedLessonId);
+  }, [courseId, selectedLessonId, lessonIdFromUrl, onSelectLesson]);
 
   useLayoutEffect(() => {
     return schedulePageScrollReset();

@@ -483,6 +483,25 @@ const router = createBrowserRouter(
       </PrivateRoute>
     ),
   },
+  // Same reasoning as the teacher-side /lessons routes: opening a course and picking a lesson
+  // used to happen in local state, so the URL stayed on the course list. A refresh lost the
+  // student's place and Back left the course entirely instead of returning to its lesson list.
+  {
+    path: "/schools/:schoolId/courses/:courseId",
+    element: (
+      <PrivateRoute>
+        <MyCoursesPage />
+      </PrivateRoute>
+    ),
+  },
+  {
+    path: "/schools/:schoolId/courses/:courseId/lessons/:lessonId",
+    element: (
+      <PrivateRoute>
+        <MyCoursesPage />
+      </PrivateRoute>
+    ),
+  },
   { path: "/my-courses", element: <Navigate to="/schools" replace /> },
   {
     path: "/messenger",

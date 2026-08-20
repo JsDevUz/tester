@@ -49,3 +49,31 @@ describe("/lessons routing", () => {
     });
   });
 });
+
+/** The student-side equivalent, under /schools/:schoolId/courses. */
+const studentRoutes: RouteObject[] = [
+  { path: "/schools/:schoolId/courses" },
+  { path: "/schools/:schoolId/courses/:courseId" },
+  { path: "/schools/:schoolId/courses/:courseId/lessons/:lessonId" },
+];
+
+describe("student course routing", () => {
+  it("matches the course list", () => {
+    const matches = matchRoutes(studentRoutes, "/schools/s-1/courses");
+    expect(matches?.[matches.length - 1]?.route.path).toBe("/schools/:schoolId/courses");
+  });
+
+  it("matches an opened course", () => {
+    const matches = matchRoutes(studentRoutes, "/schools/s-1/courses/c-2");
+    expect(matches?.[matches.length - 1]?.route.path).toBe(
+      "/schools/:schoolId/courses/:courseId",
+    );
+  });
+
+  it("matches a lesson and extracts its ids", () => {
+    const matches = matchRoutes(studentRoutes, "/schools/s-1/courses/c-2/lessons/l-3");
+    const last = matches?.[matches.length - 1];
+    expect(last?.route.path).toBe("/schools/:schoolId/courses/:courseId/lessons/:lessonId");
+    expect(last?.params).toEqual({ schoolId: "s-1", courseId: "c-2", lessonId: "l-3" });
+  });
+});
