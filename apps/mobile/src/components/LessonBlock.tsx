@@ -27,7 +27,7 @@ import {
   Radio,
 } from 'lucide-react-native';
 import type { ApiContentBlock } from '../types/api';
-import { HlsVideoPlayer } from './HlsVideoPlayer';
+import { LazyVideoPlayer } from './LazyVideoPlayer';
 import { ImageLightbox } from './ImageLightbox';
 import { PdfViewerSheet } from './PdfViewerSheet';
 
@@ -337,9 +337,10 @@ export function LessonBlock({
       );
     }
     return (
-      <HlsVideoPlayer
+      <LazyVideoPlayer
         blockId={block.id}
         title={block.label || block.fileName || 'Video dars'}
+        posterUrl={block.previewUrl}
         watermark
       />
     );

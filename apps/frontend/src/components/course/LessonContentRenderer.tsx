@@ -10,7 +10,7 @@ import {
 } from "lucide-react";
 import type { ApiMyLesson } from "../../api/groups";
 import type { ApiContentBlock } from "../../api/contentBlocks";
-import { HlsVideoPlayer } from "./HlsVideoPlayer";
+import { LazyVideoPlayer } from "./LazyVideoPlayer";
 import { ImageLightbox } from "../student/ImageLightbox";
 import { PdfViewerSheet } from "../student/PdfViewerSheet";
 import { UserAvatar } from "../UserAvatar";
@@ -80,7 +80,7 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
         </div>
       );
     }
-    return <HlsVideoPlayer blockId={block.id} watermark />;
+    return <LazyVideoPlayer blockId={block.id} posterUrl={block.previewUrl} watermark />;
   }
 
   if (block.type === "image" && block.previewUrl) {

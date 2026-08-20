@@ -102,6 +102,41 @@ export class VideoTranscodeService {
         'private, max-age=0, no-store',
       );
 
+      // Poster frame: without one the player is a black rectangle until the first segment
+      // decodes, which reads as the video being slow even when it is not. Grabbing it here
+      // costs one extra ffmpeg pass over an already-local file. A failure is non-fatal -- the
+      // video is perfectly playable without a poster.
+      let posterUrl: string | null = null;
+      try {
+        const posterPath = join(workDir, 'poster.jpg');
+        await this.runFfmpeg([
+          '-y',
+          '-ss',
+          '1',
+          '-i',
+          sourcePath,
+          '-frames:v',
+          '1',
+          '-vf',
+          'scale=640:-2',
+          '-q:v',
+          '4',
+          posterPath,
+        ]);
+        const posterKey = `${baseKey}/poster.jpg`;
+        await this.storageService.uploadBuffer(
+          posterKey,
+          await fs.readFile(posterPath),
+          'image/jpeg',
+          'public, max-age=86400, immutable',
+        );
+        posterUrl = this.storageService.getPublicUrl(posterKey);
+      } catch (posterError) {
+        this.logger.warn(
+          `Poster frame could not be produced for ${blockId}: ${posterError instanceof Error ? posterError.message : String(posterError)}`,
+        );
+      }
+
       const files = await fs.readdir(workDir);
       for (const file of files.filter((name) => name.endsWith('.ts'))) {
         await this.storageService.uploadBuffer(
@@ -120,6 +155,7 @@ export class VideoTranscodeService {
           hlsBaseKey: baseKey,
           aesKeyRef: keyRef,
           durationSec: durationSec || null,
+          ...(posterUrl ? { previewUrl: posterUrl } : {}),
           errorMessage: null,
           processedAt: new Date(),
         })

@@ -704,7 +704,10 @@ export function HlsVideoPlayer({
           paused={paused}
           rate={playbackRate}
           resizeMode="contain"
-          progressUpdateInterval={250}
+          // 250ms re-rendered this (large) component four times a second throughout playback,
+          // which costs real smoothness on a low-end phone. 500ms still updates the clock
+          // often enough to look continuous, since it only displays whole seconds.
+          progressUpdateInterval={500}
           preventsDisplaySleepDuringVideoPlayback
           ignoreSilentSwitch="ignore"
           // Keep audio running when the screen locks or the user switches apps, so a lesson

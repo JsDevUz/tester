@@ -5,7 +5,7 @@ import {
 } from 'lucide-react';
 import type { ContentBlock } from '../../stores/courseStore';
 import { EditorBlock } from './EditorBlock';
-import { HlsVideoPlayer } from './HlsVideoPlayer';
+import { LazyVideoPlayer } from './LazyVideoPlayer';
 
 interface ButtonProps {
   buttonUrl?: string;
@@ -302,7 +302,7 @@ export function ContentBlockView({
               )}
 
               {!block.embedUrl && block.type === 'video' && block.processingStatus === 'ready' && (
-                <HlsVideoPlayer blockId={block.id} />
+                <LazyVideoPlayer blockId={block.id} posterUrl={block.previewUrl} />
               )}
 
               {!block.embedUrl && block.type === 'video' && block.processingStatus === 'ready' && (
