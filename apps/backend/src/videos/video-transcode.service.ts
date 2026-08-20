@@ -40,37 +40,6 @@ export class VideoTranscodeService {
     });
   }
 
-  /**
-   * Source height, so the ladder is built from what the video actually is.
-   *
-   * Returns null when probing fails; the caller then treats the source as 1080p, which is the
-   * safe assumption -- capping means a smaller source still will not be upscaled.
-   */
-  private async probeHeight(sourcePath: string): Promise<number | null> {
-    return new Promise((resolve) => {
-      const child = spawn(
-        'ffprobe',
-        [
-          '-v', 'error',
-          '-select_streams', 'v:0',
-          '-show_entries', 'stream=height',
-          '-of', 'csv=p=0',
-          sourcePath,
-        ],
-        { stdio: ['ignore', 'pipe', 'ignore'] },
-      );
-      let out = '';
-      child.stdout.on('data', (chunk) => {
-        out += chunk.toString();
-      });
-      child.on('error', () => resolve(null));
-      child.on('close', () => {
-        const height = Number.parseInt(out.trim(), 10);
-        resolve(Number.isFinite(height) && height > 0 ? height : null);
-      });
-    });
-  }
-
   async process(blockId: string): Promise<void> {
     const block = await db.query.contentBlocks.findFirst({ where: eq(contentBlocks.id, blockId) });
     if (!block || block.type !== 'video' || !block.sourceKey) return;
@@ -95,88 +64,36 @@ export class VideoTranscodeService {
       await fs.writeFile(keyPath, key);
       await fs.writeFile(keyInfoPath, `${keyUri}\n${keyPath}\n`);
 
+      const segmentPattern = join(workDir, 'segment_%03d.ts');
       const manifestPath = join(workDir, 'master.m3u8');
-      const segmentSeconds = this.segmentSeconds();
-      const fps = 25;
 
-      // One rendition meant a phone on a weak connection had nothing to fall back to but the
-      // full-bitrate stream, which is the main reason video stalls on mobile. Three renditions
-      // let the player start low and climb, and let a viewer pick a quality by hand.
-      //
-      // Heights are capped, never upscaled: a 480p source stays 480p rather than being blown
-      // up to 1080p, which would cost bitrate for no picture.
-      const sourceHeight = (await this.probeHeight(sourcePath)) ?? 1080;
-      const ladder = [
-        { height: 1080, videoBitrate: '3500k', maxrate: '3900k', bufsize: '7000k', audioBitrate: '128k' },
-        { height: 720, videoBitrate: '2000k', maxrate: '2200k', bufsize: '4000k', audioBitrate: '128k' },
-        { height: 480, videoBitrate: '900k', maxrate: '1000k', bufsize: '1800k', audioBitrate: '96k' },
-      ];
-      // Only rungs the source can actually fill. A 480p upload would otherwise be encoded
-      // three times at the same resolution -- triple the storage and CPU for one picture.
-      // The lowest rung is always kept so there is something to fall back to on a weak
-      // connection, even for a small source.
-      const applicable = ladder.filter((r) => r.height <= sourceHeight);
-      const renditions = applicable.length > 0 ? applicable : [ladder[ladder.length - 1]];
-
-      const scaleFilters = renditions
-        .map(
-          (r, index) =>
-            `[0:v]scale=-2:'min(${r.height},ih)':force_original_aspect_ratio=decrease[v${index}]`,
-        )
-        .join(';');
-
-      const args: string[] = ['-y', '-i', sourcePath, '-filter_complex', `${scaleFilters}`];
-
-      renditions.forEach((r, index) => {
-        args.push(
-          '-map', `[v${index}]`,
-          '-map', 'a:0?',
-          `-c:v:${index}`, 'libx264',
-          `-preset`, 'veryfast',
-          // Without an explicit cap x264 chases quality and produces bitrates far above what
-          // the rendition promises, which defeats the point of having a ladder.
-          `-b:v:${index}`, r.videoBitrate,
-          `-maxrate:v:${index}`, r.maxrate,
-          `-bufsize:v:${index}`, r.bufsize,
-          `-c:a:${index}`, 'aac',
-          `-b:a:${index}`, r.audioBitrate,
-          `-ac`, '2',
-        );
-      });
-
-      args.push(
-        // Keyframes exactly on segment boundaries. x264's default GOP of 250 frames made
-        // actual segments longer than requested, delaying the first frame and preventing
-        // clean switching between renditions.
-        '-g', String(segmentSeconds * fps),
-        '-keyint_min', String(segmentSeconds * fps),
-        '-sc_threshold', '0',
-        '-force_key_frames', `expr:gte(t,n_forced*${segmentSeconds})`,
-        '-f', 'hls',
-        '-hls_time', String(segmentSeconds),
-        '-hls_playlist_type', 'vod',
-        // fMP4 rather than MPEG-TS: smaller, and the only container iOS can open as a
-        // standalone file, which is what unlocks offline playback there.
-        '-hls_segment_type', 'fmp4',
-        '-hls_fmp4_init_filename', 'init_%v.mp4',
-        '-hls_key_info_file', keyInfoPath,
-        '-hls_segment_filename', join(workDir, 'stream_%v_%03d.m4s'),
-        '-master_pl_name', 'master.m3u8',
-        '-var_stream_map', renditions.map((_, index) => `v:${index},a:${index}`).join(' '),
-        join(workDir, 'stream_%v.m3u8'),
-      );
-
-      await this.runFfmpeg(args);
+      await this.runFfmpeg([
+        '-y',
+        '-i',
+        sourcePath,
+        '-c:v',
+        'libx264',
+        '-preset',
+        'veryfast',
+        '-c:a',
+        'aac',
+        '-hls_time',
+        String(this.segmentSeconds()),
+        '-hls_playlist_type',
+        'vod',
+        '-hls_key_info_file',
+        keyInfoPath,
+        '-hls_segment_filename',
+        segmentPattern,
+        manifestPath,
+      ]);
 
       const baseKey = `videos/${block.lessonId}/${block.id}/hls`;
       const keyRef = `videos/${block.lessonId}/${block.id}/keys/aes.key`;
       const masterKey = `${baseKey}/master.m3u8`;
       const manifest = await fs.readFile(manifestPath, 'utf8');
-      // The master playlist now lists renditions, not segments, so its #EXTINF lines are gone.
-      // Duration comes from any one variant -- they all cover the same source.
-      const firstVariant = await fs.readFile(join(workDir, 'stream_0.m3u8'), 'utf8');
       const durationSec = Math.ceil(
-        [...firstVariant.matchAll(/#EXTINF:([0-9.]+)/g)].reduce((total, match) => total + Number(match[1]), 0),
+        [...manifest.matchAll(/#EXTINF:([0-9.]+)/g)].reduce((total, match) => total + Number(match[1]), 0),
       );
 
       await this.storageService.uploadBuffer(keyRef, key, 'application/octet-stream', 'private, max-age=0, no-store');
@@ -222,22 +139,12 @@ export class VideoTranscodeService {
         );
       }
 
-      // Everything the players need: variant playlists, the fMP4 init segments that carry the
-      // codec setup, and the media segments themselves.
       const files = await fs.readdir(workDir);
-      const uploadable = files.filter(
-        (name) =>
-          (name.startsWith('stream_') && (name.endsWith('.m4s') || name.endsWith('.m3u8'))) ||
-          (name.startsWith('init_') && name.endsWith('.mp4')),
-      );
-      for (const file of uploadable) {
-        const contentType = file.endsWith('.m3u8')
-          ? 'application/vnd.apple.mpegurl'
-          : 'video/mp4';
+      for (const file of files.filter((name) => name.endsWith('.ts'))) {
         await this.storageService.uploadBuffer(
           `${baseKey}/${basename(file)}`,
           await fs.readFile(join(workDir, file)),
-          contentType,
+          'video/mp2t',
           'private, max-age=3600',
         );
       }
