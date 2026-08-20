@@ -431,6 +431,34 @@ const router = createBrowserRouter(
       </TeacherRoute>
     ),
   },
+  // The course workspace used to switch between its eight views in local state, leaving the
+  // URL stuck at /lessons: a refresh dropped you back at the course list, links could not be
+  // shared, and Back jumped out of the section entirely instead of stepping up one level.
+  // Each view is its own path now, so history and the address bar follow what is on screen.
+  {
+    path: "/lessons/:courseId",
+    element: (
+      <TeacherRoute>
+        <CoursesPage />
+      </TeacherRoute>
+    ),
+  },
+  {
+    path: "/lessons/:courseId/:section",
+    element: (
+      <TeacherRoute>
+        <CoursesPage />
+      </TeacherRoute>
+    ),
+  },
+  {
+    path: "/lessons/:courseId/modules/:moduleId/lessons/:lessonId",
+    element: (
+      <TeacherRoute>
+        <CoursesPage />
+      </TeacherRoute>
+    ),
+  },
   {
     path: "/free-classes",
     element: (

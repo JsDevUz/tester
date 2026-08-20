@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect } from 'react';
+import { useNavigate, useParams } from 'react-router-dom';
 import { AppShell } from '../components/AppShell';
 import { CourseGrid } from '../components/course/CourseGrid';
 import { CourseContentPage } from '../components/course/CourseContentPage';
@@ -10,109 +11,122 @@ import { CourseChallengesPage } from '../components/course/CourseChallengesPage'
 import { LessonEditorView } from '../components/course/LessonEditorView';
 import { useCourseStore } from '../stores/courseStore';
 
-type ViewState =
-  | { view: 'list' }
-  | { view: 'content'; courseId: string }
-  | { view: 'settings'; courseId: string }
-  | { view: 'launch'; courseId: string }
-  | { view: 'groups'; courseId: string }
-  | { view: 'classes'; courseId: string }
-  | { view: 'challenges'; courseId: string }
-  | { view: 'editor'; courseId: string; moduleId: string; lessonId: string };
+/** The course sub-pages that live under /lessons/:courseId/<section>. */
+const SECTIONS = ['settings', 'launch', 'groups', 'classes', 'challenges'] as const;
+type Section = (typeof SECTIONS)[number];
 
+function isSection(value: string | undefined): value is Section {
+  return !!value && (SECTIONS as readonly string[]).includes(value);
+}
+
+/**
+ * Every view here is addressable. The URL is the single source of truth for which one is
+ * showing, so a refresh keeps its place, a link can be shared, and Back steps up one level
+ * (lesson → content → course list) instead of leaving the section altogether.
+ */
 export function CoursesPage() {
-  const [state, setState] = useState<ViewState>({ view: 'list' });
+  const navigate = useNavigate();
+  const { courseId, section, moduleId, lessonId } = useParams();
   const loadCourses = useCourseStore((s) => s.loadCourses);
 
   useEffect(() => {
     void loadCourses().catch(() => undefined);
   }, [loadCourses]);
 
-  function backToList() {
-    setState({ view: 'list' });
-  }
+  const backToList = () => navigate('/lessons');
+  const goToSection = (target: Section | 'content') =>
+    navigate(target === 'content' ? `/lessons/${courseId}` : `/lessons/${courseId}/${target}`);
+
+  // An unknown :section (a typo, a stale link) falls back to the course content rather than
+  // rendering nothing at all.
+  const activeSection: Section | 'content' = isSection(section) ? section : 'content';
 
   return (
     <AppShell>
-      {state.view === 'list' && (
-        <CourseGrid onOpenCourse={(courseId) => setState({ view: 'content', courseId })} />
-      )}
-      {state.view === 'content' && (
-        <CourseContentPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onOpenLesson={(moduleId, lessonId) =>
-            setState({ view: 'editor', courseId: state.courseId, moduleId, lessonId })
-          }
-          onSelectSettings={() => setState({ view: 'settings', courseId: state.courseId })}
-          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
-          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
-          onSelectClasses={() => setState({ view: 'classes', courseId: state.courseId })}
-          onSelectChallenges={() => setState({ view: 'challenges', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'settings' && (
-        <CourseSettingsPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
-          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
-          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
-          onSelectClasses={() => setState({ view: 'classes', courseId: state.courseId })}
-          onSelectChallenges={() => setState({ view: 'challenges', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'launch' && (
-        <CourseLaunchPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
-          onSelectSettings={() => setState({ view: 'settings', courseId: state.courseId })}
-          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
-          onSelectClasses={() => setState({ view: 'classes', courseId: state.courseId })}
-          onSelectChallenges={() => setState({ view: 'challenges', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'groups' && (
-        <CourseGroupsPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
-          onSelectSettings={() => setState({ view: 'settings', courseId: state.courseId })}
-          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
-          onSelectClasses={() => setState({ view: 'classes', courseId: state.courseId })}
-          onSelectChallenges={() => setState({ view: 'challenges', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'classes' && (
-        <CourseClassesPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
-          onSelectSettings={() => setState({ view: 'settings', courseId: state.courseId })}
-          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
-          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
-          onSelectChallenges={() => setState({ view: 'challenges', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'challenges' && (
-        <CourseChallengesPage
-          courseId={state.courseId}
-          onBackToList={backToList}
-          onSelectContent={() => setState({ view: 'content', courseId: state.courseId })}
-          onSelectSettings={() => setState({ view: 'settings', courseId: state.courseId })}
-          onSelectLaunch={() => setState({ view: 'launch', courseId: state.courseId })}
-          onSelectGroups={() => setState({ view: 'groups', courseId: state.courseId })}
-          onSelectClasses={() => setState({ view: 'classes', courseId: state.courseId })}
-        />
-      )}
-      {state.view === 'editor' && (
+      {!courseId && <CourseGrid onOpenCourse={(id) => navigate(`/lessons/${id}`)} />}
+
+      {courseId && moduleId && lessonId && (
         <LessonEditorView
-          courseId={state.courseId}
-          moduleId={state.moduleId}
-          lessonId={state.lessonId}
+          courseId={courseId}
+          moduleId={moduleId}
+          lessonId={lessonId}
           onBackToList={backToList}
-          onBackToContent={() => setState({ view: 'content', courseId: state.courseId })}
+          onBackToContent={() => goToSection('content')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'content' && (
+        <CourseContentPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onOpenLesson={(mId, lId) =>
+            navigate(`/lessons/${courseId}/modules/${mId}/lessons/${lId}`)
+          }
+          onSelectSettings={() => goToSection('settings')}
+          onSelectLaunch={() => goToSection('launch')}
+          onSelectGroups={() => goToSection('groups')}
+          onSelectClasses={() => goToSection('classes')}
+          onSelectChallenges={() => goToSection('challenges')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'settings' && (
+        <CourseSettingsPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onSelectContent={() => goToSection('content')}
+          onSelectLaunch={() => goToSection('launch')}
+          onSelectGroups={() => goToSection('groups')}
+          onSelectClasses={() => goToSection('classes')}
+          onSelectChallenges={() => goToSection('challenges')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'launch' && (
+        <CourseLaunchPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onSelectContent={() => goToSection('content')}
+          onSelectSettings={() => goToSection('settings')}
+          onSelectGroups={() => goToSection('groups')}
+          onSelectClasses={() => goToSection('classes')}
+          onSelectChallenges={() => goToSection('challenges')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'groups' && (
+        <CourseGroupsPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onSelectContent={() => goToSection('content')}
+          onSelectSettings={() => goToSection('settings')}
+          onSelectLaunch={() => goToSection('launch')}
+          onSelectClasses={() => goToSection('classes')}
+          onSelectChallenges={() => goToSection('challenges')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'classes' && (
+        <CourseClassesPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onSelectContent={() => goToSection('content')}
+          onSelectSettings={() => goToSection('settings')}
+          onSelectLaunch={() => goToSection('launch')}
+          onSelectGroups={() => goToSection('groups')}
+          onSelectChallenges={() => goToSection('challenges')}
+        />
+      )}
+
+      {courseId && !moduleId && activeSection === 'challenges' && (
+        <CourseChallengesPage
+          courseId={courseId}
+          onBackToList={backToList}
+          onSelectContent={() => goToSection('content')}
+          onSelectSettings={() => goToSection('settings')}
+          onSelectLaunch={() => goToSection('launch')}
+          onSelectGroups={() => goToSection('groups')}
+          onSelectClasses={() => goToSection('classes')}
         />
       )}
     </AppShell>
