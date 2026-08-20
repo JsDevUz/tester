@@ -390,20 +390,31 @@ function drawShape(
 
   const radius = s.edges === "round" ? Math.min(width, height) * 0.12 : 0;
 
-  const buildPath = () => {
+  // `inset` shifts the path outwards (negative) or inwards. Canvas always strokes centred on
+  // the path, so drawing the outline on a path expanded by half the line width puts the whole
+  // stroke OUTSIDE the shape's declared bounds -- the shape keeps the size the user dragged
+  // instead of the outline eating into it. Fill and clip still use the true bounds.
+  const buildPath = (inset = 0) => {
     if (s.tool === "ellipse") {
       ctx.beginPath();
       ctx.ellipse(
         x + width / 2,
         y + height / 2,
-        width / 2,
-        height / 2,
+        Math.max(0.01, width / 2 - inset),
+        Math.max(0.01, height / 2 - inset),
         0,
         0,
         Math.PI * 2,
       );
     } else {
-      drawRoundRectPath(ctx, x, y, width, height, radius);
+      drawRoundRectPath(
+        ctx,
+        x + inset,
+        y + inset,
+        Math.max(0.01, width - inset * 2),
+        Math.max(0.01, height - inset * 2),
+        Math.max(0, radius - inset),
+      );
     }
   };
 
@@ -431,7 +442,7 @@ function drawShape(
 
   ctx.globalAlpha = strokeAlpha;
   if (strokeStyle !== "none") {
-    buildPath();
+    buildPath(-ctx.lineWidth / 2);
     ctx.stroke();
   }
   if (s.text?.trim()) {

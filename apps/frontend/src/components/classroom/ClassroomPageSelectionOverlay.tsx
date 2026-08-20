@@ -1,8 +1,6 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { RotateCw } from "lucide-react";
 
-/** How far the selection frame sits outside the shape it surrounds. */
-const SELECTION_FRAME_GAP_PX = 4;
 import type { CsStroke } from "../../api/classroom";
 import {
   REF_WIDTH,
@@ -12,6 +10,16 @@ import { connectorCurvePoint } from "./classroomShapeBindings";
 import { TextStylePanel } from "./ClassroomTextStylePanel";
 import { ShapeStylePanel } from "./ClassroomShapeStylePanel";
 import { AutoFlipPositioner } from "./AutoFlipPositioner";
+
+/**
+ * How far the selection frame sits outside the shape it surrounds, in CSS pixels.
+ * Scaled with the page so the gap looks constant at any zoom -- a fixed value left the frame
+ * floating away from the shape once zoomed out.
+ */
+function selectionFrameGap(surfaceWidth: number): number {
+  return Math.max(2, Math.round(4 * (surfaceWidth / REF_WIDTH)));
+}
+
 import type { DrawTool } from "./ClassroomPdfPage";
 
 interface ClassroomPageSelectionOverlayProps {
@@ -128,8 +136,8 @@ export function ClassroomPageSelectionOverlay({
               className="pointer-events-none absolute z-20"
               style={{
                 border: "1px solid #6366f1",
-                margin: `-${SELECTION_FRAME_GAP_PX}px`,
-                padding: `${SELECTION_FRAME_GAP_PX}px`,
+                margin: `-${selectionFrameGap(size.w)}px`,
+                padding: `${selectionFrameGap(size.w)}px`,
                 boxSizing: "content-box",
                 left: `${selectedText.points[0] * 100}%`,
                 top: `${selectedText.points[1] * 100}%`,
@@ -457,8 +465,8 @@ export function ClassroomPageSelectionOverlay({
                 top: `${Math.min(selectedShape.points[1], selectedShape.points[3]) * 100}%`,
                 width: `${Math.abs(selectedShape.points[2] - selectedShape.points[0]) * 100}%`,
                 height: `${Math.abs(selectedShape.points[3] - selectedShape.points[1]) * 100}%`,
-                margin: `-${SELECTION_FRAME_GAP_PX}px`,
-                padding: `${SELECTION_FRAME_GAP_PX}px`,
+                margin: `-${selectionFrameGap(size.w)}px`,
+                padding: `${selectionFrameGap(size.w)}px`,
                 boxSizing: "content-box",
                 transform: `rotate(${selectedShape.rotation ?? 0}deg)`,
                 transformOrigin: "center",
