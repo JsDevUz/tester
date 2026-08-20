@@ -121,6 +121,7 @@ export function useClassroomSession(
   }));
   const stateRef = useRef(state);
   stateRef.current = state;
+  const rejoinRef = useRef<(() => void) | null>(null);
   const clientUndoStackRef = useRef<ClientUndoEntry[]>([]);
   const clientRedoStackRef = useRef<ClientUndoEntry[]>([]);
   const [canUndo, setCanUndo] = useState(false);
@@ -243,8 +244,21 @@ export function useClassroomSession(
     } else {
       socket.connect();
     }
+    // Kept so a manual "resync" button can ask for a fresh snapshot without reloading.
+    rejoinRef.current = join;
+
     socket.on("connect", join);
     socket.on("connect_error", onConnectError);
+
+    // Coming back to the tab is the cheapest moment to notice a connection that died while it
+    // was hidden -- browsers throttle background timers, so socket.io's own ping can take much
+    // longer to spot it. Mobile already does this via AppState.
+    const onVisible = () => {
+      if (document.visibilityState !== "visible") return;
+      if (socket.connected) join();
+      else socket.connect();
+    };
+    document.addEventListener("visibilitychange", onVisible);
 
     socket.on("presence:update", (p: { participants: CsParticipant[] }) => {
       setState((s) => ({ ...s, participants: p.participants }));
@@ -372,6 +386,7 @@ export function useClassroomSession(
     });
 
     return () => {
+      document.removeEventListener("visibilitychange", onVisible);
       socket.off("connect", join);
       socket.off("connect_error", onConnectError);
       socket.off("pdf:set");
@@ -943,10 +958,20 @@ export function useClassroomSession(
     socket.emit("hand:lowerUser", { sessionId: sessionIdRef.current, token, targetUserId });
   }, []);
 
+  /**
+   * Pulls a fresh snapshot from the server. student:join already returns the whole board, so
+   * this is a full resync -- the escape hatch when a client ends up out of step and the only
+   * alternative was reloading the page.
+   */
+  const resync = useCallback(() => {
+    rejoinRef.current?.();
+  }, []);
+
   return {
     state,
     canUndo,
     canRedo,
+    resync,
     hostActions: {
       ...hostActions,
       lowerAllHands,

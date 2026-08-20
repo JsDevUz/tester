@@ -13,7 +13,15 @@ interface JwtUser { sub: string; name: string; role: string }
 
 interface BaseBody { sessionId: string; token: string }
 
-@WebSocketGateway({ namespace: '/classroom', cors: { origin: getAllowedOrigins() } })
+// pingInterval/pingTimeout are tightened from the 25s/20s defaults: a connection that dies
+// quietly -- a NAT table entry expiring, a phone sleeping -- is otherwise only noticed after
+// 45 seconds, during which the student stares at a frozen board with no warning.
+@WebSocketGateway({
+  namespace: '/classroom',
+  cors: { origin: getAllowedOrigins() },
+  pingInterval: 10_000,
+  pingTimeout: 10_000,
+})
 export class ClassroomGateway implements OnGatewayInit, OnGatewayDisconnect {
   @WebSocketServer() server!: Namespace;
 

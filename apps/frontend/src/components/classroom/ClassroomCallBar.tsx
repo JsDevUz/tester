@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Hand, PhoneOff, Smile } from "lucide-react";
+import { Hand, PhoneOff, RefreshCw, Smile } from "lucide-react";
 import { MicControl } from "./MicControl";
 
 const STICKER_EMOJIS = ['💖', '👍', '🎉', '👏', '😂', '😮', '😢', '🤔', '👎'];
@@ -16,6 +16,8 @@ interface Props {
   micDisabled: boolean;
   /** Shows a "reconnecting" badge so a dropped connection is visible rather than silent. */
   voiceReconnecting?: boolean;
+  /** Pulls a fresh board snapshot; the alternative used to be reloading the page. */
+  onResync?: () => void;
   onEndCall: () => void;
   endCallTitle: string;
   hidden?: boolean;
@@ -30,7 +32,8 @@ export function ClassroomCallBar({
   micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput,
   audioOutputs, activeAudioOutputId, onSwitchAudioOutput,
   micDisabled,
-  voiceReconnecting = false, onEndCall, endCallTitle, hidden, menu, theme = 'light',
+  voiceReconnecting = false,
+  onResync, onEndCall, endCallTitle, hidden, menu, theme = 'light',
   onSendReaction, handRaised, onToggleHandRaise,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -115,6 +118,18 @@ export function ClassroomCallBar({
         <div className="relative">
           {menu}
         </div>
+      )}
+
+      {onResync && (
+        <button
+          type="button"
+          onClick={onResync}
+          title="Sinxronlash"
+          aria-label="Doskani sinxronlash"
+          className="flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white backdrop-blur-md transition-colors hover:bg-white/20"
+        >
+          <RefreshCw size={18} />
+        </button>
       )}
 
       {/* Chiqish */}

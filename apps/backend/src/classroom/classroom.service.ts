@@ -162,10 +162,31 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
   // persistChain orqali onApplicationShutdown bilan navbatlashadi — bo'lmasa
   // interval'ning eski xotiradan olingan yozuvi shutdown'dagi yangi
   // yozuvdan KEYIN tugab, uni ustidan bosib yozib yuborishi mumkin edi.
+  /**
+   * Sessions touched since their last save. onBoardMutation already persists 1.5s after a
+   * change, so the interval below is a safety net for anything that slipped through -- not a
+   * reason to re-serialise every open lesson on a timer.
+   */
+  private readonly dirtySessions = new Set<string>();
+
   @Interval(15_000)
   private autoPersistActiveSessions(): void {
+    if (this.dirtySessions.size === 0) return;
+
+    // Serialising a whole board to JSONB happens on the event loop, and the row grows all
+    // lesson. Writing every session every 15s made that cost land on ALL connected users at
+    // once -- the periodic stutter in long lessons. Only sessions that actually changed are
+    // written now.
+    const pending = new Map<string, ClassroomSession>();
+    for (const id of this.dirtySessions) {
+      const session = this.sessions.get(id);
+      if (session) pending.set(id, session);
+    }
+    this.dirtySessions.clear();
+    if (pending.size === 0) return;
+
     this.persistChain = this.persistChain.then(() =>
-      this.snapshotSvc.autoSaveSnapshots(this.sessions),
+      this.snapshotSvc.autoSaveSnapshots(pending),
     );
   }
 
@@ -738,6 +759,7 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
 
   private onBoardMutation(s: ClassroomSession): void {
     s.activeVersionId = 'current';
+    this.dirtySessions.add(s.id);
     if (s.attachedBoardId) {
       const attached = this.sessions.get(s.attachedBoardId);
       if (attached) attached.activeVersionId = 'current';

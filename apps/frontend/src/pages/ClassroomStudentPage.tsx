@@ -52,7 +52,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
   }, [isFreeRoute, token, admin]);
 
   const needsGuestForm = isFreeRoute && !meLoading && !admin && guestNameSubmitted === null;
-  const { state, sendReaction, toggleHandRaise } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
+  const { state, sendReaction, toggleHandRaise, resync } = useClassroomSession(id, "student", guestNameSubmitted ?? undefined);
   const myUserId = admin?.id ?? (guestNameSubmitted ? `guest:${getGuestId()}` : null);
   // Guest uchun admin.id yo'q — server socket ID yoki guestName asosida saqlaydi.
   // raisedHands da userId bor, shuning uchun admin.id ham, guestName ham bo'lishi mumkin.
@@ -352,6 +352,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
       <ClassroomCallBar
         micEnabled={voice.micEnabled}
         voiceReconnecting={voice.reconnecting}
+        onResync={resync}
         onToggleMic={() => void voice.toggleMic()}
         audioInputs={voice.audioInputs}
         activeAudioInputId={voice.activeAudioInputId}
