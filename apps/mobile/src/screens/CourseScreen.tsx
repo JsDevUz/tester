@@ -63,6 +63,17 @@ export function CourseScreen({route, navigation}: Props) {
   const isDark = colorScheme === 'dark';
 
   const load = useCallback(async () => {
+    // Paint the cached course first so opening one is instant; the request below still runs
+    // and replaces this with fresh data (or, on an access error, clears it). Access checks are
+    // unaffected: a denied response still wipes the cache in the catch block.
+    const cachedCourse = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(
+      `cache:course:${courseId}`,
+    );
+    if (cachedCourse) {
+      setCourse(cachedCourse.data);
+      setStale(true);
+    }
+
     try {
       const data = await apiGetMyCourseDetail(courseId);
       setCourse(data);

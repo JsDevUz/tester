@@ -8,7 +8,7 @@ jest.mock('@react-native-async-storage/async-storage', () => ({
   removeItem: (...args: unknown[]) => mockRemoveItem(...args),
 }));
 
-import {storage, cached} from '../src/lib/storage';
+import {storage, cached, cachedFirst} from '../src/lib/storage';
 
 describe('storage', () => {
   beforeEach(() => {
@@ -75,5 +75,68 @@ describe('cached', () => {
     const request = jest.fn().mockRejectedValueOnce(error);
 
     await expect(cached('courses', request)).rejects.toBe(error);
+  });
+
+  describe('cachedFirst', () => {
+    it('returns the cached copy immediately without waiting for the request', async () => {
+      mockGetItem.mockResolvedValueOnce(
+        JSON.stringify({data: {items: ['cached']}, savedAt: 1000}),
+      );
+      // A request that never settles: if cachedFirst awaited it, this test would time out.
+      const request = jest.fn(() => new Promise<never>(() => {}));
+
+      const result = await cachedFirst('courses', request, jest.fn());
+
+      expect(result).toEqual({data: {items: ['cached']}, fromCache: true});
+    });
+
+    it('waits for the network when nothing is cached', async () => {
+      mockGetItem.mockResolvedValueOnce(null);
+      const request = jest.fn().mockResolvedValueOnce({items: ['fresh']});
+
+      const result = await cachedFirst('courses', request, jest.fn());
+
+      expect(result).toEqual({data: {items: ['fresh']}, fromCache: false});
+    });
+
+    it('calls onFresh when the refreshed payload differs from the cache', async () => {
+      mockGetItem.mockResolvedValueOnce(
+        JSON.stringify({data: {items: ['old']}, savedAt: 1000}),
+      );
+      const request = jest.fn().mockResolvedValueOnce({items: ['new']});
+      const onFresh = jest.fn();
+
+      await cachedFirst('courses', request, onFresh);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(onFresh).toHaveBeenCalledWith({items: ['new']});
+    });
+
+    it('does not call onFresh when the payload is unchanged', async () => {
+      mockGetItem.mockResolvedValueOnce(
+        JSON.stringify({data: {items: ['same']}, savedAt: 1000}),
+      );
+      const request = jest.fn().mockResolvedValueOnce({items: ['same']});
+      const onFresh = jest.fn();
+
+      await cachedFirst('courses', request, onFresh);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(onFresh).not.toHaveBeenCalled();
+    });
+
+    it('keeps showing the cache when the refresh fails', async () => {
+      mockGetItem.mockResolvedValueOnce(
+        JSON.stringify({data: {items: ['cached']}, savedAt: 1000}),
+      );
+      const request = jest.fn().mockRejectedValueOnce(new Error('offline'));
+      const onFresh = jest.fn();
+
+      const result = await cachedFirst('courses', request, onFresh);
+      await new Promise((resolve) => setImmediate(resolve));
+
+      expect(result.data).toEqual({items: ['cached']});
+      expect(onFresh).not.toHaveBeenCalled();
+    });
   });
 });

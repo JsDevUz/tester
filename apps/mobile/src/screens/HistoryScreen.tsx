@@ -5,7 +5,7 @@ import {BookOpen, ChevronRight, Search, ThumbsUp, Trophy} from 'lucide-react-nat
 import {useColorScheme} from 'nativewind';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {api} from '../lib/api';
-import {cached} from '../lib/storage';
+import {cachedFirst} from '../lib/storage';
 import type {Submission} from '../types/api';
 import type {RootStackParamList} from '../navigation/types';
 import {Empty, Input, Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
@@ -40,12 +40,15 @@ export function HistoryScreen({
 
   const load = useCallback(async () => {
     try {
-      const r = await cached('submissions', async () => {
+      const r = await cachedFirst('submissions', async () => {
         const res = await api.get('/me/submissions', {params: {limit: 100, offset: 0}});
         return res.data as Submission[];
+      }, (fresh) => {
+        setData(fresh);
+        setStale(false);
       });
-      setData(r.data);
-      setStale(r.stale);
+      if (r.data) setData(r.data);
+      setStale(r.fromCache);
     } finally {
       setLoading(false);
       setRefreshing(false);

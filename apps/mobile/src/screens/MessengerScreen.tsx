@@ -16,7 +16,7 @@ import type { ChatPreview } from '../types/api';
 import { useLiveNotificationsStore } from '../store/liveNotificationsStore';
 import { apiGetPracticeChats } from '../api/practiceMessenger';
 import { CachedImage } from '../components/common/CachedImage';
-import { cached } from '../lib/storage';
+import { cachedFirst } from '../lib/storage';
 import { Empty, Loading, OfflineBanner, Screen, StaleNote } from '../components/Ui';
 import {TAB_BAR_CLEARANCE} from '../navigation/tabBarLayout';
 
@@ -51,9 +51,12 @@ export function MessengerScreen({ navigation }: { navigation: NativeStackNavigat
 
   const load = useCallback(async () => {
     try {
-      const r = await cached('chats', async () => (await apiGetPracticeChats()).chats);
-      setData(r.data);
-      setStale(r.stale);
+      const r = await cachedFirst('chats', async () => (await apiGetPracticeChats()).chats, (fresh) => {
+        setData(fresh);
+        setStale(false);
+      });
+      if (r.data) setData(r.data);
+      setStale(r.fromCache);
     } finally {
       setLoading(false);
       setRefreshing(false);

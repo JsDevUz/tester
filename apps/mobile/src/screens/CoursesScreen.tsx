@@ -3,7 +3,7 @@ import {FlatList, Pressable, RefreshControl, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {BookOpen, Star, Trophy, Users} from 'lucide-react-native';
 import {apiGetMyCourses} from '../api/groups';
-import {cached} from '../lib/storage';
+import {cachedFirst} from '../lib/storage';
 import type {ApiMyCourse} from '../types/api';
 import type {RootStackParamList} from '../navigation/types';
 import {Empty, Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
@@ -22,9 +22,12 @@ export function CoursesScreen({navigation, route}: Props) {
 
   const load = useCallback(async () => {
     try {
-      const r = await cached(`courses:${schoolId}`, () => apiGetMyCourses(schoolId));
-      setData(r.data);
-      setStale(r.stale);
+      const r = await cachedFirst(`courses:${schoolId}`, () => apiGetMyCourses(schoolId), (fresh) => {
+        setData(fresh);
+        setStale(false);
+      });
+      if (r.data) setData(r.data);
+      setStale(r.fromCache);
     } finally {
       setLoading(false);
       setRefreshing(false);

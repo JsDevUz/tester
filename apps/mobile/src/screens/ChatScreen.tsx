@@ -24,7 +24,7 @@ import {
   apiUpdatePracticeMessage,
 } from '../api/practiceMessenger';
 import { connectPracticeMessengerSocket } from '../lib/practiceMessengerSocket';
-import { cached } from '../lib/storage';
+import { cachedFirst } from '../lib/storage';
 import { Loading, OfflineBanner, StaleNote } from '../components/Ui';
 import { useNetwork } from '../providers/NetworkProvider';
 import { useAuthStore } from '../store/authStore';
@@ -66,11 +66,17 @@ export function ChatScreen({ route }: ChatProps) {
 
   const load = useCallback(async () => {
     try {
-      const r = await cached(`chat:${chatId}`, () => apiGetPracticeChat(chatId));
-      setMessages(r.data.messages);
-      setHasMore(r.data.hasMore);
-      setNextCursor(r.data.nextCursor);
-      setStale(r.stale);
+      const applyChat = (chat: Awaited<ReturnType<typeof apiGetPracticeChat>>) => {
+        setMessages(chat.messages);
+        setHasMore(chat.hasMore);
+        setNextCursor(chat.nextCursor);
+      };
+      const r = await cachedFirst(`chat:${chatId}`, () => apiGetPracticeChat(chatId), (fresh) => {
+        applyChat(fresh);
+        setStale(false);
+      });
+      if (r.data) applyChat(r.data);
+      setStale(r.fromCache);
     } finally {
       setLoading(false);
     }

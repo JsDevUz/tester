@@ -5,7 +5,7 @@ import {ChevronDown, ChevronUp, School, Search, Users, X} from 'lucide-react-nat
 import {useColorScheme} from 'nativewind';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {apiGetMySchools} from '../api/groups';
-import {cached} from '../lib/storage';
+import {cachedFirst} from '../lib/storage';
 import type {ApiMySchool} from '../types/api';
 import type {RootStackParamList} from '../navigation/types';
 import {Empty, Input, Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
@@ -59,9 +59,14 @@ export function SchoolsScreen({
 
   const load = useCallback(async () => {
     try {
-      const r = await cached('schools', apiGetMySchools);
-      setData(r.data);
-      setStale(r.stale);
+      // Cache-first: paint whatever was saved last time immediately, then refresh underneath.
+      // Waiting for the round trip before showing anything is what made every tap feel slow.
+      const r = await cachedFirst('schools', apiGetMySchools, (fresh) => {
+        setData(fresh);
+        setStale(false);
+      });
+      if (r.data) setData(r.data);
+      setStale(r.fromCache);
     } finally {
       setLoading(false);
       setRefreshing(false);
