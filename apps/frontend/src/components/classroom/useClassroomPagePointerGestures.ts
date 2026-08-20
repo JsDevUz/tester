@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useEffect, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import type { CsStroke, CsTool } from "../../api/classroom";
 import { REF_WIDTH } from "./classroomCanvasText";
 import { nearestShapeBinding, resolveConnector } from "./classroomShapeBindings";
@@ -125,7 +125,20 @@ export function useClassroomPagePointerGestures({
   // (dropped frame) keltirib chiqargan edi. forceRedraw endi faqat drag
   // TUGAGACH (finishStroke) chaqiriladi — shu bilan boshqa overlay/panel
   // proplari (masalan selection box koordinatalari) bir marta yangilanadi.
-  const renderNow = useCallback(() => {
+  // Pointer events arrive faster than the display refreshes -- a 120Hz stylus fires roughly
+  // twice per frame, and pointermove can also coalesce several samples into one burst. Drawing
+  // on each of them repaints the whole canvas for frames nobody ever sees. Coalescing into
+  // requestAnimationFrame renders once per frame with the latest state, which is what the
+  // screen can actually show.
+  const rafRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
+    };
+  }, []);
+
+  const renderImmediate = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
     renderClassroomCanvas({
@@ -160,6 +173,14 @@ export function useClassroomPagePointerGestures({
     shapeStyle,
     connectorDraftRef,
   ]);
+
+  const renderNow = useCallback(() => {
+    if (rafRef.current !== null) return;
+    rafRef.current = requestAnimationFrame(() => {
+      rafRef.current = null;
+      renderImmediate();
+    });
+  }, [renderImmediate]);
 
   // Drag paytida boshqa foydalanuvchilarga (yoki ikkinchi pane'ga) ham
   // real-time ko'rinishi uchun onMoveStroke/onUpdateShapeStroke'ni chaqirish
@@ -709,6 +730,13 @@ export function useClassroomPagePointerGestures({
   const finishStroke = () => {
     if (!editable) return;
     onPointerMove?.(pageNumber, 0, 0, false);
+    // Flush any frame still queued so the finished stroke is on screen before the commit
+    // path runs -- otherwise the last samples would be dropped with the cancelled frame.
+    if (rafRef.current !== null) {
+      cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+      renderImmediate();
+    }
     // Drag paytida navbatda qolgan throttled broadcast (agar bo'lsa) endi
     // keraksiz — pastdagi har bir tugatish bloki yakuniy holatni DARHOL
     // yuboradi, shuning uchun eskirgan rAF'ni bekor qilamiz.

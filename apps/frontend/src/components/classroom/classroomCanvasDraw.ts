@@ -445,11 +445,19 @@ function drawShape(
     const lineHeight = fontSize * 1.25;
     const blockHeight = lines.length * lineHeight;
     const verticalAlign = s.verticalAlign ?? "middle";
-    const firstY = verticalAlign === "top"
+    const rawFirstY = verticalAlign === "top"
       ? y + padding + lineHeight / 2
       : verticalAlign === "bottom"
         ? y + height - padding - blockHeight + lineHeight / 2
         : y + height / 2 - ((lines.length - 1) * lineHeight) / 2;
+    // Centred text ignored the padding entirely: it was laid out from the shape's midpoint,
+    // so a block taller than the shape ran right up to (and past) the top and bottom edges.
+    // Clamping keeps the same padding on every side, whatever the alignment.
+    const minFirstY = y + padding + lineHeight / 2;
+    const maxFirstY = y + height - padding - blockHeight + lineHeight / 2;
+    const firstY = maxFirstY >= minFirstY
+      ? Math.max(minFirstY, Math.min(maxFirstY, rawFirstY))
+      : rawFirstY;
     const align = s.textAlign ?? "center";
     ctx.textAlign = align;
     const textX = align === "left" ? x + padding : align === "right" ? x + width - padding : x + width / 2;

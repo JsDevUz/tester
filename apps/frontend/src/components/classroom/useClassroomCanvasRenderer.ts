@@ -62,10 +62,17 @@ export function renderClassroomCanvas({
   const bitmapW = Math.round(size.w * dpr);
   const bitmapH = Math.round(size.h * dpr);
   const scale = Math.min(1, MAX_CANVAS_PX / Math.max(bitmapW, bitmapH));
-  canvas.width = Math.round(bitmapW * scale);
-  canvas.height = Math.round(bitmapH * scale);
-  canvas.style.width = `${size.w}px`;
-  canvas.style.height = `${size.h}px`;
+  const nextWidth = Math.round(bitmapW * scale);
+  const nextHeight = Math.round(bitmapH * scale);
+  // Assigning width/height reallocates the whole backing bitmap, even when the value is
+  // unchanged -- doing it on every frame is what made drawing stutter. Only resize when the
+  // dimensions actually differ; clearRect below handles the per-frame wipe.
+  if (canvas.width !== nextWidth || canvas.height !== nextHeight) {
+    canvas.width = nextWidth;
+    canvas.height = nextHeight;
+    canvas.style.width = `${size.w}px`;
+    canvas.style.height = `${size.h}px`;
+  }
   const ctx = canvas.getContext("2d");
   if (!ctx) return false;
   ctx.imageSmoothingEnabled = true;
