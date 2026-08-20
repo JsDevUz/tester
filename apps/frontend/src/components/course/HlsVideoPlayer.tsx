@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import Hls from 'hls.js';
+import type HlsType from 'hls.js';
 import {
   Captions,
   ChevronDown,
@@ -355,7 +355,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
   // HLS Loader Setup
   useEffect(() => {
-    let hls: Hls | null = null;
+    let hls: HlsType | null = null;
     let cancelled = false;
 
     async function boot() {
@@ -368,10 +368,21 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         setSubtitleUrl(playback.subtitleUrl);
         const manifestUrl = `${getApiBaseUrl()}${playback.manifestUrl}`;
 
+        // Loaded on demand rather than with the course page: hls.js is ~130KB gzipped and
+        // most page views never open a video.
+        const { default: Hls } = await import('hls.js');
+        if (cancelled || !videoRef.current) return;
+
         if (Hls.isSupported()) {
           hls = new Hls({
             capLevelToPlayerSize: true,
             autoStartLoad: true,
+            // Defaults buffer far more than a lesson needs, which delays the first frame and
+            // wastes the student's data if they move on. These keep enough ahead to ride out
+            // a wobble without hoarding.
+            maxBufferLength: 15,
+            maxMaxBufferLength: 30,
+            backBufferLength: 30,
           });
 
           hls.on(Hls.Events.ERROR, (_event, data) => {

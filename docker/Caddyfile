@@ -6,7 +6,19 @@
 }
 
 {$DOMAIN:jamm.uz} {
-    encode gzip zstd
+    # Only compress what benefits. Video, images and fonts are already compressed, so running
+    # them through gzip/zstd costs CPU on every chunk to produce bytes of the same size.
+    encode {
+        gzip
+        zstd
+        match {
+            header Content-Type text/*
+            header Content-Type application/json*
+            header Content-Type application/javascript*
+            header Content-Type application/xml*
+            header Content-Type image/svg+xml*
+        }
+    }
 
     header {
         # Brauzerlardagi eski QUIC (HTTP/3) keshini tozalash va to'g'ridan-to'g'ri HTTP/2 ishlatish

@@ -23,12 +23,21 @@ export function LazyVideoPlayer({
 }) {
   const [activated, setActivated] = useState(false);
 
+  // Warm the hls.js chunk while the pointer is on its way to the button, so tapping play does
+  // not also wait on a 157KB download. Harmless if it never fires -- the import is cached
+  // either way, and a student who never hovers simply pays for it on click as before.
+  const prefetchPlayer = () => {
+    void import('hls.js').catch(() => {});
+  };
+
   if (activated) return <HlsVideoPlayer blockId={blockId} watermark={watermark} />;
 
   return (
     <button
       type="button"
       onClick={() => setActivated(true)}
+      onMouseEnter={prefetchPlayer}
+      onTouchStart={prefetchPlayer}
       aria-label="Videoni ijro etish"
       className="group relative block aspect-video w-full overflow-hidden rounded-2xl bg-black"
     >

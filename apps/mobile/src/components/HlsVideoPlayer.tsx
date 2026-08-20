@@ -720,8 +720,13 @@ export function HlsVideoPlayer({
           bufferConfig={{
             minBufferMs: 15000,
             maxBufferMs: 50000,
-            bufferForPlaybackMs: 2500,
-            bufferForPlaybackAfterRebufferMs: 5000,
+            // How much must buffer before playback STARTS. 2.5s was tuned for stability, but
+            // it is time the student spends staring at a still frame every single time. 1s is
+            // enough to begin; minBufferMs still governs how far ahead it keeps reading.
+            bufferForPlaybackMs: 1000,
+            // After a stall, buffering a little more before resuming avoids stuttering
+            // straight back into the same gap.
+            bufferForPlaybackAfterRebufferMs: 2500,
           }}
           onBuffer={({ isBuffering: buffering }) => setIsBuffering(buffering)}
           onLoad={handleLoad}
