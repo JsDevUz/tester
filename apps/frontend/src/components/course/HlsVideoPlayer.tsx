@@ -777,6 +777,12 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
         return;
       }
 
+      // Shortcuts are fullscreen-only. Inline, the player is one element among many on a
+      // lesson page -- Space would scroll, arrows would move the page -- and a lesson can hold
+      // several video blocks, each with this same listener, so one keypress would drive all of
+      // them at once. Fullscreen makes the intended target unambiguous.
+      if (!isFullscreen) return;
+
       if (e.code === 'Space' || e.key === 'k' || e.key === 'K') {
         e.preventDefault();
         togglePlay();

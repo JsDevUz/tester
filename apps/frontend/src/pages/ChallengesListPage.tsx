@@ -41,7 +41,12 @@ export function ChallengesListPage() {
       <div className="student-responsive-panel px-4 py-5 min-[1025px]:p-5">
         <button
           type="button"
-          onClick={() => navigate("/jamm")}
+          // Back to wherever the student came from -- usually their course list, whose path
+          // carries a school id and so cannot be hardcoded. Falling back to /jamm only when
+          // this page was opened directly, with nothing to go back to.
+          onClick={() =>
+            window.history.length > 1 ? navigate(-1) : navigate("/jamm")
+          }
           className="mb-4 flex items-center gap-1 text-xs font-semibold text-gray-400 hover:text-gray-600"
         >
           <ArrowLeft size={14} /> Orqaga

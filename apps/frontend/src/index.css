@@ -1128,6 +1128,26 @@ select::-ms-expand {
   font-weight: 700;
 }
 
+/* Kod bloklari o'ralmasligi kerak: ular ko'pincha ASCII diagramma yoki tekislangan
+   ustunlardan iborat bo'ladi, o'ralib ketsa chiziqlar buziladi va o'qib bo'lmaydi.
+   Shuning uchun matn bir qatorda qoladi, blokning o'zi esa gorizontal suriladi. */
+.lesson-reader-html pre,
+.lesson-reader-html [data-content-type="codeBlock"] {
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+
+.lesson-reader-html pre,
+.lesson-reader-html pre code,
+.lesson-reader-html [data-content-type="codeBlock"],
+.lesson-reader-html [data-content-type="codeBlock"] code {
+  white-space: pre;
+  word-break: normal;
+  overflow-wrap: normal;
+}
+
 .lesson-reader-html h1,
 .lesson-reader-html h2,
 .lesson-reader-html h3,

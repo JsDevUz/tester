@@ -47,6 +47,9 @@ export function LessonBlock({ block }: { block: ApiContentBlock }) {
     return (
       <>
         <div
+          // No overflow-x here: wide children (tables, code blocks) scroll within themselves,
+          // which keeps the surrounding prose aligned. A scrollbar on the whole block would
+          // let the paragraphs slide sideways too.
           className="lesson-reader-html max-w-full text-sm leading-relaxed text-[var(--text-primary)] sm:text-base [&_iframe]:aspect-video [&_iframe]:w-full [&_img]:h-auto [&_img]:max-w-full [&_img]:cursor-zoom-in [&_img]:rounded-2xl [&_video]:aspect-video [&_video]:w-full [&_.katex-display]:overflow-x-auto [&_.katex-display]:overflow-y-hidden [&_.katex-display]:py-1"
           dangerouslySetInnerHTML={{ __html: block.html ?? "" }}
           onClick={(e) => {
@@ -250,8 +253,10 @@ export function LessonReader({
       block.processingStatus === "ready",
   );
 
+  // min-w-0 rather than overflow-hidden on the article: it still refuses to stretch its
+  // parent, but wide children can now show their own scrollbar instead of being clipped.
   return (
-    <article className="mx-auto w-full max-w-full overflow-hidden pb-12 text-[var(--text-primary)]">
+    <article className="mx-auto w-full min-w-0 max-w-full pb-12 text-[var(--text-primary)]">
       {/* Seamless Lesson Header */}
       <div className="mb-6">
         <div className="min-w-0">

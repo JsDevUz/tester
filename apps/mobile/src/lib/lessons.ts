@@ -24,11 +24,15 @@ type PassableLesson = {
 };
 
 export function isLessonPassing(lesson: PassableLesson): boolean {
+  // Without a pass threshold the lesson has nothing to measure, so practice is optional and
+  // the student can move on. Tests are only required when a threshold exists -- there is no
+  // score to compare against until they have been attempted.
+  if (!lesson.passThresholdEnabled) return true;
+
   const allTestsAttempted = lesson.practiceBlocks
     .filter(block => block.type === 'test')
     .every(block => block.submissions.length > 0);
   if (!allTestsAttempted) return false;
-  if (!lesson.passThresholdEnabled) return true;
   if (lesson.combinedPracticePercent === null) return false;
   return lesson.combinedPracticePercent >= (lesson.passThresholdPercent ?? 0);
 }

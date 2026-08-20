@@ -121,7 +121,7 @@ export function ChallengeDetailPage() {
           onClick={() => navigate("/challanges")}
           className="mb-4 flex items-center gap-1.5 text-sm font-semibold text-gray-500"
         >
-          <ArrowLeft size={16} /> Jamm
+          <ArrowLeft size={16} /> Challenge-lar
         </button>
 
         <h1 className="mb-1 text-2xl font-extrabold text-gray-900">

@@ -334,15 +334,18 @@ export class PracticeBlocksService {
     const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
     if (!lesson) throw new NotFoundException('Dars topilmadi');
 
-    const studentPracticeBlocks = await this.findForStudent(lessonId, studentId);
-    const allTestsAttempted = studentPracticeBlocks
-      .filter((block) => block.type === 'test')
-      .every((block) => block.submissions.length > 0);
-    if (!allTestsAttempted) {
-      throw new BadRequestException('Barcha test topshiriqlarini bajaring');
-    }
-
+    // Practice is only gating when the lesson defines a pass threshold. Without one there is
+    // no score to measure, so requiring every test to be attempted would block progress on a
+    // rule the teacher never set.
     if (lesson.passThresholdEnabled) {
+      const studentPracticeBlocks = await this.findForStudent(lessonId, studentId);
+      const allTestsAttempted = studentPracticeBlocks
+        .filter((block) => block.type === 'test')
+        .every((block) => block.submissions.length > 0);
+      if (!allTestsAttempted) {
+        throw new BadRequestException('Barcha test topshiriqlarini bajaring');
+      }
+
       const testPercent = computeTestPracticePercent(studentPracticeBlocks);
       if ((testPercent ?? 0) < (lesson.passThresholdPercent ?? 0)) {
         throw new BadRequestException('O\'tish balidan yetarlicha ball to\'planmagan');

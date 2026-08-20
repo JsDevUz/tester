@@ -57,6 +57,17 @@ describe('isLessonPassing', () => {
     ).toBe(false);
   });
 
+  it('passes with unattempted tests when no threshold is set', () => {
+    expect(
+      isLessonPassing({
+        practiceBlocks: [{type: 'test', submissions: []}],
+        passThresholdEnabled: false,
+        combinedPracticePercent: null,
+        passThresholdPercent: null,
+      }),
+    ).toBe(true);
+  });
+
   it('passes when threshold is disabled regardless of score', () => {
     expect(
       isLessonPassing({
