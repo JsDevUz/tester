@@ -40,7 +40,9 @@ const COLORS = [
 
 const WIDTHS = [2, 4, 7];
 
-type ShortcutItem = { key: string; label: string; icon?: never } | { icon: LucideIcon; label: string; key?: never };
+type ShortcutItem =
+  | { key: string; label: string; icon?: never }
+  | { icon: LucideIcon; label: string; key?: never };
 
 const SHORTCUT_GROUPS: { title: string; items: ShortcutItem[] }[] = [
   {
@@ -70,16 +72,32 @@ const SHORTCUT_GROUPS: { title: string; items: ShortcutItem[] }[] = [
   {
     title: "Chizish paytida",
     items: [
-      { key: "Shift", label: "Chiziq vositasida bosib turilsa, chiziq 45° karrali burchaklarga (0/45/90/135/180/225/270/315) qulflanadi" },
+      {
+        key: "Shift",
+        label:
+          "Chiziq vositasida bosib turilsa, chiziq 45° karrali burchaklarga (0/45/90/135/180/225/270/315) qulflanadi",
+      },
     ],
   },
   {
     title: "Lasso bilan tanlangan guruh",
     items: [
-      { icon: Maximize2, label: "Burchakdagi tugmalar — guruh o'lchamini o'zgartirish" },
-      { icon: RotateCw, label: "Pastdagi doira tugma — guruhni markazi atrofida aylantirish" },
-      { icon: Copy, label: "Nusxalash — tanlangan guruhni bir oz siljigan holda klonlaydi" },
-      { icon: Trash2, label: "O'chirish — tanlangan guruhni butunlay o'chiradi" },
+      {
+        icon: Maximize2,
+        label: "Burchakdagi tugmalar — guruh o'lchamini o'zgartirish",
+      },
+      {
+        icon: RotateCw,
+        label: "Pastdagi doira tugma — guruhni markazi atrofida aylantirish",
+      },
+      {
+        icon: Copy,
+        label: "Nusxalash — tanlangan guruhni bir oz siljigan holda klonlaydi",
+      },
+      {
+        icon: Trash2,
+        label: "O'chirish — tanlangan guruhni butunlay o'chiradi",
+      },
     ],
   },
 ];
@@ -139,7 +157,9 @@ export function ClassroomToolbar({
       if (event.key !== "-") return;
       const target = event.target as HTMLElement | null;
       const isTypingTarget =
-        target?.tagName === "INPUT" || target?.tagName === "TEXTAREA" || target?.isContentEditable;
+        target?.tagName === "INPUT" ||
+        target?.tagName === "TEXTAREA" ||
+        target?.isContentEditable;
       if (isTypingTarget) return;
       event.preventDefault();
       onToolChange("line");
@@ -153,8 +173,8 @@ export function ClassroomToolbar({
       disabled
         ? "text-gray-400 dark:text-gray-600 cursor-not-allowed opacity-40 pointer-events-none"
         : active
-        ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.05]"
-        : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
+          ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20 scale-[1.05]"
+          : "text-[var(--text-primary)] hover:bg-black/10 dark:hover:bg-white/15"
     }`;
 
   const shortcut = (key: string, active: boolean = false) => (
@@ -316,19 +336,21 @@ export function ClassroomToolbar({
             key={c}
             type="button"
             onClick={() => onColorChange(c)}
-            className={`h-4 w-4 rounded-full border transition-transform ${color.toLowerCase() === c.toLowerCase()
+            className={`h-4 w-4 rounded-full border transition-transform ${
+              color.toLowerCase() === c.toLowerCase()
                 ? "scale-125 border-gray-900 dark:border-white ring-2 ring-indigo-500/40"
                 : "border-black/20 dark:border-white/20 hover:scale-110"
-              }`}
+            }`}
             style={{ backgroundColor: c }}
             title={`Rang: ${c}`}
           />
         ))}
         <label
-          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-black/20 dark:border-white/20 transition-transform hover:scale-110 overflow-hidden ${!COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
+          className={`relative flex h-4 w-4 cursor-pointer items-center justify-center rounded-full border border-black/20 dark:border-white/20 transition-transform hover:scale-110 overflow-hidden ${
+            !COLORS.map((c) => c.toLowerCase()).includes(color.toLowerCase())
               ? "ring-2 ring-indigo-500/40 scale-125"
               : ""
-            }`}
+          }`}
           style={{
             background:
               "conic-gradient(from 0deg, red, yellow, lime, aqua, blue, magenta, red)",
@@ -363,7 +385,7 @@ export function ClassroomToolbar({
             >
               <span
                 className={`block rounded-full transition-colors ${
-                  isActive ? "bg-white" : "bg-gray-900 dark:bg-white"
+                  isActive ? "bg-white" : "bg-white dark:bg-gray-900"
                 }`}
                 style={{
                   width: 4 + w,
@@ -383,7 +405,11 @@ export function ClassroomToolbar({
         type="button"
         className={iconBtn(false, canUndo === false)}
         disabled={canUndo === false}
-        title={canUndo === false ? "Bekor qilish mavjud emas" : "Bekor qilish (Ctrl+Z)"}
+        title={
+          canUndo === false
+            ? "Bekor qilish mavjud emas"
+            : "Bekor qilish (Ctrl+Z)"
+        }
         onClick={onUndo}
       >
         <Undo2 size={15} />
@@ -392,7 +418,11 @@ export function ClassroomToolbar({
         type="button"
         className={iconBtn(false, canRedo === false)}
         disabled={canRedo === false}
-        title={canRedo === false ? "Qaytarish mavjud emas" : "Qaytarish (Ctrl+Shift+Z)"}
+        title={
+          canRedo === false
+            ? "Qaytarish mavjud emas"
+            : "Qaytarish (Ctrl+Shift+Z)"
+        }
         onClick={onRedo}
       >
         <Redo2 size={15} />
@@ -405,40 +435,52 @@ export function ClassroomToolbar({
       >
         <Trash2 size={15} />
       </button>
-      {confirmClearOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
-          role="presentation"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) setConfirmClearOpen(false);
-          }}
-        >
-          <div className="classroom-panel-in glass-card flex w-full max-w-sm flex-col gap-3 rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]" role="dialog" aria-modal="true" aria-label="Butun doskani tozalash">
-            <h3 className="text-base font-bold tracking-tight">Butun doskani tozalash</h3>
-            <p className="text-xs text-[var(--text-muted)] leading-relaxed">Daftardagi va PDFdagi barcha sahifalar chizmalari to'liq o'chiriladi. Davom etilsinmi?</p>
-            <div className="mt-2 flex justify-end gap-2">
-              <button
-                type="button"
-                onClick={() => setConfirmClearOpen(false)}
-                className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
-              >
-                Bekor qilish
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  onClear();
-                  setConfirmClearOpen(false);
-                }}
-                className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-xs transition-colors cursor-pointer"
-              >
-                Barchasini tozalash
-              </button>
+      {confirmClearOpen &&
+        createPortal(
+          <div
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
+            role="presentation"
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget)
+                setConfirmClearOpen(false);
+            }}
+          >
+            <div
+              className="classroom-panel-in glass-card flex w-full max-w-sm flex-col gap-3 rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Butun doskani tozalash"
+            >
+              <h3 className="text-base font-bold tracking-tight">
+                Butun doskani tozalash
+              </h3>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+                Daftardagi va PDFdagi barcha sahifalar chizmalari to'liq
+                o'chiriladi. Davom etilsinmi?
+              </p>
+              <div className="mt-2 flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setConfirmClearOpen(false)}
+                  className="rounded-xl px-4 py-2 text-xs font-bold text-[var(--text-secondary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+                >
+                  Bekor qilish
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    onClear();
+                    setConfirmClearOpen(false);
+                  }}
+                  className="rounded-xl bg-red-600 px-4 py-2 text-xs font-bold text-white hover:bg-red-700 shadow-xs transition-colors cursor-pointer"
+                >
+                  Barchasini tozalash
+                </button>
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
 
       <div className="w-px h-5 bg-black/10 dark:bg-white/10 mx-0.5" />
 
@@ -475,58 +517,68 @@ export function ClassroomToolbar({
           </button>
         </>
       )}
-      {infoOpen && createPortal(
-        <div
-          className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
-          role="presentation"
-          onPointerDown={(event) => {
-            if (event.target === event.currentTarget) setInfoOpen(false);
-          }}
-        >
+      {infoOpen &&
+        createPortal(
           <div
-            className="classroom-panel-in glass-card flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]"
-            role="dialog"
-            aria-modal="true"
-            aria-label="Yordam va shortcutlar"
+            className="fixed inset-0 z-[100] flex items-center justify-center bg-black/10 dark:bg-black/30 p-4 transition-opacity animate-in fade-in duration-150"
+            role="presentation"
+            onPointerDown={(event) => {
+              if (event.target === event.currentTarget) setInfoOpen(false);
+            }}
           >
-            <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
-              <h2 className="text-base font-bold tracking-tight">Yordam va shortcutlar</h2>
-              <button
-                type="button"
-                onClick={() => setInfoOpen(false)}
-                className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
-                aria-label="Yopish"
-              >
-                <X size={16} />
-              </button>
-            </div>
-            <div className="flex flex-col gap-4">
-              {SHORTCUT_GROUPS.map((group) => (
-                <div key={group.title} className="flex flex-col gap-2">
-                  <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">{group.title}</p>
-                  <div className="flex flex-col gap-1.5">
-                    {group.items.map((item) => (
-                      <div key={item.label} className="flex items-start gap-2.5 text-xs">
-                        {item.icon ? (
-                          <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/5 dark:bg-white/10 shadow-xs">
-                            <item.icon size={12} />
+            <div
+              className="classroom-panel-in glass-card flex max-h-[85vh] w-full max-w-md flex-col gap-4 overflow-y-auto rounded-3xl p-6 shadow-2xl text-[var(--text-primary)]"
+              role="dialog"
+              aria-modal="true"
+              aria-label="Yordam va shortcutlar"
+            >
+              <div className="flex items-center justify-between gap-2 pb-2 border-b border-[var(--border-subtle)]">
+                <h2 className="text-base font-bold tracking-tight">
+                  Yordam va shortcutlar
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setInfoOpen(false)}
+                  className="rounded-xl p-1.5 text-[var(--text-muted)] hover:text-[var(--text-primary)] hover:bg-[var(--card-hover)] transition-colors cursor-pointer"
+                  aria-label="Yopish"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+              <div className="flex flex-col gap-4">
+                {SHORTCUT_GROUPS.map((group) => (
+                  <div key={group.title} className="flex flex-col gap-2">
+                    <p className="text-xs font-bold uppercase tracking-wider text-[var(--text-muted)]">
+                      {group.title}
+                    </p>
+                    <div className="flex flex-col gap-1.5">
+                      {group.items.map((item) => (
+                        <div
+                          key={item.label}
+                          className="flex items-start gap-2.5 text-xs"
+                        >
+                          {item.icon ? (
+                            <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-lg bg-black/5 dark:bg-white/10 shadow-xs">
+                              <item.icon size={12} />
+                            </span>
+                          ) : (
+                            <kbd className="mt-0.5 shrink-0 min-w-[20px] text-center rounded-lg bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-mono text-xs font-bold text-[var(--text-primary)] shadow-xs">
+                              {item.key}
+                            </kbd>
+                          )}
+                          <span className="min-w-0 leading-relaxed text-[var(--text-secondary)]">
+                            {item.label}
                           </span>
-                        ) : (
-                          <kbd className="mt-0.5 shrink-0 min-w-[20px] text-center rounded-lg bg-black/5 dark:bg-white/10 px-1.5 py-0.5 font-mono text-xs font-bold text-[var(--text-primary)] shadow-xs">
-                            {item.key}
-                          </kbd>
-                        )}
-                        <span className="min-w-0 leading-relaxed text-[var(--text-secondary)]">{item.label}</span>
-                      </div>
-                    ))}
+                        </div>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
-          </div>
-        </div>,
-        document.body,
-      )}
+          </div>,
+          document.body,
+        )}
     </div>
   );
 }
