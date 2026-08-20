@@ -10,6 +10,7 @@ import { db } from '../db';
 import { classSessions, freeSessionParticipants } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
 import { ClassroomRecordingService } from './classroom-recording.service';
+import { clampHistoryToRecording } from './replay-history';
 import {
   ClassroomBoardSnapshot,
   ClassroomHistoryEvent,
@@ -119,12 +120,19 @@ export class ClassroomReplayService {
       }
     }
 
-    const historyEvents = selectedEntry
+    const rawHistoryEvents = selectedEntry
       ? (selectedEntry.historyEvents ?? [])
       : ((row.historyEvents as unknown as ClassroomHistoryEvent[]) ?? []);
     const recordingStartedAtMs = selectedEntry
       ? selectedEntry.recordingStartedAtMs
       : row.recordingStartedAtMs;
+
+    // History is recorded from the moment the session opens, but a teacher usually draws for a
+    // while before pressing Record. Replaying from t=0 showed all of that, which is not what
+    // "record" is understood to mean. Everything before the recording started is collapsed
+    // into the initial state instead: strokes drawn earlier are already in boardSnapshot, so
+    // they still appear -- just as the starting picture rather than as playback.
+    const historyEvents = clampHistoryToRecording(rawHistoryEvents, recordingStartedAtMs);
     const recordingMode = selectedEntry
       ? selectedEntry.recordingMode
       : (row.recordingMode as ClassroomRecordingMode | null);

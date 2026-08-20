@@ -23,8 +23,11 @@ function replayStateFromSnapshot(data: ClassReplayData, overlay: ReturnType<type
     ended: true,
     pdfName: snap?.pdfName ?? data.pdfName,
     pages: snap?.pages ?? data.pdfPages,
-    currentPage: 1,
-    strokesByPage: snap?.strokesByPage ?? {},
+    // Replayed history wins over the snapshot: the snapshot is the FINAL board, so using it
+    // showed the finished drawing from the first second. Fall back to it only when there is no
+    // history to replay (an older recording, or a silent one).
+    currentPage: overlay.hasHistory ? overlay.currentPage : 1,
+    strokesByPage: overlay.hasHistory ? overlay.strokesByPage : (snap?.strokesByPage ?? {}),
     rightStrokesByPage: snap?.rightStrokesByPage ?? {},
     participants: [],
     hostOnline: false,
@@ -91,14 +94,15 @@ export function ClassroomReplayScreen({route, navigation}: Props) {
     };
   }, [sessionId]);
 
-  const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
+  // History arrives already rebased to the moment recording started (the backend drops
+  // anything earlier), so it shares t=0 with the audio track and needs no offset here.
   const isBoardAudio = data?.recordingMode === 'boardAudio';
   const hasRecording =
     data?.recordingStatus === 'ready' && !!data?.recordingUrl && data?.recordingMode !== 'boardSilent';
 
   const overlay = isBoardAudio
-    ? computeReplayOverlayAt(data?.historyEvents ?? [], Math.max(0, currentTimeMs - recordingOffsetMs))
-    : {zoom: 1, rightZoom: 1, scroll: null, rightScroll: null, pointer: null};
+    ? computeReplayOverlayAt(data?.historyEvents ?? [], Math.max(0, currentTimeMs))
+    : {zoom: 1, rightZoom: 1, scroll: null, rightScroll: null, pointer: null, currentPage: 1, strokesByPage: {}, hasHistory: false};
 
   if (error) {
     return (
@@ -160,8 +164,8 @@ export function ClassroomReplayScreen({route, navigation}: Props) {
           ref={videoRef}
           source={{uri: data.recordingUrl}}
           paused={!isPlaying}
-          onLoad={meta => setDurationMs(recordingOffsetMs + meta.duration * 1000)}
-          onProgress={progress => setCurrentTimeMs(recordingOffsetMs + progress.currentTime * 1000)}
+          onLoad={meta => setDurationMs(meta.duration * 1000)}
+          onProgress={progress => setCurrentTimeMs(progress.currentTime * 1000)}
           onEnd={() => setIsPlaying(false)}
           style={{width: 0, height: 0}}
         />
@@ -180,7 +184,7 @@ export function ClassroomReplayScreen({route, navigation}: Props) {
           recordingStatus={data.recordingStatus}
           onPlayPause={() => setIsPlaying(v => !v)}
           onSeek={ms => {
-            const audioMs = Math.max(0, ms - recordingOffsetMs);
+            const audioMs = Math.max(0, ms);
             videoRef.current?.seek(audioMs / 1000);
             setCurrentTimeMs(ms);
           }}

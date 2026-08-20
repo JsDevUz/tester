@@ -86,14 +86,12 @@ export function ClassroomReplayPage() {
     && data?.recordingStatus === "ready"
     && !!data?.recordingUrl
     && data?.recordingMode !== "boardSilent";
-  // Audio yozib olish sessiya boshlanishidan (t=0, chizma tarixi shu ondan
-  // hisoblanadi) bir necha soniya keyin boshlanadi — LiveKit ulanish/token
-  // bosqichlari tugagach. recordingStartedAtMs shu siljishni bildiradi;
-  // uni bilmasdan audio va chizma tarixi replay'da mos kelmaydi.
-  const recordingOffsetMs = data?.recordingStartedAtMs ?? 0;
+  // historyEvents arrive already rebased to the moment recording started (the backend drops
+  // anything earlier), so they share t=0 with the audio track and need no offset here. The
+  // timeline runs for as long as the audio does.
   const replay = useClassroomReplay(
     showTimeline ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
-    hasRecording ? recordingOffsetMs + audioDurationMs : 0,
+    hasRecording ? audioDurationMs : 0,
     globalTheme,
   );
   // "Faqat chizma" va yangi null-mode fallback'da boardSnapshot'dagi
@@ -128,31 +126,24 @@ export function ClassroomReplayPage() {
     : replay.state;
 
   useClassroomTheme(viewState.classroomTheme);
-  // Scrub joriy vaqti audio boshlanishidan oldin bo'lsa (masalan o'qituvchi
-  // ovoz ulanishidan oldin chiza boshlagan bo'lsa), audio hali "mavjud
-  // emas" — uni ijro etib bo'lmaydi, pauzada qoldiramiz.
-  const beforeRecordingStarted = replay.currentTimeMs < recordingOffsetMs;
-
   useEffect(() => {
     if (!hasRecording) return;
     const audio = audioRef.current;
     if (!audio) return;
-    if (replay.isPlaying && !beforeRecordingStarted) {
+    if (replay.isPlaying) {
       audio.play().catch(() => { });
     } else {
       audio.pause();
     }
-    // replay.currentTimeMs ni deps'ga qo'shmaymiz — play() ni har RAF
-    // freym'ida qayta chaqirmaslik uchun faqat isPlaying/beforeRecordingStarted
-    // O'ZGARGANDA reaksiya beramiz (masalan scrub vaqti recordingOffsetMs'ni
-    // kesib o'tganda). Aniq pozitsiyalash handleSeek orqali bajariladi.
+    // currentTimeMs is deliberately not a dependency: reacting to it would call play() on
+    // every animation frame. Exact positioning happens in handleSeek.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [replay.isPlaying, beforeRecordingStarted, hasRecording]);
+  }, [replay.isPlaying, hasRecording]);
 
   const handleSeek = (ms: number) => {
     replay.seek(ms);
     if (hasRecording && audioRef.current) {
-      const audioTimeMs = Math.max(0, ms - recordingOffsetMs);
+      const audioTimeMs = Math.max(0, ms);
       audioRef.current.currentTime = audioTimeMs / 1000;
     }
   };
@@ -167,7 +158,7 @@ export function ClassroomReplayPage() {
     // pauzadan oldingi) pozitsiyasidan davom etib, chizma tarixidan
     // uzilib qolishi mumkin edi.
     if (hasRecording && audioRef.current) {
-      const audioTimeMs = Math.max(0, replay.currentTimeMs - recordingOffsetMs);
+      const audioTimeMs = Math.max(0, replay.currentTimeMs);
       audioRef.current.currentTime = audioTimeMs / 1000;
     }
     replay.play();
