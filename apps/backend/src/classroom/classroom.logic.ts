@@ -289,8 +289,15 @@ export function removePageFromSession(
     else if (key > pageIndex) rebuilt.set(key - 1, strokes);
     // key === pageIndex: dropped (that page's strokes are gone)
   }
-  session.strokesByMode?.set(mode, rebuilt);
-  if (previousMode === mode) session.strokesByPage = rebuilt;
+
+  // Rewrite the existing map in place instead of swapping in a new one. session.strokesByPage
+  // is an ALIAS of whichever mode map is active (see activeStrokeMap), and other code holds
+  // the same reference; replacing the entry in strokesByMode left those aliases pointing at
+  // the pre-delete map, so the removed page's strokes were still there at save time and came
+  // back on the next page after a reload.
+  map.clear();
+  for (const [key, strokes] of rebuilt) map.set(key, strokes);
+  if (previousMode === mode) session.strokesByPage = map;
 
   if (session.currentPage > pageIndex) {
     session.currentPage -= 1;
@@ -351,8 +358,10 @@ export function insertNotebookPageIntoSession(
     if (key <= afterPageIndex) rebuiltStrokes.set(key, strokes);
     else rebuiltStrokes.set(key + 1, strokes);
   }
-  session.strokesByMode?.set('notebook', rebuiltStrokes);
-  if (previousMode === 'notebook') session.strokesByPage = rebuiltStrokes;
+  // In place, for the same aliasing reason as removePageFromSession.
+  map.clear();
+  for (const [key, strokes] of rebuiltStrokes) map.set(key, strokes);
+  if (previousMode === 'notebook') session.strokesByPage = map;
 
   if (session.currentPage > afterPageIndex) session.currentPage += 1;
 
@@ -381,8 +390,10 @@ export function insertPdfPagesIntoSession(
     if (key <= afterPageIndex) rebuilt.set(key, strokes);
     else rebuilt.set(key + shiftBy, strokes);
   }
-  session.strokesByMode?.set('pdf', rebuilt);
-  if ((session.boardMode ?? 'pdf') === 'pdf') session.strokesByPage = rebuilt;
+  // In place, for the same aliasing reason as removePageFromSession.
+  map.clear();
+  for (const [key, strokes] of rebuilt) map.set(key, strokes);
+  if ((session.boardMode ?? 'pdf') === 'pdf') session.strokesByPage = map;
 
   if (session.currentPage > afterPageIndex) session.currentPage += shiftBy;
 

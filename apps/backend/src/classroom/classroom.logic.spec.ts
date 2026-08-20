@@ -389,6 +389,61 @@ describe('removePageFromSession', () => {
     expect(session.notebookPageStyles).toEqual({ 1: 'grid', 2: 'plain', 3: 'grid' });
   });
 
+  // strokesByPage is what buildBoardSnapshot persists, so leaving it pointing at the old map
+  // meant the deleted page's strokes came back on the next page after a reload -- even though
+  // the live session looked correct.
+  it('rebuilds strokesByPage even when the session was in the other mode', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    session.pdfPages = ['a.png', 'b.png', 'c.png'];
+
+    const pdfMap = strokeMapFor(session, 'pdf');
+    pdfMap.set(1, [makeStroke({ id: 'p1' })]);
+    pdfMap.set(2, [makeStroke({ id: 'p2' })]);
+    // Session is showing the notebook; the delete targets a pdf page.
+    session.strokesByPage = strokeMapFor(session, 'notebook');
+
+    removePageFromSession(session, 'pdf', 1);
+
+    const persisted = strokeMapFor(session, 'pdf');
+    expect(persisted.get(1)?.[0]?.id).toBe('p2');
+    expect(persisted.has(2)).toBe(false);
+  });
+
+  it('drops the removed page\'s strokes from strokesByPage in notebook mode', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    const map = strokeMapFor(session, 'notebook');
+    map.set(1, [makeStroke({ id: 'n1' })]);
+    map.set(2, [makeStroke({ id: 'n2' })]);
+    session.strokesByPage = map;
+
+    removePageFromSession(session, 'notebook', 1);
+
+    expect(session.strokesByPage.get(1)?.[0]?.id).toBe('n2');
+    expect(session.strokesByPage.has(2)).toBe(false);
+  });
+
+  // The alias is the whole point: session.strokesByPage and the entry inside strokesByMode
+  // must stay the SAME object, or one of them keeps the pre-delete contents at save time.
+  it('keeps strokesByPage and strokesByMode pointing at one map after a delete', () => {
+    const session = makeSession();
+    session.boardMode = 'notebook';
+    session.notebookPageCount = 3;
+    const map = strokeMapFor(session, 'notebook');
+    map.set(1, [makeStroke({ id: 'n1' })]);
+    map.set(2, [makeStroke({ id: 'n2' })]);
+    session.strokesByPage = map;
+
+    removePageFromSession(session, 'notebook', 1);
+
+    expect(session.strokesByPage).toBe(session.strokesByMode?.get('notebook'));
+    expect(session.strokesByPage.get(1)?.[0]?.id).toBe('n2');
+    expect(session.strokesByPage.has(2)).toBe(false);
+  });
+
   it('removePageFromSession refuses to remove the last remaining page', () => {
     const session = makeSession();
     session.pdfPages = ['only.png'];
