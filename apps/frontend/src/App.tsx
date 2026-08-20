@@ -1,8 +1,9 @@
-import { lazy, Suspense } from "react";
+import { Suspense } from "react";
 import {
   createBrowserRouter,
   RouterProvider,
   Navigate,
+  type RouteObject,
 } from "react-router-dom";
 import { Toaster } from "sonner";
 import { PrivateRoute } from "./components/PrivateRoute";
@@ -10,170 +11,172 @@ import { TeacherRoute } from "./components/TeacherRoute";
 import { TopProgressBar } from "./components/TopProgressBar";
 import { TelegramBrowserModal } from "./components/TelegramBrowserModal";
 import { useAuthStore } from "./stores/authStore";
+import { lazyWithRetry } from "./lib/lazyWithRetry";
+import { RouteErrorBoundary } from "./components/RouteErrorBoundary";
 
 // Har bir sahifa alohida chunk sifatida yuklanadi — boshlang'ich bundle
 // faqat joriy sahifa uchun kerakli kodni o'z ichiga oladi.
-const LoginPage = lazy(() =>
+const LoginPage = lazyWithRetry(() =>
   import("./pages/LoginPage").then((m) => ({ default: m.LoginPage })),
 );
-const DashboardPage = lazy(() =>
+const DashboardPage = lazyWithRetry(() =>
   import("./pages/DashboardPage").then((m) => ({ default: m.DashboardPage })),
 );
-const FolderViewPage = lazy(() =>
+const FolderViewPage = lazyWithRetry(() =>
   import("./pages/FolderViewPage").then((m) => ({ default: m.FolderViewPage })),
 );
-const QuestionEditorPage = lazy(() =>
+const QuestionEditorPage = lazyWithRetry(() =>
   import("./pages/QuestionEditorPage").then((m) => ({
     default: m.QuestionEditorPage,
   })),
 );
-const TakeTestEntryPage = lazy(() =>
+const TakeTestEntryPage = lazyWithRetry(() =>
   import("./pages/TakeTestEntryPage").then((m) => ({
     default: m.TakeTestEntryPage,
   })),
 );
-const TakeTestPage = lazy(() =>
+const TakeTestPage = lazyWithRetry(() =>
   import("./pages/TakeTestPage").then((m) => ({ default: m.TakeTestPage })),
 );
-const TestResultPage = lazy(() =>
+const TestResultPage = lazyWithRetry(() =>
   import("./pages/TestResultPage").then((m) => ({ default: m.TestResultPage })),
 );
-const SubmissionsPage = lazy(() =>
+const SubmissionsPage = lazyWithRetry(() =>
   import("./pages/SubmissionsPage").then((m) => ({
     default: m.SubmissionsPage,
   })),
 );
-const SubmissionDetailPage = lazy(() =>
+const SubmissionDetailPage = lazyWithRetry(() =>
   import("./pages/SubmissionDetailPage").then((m) => ({
     default: m.SubmissionDetailPage,
   })),
 );
-const StudentHistoryPage = lazy(() =>
+const StudentHistoryPage = lazyWithRetry(() =>
   import("./pages/StudentHistoryPage").then((m) => ({
     default: m.StudentHistoryPage,
   })),
 );
-const StudentSubmissionDetailPage = lazy(() =>
+const StudentSubmissionDetailPage = lazyWithRetry(() =>
   import("./pages/StudentSubmissionDetailPage").then((m) => ({
     default: m.StudentSubmissionDetailPage,
   })),
 );
-const LiveCreatePage = lazy(() =>
+const LiveCreatePage = lazyWithRetry(() =>
   import("./pages/LiveCreatePage").then((m) => ({ default: m.LiveCreatePage })),
 );
-const LiveHostPage = lazy(() =>
+const LiveHostPage = lazyWithRetry(() =>
   import("./pages/LiveHostPage").then((m) => ({ default: m.LiveHostPage })),
 );
-const LiveJoinPage = lazy(() =>
+const LiveJoinPage = lazyWithRetry(() =>
   import("./pages/LiveJoinPage").then((m) => ({ default: m.LiveJoinPage })),
 );
-const LivePlayPage = lazy(() =>
+const LivePlayPage = lazyWithRetry(() =>
   import("./pages/LivePlayPage").then((m) => ({ default: m.LivePlayPage })),
 );
-const PaymentsPage = lazy(() =>
+const PaymentsPage = lazyWithRetry(() =>
   import("./pages/PaymentsPage").then((m) => ({ default: m.PaymentsPage })),
 );
-const CoursesPage = lazy(() =>
+const CoursesPage = lazyWithRetry(() =>
   import("./pages/CoursesPage").then((m) => ({ default: m.CoursesPage })),
 );
-const StudentsPage = lazy(() =>
+const StudentsPage = lazyWithRetry(() =>
   import("./pages/StudentsPage").then((m) => ({ default: m.StudentsPage })),
 );
-const SchoolSettingsPage = lazy(() =>
+const SchoolSettingsPage = lazyWithRetry(() =>
   import("./pages/SchoolSettingsPage").then((m) => ({
     default: m.SchoolSettingsPage,
   })),
 );
-const SchoolStaffPage = lazy(() =>
+const SchoolStaffPage = lazyWithRetry(() =>
   import("./pages/SchoolStaffPage").then((m) => ({
     default: m.SchoolStaffPage,
   })),
 );
-const SchoolInvitePage = lazy(() =>
+const SchoolInvitePage = lazyWithRetry(() =>
   import("./pages/SchoolInvitePage").then((m) => ({
     default: m.SchoolInvitePage,
   })),
 );
-const SchoolInviteJoinPage = lazy(() =>
+const SchoolInviteJoinPage = lazyWithRetry(() =>
   import("./pages/SchoolInviteJoinPage").then((m) => ({
     default: m.SchoolInviteJoinPage,
   })),
 );
-const MyCoursesPage = lazy(() =>
+const MyCoursesPage = lazyWithRetry(() =>
   import("./pages/MyCoursesPage").then((m) => ({ default: m.MyCoursesPage })),
 );
-const SchoolsListPage = lazy(() =>
+const SchoolsListPage = lazyWithRetry(() =>
   import("./pages/SchoolsListPage").then((m) => ({
     default: m.SchoolsListPage,
   })),
 );
-const PracticeMessengerPage = lazy(() =>
+const PracticeMessengerPage = lazyWithRetry(() =>
   import("./pages/PracticeMessengerPage").then((m) => ({
     default: m.PracticeMessengerPage,
   })),
 );
-const ClassroomHostPage = lazy(() =>
+const ClassroomHostPage = lazyWithRetry(() =>
   import("./pages/ClassroomHostPage").then((m) => ({
     default: m.ClassroomHostPage,
   })),
 );
-const ClassroomStudentPage = lazy(() =>
+const ClassroomStudentPage = lazyWithRetry(() =>
   import("./pages/ClassroomStudentPage").then((m) => ({
     default: m.ClassroomStudentPage,
   })),
 );
-const ClassroomReplayPage = lazy(() =>
+const ClassroomReplayPage = lazyWithRetry(() =>
   import("./pages/ClassroomReplayPage").then((m) => ({
     default: m.ClassroomReplayPage,
   })),
 );
-const FreeClassHistoryPage = lazy(() =>
+const FreeClassHistoryPage = lazyWithRetry(() =>
   import("./pages/FreeClassHistoryPage").then((m) => ({
     default: m.FreeClassHistoryPage,
   })),
 );
-const BoardsPage = lazy(() =>
+const BoardsPage = lazyWithRetry(() =>
   import("./pages/BoardsPage").then((m) => ({ default: m.BoardsPage })),
 );
-const BoardEditorPage = lazy(() =>
+const BoardEditorPage = lazyWithRetry(() =>
   import("./pages/BoardEditorPage").then((m) => ({
     default: m.BoardEditorPage,
   })),
 );
-const ChallengesHubPage = lazy(() =>
+const ChallengesHubPage = lazyWithRetry(() =>
   import("./pages/ChallengesHubPage").then((m) => ({
     default: m.ChallengesHubPage,
   })),
 );
-const MyTestsPage = lazy(() =>
+const MyTestsPage = lazyWithRetry(() =>
   import("./pages/MyTestsPage").then((m) => ({ default: m.MyTestsPage })),
 );
-const MyTestFolderViewPage = lazy(() =>
+const MyTestFolderViewPage = lazyWithRetry(() =>
   import("./pages/MyTestFolderViewPage").then((m) => ({ default: m.MyTestFolderViewPage })),
 );
-const MyTestQuestionEditorPage = lazy(() =>
+const MyTestQuestionEditorPage = lazyWithRetry(() =>
   import("./pages/MyTestQuestionEditorPage").then((m) => ({ default: m.MyTestQuestionEditorPage })),
 );
-const MyDictionariesPage = lazy(() =>
+const MyDictionariesPage = lazyWithRetry(() =>
   import("./pages/MyDictionariesPage").then((m) => ({ default: m.MyDictionariesPage })),
 );
-const WordDeckViewPage = lazy(() =>
+const WordDeckViewPage = lazyWithRetry(() =>
   import("./pages/WordDeckViewPage").then((m) => ({ default: m.WordDeckViewPage })),
 );
-const DeckPracticePage = lazy(() =>
+const DeckPracticePage = lazyWithRetry(() =>
   import("./pages/DeckPracticePage").then((m) => ({ default: m.DeckPracticePage })),
 );
-const ChallengesListPage = lazy(() =>
+const ChallengesListPage = lazyWithRetry(() =>
   import("./pages/ChallengesListPage").then((m) => ({
     default: m.ChallengesListPage,
   })),
 );
-const ChallengeDetailPage = lazy(() =>
+const ChallengeDetailPage = lazyWithRetry(() =>
   import("./pages/ChallengeDetailPage").then((m) => ({
     default: m.ChallengeDetailPage,
   })),
 );
-const ChallengeWordPracticePage = lazy(() =>
+const ChallengeWordPracticePage = lazyWithRetry(() =>
   import("./pages/ChallengeWordPracticePage").then((m) => ({
     default: m.ChallengeWordPracticePage,
   })),
@@ -194,7 +197,14 @@ function HomeRoute() {
   return <DashboardPage />;
 }
 
-const router = createBrowserRouter([
+// Every route gets the same errorElement. Without one, React Router falls back to its
+// built-in developer error screen -- which is what users saw when a deploy invalidated the
+// page chunk they were navigating to.
+const withErrorBoundary = (routes: RouteObject[]): RouteObject[] =>
+  routes.map((route) => ({ ...route, errorElement: <RouteErrorBoundary /> }));
+
+const router = createBrowserRouter(
+  withErrorBoundary([
   { path: "/login", element: <LoginPage /> },
   {
     path: "/",
@@ -513,7 +523,8 @@ const router = createBrowserRouter([
   },
   { path: "/admins", element: <Navigate to="/" replace /> },
   { path: "*", element: <Navigate to="/" replace /> },
-]);
+  ]),
+);
 
 export default function App() {
   return (

@@ -16,6 +16,26 @@ client.interceptors.request.use((config) => {
   return config;
 });
 
+/**
+ * A 401 only means "this session expired" when the API itself said so. While the backend is
+ * down or redeploying, the proxy in front of it can answer with a 401 of its own (or an HTML
+ * error page), and logging out on that would bounce the user to /login mid-session for
+ * something that resolves on its own.
+ *
+ * So the session is cleared only for a 401 carrying a JSON body, which is what the API always
+ * returns and an infrastructure error page never does.
+ */
+function isSessionRejection(err: any): boolean {
+  const response = err?.response;
+  if (response?.status !== 401) return false;
+
+  const contentType = String(response.headers?.["content-type"] ?? "");
+  if (contentType.includes("application/json")) return true;
+
+  // Axios parses JSON into an object; an HTML error page stays a string.
+  return typeof response.data === "object" && response.data !== null;
+}
+
 client.interceptors.response.use(
   (res) => {
     useLoadingStore.getState().dec();
@@ -33,7 +53,7 @@ client.interceptors.response.use(
       config._retry = true;
       return client(config);
     }
-    if (err.response?.status === 401) {
+    if (isSessionRejection(err)) {
       useAuthStore.getState().logout();
       window.location.href = "/login";
     }
