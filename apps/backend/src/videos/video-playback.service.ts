@@ -156,16 +156,44 @@ export class VideoPlaybackService {
     return this.rewriteManifestUrls(manifest, token);
   }
 
+  /**
+   * Points every reference in a playlist at this server, carrying the playback token.
+   *
+   * Handles both shapes, because both exist in storage:
+   *   - single-rendition MPEG-TS (everything transcoded before the ABR change)
+   *   - multi-rendition fMP4, where the master lists variant playlists, each variant lists
+   *     .m4s segments, and an EXT-X-MAP names the init segment
+   *
+   * All of them are served through the same /segments/:fileName route, so the rewrite is the
+   * same regardless of extension.
+   */
   private rewriteManifestUrls(manifest: string, token: string) {
+    const encodedToken = encodeURIComponent(token);
+    const segmentExtensions = ['.ts', '.m4s', '.mp4', '.m3u8'];
+
     return manifest
       .split('\n')
       .map((line) => {
-        if (line.startsWith('#EXT-X-KEY')) {
-          return line.replace(/URI="[^"]+"/, `URI="key?token=${encodeURIComponent(token)}"`);
+        const trimmed = line.trim();
+
+        if (trimmed.startsWith('#EXT-X-KEY')) {
+          return line.replace(/URI="[^"]+"/, `URI="key?token=${encodedToken}"`);
         }
-        if (line.trim().endsWith('.ts')) {
-          return `segments/${line.trim()}?token=${encodeURIComponent(token)}`;
+
+        // fMP4 variants name their init segment here; it is fetched like any other segment.
+        if (trimmed.startsWith('#EXT-X-MAP')) {
+          return line.replace(
+            /URI="([^"]+)"/,
+            (_full, uri: string) => `URI="segments/${uri}?token=${encodedToken}"`,
+          );
         }
+
+        // Anything else that is not a tag and looks like a file is a segment or a variant
+        // playlist -- both are proxied through the same route.
+        if (trimmed && !trimmed.startsWith('#') && segmentExtensions.some((ext) => trimmed.endsWith(ext))) {
+          return `segments/${trimmed}?token=${encodedToken}`;
+        }
+
         return line;
       })
       .join('\n');

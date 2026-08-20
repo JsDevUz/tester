@@ -39,6 +39,18 @@ class InitiateVideoUploadDto {
   label?: string;
 }
 
+/**
+ * Content type for a file served from the HLS bucket.
+ *
+ * The route handles several kinds now: legacy MPEG-TS segments, fMP4 media segments and their
+ * init file, and the per-rendition playlists a master playlist points at.
+ */
+function contentTypeForSegment(fileName: string): string {
+  if (fileName.endsWith('.m3u8')) return 'application/vnd.apple.mpegurl';
+  if (fileName.endsWith('.m4s') || fileName.endsWith('.mp4')) return 'video/mp4';
+  return 'video/mp2t';
+}
+
 @UseGuards(JwtAuthGuard, RolesGuard)
 @Controller()
 export class VideosController {
@@ -154,16 +166,19 @@ export class VideosController {
   // immutable once transcoded, so caching the ciphertext at the CDN edge is
   // safe even though the request itself carries a bearer-style token — unlike
   // the key/manifest, the token isn't needed to make use of a cached segment.
+  // Content-Type is set per file rather than fixed: this route now serves MPEG-TS segments
+  // (older transcodes), fMP4 segments and their init file, and the per-rendition playlists.
   @Get('videos/:blockId/segments/:fileName')
   @Public()
   @SkipThrottle()
-  @Header('Content-Type', 'video/mp2t')
   @Header('Cache-Control', 'public, max-age=86400, immutable')
   getSegment(
     @Param('blockId') blockId: string,
     @Param('fileName') fileName: string,
     @Query('token') token: string,
+    @Res({ passthrough: true }) res: Response,
   ) {
+    res.setHeader('Content-Type', contentTypeForSegment(fileName));
     return this.videoPlaybackService.getSegment(blockId, fileName, token);
   }
 
