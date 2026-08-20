@@ -59,13 +59,17 @@ export class VideoPlaybackService {
 
   private async getVideoContext(blockId: string) {
     const block = await this.getVideoBlock(blockId);
-    const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, block.lessonId) });
-    if (!lesson) throw new NotFoundException('Video not found');
-    const module = await db.query.modules.findFirst({ where: eq(modules.id, lesson.moduleId) });
-    if (!module) throw new NotFoundException('Video not found');
-    const course = await db.query.courses.findFirst({ where: eq(courses.id, module.courseId) });
-    if (!course) throw new NotFoundException('Video not found');
-    return { block, lesson, module, course };
+    // One join rather than walking lesson -> module -> course in three sequential round
+    // trips. Every video opening paid for all three before the token could be minted.
+    const [row] = await db
+      .select({ lesson: lessons, module: modules, course: courses })
+      .from(lessons)
+      .innerJoin(modules, eq(modules.id, lessons.moduleId))
+      .innerJoin(courses, eq(courses.id, modules.courseId))
+      .where(eq(lessons.id, block.lessonId))
+      .limit(1);
+    if (!row) throw new NotFoundException('Video not found');
+    return { block, lesson: row.lesson, module: row.module, course: row.course };
   }
 
   // Segment/key requests happen once per HLS chunk (every few seconds of playback)
@@ -92,7 +96,16 @@ export class VideoPlaybackService {
       if (!ownedCourse) throw new ForbiddenException('Video access denied');
     }
     const exp = Math.floor(Date.now() / 1000) + this.ttlSeconds();
-    const token = this.signPayload({ sub: viewer.id, role: viewer.role, blockId, courseId: course.id, exp });
+    const token = this.signPayload({
+      sub: viewer.id,
+      role: viewer.role,
+      blockId,
+      courseId: course.id,
+      exp,
+      // Carried so segment/key requests verify the HMAC and go straight to storage.
+      hlsBaseKey: block.hlsBaseKey ?? undefined,
+      aesKeyRef: block.aesKeyRef ?? undefined,
+    });
     return {
       token,
       expiresAt: new Date(exp * 1000).toISOString(),
@@ -101,11 +114,45 @@ export class VideoPlaybackService {
     };
   }
 
+  /**
+   * Manifests keyed by storage key, a few KB each. Caching them takes both the context
+   * queries and a storage round trip off every playback.
+   *
+   * The key is derived from the block id, so re-transcoding OVERWRITES the same object rather
+   * than writing a new one -- the cache would otherwise keep serving the old manifest. The
+   * transcode service calls invalidateManifest to drop it.
+   */
+  private readonly manifestCache = new Map<string, string>();
+  private static readonly MANIFEST_CACHE_LIMIT = 500;
+
+  private async loadManifest(storageKey: string): Promise<string> {
+    const cached = this.manifestCache.get(storageKey);
+    if (cached !== undefined) return cached;
+
+    const manifest = await this.storageService.getObjectText(storageKey);
+    // Cheap bound: drop the oldest entry once the map is full. Map preserves insertion order,
+    // so the first key is the oldest.
+    if (this.manifestCache.size >= VideoPlaybackService.MANIFEST_CACHE_LIMIT) {
+      const oldest = this.manifestCache.keys().next().value;
+      if (oldest !== undefined) this.manifestCache.delete(oldest);
+    }
+    this.manifestCache.set(storageKey, manifest);
+    return manifest;
+  }
+
+  /** Called after a re-transcode so the next request re-reads the rewritten manifest. */
+  invalidateManifest(hlsBaseKey: string): void {
+    this.manifestCache.delete(`${hlsBaseKey}/master.m3u8`);
+  }
+
   async getManifest(blockId: string, token: string) {
-    this.verifyToken(token, blockId);
-    const { block } = await this.getVideoContext(blockId);
-    if (!block.hlsMasterKey) throw new NotFoundException('Manifest not found');
-    const manifest = await this.storageService.getObjectText(block.hlsMasterKey);
+    const payload = this.verifyToken(token, blockId);
+    // hlsBaseKey in the token tells us where the manifest lives without touching the database.
+    const masterKey = payload.hlsBaseKey
+      ? `${payload.hlsBaseKey}/master.m3u8`
+      : (await this.getVideoContext(blockId)).block.hlsMasterKey;
+    if (!masterKey) throw new NotFoundException('Manifest not found');
+    const manifest = await this.loadManifest(masterKey);
     return this.rewriteManifestUrls(manifest, token);
   }
 
@@ -125,18 +172,21 @@ export class VideoPlaybackService {
   }
 
   async getKey(blockId: string, token: string): Promise<Buffer> {
-    this.verifyToken(token, blockId);
-    const block = await this.getVideoBlock(blockId);
-    if (!block.aesKeyRef) throw new NotFoundException('Video key not found');
-    return this.storageService.getObjectBuffer(block.aesKeyRef);
+    const payload = this.verifyToken(token, blockId);
+    // Tokens issued before the keys were embedded still work; they just pay for the lookup.
+    const aesKeyRef = payload.aesKeyRef ?? (await this.getVideoBlock(blockId)).aesKeyRef;
+    if (!aesKeyRef) throw new NotFoundException('Video key not found');
+    return this.storageService.getObjectBuffer(aesKeyRef);
   }
 
   async getSegment(blockId: string, fileName: string, token: string): Promise<StreamableFile> {
-    this.verifyToken(token, blockId);
-    const block = await this.getVideoBlock(blockId);
-    if (!block.hlsBaseKey) throw new NotFoundException('Video segment not found');
+    const payload = this.verifyToken(token, blockId);
+    // The hot path: hundreds of these per lesson. With the key in the token this is HMAC
+    // verification plus one storage read -- no database at all.
+    const hlsBaseKey = payload.hlsBaseKey ?? (await this.getVideoBlock(blockId)).hlsBaseKey;
+    if (!hlsBaseKey) throw new NotFoundException('Video segment not found');
     const safeFileName = fileName.replace(/[^a-zA-Z0-9_.-]/g, '');
-    const stream = await this.storageService.getObjectStream(`${block.hlsBaseKey}/${safeFileName}`);
+    const stream = await this.storageService.getObjectStream(`${hlsBaseKey}/${safeFileName}`);
     return new StreamableFile(stream);
   }
 }

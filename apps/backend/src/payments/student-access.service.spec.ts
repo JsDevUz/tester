@@ -17,6 +17,9 @@ describe('StudentAccessService', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    // Decisions are cached for 30s; these cases reuse the same course/student pair, so a
+    // result from the previous test would otherwise be served instead of the new mocks.
+    service.invalidateAccessCache();
   });
 
   function mockAccessibleEnrollment(payment: unknown) {
@@ -93,5 +96,60 @@ describe('StudentAccessService', () => {
     ]);
 
     await expect(service.assertStudentLessonAccess('course-1', 'student-1')).resolves.toBe(true);
+  });
+
+  describe('access decision caching', () => {
+    it('reuses an allowed decision instead of re-querying', async () => {
+      mockAccessibleEnrollment({ status: 'paid' });
+
+      await service.getStudentLessonAccess('course-1', 'student-1');
+      const callsAfterFirst = (db.query.groups.findMany as jest.Mock).mock.calls.length;
+      await service.getStudentLessonAccess('course-1', 'student-1');
+
+      expect((db.query.groups.findMany as jest.Mock).mock.calls.length).toBe(callsAfterFirst);
+    });
+
+    // A student who has just paid must not wait out a cached "no".
+    it('re-checks after a denial', async () => {
+      (db.query.groups.findMany as jest.Mock).mockResolvedValue([]);
+
+      await service.getStudentLessonAccess('course-1', 'student-2');
+      const callsAfterFirst = (db.query.groups.findMany as jest.Mock).mock.calls.length;
+      await service.getStudentLessonAccess('course-1', 'student-2');
+
+      expect((db.query.groups.findMany as jest.Mock).mock.calls.length).toBeGreaterThan(
+        callsAfterFirst,
+      );
+    });
+
+    it('forgets a decision when the cache is invalidated', async () => {
+      mockAccessibleEnrollment({ status: 'paid' });
+      await service.getStudentLessonAccess('course-1', 'student-3');
+
+      service.invalidateAccessCache('course-1', 'student-3');
+      const callsBefore = (db.query.groups.findMany as jest.Mock).mock.calls.length;
+      await service.getStudentLessonAccess('course-1', 'student-3');
+
+      expect((db.query.groups.findMany as jest.Mock).mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      );
+    });
+
+    it('scopes invalidation to one course when no student is given', async () => {
+      mockAccessibleEnrollment({ status: 'paid' });
+      await service.getStudentLessonAccess('course-1', 'student-4');
+      await service.getStudentLessonAccess('course-2', 'student-4');
+
+      service.invalidateAccessCache('course-1');
+      const callsBefore = (db.query.groups.findMany as jest.Mock).mock.calls.length;
+
+      await service.getStudentLessonAccess('course-2', 'student-4');
+      expect((db.query.groups.findMany as jest.Mock).mock.calls.length).toBe(callsBefore);
+
+      await service.getStudentLessonAccess('course-1', 'student-4');
+      expect((db.query.groups.findMany as jest.Mock).mock.calls.length).toBeGreaterThan(
+        callsBefore,
+      );
+    });
   });
 });

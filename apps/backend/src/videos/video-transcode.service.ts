@@ -9,6 +9,7 @@ import { eq } from 'drizzle-orm';
 import { db } from '../db';
 import { contentBlocks } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
+import { VideoPlaybackService } from './video-playback.service';
 
 @Injectable()
 export class VideoTranscodeService {
@@ -17,6 +18,7 @@ export class VideoTranscodeService {
   constructor(
     private readonly storageService: StorageService,
     private readonly configService: ConfigService,
+    private readonly playbackService: VideoPlaybackService,
   ) {}
 
   private segmentSeconds() {
@@ -160,6 +162,10 @@ export class VideoTranscodeService {
           processedAt: new Date(),
         })
         .where(eq(contentBlocks.id, blockId));
+
+      // A re-transcode overwrites master.m3u8 at the same key, so the cached copy is now
+      // stale -- drop it or playback keeps serving the previous version's segment list.
+      this.playbackService.invalidateManifest(baseKey);
     } catch (error) {
       this.logger.error(`Video transcode failed: ${blockId}`, error instanceof Error ? error.stack : String(error));
       await db
