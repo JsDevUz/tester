@@ -23,6 +23,8 @@ const ERROR_MESSAGES: Record<string, string> = {
   NOT_ENROLLED: 'Siz bu kursga yozilmagansiz',
   UNAUTHORIZED: "Kirish huquqingiz yo'q",
   GUEST_NAME_REQUIRED: 'Ism kiritish talab qilinadi',
+  CONNECTION_TIMEOUT: "Darsga ulanib bo'lmadi. Internetni tekshirib, qayta urinib ko'ring.",
+  CONNECTION_FAILED: "Serverga ulanib bo'lmadi. Internetni tekshiring.",
 };
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Classroom'>;

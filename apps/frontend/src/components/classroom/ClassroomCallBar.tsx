@@ -14,6 +14,8 @@ interface Props {
   activeAudioOutputId?: string | null;
   onSwitchAudioOutput?: (deviceId: string) => void;
   micDisabled: boolean;
+  /** Shows a "reconnecting" badge so a dropped connection is visible rather than silent. */
+  voiceReconnecting?: boolean;
   onEndCall: () => void;
   endCallTitle: string;
   hidden?: boolean;
@@ -27,7 +29,8 @@ interface Props {
 export function ClassroomCallBar({
   micEnabled, onToggleMic, audioInputs, activeAudioInputId, onSwitchAudioInput,
   audioOutputs, activeAudioOutputId, onSwitchAudioOutput,
-  micDisabled, onEndCall, endCallTitle, hidden, menu, theme = 'light',
+  micDisabled,
+  voiceReconnecting = false, onEndCall, endCallTitle, hidden, menu, theme = 'light',
   onSendReaction, handRaised, onToggleHandRaise,
 }: Props) {
   const [pickerOpen, setPickerOpen] = useState(false);
@@ -40,6 +43,12 @@ export function ClassroomCallBar({
       className="fixed bottom-4 left-1/2 -translate-x-1/2 z-50 flex items-center gap-2 transition-transform duration-300 ease-in-out"
       style={{ transform: hidden ? "translateY(200px)" : "translateY(0)" }}
     >
+      {voiceReconnecting && (
+        <div className="absolute -top-9 left-1/2 -translate-x-1/2 whitespace-nowrap rounded-full bg-amber-500 px-3 py-1 text-xs font-semibold text-white shadow-md">
+          Ovoz qayta ulanmoqda...
+        </div>
+      )}
+
       {/* Emoji picker popover */}
       {pickerOpen && (
         <div className="glass-card absolute bottom-[60px] left-1/2 -translate-x-1/2 z-20 flex items-center gap-1 rounded-full px-3 py-2 shadow-2xl max-w-[90vw] overflow-x-auto no-scrollbar touch-pan-x">

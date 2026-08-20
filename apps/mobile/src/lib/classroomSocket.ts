@@ -7,7 +7,14 @@ let socket: Socket | null = null;
 
 export function getClassroomSocket(): Socket {
   if (!socket) {
-    socket = io(`${BACKEND}/classroom`, {transports: ['websocket', 'polling']});
+    socket = io(`${BACKEND}/classroom`, {
+      transports: ['websocket', 'polling'],
+      // socket.io v4 only attempts the FIRST transport on the initial connection; listing
+      // polling as a fallback does nothing without this. On networks that block the WebSocket
+      // handshake -- some corporate proxies and carrier APNs -- the app simply never connected
+      // and sat on a loading screen.
+      tryAllTransports: true,
+    });
   }
   return socket;
 }

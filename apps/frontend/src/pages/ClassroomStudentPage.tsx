@@ -351,6 +351,7 @@ export function ClassroomStudentPage({ isFreeRoute = false }: { isFreeRoute?: bo
 
       <ClassroomCallBar
         micEnabled={voice.micEnabled}
+        voiceReconnecting={voice.reconnecting}
         onToggleMic={() => void voice.toggleMic()}
         audioInputs={voice.audioInputs}
         activeAudioInputId={voice.activeAudioInputId}

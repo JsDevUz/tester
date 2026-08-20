@@ -1,4 +1,4 @@
-import {
+import { BadRequestException,
   Body, Controller, Delete, Get, Param, ParseUUIDPipe, Patch, Post, Query, Req, UseGuards,
 } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
@@ -205,9 +205,14 @@ export class ClassroomController {
   @Roles('teacher', 'super')
   async mute(
     @Param('id', ParseUUIDPipe) id: string,
-    @Param('userId', ParseUUIDPipe) userId: string,
+    // Not ParseUUIDPipe: guests are identified as "guest:<id>", so validating as a UUID
+    // rejected every guest with a 400 and made muting impossible in free lessons.
+    @Param('userId') userId: string,
     @Req() req: JwtRequest,
   ) {
+    if (!/^guest:[\w-]+$|^[0-9a-f-]{36}$/i.test(userId)) {
+      throw new BadRequestException('Invalid participant id');
+    }
     await this.classroomService.withSession(id, () =>
       this.classroomService.muteParticipant(id, req.admin.id, userId));
     return { ok: true };

@@ -65,6 +65,12 @@ export function useClassroomSession(
     const token = useAuthStore.getState().token;
     let cancelled = false;
 
+    // Attempts so far, so a lost acknowledgement retries instead of leaving the student on a
+    // loading screen forever. The web client has had this; mobile had neither a timeout nor a
+    // retry, which is why a slow network produced an endless "Loading" with no error.
+    let joinAttempt = 0;
+    const MAX_JOIN_ATTEMPTS = 3;
+
     const join = async () => {
       const joinPayload: Record<string, unknown> = {sessionId, token};
       if (!token && guestName) {
@@ -72,14 +78,29 @@ export function useClassroomSession(
         joinPayload.guestName = guestName;
       }
       if (cancelled) return;
-      socket.emit(
+      joinAttempt += 1;
+      socket.timeout(15_000).emit(
         'student:join',
         joinPayload,
-        (res: {ok: boolean; code?: string; state?: CsSnapshot}) => {
+        (timeoutErr: Error | null, res: {ok: boolean; code?: string; state?: CsSnapshot}) => {
+          if (cancelled) return;
+
+          if (timeoutErr || !res) {
+            if (joinAttempt < MAX_JOIN_ATTEMPTS) {
+              // Back off a little before trying again; an immediate retry tends to hit the
+              // same congested moment.
+              setTimeout(() => void join(), 1_000 * joinAttempt);
+              return;
+            }
+            setState(s => ({...s, error: 'CONNECTION_TIMEOUT'}));
+            return;
+          }
+
           if (!res.ok || !res.state) {
             setState(s => ({...s, error: res.code ?? 'ERROR'}));
             return;
           }
+          joinAttempt = 0;
           const snap = res.state;
           setState({
             joined: true,
@@ -120,7 +141,22 @@ export function useClassroomSession(
     };
 
     if (socket.connected) void join();
-    socket.on('connect', () => void join());
+    socket.on('connect', () => {
+      // A successful connection clears any earlier failure and starts the attempt count over.
+      joinAttempt = 0;
+      setState(s => (s.error ? {...s, error: null} : s));
+      void join();
+    });
+
+    // Without this a blocked handshake failed silently and the screen stayed on "Loading".
+    socket.on('connect_error', () => {
+      if (cancelled) return;
+      // socket.io keeps retrying the connection itself; only say so once it is clear this is
+      // not a momentary blip.
+      if (joinAttempt >= MAX_JOIN_ATTEMPTS) {
+        setState(s => ({...s, error: 'CONNECTION_FAILED'}));
+      }
+    });
 
     socket.on('pdf:set', (p: {pdfName: string; pages: string[]; currentPage: number}) =>
       setState(s => applyPdfSet(s, p)),

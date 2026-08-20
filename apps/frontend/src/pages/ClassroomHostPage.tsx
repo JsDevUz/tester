@@ -616,6 +616,7 @@ export function ClassroomHostPage() {
 
       <ClassroomCallBar
         micEnabled={voice.micEnabled}
+        voiceReconnecting={voice.reconnecting}
         onToggleMic={() => void voice.toggleMic()}
         audioInputs={voice.audioInputs}
         activeAudioInputId={voice.activeAudioInputId}

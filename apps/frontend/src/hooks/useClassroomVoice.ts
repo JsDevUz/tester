@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
-import { RemoteTrack, RemoteTrackPublication, RemoteParticipant, Room, RoomEvent, Track } from "livekit-client";
+import { DisconnectReason, RemoteTrack, RemoteTrackPublication, RemoteParticipant, Room, RoomEvent, Track } from "livekit-client";
 import { apiVoiceToken } from "../api/classroom";
 import { getGuestId } from "./useClassroomSession";
 
@@ -7,6 +7,8 @@ interface VoiceState {
   // false — LiveKit sozlanmagan (dars ovozsiz rejimda)
   voiceAvailable: boolean;
   connected: boolean;
+  /** True while a dropped connection is being re-established. */
+  reconnecting: boolean;
   micEnabled: boolean;
   speakingUserIds: Set<string>;
   unmutedUserIds: Set<string>;
@@ -35,6 +37,7 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
   const [state, setState] = useState<VoiceState>({
     voiceAvailable: true,
     connected: false,
+    reconnecting: false,
     micEnabled: false,
     speakingUserIds: new Set(),
     unmutedUserIds: new Set(),
@@ -151,9 +154,30 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       setState((s) => ({ ...s, connected: true }));
       updateUnmuted();
     });
-    room.on(RoomEvent.Disconnected, () => {
+    // livekit-client resumes short interruptions itself; these two events cover that window
+    // so the UI can say so rather than looking dead.
+    room.on(RoomEvent.Reconnecting, () => {
+      setState((s) => ({ ...s, reconnecting: true }));
+    });
+    room.on(RoomEvent.Reconnected, () => {
+      setState((s) => ({ ...s, connected: true, reconnecting: false }));
+      updateUnmuted();
+    });
+
+    room.on(RoomEvent.Disconnected, (reason) => {
       setState((s) => ({ ...s, connected: false }));
       updateUnmuted();
+
+      // A disconnect the user asked for (leaving the lesson) must stay disconnected.
+      // Everything else -- Wi-Fi to LTE, laptop sleep, a phone pocketed for ten seconds --
+      // used to kill audio permanently while the board carried on, which is the single most
+      // common "the sound just died" complaint. Those get a fresh token and a retry.
+      const userLeft =
+        reason === DisconnectReason.CLIENT_INITIATED ||
+        reason === DisconnectReason.DUPLICATE_IDENTITY ||
+        reason === DisconnectReason.ROOM_DELETED;
+      if (cancelled || userLeft) return;
+      scheduleReconnect();
     });
     // Boshqa ishtirokchilarning ovozi shu orqali eshitiladi — track
     // kelganda audio elementga ulanadi, ketganda tozalanadi.
@@ -185,12 +209,33 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
       updateUnmuted();
     });
 
-    (async () => {
+    let reconnectAttempt = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /**
+     * Backs off 2s, 4s, 8s... capped at 30s, and keeps trying for as long as the lesson is
+     * open. A fresh token is fetched every time: if the room dropped because the old one
+     * expired, reusing it would fail the same way forever.
+     */
+    function scheduleReconnect() {
+      if (cancelled || reconnectTimer) return;
+      const delayMs = Math.min(30_000, 2_000 * 2 ** reconnectAttempt);
+      reconnectAttempt += 1;
+      setState((s) => ({ ...s, reconnecting: true }));
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void connectToRoom();
+      }, delayMs);
+    }
+
+    async function connectToRoom() {
+      if (!sessionId) return;
       try {
         const { token, url } = await apiVoiceToken(sessionId, guestName ? getGuestId() : null, guestName);
         if (cancelled) return;
         await room.connect(url, token);
         if (cancelled) { await room.disconnect(); return; }
+        reconnectAttempt = 0;
         let isMicOn = false;
         if (!startMuted) {
           await room.localParticipant.setMicrophoneEnabled(true);
@@ -212,22 +257,27 @@ export function useClassroomVoice(sessionId: string | undefined, startMuted: boo
               }
             }
           }
-          return { ...s, connected: true, micEnabled: isMicOn, unmutedUserIds: unmuted };
+          return { ...s, connected: true, reconnecting: false, micEnabled: isMicOn, unmutedUserIds: unmuted };
         });
         void refreshAudioInputs(room);
       } catch (e: any) {
         if (cancelled) return;
         if (e?.response?.status === 503) {
-          setState((s) => ({ ...s, voiceAvailable: false }));
+          // Voice is not configured for this deployment; retrying cannot help.
+          setState((s) => ({ ...s, voiceAvailable: false, reconnecting: false }));
         } else {
           console.error("Ovoz xonasiga ulanib bo'lmadi:", e);
           setState((s) => ({ ...s, connected: false }));
+          scheduleReconnect();
         }
       }
-    })();
+    }
+
+    void connectToRoom();
 
     return () => {
       cancelled = true;
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       roomRef.current = null;
       void room.disconnect();
       document.querySelectorAll("audio[data-livekit-participant]").forEach((el) => el.remove());

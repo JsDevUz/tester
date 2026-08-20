@@ -1,6 +1,6 @@
 import {useCallback, useEffect, useRef, useState} from 'react';
-import {PermissionsAndroid, Platform} from 'react-native';
-import {Room, RoomEvent, Track} from 'livekit-client';
+import {AppState, PermissionsAndroid, Platform} from 'react-native';
+import {DisconnectReason, Room, RoomEvent, Track} from 'livekit-client';
 import {AudioSession, AndroidAudioTypePresets} from '@livekit/react-native';
 import {apiVoiceToken, apiVoiceTokenGuest} from '../api/classroom';
 import {getGuestId} from './useClassroomSession';
@@ -41,6 +41,7 @@ export async function requestMicPermission(): Promise<boolean> {
 
 export function useClassroomVoice(sessionId: string | undefined, guestName?: string) {
   const [connected, setConnected] = useState(false);
+  const [reconnecting, setReconnecting] = useState(false);
   const [micEnabled, setMicEnabled] = useState(false);
   const [voiceAvailable, setVoiceAvailable] = useState(true);
   const [activeSpeakerIds, setActiveSpeakerIds] = useState<Set<string>>(new Set());
@@ -106,13 +107,50 @@ export function useClassroomVoice(sessionId: string | undefined, guestName?: str
     room.on(RoomEvent.ParticipantDisconnected, () => {
       updateUnmuted();
     });
-    room.on(RoomEvent.Disconnected, () => {
+    // livekit-client resumes brief interruptions on its own; surfacing them keeps the UI
+    // honest instead of looking connected when it is not.
+    room.on(RoomEvent.Reconnecting, () => {
+      setReconnecting(true);
+    });
+    room.on(RoomEvent.Reconnected, () => {
+      setReconnecting(false);
+      setConnected(true);
+      updateUnmuted();
+    });
+
+    room.on(RoomEvent.Disconnected, (reason) => {
       setConnected(false);
       setMicEnabled(false);
       setUnmutedUserIds(new Set());
+
+      // Anything the user did not ask for gets a retry. Switching Wi-Fi to mobile data, or
+      // pocketing the phone for ten seconds, used to end audio for the rest of the lesson
+      // while the board kept working -- the most common "the sound died" report.
+      const userLeft =
+        reason === DisconnectReason.CLIENT_INITIATED ||
+        reason === DisconnectReason.DUPLICATE_IDENTITY ||
+        reason === DisconnectReason.ROOM_DELETED;
+      if (cancelled || userLeft) return;
+      scheduleReconnect();
     });
 
-    (async () => {
+    let reconnectAttempt = 0;
+    let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+
+    /** Backs off 2s, 4s, 8s... to 30s, always with a freshly minted token. */
+    function scheduleReconnect() {
+      if (cancelled || reconnectTimer) return;
+      const delayMs = Math.min(30_000, 2_000 * 2 ** reconnectAttempt);
+      reconnectAttempt += 1;
+      setReconnecting(true);
+      reconnectTimer = setTimeout(() => {
+        reconnectTimer = null;
+        void connectToRoom();
+      }, delayMs);
+    }
+
+    async function connectToRoom() {
+      if (!sessionId) return;
       try {
         try {
           await AudioSession.configureAudio({
@@ -152,20 +190,38 @@ export function useClassroomVoice(sessionId: string | undefined, guestName?: str
           void room.disconnect();
           return;
         }
+        reconnectAttempt = 0;
         setConnected(true);
+        setReconnecting(false);
         updateUnmuted();
       } catch (e: any) {
         if (cancelled) return;
         if (e?.response?.status === 503) {
           setVoiceAvailable(false);
+          setReconnecting(false);
         } else {
           setConnected(false);
+          scheduleReconnect();
         }
       }
-    })();
+    }
+
+    void connectToRoom();
+
+    // Coming back from the background is the moment to check: iOS suspends WebRTC when the
+    // app leaves the foreground, and the room can be dead without ever firing Disconnected.
+    const appStateSub = AppState.addEventListener('change', (next) => {
+      if (next !== 'active' || cancelled) return;
+      if (room.state !== 'connected') {
+        reconnectAttempt = 0;
+        scheduleReconnect();
+      }
+    });
 
     return () => {
       cancelled = true;
+      appStateSub.remove();
+      if (reconnectTimer) clearTimeout(reconnectTimer);
       void room.disconnect();
       roomRef.current = null;
       try {
@@ -209,7 +265,7 @@ export function useClassroomVoice(sessionId: string | undefined, guestName?: str
     setNeedsAudioUnlock(false);
   }, []);
 
-  return {connected, micEnabled, voiceAvailable, toggleMic, activeSpeakerIds, unmutedUserIds, needsAudioUnlock, unlockAudio};
+  return {connected, reconnecting, micEnabled, voiceAvailable, toggleMic, activeSpeakerIds, unmutedUserIds, needsAudioUnlock, unlockAudio};
 }
 
 
