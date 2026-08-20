@@ -29,7 +29,7 @@ import {
   apiInsertClassPdfPages,
   type PdfLibraryAsset,
 } from "../api/classroom";
-import { apiUpdateBoardTitle, type BoardActivityItem } from "../api/boards";
+import { apiCreateBoardVersionCheckpoint, apiUpdateBoardTitle, type BoardActivityItem } from "../api/boards";
 
 export function BoardEditorPage() {
   const { id } = useParams<{ id: string }>();
@@ -41,6 +41,24 @@ export function BoardEditorPage() {
   useClassroomTheme(state.classroomTheme);
   const pageRef = useRef<HTMLDivElement>(null);
   const fullscreen = useFullscreen(pageRef);
+
+  // Snapshot a version on the way out, the same as the classroom host page does. The server
+  // checkpoints once the host socket has been gone for its 90s grace period, but that window
+  // is lost outright if the process restarts, so leaving saves immediately instead. A
+  // view-only visitor has nothing to save.
+  useEffect(() => {
+    if (!id || isViewOnly) return;
+
+    const checkpoint = () => {
+      void apiCreateBoardVersionCheckpoint(id).catch(() => {});
+    };
+
+    window.addEventListener("pagehide", checkpoint);
+    return () => {
+      window.removeEventListener("pagehide", checkpoint);
+      checkpoint();
+    };
+  }, [id, isViewOnly]);
 
   const [tool, setTool] = useState<DrawTool>("pen");
   const [color, setColor] = useState("#ef4444");

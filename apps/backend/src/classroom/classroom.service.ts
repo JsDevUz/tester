@@ -765,9 +765,19 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
         attachedBoard.boardLayout = s.boardLayout;
         attachedBoard.leftBoardMode = s.leftBoardMode;
         attachedBoard.rightBoardMode = s.rightBoardMode;
-        attachedBoard.strokesByPage = new Map(s.strokesByPage);
+        // Deep enough to break the aliasing: `new Map(outer)` copies the outer map but hands
+        // over the SAME inner maps, so mutating a page's strokes in the lesson silently
+        // rewrote the persistent board's copy too (and vice versa).
+        attachedBoard.strokesByPage = new Map(
+          Array.from(s.strokesByPage, ([page, list]) => [page, [...list]] as const),
+        );
         if (s.strokesByMode) {
-          attachedBoard.strokesByMode = new Map(s.strokesByMode);
+          attachedBoard.strokesByMode = new Map(
+            Array.from(s.strokesByMode, ([mode, pages]) => [
+              mode,
+              new Map(Array.from(pages, ([page, list]) => [page, [...list]] as const)),
+            ] as const),
+          );
         }
         attachedBoard.notebookPageCount = s.notebookPageCount;
         attachedBoard.notebookPageStyles = s.notebookPageStyles;

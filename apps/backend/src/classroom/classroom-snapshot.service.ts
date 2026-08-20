@@ -65,23 +65,13 @@ export class ClassroomSnapshotService {
       }
     }
     this.logger.log(`persistBoardSnapshot(${s.id}): strokeCount=${strokeCount} saqlanmoqda`);
-    const updated = await this.withQueryTimeout(
-      s.id,
-      db
-        .update(classSessions)
-        .set({
-          boardSnapshot,
-          pdfName: s.pdfName,
-          pdfPages: s.pdfPages,
-        })
-        .where(eq(classSessions.id, s.id))
-        .returning({ id: classSessions.id }),
-    );
-    this.logger.log(`persistBoardSnapshot(${s.id}): UPDATE ${updated.length} qator qaytardi`);
-
-    if (s.attachedBoardId) {
-      await this.withQueryTimeout(
-        s.attachedBoardId,
+    // The session row and the board it is attached to hold the same snapshot, and each is a
+    // complete copy. Writing them independently means a timeout on one still leaves the other
+    // saved -- running them in sequence used to let a slow session write skip the board write
+    // entirely, losing a lesson's drawings from the persistent board.
+    const writes: Promise<unknown>[] = [
+      this.withQueryTimeout(
+        s.id,
         db
           .update(classSessions)
           .set({
@@ -89,8 +79,40 @@ export class ClassroomSnapshotService {
             pdfName: s.pdfName,
             pdfPages: s.pdfPages,
           })
-          .where(eq(classSessions.id, s.attachedBoardId)),
+          .where(eq(classSessions.id, s.id))
+          .returning({ id: classSessions.id }),
+      ).then((updated) => {
+        this.logger.log(`persistBoardSnapshot(${s.id}): UPDATE ${updated.length} qator qaytardi`);
+      }),
+    ];
+
+    if (s.attachedBoardId) {
+      writes.push(
+        this.withQueryTimeout(
+          s.attachedBoardId,
+          db
+            .update(classSessions)
+            .set({
+              boardSnapshot,
+              pdfName: s.pdfName,
+              pdfPages: s.pdfPages,
+            })
+            .where(eq(classSessions.id, s.attachedBoardId)),
+        ),
       );
+    }
+
+    const results = await Promise.allSettled(writes);
+    const failures = results.filter((r) => r.status === 'rejected');
+    if (failures.length > 0) {
+      for (const failure of failures) {
+        this.logger.error(
+          `persistBoardSnapshot(${s.id}): yozuv muvaffaqiyatsiz: ${(failure as PromiseRejectedResult).reason}`,
+        );
+      }
+      // Still surface the failure so callers (autosave, shutdown) log and can react, but only
+      // after every write has had its turn.
+      throw (failures[0] as PromiseRejectedResult).reason;
     }
   }
 
@@ -109,9 +131,27 @@ export class ClassroomSnapshotService {
     ]);
   }
 
+  /** True when the session holds any stroke at all, in either the per-mode or legacy map. */
+  private hasStrokes(s: ClassroomSession): boolean {
+    if (s.strokesByMode) {
+      for (const map of s.strokesByMode.values()) {
+        for (const list of map.values()) if (list.length > 0) return true;
+      }
+    }
+    if (s.strokesByPage) {
+      for (const list of s.strokesByPage.values()) if (list.length > 0) return true;
+    }
+    return false;
+  }
+
   async autoSaveSnapshots(sessions: Map<string, ClassroomSession>): Promise<void> {
+    // A connected host is the usual case, but a DISCONNECTED one is when unsaved work is most
+    // at risk: the 1.5s persist debounce may never have fired, and the host grace period can
+    // outlive the process. Skipping those sessions is how a restart used to lose the last
+    // strokes drawn before the teacher's connection dropped. Sessions with nothing drawn are
+    // still skipped -- there is no state worth a write.
     const active = Array.from(sessions.values()).filter(
-      (s) => s.hostSocketId !== null,
+      (s) => s.hostSocketId !== null || this.hasStrokes(s),
     );
     if (active.length === 0) return;
 
