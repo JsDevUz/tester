@@ -359,6 +359,51 @@ export function ClassroomPdfPage({
     forceRedraw,
   });
 
+  // Delete / Backspace removes whatever is selected. Bound on window rather than the surface
+  // because the canvas is not focusable, so key events never reach it.
+  useEffect(() => {
+    if (!editable) return;
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Delete" && event.key !== "Backspace") return;
+
+      // Never while typing -- in a text box, or in any input elsewhere on the page, the key
+      // means "delete a character".
+      if (editingTextId) return;
+      const target = event.target as HTMLElement | null;
+      if (
+        target &&
+        (["INPUT", "TEXTAREA", "SELECT"].includes(target.tagName) || target.isContentEditable)
+      ) {
+        return;
+      }
+
+      if (selectedGroupIds.size > 0) {
+        event.preventDefault();
+        deleteSelectedGroup();
+        return;
+      }
+      const singleId = selectedShapeId ?? selectedTextId;
+      if (singleId) {
+        event.preventDefault();
+        deleteStrokeAndAttachedConnectors(singleId);
+        setSelectedShapeId(null);
+        setSelectedTextId(null);
+      }
+    };
+
+    window.addEventListener("keydown", handleKeyDown);
+    return () => window.removeEventListener("keydown", handleKeyDown);
+  }, [
+    editable,
+    editingTextId,
+    selectedGroupIds,
+    selectedShapeId,
+    selectedTextId,
+    deleteSelectedGroup,
+    deleteStrokeAndAttachedConnectors,
+  ]);
+
   const {
     connectorDraftRef,
     connectorHover,
