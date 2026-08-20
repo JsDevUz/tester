@@ -18,6 +18,7 @@ import { apiGetPracticeChats } from '../api/practiceMessenger';
 import { CachedImage } from '../components/common/CachedImage';
 import { cached } from '../lib/storage';
 import { Empty, Loading, OfflineBanner, Screen, StaleNote } from '../components/Ui';
+import {TAB_BAR_CLEARANCE} from '../navigation/tabBarLayout';
 
 export { ChatScreen } from './ChatScreen';
 
@@ -116,6 +117,7 @@ export function MessengerScreen({ navigation }: { navigation: NativeStackNavigat
             <Empty text={query.trim() ? 'Bunday amaliyot chati topilmadi' : "Hozircha suhbatlar yo'q"} />
           }
           contentContainerClassName="px-4"
+          contentContainerStyle={{paddingBottom: TAB_BAR_CLEARANCE}}
           renderItem={({ item }) => (
             <Pressable
               onPress={() => navigation.navigate('Chat', { chatId: item.id, title: item.curator.name })}

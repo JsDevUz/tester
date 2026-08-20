@@ -11,6 +11,7 @@ import type {RootStackParamList} from '../navigation/types';
 import {Empty, Input, Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LiveClassBanner} from '../components/LiveClassBanner';
 import {CachedImage} from '../components/common/CachedImage';
+import {TAB_BAR_CLEARANCE} from '../navigation/tabBarLayout';
 
 export function SchoolsScreen({
   navigation,
@@ -131,7 +132,8 @@ export function SchoolsScreen({
             />
           }
           ListEmptyComponent={<Empty text="Hali hech qanday maktabga qo'shilmagansiz" />}
-          contentContainerClassName="px-4 pb-6"
+          contentContainerClassName="px-4"
+          contentContainerStyle={{paddingBottom: TAB_BAR_CLEARANCE}}
           renderItem={({item}) => {
             const expanded = expandedIds.has(item.id);
             return (

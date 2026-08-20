@@ -170,13 +170,16 @@ export function CourseScreen({route, navigation}: Props) {
       return;
     }
     navigation.setOptions({
+      // Android left-aligns header titles by default, which pushes this one against the back
+      // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
+      headerTitleAlign: 'center',
       headerTitle: () => (
         <Pressable
           onPress={() => setLessonsListOpen(true)}
-          className="flex-row items-center gap-1.5 py-1">
+          className="flex-row items-center justify-center gap-1.5 py-1">
           <Text
             numberOfLines={1}
-            className="max-w-[200px] text-base font-bold text-ink dark:text-dark-ink">
+            className="max-w-[180px] text-base font-bold text-ink dark:text-dark-ink">
             Darslar Tartibi
           </Text>
           {lessonsListOpen ? (

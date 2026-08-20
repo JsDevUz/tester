@@ -12,6 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
   type OnLoadData,
@@ -37,11 +38,14 @@ import { API_URL } from '../config/env';
 import { disableSecureScreen, enableSecureScreen } from '../lib/secureScreen';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
-import { getOfflineVideoMeta, startAutoCacheVideo } from '../lib/offlineVideoService';
+import { getOfflineVideoMeta, isOfflineVideoComplete, startAutoCacheVideo } from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
 const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+
+/** Speeds the rate button cycles through, in order. */
+const PLAYBACK_RATES: number[] = [1, 1.25, 1.5, 1.75, 2];
 
 interface SubtitleCue {
   start: number;
@@ -176,6 +180,11 @@ export function HlsVideoPlayer({
   const [controlsVisible, setControlsVisible] = useState(true);
   const [scrubTime, setScrubTime] = useState<number | null>(null);
   const [barWidth, setBarWidth] = useState(0);
+  // How far the player has buffered ahead, drawn as the lighter track behind the played
+  // portion so the bar shows what is ready to watch, Telegram-style.
+  const [playableDuration, setPlayableDuration] = useState(0);
+  const [isScrubbing, setIsScrubbing] = useState(false);
+  const [playbackRate, setPlaybackRate] = useState(1);
   const hideTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const durationRef = useRef<number | null>(null);
   const barWidthRef = useRef(0);
@@ -248,10 +257,13 @@ export function HlsVideoPlayer({
 
     console.log('[HlsVideoPlayer] loadPlayback start for blockId:', blockId);
     try {
-      // 1. Check if offline downloaded file is ready first
+      // 1. Prefer a fully downloaded local copy -- it plays the whole video with no network.
+      // A partial cache is deliberately skipped here: it only covers what was fetched before
+      // the download stopped, so preferring it would pin a 30-minute lesson to however far it
+      // got. It stays available as the offline fallback in the catch block below.
       const localMeta = await getOfflineVideoMeta(blockId);
       console.log('[HlsVideoPlayer] localMeta check:', localMeta);
-      if (localMeta && localMeta.localManifestPath) {
+      if (localMeta && localMeta.localManifestPath && isOfflineVideoComplete(localMeta)) {
         const cleanPath = localMeta.localManifestPath.replace('file://', '');
         const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
         console.log('[HlsVideoPlayer] local video exists:', exists, 'path:', cleanPath);
@@ -526,6 +538,10 @@ export function HlsVideoPlayer({
     setCurrentTime(target);
   }
 
+  // The scrub position tracks the finger 1:1 across the bar: tapping anywhere jumps there and
+  // dragging follows directly, which is what a touch timeline is expected to do. The grant
+  // position is kept so a drag stays anchored to where the finger landed.
+  const grantScrubRef = useRef(0);
   const scrubResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -534,23 +550,28 @@ export function HlsVideoPlayer({
         const duration = durationRef.current ?? 0;
         const width = barWidthRef.current;
         if (!duration || !width) return;
-        setScrubTime(Math.max(0, Math.min(duration, (e.nativeEvent.locationX / width) * duration)));
+        const at = Math.max(0, Math.min(duration, (e.nativeEvent.locationX / width) * duration));
+        grantScrubRef.current = at;
+        setIsScrubbing(true);
+        setScrubTime(at);
       },
       onPanResponderMove: (_e, gesture) => {
         const duration = durationRef.current ?? 0;
         const width = barWidthRef.current;
         if (!duration || !width) return;
-        setScrubTime(current => {
-          const base = current ?? 0;
-          const delta = (gesture.dx / width) * duration;
-          return Math.max(0, Math.min(duration, base + delta * 0.06));
-        });
+        const delta = (gesture.dx / width) * duration;
+        setScrubTime(Math.max(0, Math.min(duration, grantScrubRef.current + delta)));
       },
       onPanResponderRelease: () => {
+        setIsScrubbing(false);
         setScrubTime(current => {
           if (current !== null) seekTo(current);
           return null;
         });
+      },
+      onPanResponderTerminate: () => {
+        setIsScrubbing(false);
+        setScrubTime(null);
       },
     }),
   ).current;
@@ -583,7 +604,14 @@ export function HlsVideoPlayer({
     const current = data.currentTime;
     setCurrentTime(current);
     currentTimeRef.current = current;
-    const jumped = Math.abs(current - lastTimeRef.current) > 2;
+    if (typeof data.playableDuration === 'number' && isFinite(data.playableDuration)) {
+      setPlayableDuration(data.playableDuration);
+    }
+    // A gap only means the user seeked if it is bigger than normal playback could produce
+    // between two progress ticks. At 2x each tick advances twice as far, so a fixed threshold
+    // would read fast playback as a seek and chop the watched range into pieces.
+    const jumpThreshold = Math.max(2, playbackRate * 2);
+    const jumped = Math.abs(current - lastTimeRef.current) > jumpThreshold;
     lastTimeRef.current = current;
 
     if (jumped || !currentRangeRef.current) {
@@ -646,10 +674,18 @@ export function HlsVideoPlayer({
           }
           style={StyleSheet.absoluteFill}
           paused={paused}
+          rate={playbackRate}
           resizeMode="contain"
-          progressUpdateInterval={500}
+          progressUpdateInterval={250}
           preventsDisplaySleepDuringVideoPlayback
           ignoreSilentSwitch="ignore"
+          // Keep audio running when the screen locks or the user switches apps, so a lesson
+          // can be listened to like a podcast instead of stopping dead.
+          playInBackground
+          playWhenInactive
+          // Required for playInBackground to survive on iOS, and drives the lock-screen
+          // controls Android shows for background audio.
+          showNotificationControls
           bufferConfig={{
             minBufferMs: 15000,
             maxBufferMs: 50000,
@@ -688,8 +724,10 @@ export function HlsVideoPlayer({
         </View>
       ) : null}
 
-      {/* Watermark */}
-      {watermarkText ? (
+      {/* Watermark. Hidden while the controls are up: it is placed at random positions, so
+          left visible it lands on top of the buttons and reads as a rendering glitch. It
+          reappears on its own schedule once the controls fade. */}
+      {watermarkText && !controlsVisible ? (
         <View
           pointerEvents="none"
           style={{
@@ -735,6 +773,25 @@ export function HlsVideoPlayer({
 
           {controlsVisible ? (
             <>
+              {/* Scrim behind the controls: white text and a white thumb disappear over bright
+                  footage (a scanned page, a slide). A smooth SVG gradient does this without the
+                  banding that stacked opaque views produce. */}
+              <Svg
+                pointerEvents="none"
+                style={{ position: 'absolute', left: 0, right: 0, bottom: 0, top: 0, zIndex: 5 }}
+                width="100%"
+                height="100%">
+                <Defs>
+                  <SvgLinearGradient id="playerScrim" x1="0" y1="0" x2="0" y2="1">
+                    <Stop offset="0" stopColor="#000" stopOpacity="0.45" />
+                    <Stop offset="0.28" stopColor="#000" stopOpacity="0.18" />
+                    <Stop offset="0.62" stopColor="#000" stopOpacity="0.22" />
+                    <Stop offset="1" stopColor="#000" stopOpacity="0.72" />
+                  </SvgLinearGradient>
+                </Defs>
+                <Rect x="0" y="0" width="100%" height="100%" fill="url(#playerScrim)" />
+              </Svg>
+
               {/* Top Right Action Bar */}
               <View
                 style={{
@@ -749,7 +806,7 @@ export function HlsVideoPlayer({
                     resumeTimeRef.current = currentTimeRef.current;
                     setIsFullscreen(v => !v);
                   }}
-                  className="h-8 w-8 items-center justify-center rounded-lg bg-black/60">
+                  className="h-8 w-8 items-center justify-center rounded-lg bg-black/75">
                   {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
                 </Pressable>
               </View>
@@ -757,7 +814,7 @@ export function HlsVideoPlayer({
               <View className="absolute inset-0 z-10 flex-row items-center justify-center gap-8">
                 <Pressable
                   onPress={() => skipBy(-10)}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-black/60">
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/75">
                   <RotateCcw size={20} color="white" />
                   <Text className="absolute text-[8px] font-bold text-white">10</Text>
                 </Pressable>
@@ -766,7 +823,7 @@ export function HlsVideoPlayer({
                     setPaused(value => !value);
                     bumpControls();
                   }}
-                  className="h-14 w-14 items-center justify-center rounded-full bg-black/65">
+                  className="h-14 w-14 items-center justify-center rounded-full bg-black/80">
                   {paused ? (
                     <Play size={26} color="white" fill="white" />
                   ) : (
@@ -775,7 +832,7 @@ export function HlsVideoPlayer({
                 </Pressable>
                 <Pressable
                   onPress={() => skipBy(10)}
-                  className="h-11 w-11 items-center justify-center rounded-full bg-black/60">
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/75">
                   <RotateCw size={20} color="white" />
                   <Text className="absolute text-[8px] font-bold text-white">10</Text>
                 </Pressable>
@@ -793,31 +850,75 @@ export function HlsVideoPlayer({
                   paddingBottom: isFullscreen ? Math.max(16, insets.bottom + 8) : 12,
                   paddingTop: 8,
                   zIndex: 20,
-                }}
-                className="bg-gradient-to-t from-black/80 to-transparent">
-                <View className="flex-row items-center justify-between pr-0.5 mb-1">
-                  <Text className="font-mono text-[10px] text-white/90">
-                    {formatClock(scrubTime ?? currentTime)} / {formatClock(videoDuration ?? 0)}
-                  </Text>
+                }}>
+                {/* Buttons sit on their own row above the clock so they cannot collide with
+                    the timestamps in a short player, where everything is cramped vertically.
+                    Not font-mono for the clock: the monospace face renders thin and washed
+                    out on Android and barely responds to a bold weight. */}
+                <View className="mb-1 flex-row items-center justify-end gap-2 pr-0.5">
+                  {/* Playback speed: cycles through the usual lesson-watching rates. */}
+                  <Pressable
+                    onPress={() => {
+                      setPlaybackRate(current => {
+                        const next = PLAYBACK_RATES[
+                          (PLAYBACK_RATES.indexOf(current) + 1) % PLAYBACK_RATES.length
+                        ];
+                        return next;
+                      });
+                      bumpControls();
+                    }}
+                    className={`h-7 items-center justify-center rounded-md px-2 ${playbackRate === 1 ? 'bg-black/70' : 'bg-indigo-600'
+                      }`}>
+                    <Text className="text-[11px] font-bold text-white">{playbackRate}x</Text>
+                  </Pressable>
 
                   {/* Subtitle Icon Button */}
                   {subtitleUrl ? (
                     <Pressable
                       onPress={() => setCaptionsOn(v => !v)}
-                      className={`h-6 w-6 items-center justify-center rounded-md ${captionsOn ? 'bg-indigo-600' : 'bg-black/60'
+                      className={`h-7 w-7 items-center justify-center rounded-md ${captionsOn ? 'bg-indigo-600' : 'bg-black/70'
                         }`}>
-                      <Captions size={13} color="#fff" />
+                      <Captions size={14} color="#fff" />
                     </Pressable>
                   ) : null}
                 </View>
 
+                <View className="flex-row items-center justify-between pr-0.5">
+                  <Text
+                    className="text-sm font-bold text-white"
+                    style={{ fontVariant: ['tabular-nums'] }}>
+                    {formatClock(scrubTime ?? currentTime)}
+                  </Text>
+                  <Text
+                    className="text-sm font-bold text-white/85"
+                    style={{ fontVariant: ['tabular-nums'] }}>
+                    {formatClock(videoDuration ?? 0)}
+                  </Text>
+                </View>
+
+                {/* Timeline: a thick, easy-to-hit bar with three stacked layers -- the dim
+                    track, the lighter buffered-ahead portion, and the played portion. The
+                    touch target is taller than the bar itself so the thumb stays grabbable. */}
                 <View
-                  className="h-5 justify-center"
+                  className="justify-center"
+                  style={{ height: 28 }}
                   onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
                   {...scrubResponder.panHandlers}>
-                  <View className="h-1 w-full overflow-hidden rounded-full bg-white/25">
+                  {/* The unplayed track is darkened rather than lightened so the bar reads as
+                      a groove over bright footage instead of vanishing into it. */}
+                  <View
+                    className="w-full overflow-hidden rounded-full"
+                    style={{ height: isScrubbing ? 8 : 6, backgroundColor: 'rgba(0,0,0,0.45)' }}>
                     <View
-                      className="h-full rounded-full bg-white"
+                      className="absolute left-0 top-0 h-full rounded-full bg-white/50"
+                      style={{
+                        width: videoDuration
+                          ? `${Math.min(100, (playableDuration / videoDuration) * 100)}%`
+                          : '0%',
+                      }}
+                    />
+                    <View
+                      className="absolute left-0 top-0 h-full rounded-full bg-white"
                       style={{
                         width: videoDuration
                           ? `${Math.min(100, ((scrubTime ?? currentTime) / videoDuration) * 100)}%`
@@ -827,12 +928,27 @@ export function HlsVideoPlayer({
                   </View>
                   <View
                     pointerEvents="none"
-                    className="absolute h-3 w-3 rounded-full bg-white"
+                    className="absolute rounded-full bg-white"
                     style={{
+                      height: isScrubbing ? 18 : 14,
+                      width: isScrubbing ? 18 : 14,
+                      // A dark ring keeps the white thumb visible against white footage,
+                      // where a shadow alone washes out.
+                      borderWidth: 1.5,
+                      borderColor: 'rgba(0,0,0,0.45)',
+                      shadowColor: '#000',
+                      shadowOpacity: 0.45,
+                      shadowRadius: 3,
+                      shadowOffset: { width: 0, height: 1 },
+                      elevation: 4,
                       left: videoDuration
                         ? Math.max(
                           0,
-                          Math.min(barWidth - 12, ((scrubTime ?? currentTime) / videoDuration) * barWidth - 6),
+                          Math.min(
+                            barWidth - (isScrubbing ? 18 : 14),
+                            ((scrubTime ?? currentTime) / videoDuration) * barWidth -
+                            (isScrubbing ? 9 : 7),
+                          ),
                         )
                         : 0,
                     }}

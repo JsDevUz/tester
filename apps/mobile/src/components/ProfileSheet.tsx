@@ -188,7 +188,7 @@ function ProfileSheetContent({
                 <X size={16} color="#64748b" />
               </Pressable>
             </View>
-            <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={true} keyboardShouldPersistTaps="handled">
+            <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
               <Pressable
                 onPress={() => void changeAvatar()}
                 className="mb-6 items-center gap-3 self-center">

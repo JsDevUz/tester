@@ -5,8 +5,8 @@ import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import {
   BookOpen,
   ClipboardList,
+  GraduationCap,
   MessageCircle,
-  School,
   UserRound,
 } from 'lucide-react-native';
 import { useColorScheme } from 'nativewind';
@@ -45,7 +45,7 @@ const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
 
 const icons = {
-  Schools: School,
+  Schools: GraduationCap,
   History: ClipboardList,
   Messenger: MessageCircle,
   Jamm: BookOpen,
@@ -116,15 +116,29 @@ function TabsWithProfile() {
           headerShown: false,
           tabBarActiveTintColor: '#6366f1',
           tabBarInactiveTintColor: isDark ? '#a4a7b2' : '#94a3b8',
+          // Floating pill rather than a bar pinned to the screen edge: it is detached from
+          // the bottom and sides, fully rounded, and lifted with a shadow, matching the web
+          // navigation. Absolute positioning is what frees it from the edge, so screens
+          // underneath need bottom padding to clear it -- see TAB_BAR_CLEARANCE.
           tabBarStyle: {
-            height: 56 + insets.bottom,
-            paddingTop: Platform.OS === 'android' ? 2 : 6,
-            paddingBottom:
-              Platform.OS === 'android'
-                ? Math.max(insets.bottom + 8, 14)
-                : Math.max(insets.bottom, 6),
+            position: 'absolute',
+            // left/right pin the pill's width; the margins are what actually inset it from
+            // the screen edges, since the navigator's own container spans the full width.
+            left: 0,
+            right: 0,
+            bottom: Math.max(insets.bottom, 10),
+            marginHorizontal: 16,
+            height: 64,
+            paddingTop: 8,
+            paddingBottom: 8,
+            borderRadius: 28,
+            borderTopWidth: 0,
             backgroundColor: isDark ? '#1b1c22' : '#ffffff',
-            borderTopColor: isDark ? '#454752' : '#eef2f7',
+            shadowColor: '#000',
+            shadowOpacity: isDark ? 0.4 : 0.12,
+            shadowRadius: 16,
+            shadowOffset: { width: 0, height: 6 },
+            elevation: 12,
           },
           tabBarLabelStyle: { fontSize: 10, fontWeight: '600' },
           tabBarIcon: ({ color, size, focused }) => (

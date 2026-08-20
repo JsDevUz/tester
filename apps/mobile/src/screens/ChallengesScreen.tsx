@@ -4,6 +4,7 @@ import type { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { CheckCircle2, FileText, Focus, Languages, Mic, Radio } from 'lucide-react-native';
 import { Header, Screen } from '../components/Ui';
 import type { RootStackParamList } from '../navigation/types';
+import { TAB_BAR_CLEARANCE } from '../navigation/tabBarLayout';
 
 export function ChallengesScreen({
   navigation,
@@ -13,7 +14,7 @@ export function ChallengesScreen({
   return (
     <Screen>
       <Header title="Jamm" subtitle="Bilim va musobaqalar markazi" />
-      <View className="gap-3 p-4">
+      <View className="gap-3 p-4" style={{ paddingBottom: TAB_BAR_CLEARANCE }}>
         <HubCard
           icon={<Radio size={22} color="#ef4444" />}
           title="Jonli Musobaqalar"

@@ -9,6 +9,7 @@ import {cached} from '../lib/storage';
 import type {Submission} from '../types/api';
 import type {RootStackParamList} from '../navigation/types';
 import {Empty, Input, Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
+import {TAB_BAR_CLEARANCE} from '../navigation/tabBarLayout';
 
 // Accepts either a bare test code or a full jamm.uz/t/<code> link (with any
 // query string) - the deep link is the natural thing a curator shares, but
@@ -111,7 +112,8 @@ export function HistoryScreen({
             />
           }
           ListEmptyComponent={<Empty text="Hali ishlangan testlar yo'q" />}
-          contentContainerClassName="px-4 pb-6"
+          contentContainerClassName="px-4"
+          contentContainerStyle={{paddingBottom: TAB_BAR_CLEARANCE}}
           renderItem={({item}) => {
             const pct = item.total ? Math.round(((item.score ?? 0) / item.total) * 100) : 0;
             const isGood = pct >= 70;

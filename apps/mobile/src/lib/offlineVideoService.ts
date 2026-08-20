@@ -66,6 +66,23 @@ export interface OfflineVideoMeta {
   downloadedAt: string;
   localManifestPath: string;
   localSubtitlePath?: string | null;
+  /**
+   * Segments written so far, and how many the source playlist has in total. A partial cache
+   * plays only as far as it got, so the player must prefer the network while these differ --
+   * otherwise a video interrupted at 1:30 keeps opening as a 1:30 video even back online.
+   * Absent on entries written before this field existed; treated as complete.
+   */
+  downloadedSegments?: number;
+  totalSegments?: number;
+}
+
+/** True when every segment of the source playlist is on disk. */
+export function isOfflineVideoComplete(meta: OfflineVideoMeta | null | undefined): boolean {
+  if (!meta) return false;
+  // Entries from before the counts were tracked have no way to prove they are partial, and
+  // they were only ever written on a completed download.
+  if (meta.totalSegments == null || meta.downloadedSegments == null) return true;
+  return meta.downloadedSegments >= meta.totalSegments;
 }
 
 export type DownloadProgressCallback = (progressPercent: number, stageText: string) => void;
@@ -157,6 +174,8 @@ export async function getOfflineVideoMeta(blockId: string): Promise<OfflineVideo
     downloadedAt: meta?.downloadedAt || new Date().toISOString(),
     localManifestPath: manifestPath,
     localSubtitlePath: subExists ? subPath : null,
+    downloadedSegments: meta?.downloadedSegments,
+    totalSegments: meta?.totalSegments,
   };
 }
 
@@ -460,6 +479,23 @@ export async function downloadOfflineVideo(
       const tempEncPath = `${blockDir}/temp_${i}.enc`;
       const segmentLocalPath = getLocalSegmentPath(blockId, i);
 
+      // Resume rather than restart: a download interrupted partway leaves its segments on
+      // disk, and re-fetching them would burn the user's data to produce identical files.
+      // (Only applies to the per-segment layout; the merged file is appended to in order,
+      // so it has no way to skip ahead.)
+      if (!USE_MERGED_TS) {
+        const already = await ReactNativeBlobUtil.fs.stat(segmentLocalPath).catch(() => null);
+        if (already && Number(already.size) > 0) {
+          completedSegments++;
+          await writeManifest(completedSegments);
+          onProgress?.(
+            Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75)),
+            `Yuklanmoqda: ${completedSegments}/${totalSegments}`,
+          );
+          continue;
+        }
+      }
+
       try {
         await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 3);
         if (keyBytes && keyBytes.length === 16) {
@@ -508,6 +544,8 @@ export async function downloadOfflineVideo(
         downloadedAt: new Date().toISOString(),
         localManifestPath: playableLocalPath,
         localSubtitlePath,
+        downloadedSegments: completedSegments,
+        totalSegments,
       };
       const reg = await getOfflineVideosRegistry();
       reg[blockId] = partialMeta;
@@ -535,6 +573,8 @@ export async function downloadOfflineVideo(
       downloadedAt: new Date().toISOString(),
       localManifestPath: playableLocalPath,
       localSubtitlePath,
+      downloadedSegments: completedSegments,
+      totalSegments,
     };
 
     const registry = await getOfflineVideosRegistry();

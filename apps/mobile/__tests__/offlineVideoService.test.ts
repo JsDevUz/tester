@@ -8,6 +8,7 @@ import {
   getLocalSegmentPath,
   getOfflineVideoMeta,
   getOfflineVideosRegistry,
+  isOfflineVideoComplete,
   isOfflineVideoReady,
 } from '../src/lib/offlineVideoService';
 
@@ -101,6 +102,36 @@ describe('offlineVideoService', () => {
     const meta = await getOfflineVideoMeta('block-1');
     expect(meta).not.toBeNull();
     expect(meta?.localManifestPath).toBe(EXPECTED_PLAYABLE);
+  });
+
+  describe('isOfflineVideoComplete', () => {
+    const base = {
+      blockId: 'block-1',
+      title: 'Video dars',
+      totalBytes: 1,
+      downloadedAt: '2026-08-20T00:00:00.000Z',
+      localManifestPath: EXPECTED_PLAYABLE,
+    };
+
+    it('treats a partially downloaded video as incomplete', () => {
+      expect(
+        isOfflineVideoComplete({...base, downloadedSegments: 9, totalSegments: 180}),
+      ).toBe(false);
+    });
+
+    it('treats a fully downloaded video as complete', () => {
+      expect(
+        isOfflineVideoComplete({...base, downloadedSegments: 180, totalSegments: 180}),
+      ).toBe(true);
+    });
+
+    it('treats a legacy entry with no counts as complete', () => {
+      expect(isOfflineVideoComplete(base)).toBe(true);
+    });
+
+    it('treats a missing entry as incomplete', () => {
+      expect(isOfflineVideoComplete(null)).toBe(false);
+    });
   });
 
   it('handles deleteOfflineVideo gracefully', async () => {
