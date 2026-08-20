@@ -12,6 +12,28 @@ import {
 const ARROW_HEAD_LEN_REF = 14;
 const ARROW_HEAD_ANGLE = Math.PI / 7;
 
+/**
+ * Swaps pure black and pure white so ink stays visible when the board theme flips.
+ *
+ * A stroke drawn in black on the light board would vanish against the dark one, and vice
+ * versa. Only the two extremes are swapped: every other colour a teacher picks is a deliberate
+ * choice and is left exactly as drawn.
+ */
+export function themedInk(color: string | undefined): string {
+  if (!color) return "#000000";
+  const normalised = color.trim().toLowerCase();
+  const isWhite = normalised === "#fff" || normalised === "#ffffff" || normalised === "white";
+  const isBlack = normalised === "#000" || normalised === "#000000" || normalised === "black";
+  if (!isWhite && !isBlack) return color;
+
+  // Read the board's theme off the document rather than threading it through every draw call:
+  // useClassroomTheme sets data-theme on the root for as long as the board is open.
+  const isDarkBoard = document.documentElement.getAttribute("data-theme") === "dark";
+  if (isDarkBoard && isBlack) return "#ffffff";
+  if (!isDarkBoard && isWhite) return "#000000";
+  return color;
+}
+
 const laserStartTimeMap = new Map<string, number>();
 
 function getLaserStartTime(s: CsStroke): number {
@@ -122,7 +144,7 @@ function drawArrow(
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = s.color;
+  ctx.strokeStyle = themedInk(s.color);
   ctx.globalAlpha = dimmed ? 0.25 : 1;
   const lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
   ctx.lineWidth = lineWidth;
@@ -213,7 +235,7 @@ function drawLine(
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = s.color;
+  ctx.strokeStyle = themedInk(s.color);
   ctx.globalAlpha = dimmed ? 0.25 : 1;
   const lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
   ctx.lineWidth = lineWidth;
@@ -379,7 +401,7 @@ function drawShape(
   const scale = w / REF_WIDTH;
   const lineWidth = Math.max(1, s.width * scale);
   ctx.lineWidth = lineWidth;
-  ctx.strokeStyle = s.color;
+  ctx.strokeStyle = themedInk(s.color);
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
   const strokeStyle = s.strokeStyle ?? "solid";
@@ -447,9 +469,11 @@ function drawShape(
   }
   if (s.text?.trim()) {
     const fontSize = Math.max(1, (s.fontSize ?? 24) * scale);
-    const padding = Math.max(6, 12 * scale);
+    // Scales with the text, not just the page: at a large font size a flat 12px gap let the
+    // first and last lines sit right against the shape's edge.
+    const padding = Math.max(8, 12 * scale, fontSize * 0.45);
     ctx.globalAlpha = strokeAlpha;
-    ctx.fillStyle = s.textColor || s.color;
+    ctx.fillStyle = themedInk(s.textColor || s.color);
     ctx.font = `${s.fontWeight ?? 600} ${fontSize}px ${getFontFamilyString(s.fontFamily)}`;
     ctx.textBaseline = "middle";
     const lines = wrapTextLines(ctx, s.text.trim(), Math.max(1, width - padding * 2));
@@ -492,7 +516,7 @@ export function drawStroke(
   if (s.tool === "text") {
     if (!s.text) return;
     ctx.save();
-    ctx.fillStyle = s.color;
+    ctx.fillStyle = themedInk(s.color);
     ctx.globalAlpha = dimmed ? 0.25 : 1;
     const referenceFontSize = s.fontSize ?? Math.max(14, s.width * 6);
     const renderedFontSize = Math.max(1, referenceFontSize * (w / REF_WIDTH));
@@ -593,7 +617,7 @@ export function drawStroke(
     });
     if (outline.length > 0) {
       ctx.save();
-      ctx.fillStyle = s.color;
+      ctx.fillStyle = themedInk(s.color);
       ctx.globalAlpha = dimmed ? 0.25 : 1;
       ctx.beginPath();
       ctx.moveTo(outline[0][0], outline[0][1]);
@@ -693,7 +717,7 @@ export function drawStroke(
   ctx.save();
   ctx.lineCap = "round";
   ctx.lineJoin = "round";
-  ctx.strokeStyle = s.color;
+  ctx.strokeStyle = themedInk(s.color);
   ctx.lineWidth = Math.max(1, s.width * (w / REF_WIDTH));
   const baseAlpha = s.tool === "highlighter" ? 0.35 : 1;
   // Stroke-eraser hover-preview: o'chirilishi mumkin bo'lgan chizma

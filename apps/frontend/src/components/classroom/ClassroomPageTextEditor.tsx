@@ -67,8 +67,14 @@ export function ClassroomPageTextEditor({
   commitText,
   onUpdateShapeStroke,
 }: ClassroomPageTextEditorProps) {
+  // Mirrors the canvas padding in classroomCanvasDraw so editing and viewing line up: it
+  // scales with the font as well as the page, otherwise large text sits against the edge.
   const shapePadding = editingShapeForPanel
-    ? Math.max(6, 12 * (size.w / REF_WIDTH))
+    ? Math.max(
+        8,
+        12 * (size.w / REF_WIDTH),
+        (typeof editorFontSize === "number" ? editorFontSize : 16) * 0.45,
+      )
     : 0;
 
   // Oddiy matn (tool: "text") uchun tahrirlash PAYTIDA har doim TEPADAN

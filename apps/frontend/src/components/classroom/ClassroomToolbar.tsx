@@ -384,10 +384,15 @@ export function ClassroomToolbar({
               title={`Chiziq qalinligi (${["S", "M", "L"][index]})`}
             >
               <span
-                className={`block rounded-full transition-colors ${
-                  isActive ? "bg-white" : "bg-white dark:bg-gray-900"
-                }`}
+                // Inactive dots take the opposite colour to the toolbar behind them: dark on
+                // a light toolbar, light on a dark one. They were the wrong way round, so on
+                // a light toolbar a white dot was invisible until selected.
+                className="block rounded-full transition-colors"
                 style={{
+                  // var(--text-primary) rather than a dark: utility: the board swaps
+                  // data-theme on the root while it is open, and the variable follows that
+                  // reliably where the utility class was not winning.
+                  backgroundColor: isActive ? "#fff" : "var(--text-primary)",
                   width: 4 + w,
                   height: 4 + w,
                   opacity: isActive ? 1 : 0.85,
