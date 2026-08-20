@@ -491,6 +491,12 @@ export async function downloadOfflineVideo(
     for (let i = 0; i < segmentNames.length; i++) {
       if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
+      // Yield to the event loop between segments. Decrypting one means base64-decoding it,
+      // running AES-CBC over it and base64-encoding the result -- all synchronous JS on the
+      // same thread that drives playback and touch handling. Without this pause the loop hogs
+      // the thread and the video stutters while a download is running.
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+
       const rawSegmentLine = segmentNames[i];
       const segRemoteUrl = rawSegmentLine.startsWith('http')
         ? rawSegmentLine

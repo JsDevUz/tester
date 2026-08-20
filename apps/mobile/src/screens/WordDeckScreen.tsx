@@ -14,6 +14,7 @@ import { Empty, Loading, Screen } from '../components/Ui';
 import { getApiErrorMessage } from '../lib/errors';
 import { WEB_URL } from '../config/env';
 import type { RootStackParamList } from '../navigation/types';
+import {cachedFirst} from '../lib/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'WordDeck'>;
 
@@ -28,7 +29,8 @@ export function WordDeckScreen({ route, navigation }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setWords(await apiListDeckWords(deckId));
+      const r = await cachedFirst(`deck:${deckId}`, () => apiListDeckWords(deckId), setWords);
+      if (r.data) setWords(r.data);
     } catch (error) {
       Alert.alert('Xatolik', getApiErrorMessage(error, "So'zlarni yuklab bo'lmadi"));
       setWords([]);

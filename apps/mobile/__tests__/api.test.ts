@@ -51,8 +51,14 @@ describe('api response interceptor', () => {
     useAuthStore.setState({token: 'abc123', user: {id: '1', role: 'student', name: 'Ali'}, hydrated: true});
   });
 
-  it('logs the user out when a request fails with 401', async () => {
-    const error = {response: {status: 401}};
+  it('logs the user out when the API rejects the session with a JSON 401', async () => {
+    const error = {
+      response: {
+        status: 401,
+        headers: {'content-type': 'application/json'},
+        data: {message: 'Unauthorized'},
+      },
+    };
 
     await expect(responseHandlers[0].rejected(error)).rejects.toBe(error);
 
@@ -62,6 +68,24 @@ describe('api response interceptor', () => {
 
     expect(useAuthStore.getState().token).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
+  });
+
+  // A 401 from the proxy while the backend restarts is not an expired session; logging out on
+  // it would drop the user at the login screen for something that fixes itself.
+  it('keeps the session for a 401 that did not come from the API', async () => {
+    const error = {
+      response: {
+        status: 401,
+        headers: {'content-type': 'text/html'},
+        data: '<html>502 Bad Gateway</html>',
+      },
+    };
+
+    await expect(responseHandlers[0].rejected(error)).rejects.toBe(error);
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(useAuthStore.getState().token).toBe('abc123');
   });
 
   it('leaves the session untouched for non-401 errors', async () => {

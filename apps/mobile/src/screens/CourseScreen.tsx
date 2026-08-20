@@ -22,7 +22,7 @@ import type {RootStackParamList} from '../navigation/types';
 import type {ApiMyCourseDetail, ApiMyLesson, ApiMyPracticeBlock} from '../types/api';
 import {apiGetMyCourseDetail, apiMarkLessonComplete} from '../api/groups';
 import {apiGetOrCreatePracticeChatForCourse} from '../api/practiceMessenger';
-import {cached, storage} from '../lib/storage';
+import {storage} from '../lib/storage';
 import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../lib/lessons';
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';

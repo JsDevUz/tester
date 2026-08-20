@@ -907,13 +907,17 @@ export function HlsVideoPlayer({
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    setPaused(value => {
-                      // Starting playback also starts caching the lesson, so the badge fills
-                      // while it is being watched and the video is available offline after.
-                      if (value) startDownloadIfNeeded();
-                      return !value;
-                    });
+                    const wasPaused = paused;
+                    setPaused(!wasPaused);
                     bumpControls();
+                    // Caching starts alongside playback, never in front of it. It used to run
+                    // inside the setPaused updater, which is meant to be pure -- kicking off a
+                    // request and file writes from there blocked the render, so the video only
+                    // began once the download had got going. Deferring to the next tick lets
+                    // the player start first and the download proceed independently.
+                    if (wasPaused) {
+                      setTimeout(() => startDownloadIfNeeded(), 0);
+                    }
                   }}
                   className="h-14 w-14 items-center justify-center rounded-full bg-black/80">
                   {paused ? (

@@ -8,6 +8,7 @@ import { getApiErrorMessage } from '../lib/errors';
 import { CachedImage } from '../components/common/CachedImage';
 import type { RootStackParamList } from '../navigation/types';
 import type { ApiStudentChallenge } from '../types/api';
+import {cachedFirst} from '../lib/storage';
 
 export function ChallengesListView({
   navigation,
@@ -19,7 +20,8 @@ export function ChallengesListView({
   const [joining, setJoining] = useState<string | null>(null);
   const load = useCallback(async () => {
     try {
-      setItems(await apiListMyChallenges());
+      const r = await cachedFirst('challenges', apiListMyChallenges, setItems);
+      if (r.data) setItems(r.data);
     } catch (error) {
       Alert.alert(
         'Xatolik',

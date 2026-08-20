@@ -23,6 +23,7 @@ import { DropPinTypeEditor, encodeDropPinRadius } from '../components/questionEd
 import { Button, Loading, Screen } from '../components/Ui';
 import { getApiErrorMessage } from '../lib/errors';
 import type { RootStackParamList } from '../navigation/types';
+import {cachedFirst} from '../lib/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'MyTestQuestionEditor'>;
 
@@ -65,7 +66,8 @@ export function MyTestQuestionEditorScreen({ route }: Props) {
 
   const load = useCallback(async () => {
     try {
-      setTest(await apiGetStudentTest(testId));
+      const r = await cachedFirst(`test:${testId}`, () => apiGetStudentTest(testId), setTest);
+      if (r.data) setTest(r.data);
     } catch (error) {
       Alert.alert('Xatolik', getApiErrorMessage(error, "Testni yuklab bo'lmadi"));
     }

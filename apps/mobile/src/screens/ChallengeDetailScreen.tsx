@@ -11,6 +11,7 @@ import { getApiErrorMessage } from '../lib/errors';
 import { CachedImage } from '../components/common/CachedImage';
 import type { RootStackParamList } from '../navigation/types';
 import type { ApiChallengeLeaderboardEntry, ApiStudentChallengeWord, ApiMyChallengeDetail, ChallengeLeaderboardMetric } from '../types/api';
+import {cachedFirst} from '../lib/storage';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'ChallengeDetail'>;
 
@@ -177,10 +178,14 @@ export function ChallengeDetailScreen({ route, navigation }: Props) {
   const [endPage, setEndPage] = useState('');
   const [newWords, setNewWords] = useState('');
 
-  const load = useCallback(
-    async () => setDetail(await apiGetMyChallengeDetail(challengeId)),
-    [challengeId],
-  );
+  const load = useCallback(async () => {
+    const r = await cachedFirst(
+      `challenge:${challengeId}`,
+      () => apiGetMyChallengeDetail(challengeId),
+      setDetail,
+    );
+    if (r.data) setDetail(r.data);
+  }, [challengeId]);
 
   useEffect(() => {
     void load();
