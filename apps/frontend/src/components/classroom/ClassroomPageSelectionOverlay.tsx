@@ -1,5 +1,8 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
 import { RotateCw } from "lucide-react";
+
+/** How far the selection frame sits outside the shape it surrounds. */
+const SELECTION_FRAME_GAP_PX = 4;
 import type { CsStroke } from "../../api/classroom";
 import {
   REF_WIDTH,
@@ -122,8 +125,12 @@ export function ClassroomPageSelectionOverlay({
         selectedText.id !== editingTextId && (
           <>
             <div
-              className="pointer-events-none absolute z-20 border border-indigo-500"
+              className="pointer-events-none absolute z-20"
               style={{
+                border: "1px solid #6366f1",
+                margin: `-${SELECTION_FRAME_GAP_PX}px`,
+                padding: `${SELECTION_FRAME_GAP_PX}px`,
+                boxSizing: "content-box",
                 left: `${selectedText.points[0] * 100}%`,
                 top: `${selectedText.points[1] * 100}%`,
                 width: `${(selectedText.textBoxWidth ?? 320) * (size.w / REF_WIDTH)}px`,
@@ -137,8 +144,10 @@ export function ClassroomPageSelectionOverlay({
                   key={corner}
                   type="button"
                   aria-label={`Matn o'lchamini ${corner} tomondan o'zgartirish`}
-                  className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-blue-600 bg-white dark:bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
+                  className="pointer-events-auto absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
                   style={{
+                    backgroundColor: "transparent",
+                    border: "1.5px solid #2563eb",
                     left: corner.includes("w") ? "0%" : "100%",
                     top: corner.includes("n") ? "0%" : "100%",
                     cursor:
@@ -157,8 +166,10 @@ export function ClassroomPageSelectionOverlay({
                   key={`text-connector-${side}`}
                   type="button"
                   aria-label={`Text box ${side} qirrasidan connector chizish`}
-                  className="pointer-events-auto absolute z-50 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white dark:bg-white border border-blue-600 shadow-xs hover:scale-150 hover:bg-blue-100 hover:ring-4 hover:ring-blue-400/30 active:scale-125 transition-all duration-150 cursor-crosshair"
+                  className="pointer-events-auto absolute z-50 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-xs hover:scale-150 hover:ring-4 hover:ring-blue-400/30 active:scale-125 transition-all duration-150 cursor-crosshair"
                   style={{
+                    backgroundColor: "transparent",
+                    border: "1.5px solid #2563eb",
                     left:
                       side === "left"
                         ? "-20px"
@@ -193,8 +204,11 @@ export function ClassroomPageSelectionOverlay({
               <button
                 type="button"
                 aria-label="Matnni aylantirish"
-                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-600 bg-white dark:bg-white text-blue-600 shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 transition-all duration-150"
                 style={{
+                  backgroundColor: "transparent",
+                  border: "1.5px solid #2563eb",
+                  color: "#2563eb",
                   left: "calc(100% + 22px)",
                   top: "-22px",
                 }}
@@ -419,8 +433,10 @@ export function ClassroomPageSelectionOverlay({
                   dotY = Math.max(0.01, Math.min(0.99, dotY));
                   return (
                     <div
-                      className="pointer-events-auto absolute z-30 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-indigo-500 bg-white dark:bg-white cursor-grab shadow-md"
+                      className="pointer-events-auto absolute z-30 h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-full cursor-grab shadow-md"
                       style={{
+                        backgroundColor: "transparent",
+                        border: "1.5px solid #6366f1",
                         left: `${dotX * 100}%`,
                         top: `${dotY * 100}%`,
                       }}
@@ -434,12 +450,16 @@ export function ClassroomPageSelectionOverlay({
             </>
           ) : (
             <div
-              className="pointer-events-none absolute z-20 border border-indigo-500"
+              className="pointer-events-none absolute z-20"
               style={{
+                border: "1px solid #6366f1",
                 left: `${Math.min(selectedShape.points[0], selectedShape.points[2]) * 100}%`,
                 top: `${Math.min(selectedShape.points[1], selectedShape.points[3]) * 100}%`,
                 width: `${Math.abs(selectedShape.points[2] - selectedShape.points[0]) * 100}%`,
                 height: `${Math.abs(selectedShape.points[3] - selectedShape.points[1]) * 100}%`,
+                margin: `-${SELECTION_FRAME_GAP_PX}px`,
+                padding: `${SELECTION_FRAME_GAP_PX}px`,
+                boxSizing: "content-box",
                 transform: `rotate(${selectedShape.rotation ?? 0}deg)`,
                 transformOrigin: "center",
               }}
@@ -449,8 +469,10 @@ export function ClassroomPageSelectionOverlay({
                   key={corner}
                   type="button"
                   aria-label={`Shape o'lchamini ${corner} tomondan o'zgartirish`}
-                  className="pointer-events-auto absolute h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-[2px] border border-blue-600 bg-white dark:bg-white shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
+                  className="pointer-events-auto absolute h-2.5 w-2.5 -translate-x-1/2 -translate-y-1/2 rounded-[2px] shadow-xs hover:scale-125 transition-transform duration-150 cursor-pointer"
                   style={{
+                    backgroundColor: "transparent",
+                    border: "1.5px solid #2563eb",
                     left: corner.includes("w") ? "0%" : "100%",
                     top: corner.includes("n") ? "0%" : "100%",
                     cursor:
@@ -469,8 +491,10 @@ export function ClassroomPageSelectionOverlay({
                   key={`connector-${side}`}
                   type="button"
                   aria-label={`${side} qirradan connector chizish`}
-                  className="pointer-events-auto absolute z-50 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-white dark:bg-white border border-blue-600 shadow-xs hover:scale-150 hover:bg-blue-100 hover:ring-4 hover:ring-blue-400/30 active:scale-125 transition-all duration-150 cursor-crosshair"
+                  className="pointer-events-auto absolute z-50 h-2 w-2 -translate-x-1/2 -translate-y-1/2 rounded-full shadow-xs hover:scale-150 hover:ring-4 hover:ring-blue-400/30 active:scale-125 transition-all duration-150 cursor-crosshair"
                   style={{
+                    backgroundColor: "transparent",
+                    border: "1.5px solid #2563eb",
                     left:
                       side === "left"
                         ? "-20px"
@@ -505,8 +529,11 @@ export function ClassroomPageSelectionOverlay({
               <button
                 type="button"
                 aria-label="Shape'ni aylantirish"
-                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full border border-blue-600 bg-white dark:bg-white text-blue-600 shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 hover:bg-blue-50 transition-all duration-150"
+                className="pointer-events-auto absolute z-50 flex h-6 w-6 items-center justify-center -translate-x-1/2 -translate-y-1/2 rounded-full shadow-xs cursor-grab active:cursor-grabbing hover:scale-125 transition-all duration-150"
                 style={{
+                  backgroundColor: "transparent",
+                  border: "1.5px solid #2563eb",
+                  color: "#2563eb",
                   left: "calc(100% + 22px)",
                   top: "-22px",
                 }}
