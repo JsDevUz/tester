@@ -12,7 +12,7 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import Svg, { Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
+import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
   type OnLoadData,
@@ -21,10 +21,10 @@ import Video, {
 } from 'react-native-video';
 import {
   Captions,
-  CheckCircle2,
+  Check,
   ChevronDown,
   ChevronUp,
-  Download,
+  DownloadCloud,
   Maximize2,
   Minimize2,
   Pause,
@@ -38,7 +38,7 @@ import { API_URL } from '../config/env';
 import { disableSecureScreen, enableSecureScreen } from '../lib/secureScreen';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
-import { getOfflineVideoMeta, isOfflineVideoComplete, startAutoCacheVideo } from '../lib/offlineVideoService';
+import { getOfflineVideoMeta, isOfflineVideoComplete } from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
@@ -46,6 +46,11 @@ const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 /** Speeds the rate button cycles through, in order. */
 const PLAYBACK_RATES: number[] = [1, 1.25, 1.5, 1.75, 2];
+
+/** "7,2 MB" -- comma decimal separator, matching the rest of the Uzbek UI. */
+function formatMegabytes(bytes: number): string {
+  return `${(bytes / (1024 * 1024)).toFixed(1).replace('.', ',')} MB`;
+}
 
 interface SubtitleCue {
   start: number;
@@ -190,6 +195,9 @@ export function HlsVideoPlayer({
   const barWidthRef = useRef(0);
   const currentTimeRef = useRef(0);
   const resumeTimeRef = useRef(0);
+  /** Target of a seek still settling, and when it was issued; see seekTo and handleProgress. */
+  const pendingSeekRef = useRef<number | null>(null);
+  const seekStartedAtRef = useRef(0);
   const [progressOpen, setProgressOpen] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
@@ -209,6 +217,11 @@ export function HlsVideoPlayer({
   const activeDownload = activeDownloads[blockId];
   const isDownloading = activeDownload?.status === 'downloading';
   const downloadProgress = activeDownload?.progress ?? 0;
+  const downloadedBytes = activeDownload?.downloadedBytes ?? 0;
+  const estimatedBytes = activeDownload?.totalBytes ?? 0;
+  const downloadedSizeLabel = registry[blockId]?.totalBytes
+    ? formatMegabytes(registry[blockId].totalBytes)
+    : null;
 
   useEffect(() => {
     void loadRegistry();
@@ -288,13 +301,9 @@ export function HlsVideoPlayer({
       setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
       setSubtitleUrl(playback.subtitleUrl);
 
-      // Silently cache in background like Telegram
-      startAutoCacheVideo(blockId, {
-        title,
-        lessonId,
-        courseId,
-        durationSec: durationRef.current,
-      });
+      // Caching is kicked off by pressing play (see the play button), not on open. Running it
+      // here too would download in the background while the badge still read "Yuklab olish",
+      // since startAutoCacheVideo bypasses the store the badge renders from.
     } catch (e: any) {
       console.log('[HlsVideoPlayer] online playback failed:', e?.message || e);
       // If offline/network failed, check if we have any partially cached local manifest
@@ -315,7 +324,7 @@ export function HlsVideoPlayer({
       }
       setError(true);
     }
-  }, [blockId, title, lessonId, courseId]);
+  }, [blockId]);
 
   useEffect(() => {
     void loadPlayback();
@@ -376,22 +385,40 @@ export function HlsVideoPlayer({
     };
   }, [subtitleUrl]);
 
+  /**
+   * Begins caching the lesson unless it is already cached or in flight. Reads the store
+   * directly rather than the rendered flags so it stays correct when called from inside a
+   * state updater, where those flags may be a render behind.
+   */
+  const startDownloadIfNeeded = useCallback(() => {
+    const state = useOfflineVideoStore.getState();
+    if (state.registry[blockId] || state.activeDownloads[blockId]?.status === 'downloading') {
+      return;
+    }
+
+    void startDownload(blockId, {
+      title,
+      lessonId,
+      courseId,
+      durationSec: durationRef.current,
+    }).then(result => {
+      // Success needs no dialog -- the badge switches to its "downloaded" state. Only a
+      // failure is worth interrupting for, and a cancellation is not a failure.
+      if (!result) {
+        const lastErr = useOfflineVideoStore.getState().activeDownloads[blockId]?.errorMessage;
+        if (lastErr) {
+          Alert.alert('Yuklab bo‘lmadi', lastErr);
+        }
+      }
+    });
+  }, [blockId, title, lessonId, courseId, startDownload]);
+
   const handleDownloadPress = useCallback(() => {
+    // Tapping a download in flight stops it immediately, the way the badge's stop-square
+    // implies. Nothing is lost: the segments already written stay on disk and a later tap
+    // resumes from there.
     if (isDownloading) {
-      Alert.alert(
-        'Yuklab olish davom etmoqda',
-        `${downloadProgress}% yuklandi. Bekor qilmoqchimisiz?`,
-        [
-          { text: 'Yo‘q', style: 'cancel' },
-          {
-            text: 'Bekor qilish',
-            style: 'destructive',
-            onPress: () => {
-              useOfflineVideoStore.getState().cancelDownload(blockId);
-            },
-          },
-        ],
-      );
+      useOfflineVideoStore.getState().cancelDownload(blockId);
       return;
     }
 
@@ -413,32 +440,12 @@ export function HlsVideoPlayer({
       return;
     }
 
-    // Start download
-    void startDownload(blockId, {
-      title,
-      lessonId,
-      courseId,
-      durationSec: videoDuration,
-    }).then(result => {
-      if (result) {
-        Alert.alert('Muvaffaqiyatli', 'Dars xavfsiz yuklab olindi va internetsiz ko‘rish uchun tayyor!');
-      } else {
-        const lastErr = useOfflineVideoStore.getState().activeDownloads[blockId]?.errorMessage;
-        if (lastErr) {
-          Alert.alert('Yuklab bo‘lmadi', lastErr);
-        }
-      }
-    });
+    startDownloadIfNeeded();
   }, [
     isDownloading,
     isDownloaded,
-    downloadProgress,
     blockId,
-    title,
-    lessonId,
-    courseId,
-    videoDuration,
-    startDownload,
+    startDownloadIfNeeded,
     removeDownload,
   ]);
 
@@ -536,6 +543,12 @@ export function HlsVideoPlayer({
     const target = Math.max(0, Math.min(duration || seconds, seconds));
     videoRef.current?.seek(target);
     setCurrentTime(target);
+    currentTimeRef.current = target;
+    // The player keeps emitting the pre-seek position for a few ticks before it lands on the
+    // new one. Without this the bar snaps back to where it was and only jumps forward again
+    // seconds later, so progress reports are ignored until one arrives near the target.
+    pendingSeekRef.current = target;
+    seekStartedAtRef.current = Date.now();
   }
 
   // The scrub position tracks the finger 1:1 across the bar: tapping anywhere jumps there and
@@ -602,6 +615,21 @@ export function HlsVideoPlayer({
 
   function handleProgress(data: OnProgressData) {
     const current = data.currentTime;
+
+    // Drop the stale positions a seek leaves in its wake: the player reports where it still
+    // is for a few ticks before it arrives, and honouring those rewinds the bar to the old
+    // spot. Once a report lands near the target the seek is considered settled.
+    const pendingSeek = pendingSeekRef.current;
+    if (pendingSeek !== null) {
+      const settled = Math.abs(current - pendingSeek) <= 1.5;
+      // Give up waiting after a while so a seek the player silently refused (into an
+      // unbuffered stretch, say) cannot freeze the bar for good.
+      const timedOut = Date.now() - seekStartedAtRef.current > 4000;
+      if (!settled && !timedOut) return;
+      pendingSeekRef.current = null;
+      lastTimeRef.current = current;
+    }
+
     setCurrentTime(current);
     currentTimeRef.current = current;
     if (typeof data.playableDuration === 'number' && isFinite(data.playableDuration)) {
@@ -771,6 +799,65 @@ export function HlsVideoPlayer({
             onPress={() => (controlsVisible ? setControlsVisible(false) : bumpControls())}
           />
 
+          {/* Offline-download badge, top left. Deliberately outside the controlsVisible
+              block: a download runs for minutes and its progress should stay readable while
+              the video plays, not vanish with the controls. */}
+          <View
+            style={{
+              position: 'absolute',
+              top: isFullscreen ? Math.max(16, insets.top + 8) : 12,
+              left: isFullscreen ? Math.max(20, insets.left + 12) : 12,
+              zIndex: 25,
+            }}>
+            <Pressable
+              onPress={handleDownloadPress}
+              className="flex-row items-center gap-2 rounded-2xl bg-black/60 px-2.5 py-2 active:opacity-80">
+              {isDownloading ? (
+                <View className="h-7 w-7 items-center justify-center">
+                  {/* Ring of progress with a stop square inside, so one tap-target both
+                      reports state and cancels. */}
+                  <Svg width={28} height={28} style={{position: 'absolute'}}>
+                    <Circle
+                      cx={14}
+                      cy={14}
+                      r={12}
+                      stroke="rgba(255,255,255,0.3)"
+                      strokeWidth={2}
+                      fill="none"
+                    />
+                    <Circle
+                      cx={14}
+                      cy={14}
+                      r={12}
+                      stroke="#fff"
+                      strokeWidth={2}
+                      fill="none"
+                      strokeLinecap="round"
+                      strokeDasharray={2 * Math.PI * 12}
+                      strokeDashoffset={2 * Math.PI * 12 * (1 - downloadProgress / 100)}
+                      transform="rotate(-90 14 14)"
+                    />
+                  </Svg>
+                  <View className="h-2.5 w-2.5 rounded-[2px] bg-white" />
+                </View>
+              ) : isDownloaded ? (
+                <Check size={20} color="#fff" />
+              ) : (
+                <DownloadCloud size={20} color="#fff" />
+              )}
+
+              <Text className="text-xs font-semibold text-white">
+                {isDownloading
+                  ? estimatedBytes > 0
+                    ? `${formatMegabytes(downloadedBytes)} / ${formatMegabytes(estimatedBytes)}`
+                    : `${downloadProgress}%`
+                  : isDownloaded
+                    ? (downloadedSizeLabel ?? 'Yuklangan')
+                    : 'Yuklab olish'}
+              </Text>
+            </Pressable>
+          </View>
+
           {controlsVisible ? (
             <>
               {/* Scrim behind the controls: white text and a white thumb disappear over bright
@@ -820,7 +907,12 @@ export function HlsVideoPlayer({
                 </Pressable>
                 <Pressable
                   onPress={() => {
-                    setPaused(value => !value);
+                    setPaused(value => {
+                      // Starting playback also starts caching the lesson, so the badge fills
+                      // while it is being watched and the video is available offline after.
+                      if (value) startDownloadIfNeeded();
+                      return !value;
+                    });
                     bumpControls();
                   }}
                   className="h-14 w-14 items-center justify-center rounded-full bg-black/80">

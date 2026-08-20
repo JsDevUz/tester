@@ -38,6 +38,7 @@ import { MyTestsScreen } from '../screens/MyTestsScreen';
 import { MyTestFolderScreen } from '../screens/MyTestFolderScreen';
 import { MyTestQuestionEditorScreen } from '../screens/MyTestQuestionEditorScreen';
 import { MyDictionariesScreen } from '../screens/MyDictionariesScreen';
+import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { WordDeckScreen } from '../screens/WordDeckScreen';
 import { CachedImage } from '../components/common/CachedImage';
 
@@ -84,7 +85,8 @@ function TabIcon({
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: focused ? 2 : 0,
-          borderColor: '#6366f1',
+          // Matches tabBarActiveTintColor, which `color` already carries.
+          borderColor: color,
         }}>
         {avatarUrl ? (
           <CachedImage
@@ -114,7 +116,10 @@ function TabsWithProfile() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          tabBarActiveTintColor: '#6366f1',
+          // Near-black rather than the brand indigo: the filled icon already marks the active
+          // tab, so the colour only has to separate it from the muted inactive ones. In dark
+          // mode it inverts to near-white for the same reason.
+          tabBarActiveTintColor: isDark ? '#f4f4f5' : '#18181b',
           tabBarInactiveTintColor: isDark ? '#a4a7b2' : '#94a3b8',
           // Floating pill rather than a bar pinned to the screen edge: it is detached from
           // the bottom and sides, fully rounded, and lifted with a shadow, matching the web
@@ -330,6 +335,11 @@ export function RootNavigator() {
             name="MyDictionaries"
             component={MyDictionariesScreen}
             options={{ title: "Mening lug'atlarim" }}
+          />
+          <Stack.Screen
+            name="EditProfile"
+            component={EditProfileScreen}
+            options={{ title: 'Profilni tahrirlash' }}
           />
           <Stack.Screen
             name="WordDeck"

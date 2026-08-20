@@ -13,6 +13,9 @@ export interface ActiveDownloadState {
   stageText: string;
   status: 'downloading' | 'error' | 'completed';
   errorMessage?: string;
+  /** Bytes on disk and the estimated final size, for a "1.7 MB / 7.2 MB" readout. */
+  downloadedBytes?: number;
+  totalBytes?: number;
 }
 
 interface OfflineVideoStoreState {
@@ -58,18 +61,24 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
     }));
 
     try {
-      const meta = await downloadOfflineVideo(blockId, options, (progressPercent, stageText) => {
-        set((state) => ({
-          activeDownloads: {
-            ...state.activeDownloads,
-            [blockId]: {
-              progress: progressPercent,
-              stageText,
-              status: 'downloading',
+      const meta = await downloadOfflineVideo(
+        blockId,
+        options,
+        (progressPercent, stageText, bytes) => {
+          set((state) => ({
+            activeDownloads: {
+              ...state.activeDownloads,
+              [blockId]: {
+                progress: progressPercent,
+                stageText,
+                status: 'downloading',
+                downloadedBytes: bytes?.downloaded,
+                totalBytes: bytes?.total,
+              },
             },
-          },
-        }));
-      });
+          }));
+        },
+      );
 
       set((state) => {
         const nextActive = { ...state.activeDownloads };

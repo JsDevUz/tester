@@ -28,6 +28,7 @@ export type RootStackParamList = {
   MyTestFolder: {folderId: string; folderName: string};
   MyTestQuestionEditor: {testId: string; testName: string};
   MyDictionaries: undefined;
+  EditProfile: undefined;
   WordDeck: {deckId: string; deckName: string; slug: string};
   DeckPractice: {slug: string; deckName?: string};
 };

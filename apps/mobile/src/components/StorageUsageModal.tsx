@@ -44,9 +44,18 @@ interface CategoryItem {
   title: string;
   description: string;
   icon: typeof BookOpen;
-  color: string;
-  bgColor: string;
-  darkBgColor: string;
+}
+
+/** Every category icon renders the same neutral grey -- per-category colours made the list
+ *  read as a set of unrelated badges rather than one list. */
+const CATEGORY_ICON_COLOR = '#64748b';
+
+/**
+ * One hue stepped in opacity, indexed by position in CATEGORIES. The breakdown bar and each
+ * row's size label share it, which is what ties a segment of the bar to its row.
+ */
+function categoryShade(index: number): string {
+  return `rgba(99,102,241,${1 - index * 0.15})`;
 }
 
 const CATEGORIES: CategoryItem[] = [
@@ -55,45 +64,30 @@ const CATEGORIES: CategoryItem[] = [
     title: 'Yuklangan videolar',
     description: 'Internetsiz ko‘rish uchun saqlangan darslar',
     icon: Film,
-    color: '#8b5cf6',
-    bgColor: 'bg-purple-50',
-    darkBgColor: 'dark:bg-purple-950/40',
   },
   {
     key: 'classroom',
     title: 'Dars materiallari',
     description: 'Jonli darslar va PDF sahifalari',
     icon: BookOpen,
-    color: '#6366f1',
-    bgColor: 'bg-indigo-50',
-    darkBgColor: 'dark:bg-indigo-950/40',
   },
   {
     key: 'avatars',
     title: 'Profil & avatarlar',
     description: 'Foydalanuvchi va ustozlar rasmlari',
     icon: User,
-    color: '#0ea5e9',
-    bgColor: 'bg-sky-50',
-    darkBgColor: 'dark:bg-sky-950/40',
   },
   {
     key: 'challenges',
     title: 'Mashq & challenge rasmlari',
     description: 'So‘z mashqlari va bellashuv bannerlari',
     icon: Trophy,
-    color: '#f59e0b',
-    bgColor: 'bg-amber-50',
-    darkBgColor: 'dark:bg-amber-950/40',
   },
   {
     key: 'general',
     title: 'Umumiy kesh',
     description: 'Boshqa yuklangan vaqtinchalik fayllar',
     icon: Sparkles,
-    color: '#10b981',
-    bgColor: 'bg-emerald-50',
-    darkBgColor: 'dark:bg-emerald-950/40',
   },
 ];
 
@@ -304,7 +298,7 @@ function StorageUsageContent({
                 {/* Storage breakdown progress bar */}
                 <View className="mt-3.5 h-2 w-full flex-row overflow-hidden rounded-full bg-slate-200/70 dark:bg-dark-surface-2">
                   {stats.total > 0 ? (
-                    CATEGORIES.map(cat => {
+                    CATEGORIES.map((cat, index) => {
                       const size = stats[cat.key];
                       const pct = (size / stats.total) * 100;
                       if (pct <= 0) return null;
@@ -313,7 +307,7 @@ function StorageUsageContent({
                           key={cat.key}
                           style={{
                             width: `${pct}%`,
-                            backgroundColor: cat.color,
+                            backgroundColor: categoryShade(index),
                           }}
                         />
                       );
@@ -330,7 +324,7 @@ function StorageUsageContent({
               </Text>
 
               <View className="gap-2.5">
-                {CATEGORIES.map(cat => {
+                {CATEGORIES.map((cat, index) => {
                   const Icon = cat.icon;
                   const size = stats[cat.key];
                   const isClearing = clearingKey === cat.key;
@@ -341,9 +335,8 @@ function StorageUsageContent({
                       key={cat.key}
                       className="flex-row items-center justify-between rounded-2xl border border-slate-100 bg-slate-50/80 p-3.5 dark:border-dark-border dark:bg-dark-surface-2/60">
                       <View className="flex-1 flex-row items-center gap-3 pr-2">
-                        <View
-                          className={`h-9 w-9 items-center justify-center rounded-xl ${cat.bgColor} ${cat.darkBgColor}`}>
-                          <Icon size={16} color={cat.color} />
+                        <View className="h-9 w-9 items-center justify-center rounded-xl bg-slate-100 dark:bg-dark-surface">
+                          <Icon size={16} color={CATEGORY_ICON_COLOR} />
                         </View>
                         <View className="flex-1">
                           <Text className="text-xs font-bold text-ink dark:text-dark-ink">
@@ -356,7 +349,11 @@ function StorageUsageContent({
                       </View>
 
                       <View className="items-end gap-1.5">
-                        <Text className="text-xs font-bold text-ink dark:text-dark-ink">
+                        {/* Tinted to match this category's slice of the bar above. An empty
+                            category has no slice, so it stays neutral. */}
+                        <Text
+                          className="text-xs font-bold text-ink dark:text-dark-ink"
+                          style={size > 0 ? {color: categoryShade(index)} : undefined}>
                           {loading ? '...' : formatBytes(size)}
                         </Text>
                         <Pressable

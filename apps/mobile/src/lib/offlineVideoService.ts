@@ -85,7 +85,16 @@ export function isOfflineVideoComplete(meta: OfflineVideoMeta | null | undefined
   return meta.downloadedSegments >= meta.totalSegments;
 }
 
-export type DownloadProgressCallback = (progressPercent: number, stageText: string) => void;
+/**
+ * `bytes` carries what is on disk so far and the estimated final size, so the UI can show
+ * "1.7 MB / 7.2 MB". The total is an estimate: segment sizes are only known once fetched, so
+ * it is extrapolated from the average of what has downloaded and firms up as it goes.
+ */
+export type DownloadProgressCallback = (
+  progressPercent: number,
+  stageText: string,
+  bytes?: {downloaded: number; total: number},
+) => void;
 
 // Track in-flight downloads so duplicate downloads don't conflict
 const activeCancelTokens = new Map<string, { cancelled: boolean }>();
@@ -441,6 +450,16 @@ export async function downloadOfflineVideo(
     // HLS asset covering whatever was downloaded so far.
     const totalSegments = segmentNames.length;
     let completedSegments = 0;
+    // Running total of what has landed on disk, plus a helper that extrapolates the final
+    // size from the average segment so far -- real segment sizes are only known once fetched.
+    let downloadedBytes = 0;
+    const byteProgress = () => ({
+      downloaded: downloadedBytes,
+      total:
+        completedSegments > 0
+          ? Math.round((downloadedBytes / completedSegments) * totalSegments)
+          : 0,
+    });
     const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
     const manifestLocalPath = getLocalManifestPath(blockId);
     const mergedLocalPath = getLocalMergedVideoPath(blockId);
@@ -487,10 +506,12 @@ export async function downloadOfflineVideo(
         const already = await ReactNativeBlobUtil.fs.stat(segmentLocalPath).catch(() => null);
         if (already && Number(already.size) > 0) {
           completedSegments++;
+          downloadedBytes += Number(already.size);
           await writeManifest(completedSegments);
           onProgress?.(
             Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75)),
             `Yuklanmoqda: ${completedSegments}/${totalSegments}`,
+            byteProgress(),
           );
           continue;
         }
@@ -518,6 +539,17 @@ export async function downloadOfflineVideo(
           }
           await ReactNativeBlobUtil.fs.unlink(segmentLocalPath).catch(() => { });
         }
+
+        const written = await ReactNativeBlobUtil.fs
+          .stat(USE_MERGED_TS ? mergedLocalPath : segmentLocalPath)
+          .catch(() => null);
+        if (written) {
+          // The merged file is cumulative, so its size *is* the running total; individual
+          // segments have to be added up.
+          downloadedBytes = USE_MERGED_TS
+            ? Number(written.size)
+            : downloadedBytes + Number(written.size);
+        }
       } catch (err: any) {
         throw new Error(`Segment yuklashda xatolik: segment_${i}.ts (${err?.message || 'tarmoq uzildi'})`);
       }
@@ -530,7 +562,7 @@ export async function downloadOfflineVideo(
       }
 
       const percent = Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75));
-      onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`);
+      onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`, byteProgress());
 
       // Save progressive metadata to registry so a partial download is already
       // discoverable as playable (up to the segments downloaded so far).
