@@ -592,6 +592,9 @@ export class ClassroomSessionLifecycleService {
       startedAt: row.startedAt?.toISOString() ?? null,
       endedAt: row.endedAt?.toISOString() ?? null,
       recordingMode: (row.recordingMode as ClassroomRecordingMode | null) ?? null,
+      // Exposed so the host UI can tell the teacher when a recording dropped out, rather than
+      // leaving the red dot blinking over an egress that already died.
+      recordingStatus: (row.recordingStatus as 'none' | 'pending' | 'ready' | 'failed' | null) ?? 'none',
       hasBoardSnapshot: row.boardSnapshot !== null,
       attendance: (
         row.attendance as unknown as Array<{

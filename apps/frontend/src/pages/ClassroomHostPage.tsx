@@ -129,6 +129,30 @@ export function ClassroomHostPage() {
       .catch(() => {});
   }, [id]);
 
+  // Watch for a recording that died on its own -- LiveKit egress can drop mid-lesson, and
+  // until now the red dot kept blinking over nothing and the teacher only found out
+  // afterwards. Polling while recording is enough: this is a rare, non-urgent signal.
+  useEffect(() => {
+    if (!id || !recordingMode) return;
+
+    const check = () => {
+      apiClassSession(id)
+        .then((detail) => {
+          if (detail.recordingStatus !== 'failed') return;
+          setRecordingMode(null);
+          setRecordingStartedAt(null);
+          toast.error(
+            "Yozib olish uzildi. Davom ettirish uchun qayta yozishni boshlang — qismlar oxirida birlashtiriladi.",
+            {duration: 10000},
+          );
+        })
+        .catch(() => {});
+    };
+
+    const interval = window.setInterval(check, 15000);
+    return () => window.clearInterval(interval);
+  }, [id, recordingMode]);
+
   // Snapshot the board on the way out. The server already checkpoints when the host socket
   // stays gone for its grace period, but that is 90 seconds away and is lost entirely if the
   // process restarts in the meantime -- so leaving the page saves immediately instead.

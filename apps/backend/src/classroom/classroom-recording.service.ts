@@ -63,8 +63,15 @@ export class ClassroomRecordingService {
     info: {
       status: number;
       error?: string;
+      egressId?: string;
       fileResults?: Array<{ location?: string; filename?: string }>;
     },
+    /**
+     * Which recording this result belongs to. Without it the update falls back to "any
+     * pending row", which quietly overwrites the wrong recording when a session has more
+     * than one -- a retry, or a second take after the first was stopped.
+     */
+    expectedEgressId?: string,
   ): Promise<boolean> {
     const result = info.fileResults?.[0];
     const location = result?.location || result?.filename || null;
@@ -80,12 +87,19 @@ export class ClassroomRecordingService {
       where: eq(classSessions.id, sessionId),
     });
     const rawRecordings = (row?.recordings as unknown as any[]) ?? [];
+    const egressId = info.egressId ?? expectedEgressId;
+    // Only fall back to "the pending one" when there is exactly one candidate; with several,
+    // guessing risks attaching this file to the wrong recording.
+    const pendingRows = rawRecordings.filter(
+      (r) => r.recordingStatus === 'pending' || !r.recordingUrl,
+    );
     const updatedRecordings = rawRecordings.map((r) => {
-      const isTarget =
-        (info as any).egressId && r.egressId === (info as any).egressId;
-      const isPendingMatch =
-        r.recordingStatus === 'pending' || !r.recordingUrl;
-      if (isTarget || isPendingMatch) {
+      const isTarget = egressId ? r.egressId === egressId : false;
+      const isLonePending =
+        !egressId &&
+        pendingRows.length === 1 &&
+        (r.recordingStatus === 'pending' || !r.recordingUrl);
+      if (isTarget || isLonePending) {
         return {
           ...r,
           recordingStatus,
@@ -156,6 +170,13 @@ export class ClassroomRecordingService {
         console.error(
           `startRecording: LiveKit yoki object storage sozlanmagan (${sessionId})`,
         );
+        // Mark it failed rather than returning silently: the teacher pressed Record and gets
+        // no feedback otherwise, and the session stays in a state where a later stop finds
+        // nothing to finish. A visible failure is recoverable; a silent one is not.
+        await db
+          .update(classSessions)
+          .set({ recordingStatus: 'failed' })
+          .where(eq(classSessions.id, sessionId));
         return;
       }
 
@@ -239,12 +260,12 @@ export class ClassroomRecordingService {
       const existing = await egress.listEgress({ egressId: row.egressId });
       if (
         existing[0] &&
-        (await this.persistEgressResult(sessionId, existing[0]))
+        (await this.persistEgressResult(sessionId, existing[0], row.egressId))
       )
         return;
 
       let info = await egress.stopEgress(row.egressId);
-      if (await this.persistEgressResult(sessionId, info)) return;
+      if (await this.persistEgressResult(sessionId, info, row.egressId)) return;
 
       // StopEgress ko'pincha EGRESS_ENDING holatini qaytaradi. Webhook
       // kechiksa yoki noto'g'ri sozlangan bo'lsa ham replay pending bo'lib
@@ -254,7 +275,7 @@ export class ClassroomRecordingService {
         const items = await egress.listEgress({ egressId: row.egressId });
         if (!items[0]) continue;
         info = items[0];
-        if (await this.persistEgressResult(sessionId, info)) return;
+        if (await this.persistEgressResult(sessionId, info, row.egressId)) return;
       }
       console.error(
         `stopRecording: egress yakuniy natija bermadi (${sessionId}, ${row.egressId})`,

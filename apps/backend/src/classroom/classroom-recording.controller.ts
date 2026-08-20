@@ -3,7 +3,7 @@ import type { RawBodyRequest } from '@nestjs/common';
 import type { Request } from 'express';
 import { ConfigService } from '@nestjs/config';
 import { WebhookReceiver } from 'livekit-server-sdk';
-import { eq } from 'drizzle-orm';
+import { eq, isNotNull } from 'drizzle-orm';
 import { db } from '../db';
 import { classSessions } from '../db/schema';
 import { StorageService } from '../storage/storage.service';
@@ -37,7 +37,19 @@ export class ClassroomRecordingController {
       const info = event.egressInfo;
       if (!info?.egressId) return { ok: true };
 
-      const sessionRow = await db.query.classSessions.findFirst({ where: eq(classSessions.egressId, info.egressId) });
+      // classSessions.egressId only ever holds the LATEST egress, so a webhook for an earlier
+      // recording in the same session would not be found by it. Fall back to scanning the
+      // recordings array, which keeps every take.
+      let sessionRow = await db.query.classSessions.findFirst({ where: eq(classSessions.egressId, info.egressId) });
+      if (!sessionRow) {
+        const candidates = await db.query.classSessions.findMany({
+          where: isNotNull(classSessions.recordings),
+          columns: { id: true, recordings: true, egressId: true },
+        });
+        sessionRow = candidates.find((row) =>
+          ((row.recordings as unknown as any[]) ?? []).some((r) => r.egressId === info.egressId),
+        ) as typeof sessionRow;
+      }
       if (!sessionRow) return { ok: true };
 
       const failed = info.error && info.error.length > 0;
@@ -46,12 +58,13 @@ export class ClassroomRecordingController {
       const status = failed ? 'failed' : (location ? 'ready' : 'failed');
 
       const rawRecordings = (sessionRow.recordings as unknown as any[]) ?? [];
-      const updatedRecordings = rawRecordings.map((r) => {
-        if (r.egressId === info.egressId || (r.recordingStatus === 'pending' && !r.recordingUrl)) {
-          return { ...r, recordingStatus: status, recordingUrl: failed ? null : recordingUrl };
-        }
-        return r;
-      });
+      // Match on egressId alone. The old "or any pending row" fallback silently attached a
+      // finished file to the wrong take whenever a session had more than one.
+      const updatedRecordings = rawRecordings.map((r) =>
+        r.egressId === info.egressId
+          ? { ...r, recordingStatus: status, recordingUrl: failed ? null : recordingUrl }
+          : r,
+      );
 
       await db.update(classSessions)
         .set({

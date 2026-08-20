@@ -75,15 +75,21 @@ export class ClassroomReplayService {
       : [];
 
     const rawRecordings = (row.recordings as unknown as any[]) ?? [];
-    const formattedRecordings = rawRecordings.map((r) => ({
-      id: r.id,
-      partNumber: r.partNumber,
-      createdAt: r.createdAt,
-      title: r.title ?? null,
-      recordingStatus: r.recordingStatus ?? 'none',
-      recordingMode: r.recordingMode ?? null,
-      recordingUrl: r.recordingUrl ? this.storage.getPublicUrl(r.recordingUrl) : null,
-    }));
+    const formattedRecordings = rawRecordings
+      .map((r) => ({
+        id: r.id,
+        partNumber: r.partNumber,
+        createdAt: r.createdAt,
+        title: r.title ?? null,
+        recordingStatus: r.recordingStatus ?? 'none',
+        recordingMode: r.recordingMode ?? null,
+        recordingUrl: r.recordingUrl ? this.storage.getPublicUrl(r.recordingUrl) : null,
+        // Where this part begins relative to the session, so a replay that stitches several
+        // parts together knows the gap between them.
+        recordingStartedAtMs: r.recordingStartedAtMs ?? null,
+      }))
+      // Ordered so a client can play them back-to-back without sorting first.
+      .sort((a, b) => (a.partNumber ?? 0) - (b.partNumber ?? 0));
 
     let selectedEntry: any = null;
     if (recordingId) {

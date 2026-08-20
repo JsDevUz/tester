@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { Download, Pause, Play, Users, X } from "lucide-react";
 import { toast } from "sonner";
@@ -12,6 +12,7 @@ import { ClassroomSubtitleOverlay } from "../components/classroom/ClassroomSubti
 import { DownloadBoardModal } from "../components/classroom/DownloadBoardModal";
 import { exportBoardToPdf } from "../components/classroom/classroomExport";
 import { useAutoHideOverlay } from "../hooks/useAutoHideOverlay";
+import { buildStitchedParts, locateInStitched, stitchedDurationMs } from "../hooks/useStitchedRecording";
 
 function formatMs(ms: number): string {
   const totalSec = Math.floor(ms / 1000);
@@ -27,7 +28,13 @@ export function ClassroomReplayPage() {
   const [data, setData] = useState<ClassReplayData | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [audioDurationMs, setAudioDurationMs] = useState(0);
+  // A lesson can hold several audio parts -- egress dropping mid-lesson leaves the teacher to
+  // restart recording. They are played back-to-back as one timeline; see useStitchedRecording.
+  const [partDurations, setPartDurations] = useState<Record<string, number>>({});
+  const [activePartIndex, setActivePartIndex] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
+  // Offset to apply once a newly selected part finishes loading.
+  const pendingSeekMsRef = useRef<number | null>(null);
   const [attendanceOpen, setAttendanceOpen] = useState(false);
   const [downloadModalOpen, setDownloadModalOpen] = useState(false);
   const [downloading, setDownloading] = useState(false);
@@ -86,12 +93,22 @@ export function ClassroomReplayPage() {
     && data?.recordingStatus === "ready"
     && !!data?.recordingUrl
     && data?.recordingMode !== "boardSilent";
+  // Parts laid end to end. With a single recording this is just that one file; with several
+  // it is the combined timeline, so the scrubber and the history line up across the joins.
+  const stitchedParts = useMemo(
+    () => buildStitchedParts(data?.recordings, partDurations),
+    [data?.recordings, partDurations],
+  );
+  const stitchedTotalMs = stitchedDurationMs(stitchedParts);
+  const activePart = stitchedParts[activePartIndex] ?? null;
+
   // historyEvents arrive already rebased to the moment recording started (the backend drops
   // anything earlier), so they share t=0 with the audio track and need no offset here. The
-  // timeline runs for as long as the audio does.
+  // timeline runs for as long as the audio does -- across every part when there are several.
+  const timelineDurationMs = stitchedTotalMs > 0 ? stitchedTotalMs : audioDurationMs;
   const replay = useClassroomReplay(
     showTimeline ? (data?.historyEvents ?? []) : [], data?.pdfName ?? null, data?.pdfPages ?? [],
-    hasRecording ? audioDurationMs : 0,
+    hasRecording ? timelineDurationMs : 0,
     globalTheme,
   );
   // "Faqat chizma" va yangi null-mode fallback'da boardSnapshot'dagi
@@ -140,12 +157,28 @@ export function ClassroomReplayPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [replay.isPlaying, hasRecording]);
 
+  const seekAudioTo = (ms: number) => {
+    const audio = audioRef.current;
+    if (!audio || !hasRecording) return;
+
+    const located = locateInStitched(stitchedParts, Math.max(0, ms));
+    if (!located) {
+      audio.currentTime = Math.max(0, ms) / 1000;
+      return;
+    }
+    // Switching parts reloads the element, so only set currentTime once the new file is
+    // ready; onLoadedMetadata below finishes the job.
+    if (located.index !== activePartIndex) {
+      pendingSeekMsRef.current = located.offsetMs;
+      setActivePartIndex(located.index);
+      return;
+    }
+    audio.currentTime = located.offsetMs / 1000;
+  };
+
   const handleSeek = (ms: number) => {
     replay.seek(ms);
-    if (hasRecording && audioRef.current) {
-      const audioTimeMs = Math.max(0, ms);
-      audioRef.current.currentTime = audioTimeMs / 1000;
-    }
+    seekAudioTo(ms);
   };
 
   const handlePlayPause = () => {
@@ -157,10 +190,7 @@ export function ClassroomReplayPage() {
     // qayta sinxronlaymiz — aks holda audio o'zining oldingi (masalan
     // pauzadan oldingi) pozitsiyasidan davom etib, chizma tarixidan
     // uzilib qolishi mumkin edi.
-    if (hasRecording && audioRef.current) {
-      const audioTimeMs = Math.max(0, replay.currentTimeMs);
-      audioRef.current.currentTime = audioTimeMs / 1000;
-    }
+    seekAudioTo(replay.currentTimeMs);
     replay.play();
   };
 
@@ -294,10 +324,32 @@ export function ClassroomReplayPage() {
             {hasRecording && (
               <audio
                 ref={audioRef}
-                src={data.recordingUrl ?? undefined}
+                src={activePart?.url ?? data.recordingUrl ?? undefined}
                 preload="auto"
                 crossOrigin="anonymous"
-                onLoadedMetadata={(event) => setAudioDurationMs(event.currentTarget.duration * 1000)}
+                onLoadedMetadata={(event) => {
+                  const durationMs = event.currentTarget.duration * 1000;
+                  setAudioDurationMs(durationMs);
+                  const url = activePart?.url;
+                  if (url) {
+                    setPartDurations((prev) =>
+                      prev[url] === durationMs ? prev : { ...prev, [url]: durationMs },
+                    );
+                  }
+                  // A seek that crossed into this part waited for the file to load.
+                  if (pendingSeekMsRef.current !== null) {
+                    event.currentTarget.currentTime = pendingSeekMsRef.current / 1000;
+                    pendingSeekMsRef.current = null;
+                    if (replay.isPlaying) void event.currentTarget.play().catch(() => { });
+                  }
+                }}
+                onEnded={() => {
+                  // Roll into the next part so several recordings play as one.
+                  if (activePartIndex < stitchedParts.length - 1) {
+                    pendingSeekMsRef.current = 0;
+                    setActivePartIndex(activePartIndex + 1);
+                  }
+                }}
                 onError={(e) => console.error("Audio playback error:", e)}
                 className="h-0 w-0 opacity-0"
               />

@@ -156,6 +156,7 @@ export interface ClassSessionDetail {
   endedAt: string | null;
   attendance: ClassAttendanceEntry[];
   recordingMode: ClassRecordingMode | null;
+  recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
   hasBoardSnapshot: boolean;
 }
 
@@ -222,6 +223,8 @@ export interface ClassSessionRecordingInfo {
   recordingStatus: 'none' | 'pending' | 'ready' | 'failed';
   recordingMode: ClassRecordingMode | null;
   recordingUrl?: string | null;
+  /** Where this part starts relative to the session, for stitching several parts together. */
+  recordingStartedAtMs?: number | null;
 }
 
 export interface ClassReplayData {

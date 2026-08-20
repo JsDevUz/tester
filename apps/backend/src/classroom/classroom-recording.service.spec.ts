@@ -38,10 +38,21 @@ describe('ClassroomRecordingService', () => {
     return moduleRef.get(ClassroomRecordingService);
   }
 
-  it('LiveKit sozlanmagan bolsa startRecording xato otmasdan tinch qaytadi', async () => {
+  // Misconfiguration must not throw, but it must not pass silently either: the teacher
+  // pressed Record, and without a status the UI has nothing to report and a later stop finds
+  // no recording to finish.
+  it('LiveKit sozlanmagan bolsa startRecording yozuvni failed deb belgilaydi', async () => {
     const service = await makeService({});
+    const setMock = jest.fn((_arg: Record<string, unknown>) => ({
+      where: jest.fn().mockResolvedValue(undefined),
+    }));
+    (db.update as jest.Mock).mockReturnValue({ set: setMock });
+
     await expect(service.startRecording('session-1')).resolves.toBeUndefined();
-    expect(db.update).not.toHaveBeenCalled();
+
+    expect(setMock).toHaveBeenCalledWith(
+      expect.objectContaining({ recordingStatus: 'failed' }),
+    );
   });
 
   it('LiveKit sozlanmagan bolsa stopRecording xato otmasdan tinch qaytadi', async () => {
@@ -94,5 +105,81 @@ describe('ClassroomRecordingService', () => {
     // Egress chaqiruvi startedAtMs'dan keyin sodir bo'lgani uchun >= 3000
     // bo'lishi kerak (haqiqiy testda oraliq millisekundlar ham qo'shiladi).
     expect(setArg?.recordingStartedAtMs).toBeGreaterThanOrEqual(3000);
+  });
+
+  // A session can hold several recordings (a retry, or a second take). Attaching a finished
+  // file to the wrong one loses that audio, so the match has to go through egressId.
+  describe('persistEgressResult ni to\'g\'ri yozuvga bog\'lash', () => {
+    async function runPersist(
+      recordings: Array<Record<string, unknown>>,
+      info: Record<string, unknown>,
+      expectedEgressId?: string,
+    ) {
+      const service = await makeService({
+        LIVEKIT_URL: 'wss://livekit.example.com',
+        LIVEKIT_API_KEY: 'key',
+        LIVEKIT_API_SECRET: 'secret',
+        OBJECT_STORAGE_BUCKET: 'bucket',
+        OBJECT_STORAGE_ACCESS_KEY_ID: 'id',
+        OBJECT_STORAGE_SECRET_ACCESS_KEY: 'secret',
+        OBJECT_STORAGE_REGION: 'auto',
+        OBJECT_STORAGE_ENDPOINT: 's3.example.com',
+      });
+      (db.query.classSessions.findFirst as jest.Mock).mockResolvedValue({
+        id: 'session-1',
+        recordings,
+      });
+      const setMock = jest.fn((_arg: Record<string, unknown>) => ({
+        where: jest.fn().mockResolvedValue(undefined),
+      }));
+      (db.update as jest.Mock).mockReturnValue({ set: setMock });
+
+      await (service as any).persistEgressResult('session-1', info, expectedEgressId);
+      return setMock.mock.calls[0]?.[0] as Record<string, any> | undefined;
+    }
+
+    it('faqat egressId mos kelgan yozuvni yangilaydi', async () => {
+      const arg = await runPersist(
+        [
+          { egressId: 'EG_first', recordingStatus: 'pending' },
+          { egressId: 'EG_second', recordingStatus: 'pending' },
+        ],
+        {
+          status: 3,
+          egressId: 'EG_second',
+          fileResults: [{ location: 'classroom-recordings/a.mp4' }],
+        },
+      );
+
+      const updated = arg?.recordings as Array<Record<string, unknown>>;
+      expect(updated[0].recordingStatus).toBe('pending');
+      expect(updated[1].recordingStatus).toBe('ready');
+    });
+
+    it('id nomalum bolsa va bir nechta pending bolsa hech birini tegmaydi', async () => {
+      const arg = await runPersist(
+        [
+          { egressId: 'EG_first', recordingStatus: 'pending' },
+          { egressId: 'EG_second', recordingStatus: 'pending' },
+        ],
+        { status: 3, fileResults: [{ location: 'classroom-recordings/a.mp4' }] },
+      );
+
+      const updated = arg?.recordings as Array<Record<string, unknown>>;
+      expect(updated.every((r) => r.recordingStatus === 'pending')).toBe(true);
+    });
+
+    it('id nomalum bolsa lekin bitta pending bolsa oshani yangilaydi', async () => {
+      const arg = await runPersist(
+        [
+          { egressId: 'EG_first', recordingStatus: 'ready', recordingUrl: 'x' },
+          { egressId: 'EG_second', recordingStatus: 'pending' },
+        ],
+        { status: 3, fileResults: [{ location: 'classroom-recordings/a.mp4' }] },
+      );
+
+      const updated = arg?.recordings as Array<Record<string, unknown>>;
+      expect(updated[1].recordingStatus).toBe('ready');
+    });
   });
 });
