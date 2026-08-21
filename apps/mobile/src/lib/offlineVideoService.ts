@@ -204,7 +204,7 @@ async function downloadFileWithRetry(
     try {
       const res = await ReactNativeBlobUtil.config({
         path: localPath,
-        timeout: 30000,
+        timeout: 90000,
       }).fetch('GET', remoteUrl, token ? { Authorization: `Bearer ${token}` } : undefined);
 
       const status = res.info().status;
@@ -217,8 +217,13 @@ async function downloadFileWithRetry(
       throw new Error(`HTTP ${status}`);
     } catch (err: any) {
       lastError = err;
+      // A half-written file from the failed attempt would otherwise be mistaken for a
+      // complete segment by the resume check, leaving a truncated video on disk.
+      await ReactNativeBlobUtil.fs.unlink(localPath).catch(() => { });
       if (attempt < maxAttempts) {
-        await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+        // Exponential backoff: a flaky connection needs longer than a busy one to settle,
+        // and retrying hard against a dropped link just burns the remaining attempts.
+        await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 1000 * 2 ** (attempt - 1))));
       }
     }
   }
@@ -529,7 +534,7 @@ export async function downloadOfflineVideo(
       }
 
       try {
-        await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 3);
+        await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 6);
         if (keyBytes && keyBytes.length === 16) {
           const iv = parseIv(keyIvHex, i);
           await decryptSegmentToFile(tempEncPath, segmentLocalPath, keyBytes, iv);
@@ -562,7 +567,14 @@ export async function downloadOfflineVideo(
             : downloadedBytes + Number(written.size);
         }
       } catch (err: any) {
-        throw new Error(`Segment yuklashda xatolik: segment_${i}.ts (${err?.message || 'tarmoq uzildi'})`);
+        // Segments must land in order -- skipping one would leave a hole the player cannot
+        // seek across -- so a failure stops here. Everything fetched so far stays on disk and
+        // the manifest already covers it, so pressing download again resumes from this point
+        // rather than starting over.
+        throw new Error(
+          `Internet uzildi. ${completedSegments}/${totalSegments} qism saqlandi — ` +
+          `qayta yuklab olsangiz shu joydan davom etadi.`,
+        );
       }
 
       completedSegments++;

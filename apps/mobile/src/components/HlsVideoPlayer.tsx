@@ -424,6 +424,17 @@ export function HlsVideoPlayer({
     });
   }, [blockId, title, lessonId, courseId, startDownload]);
 
+  // Caching follows PLAYBACK, not the play button. With autoPlay the button is never pressed --
+  // the poster tap starts the video directly -- so hanging the download off the button meant a
+  // lesson could be watched with nothing saved, and going offline afterwards showed "not
+  // cached" despite minutes of viewing.
+  const cachingStartedRef = useRef(false);
+  useEffect(() => {
+    if (paused || cachingStartedRef.current) return;
+    cachingStartedRef.current = true;
+    startDownloadIfNeeded();
+  }, [paused, startDownloadIfNeeded]);
+
   const handleDownloadPress = useCallback(() => {
     // Tapping a download in flight stops it immediately, the way the badge's stop-square
     // implies. Nothing is lost: the segments already written stay on disk and a later tap
@@ -929,14 +940,6 @@ export function HlsVideoPlayer({
                     const wasPaused = paused;
                     setPaused(!wasPaused);
                     bumpControls();
-                    // Caching starts alongside playback, never in front of it. It used to run
-                    // inside the setPaused updater, which is meant to be pure -- kicking off a
-                    // request and file writes from there blocked the render, so the video only
-                    // began once the download had got going. Deferring to the next tick lets
-                    // the player start first and the download proceed independently.
-                    if (wasPaused) {
-                      setTimeout(() => startDownloadIfNeeded(), 0);
-                    }
                   }}
                   className="h-14 w-14 items-center justify-center rounded-full bg-black/80">
                   {paused ? (
