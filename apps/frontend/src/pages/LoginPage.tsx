@@ -277,6 +277,18 @@ export function LoginPage() {
             >
               {loading ? "Kirish..." : "Kirish"}
             </button>
+            <a
+              href={botLink || `tg://resolve?domain=BirKodBot`}
+              target="_blank"
+              rel="noreferrer"
+              className="mt-6 inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-semibold text-white transition hover:brightness-110"
+              style={{ backgroundColor: "#0088cc" }}
+            >
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" aria-hidden="true">
+                <path d="M21.05 2.927a1.5 1.5 0 0 0-1.523-.267L2.6 9.29a1.5 1.5 0 0 0 .098 2.82l4.606 1.53 1.72 5.6a1.5 1.5 0 0 0 2.6.55l2.42-2.7 4.5 3.35a1.5 1.5 0 0 0 2.393-.91l2.05-13.9a1.5 1.5 0 0 0-.437-1.703ZM9.98 13.99l-1.02 3.32-.94-3.06 9.9-6.98-7.94 6.72Z" />
+              </svg>
+              Kodni qayta olish
+            </a>
           </form>
         )}
 

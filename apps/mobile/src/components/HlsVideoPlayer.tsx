@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  AppState,
   Modal,
   PanResponder,
+  Platform,
   Pressable,
   StatusBar,
   StyleSheet,
@@ -36,6 +38,7 @@ import { useColorScheme } from 'nativewind';
 import { apiGetWatchProgress, apiSaveWatchProgress, apiStartVideoPlayback, type WatchSegment } from '../api/videos';
 import { API_URL } from '../config/env';
 import { disableSecureScreen, enableSecureScreen } from '../lib/secureScreen';
+import { useNetwork } from '../providers/NetworkProvider';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
 import { getOfflineVideoMeta, isOfflineVideoComplete } from '../lib/offlineVideoService';
@@ -46,6 +49,11 @@ const BASE64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz012345
 
 /** Speeds the rate button cycles through, in order. */
 const PLAYBACK_RATES: number[] = [1, 1.25, 1.5, 1.75, 2];
+
+/** iOS cannot play the files the downloader writes (AVFoundation refuses both the rewritten
+ *  playlist and a merged .ts -- see offlineVideoService), so downloading there only burns
+ *  storage for a badge that can never deliver offline playback. */
+const DOWNLOADS_SUPPORTED = Platform.OS === 'android';
 
 /** "7,2 MB" -- comma decimal separator, matching the rest of the Uzbek UI. */
 function formatMegabytes(bytes: number): string {
@@ -263,6 +271,8 @@ export function HlsVideoPlayer({
   const lastSavedEndRef = useRef(0);
   const lastTimeRef = useRef(0);
   const watchedSegmentsRef = useRef<WatchSegment[]>([]);
+  /** When the watched-percent was last recomputed; see handleProgress. */
+  const lastPercentCalcRef = useRef(0);
 
   useEffect(() => {
     enableSecureScreen();
@@ -274,74 +284,123 @@ export function HlsVideoPlayer({
     return () => StatusBar.setHidden(false, 'fade');
   }, [isFullscreen]);
 
+  // Connectivity comes from the provider rather than a probe of our own: opening a video
+  // while already known-offline should go straight to the local copy instead of burning a
+  // request timeout first. The resolver stays stable (blockId only) so a connectivity flap
+  // can never remount the <Video> mid-playback -- reads go through a ref, and recovery is
+  // handled by the dedicated effect below.
+  const {online} = useNetwork();
+  const onlineRef = useRef(online);
+  useEffect(() => {
+    onlineRef.current = online;
+  }, [online]);
+
   const loadPlayback = useCallback(async () => {
     setManifestUrl(null);
     setError(false);
     setIsOfflineMode(false);
 
-    console.log('[HlsVideoPlayer] loadPlayback start for blockId:', blockId);
-    try {
-      // 1. Prefer a fully downloaded local copy -- it plays the whole video with no network.
-      // A partial cache is deliberately skipped here: it only covers what was fetched before
-      // the download stopped, so preferring it would pin a 30-minute lesson to however far it
-      // got. It stays available as the offline fallback in the catch block below.
-      const localMeta = await getOfflineVideoMeta(blockId);
-      console.log('[HlsVideoPlayer] localMeta check:', localMeta);
-      if (localMeta && localMeta.localManifestPath && isOfflineVideoComplete(localMeta)) {
+    const isOnline = onlineRef.current;
+
+    // 1. Prefer a fully downloaded local copy -- it plays the whole video with no network.
+    //    A partial cache is deliberately skipped while online: it only covers what was
+    //    fetched before the download stopped, so preferring it would pin a 30-minute lesson
+    //    to however far it got. Offline it beats an error screen, so it plays there -- and
+    //    in the catch below it is also the fallback for a failed session call.
+    const localMeta = await getOfflineVideoMeta(blockId);
+    if (localMeta && localMeta.localManifestPath) {
+      const hasCompleteCopy = isOfflineVideoComplete(localMeta);
+      if (hasCompleteCopy || !isOnline) {
         const cleanPath = localMeta.localManifestPath.replace('file://', '');
         const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
-        console.log('[HlsVideoPlayer] local video exists:', exists, 'path:', cleanPath);
         if (exists) {
           setManifestUrl(`file://${cleanPath}`);
-          if (localMeta.localSubtitlePath) {
+          if (hasCompleteCopy && localMeta.localSubtitlePath) {
             const cleanSub = localMeta.localSubtitlePath.replace('file://', '');
             const subExists = await ReactNativeBlobUtil.fs.exists(cleanSub).catch(() => false);
             if (subExists) {
               setSubtitleUrl(`file://${cleanSub}`);
             }
           }
-          cachedDurationRef.current = localMeta.durationSec ?? null;
+          // Only a partial file needs the recorded length -- what's on disk is shorter than
+          // the lesson, so the player's own reading of it is wrong by definition. A complete
+          // file is the lesson itself: trust whatever it reports over a stored durationSec,
+          // which can be stale (e.g. saved from an earlier, still-downloading state) and
+          // would otherwise permanently undercut a fully downloaded video's timeline.
+          cachedDurationRef.current = hasCompleteCopy ? null : localMeta.durationSec ?? null;
           setIsOfflineMode(true);
           return;
         }
       }
+    }
 
+    // Known-offline with nothing usable on disk: fail fast instead of waiting out a
+    // request that cannot succeed.
+    if (!isOnline) {
+      setError(true);
+      return;
+    }
+
+    // A partial local copy playing while the session request is still in flight beats
+    // making the viewer stare at a spinner for the request's full timeout (axios: 15s) --
+    // that request only mattered here to prove the app *isn't* actually offline, and a
+    // stale NetworkProvider reading (e.g. right after launch, before its first probe lands)
+    // was exactly what sent a truly offline viewer down this branch in the first place.
+    // Playing the partial copy immediately does not skip the online attempt: it still runs
+    // and, on success, replaces this with the full stream via setManifestUrl below.
+    let playingPartialFallback = false;
+    if (localMeta && localMeta.localManifestPath) {
+      const cleanPath = localMeta.localManifestPath.replace('file://', '');
+      const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
+      if (exists) {
+        setManifestUrl(`file://${cleanPath}`);
+        cachedDurationRef.current = isOfflineVideoComplete(localMeta)
+          ? null
+          : localMeta.durationSec ?? null;
+        setIsOfflineMode(true);
+        playingPartialFallback = true;
+      }
+    }
+
+    try {
       // 2. Otherwise start online playback stream & background progressive caching
-      console.log('[HlsVideoPlayer] fetching online playback session...');
-      const playback = await apiStartVideoPlayback(blockId);
-      console.log('[HlsVideoPlayer] online manifestUrl:', playback.manifestUrl);
-      setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
-      setSubtitleUrl(playback.subtitleUrl);
-
+      //
       // Caching is kicked off by pressing play (see the play button), not on open. Running it
       // here too would download in the background while the badge still read "Yuklab olish",
       // since startAutoCacheVideo bypasses the store the badge renders from.
-    } catch (e: any) {
-      console.log('[HlsVideoPlayer] online playback failed:', e?.message || e);
-      // If offline/network failed, check if we have any partially cached local manifest
-      try {
-        const localMeta = await getOfflineVideoMeta(blockId);
-        if (localMeta && localMeta.localManifestPath) {
-          const cleanPath = localMeta.localManifestPath.replace('file://', '');
-          const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
-          if (exists) {
-            console.log('[HlsVideoPlayer] fallback to local video:', cleanPath);
-            setManifestUrl(`file://${cleanPath}`);
-            cachedDurationRef.current = localMeta.durationSec ?? null;
-            setIsOfflineMode(true);
-            return;
-          }
-        }
-      } catch {
-        // ignore
+      const playback = await apiStartVideoPlayback(blockId);
+      setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+      setSubtitleUrl(playback.subtitleUrl);
+      setIsOfflineMode(false);
+    } catch {
+      // The session call failed outright (server hiccup, captive portal, or truly no
+      // network). The partial copy set above is already playing if there was one; only a
+      // video with nothing at all on disk needs the error screen.
+      if (!playingPartialFallback) {
+        setError(true);
       }
-      setError(true);
     }
-  }, [blockId, isOfflineMode]);
+  }, [blockId]);
 
   useEffect(() => {
     void loadPlayback();
   }, [loadPlayback]);
+
+  // A video that failed to resolve while offline should come back on its own once
+  // connectivity returns, not sit on its retry button until the user notices. A video
+  // playing from a partial local copy does not need this: loadPlayback already attempts
+  // the online session every time it runs (see the partial-fallback branch above), so once
+  // connectivity actually returns the *next* mount or retry picks it up on its own --
+  // and NetInfo below fires promptly enough that this effect's job is really just the
+  // error case, where nothing is playing yet.
+  const wasOfflineRef = useRef(online);
+  useEffect(() => {
+    const cameBackOnline = online && !wasOfflineRef.current;
+    wasOfflineRef.current = online;
+    if (cameBackOnline && (error || isOfflineMode)) {
+      void loadPlayback();
+    }
+  }, [online, error, isOfflineMode, loadPlayback]);
 
   // Robust Subtitle Fetching and Parsing (supports both local file:// and remote URLs)
   useEffect(() => {
@@ -406,8 +465,19 @@ export function HlsVideoPlayer({
   const cachedDurationRef = useRef<number | null>(null);
 
   const startDownloadIfNeeded = useCallback(() => {
+    // iOS cannot play what the downloader writes (see DOWNLOADS_SUPPORTED), and a download
+    // started while known-offline only fails a moment later with a "no network" alert.
+    if (!DOWNLOADS_SUPPORTED || !onlineRef.current) {
+      return;
+    }
     const state = useOfflineVideoStore.getState();
-    if (state.registry[blockId] || state.activeDownloads[blockId]?.status === 'downloading') {
+    // A registry entry alone does not mean the video is cached -- a download interrupted at
+    // segment 17 of 396 leaves one behind. Skipping on its mere presence stranded those
+    // videos: the download never resumed and the badge sat frozen on its progress ring.
+    if (
+      isOfflineVideoComplete(state.registry[blockId]) ||
+      state.activeDownloads[blockId]?.status === 'downloading'
+    ) {
       return;
     }
 
@@ -440,6 +510,8 @@ export function HlsVideoPlayer({
   }, [paused, startDownloadIfNeeded]);
 
   const handleDownloadPress = useCallback(() => {
+    if (!DOWNLOADS_SUPPORTED) return;
+
     // Tapping a download in flight stops it immediately, the way the badge's stop-square
     // implies. Nothing is lost: the segments already written stay on disk and a later tap
     // resumes from there.
@@ -688,9 +760,13 @@ export function HlsVideoPlayer({
       currentRangeRef.current.end = current;
     }
 
+    // The percentage is advisory UI (the progress modal recomputes its own from the
+    // segments), and merging the ranges is a sort on every call -- running it on each
+    // 500ms tick is pure waste on a low-end phone. Every 2s is plenty for a percent label.
     const inProgress = currentRangeRef.current;
     const liveSegment = { startSec: Math.floor(inProgress.start), endSec: Math.ceil(inProgress.end) };
-    if (videoDuration && videoDuration > 0) {
+    if (videoDuration && videoDuration > 0 && Date.now() - lastPercentCalcRef.current >= 2000) {
+      lastPercentCalcRef.current = Date.now();
       const totalCovered = computeTotalWatchedSeconds(watchedSegmentsRef.current, liveSegment);
       setWatchedPercent(Math.min(100, Math.round((totalCovered / videoDuration) * 100)));
     }
@@ -698,6 +774,18 @@ export function HlsVideoPlayer({
 
   useEffect(() => {
     return () => closeCurrentRange();
+  }, [closeCurrentRange]);
+
+  // Backgrounding the app does not unmount the player, so a watched range could otherwise
+  // sit open for the whole background session before it is ever reported. Close (and thus
+  // save) it as the app leaves the foreground.
+  useEffect(() => {
+    const sub = AppState.addEventListener('change', state => {
+      if (state !== 'active') {
+        closeCurrentRange();
+      }
+    });
+    return () => sub.remove();
   }, [closeCurrentRange]);
 
   // Active Subtitle Cue
@@ -769,8 +857,7 @@ export function HlsVideoPlayer({
           onBuffer={({ isBuffering: buffering }) => setIsBuffering(buffering)}
           onLoad={handleLoad}
           onProgress={handleProgress}
-          onError={e => {
-            console.warn('[HlsVideoPlayer] Video onError event:', JSON.stringify(e));
+          onError={() => {
             if (isOfflineMode) {
               // Try online fallback if network allows
               setIsOfflineMode(false);
@@ -798,10 +885,11 @@ export function HlsVideoPlayer({
         </View>
       ) : null}
 
-      {/* Watermark. Hidden while the controls are up: it is placed at random positions, so
-          left visible it lands on top of the buttons and reads as a rendering glitch. It
-          reappears on its own schedule once the controls fade. */}
-      {watermarkText && !controlsVisible ? (
+      {/* Watermark, always rendered above every other layer (zIndex 30 beats the controls'
+          25): one that vanishes whenever controls appear is trivially dodged by keeping a
+          thumb on the screen. Its position zones sit clear of the button rows, so it reads
+          as deliberate rather than as a glitch. */}
+      {watermarkText ? (
         <View
           pointerEvents="none"
           style={{
@@ -847,7 +935,9 @@ export function HlsVideoPlayer({
 
           {/* Offline-download badge, top left. Deliberately outside the controlsVisible
               block: a download runs for minutes and its progress should stay readable while
-              the video plays, not vanish with the controls. */}
+              the video plays, not vanish with the controls. Android only -- iOS cannot play
+              what the downloader writes, so a badge there would just sell dead storage. */}
+          {DOWNLOADS_SUPPORTED ? (
           <View
             style={{
               position: 'absolute',
@@ -903,6 +993,7 @@ export function HlsVideoPlayer({
               </Text>
             </Pressable>
           </View>
+          ) : null}
 
           {controlsVisible ? (
             <>

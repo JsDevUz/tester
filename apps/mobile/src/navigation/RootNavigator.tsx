@@ -117,18 +117,18 @@ function TabsWithProfile() {
       <Tab.Navigator
         screenOptions={({ route }) => ({
           headerShown: false,
-          // Near-black rather than the brand indigo: the filled icon already marks the active
-          // tab, so the colour only has to separate it from the muted inactive ones. In dark
-          // mode it inverts to near-white for the same reason.
-          tabBarActiveTintColor: isDark ? '#f4f4f5' : '#18181b',
+          // Matches the web nav's active-item color (brand indigo, tailwind.config.js).
+          tabBarActiveTintColor: '#6366f1',
           tabBarInactiveTintColor: isDark ? '#a4a7b2' : '#94a3b8',
           // Edge-to-edge bar sitting on the bottom of the screen: square corners, full width,
           // and part of the layout rather than floating above it. Because it reserves its own
           // space again, screens no longer need to pad around it.
           tabBarStyle: {
-            height: 56 + insets.bottom,
-            paddingTop: 6,
-            paddingBottom: Math.max(insets.bottom, 6),
+            // Matches the web nav's own pt-2/pb-[max(12px,...)] split: less air above the
+            // icons, more below before the safe area, instead of splitting it evenly.
+            height: 60 + insets.bottom,
+            paddingTop: 2,
+            paddingBottom: Math.max(insets.bottom, 16),
             borderTopWidth: StyleSheet.hairlineWidth,
             borderTopColor: isDark ? '#2a2b33' : '#e8eaee',
             backgroundColor: isDark ? '#1b1c22' : '#ffffff',

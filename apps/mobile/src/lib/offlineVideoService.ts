@@ -23,6 +23,28 @@ const OFFLINE_VIDEOS_STORAGE_KEY = '@jamm_offline_videos_v1';
 // backend change, tracked separately. Until then iOS simply falls back to online playback.
 const USE_MERGED_TS = Platform.OS === 'ios';
 
+/** Refuse to start a download when less than this is left on disk; a lesson that fills the
+ *  storage mid-download fails messily and can break other apps' pending writes too. */
+const MIN_FREE_DISK_BYTES = 150 * 1024 * 1024;
+
+/** Free-space guard for downloads. A no-op where df is unavailable (older runtimes, tests):
+ *  better to start a download that might fail than to block every download on a probe that
+ *  does not exist. */
+async function ensureEnoughDiskSpace(): Promise<void> {
+  const fs = ReactNativeBlobUtil.fs as unknown as {
+    df?: () => Promise<{free: number; total: number}>;
+  };
+  if (typeof fs.df !== 'function') return;
+  const info = await fs.df().catch(() => null);
+  const freeBytes = Number(info?.free ?? 0);
+  if (freeBytes > 0 && freeBytes < MIN_FREE_DISK_BYTES) {
+    throw new Error(
+      `Xotirada bo‘sh joy yetarli emas (qolgan ≈${Math.round(freeBytes / (1024 * 1024))} MB). ` +
+        'Boshqa yuklangan videolarni o‘chirib ko‘ring.',
+    );
+  }
+}
+
 export function getOfflineBaseDir(): string {
   return `${ReactNativeBlobUtil.fs.dirs.DocumentDir}/jamm_offline_videos`;
 }
@@ -361,6 +383,8 @@ export async function downloadOfflineVideo(
   await ensureDir(blockDir);
 
   try {
+    await ensureEnoughDiskSpace();
+
     onProgress?.(5, 'Tayyorlanmoqda...');
 
     // 1. Get playback session info
@@ -523,7 +547,12 @@ export async function downloadOfflineVideo(
         if (already && Number(already.size) > 0) {
           completedSegments++;
           downloadedBytes += Number(already.size);
-          await writeManifest(completedSegments);
+          // Resuming a mostly-done download re-walks hundreds of existing files; rewriting
+          // the manifest for each one is a long serial stall. Every 5th is enough -- the
+          // final rewrite after the loop catches the remainder.
+          if (completedSegments % 5 === 0 || completedSegments === totalSegments) {
+            await writeManifest(completedSegments);
+          }
           onProgress?.(
             Math.min(95, Math.floor(20 + (completedSegments / totalSegments) * 75)),
             `Yuklanmoqda: ${completedSegments}/${totalSegments}`,
@@ -588,7 +617,9 @@ export async function downloadOfflineVideo(
       onProgress?.(percent, `Yuklanmoqda: ${completedSegments}/${totalSegments}`, byteProgress());
 
       // Save progressive metadata to registry so a partial download is already
-      // discoverable as playable (up to the segments downloaded so far).
+      // discoverable as playable (up to the segments downloaded so far). The registry goes
+      // through AsyncStorage JSON round-trips, so it is throttled like the manifest: every
+      // 5th segment, plus the definitive save once the loop finishes.
       const partialMeta: OfflineVideoMeta = {
         blockId,
         lessonId: options.lessonId,
@@ -602,12 +633,20 @@ export async function downloadOfflineVideo(
         downloadedSegments: completedSegments,
         totalSegments,
       };
-      const reg = await getOfflineVideosRegistry();
-      reg[blockId] = partialMeta;
-      await saveOfflineVideosRegistry(reg);
+      if (completedSegments % 5 === 0 || completedSegments === totalSegments) {
+        const reg = await getOfflineVideosRegistry();
+        reg[blockId] = partialMeta;
+        await saveOfflineVideosRegistry(reg);
+      }
     }
 
     if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
+
+    // The per-segment manifest rewrites above are throttled, so make sure the final one
+    // really covers every segment that landed.
+    if (!USE_MERGED_TS) {
+      await writeManifest(completedSegments);
+    }
 
     // 8. Calculate total storage size
     let totalBytes = 0;
@@ -635,6 +674,13 @@ export async function downloadOfflineVideo(
     const registry = await getOfflineVideosRegistry();
     registry[blockId] = meta;
     await saveOfflineVideosRegistry(registry);
+
+    // The AES key is only needed while segments are still being fetched. Every segment on
+    // disk is already plaintext now, and a copy of the key sitting next to them adds nothing
+    // except a way to decrypt any other video the backend encrypted with it.
+    if (keyRemoteUrl) {
+      await ReactNativeBlobUtil.fs.unlink(`${blockDir}/enc.key`).catch(() => { });
+    }
 
     onProgress?.(100, 'Yakunlandi');
     return meta;

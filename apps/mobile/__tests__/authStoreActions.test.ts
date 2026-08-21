@@ -12,7 +12,14 @@ import {api} from '../src/lib/api';
 import {storage} from '../src/lib/storage';
 import {useAuthStore} from '../src/store/authStore';
 import {closePracticeMessengerSocket} from '../src/lib/practiceMessengerSocket';
+import {clearSecureToken, setSecureToken} from '../src/lib/secureToken';
 import type {User} from '../src/types/api';
+
+jest.mock('../src/lib/secureToken', () => ({
+  getSecureToken: jest.fn().mockResolvedValue(null),
+  setSecureToken: jest.fn().mockResolvedValue(undefined),
+  clearSecureToken: jest.fn().mockResolvedValue(undefined),
+}));
 
 const studentAdmin: User = {id: '1', role: 'student', name: 'Ali'};
 const teacherAdmin: User = {id: '2', role: 'teacher', name: 'Vali'};
@@ -33,10 +40,8 @@ describe('authStore login/loginCode', () => {
 
     expect(useAuthStore.getState().token).toBe('tok-1');
     expect(useAuthStore.getState().user).toEqual(studentAdmin);
-    expect(setSpy).toHaveBeenCalledWith('session', {
-      token: 'tok-1',
-      user: studentAdmin,
-    });
+    expect(setSecureToken).toHaveBeenCalledWith('tok-1');
+    expect(setSpy).toHaveBeenCalledWith('session-user', studentAdmin);
   });
 
   it('rejects login for a non-student account and does not persist a session', async () => {
@@ -104,7 +109,8 @@ describe('authStore logout/setUser', () => {
     await useAuthStore.getState().logout();
 
     expect(closePracticeMessengerSocket).toHaveBeenCalledTimes(1);
-    expect(removeSpy).toHaveBeenCalledWith('session');
+    expect(clearSecureToken).toHaveBeenCalledTimes(1);
+    expect(removeSpy).toHaveBeenCalledWith('session-user');
     expect(useAuthStore.getState().token).toBeNull();
     expect(useAuthStore.getState().user).toBeNull();
   });
@@ -117,9 +123,7 @@ describe('authStore logout/setUser', () => {
 
     expect(useAuthStore.getState().user).toEqual(updated);
     expect(useAuthStore.getState().token).toBe('tok-existing');
-    expect(setSpy).toHaveBeenCalledWith('session', {
-      token: 'tok-existing',
-      user: updated,
-    });
+    expect(setSecureToken).toHaveBeenCalledWith('tok-existing');
+    expect(setSpy).toHaveBeenCalledWith('session-user', updated);
   });
 });

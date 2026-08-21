@@ -10,6 +10,7 @@ import {
   TextInput,
   View,
 } from 'react-native';
+import Svg, {Path} from 'react-native-svg';
 import {CodeDigitsInput} from '../components/CodeDigitsInput';
 import {getApiErrorMessage} from '../lib/errors';
 import {maskUzPhone} from '../lib/phone';
@@ -19,6 +20,7 @@ import {useAuthStore} from '../store/authStore';
 const CODE_LENGTH = 6;
 const BOT_USERNAME = '@BirKodBot';
 const BOT_LINK = 'tg://resolve?domain=BirKodBot';
+const TELEGRAM_BLUE = '#0088cc';
 
 // Native port of apps/frontend/src/pages/LoginPage.tsx — same field layout
 // order, same split-box OTP input, same colors/copy (translated to the
@@ -221,6 +223,15 @@ export function LoginScreen() {
                 telegram botiga kiring va 10 daqiqalik kodingizni oling.
               </Text>
               <CodeDigitsInput value={code} onChange={setCode} autoFocus editable={!loading} />
+              <Pressable
+                onPress={() => void Linking.openURL(BOT_LINK)}
+                className="mt-6 flex-row items-center gap-2 rounded-full px-5 py-2.5"
+                style={{backgroundColor: TELEGRAM_BLUE}}>
+                <Svg viewBox="0 0 24 24" width={18} height={18} fill="white">
+                  <Path d="M21.05 2.927a1.5 1.5 0 0 0-1.523-.267L2.6 9.29a1.5 1.5 0 0 0 .098 2.82l4.606 1.53 1.72 5.6a1.5 1.5 0 0 0 2.6.55l2.42-2.7 4.5 3.35a1.5 1.5 0 0 0 2.393-.91l2.05-13.9a1.5 1.5 0 0 0-.437-1.703ZM9.98 13.99l-1.02 3.32-.94-3.06 9.9-6.98-7.94 6.72Z" />
+                </Svg>
+                <Text className="text-sm font-semibold text-white">Kodni qayta olish</Text>
+              </Pressable>
             </View>
           ) : (
             <View className="w-full gap-4">

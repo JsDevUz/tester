@@ -8,6 +8,12 @@ jest.mock('../src/lib/practiceMessengerSocket', () => ({
   closePracticeMessengerSocket: jest.fn(),
 }));
 
+jest.mock('../src/lib/secureToken', () => ({
+  getSecureToken: jest.fn().mockResolvedValue(null),
+  setSecureToken: jest.fn().mockResolvedValue(undefined),
+  clearSecureToken: jest.fn().mockResolvedValue(undefined),
+}));
+
 import type {InternalAxiosRequestConfig, AxiosResponse} from 'axios';
 import {api} from '../src/lib/api';
 import {useAuthStore} from '../src/store/authStore';

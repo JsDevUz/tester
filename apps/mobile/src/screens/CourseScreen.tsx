@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react';
-import {Alert, Modal, Pressable, ScrollView, Text, View} from 'react-native';
+import {Alert, InteractionManager, Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   ArrowLeft,
@@ -30,6 +30,7 @@ import {LessonBlock} from '../components/LessonBlock';
 import {PracticeScreen} from '../components/PracticeScreen';
 import {useNetwork} from '../providers/NetworkProvider';
 import {useOfflineVideoStore} from '../store/offlineVideoStore';
+import {isOfflineVideoComplete} from '../lib/offlineVideoService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Course'>;
 
@@ -58,6 +59,13 @@ export function CourseScreen({route, navigation}: Props) {
   const [stale, setStale] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
   const [lessonsListOpen, setLessonsListOpen] = useState(false);
+  // A lesson's editor blocks can be long enough that RenderHTML's parse-and-layout pass
+  // blocks the JS thread for a visible moment, which made picking a lesson from the sheet
+  // feel like the tap itself was ignored: the sheet's own close animation runs on that same
+  // thread, so it froze mid-motion until the heavy render finished. Committing the pressed
+  // lesson to a separate, one-tick-deferred value lets the tap's own UI work (closing the
+  // sheet, highlighting the row) paint first; the content swaps in the frame right after.
+  const [renderedLessonId, setRenderedLessonId] = useState<string | null>(null);
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -143,6 +151,19 @@ export function CourseScreen({route, navigation}: Props) {
   const selectedIndex = selected
     ? lessons.findIndex(item => item.lesson.id === selected.lesson.id)
     : -1;
+  // Header, nav buttons and the sheet's own highlight use `selected` directly so they
+  // update on the same tap; only the heavy block content below waits for renderedLessonId.
+  const renderedLesson = lessons.find(item => item.lesson.id === renderedLessonId) ?? selected;
+  const contentPending = renderedLesson?.lesson.id !== selected?.lesson.id;
+
+  useEffect(() => {
+    if (!selected) return;
+    if (renderedLessonId === selected.lesson.id) return;
+    const handle = InteractionManager.runAfterInteractions(() => {
+      setRenderedLessonId(selected.lesson.id);
+    });
+    return () => handle.cancel();
+  }, [selected, renderedLessonId]);
   const unlockedLessonIds = useMemo(
     () => computeUnlockedLessonIds(course?.modules ?? []),
     [course],
@@ -348,14 +369,14 @@ export function CourseScreen({route, navigation}: Props) {
             <MessageCircle size={18} color={isDark ? '#a4a7b2' : '#334155'} />
           </Pressable>
 
-          {lesson.blocks.length === 0 ? (
+          {renderedLesson.lesson.blocks.length === 0 ? (
             <View className="rounded-2xl border border-slate-100 bg-white py-16 dark:border-transparent dark:bg-dark-surface-2">
               <Text className="text-center text-sm font-semibold text-slate-400 dark:text-dark-muted">
                 Dars kontenti hozircha tayyor emas
               </Text>
             </View>
           ) : (
-            lesson.blocks.map(block => (
+            renderedLesson.lesson.blocks.map(block => (
               <LessonBlock key={block.id} block={block} onOpenLiveClassReplay={openLiveClassReplay} />
             ))
           )}
@@ -498,8 +519,12 @@ export function CourseScreen({route, navigation}: Props) {
           const locked = !unlockedLessonIds.has(lesson.id);
           const active = lesson.id === selected?.lesson.id;
           const hasVideo = lesson.blocks.some(b => b.type === 'video');
+          // A registry entry alone does not mean the download finished -- an interrupted one
+          // still leaves an entry behind (see isOfflineVideoComplete). Badging it "Offline"
+          // here was the same bug already fixed in the player: the lesson list would promise
+          // a video was ready when only part of it was actually on disk.
           const hasOfflineVideo = lesson.blocks.some(
-            b => b.type === 'video' && Boolean(offlineRegistry[b.id]),
+            b => b.type === 'video' && isOfflineVideoComplete(offlineRegistry[b.id]),
           );
           const totalStars =
             lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +

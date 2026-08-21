@@ -3,6 +3,7 @@ import {
   Alert,
   AppState,
   Image,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -11,7 +12,7 @@ import {
   type LayoutChangeEvent,
 } from 'react-native';
 import type { NativeStackScreenProps } from '@react-navigation/native-stack';
-import { ChevronLeft, ChevronRight, Moon, Sun, Volume2, VolumeX } from 'lucide-react-native';
+import { ChevronLeft, ChevronRight, Moon, Sun } from 'lucide-react-native';
 import type { RootStackParamList } from '../navigation/types';
 import {
   apiCheckAnswer,
@@ -86,7 +87,6 @@ export function TestTakerScreen({ route, navigation }: Props) {
   }, [submitting]);
 
   const [fontSize, setFontSize] = useState(16);
-  const [soundEnabled, setSoundEnabled] = useState(true);
   const [enteredName, setEnteredName] = useState(user?.name ?? '');
   const themePreference = useThemeStore((s) => s.preference);
   const setThemePreference = useThemeStore((s) => s.setPreference);
@@ -232,7 +232,24 @@ export function TestTakerScreen({ route, navigation }: Props) {
   }, [timeLeft]);
 
   useEffect(() => {
-    if (timeLeft === 0) void handleSubmit();
+    if (timeLeft !== 0) return;
+    // Auto-submit at zero. A flaky connection must not strand a finished attempt behind a
+    // single failed request: retry with a pause, and only interrupt the user if none land.
+    let cancelled = false;
+    void (async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        if (cancelled) return;
+        const ok = await handleSubmit(true);
+        if (ok || cancelled) return;
+        await new Promise((resolve) => setTimeout(resolve, 2000));
+      }
+      if (!cancelled) {
+        Alert.alert('Xatolik', "Vaqt tugadi, lekin topshirib bo'lmadi. Internetni tekshirib, «Topshirish»ni qayta bosing.");
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, [timeLeft]);
 
   useEffect(() => {
@@ -262,7 +279,12 @@ export function TestTakerScreen({ route, navigation }: Props) {
     }
 
     const sub = AppState.addEventListener('change', (state: AppStateStatus) => {
-      if (state === 'background' || state === 'inactive') {
+      // iOS fires 'inactive' for the Control Center, a call banner or the notification shade
+      // -- none of which is the student trying to cheat. Only Android's 'inactive' (screen
+      // off / dialog) counts; on iOS the violation must be a real 'background'.
+      const leftTheApp =
+        state === 'background' || (state === 'inactive' && Platform.OS === 'android');
+      if (leftTheApp) {
         backgroundedAt = Date.now();
         void sendViolationSubmit();
       } else if (state === 'active' && backgroundedAt !== null) {
@@ -303,8 +325,8 @@ export function TestTakerScreen({ route, navigation }: Props) {
     }
   }, [test?.autoCompleteOnLeave, resolvedSubmissionId, practiceMode, navigation]);
 
-  async function handleSubmit() {
-    if (submittingRef.current || !test || !resolvedSubmissionId) return;
+  async function handleSubmit(auto = false): Promise<boolean> {
+    if (submittingRef.current || !test || !resolvedSubmissionId) return false;
     submittingRef.current = true;
     setSubmitting(true);
     const answers: AnswerPayload[] = orderedQuestionsRef.current.map((q) => ({
@@ -316,10 +338,16 @@ export function TestTakerScreen({ route, navigation }: Props) {
       const result = await apiSubmitAnswers(resolvedSubmissionId, answers, 'normal', undefined, practiceMode);
       await storage.remove(draftKey(resolvedSubmissionId));
       goToResult(resolvedSubmissionId, result);
+      return true;
     } catch (error) {
       submittingRef.current = false;
       setSubmitting(false);
-      Alert.alert('Xatolik', getApiErrorMessage(error, "Topshirib bo'lmadi."));
+      // The timer's auto-submit path stays quiet per attempt: its effect owns the retry
+      // loop and the alert. A manual press gets its feedback immediately.
+      if (!auto) {
+        Alert.alert('Xatolik', getApiErrorMessage(error, "Topshirib bo'lmadi."));
+      }
+      return false;
     }
   }
 
@@ -425,12 +453,6 @@ export function TestTakerScreen({ route, navigation }: Props) {
                 </Text>
               </View>
             )}
-            <Pressable
-              onPress={() => setSoundEnabled((v) => !v)}
-              hitSlop={8}
-              className="h-8 w-8 items-center justify-center rounded-xl active:bg-slate-100 dark:bg-dark-surface-2">
-              {soundEnabled ? <Volume2 size={16} color="#94a3b8" /> : <VolumeX size={16} color="#94a3b8" />}
-            </Pressable>
           </View>
         ),
       });
@@ -459,7 +481,6 @@ export function TestTakerScreen({ route, navigation }: Props) {
     isOneByOne,
     currentIdx,
     orderedQuestions.length,
-    soundEnabled,
     setThemePreference,
     handleExitWhileAnswering,
   ]);

@@ -5,6 +5,7 @@ import {
   deleteOfflineVideo,
   downloadOfflineVideo,
   getOfflineVideosRegistry,
+  isOfflineVideoComplete,
   OfflineVideoMeta,
 } from '../lib/offlineVideoService';
 
@@ -138,6 +139,7 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
   },
 
   isDownloaded: (blockId: string) => {
-    return Boolean(get().registry[blockId]);
+    // A registry entry alone can be an interrupted download; "downloaded" means complete.
+    return isOfflineVideoComplete(get().registry[blockId]);
   },
 }));

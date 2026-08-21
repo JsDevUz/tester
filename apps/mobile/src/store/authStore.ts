@@ -2,8 +2,23 @@ import { create } from 'zustand';
 import { api } from '../lib/api';
 import { apiCompletePasswordReset, apiVerifyPasswordResetCode } from '../api/auth';
 import { storage } from '../lib/storage';
+import { clearSecureToken, getSecureToken, setSecureToken } from '../lib/secureToken';
 import { closePracticeMessengerSocket } from '../lib/practiceMessengerSocket';
 import type { User } from '../types/api';
+
+/**
+ * Persists a session the same way everywhere: the token goes to the keychain (falls back to
+ * AsyncStorage if the native module is unavailable -- see secureToken.ts), the user object
+ * -- not sensitive, and needed synchronously in a few places -- stays in plain storage.
+ */
+async function persistSession(token: string | null, user: User | null): Promise<void> {
+  if (token) {
+    await setSecureToken(token);
+  } else {
+    await clearSecureToken();
+  }
+  await storage.set('session-user', user);
+}
 
 interface AuthState {
   token: string | null;
@@ -29,15 +44,29 @@ export const useAuthStore = create<AuthState>((set, get) => ({
 
   hydrate: async () => {
     try {
-      const session = await storage.get<{ token: string; user: User }>('session');
-      set({ token: session?.token ?? null, user: session?.user ?? null });
-      if (session?.token) {
+      // Sessions written before the keychain migration live under the old combined key.
+      // Reading it here (once) and re-saving through persistSession moves the token out of
+      // plaintext storage without signing already-installed users out.
+      const legacy = await storage.get<{ token: string; user: User }>('session');
+      let token: string | null;
+      let user: User | null;
+      if (legacy?.token) {
+        token = legacy.token;
+        user = legacy.user;
+        await persistSession(token, user);
+        await storage.remove('session');
+      } else {
+        token = await getSecureToken();
+        user = await storage.get<User>('session-user');
+      }
+      set({ token, user });
+      if (token) {
         api
           .get('/auth/me')
           .then((r) => {
-            const next = { token: session.token, user: r.data as User };
-            set(next);
-            void storage.set('session', next);
+            const nextUser = r.data as User;
+            set({ token, user: nextUser });
+            void storage.set('session-user', nextUser);
           })
           .catch(() => undefined);
       }
@@ -55,7 +84,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("Bu ilova faqat o'quvchilar uchun");
     }
     const session = { token: data.access_token, user: data.admin as User };
-    await storage.set('session', session);
+    await persistSession(session.token, session.user);
     set(session);
   },
 
@@ -65,7 +94,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("Bu ilova faqat o'quvchilar uchun");
     }
     const session = { token: data.access_token, user: data.admin as User };
-    await storage.set('session', session);
+    await persistSession(session.token, session.user);
     set(session);
   },
 
@@ -83,18 +112,20 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       throw new Error("Bu ilova faqat o'quvchilar uchun");
     }
     const session = { token: data.access_token, user: data.admin as User };
-    await storage.set('session', session);
+    await persistSession(session.token, session.user);
     set(session);
   },
 
   setUser: async (user: User) => {
     const token = get().token;
     set({ user });
-    await storage.set('session', { token, user });
+    await persistSession(token, user);
   },
 
   logout: async () => {
     closePracticeMessengerSocket();
+    await clearSecureToken();
+    await storage.remove('session-user');
     await storage.remove('session');
     set({ token: null, user: null });
   },
