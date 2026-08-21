@@ -73,8 +73,12 @@ export class VideoProgressService {
   ) {
     const { block } = await this.assertAccess(blockId, viewer);
 
+    // The client's duration fills in a gap, it does not correct the stored one. A player
+    // reading a partially downloaded offline copy reports the length of what it has -- a
+    // 57-minute lesson watched offline after caching one minute reports 1:04 -- and letting
+    // that overwrite the real duration would rewrite the lesson's length for every student.
     let effectiveDuration = block.durationSec;
-    if (durationSec && durationSec > 0 && (!block.durationSec || block.durationSec !== durationSec)) {
+    if (durationSec && durationSec > 0 && !block.durationSec) {
       await db.update(contentBlocks).set({ durationSec }).where(eq(contentBlocks.id, blockId));
       effectiveDuration = durationSec;
     }
