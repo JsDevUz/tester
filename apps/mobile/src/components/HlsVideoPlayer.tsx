@@ -300,6 +300,7 @@ export function HlsVideoPlayer({
               setSubtitleUrl(`file://${cleanSub}`);
             }
           }
+          cachedDurationRef.current = localMeta.durationSec ?? null;
           setIsOfflineMode(true);
           return;
         }
@@ -326,6 +327,7 @@ export function HlsVideoPlayer({
           if (exists) {
             console.log('[HlsVideoPlayer] fallback to local video:', cleanPath);
             setManifestUrl(`file://${cleanPath}`);
+            cachedDurationRef.current = localMeta.durationSec ?? null;
             setIsOfflineMode(true);
             return;
           }
@@ -335,7 +337,7 @@ export function HlsVideoPlayer({
       }
       setError(true);
     }
-  }, [blockId]);
+  }, [blockId, isOfflineMode]);
 
   useEffect(() => {
     void loadPlayback();
@@ -401,6 +403,8 @@ export function HlsVideoPlayer({
    * directly rather than the rendered flags so it stays correct when called from inside a
    * state updater, where those flags may be a render behind.
    */
+  const cachedDurationRef = useRef<number | null>(null);
+
   const startDownloadIfNeeded = useCallback(() => {
     const state = useOfflineVideoStore.getState();
     if (state.registry[blockId] || state.activeDownloads[blockId]?.status === 'downloading') {
@@ -520,7 +524,13 @@ export function HlsVideoPlayer({
       const startSec = Math.floor(range.start);
       const endSec = Math.ceil(range.end);
       if (endSec > startSec) {
-        const dur = durationRef.current && durationRef.current > 0 ? Math.round(durationRef.current) : undefined;
+        // A partially cached copy is only as long as what was downloaded, so its duration
+        // says nothing about the real lesson. Reporting it would tell the server a 57-minute
+        // video is one minute long.
+        const dur =
+          !isOfflineMode && durationRef.current && durationRef.current > 0
+            ? Math.round(durationRef.current)
+            : undefined;
         apiSaveWatchProgress(blockId, startSec, endSec, dur)
           .then(data => {
             setWatchedPercent(data.watchedPercent);
@@ -624,7 +634,13 @@ export function HlsVideoPlayer({
   }
 
   function handleLoad(data: OnLoadData) {
-    if (!isNaN(data.duration) && isFinite(data.duration)) {
+    // A partially downloaded video is only as long as the segments on disk -- a 57-minute
+    // lesson cached up to 1:04 opens as a 1:04 file. The duration recorded when caching
+    // started is the lesson's real length, so it is what the timeline should show.
+    const cached = cachedDurationRef.current;
+    if (cached && cached > 0) {
+      setVideoDuration(cached);
+    } else if (!isNaN(data.duration) && isFinite(data.duration)) {
       setVideoDuration(data.duration);
     }
     const resumeAt = resumeTimeRef.current;
