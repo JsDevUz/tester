@@ -286,7 +286,7 @@ export function LessonReader({
             <span className="block truncate text-[11px] font-semibold text-[var(--text-muted)]">
               {curatorName
                 ? "Kuratorga savolingizni berishingiz mumkin"
-                : "Kurator biriktirilmaguncha ustozingizga yozishingiz mumkin"}
+                : "Ustozingizga yozishingiz mumkin"}
             </span>
           </span>
         </span>

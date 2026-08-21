@@ -341,7 +341,7 @@ export function CourseScreen({route, navigation}: Props) {
                 <Text numberOfLines={1} className="text-[11px] font-semibold text-slate-500 dark:text-dark-muted">
                   {course.curatorName
                     ? 'Kuratorga savolingizni berishingiz mumkin'
-                    : "Kurator biriktirilmaguncha ustozingizga yozishingiz mumkin"}
+                    : "Ustozingizga yozishingiz mumkin"}
                 </Text>
               </View>
             </View>

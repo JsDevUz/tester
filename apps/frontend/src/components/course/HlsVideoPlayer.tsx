@@ -25,6 +25,14 @@ import { useAuthStore } from '../../stores/authStore';
 interface HlsVideoPlayerProps {
   blockId: string;
   watermark?: boolean;
+  /**
+   * Start playing as soon as the stream is ready.
+   *
+   * Set when the player was mounted BY a play press (see LazyVideoPlayer): the viewer has
+   * already said they want to watch, so asking them to press play a second time -- once for
+   * the poster, once for the player -- is a step that should not exist.
+   */
+  autoPlay?: boolean;
 }
 
 interface SubtitleCue {
@@ -139,7 +147,7 @@ function parseSubtitles(content: string): SubtitleCue[] {
   return cues;
 }
 
-export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerProps) {
+export function HlsVideoPlayer({ blockId, watermark = false, autoPlay = false }: HlsVideoPlayerProps) {
   const wrapperRef = useRef<HTMLDivElement | null>(null);
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const progressBarRef = useRef<HTMLDivElement | null>(null);
@@ -403,6 +411,9 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
 
           hls.on(Hls.Events.MANIFEST_PARSED, () => {
             setIsBuffering(false);
+            // A blocked autoplay is not an error here: the poster press counts as a gesture in
+            // every current browser, and if one refuses the viewer just presses play.
+            if (autoPlay) void videoRef.current?.play().catch(() => {});
           });
 
           hls.loadSource(manifestUrl);
@@ -415,6 +426,7 @@ export function HlsVideoPlayer({ blockId, watermark = false }: HlsVideoPlayerPro
           videoRef.current.src = manifestUrl;
           videoRef.current.load();
           setIsBuffering(false);
+          if (autoPlay) void videoRef.current.play().catch(() => {});
           return;
         }
 

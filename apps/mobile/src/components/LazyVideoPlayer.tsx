@@ -27,7 +27,8 @@ export function LazyVideoPlayer({
   const [activated, setActivated] = useState(false);
 
   if (activated) {
-    return <HlsVideoPlayer blockId={blockId} title={title} watermark={watermark} />;
+    // autoPlay: the tap that mounted the player was already the "play" tap.
+    return <HlsVideoPlayer blockId={blockId} title={title} watermark={watermark} autoPlay />;
   }
 
   return (

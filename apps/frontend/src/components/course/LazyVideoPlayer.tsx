@@ -30,7 +30,10 @@ export function LazyVideoPlayer({
     void import('hls.js').catch(() => {});
   };
 
-  if (activated) return <HlsVideoPlayer blockId={blockId} watermark={watermark} />;
+  // autoPlay: the press that mounted the player was already the "play" press. Without it the
+  // viewer has to press twice -- once on the poster, once on the player -- which is slower
+  // than before the poster existed.
+  if (activated) return <HlsVideoPlayer blockId={blockId} watermark={watermark} autoPlay />;
 
   return (
     <button
@@ -48,7 +51,11 @@ export function LazyVideoPlayer({
           loading="lazy"
           className="h-full w-full object-contain"
         />
-      ) : null}
+      ) : (
+        // Videos transcoded before posters existed have none. A flat black rectangle reads as
+        // something broken, so it gets a subtle gradient instead of nothing.
+        <span className="absolute inset-0 bg-gradient-to-br from-gray-800 to-gray-900" />
+      )}
       <span className="absolute inset-0 flex items-center justify-center">
         <span className="flex h-16 w-16 items-center justify-center rounded-full bg-black/60 backdrop-blur-sm transition-transform group-hover:scale-110">
           <Play size={28} className="ml-1 fill-white text-white" />

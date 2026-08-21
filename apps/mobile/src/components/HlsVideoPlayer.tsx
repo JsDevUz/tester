@@ -162,12 +162,19 @@ export function HlsVideoPlayer({
   title,
   lessonId,
   courseId,
+  autoPlay = false,
 }: {
   blockId: string;
   watermark?: boolean;
   title?: string;
   lessonId?: string;
   courseId?: string;
+  /**
+   * Start playing immediately. Set when the player was mounted by a play press (see
+   * LazyVideoPlayer) -- the viewer already asked to watch, so a second press is a step that
+   * should not exist.
+   */
+  autoPlay?: boolean;
 }) {
   const [manifestUrl, setManifestUrl] = useState<string | null>(null);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
@@ -180,7 +187,7 @@ export function HlsVideoPlayer({
   const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
   const [watchedPercent, setWatchedPercent] = useState<number | null>(null);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
-  const [paused, setPaused] = useState(true);
+  const [paused, setPaused] = useState(!autoPlay);
   const [currentTime, setCurrentTime] = useState(0);
   const [controlsVisible, setControlsVisible] = useState(true);
   const [scrubTime, setScrubTime] = useState<number | null>(null);
