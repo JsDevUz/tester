@@ -8,6 +8,22 @@ import { eraseHitRadius } from "./classroomCanvasGeometry";
 const MAX_DPR = 3.5;
 const MAX_CANVAS_PX = 8192;
 
+/**
+ * The board minus its lasers, painted once and reused while lasers animate.
+ *
+ * Laser marks fade over three seconds, and the renderer redraws every frame for as long as one
+ * is alive. Repainting the entire board 60 times a second is expensive -- every stroke goes
+ * back through perfect-freehand -- and it happens on every viewer at once, so one teacher
+ * waving a laser stutters the whole class. Caching the settled layer means those frames only
+ * pay for the lasers.
+ */
+let settledLayer: { canvas: HTMLCanvasElement; signature: string } | null = null;
+
+/** Invalidates the cache; exported for tests and for surface teardown. */
+export function resetSettledLayerCache(): void {
+  settledLayer = null;
+}
+
 interface RenderClassroomCanvasParams {
   canvas: HTMLCanvasElement;
   size: { w: number; h: number };
@@ -81,7 +97,41 @@ export function renderClassroomCanvas({
   ctx.setTransform(drawScale, 0, 0, drawScale, 0, 0);
   ctx.clearRect(0, 0, size.w, size.h);
 
-  for (const s of strokes) {
+  // Lasers are the only strokes that animate. When one is alive the settled layer beneath is
+  // identical frame to frame, so it is painted once into an offscreen canvas and blitted from
+  // there; only the lasers are re-tessellated per frame.
+  const hasLaserStroke = strokes.some((stroke) => stroke.tool === 'laser');
+  const settledStrokes = hasLaserStroke
+    ? strokes.filter((stroke) => stroke.tool !== 'laser')
+    : strokes;
+
+  // Anything that changes the settled layer's appearance has to appear here, or a stale
+  // bitmap keeps being shown. Stroke ids cover additions, removals and reordering; the
+  // editor fields cover edits made in place to a stroke that keeps its id.
+  const layerSignature = hasLaserStroke
+    ? [
+        Math.round(size.w),
+        Math.round(size.h),
+        drawScale.toFixed(3),
+        settledStrokes.map((stroke) => `${stroke.id}:${stroke.points.length}`).join(','),
+        editingTextId ?? '',
+        hoveredStrokeId ?? '',
+        textEditor ? JSON.stringify(textEditor) : '',
+      ].join('|')
+    : null;
+
+  const cachedLayer =
+    layerSignature && settledLayer?.signature === layerSignature ? settledLayer.canvas : null;
+
+  if (cachedLayer) {
+    ctx.drawImage(cachedLayer, 0, 0, size.w, size.h);
+  }
+
+  const strokesToPaint = cachedLayer
+    ? strokes.filter((stroke) => stroke.tool === 'laser')
+    : settledStrokes;
+
+  for (const s of strokesToPaint) {
     const rendered = resolveConnector(s, strokes, size.w, size.h);
     const isEditing = s.id === editingTextId && Boolean(textEditor);
     const strokeToDraw =
@@ -129,6 +179,28 @@ export function renderClassroomCanvas({
       size.h,
       !isEditing && s.id === hoveredStrokeId,
     );
+  }
+
+  // Capture the settled layer the first time a laser appears, before drafts and cursors are
+  // drawn over it -- those change every frame and must not be baked in.
+  if (layerSignature && !cachedLayer) {
+    const offscreen = document.createElement('canvas');
+    offscreen.width = canvas.width;
+    offscreen.height = canvas.height;
+    const offscreenCtx = offscreen.getContext('2d');
+    if (offscreenCtx) {
+      offscreenCtx.drawImage(canvas, 0, 0);
+      settledLayer = { canvas: offscreen, signature: layerSignature };
+    }
+
+    // The lasers were held back so they would not be baked into the cache; draw them now.
+    for (const laser of strokes) {
+      if (laser.tool !== 'laser') continue;
+      drawStroke(ctx, resolveConnector(laser, strokes, size.w, size.h), size.w, size.h, false);
+    }
+  } else if (!hasLaserStroke) {
+    // No laser on screen means no animation loop, so holding a bitmap only wastes memory.
+    settledLayer = null;
   }
 
   if (textEditor && !editingTextId && textEditor.text) {

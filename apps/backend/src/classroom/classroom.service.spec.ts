@@ -1604,3 +1604,74 @@ describe('undo/redo', () => {
     expect(snap.strokesByPage[2]).toHaveLength(1);
   });
 });
+
+
+// Handlers await the database mid-operation; anything arriving in those gaps used to
+// interleave, which is how a stroke could land on a session that was already ending.
+describe('withSession — sessiya navbati', () => {
+  function makeService(): any {
+    return Object.create(ClassroomService.prototype, {
+      sessionQueues: { value: new Map(), writable: true },
+    });
+  }
+
+  it('runs operations on one session one at a time, in order', async () => {
+    const service = makeService();
+    const order: string[] = [];
+
+    const slow = service.withSession('s1', async () => {
+      order.push('slow:start');
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      order.push('slow:end');
+    });
+    const fast = service.withSession('s1', async () => {
+      order.push('fast:start');
+      order.push('fast:end');
+    });
+
+    await Promise.all([slow, fast]);
+
+    expect(order).toEqual(['slow:start', 'slow:end', 'fast:start', 'fast:end']);
+  });
+
+  it('does not make different sessions wait for each other', async () => {
+    const service = makeService();
+    const order: string[] = [];
+
+    const a = service.withSession('a', async () => {
+      await new Promise((resolve) => setTimeout(resolve, 20));
+      order.push('a');
+    });
+    const b = service.withSession('b', async () => {
+      order.push('b');
+    });
+
+    await Promise.all([a, b]);
+
+    expect(order).toEqual(['b', 'a']);
+  });
+
+  it('keeps the queue moving when an operation throws', async () => {
+    const service = makeService();
+
+    await expect(
+      service.withSession('s1', async () => {
+        throw new Error('boom');
+      }),
+    ).rejects.toThrow('boom');
+
+    await expect(service.withSession('s1', async () => 'ok')).resolves.toBe('ok');
+  });
+
+  it('returns the action result to its own caller', async () => {
+    const service = makeService();
+    await expect(service.withSession('s1', () => 42)).resolves.toBe(42);
+  });
+
+  it('forgets a session once its queue drains', async () => {
+    const service = makeService();
+    await service.withSession('s1', () => undefined);
+    await new Promise((resolve) => setImmediate(resolve));
+    expect(service.sessionQueues.size).toBe(0);
+  });
+});

@@ -101,8 +101,42 @@ export class ClassroomService implements OnModuleInit, OnApplicationShutdown {
     return this.lifecycleService ?? new ClassroomSessionLifecycleService(this.storage, this.notifications, this.snapshotSvc);
   }
 
-  async withSession<T>(_sessionId: string, action: () => Promise<T> | T): Promise<T> {
-    return action();
+  /**
+   * Per-session queue: one operation at a time, in the order they arrived.
+   *
+   * Handlers await the database in the middle of their work, and until now anything that
+   * arrived during those gaps interleaved freely. A stroke landing while host:end was midway
+   * through could be added to a session that was already finishing, and two saves could race
+   * to write the same row. Those bugs are rare, unreproducible on demand, and leave the board
+   * in a state nothing recovers from.
+   *
+   * Every gateway and controller entry point already routes through here, so serialising is
+   * enough -- no call sites change.
+   */
+  private readonly sessionQueues = new Map<string, Promise<unknown>>();
+
+  async withSession<T>(sessionId: string, action: () => Promise<T> | T): Promise<T> {
+    const previous = this.sessionQueues.get(sessionId) ?? Promise.resolve();
+
+    // Swallow the predecessor's rejection: one failed operation must not cancel the ones
+    // queued behind it. Its own caller still sees the error.
+    const runAfter = previous.then(
+      () => action(),
+      () => action(),
+    );
+
+    // Keep the chain alive regardless of outcome, and drop the entry once this is the tail so
+    // a long-lived process does not accumulate one promise per session it has ever seen.
+    const settled = runAfter.then(
+      () => undefined,
+      () => undefined,
+    );
+    this.sessionQueues.set(sessionId, settled);
+    void settled.then(() => {
+      if (this.sessionQueues.get(sessionId) === settled) this.sessionQueues.delete(sessionId);
+    });
+
+    return runAfter;
   }
 
   private async indexSocket(socketId: string, sessionId: string) {
