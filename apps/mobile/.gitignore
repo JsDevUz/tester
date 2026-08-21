@@ -58,7 +58,10 @@ yarn-error.log
 # Bundle artifact
 *.jsbundle
 android/app/src/main/assets/index.android.bundle
-android/app/src/main/res/drawable-*/
+# React Native copies its libraries' bundled images in here at build time, prefixed with __.
+# The launcher icon lives in the same folders but is a real source asset -- ignoring the whole
+# directory deleted it and broke the Android build.
+android/app/src/main/res/drawable-*/__*
 
 # Ruby / CocoaPods
 **/Pods/
