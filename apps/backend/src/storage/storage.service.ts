@@ -198,11 +198,28 @@ export class StorageService {
   }
 
   async getObjectStream(key: string): Promise<Readable> {
+    const { stream } = await this.getObjectStreamWithLength(key);
+    return stream;
+  }
+
+  /**
+   * Same as getObjectStream, but also reports the object's size.
+   *
+   * Without a size the response goes out chunked, and a chunked body gives a client no way to
+   * tell a complete download from a connection that dropped partway. Android's download clients
+   * treat that as an interrupted transfer, so video segments never made it to disk.
+   */
+  async getObjectStreamWithLength(
+    key: string,
+  ): Promise<{ stream: Readable; contentLength: number | null }> {
     this.assertConfigured();
     const result = await this.s3Client.send(
       new GetObjectCommand({ Bucket: this.bucketName, Key: this.getKeyFromUrlOrKey(key) }),
     );
-    return result.Body as Readable;
+    return {
+      stream: result.Body as Readable,
+      contentLength: typeof result.ContentLength === 'number' ? result.ContentLength : null,
+    };
   }
 
   async getObjectBuffer(key: string): Promise<Buffer> {

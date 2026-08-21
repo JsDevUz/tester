@@ -186,7 +186,12 @@ export class VideoPlaybackService {
     const hlsBaseKey = payload.hlsBaseKey ?? (await this.getVideoBlock(blockId)).hlsBaseKey;
     if (!hlsBaseKey) throw new NotFoundException('Video segment not found');
     const safeFileName = fileName.replace(/[^a-zA-Z0-9_.-]/g, '');
-    const stream = await this.storageService.getObjectStream(`${hlsBaseKey}/${safeFileName}`);
-    return new StreamableFile(stream);
+    const { stream, contentLength } = await this.storageService.getObjectStreamWithLength(
+      `${hlsBaseKey}/${safeFileName}`,
+    );
+    // Declaring the length keeps the response from going out chunked. A chunked segment gives
+    // the mobile downloader no way to distinguish a finished transfer from a dropped one, so
+    // every segment was reported as "Download interrupted" and nothing cached.
+    return new StreamableFile(stream, contentLength != null ? { length: contentLength } : {});
   }
 }
