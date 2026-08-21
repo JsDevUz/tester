@@ -213,7 +213,11 @@ export function HlsVideoPlayer({
     loadRegistry,
   } = useOfflineVideoStore();
 
-  const isDownloaded = Boolean(registry[blockId]);
+  // A registry entry exists from the FIRST segment onwards -- it is written progressively so
+  // an interrupted download stays playable. Treating its mere presence as "downloaded" showed
+  // a completed badge over a partial copy, which is how a 76-minute lesson could sit there
+  // claiming to be saved with only 52 minutes on disk.
+  const isDownloaded = isOfflineVideoComplete(registry[blockId]);
   const activeDownload = activeDownloads[blockId];
   const isDownloading = activeDownload?.status === 'downloading';
   const downloadProgress = activeDownload?.progress ?? 0;

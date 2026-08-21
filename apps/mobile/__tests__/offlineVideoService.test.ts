@@ -125,8 +125,10 @@ describe('offlineVideoService', () => {
       ).toBe(true);
     });
 
-    it('treats a legacy entry with no counts as complete', () => {
-      expect(isOfflineVideoComplete(base)).toBe(true);
+    // Written before the counts existed, so completeness cannot be proven. Treating it as
+    // incomplete re-downloads at worst; trusting it truncates the lesson silently.
+    it('treats a legacy entry with no counts as incomplete', () => {
+      expect(isOfflineVideoComplete(base)).toBe(false);
     });
 
     it('treats a missing entry as incomplete', () => {

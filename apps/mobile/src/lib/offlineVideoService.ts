@@ -76,12 +76,17 @@ export interface OfflineVideoMeta {
   totalSegments?: number;
 }
 
-/** True when every segment of the source playlist is on disk. */
+/**
+ * True when every segment of the source playlist is on disk.
+ *
+ * Entries written before these counts existed cannot prove either way, and they are treated
+ * as INCOMPLETE. That is the safe direction: a complete video wrongly re-downloaded costs
+ * data, while a partial one wrongly trusted silently truncates the lesson -- a 76-minute
+ * recording playing as 52 minutes with no indication anything is missing.
+ */
 export function isOfflineVideoComplete(meta: OfflineVideoMeta | null | undefined): boolean {
   if (!meta) return false;
-  // Entries from before the counts were tracked have no way to prove they are partial, and
-  // they were only ever written on a completed download.
-  if (meta.totalSegments == null || meta.downloadedSegments == null) return true;
+  if (meta.totalSegments == null || meta.downloadedSegments == null) return false;
   return meta.downloadedSegments >= meta.totalSegments;
 }
 
