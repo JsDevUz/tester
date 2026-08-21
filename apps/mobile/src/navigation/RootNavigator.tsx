@@ -41,6 +41,7 @@ import { MyDictionariesScreen } from '../screens/MyDictionariesScreen';
 import { EditProfileScreen } from '../screens/EditProfileScreen';
 import { WordDeckScreen } from '../screens/WordDeckScreen';
 import { CachedImage } from '../components/common/CachedImage';
+import { TAB_ICON_SIZE } from './tabBarLayout';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<TabParamList>();
@@ -79,9 +80,9 @@ function TabIcon({
     return (
       <View
         style={{
-          width: size + 6,
-          height: size + 6,
-          borderRadius: (size + 6) / 2,
+          width: TAB_ICON_SIZE + 6,
+          height: TAB_ICON_SIZE + 6,
+          borderRadius: (TAB_ICON_SIZE + 6) / 2,
           alignItems: 'center',
           justifyContent: 'center',
           borderWidth: focused ? 2 : 0,
@@ -92,17 +93,17 @@ function TabIcon({
           <CachedImage
             source={{ uri: avatarUrl }}
             category="avatars"
-            style={{ width: size, height: size, borderRadius: size / 2 }}
+            style={{ width: TAB_ICON_SIZE, height: TAB_ICON_SIZE, borderRadius: TAB_ICON_SIZE / 2 }}
           />
         ) : (
-          <UserRound color={color} size={size - 2} />
+          <UserRound color={color} size={TAB_ICON_SIZE - 2} />
         )}
       </View>
     );
   }
 
   const Icon = icons[routeName];
-  return <Icon color={color} size={size - 3} strokeWidth={focused ? 2.4 : 2} />;
+  return <Icon color={color} size={TAB_ICON_SIZE} strokeWidth={focused ? 2.4 : 2} />;
 }
 
 function TabsWithProfile() {
