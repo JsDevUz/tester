@@ -3,7 +3,7 @@ import { CourseModulesService } from './course-modules.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsString, MinLength } from 'class-validator';
+import { ArrayNotEmpty, IsArray, IsString, MinLength } from 'class-validator';
 
 class CreateModuleDto {
   @IsString() @MinLength(1) title: string;
@@ -11,6 +11,10 @@ class CreateModuleDto {
 
 class UpdateModuleDto {
   @IsString() @MinLength(1) title: string;
+}
+
+class ReorderModulesDto {
+  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) moduleIds: string[];
 }
 
 @UseGuards(JwtAuthGuard, RolesGuard)
@@ -38,5 +42,11 @@ export class CourseModulesController {
   @HttpCode(204)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.courseModulesService.remove(id, req.admin.id);
+  }
+
+  @Post('courses/:courseId/modules/reorder')
+  @HttpCode(204)
+  reorder(@Param('courseId') courseId: string, @Req() req: any, @Body() dto: ReorderModulesDto) {
+    return this.courseModulesService.reorder(courseId, req.admin.id, dto.moduleIds);
   }
 }

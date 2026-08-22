@@ -1,7 +1,7 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
 import { courses, modules, lessons } from '../db/schema';
-import { and, eq } from 'drizzle-orm';
+import { and, eq, inArray } from 'drizzle-orm';
 
 @Injectable()
 export class LessonsService {
@@ -59,5 +59,18 @@ export class LessonsService {
     if (!lesson) throw new NotFoundException('Lesson not found');
     await this.assertModuleOwnership(lesson.moduleId, adminId);
     await db.delete(lessons).where(eq(lessons.id, id));
+  }
+
+  async reorder(moduleId: string, adminId: string, lessonIds: string[]) {
+    await this.assertModuleOwnership(moduleId, adminId);
+    const existing = await db.query.lessons.findMany({
+      where: and(eq(lessons.moduleId, moduleId), inArray(lessons.id, lessonIds)),
+    });
+    if (existing.length !== lessonIds.length) {
+      throw new BadRequestException("lessonIds must match the module's existing lessons");
+    }
+    for (let i = 0; i < lessonIds.length; i++) {
+      await db.update(lessons).set({ orderIndex: i }).where(eq(lessons.id, lessonIds[i]));
+    }
   }
 }

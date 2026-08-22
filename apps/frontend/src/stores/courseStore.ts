@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { apiListCourses, apiCreateCourse, apiRenameCourse, apiDeleteCourse } from '../api/courses';
-import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule } from '../api/modules';
-import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson } from '../api/lessons';
+import { apiListModules, apiCreateModule, apiRenameModule, apiDeleteModule, apiReorderModules } from '../api/modules';
+import { apiListLessons, apiCreateLesson, apiUpdateLesson, apiDeleteLesson, apiReorderLessons } from '../api/lessons';
 import {
   apiListPracticeBlocks,
   apiCreatePracticeBlock,
@@ -284,6 +284,23 @@ export const useCourseStore = create<CourseState>((set, get) => ({
       ),
     });
   },
+  moveModule: async (courseId, moduleId, direction) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    if (!course) return;
+
+    const index = course.modules.findIndex((m) => m.id === moduleId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= course.modules.length) return;
+
+    const reordered = [...course.modules];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+    await apiReorderModules(courseId, reordered.map((m) => m.id));
+
+    set({
+      courses: get().courses.map((c) => (c.id !== courseId ? c : { ...c, modules: reordered })),
+    });
+  },
 
   addLesson: async (courseId, moduleId, title) => {
     const row = await apiCreateLesson(moduleId, title);
@@ -372,6 +389,33 @@ export const useCourseStore = create<CourseState>((set, get) => ({
                         l.id === lessonId ? { ...l, status: nextStatus } : l,
                       ),
                     },
+              ),
+            },
+      ),
+    });
+  },
+  moveLesson: async (courseId, moduleId, lessonId, direction) => {
+    const course = get().courses.find((c) => c.id === courseId);
+    const module = course?.modules.find((m) => m.id === moduleId);
+    if (!module) return;
+
+    const index = module.lessons.findIndex((l) => l.id === lessonId);
+    const swapWith = direction === 'up' ? index - 1 : index + 1;
+    if (index === -1 || swapWith < 0 || swapWith >= module.lessons.length) return;
+
+    const reordered = [...module.lessons];
+    [reordered[index], reordered[swapWith]] = [reordered[swapWith], reordered[index]];
+
+    await apiReorderLessons(moduleId, reordered.map((l) => l.id));
+
+    set({
+      courses: get().courses.map((c) =>
+        c.id !== courseId
+          ? c
+          : {
+              ...c,
+              modules: c.modules.map((m) =>
+                m.id !== moduleId ? m : { ...m, lessons: reordered },
               ),
             },
       ),

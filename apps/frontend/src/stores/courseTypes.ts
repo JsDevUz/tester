@@ -140,11 +140,13 @@ export interface CourseState {
   addModule: (courseId: string, title: string) => Promise<Module | undefined>;
   renameModule: (courseId: string, moduleId: string, title: string) => Promise<void>;
   deleteModule: (courseId: string, moduleId: string) => Promise<void>;
+  moveModule: (courseId: string, moduleId: string, direction: 'up' | 'down') => Promise<void>;
 
   addLesson: (courseId: string, moduleId: string, title: string) => Promise<Lesson | undefined>;
   renameLesson: (courseId: string, moduleId: string, lessonId: string, title: string) => Promise<void>;
   deleteLesson: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
   toggleLessonStatus: (courseId: string, moduleId: string, lessonId: string) => Promise<void>;
+  moveLesson: (courseId: string, moduleId: string, lessonId: string, direction: 'up' | 'down') => Promise<void>;
 
   addBlock: (courseId: string, moduleId: string, lessonId: string, block: ContentBlock, file?: File) => Promise<void>;
   addFileBlockFromLibrary: (courseId: string, moduleId: string, lessonId: string, url: string, fileName: string) => Promise<void>;

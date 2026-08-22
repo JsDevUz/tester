@@ -187,7 +187,7 @@ export function CourseScreen({route, navigation}: Props) {
     await apiMarkLessonComplete(selected.lesson.id);
     setCourse(current => {
       if (!current) return current;
-      return {
+      const updated = {
         ...current,
         modules: current.modules.map(module => ({
           ...module,
@@ -196,6 +196,12 @@ export function CourseScreen({route, navigation}: Props) {
           ),
         })),
       };
+      // Without this, the on-disk cache still says completed:false. LessonsListScreen (which
+      // the next lesson's unlock check reads from) paints straight from that cache the moment
+      // it regains focus -- e.g. right after this screen's own "Keyingi dars" navigates back --
+      // so a stale cache showed the just-finished lesson as still locked for the next one.
+      void storage.set(`cache:course:${courseId}`, {data: updated, savedAt: Date.now()});
+      return updated;
     });
   }
 

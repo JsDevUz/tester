@@ -26,3 +26,7 @@ export async function apiRenameModule(id: string, title: string): Promise<ApiMod
 export async function apiDeleteModule(id: string): Promise<void> {
   await client.delete(`/modules/${id}`);
 }
+
+export async function apiReorderModules(courseId: string, moduleIds: string[]): Promise<void> {
+  await client.post(`/courses/${courseId}/modules/reorder`, { moduleIds });
+}

@@ -2,12 +2,14 @@ import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   AppState,
+  PanResponder,
   Platform,
   Pressable,
   StyleSheet,
   Text,
   View,
 } from 'react-native';
+import { Maximize, Pause, Play, RotateCcw, RotateCw } from 'lucide-react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
   SelectedTrackType,
@@ -102,10 +104,21 @@ export function HlsVideoPlayer({
   const [watchedSegments, setWatchedSegments] = useState<WatchSegment[]>([]);
   const [videoDuration, setVideoDuration] = useState<number | null>(null);
   const [paused, setPaused] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [controlsVisible, setControlsVisible] = useState(true);
+  const [seeking, setSeeking] = useState(false);
+  // Native fullscreen's own Dialog only carries over the video surface, not our custom
+  // overlay below -- so while it's up, native controls take over instead of leaving the
+  // student with no controls at all. Inline goes back to the custom overlay as soon as it
+  // dismisses.
+  const [isFullscreen, setIsFullscreen] = useState(false);
   const durationRef = useRef<number | null>(null);
   const resumeTimeRef = useRef(0);
   const currentTimeRef = useRef(0);
   const cachedDurationRef = useRef<number | null>(null);
+  const hideControlsTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pausedRef = useRef(paused);
+  const seekBarWidthRef = useRef(0);
 
   const token = useAuthStore(s => s.token);
   const {
@@ -304,6 +317,7 @@ export function HlsVideoPlayer({
   function handleProgress(data: OnProgressData) {
     const current = data.currentTime;
     currentTimeRef.current = current;
+    if (!seeking) setCurrentTime(current);
 
     const jumpThreshold = 4;
     const jumped = Math.abs(current - lastTimeRef.current) > jumpThreshold;
@@ -337,6 +351,103 @@ export function HlsVideoPlayer({
     });
     return () => sub.remove();
   }, [closeCurrentRange]);
+
+  // Controls auto-hide while playing (same 3.5s pattern as native's own control bar) so
+  // scrubbing/pausing/tapping doesn't fight a timer mid-interaction; paused always stays
+  // visible since there's nothing to hide it from.
+  const scheduleAutoHide = useCallback(() => {
+    if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    hideControlsTimer.current = setTimeout(() => setControlsVisible(false), 3500);
+  }, []);
+
+  useEffect(() => {
+    pausedRef.current = paused;
+    if (paused) {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+      setControlsVisible(true);
+    } else {
+      scheduleAutoHide();
+    }
+    return () => {
+      if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+    };
+  }, [paused, scheduleAutoHide]);
+
+  function toggleControls() {
+    if (controlsVisible) {
+      setControlsVisible(false);
+    } else {
+      setControlsVisible(true);
+      if (!paused) scheduleAutoHide();
+    }
+  }
+
+  function togglePlayPause() {
+    setPaused(p => !p);
+    setControlsVisible(true);
+    if (paused) scheduleAutoHide();
+  }
+
+  function handleSeekBarLayout(width: number) {
+    seekBarWidthRef.current = width;
+  }
+
+  function seekBy(deltaSeconds: number) {
+    const duration = durationRef.current ?? 0;
+    const next = Math.max(0, Math.min(duration, currentTimeRef.current + deltaSeconds));
+    videoRef.current?.seek(next);
+    currentTimeRef.current = next;
+    setCurrentTime(next);
+    if (!paused) scheduleAutoHide();
+  }
+
+  function formatTime(totalSeconds: number): string {
+    const s = Math.max(0, Math.floor(totalSeconds));
+    const mins = Math.floor(s / 60);
+    const secs = s % 60;
+    return `${mins}:${String(secs).padStart(2, '0')}`;
+  }
+
+  // PanResponder.create only runs once (useRef initializer), so its callbacks close over
+  // that first render's values forever -- every value they read (seek bar width, pause
+  // state) comes from a ref for that reason, not the state/props above.
+  const seekPanResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => {
+        if (hideControlsTimer.current) clearTimeout(hideControlsTimer.current);
+        setSeeking(true);
+        const duration = durationRef.current ?? 0;
+        const width = seekBarWidthRef.current;
+        if (width > 0 && duration > 0) {
+          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / width));
+          setCurrentTime(ratio * duration);
+        }
+      },
+      onPanResponderMove: (evt) => {
+        const duration = durationRef.current ?? 0;
+        const width = seekBarWidthRef.current;
+        if (width > 0 && duration > 0) {
+          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / width));
+          setCurrentTime(ratio * duration);
+        }
+      },
+      onPanResponderRelease: (evt) => {
+        const duration = durationRef.current ?? 0;
+        const width = seekBarWidthRef.current;
+        if (width > 0 && duration > 0) {
+          const ratio = Math.max(0, Math.min(1, evt.nativeEvent.locationX / width));
+          const target = ratio * duration;
+          videoRef.current?.seek(target);
+          currentTimeRef.current = target;
+          setCurrentTime(target);
+        }
+        setSeeking(false);
+        if (!pausedRef.current) scheduleAutoHide();
+      },
+    }),
+  ).current;
 
   const textTracks = subtitleUrl
     ? [
@@ -373,54 +484,128 @@ export function HlsVideoPlayer({
           <ActivityIndicator color="white" />
         </View>
       ) : (
-        <Video
-          ref={videoRef}
-          source={
-            manifestUrl.startsWith('file://')
-              ? { uri: manifestUrl }
-              : { uri: manifestUrl, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
-          }
-          style={StyleSheet.absoluteFill}
-          paused={paused}
-          controls
-          resizeMode="contain"
-          textTracks={textTracks}
-          selectedTextTrack={
-            textTracks ? { type: SelectedTrackType.TITLE, value: 'Subtitr' } : undefined
-          }
-          progressUpdateInterval={500}
-          preventsDisplaySleepDuringVideoPlayback
-          ignoreSilentSwitch="ignore"
-          playInBackground
-          playWhenInactive
-          showNotificationControls
-          enterPictureInPictureOnLeave
-          bufferConfig={{
-            minBufferMs: 15000,
-            maxBufferMs: 50000,
-            bufferForPlaybackMs: 1000,
-            bufferForPlaybackAfterRebufferMs: 2500,
-          }}
-          onLoad={handleLoad}
-          onProgress={handleProgress}
-          onError={() => {
-            if (isOfflineMode) {
-              setIsOfflineMode(false);
-              apiStartVideoPlayback(blockId)
-                .then(playback => {
-                  setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
-                  setSubtitleUrl(playback.subtitleUrl);
-                })
-                .catch(() => setError(true));
-            } else {
-              setError(true);
+        <>
+          <Video
+            ref={videoRef}
+            source={
+              manifestUrl.startsWith('file://')
+                ? { uri: manifestUrl }
+                : { uri: manifestUrl, headers: token ? { Authorization: `Bearer ${token}` } : undefined }
             }
-          }}
-          onEnd={() => {
-            closeCurrentRange();
-            setPaused(true);
-          }}
-        />
+            style={StyleSheet.absoluteFill}
+            paused={paused}
+            controls={isFullscreen}
+            resizeMode="contain"
+            textTracks={textTracks}
+            selectedTextTrack={
+              textTracks ? { type: SelectedTrackType.TITLE, value: 'Subtitr' } : undefined
+            }
+            progressUpdateInterval={500}
+            preventsDisplaySleepDuringVideoPlayback
+            ignoreSilentSwitch="ignore"
+            playInBackground
+            playWhenInactive
+            showNotificationControls
+            enterPictureInPictureOnLeave
+            bufferConfig={{
+              minBufferMs: 15000,
+              maxBufferMs: 50000,
+              bufferForPlaybackMs: 1000,
+              bufferForPlaybackAfterRebufferMs: 2500,
+            }}
+            onLoad={handleLoad}
+            onProgress={handleProgress}
+            onError={() => {
+              if (isOfflineMode) {
+                setIsOfflineMode(false);
+                apiStartVideoPlayback(blockId)
+                  .then(playback => {
+                    setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
+                    setSubtitleUrl(playback.subtitleUrl);
+                  })
+                  .catch(() => setError(true));
+              } else {
+                setError(true);
+              }
+            }}
+            onEnd={() => {
+              closeCurrentRange();
+              setPaused(true);
+            }}
+            onFullscreenPlayerWillPresent={() => setIsFullscreen(true)}
+            onFullscreenPlayerWillDismiss={() => setIsFullscreen(false)}
+          />
+          {!isFullscreen && (
+          <>
+          <Pressable
+            style={StyleSheet.absoluteFill}
+            onPress={toggleControls}
+            accessibilityRole="button"
+            accessibilityLabel={controlsVisible ? 'Boshqaruv panelini yashirish' : 'Boshqaruv panelini ko\'rsatish'}
+          />
+          {controlsVisible && (
+            <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+              <View className="flex-1 flex-row items-center justify-center gap-6">
+                <Pressable
+                  onPress={() => seekBy(-5)}
+                  hitSlop={14}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
+                  accessibilityLabel="5 soniya orqaga">
+                  <RotateCcw size={22} color="#fff" />
+                </Pressable>
+                <Pressable
+                  onPress={togglePlayPause}
+                  hitSlop={14}
+                  className="h-[72px] w-[72px] items-center justify-center rounded-full bg-black/40"
+                  accessibilityLabel={paused ? 'Ijro etish' : 'Pauza'}>
+                  {paused ? (
+                    <Play size={34} color="#fff" fill="#fff" />
+                  ) : (
+                    <Pause size={34} color="#fff" fill="#fff" />
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => seekBy(5)}
+                  hitSlop={14}
+                  className="h-11 w-11 items-center justify-center rounded-full bg-black/40"
+                  accessibilityLabel="5 soniya oldinga">
+                  <RotateCw size={22} color="#fff" />
+                </Pressable>
+              </View>
+              <View className="bg-black/40 px-3 pb-2.5 pt-3">
+                <View
+                  onLayout={e => handleSeekBarLayout(e.nativeEvent.layout.width)}
+                  {...seekPanResponder.panHandlers}
+                  className="h-8 justify-center">
+                  <View className="h-1 overflow-hidden rounded-full bg-white/30">
+                    <View
+                      className="h-1 rounded-full bg-white"
+                      style={{
+                        width:
+                          videoDuration && videoDuration > 0
+                            ? `${Math.min(100, (currentTime / videoDuration) * 100)}%`
+                            : '0%',
+                      }}
+                    />
+                  </View>
+                </View>
+                <View className="flex-row items-center justify-between px-0.5">
+                  <Text className="text-xs font-semibold text-white">
+                    {formatTime(currentTime)} / {formatTime(videoDuration ?? 0)}
+                  </Text>
+                  <Pressable
+                    onPress={() => videoRef.current?.presentFullscreenPlayer()}
+                    hitSlop={14}
+                    accessibilityLabel="To'liq ekran">
+                    <Maximize size={19} color="#fff" />
+                  </Pressable>
+                </View>
+              </View>
+            </View>
+          )}
+          </>
+          )}
+        </>
       )}
     </View>
   );

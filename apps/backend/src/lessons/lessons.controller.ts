@@ -3,10 +3,25 @@ import { LessonsService } from './lessons.service';
 import { JwtAuthGuard } from '../auth/jwt-auth.guard';
 import { RolesGuard } from '../auth/roles.guard';
 import { Roles } from '../auth/roles.decorator';
-import { IsBoolean, IsIn, IsInt, IsOptional, IsString, Max, Min, MinLength } from 'class-validator';
+import {
+  ArrayNotEmpty,
+  IsArray,
+  IsBoolean,
+  IsIn,
+  IsInt,
+  IsOptional,
+  IsString,
+  Max,
+  Min,
+  MinLength,
+} from 'class-validator';
 
 class CreateLessonDto {
   @IsString() @MinLength(1) title: string;
+}
+
+class ReorderLessonsDto {
+  @IsArray() @ArrayNotEmpty() @IsString({ each: true }) lessonIds: string[];
 }
 
 class UpdateLessonDto {
@@ -43,5 +58,11 @@ export class LessonsController {
   @HttpCode(204)
   remove(@Param('id') id: string, @Req() req: any) {
     return this.lessonsService.remove(id, req.admin.id);
+  }
+
+  @Post('modules/:moduleId/lessons/reorder')
+  @HttpCode(204)
+  reorder(@Param('moduleId') moduleId: string, @Req() req: any, @Body() dto: ReorderLessonsDto) {
+    return this.lessonsService.reorder(moduleId, req.admin.id, dto.lessonIds);
   }
 }

@@ -41,3 +41,7 @@ export async function apiUpdateLesson(
 export async function apiDeleteLesson(id: string): Promise<void> {
   await client.delete(`/lessons/${id}`);
 }
+
+export async function apiReorderLessons(moduleId: string, lessonIds: string[]): Promise<void> {
+  await client.post(`/modules/${moduleId}/lessons/reorder`, { lessonIds });
+}
