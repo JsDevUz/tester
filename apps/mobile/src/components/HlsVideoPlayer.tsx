@@ -1055,13 +1055,10 @@ export function HlsVideoPlayer({
                 <Pressable
                   onPress={() => {
                     resumeTimeRef.current = currentTimeRef.current;
-                    if (!isFullscreen) {
-                      setActiveBlockId(blockId);
-                      setIsFullscreen(true);
-                    } else {
-                      setIsFullscreen(false);
-                      setActiveBlockId(null);
-                    }
+                    // Only the fullscreen flag flips here -- activeBlockId stays set, since
+                    // clearing it would unmount this very player (CourseScreen only renders
+                    // HlsVideoPlayer while its block is active) and stop playback dead.
+                    setIsFullscreen(!isFullscreen);
                   }}
                   className="h-8 w-8 items-center justify-center rounded-lg bg-black/75">
                   {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
