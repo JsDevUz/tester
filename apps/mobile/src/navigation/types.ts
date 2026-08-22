@@ -2,6 +2,7 @@ export type RootStackParamList = {
   Login: undefined;
   Main: undefined;
   Courses: { schoolId: string; schoolName: string };
+  LessonsList: { courseId: string; title: string; schoolId?: string };
   Course: { courseId: string; title: string; schoolId?: string; initialLessonId?: string };
   Web: { path: string; title: string; onlineRequired?: boolean };
   Chat: { chatId: string; title: string };

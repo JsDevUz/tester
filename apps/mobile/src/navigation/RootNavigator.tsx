@@ -17,6 +17,7 @@ import type { RootStackParamList, TabParamList } from './types';
 import { LoginScreen } from '../screens/LoginScreen';
 import { SchoolsScreen } from '../screens/SchoolsScreen';
 import { CoursesScreen } from '../screens/CoursesScreen';
+import { LessonsListScreen } from '../screens/LessonsListScreen';
 import { HistoryScreen } from '../screens/HistoryScreen';
 import { MessengerScreen, ChatScreen } from '../screens/MessengerScreen';
 import { LiveScreen } from '../screens/LiveScreen';
@@ -234,6 +235,11 @@ export function RootNavigator() {
             name="Courses"
             component={CoursesScreen}
             options={({ route }) => ({ title: route.params.schoolName })}
+          />
+          <Stack.Screen
+            name="LessonsList"
+            component={LessonsListScreen}
+            options={({ route }) => ({ title: route.params.title })}
           />
           <Stack.Screen
             name="Course"

@@ -85,7 +85,7 @@ export function CoursesScreen({navigation, route}: Props) {
               <View className="mt-3 rounded-3xl bg-white p-5 dark:bg-dark-surface">
                 <Pressable
                   onPress={() =>
-                    navigation.navigate('Course', {
+                    navigation.navigate('LessonsList', {
                       courseId: item.courseId,
                       title: item.courseTitle,
                       schoolId,

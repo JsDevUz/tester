@@ -1,29 +1,21 @@
 import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
-import {Alert, Modal, Pressable, ScrollView, Text, View} from 'react-native';
+import {Alert, Pressable, ScrollView, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
-  ArrowLeft,
   BookOpen,
   CheckCircle2,
-  ChevronDown,
-  ChevronRight,
-  ChevronUp,
-  Film,
-  Layers3,
   Lock,
   MessageCircle,
-  Star,
 } from 'lucide-react-native';
 import {useColorScheme} from 'nativewind';
-import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import axios from 'axios';
 import type {RootStackParamList} from '../navigation/types';
-import type {ApiMyCourseDetail, ApiMyLesson, ApiMyPracticeBlock} from '../types/api';
+import type {ApiMyCourseDetail, ApiMyPracticeBlock} from '../types/api';
 import {apiGetMyCourseDetail, apiMarkLessonComplete} from '../api/groups';
 import {apiGetOrCreatePracticeChatForCourse} from '../api/practiceMessenger';
 import {storage} from '../lib/storage';
-import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../lib/lessons';
+import {computeUnlockedLessonIds, isLessonPassing} from '../lib/lessons';
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
@@ -31,36 +23,17 @@ import {HlsVideoPlayer} from '../components/HlsVideoPlayer';
 import {PracticeScreen} from '../components/PracticeScreen';
 import {useActiveVideoStore} from '../store/activeVideoStore';
 import {useNetwork} from '../providers/NetworkProvider';
-import {useOfflineVideoStore} from '../store/offlineVideoStore';
-import {isOfflineVideoComplete} from '../lib/offlineVideoService';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'Course'>;
 
-function videoDurationLabel(lesson: ApiMyLesson): string | null {
-  const videoBlock = lesson.blocks.find(b => b.type === 'video');
-  if (!videoBlock?.durationSec) return null;
-  const total = videoBlock.durationSec;
-  const mins = String(Math.floor(total / 60)).padStart(2, '0');
-  const secs = String(total % 60).padStart(2, '0');
-  return `${mins}:${secs}`;
-}
-
 export function CourseScreen({route, navigation}: Props) {
-  const insets = useSafeAreaInsets();
-  const offlineRegistry = useOfflineVideoStore(s => s.registry);
-  const loadOfflineRegistry = useOfflineVideoStore(s => s.loadRegistry);
-
-  useEffect(() => {
-    void loadOfflineRegistry();
-  }, [loadOfflineRegistry]);
-  const {courseId, schoolId} = route.params;
+  const {courseId, schoolId, initialLessonId} = route.params;
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
-  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
+  const [selectedLessonId, setSelectedLessonId] = useState<string | null>(initialLessonId ?? null);
   const [showPractice, setShowPractice] = useState(false);
   const [loading, setLoading] = useState(true);
   const [stale, setStale] = useState(false);
   const [accessError, setAccessError] = useState<string | null>(null);
-  const [lessonsListOpen, setLessonsListOpen] = useState(false);
   // A lesson's editor blocks can be long enough that RenderHTML's parse-and-layout pass
   // blocks the JS thread for a visible moment, which made picking a lesson from the sheet
   // feel like the tap itself was ignored: the sheet's own close animation runs on that same
@@ -172,8 +145,6 @@ export function CourseScreen({route, navigation}: Props) {
     () => computeUnlockedLessonIds(course?.modules ?? []),
     [course],
   );
-  const progressCount = lessons.filter(item => item.lesson.completed).length;
-  const courseStars = useMemo(() => computeCourseStars(lessons), [lessons]);
 
   useEffect(() => {
     setShowPractice(false);
@@ -214,21 +185,22 @@ export function CourseScreen({route, navigation}: Props) {
       // Android left-aligns header titles by default, which pushes this one against the back
       // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
       headerTitleAlign: 'center',
+      // Course + lesson name, replacing the old "Darslar Tartibi" sheet-opener now that the
+      // lesson roster is its own screen (LessonsListScreen) -- there's nothing left here to
+      // open a sheet for.
       headerTitle: () => (
-        <Pressable
-          onPress={() => setLessonsListOpen(true)}
-          className="flex-row items-center justify-center gap-1.5 py-1">
+        <View className="items-center justify-center py-1">
           <Text
             numberOfLines={1}
-            className="max-w-[180px] text-base font-bold text-ink dark:text-dark-ink">
-            Darslar Tartibi
+            className="max-w-[220px] text-[11px] font-semibold text-slate-400 dark:text-dark-muted">
+            {route.params.title}
           </Text>
-          {lessonsListOpen ? (
-            <ChevronUp size={18} color={isDark ? '#e8eaed' : '#111827'} />
-          ) : (
-            <ChevronDown size={18} color={isDark ? '#e8eaed' : '#111827'} />
-          )}
-        </Pressable>
+          <Text
+            numberOfLines={1}
+            className="max-w-[220px] text-base font-bold text-ink dark:text-dark-ink">
+            {selected.lesson.title}
+          </Text>
+        </View>
       ),
       headerRight: () => (
         <View className="rounded-full bg-slate-900 px-2.5 py-1 dark:bg-dark-surface-2">
@@ -239,7 +211,7 @@ export function CourseScreen({route, navigation}: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark, activeBlockId, videoIsFullscreen]);
+  }, [selected, showPractice, selectedIndex, lessons.length, isDark, activeBlockId, videoIsFullscreen, route.params.title]);
 
   async function markComplete() {
     if (!selected) return;
@@ -495,186 +467,12 @@ export function CourseScreen({route, navigation}: Props) {
             onClose={() => setActiveBlockId(null)}
           />
         )}
-        <Modal
-          visible={lessonsListOpen}
-          animationType="slide"
-          onRequestClose={() => setLessonsListOpen(false)}>
-          <Screen>
-            <View
-              style={{paddingTop: Math.max(insets.top, 12)}}
-              className="flex-row items-center justify-between border-b border-slate-100 px-3 pb-2.5 dark:border-dark-border">
-              <Pressable
-                onPress={() => setLessonsListOpen(false)}
-                className="h-8 w-8 items-center justify-center rounded-full">
-                <ArrowLeft size={21} color={isDark ? '#e8eaed' : '#475569'} />
-              </Pressable>
-              <Pressable
-                onPress={() => setLessonsListOpen(false)}
-                className="flex-row items-center gap-1.5">
-                <Text className="text-base font-bold text-ink dark:text-dark-ink">Darslar Tartibi</Text>
-                <ChevronUp size={20} color={isDark ? '#e8eaed' : '#111827'} />
-              </Pressable>
-              <View className="rounded-full bg-slate-900 px-2.5 py-1 dark:bg-dark-surface-2">
-                <Text className="text-xs font-bold text-white dark:text-dark-ink">
-                  {progressCount} / {lessons.length}
-                </Text>
-              </View>
-            </View>
-            <ScrollView contentContainerClassName="p-3 pb-4">
-              <View className="mb-4 rounded-2xl border border-slate-100 bg-white p-3 dark:border-dark-border dark:bg-dark-surface">
-                <View className="mb-2 flex-row items-center justify-between">
-                  <Text className="text-sm font-bold text-ink dark:text-dark-ink">Jarayon</Text>
-                  <Text className="text-xs font-bold text-slate-500 dark:text-dark-muted">
-                    {progressCount} / {lessons.length}
-                  </Text>
-                </View>
-                <View className="h-2 overflow-hidden rounded-full bg-slate-100 dark:bg-dark-surface-2">
-                  <View
-                    className="h-full rounded-full bg-brand"
-                    style={{width: `${lessons.length > 0 ? (progressCount / lessons.length) * 100 : 0}%`}}
-                  />
-                </View>
-              </View>
-              {renderLessonList(lessonId => {
-                setSelectedLessonId(lessonId);
-                setLessonsListOpen(false);
-              })}
-            </ScrollView>
-            <View
-              style={{paddingBottom: Math.max(insets.bottom, 12)}}
-              className="border-t border-slate-100 p-3 dark:border-dark-border">
-              <Pressable
-                onPress={() => setLessonsListOpen(false)}
-                className="h-11 items-center justify-center rounded-xl bg-slate-100 dark:bg-dark-surface-2">
-                <Text className="text-sm font-semibold text-slate-700 dark:text-dark-ink">Yopish</Text>
-              </Pressable>
-            </View>
-          </Screen>
-        </Modal>
       </Screen>
     );
   }
 
-  function renderLessonList(onSelect: (lessonId: string) => void) {
-    return course!.modules.map((module, moduleIndex) => (
-      <View key={module.id} className="mb-5">
-        <View className="mb-2 flex-row items-center gap-1.5 px-1">
-          <Layers3 size={13} color={isDark ? '#a4a7b2' : '#94a3b8'} />
-          <Text className="text-xs font-bold uppercase tracking-wide text-slate-400 dark:text-dark-muted">
-            {module.title || `Modul ${moduleIndex + 1}`}
-          </Text>
-        </View>
-        {module.lessons.map(lesson => {
-          const locked = !unlockedLessonIds.has(lesson.id);
-          const active = lesson.id === selected?.lesson.id;
-          const hasVideo = lesson.blocks.some(b => b.type === 'video');
-          // A registry entry alone does not mean the download finished -- an interrupted one
-          // still leaves an entry behind (see isOfflineVideoComplete). Badging it "Offline"
-          // here was the same bug already fixed in the player: the lesson list would promise
-          // a video was ready when only part of it was actually on disk.
-          const hasOfflineVideo = lesson.blocks.some(
-            b => b.type === 'video' && isOfflineVideoComplete(offlineRegistry[b.id]),
-          );
-          const totalStars =
-            lesson.practiceBlocks.reduce((sum, b) => sum + (b.maxScore ?? 0), 0) +
-            (lesson.completionScore ?? 0);
-          const duration = videoDurationLabel(lesson);
-          return (
-            <Pressable
-              key={lesson.id}
-              disabled={locked}
-              onPress={() => onSelect(lesson.id)}
-              className={`mb-2 flex-row items-center rounded-2xl border p-4 dark:bg-dark-surface ${
-                active
-                  ? 'border-slate-900 bg-white dark:border-dark-ink'
-                  : 'border-transparent bg-white'
-              }`}>
-              <View className="h-10 w-10 items-center justify-center rounded-xl bg-slate-100 dark:bg-dark-surface-2">
-                {locked ? (
-                  <Lock size={18} color={isDark ? '#a4a7b2' : '#94a3b8'} />
-                ) : hasVideo ? (
-                  <Film size={19} color={isDark ? '#a4a7b2' : '#94a3b8'} />
-                ) : (
-                  <BookOpen size={19} color={isDark ? '#a4a7b2' : '#94a3b8'} />
-                )}
-              </View>
-              <View className="ml-3 flex-1">
-                <Text
-                  numberOfLines={2}
-                  className={`font-bold ${locked ? 'text-slate-400 dark:text-dark-muted' : 'text-slate-800 dark:text-dark-ink'}`}>
-                  {lesson.title}
-                </Text>
-                <View className="mt-0.5 flex-row flex-wrap items-center gap-1.5">
-                  <Text className="text-[11px] font-semibold text-slate-400 dark:text-dark-muted">
-                    Modul {moduleIndex + 1}
-                  </Text>
-                  {hasOfflineVideo && (
-                    <View className="rounded-full bg-emerald-100 px-1.5 py-0.5 dark:bg-emerald-500/15">
-                      <Text className="text-[11px] font-bold text-emerald-600 dark:text-emerald-400">
-                        Offline
-                      </Text>
-                    </View>
-                  )}
-                  {duration && (
-                    <View className="rounded-full bg-slate-100 px-1.5 py-0.5 dark:bg-dark-surface-2">
-                      <Text className="text-[11px] font-semibold text-slate-500 dark:text-dark-muted">
-                        {duration}
-                      </Text>
-                    </View>
-                  )}
-                  {lesson.practiceBlocks.length > 0 && (
-                    <View className="rounded-full bg-orange-100 px-1.5 py-0.5 dark:bg-orange-500/15">
-                      <Text className="text-[11px] font-semibold text-orange-600 dark:text-orange-400">
-                        Amaliyot
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              </View>
-              <View className="flex-row items-center gap-2">
-                {totalStars > 0 && (
-                  <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2 py-0.5 dark:bg-amber-500/15">
-                    <Star size={11} color="#f59e0b" fill="#f59e0b" />
-                    <Text className="text-[11px] font-bold text-amber-500">{totalStars}</Text>
-                  </View>
-                )}
-                {locked ? (
-                  <Lock size={16} color={isDark ? '#454752' : '#cbd5e1'} />
-                ) : lesson.completed ? (
-                  <CheckCircle2 size={18} color="#10b981" />
-                ) : (
-                  <ChevronRight size={18} color={isDark ? '#454752' : '#cbd5e1'} />
-                )}
-              </View>
-            </Pressable>
-          );
-        })}
-      </View>
-    ));
-  }
-
-  return (
-    <Screen>
-      <OfflineBanner />
-      <StaleNote stale={stale} />
-      <ScrollView contentContainerClassName="p-4 pb-10">
-        <View className="mb-4 flex-row items-center justify-between">
-          <View className="rounded-full bg-slate-900 px-2.5 py-1 dark:bg-dark-surface-2">
-            <Text className="text-[11px] font-bold text-white dark:text-dark-ink">
-              {progressCount} / {lessons.length}
-            </Text>
-          </View>
-          {courseStars.max > 0 && (
-            <View className="flex-row items-center gap-1 rounded-full bg-amber-50 px-2.5 py-1.5 dark:bg-amber-500/15">
-              <Star size={13} color="#f59e0b" fill="#f59e0b" />
-              <Text className="text-xs font-bold text-amber-500">
-                {courseStars.earned} / {courseStars.max}
-              </Text>
-            </View>
-          )}
-        </View>
-        {renderLessonList(lessonId => setSelectedLessonId(lessonId))}
-      </ScrollView>
-    </Screen>
-  );
+  // lessons.length > 0 here (the earlier guard above returned otherwise), and `selected`
+  // always falls back to lessons[0], so this is unreachable -- kept only because a
+  // component must return a value on every path.
+  return null;
 }
