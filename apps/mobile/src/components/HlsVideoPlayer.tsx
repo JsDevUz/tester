@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   AppState,
+  Dimensions,
   Modal,
   PanResponder,
   Platform,
@@ -232,7 +233,9 @@ export function HlsVideoPlayer({
   // small enough that it never needs to be clamped to stay fully on screen in practice for
   // the phone sizes this app targets.
   const pipSize = { width: 160, height: 90 };
-  const pipPan = useRef(new Animated.ValueXY({ x: windowWidth - pipSize.width - 16, y: 80 })).current;
+  const pipPan = useRef(
+    new Animated.ValueXY({ x: Dimensions.get('screen').width - pipSize.width - 16, y: 80 }),
+  ).current;
   const pipPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
@@ -256,6 +259,37 @@ export function HlsVideoPlayer({
       },
     }),
   ).current;
+
+  // Fullscreen swipe-to-dismiss: dragging the video up or down fades it out proportionally
+  // to how far the finger has moved (Telegram/Instagram's media-viewer gesture), closing
+  // once the drag passes a threshold and springing back otherwise. Only claims the gesture
+  // once the drag is clearly vertical and past a small slop, so a plain tap still reaches
+  // the tap-to-toggle-controls Pressable underneath instead of being swallowed here.
+  const dismissDrag = useRef(new Animated.Value(0)).current;
+  const dismissThreshold = 120;
+  const dismissResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => false,
+      onMoveShouldSetPanResponderCapture: (_e, gesture) =>
+        Math.abs(gesture.dy) > 12 && Math.abs(gesture.dy) > Math.abs(gesture.dx) * 1.5,
+      onPanResponderMove: Animated.event([null, { dy: dismissDrag }], { useNativeDriver: false }),
+      onPanResponderRelease: (_e, gesture) => {
+        if (Math.abs(gesture.dy) > dismissThreshold) {
+          onClose();
+          return;
+        }
+        Animated.spring(dismissDrag, { toValue: 0, useNativeDriver: false }).start();
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(dismissDrag, { toValue: 0, useNativeDriver: false }).start();
+      },
+    }),
+  ).current;
+  const dismissOpacity = dismissDrag.interpolate({
+    inputRange: [-dismissThreshold * 2, 0, dismissThreshold * 2],
+    outputRange: [0.3, 1, 0.3],
+    extrapolate: 'clamp',
+  });
 
   const {
     registry,
@@ -316,10 +350,14 @@ export function HlsVideoPlayer({
     return () => disableSecureScreen();
   }, []);
 
+  // Hidden for as long as this component is mounted -- not tied to `mode`, since PiP is
+  // still "a video open" as far as the rest of the app is concerned. Toggling this per mode
+  // change made the status bar (and with it, the screen behind a transparent PiP Modal)
+  // reflow every time PiP was entered, which is what showed as a gap above the header.
   useEffect(() => {
-    StatusBar.setHidden(isFullscreen, 'fade');
+    StatusBar.setHidden(true, 'fade');
     return () => StatusBar.setHidden(false, 'fade');
-  }, [isFullscreen]);
+  }, []);
 
   // Connectivity comes from the provider rather than a probe of our own: opening a video
   // while already known-offline should go straight to the local copy instead of burning a
@@ -965,7 +1003,10 @@ export function HlsVideoPlayer({
         </View>
       ) : null}
 
-      {manifestUrl && !error ? (
+      {/* PiP is just the bare video -- no controls fit usefully in a 160x90dp box, and the
+          whole box instead acts as a single "tap to expand" target (see the PiP Pressable
+          wrapping this component in the return statement below). */}
+      {manifestUrl && !error && isFullscreen ? (
         <>
           {/* Tap anywhere to reveal the controls (or hide them again). */}
           <Pressable
@@ -1241,15 +1282,39 @@ export function HlsVideoPlayer({
   return (
     <Modal
       visible
-      transparent={mode === 'pip'}
+      // Transparent in both PiP and fullscreen: the swipe-to-dismiss gesture needs the
+      // lesson behind the Modal to be visible as the video fades, not just in PiP. A
+      // dedicated opaque backdrop (below) covers the screen at full opacity normally and
+      // fades out with the same gesture, so fullscreen still looks fully opaque at rest.
+      transparent
       statusBarTranslucent
       animationType="fade"
       supportedOrientations={['portrait']}
       onRequestClose={onClose}>
       {mode === 'fullscreen' ? (
-        <View style={{ width: windowWidth, height: windowHeight, backgroundColor: 'black' }}>
-          {mediaSurface}
-        </View>
+        <>
+          <Animated.View
+            pointerEvents="none"
+            style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: dismissOpacity }]}
+          />
+          {/* absoluteFill rather than an explicit width/height: useWindowDimensions can
+              under-report versus the Modal's real extent on some Android devices (observed:
+              a gap at the bottom, matching the navigation bar's height), since it isn't
+              guaranteed to include the nav bar the way the Modal itself (statusBarTranslucent)
+              extends edge to edge. Filling the Modal's own container sidesteps the mismatch
+              entirely -- no dimension reads needed here at all. */}
+          <Animated.View
+            {...dismissResponder.panHandlers}
+            style={[
+              StyleSheet.absoluteFill,
+              {
+                opacity: dismissOpacity,
+                transform: [{ translateY: dismissDrag }],
+              },
+            ]}>
+            {mediaSurface}
+          </Animated.View>
+        </>
       ) : (
         // PiP: the Modal itself is transparent, so the lesson behind it (this same
         // CourseScreen, still mounted underneath) shows through and stays scrollable/
@@ -1273,6 +1338,20 @@ export function HlsVideoPlayer({
               pipStyle,
             ]}>
             {mediaSurface}
+            {/* Expand back to fullscreen. A dedicated tap target rather than the whole box,
+                so dragging (the PanResponder above) and expanding don't fight over the same
+                gesture. */}
+            <Pressable
+              onPress={() => setMode('fullscreen')}
+              style={{
+                position: 'absolute',
+                top: 4,
+                right: 4,
+                zIndex: 10,
+              }}
+              className="h-6 w-6 items-center justify-center rounded-md bg-black/70">
+              <Maximize2 size={12} color="white" />
+            </Pressable>
           </Animated.View>
         </View>
       )}
