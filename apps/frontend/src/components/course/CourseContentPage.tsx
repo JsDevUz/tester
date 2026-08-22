@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, ChevronRight, Layers, FileText, Trash2, Plus, Inbox, Eye, EyeOff, ArrowUp, ArrowDown } from 'lucide-react';
 import { toast } from 'sonner';
 import { useCourseStore } from '../../stores/courseStore';
 import { Breadcrumb } from './Breadcrumb';
@@ -29,7 +29,18 @@ type DeleteTarget =
   | null;
 
 export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSelectSettings, onSelectLaunch, onSelectGroups, onSelectClasses, onSelectChallenges }: CourseContentPageProps) {
-  const { courses, loadCourseDetails, addModule, renameModule, addLesson, deleteModule, deleteLesson, toggleLessonStatus } = useCourseStore();
+  const {
+    courses,
+    loadCourseDetails,
+    addModule,
+    renameModule,
+    addLesson,
+    deleteModule,
+    deleteLesson,
+    toggleLessonStatus,
+    moveModule,
+    moveLesson,
+  } = useCourseStore();
   const course = courses.find((c) => c.id === courseId);
   const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
   const [modal, setModal] = useState<ModalState>(null);
@@ -146,7 +157,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
               </div>
             ) : (
               <div className="flex flex-col gap-2">
-                {course.modules.map((module) => {
+                {course.modules.map((module, moduleIndex) => {
                   const collapsed = collapsedModuleIds.has(module.id);
                   return (
                     <div key={module.id} className="rounded-2xl bg-[var(--surface-bg)] shadow-xs overflow-hidden">
@@ -163,6 +174,24 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                         />
                         <button
                           type="button"
+                          onClick={() => void moveModule(courseId, module.id, 'up')}
+                          disabled={moduleIndex === 0}
+                          title="Yuqoriga surish"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--card-hover)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                        >
+                          <ArrowUp size={14} />
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void moveModule(courseId, module.id, 'down')}
+                          disabled={moduleIndex === course.modules.length - 1}
+                          title="Pastga surish"
+                          className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--card-hover)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                        >
+                          <ArrowDown size={14} />
+                        </button>
+                        <button
+                          type="button"
                           onClick={() => setDeleteTarget({ type: 'module', moduleId: module.id, title: module.title })}
                           className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-red-500/10 hover:text-red-500 cursor-pointer"
                         >
@@ -172,7 +201,7 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
 
                       {!collapsed && (
                         <div className="px-2 pb-2 space-y-1">
-                          {module.lessons.map((lesson) => (
+                          {module.lessons.map((lesson, lessonIndex) => (
                             <div
                               key={lesson.id}
                               className="group flex items-center gap-2 rounded-xl px-3 py-2 text-xs transition-colors hover:bg-[var(--card-hover)]"
@@ -184,6 +213,24 @@ export function CourseContentPage({ courseId, onBackToList, onOpenLesson, onSele
                               >
                                 <FileText size={14} className="shrink-0 text-[var(--text-muted)]" />
                                 <span className="truncate text-xs font-semibold text-[var(--text-primary)]">{lesson.title}</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void moveLesson(courseId, module.id, lesson.id, 'up')}
+                                disabled={lessonIndex === 0}
+                                title="Yuqoriga surish"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowUp size={13} />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => void moveLesson(courseId, module.id, lesson.id, 'down')}
+                                disabled={lessonIndex === module.lessons.length - 1}
+                                title="Pastga surish"
+                                className="flex h-7 w-7 items-center justify-center rounded-lg text-[var(--text-muted)] transition-colors hover:bg-[var(--card-bg)] hover:text-[var(--text-primary)] disabled:cursor-not-allowed disabled:opacity-30 cursor-pointer"
+                              >
+                                <ArrowDown size={13} />
                               </button>
                               <button
                                 type="button"
