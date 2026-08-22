@@ -27,7 +27,9 @@ import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
+import {HlsVideoPlayer} from '../components/HlsVideoPlayer';
 import {PracticeScreen} from '../components/PracticeScreen';
+import {useActiveVideoStore} from '../store/activeVideoStore';
 import {useNetwork} from '../providers/NetworkProvider';
 import {useOfflineVideoStore} from '../store/offlineVideoStore';
 import {isOfflineVideoComplete} from '../lib/offlineVideoService';
@@ -67,6 +69,8 @@ export function CourseScreen({route, navigation}: Props) {
   // sheet, highlighting the row) paint first; the content swaps in the frame right after.
   const [renderedLessonId, setRenderedLessonId] = useState<string | null>(null);
   const scrollViewRef = useRef<ScrollView>(null);
+  const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
+  const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
 
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -175,7 +179,8 @@ export function CourseScreen({route, navigation}: Props) {
 
   useEffect(() => {
     setShowPractice(false);
-  }, [selectedLessonId]);
+    setActiveBlockId(null);
+  }, [selectedLessonId, setActiveBlockId]);
 
   useEffect(() => {
     if (!selectedLessonId) return;
@@ -472,6 +477,23 @@ export function CourseScreen({route, navigation}: Props) {
             </>
           )}
         </ScrollView>
+        {activeBlockId && lesson.blocks.some(b => b.id === activeBlockId) && (
+          <HlsVideoPlayer
+            blockId={activeBlockId}
+            title={
+              lesson.blocks.find(b => b.id === activeBlockId)?.label ||
+              lesson.blocks.find(b => b.id === activeBlockId)?.fileName ||
+              lesson.title
+            }
+            lessonId={lesson.id}
+            lessonTitle={lesson.title}
+            courseId={courseId}
+            courseTitle={course.title}
+            schoolId={schoolId}
+            watermark
+            onClose={() => setActiveBlockId(null)}
+          />
+        )}
         <Modal
           visible={lessonsListOpen}
           animationType="slide"

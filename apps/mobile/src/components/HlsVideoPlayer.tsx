@@ -5,7 +5,6 @@ import {
   Animated,
   AppState,
   Dimensions,
-  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -232,7 +231,7 @@ export function HlsVideoPlayer({
   // opens on top of the close/PiP buttons a viewer might reach for next. The box itself is
   // small enough that it never needs to be clamped to stay fully on screen in practice for
   // the phone sizes this app targets.
-  const pipSize = { width: 160, height: 90 };
+  const pipSize = { width: 320, height: 180 };
   const pipPan = useRef(
     new Animated.ValueXY({ x: Dimensions.get('screen').width - pipSize.width - 16, y: 80 }),
   ).current;
@@ -1280,23 +1279,19 @@ export function HlsVideoPlayer({
   };
 
   return (
-    <Modal
-      visible
-      // Transparent in both PiP and fullscreen: the swipe-to-dismiss gesture needs the
-      // lesson behind the Modal to be visible as the video fades, not just in PiP. A
-      // dedicated opaque backdrop (below) covers the screen at full opacity normally and
-      // fades out with the same gesture, so fullscreen still looks fully opaque at rest.
-      transparent
-      statusBarTranslucent
-      animationType="fade"
-      supportedOrientations={['portrait']}
-      onRequestClose={onClose}>
-      {/* A single, always-mounted <Video> (inside mediaSurface): switching mode used to pick
-          between two separate JSX branches, each rendering mediaSurface under a different
-          parent chain -- React treated that as a different component and remounted <Video>
-          on every fullscreen<->PiP transition (observed: playback jumping back to 0:00).
-          The tree here never branches; only the wrapping Animated.View's style/handlers,
-          and the presence of the dismiss backdrop and expand button, change with mode. */}
+    // Not a Modal: a Modal is a separate native window, and touches never reach whatever
+    // sits behind a separate native window -- PiP's whole point is that the lesson stays
+    // usable (scrollable) behind the small video box, which only works when both are the
+    // same window. CourseScreen renders this directly (position: absolute, high zIndex)
+    // alongside the lesson's own ScrollView instead.
+    //
+    // A single, always-mounted <Video> (inside mediaSurface): switching mode used to pick
+    // between two separate JSX branches, each rendering mediaSurface under a different
+    // parent chain -- React treated that as a different component and remounted <Video> on
+    // every fullscreen<->PiP transition (observed: playback jumping back to 0:00). The tree
+    // here never branches; only the wrapping Animated.View's style/handlers, and which
+    // control overlay renders alongside it, change with mode.
+    <>
       <Animated.View
         pointerEvents="none"
         style={[
@@ -1331,23 +1326,46 @@ export function HlsVideoPlayer({
           }>
           {mediaSurface}
           {mode === 'pip' && (
-            // Expand back to fullscreen. A dedicated tap target rather than the whole box,
-            // so dragging (the PanResponder above) and expanding don't fight over the same
-            // gesture.
-            <Pressable
-              onPress={() => setMode('fullscreen')}
-              style={{
-                position: 'absolute',
-                top: 4,
-                right: 4,
-                zIndex: 10,
-              }}
-              className="h-6 w-6 items-center justify-center rounded-md bg-black/70">
-              <Maximize2 size={12} color="white" />
-            </Pressable>
+            <>
+              {/* Expand back to fullscreen. A dedicated tap target rather than the whole
+                  box, so dragging (the PanResponder above) and expanding don't fight over
+                  the same gesture. */}
+              <Pressable
+                onPress={() => setMode('fullscreen')}
+                style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }}
+                className="h-7 w-7 items-center justify-center rounded-md bg-black/70">
+                <Maximize2 size={14} color="white" />
+              </Pressable>
+              {/* Compact transport: play/pause and +/-5s, the minimum a viewer needs
+                  without the full control bar (timeline/speed/subtitles/download), which
+                  don't fit usefully at this size. */}
+              <View
+                pointerEvents="box-none"
+                className="absolute inset-0 flex-row items-center justify-center gap-3">
+                <Pressable
+                  onPress={() => skipBy(-5)}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-black/60">
+                  <RotateCcw size={15} color="white" />
+                </Pressable>
+                <Pressable
+                  onPress={() => setPaused(!paused)}
+                  className="h-10 w-10 items-center justify-center rounded-full bg-black/70">
+                  {paused ? (
+                    <Play size={18} color="white" fill="white" />
+                  ) : (
+                    <Pause size={18} color="white" fill="white" />
+                  )}
+                </Pressable>
+                <Pressable
+                  onPress={() => skipBy(5)}
+                  className="h-8 w-8 items-center justify-center rounded-full bg-black/60">
+                  <RotateCw size={15} color="white" />
+                </Pressable>
+              </View>
+            </>
           )}
         </Animated.View>
       </View>
-    </Modal>
+    </>
   );
 }
