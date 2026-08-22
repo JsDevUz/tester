@@ -1291,56 +1291,49 @@ export function HlsVideoPlayer({
       animationType="fade"
       supportedOrientations={['portrait']}
       onRequestClose={onClose}>
-      {mode === 'fullscreen' ? (
-        <>
-          <Animated.View
-            pointerEvents="none"
-            style={[StyleSheet.absoluteFill, { backgroundColor: 'black', opacity: dismissOpacity }]}
-          />
-          {/* absoluteFill rather than an explicit width/height: useWindowDimensions can
-              under-report versus the Modal's real extent on some Android devices (observed:
-              a gap at the bottom, matching the navigation bar's height), since it isn't
-              guaranteed to include the nav bar the way the Modal itself (statusBarTranslucent)
-              extends edge to edge. Filling the Modal's own container sidesteps the mismatch
-              entirely -- no dimension reads needed here at all. */}
-          <Animated.View
-            {...dismissResponder.panHandlers}
-            style={[
-              StyleSheet.absoluteFill,
-              {
-                opacity: dismissOpacity,
-                transform: [{ translateY: dismissDrag }],
-              },
-            ]}>
-            {mediaSurface}
-          </Animated.View>
-        </>
-      ) : (
-        // PiP: the Modal itself is transparent, so the lesson behind it (this same
-        // CourseScreen, still mounted underneath) shows through and stays scrollable/
-        // interactive everywhere outside the small draggable box below.
-        <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
-          <Animated.View
-            {...pipPanResponder.panHandlers}
-            style={[
-              {
-                position: 'absolute',
-                width: pipSize.width,
-                height: pipSize.height,
-                borderRadius: 12,
-                overflow: 'hidden',
-                backgroundColor: 'black',
-                elevation: 8,
-                shadowColor: '#000',
-                shadowOpacity: 0.3,
-                shadowRadius: 8,
-              },
-              pipStyle,
-            ]}>
-            {mediaSurface}
-            {/* Expand back to fullscreen. A dedicated tap target rather than the whole box,
-                so dragging (the PanResponder above) and expanding don't fight over the same
-                gesture. */}
+      {/* A single, always-mounted <Video> (inside mediaSurface): switching mode used to pick
+          between two separate JSX branches, each rendering mediaSurface under a different
+          parent chain -- React treated that as a different component and remounted <Video>
+          on every fullscreen<->PiP transition (observed: playback jumping back to 0:00).
+          The tree here never branches; only the wrapping Animated.View's style/handlers,
+          and the presence of the dismiss backdrop and expand button, change with mode. */}
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          StyleSheet.absoluteFill,
+          { backgroundColor: 'black', opacity: mode === 'fullscreen' ? dismissOpacity : 0 },
+        ]}
+      />
+      <View style={StyleSheet.absoluteFill} pointerEvents="box-none">
+        <Animated.View
+          {...(mode === 'fullscreen' ? dismissResponder.panHandlers : pipPanResponder.panHandlers)}
+          style={
+            mode === 'fullscreen'
+              ? [
+                  StyleSheet.absoluteFill,
+                  { opacity: dismissOpacity, transform: [{ translateY: dismissDrag }] },
+                ]
+              : [
+                  {
+                    position: 'absolute',
+                    width: pipSize.width,
+                    height: pipSize.height,
+                    borderRadius: 12,
+                    overflow: 'hidden',
+                    backgroundColor: 'black',
+                    elevation: 8,
+                    shadowColor: '#000',
+                    shadowOpacity: 0.3,
+                    shadowRadius: 8,
+                  },
+                  pipStyle,
+                ]
+          }>
+          {mediaSurface}
+          {mode === 'pip' && (
+            // Expand back to fullscreen. A dedicated tap target rather than the whole box,
+            // so dragging (the PanResponder above) and expanding don't fight over the same
+            // gesture.
             <Pressable
               onPress={() => setMode('fullscreen')}
               style={{
@@ -1352,9 +1345,9 @@ export function HlsVideoPlayer({
               className="h-6 w-6 items-center justify-center rounded-md bg-black/70">
               <Maximize2 size={12} color="white" />
             </Pressable>
-          </Animated.View>
-        </View>
-      )}
+          )}
+        </Animated.View>
+      </View>
     </Modal>
   );
 }
