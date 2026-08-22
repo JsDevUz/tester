@@ -26,7 +26,7 @@ const CATEGORY_DIRS: Record<CacheCategory, string> = {
 const inFlightDownloads = new Map<string, Promise<string>>();
 
 // In-memory cache for fast sync lookups
-const memoryCache = new Map<string, string>();
+export const memoryCache = new Map<string, string>();
 
 function hashUrl(url: string): string {
   let hash = 0;

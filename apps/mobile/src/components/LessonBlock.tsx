@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   Image,
   Linking,
@@ -30,6 +30,8 @@ import type { ApiContentBlock } from '../types/api';
 import { LazyVideoPlayer } from './LazyVideoPlayer';
 import { ImageLightbox } from './ImageLightbox';
 import { PdfViewerSheet } from './PdfViewerSheet';
+import { CachedImage } from './common/CachedImage';
+import { getCachedImageUri, memoryCache } from '../lib/imageCache';
 
 // KaTeX embeds <svg>/MathML inside formula spans, which
 // react-native-render-html v6 can't render (it silently drops unknown
@@ -220,9 +222,34 @@ export function LessonBlock({
     const TappableImage: CustomBlockRenderer = props => {
       const imgProps = useIMGElementProps(props);
       const uri = imgProps.source?.uri;
+      const [localUri, setLocalUri] = useState<string | undefined>(
+        uri ? memoryCache.get(uri) || uri : undefined,
+      );
+
+      useEffect(() => {
+        if (!uri || !uri.startsWith('http')) return;
+        let cancelled = false;
+        getCachedImageUri(uri, 'general')
+          .then(cached => {
+            if (!cancelled && cached) setLocalUri(cached);
+          })
+          .catch(() => {});
+        return () => {
+          cancelled = true;
+        };
+      }, [uri]);
+
+      const resolvedProps = useMemo(() => {
+        if (!localUri || localUri === uri) return imgProps;
+        return {
+          ...imgProps,
+          source: { ...imgProps.source, uri: localUri },
+        };
+      }, [imgProps, localUri, uri]);
+
       return (
-        <Pressable onPress={() => uri && setLightboxUri(uri)}>
-          <IMGElement {...imgProps} />
+        <Pressable onPress={() => (localUri || uri) && setLightboxUri(localUri || uri!)}>
+          <IMGElement {...resolvedProps} />
         </Pressable>
       );
     };
@@ -362,9 +389,10 @@ export function LessonBlock({
           onPress={() => setLightboxUri(block.previewUrl!)}
           className="mt-3"
         >
-          <Image
+          <CachedImage
             source={{ uri: block.previewUrl }}
-            className="h-52 w-full rounded-2xl bg-slate-100"
+            category="general"
+            className="h-52 w-full rounded-2xl bg-slate-100 dark:bg-dark-surface-2"
             resizeMode="contain"
           />
           {block.label ? (

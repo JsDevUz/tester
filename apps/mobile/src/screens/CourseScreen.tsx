@@ -1,13 +1,15 @@
-import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
+import React, {useCallback, useEffect, useMemo, useRef, useState} from 'react';
 import {Alert, Pressable, ScrollView, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
+  ArrowLeft,
   BookOpen,
   CheckCircle2,
   Lock,
   MessageCircle,
 } from 'lucide-react-native';
 import {useColorScheme} from 'nativewind';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useFocusEffect} from '@react-navigation/native';
 import axios from 'axios';
 import type {RootStackParamList} from '../navigation/types';
@@ -50,16 +52,34 @@ export function CourseScreen({route, navigation}: Props) {
   const {colorScheme} = useColorScheme();
   const isDark = colorScheme === 'dark';
 
+  const insets = useSafeAreaInsets();
+
   const load = useCallback(async () => {
-    // Paint the cached course first so opening one is instant; the request below still runs
-    // and replaces this with fresh data (or, on an access error, clears it). Access checks are
-    // unaffected: a denied response still wipes the cache in the catch block.
+    // Paint the cached course and lesson first so opening one is instant (<10ms).
+    // The network request below still runs in background and updates with fresh data.
     const cachedCourse = await storage.get<{data: ApiMyCourseDetail; savedAt: number}>(
       `cache:course:${courseId}`,
     );
     if (cachedCourse) {
       setCourse(cachedCourse.data);
       setStale(true);
+      setLoading(false);
+      if (!selectedLessonId) {
+        const allLessons = cachedCourse.data.modules.flatMap(m => m.lessons);
+        const lastViewedId = await storage.get<string>(`course:${courseId}:lastLessonId`);
+        const lastViewedLesson = allLessons.find(l => l.id === lastViewedId);
+        if (lastViewedLesson) {
+          setSelectedLessonId(lastViewedLesson.id);
+        } else {
+          let resumeIndex = 0;
+          for (let i = 0; i < allLessons.length - 1; i++) {
+            if (!allLessons[i].completed) break;
+            resumeIndex = i + 1;
+          }
+          const resumeLesson = allLessons.length > 0 ? allLessons[resumeIndex] : undefined;
+          if (resumeLesson) setSelectedLessonId(resumeLesson.id);
+        }
+      }
     }
 
     try {
@@ -85,12 +105,6 @@ export function CourseScreen({route, navigation}: Props) {
         if (resumeLesson) setSelectedLessonId(resumeLesson.id);
       }
     } catch (err) {
-      // A server response (as opposed to a network failure) means the
-      // backend deliberately denied access - e.g. payment_required/
-      // forced_closed from studentAccessService. Falling back to the
-      // locally cached snapshot in that case would let a student whose
-      // payment lapsed keep watching lessons offline forever, so only
-      // genuine connectivity failures (no response at all) use the cache.
       if (axios.isAxiosError(err) && err.response) {
         setCourse(null);
         setStale(false);
@@ -172,46 +186,7 @@ export function CourseScreen({route, navigation}: Props) {
     if (next && unlockedLessonIds.has(next.lesson.id)) setSelectedLessonId(next.lesson.id);
   }, [lessons, selectedIndex, unlockedLessonIds]);
 
-  useLayoutEffect(() => {
-    if (!selected || showPractice) {
-      navigation.setOptions({title: route.params.title, headerTitle: undefined});
-      return;
-    }
-    navigation.setOptions({
-      // Hidden while a video is open fullscreen -- the video covers the header's spot, so
-      // reserving room for it there would show as a gap above the video. PiP is small
-      // enough that the header stays useful for navigating between lessons.
-      headerShown: !(activeBlockId && videoIsFullscreen),
-      // Android left-aligns header titles by default, which pushes this one against the back
-      // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
-      headerTitleAlign: 'center',
-      // Course + lesson name, replacing the old "Darslar Tartibi" sheet-opener now that the
-      // lesson roster is its own screen (LessonsListScreen) -- there's nothing left here to
-      // open a sheet for.
-      headerTitle: () => (
-        <View className="items-center justify-center py-1">
-          <Text
-            numberOfLines={1}
-            className="max-w-[220px] text-[11px] font-semibold text-slate-400 dark:text-dark-muted">
-            {route.params.title}
-          </Text>
-          <Text
-            numberOfLines={1}
-            className="max-w-[220px] text-base font-bold text-ink dark:text-dark-ink">
-            {selected.lesson.title}
-          </Text>
-        </View>
-      ),
-      headerRight: () => (
-        <View className="rounded-full bg-slate-900 px-2.5 py-1 dark:bg-dark-surface-2">
-          <Text className="text-[11px] font-bold text-white dark:text-dark-ink">
-            {selectedIndex + 1} / {lessons.length}
-          </Text>
-        </View>
-      ),
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, showPractice, selectedIndex, lessons.length, isDark, activeBlockId, videoIsFullscreen, route.params.title]);
+
 
   async function markComplete() {
     if (!selected) return;
@@ -319,8 +294,35 @@ export function CourseScreen({route, navigation}: Props) {
     const hasPractice = lesson.practiceBlocks.length > 0;
     return (
       <Screen>
+        {/* In-screen Header */}
+        <View
+          style={{ paddingTop: Math.max(insets.top, 12) }}
+          className="flex-row items-center justify-between border-b border-slate-100 bg-white px-3 pb-2.5 dark:border-dark-border dark:bg-dark-surface">
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={8}
+            className="h-8 w-8 items-center justify-center rounded-full">
+            <ArrowLeft size={21} color={isDark ? '#e8eaed' : '#475569'} />
+          </Pressable>
+          <View className="flex-1 items-center justify-center px-2">
+            <Text
+              numberOfLines={1}
+              className="max-w-[220px] text-center text-[11px] font-semibold text-slate-400 dark:text-dark-muted">
+              {course.title || route.params.title}
+            </Text>
+            <Text
+              numberOfLines={1}
+              className="max-w-[220px] text-center text-base font-bold text-ink dark:text-dark-ink">
+              {lesson.title}
+            </Text>
+          </View>
+          <View className="rounded-full bg-slate-900 px-2.5 py-1 dark:bg-dark-surface-2">
+            <Text className="text-[11px] font-bold text-white dark:text-dark-ink">
+              {selectedIndex + 1} / {lessons.length}
+            </Text>
+          </View>
+        </View>
         <OfflineBanner />
-        <StaleNote stale={stale} />
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}

@@ -1,6 +1,6 @@
 import React, {useEffect, useState} from 'react';
 import {Image, ImageProps, ImageSourcePropType} from 'react-native';
-import {CacheCategory, getCachedImageUri} from '../../lib/imageCache';
+import {CacheCategory, getCachedImageUri, memoryCache} from '../../lib/imageCache';
 
 export interface CachedImageProps extends Omit<ImageProps, 'source'> {
   source: ImageSourcePropType | {uri?: string};
@@ -17,7 +17,9 @@ export function CachedImage({
   ...rest
 }: CachedImageProps) {
   const remoteUri = typeof source === 'object' && source !== null && 'uri' in source ? source.uri : undefined;
-  const [cachedUri, setCachedUri] = useState<string | undefined>(remoteUri);
+  const [cachedUri, setCachedUri] = useState<string | undefined>(
+    remoteUri ? memoryCache.get(remoteUri) || remoteUri : undefined,
+  );
 
   useEffect(() => {
     let cancelled = false;

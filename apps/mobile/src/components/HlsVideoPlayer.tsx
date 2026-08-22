@@ -4,6 +4,7 @@ import {
   Alert,
   Animated,
   AppState,
+  BackHandler,
   Dimensions,
   PanResponder,
   Platform,
@@ -44,7 +45,12 @@ import { useNetwork } from '../providers/NetworkProvider';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
 import { useActiveVideoStore } from '../store/activeVideoStore';
-import { getOfflineVideoMeta, isOfflineVideoComplete } from '../lib/offlineVideoService';
+import {
+  cleanupOfflinePlayback,
+  getOfflineVideoMeta,
+  isOfflineVideoComplete,
+  prepareOfflinePlayback,
+} from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
@@ -249,7 +255,11 @@ export function HlsVideoPlayer({
   const pipPanResponder = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponder: () => true,
+      onStartShouldSetPanResponderCapture: () => false,
+      onMoveShouldSetPanResponder: (_e, gesture) =>
+        Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3,
+      onMoveShouldSetPanResponderCapture: (_e, gesture) =>
+        Math.abs(gesture.dx) > 3 || Math.abs(gesture.dy) > 3,
       onPanResponderGrant: () => {
         pipPan.setOffset({
           // @ts-expect-error -- Animated.ValueXY exposes _value at runtime; there is no
@@ -265,6 +275,9 @@ export function HlsVideoPlayer({
         useNativeDriver: false,
       }),
       onPanResponderRelease: () => {
+        pipPan.flattenOffset();
+      },
+      onPanResponderTerminate: () => {
         pipPan.flattenOffset();
       },
     }),
@@ -357,20 +370,32 @@ export function HlsVideoPlayer({
 
   useEffect(() => {
     enableSecureScreen();
-    return () => disableSecureScreen();
-  }, []);
+    return () => {
+      disableSecureScreen();
+      void cleanupOfflinePlayback(blockId);
+    };
+  }, [blockId]);
 
-  // Hidden only in fullscreen. PiP shares the screen with the rest of the app (the lesson
-  // is visible and scrollable behind it), so the status bar has no reason to disappear
-  // there. This also sidesteps a race with React Navigation's own status-bar handling: this
-  // effect used to hide it for the component's whole lifetime and restore it on unmount,
-  // but if that unmount landed while a screen transition (e.g. navigating back while a PiP
-  // video was still open) was resolving its own status-bar state, the two fought over the
-  // final value and left a gap the height of the mismatch above the next screen's header.
+  // Android hardware back button: when in fullscreen, pressing back transitions to PiP mode
+  // instead of navigating back out of the lesson screen.
+  useEffect(() => {
+    const onBackPress = () => {
+      if (mode === 'fullscreen') {
+        setMode('pip');
+        return true;
+      }
+      return false;
+    };
+    const sub = BackHandler.addEventListener('hardwareBackPress', onBackPress);
+    return () => sub.remove();
+  }, [mode]);
+
+  // Hidden only in fullscreen. Using 'none' avoids the asynchronous Android window-resize lag
+  // that left visual gaps above headers.
   useEffect(() => {
     if (mode !== 'fullscreen') return;
-    StatusBar.setHidden(true, 'fade');
-    return () => StatusBar.setHidden(false, 'fade');
+    StatusBar.setHidden(true, 'none');
+    return () => StatusBar.setHidden(false, 'none');
   }, [mode]);
 
   // Connectivity comes from the provider rather than a probe of our own: opening a video
@@ -403,6 +428,7 @@ export function HlsVideoPlayer({
         const cleanPath = localMeta.localManifestPath.replace('file://', '');
         const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
         if (exists) {
+          await prepareOfflinePlayback(blockId).catch(() => {});
           setManifestUrl(`file://${cleanPath}`);
           if (hasCompleteCopy && localMeta.localSubtitlePath) {
             const cleanSub = localMeta.localSubtitlePath.replace('file://', '');
@@ -442,6 +468,7 @@ export function HlsVideoPlayer({
       const cleanPath = localMeta.localManifestPath.replace('file://', '');
       const exists = await ReactNativeBlobUtil.fs.exists(cleanPath).catch(() => false);
       if (exists) {
+        await prepareOfflinePlayback(blockId).catch(() => {});
         setManifestUrl(`file://${cleanPath}`);
         cachedDurationRef.current = isOfflineVideoComplete(localMeta)
           ? null
@@ -890,6 +917,13 @@ export function HlsVideoPlayer({
       ? Math.min(100, Math.round((computeTotalWatchedSeconds(watchedSegments, null) / videoDuration) * 100))
       : watchedPercent;
 
+  const timelinePanelBottom =
+    isFullscreen && !isLandscape && (windowHeight - (windowWidth * 9) / 16) / 2 > 90
+      ? Math.max(insets.bottom + 12, ((windowHeight - (windowWidth * 9) / 16) / 2 - 110) / 2)
+      : isFullscreen
+      ? Math.max(16, insets.bottom + 8)
+      : 12;
+
   const mediaSurface = (
     <>
       {error ? (
@@ -1001,16 +1035,16 @@ export function HlsVideoPlayer({
           pointerEvents="none"
           style={{
             position: 'absolute',
-            bottom: controlsVisible
-              ? (isFullscreen ? Math.max(75, insets.bottom + 65) : 44)
-              : (isFullscreen ? Math.max(25, insets.bottom + 12) : 6),
-            left: isFullscreen ? Math.max(24, insets.left + 16) : 12,
-            right: isFullscreen ? Math.max(24, insets.right + 16) : 12,
+            bottom: isFullscreen
+              ? (controlsVisible ? timelinePanelBottom + 115 : Math.max(30, insets.bottom + 18))
+              : (controlsVisible ? 36 : 8),
+            left: isFullscreen ? Math.max(24, insets.left + 16) : 10,
+            right: isFullscreen ? Math.max(24, insets.right + 16) : 10,
             alignItems: 'center',
             zIndex: 25,
           }}>
           <View className="rounded-md bg-black/80 px-2.5 py-1 shadow-md border border-white/10">
-            <Text className="text-center text-[11px] sm:text-[13px] font-medium text-white leading-4">
+            <Text className="text-center text-[10px] sm:text-[13px] font-medium text-white leading-4">
               {activeCue.text}
             </Text>
           </View>
@@ -1165,121 +1199,115 @@ export function HlsVideoPlayer({
                 </Pressable>
               </View>
 
-              {/* Compact Bottom Timeline Bar */}
+              {/* Bottom Timeline Panel Wrapped */}
               <View
                 style={{
                   position: 'absolute',
-                  left: 0,
-                  right: 0,
-                  bottom: 0,
-                  paddingLeft: isFullscreen ? Math.max(20, insets.left + 12) : 12,
-                  paddingRight: isFullscreen ? Math.max(20, insets.right + 12) : 12,
-                  paddingBottom: isFullscreen ? Math.max(16, insets.bottom + 8) : 12,
-                  paddingTop: 8,
+                  left: isFullscreen ? Math.max(16, insets.left + 12) : 12,
+                  right: isFullscreen ? Math.max(16, insets.right + 12) : 12,
+                  bottom: timelinePanelBottom,
                   zIndex: 20,
                 }}>
-                {/* Buttons sit on their own row above the clock so they cannot collide with
-                    the timestamps in a short player, where everything is cramped vertically.
-                    Not font-mono for the clock: the monospace face renders thin and washed
-                    out on Android and barely responds to a bold weight. */}
-                <View className="mb-1 flex-row items-center justify-end gap-2 pr-0.5">
-                  {/* Playback speed: cycles through the usual lesson-watching rates. */}
-                  <Pressable
-                    onPress={() => {
-                      setPlaybackRate(current => {
-                        const next = PLAYBACK_RATES[
-                          (PLAYBACK_RATES.indexOf(current) + 1) % PLAYBACK_RATES.length
-                        ];
-                        return next;
-                      });
-                      bumpControls();
-                    }}
-                    className={`h-7 items-center justify-center rounded-md px-2 ${playbackRate === 1 ? 'bg-black/70' : 'bg-indigo-600'
-                      }`}>
-                    <Text className="text-[11px] font-bold text-white">{playbackRate}x</Text>
-                  </Pressable>
+                <View className="rounded-2xl border border-white/20 bg-white/15 px-4 py-3 shadow-2xl">
+                  {/* Row with Timestamps & Controls */}
+                  <View className="mb-2 flex-row items-center justify-between">
+                    <View className="flex-row items-center gap-2">
+                      <Text
+                        className="text-sm font-bold text-white"
+                        style={{ fontVariant: ['tabular-nums'] }}>
+                        {formatClock(scrubTime ?? currentTime)}
+                      </Text>
+                      <Text className="text-xs font-semibold text-white/40">/</Text>
+                      <Text
+                        className="text-xs font-semibold text-white/70"
+                        style={{ fontVariant: ['tabular-nums'] }}>
+                        {formatClock(videoDuration ?? 0)}
+                      </Text>
+                    </View>
 
-                  {/* Subtitle Icon Button */}
-                  {subtitleUrl ? (
-                    <Pressable
-                      onPress={() => setCaptionsOn(v => !v)}
-                      className={`h-7 w-7 items-center justify-center rounded-md ${captionsOn ? 'bg-indigo-600' : 'bg-black/70'
+                    <View className="flex-row items-center gap-2">
+                      {/* Playback speed: cycles through rates */}
+                      <Pressable
+                        onPress={() => {
+                          setPlaybackRate(current => {
+                            const next = PLAYBACK_RATES[
+                              (PLAYBACK_RATES.indexOf(current) + 1) % PLAYBACK_RATES.length
+                            ];
+                            return next;
+                          });
+                          bumpControls();
+                        }}
+                        className={`h-7 items-center justify-center rounded-lg px-2.5 ${
+                          playbackRate === 1 ? 'bg-white/20' : 'bg-indigo-600'
                         }`}>
-                      <Captions size={14} color="#fff" />
-                    </Pressable>
-                  ) : null}
-                </View>
+                        <Text className="text-[11px] font-bold text-white">{playbackRate}x</Text>
+                      </Pressable>
 
-                <View className="flex-row items-center justify-between pr-0.5">
-                  <Text
-                    className="text-sm font-bold text-white"
-                    style={{ fontVariant: ['tabular-nums'] }}>
-                    {formatClock(scrubTime ?? currentTime)}
-                  </Text>
-                  <Text
-                    className="text-sm font-bold text-white/85"
-                    style={{ fontVariant: ['tabular-nums'] }}>
-                    {formatClock(videoDuration ?? 0)}
-                  </Text>
-                </View>
+                      {/* Subtitle Icon Button */}
+                      {subtitleUrl ? (
+                        <Pressable
+                          onPress={() => setCaptionsOn(v => !v)}
+                          className={`h-7 w-7 items-center justify-center rounded-lg ${
+                            captionsOn ? 'bg-indigo-600' : 'bg-white/20'
+                          }`}>
+                          <Captions size={14} color="#fff" />
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
 
-                {/* Timeline: a thick, easy-to-hit bar with three stacked layers -- the dim
-                    track, the lighter buffered-ahead portion, and the played portion. The
-                    touch target is taller than the bar itself so the thumb stays grabbable. */}
-                <View
-                  className="justify-center"
-                  style={{ height: 28 }}
-                  onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
-                  {...scrubResponder.panHandlers}>
-                  {/* The unplayed track is darkened rather than lightened so the bar reads as
-                      a groove over bright footage instead of vanishing into it. */}
+                  {/* Timeline Bar */}
                   <View
-                    className="w-full overflow-hidden rounded-full"
-                    style={{ height: isScrubbing ? 8 : 6, backgroundColor: 'rgba(0,0,0,0.45)' }}>
+                    className="justify-center"
+                    style={{ height: 24 }}
+                    onLayout={e => setBarWidth(e.nativeEvent.layout.width)}
+                    {...scrubResponder.panHandlers}>
                     <View
-                      className="absolute left-0 top-0 h-full rounded-full bg-white/50"
-                      style={{
-                        width: videoDuration
-                          ? `${Math.min(100, (playableDuration / videoDuration) * 100)}%`
-                          : '0%',
-                      }}
-                    />
+                      className="w-full overflow-hidden rounded-full"
+                      style={{ height: isScrubbing ? 7 : 5, backgroundColor: 'rgba(255,255,255,0.18)' }}>
+                      <View
+                        className="absolute left-0 top-0 h-full rounded-full bg-white/40"
+                        style={{
+                          width: videoDuration
+                            ? `${Math.min(100, (playableDuration / videoDuration) * 100)}%`
+                            : '0%',
+                        }}
+                      />
+                      <View
+                        className="absolute left-0 top-0 h-full rounded-full bg-indigo-500"
+                        style={{
+                          width: videoDuration
+                            ? `${Math.min(100, ((scrubTime ?? currentTime) / videoDuration) * 100)}%`
+                            : '0%',
+                        }}
+                      />
+                    </View>
                     <View
-                      className="absolute left-0 top-0 h-full rounded-full bg-white"
+                      pointerEvents="none"
+                      className="absolute rounded-full bg-white"
                       style={{
-                        width: videoDuration
-                          ? `${Math.min(100, ((scrubTime ?? currentTime) / videoDuration) * 100)}%`
-                          : '0%',
+                        height: isScrubbing ? 16 : 12,
+                        width: isScrubbing ? 16 : 12,
+                        borderWidth: 1.5,
+                        borderColor: '#6366f1',
+                        shadowColor: '#000',
+                        shadowOpacity: 0.45,
+                        shadowRadius: 3,
+                        shadowOffset: { width: 0, height: 1 },
+                        elevation: 4,
+                        left: videoDuration
+                          ? Math.max(
+                              0,
+                              Math.min(
+                                barWidth - (isScrubbing ? 16 : 12),
+                                ((scrubTime ?? currentTime) / videoDuration) * barWidth -
+                                  (isScrubbing ? 8 : 6),
+                              ),
+                            )
+                          : 0,
                       }}
                     />
                   </View>
-                  <View
-                    pointerEvents="none"
-                    className="absolute rounded-full bg-white"
-                    style={{
-                      height: isScrubbing ? 18 : 14,
-                      width: isScrubbing ? 18 : 14,
-                      // A dark ring keeps the white thumb visible against white footage,
-                      // where a shadow alone washes out.
-                      borderWidth: 1.5,
-                      borderColor: 'rgba(0,0,0,0.45)',
-                      shadowColor: '#000',
-                      shadowOpacity: 0.45,
-                      shadowRadius: 3,
-                      shadowOffset: { width: 0, height: 1 },
-                      elevation: 4,
-                      left: videoDuration
-                        ? Math.max(
-                          0,
-                          Math.min(
-                            barWidth - (isScrubbing ? 18 : 14),
-                            ((scrubTime ?? currentTime) / videoDuration) * barWidth -
-                            (isScrubbing ? 9 : 7),
-                          ),
-                        )
-                        : 0,
-                    }}
-                  />
                 </View>
               </View>
             </>
@@ -1294,18 +1322,6 @@ export function HlsVideoPlayer({
   };
 
   return (
-    // Not a Modal: a Modal is a separate native window, and touches never reach whatever
-    // sits behind a separate native window -- PiP's whole point is that the lesson stays
-    // usable (scrollable) behind the small video box, which only works when both are the
-    // same window. CourseScreen renders this directly (position: absolute, high zIndex)
-    // alongside the lesson's own ScrollView instead.
-    //
-    // A single, always-mounted <Video> (inside mediaSurface): switching mode used to pick
-    // between two separate JSX branches, each rendering mediaSurface under a different
-    // parent chain -- React treated that as a different component and remounted <Video> on
-    // every fullscreen<->PiP transition (observed: playback jumping back to 0:00). The tree
-    // here never branches; only the wrapping Animated.View's style/handlers, and which
-    // control overlay renders alongside it, change with mode.
     <>
       <Animated.View
         pointerEvents="none"
@@ -1339,54 +1355,107 @@ export function HlsVideoPlayer({
                   pipStyle,
                 ]
           }>
-          {mediaSurface}
+          <View pointerEvents={mode === 'pip' ? 'none' : 'auto'} style={StyleSheet.absoluteFill}>
+            {mediaSurface}
+          </View>
           {mode === 'pip' && (
             <>
-              {/* Expand back to fullscreen. A dedicated tap target rather than the whole
-                  box, so dragging (the PanResponder above) and expanding don't fight over
-                  the same gesture. */}
+              {/* Tap anywhere on PiP window to toggle controls */}
               <Pressable
-                onPress={() => setMode('fullscreen')}
-                style={{ position: 'absolute', top: 4, right: 4, zIndex: 10 }}
-                className="h-7 w-7 items-center justify-center rounded-md bg-black/70">
-                <Maximize2 size={14} color="white" />
-              </Pressable>
-              {/* Compact transport: play/pause and +/-5s, the minimum a viewer needs
-                  without the full control bar (timeline/speed/subtitles/download), which
-                  don't fit usefully at this size. Sized to just wrap its buttons (not
-                  absolute inset-0) so it only occupies the middle of the box -- covering
-                  the full box with a "box-none" View still intercepted drags meant for the
-                  PanResponder on the box itself, even over the transparent gaps between
-                  buttons. */}
-              <View
-                pointerEvents="box-none"
-                style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '50%',
-                  transform: [{ translateX: -60 }, { translateY: -20 }],
-                }}
-                className="flex-row items-center justify-center gap-3">
-                <Pressable
-                  onPress={() => skipBy(-5)}
-                  className="h-8 w-8 items-center justify-center rounded-full bg-black/60">
-                  <RotateCcw size={15} color="white" />
-                </Pressable>
-                <Pressable
-                  onPress={() => setPaused(!paused)}
-                  className="h-10 w-10 items-center justify-center rounded-full bg-black/70">
-                  {paused ? (
-                    <Play size={18} color="white" fill="white" />
-                  ) : (
-                    <Pause size={18} color="white" fill="white" />
-                  )}
-                </Pressable>
-                <Pressable
-                  onPress={() => skipBy(5)}
-                  className="h-8 w-8 items-center justify-center rounded-full bg-black/60">
-                  <RotateCw size={15} color="white" />
-                </Pressable>
-              </View>
+                style={StyleSheet.absoluteFill}
+                onPress={() => (controlsVisible ? setControlsVisible(false) : bumpControls())}
+              />
+
+              {controlsVisible ? (
+                <>
+                  {/* Expand back to fullscreen */}
+                  <Pressable
+                    onPress={() => setMode('fullscreen')}
+                    style={{ position: 'absolute', top: 6, right: 6, zIndex: 10 }}
+                    className="h-7 w-7 items-center justify-center rounded-md bg-black/75">
+                    <Maximize2 size={14} color="white" />
+                  </Pressable>
+
+                  {/* Compact center transport: play/pause and +/-5s */}
+                  <View
+                    pointerEvents="box-none"
+                    style={{
+                      position: 'absolute',
+                      top: '40%',
+                      left: '50%',
+                      transform: [{ translateX: -60 }, { translateY: -16 }],
+                    }}
+                    className="flex-row items-center justify-center gap-3">
+                    <Pressable
+                      onPress={() => {
+                        skipBy(-5);
+                        bumpControls();
+                      }}
+                      className="h-8 w-8 items-center justify-center rounded-full bg-black/70">
+                      <RotateCcw size={14} color="white" />
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        setPaused(!paused);
+                        bumpControls();
+                      }}
+                      className="h-10 w-10 items-center justify-center rounded-full bg-black/80">
+                      {paused ? (
+                        <Play size={17} color="white" fill="white" />
+                      ) : (
+                        <Pause size={17} color="white" fill="white" />
+                      )}
+                    </Pressable>
+                    <Pressable
+                      onPress={() => {
+                        skipBy(5);
+                        bumpControls();
+                      }}
+                      className="h-8 w-8 items-center justify-center rounded-full bg-black/70">
+                      <RotateCw size={14} color="white" />
+                    </Pressable>
+                  </View>
+
+                  {/* PiP Bottom Timeline Bar */}
+                  <View
+                    pointerEvents="none"
+                    style={{
+                      position: 'absolute',
+                      bottom: 0,
+                      left: 0,
+                      right: 0,
+                      zIndex: 10,
+                    }}
+                    className="bg-black/75 px-3 py-1.5 border-t border-white/10">
+                    <View className="flex-row items-center justify-between mb-1">
+                      <Text className="text-[10px] font-bold text-white" style={{ fontVariant: ['tabular-nums'] }}>
+                        {formatClock(currentTime)}
+                      </Text>
+                      <Text className="text-[10px] font-medium text-white/60" style={{ fontVariant: ['tabular-nums'] }}>
+                        {formatClock(videoDuration ?? 0)}
+                      </Text>
+                    </View>
+                    <View className="h-1.5 w-full overflow-hidden rounded-full bg-white/20">
+                      <View
+                        className="absolute left-0 top-0 h-full rounded-full bg-white/40"
+                        style={{
+                          width: videoDuration
+                            ? `${Math.min(100, (playableDuration / videoDuration) * 100)}%`
+                            : '0%',
+                        }}
+                      />
+                      <View
+                        className="absolute left-0 top-0 h-full rounded-full bg-indigo-500"
+                        style={{
+                          width: videoDuration
+                            ? `${Math.min(100, (currentTime / videoDuration) * 100)}%`
+                            : '0%',
+                        }}
+                      />
+                    </View>
+                  </View>
+                </>
+              ) : null}
             </>
           )}
         </Animated.View>

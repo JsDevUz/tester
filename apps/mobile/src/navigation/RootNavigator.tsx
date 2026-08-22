@@ -244,7 +244,7 @@ export function RootNavigator() {
           <Stack.Screen
             name="Course"
             component={CourseScreen}
-            options={({ route }) => ({ title: route.params.title })}
+            options={{ headerShown: false }}
           />
           <Stack.Screen
             name="SubmissionDetail"

@@ -59,6 +59,7 @@ export function LessonsListScreen({route, navigation}: Props) {
     if (cachedCourse) {
       setCourse(cachedCourse.data);
       setStale(true);
+      setLoading(false);
     }
 
     try {

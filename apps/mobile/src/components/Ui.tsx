@@ -65,12 +65,8 @@ export function Loading() {
   );
 }
 
-export function StaleNote({stale}: {stale: boolean}) {
-  const {online} = useNetwork();
-  if (online) return null;
-  return stale ? (
-    <Text className="px-5 py-2 text-xs text-amber-700 dark:text-amber-500">Oxirgi online holat ko'rsatilmoqda</Text>
-  ) : null;
+export function StaleNote({stale: _stale}: {stale: boolean}) {
+  return null;
 }
 
 export const Input = React.forwardRef<

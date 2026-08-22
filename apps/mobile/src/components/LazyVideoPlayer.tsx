@@ -1,7 +1,8 @@
 import React from 'react';
-import {Image, Pressable, View} from 'react-native';
+import {Pressable, View} from 'react-native';
 import {Play} from 'lucide-react-native';
 import {useActiveVideoStore} from '../store/activeVideoStore';
+import {CachedImage} from './common/CachedImage';
 
 /**
  * Shows a poster until the student taps, then hands off to the single screen-level
@@ -27,8 +28,9 @@ export function LazyVideoPlayer({
       accessibilityLabel={title ? `${title}ni ijro etish` : 'Videoni ijro etish'}
       className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
       {posterUrl ? (
-        <Image
+        <CachedImage
           source={{uri: posterUrl}}
+          category="general"
           resizeMode="contain"
           className="h-full w-full"
         />
