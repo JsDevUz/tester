@@ -405,16 +405,12 @@ export function HlsVideoPlayer({
   // handled by the dedicated effect below.
   const {online} = useNetwork();
   const onlineRef = useRef(online);
-  useEffect(() => {
-    onlineRef.current = online;
-  }, [online]);
+  onlineRef.current = online;
 
-  const loadPlayback = useCallback(async () => {
-    setManifestUrl(null);
+  const loadPlayback = useCallback(async (forcedOnline?: boolean) => {
     setError(false);
-    setIsOfflineMode(false);
 
-    const isOnline = onlineRef.current;
+    const isOnline = forcedOnline !== undefined ? forcedOnline : online;
 
     // 1. Prefer a fully downloaded local copy -- it plays the whole video with no network.
     //    A partial cache is deliberately skipped while online: it only covers what was
@@ -479,12 +475,13 @@ export function HlsVideoPlayer({
     }
 
     try {
-      // 2. Otherwise start online playback stream & background progressive caching
-      //
-      // Caching is kicked off by pressing play (see the play button), not on open. Running it
-      // here too would download in the background while the badge still read "Yuklab olish",
-      // since startAutoCacheVideo bypasses the store the badge renders from.
+      // 2. Start online playback stream & background progressive caching
       const playback = await apiStartVideoPlayback(blockId);
+      // Seamlessly keep current playback position when switching from offline partial to online full video
+      if (currentTimeRef.current > 0) {
+        resumeTimeRef.current = currentTimeRef.current;
+      }
+      cachedDurationRef.current = null; // Let the online stream provide its real full duration (e.g. 56 min)
       setManifestUrl(`${API_BASE}${playback.manifestUrl}`);
       setSubtitleUrl(playback.subtitleUrl);
       setIsOfflineMode(false);
@@ -496,25 +493,19 @@ export function HlsVideoPlayer({
         setError(true);
       }
     }
-  }, [blockId]);
+  }, [blockId, online]);
 
   useEffect(() => {
     void loadPlayback();
   }, [loadPlayback]);
 
-  // A video that failed to resolve while offline should come back on its own once
-  // connectivity returns, not sit on its retry button until the user notices. A video
-  // playing from a partial local copy does not need this: loadPlayback already attempts
-  // the online session every time it runs (see the partial-fallback branch above), so once
-  // connectivity actually returns the *next* mount or retry picks it up on its own --
-  // and NetInfo below fires promptly enough that this effect's job is really just the
-  // error case, where nothing is playing yet.
+  // When device regains internet connection, seamlessly upgrade any partial offline video to the full online video
   const wasOfflineRef = useRef(online);
   useEffect(() => {
     const cameBackOnline = online && !wasOfflineRef.current;
     wasOfflineRef.current = online;
     if (cameBackOnline && (error || isOfflineMode)) {
-      void loadPlayback();
+      void loadPlayback(true);
     }
   }, [online, error, isOfflineMode, loadPlayback]);
 

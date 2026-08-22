@@ -62,14 +62,12 @@ const PRACTICE_BLOCK_LIMIT = 4;
  *   already had, which happens to free up a slot under this same count-based check.
  */
 export const PRACTICE_ATTEMPT_LIMIT = 3;
-export const PRACTICE_ATTEMPT_LIMIT_MAX = 50;
+export const PRACTICE_ATTEMPT_LIMIT_MAX = 40;
 
 /**
  * How many attempts a student gets on a given lesson's tests right now -- PRACTICE_ATTEMPT_LIMIT
- * (3) unless the lesson has no pass threshold, or the student has already cleared it, in which
- * case it's PRACTICE_ATTEMPT_LIMIT_MAX. Shared between the practice-blocks list (which needs it
- * per block, for the UI) and delivery's startSubmission (which needs it to actually enforce the
- * cap), so the two can never disagree about which ceiling applies.
+ * (3) unless the lesson has no pass threshold, or the student has already cleared it in any of
+ * their attempts (best score), in which case it's PRACTICE_ATTEMPT_LIMIT_MAX (40).
  */
 export async function computeAttemptCeilingForLesson(
   lessonId: string,
@@ -84,19 +82,20 @@ export async function computeAttemptCeilingForLesson(
     testBlocks
       .filter((b) => b.type === 'test' && b.testId)
       .map(async (b) => {
-        const latest = await db.query.submissions.findFirst({
+        const studentSubmissions = await db.query.submissions.findMany({
           where: and(eq(submissions.testId, b.testId!), eq(submissions.userId, studentId), isNotNull(submissions.submittedAt)),
-          orderBy: [desc(submissions.submittedAt)],
         });
-        const earnedScore = latest
-          ? computeEffectiveTestPracticeScore(
-              latest.score !== null && latest.total !== null
-                ? { score: latest.score, total: latest.total, practiceScoreOverride: latest.practiceScoreOverride }
-                : null,
-              b.maxScore,
-            )
-          : null;
-        return { attempted: latest !== undefined, maxScore: b.maxScore, earnedScore };
+        const scores = studentSubmissions.map((s) =>
+          computeEffectiveTestPracticeScore(
+            s.score !== null && s.total !== null
+              ? { score: s.score, total: s.total, practiceScoreOverride: s.practiceScoreOverride }
+              : null,
+            b.maxScore,
+          ),
+        );
+        const validScores = scores.filter((s): s is number => s !== null);
+        const earnedScore = validScores.length > 0 ? Math.max(...validScores) : null;
+        return { attempted: studentSubmissions.length > 0, maxScore: b.maxScore, earnedScore };
       }),
   );
   const allAttempted = testBlockScores.every((s) => s.attempted);
@@ -337,17 +336,20 @@ export class PracticeBlocksService {
           orderBy: [desc(submissions.submittedAt)],
         });
         const completedSubmissions = studentSubmissions.filter((s) => s.submittedAt !== null);
-        const latest = completedSubmissions[0] ?? null;
-        const earnedScore = computeEffectiveTestPracticeScore(
-          latest && latest.score !== null && latest.total !== null
-            ? {
-                score: latest.score,
-                total: latest.total,
-                practiceScoreOverride: latest.practiceScoreOverride,
-              }
-            : null,
-          block.maxScore,
+        const submissionScores = completedSubmissions.map((s) =>
+          computeEffectiveTestPracticeScore(
+            s.score !== null && s.total !== null
+              ? {
+                  score: s.score,
+                  total: s.total,
+                  practiceScoreOverride: s.practiceScoreOverride,
+                }
+              : null,
+            block.maxScore,
+          ),
         );
+        const validScores = submissionScores.filter((s): s is number => s !== null);
+        const earnedScore = validScores.length > 0 ? Math.max(...validScores) : null;
 
         return {
           id: block.id,
