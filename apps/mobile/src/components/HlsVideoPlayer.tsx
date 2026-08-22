@@ -10,6 +10,8 @@ import {
 } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import Video, {
+  SelectedTrackType,
+  TextTrackType,
   type OnLoadData,
   type OnProgressData,
   type VideoRef,
@@ -336,6 +338,17 @@ export function HlsVideoPlayer({
     return () => sub.remove();
   }, [closeCurrentRange]);
 
+  const textTracks = subtitleUrl
+    ? [
+        {
+          title: 'Subtitr',
+          language: 'uz' as const,
+          type: subtitleUrl.endsWith('.vtt') ? TextTrackType.VTT : TextTrackType.SUBRIP,
+          uri: subtitleUrl,
+        },
+      ]
+    : undefined;
+
   return (
     <View style={StyleSheet.absoluteFill}>
       {error ? (
@@ -371,6 +384,10 @@ export function HlsVideoPlayer({
           paused={paused}
           controls
           resizeMode="contain"
+          textTracks={textTracks}
+          selectedTextTrack={
+            textTracks ? { type: SelectedTrackType.TITLE, value: 'Subtitr' } : undefined
+          }
           progressUpdateInterval={500}
           preventsDisplaySleepDuringVideoPlayback
           ignoreSilentSwitch="ignore"
