@@ -1,4 +1,5 @@
 import React, {useEffect, useState} from 'react';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {
   ActivityIndicator,
   FlatList,
@@ -142,6 +143,7 @@ function CourseLeaderboardSheetContent({
   const [data, setData] = useState<ApiMyCourseLeaderboard | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     let active = true;
@@ -200,6 +202,7 @@ function CourseLeaderboardSheetContent({
               <FlatList
                 data={remaining}
                 keyExtractor={item => item.studentId}
+                contentContainerStyle={{paddingBottom: Math.max(24, insets.bottom + 24)}}
                 ListHeaderComponent={
                   <View className="mb-5 flex-row items-end justify-center gap-2">
                     {[topThree[1], topThree[0], topThree[2]].filter(Boolean).map(entry => {

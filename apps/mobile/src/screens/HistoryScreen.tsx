@@ -40,13 +40,18 @@ export function HistoryScreen({
 
   const load = useCallback(async () => {
     try {
-      const r = await cachedFirst('submissions', async () => {
-        const res = await api.get('/me/submissions', {params: {limit: 100, offset: 0}});
-        return res.data as Submission[];
-      }, (fresh) => {
-        setData(fresh);
-        setStale(false);
-      });
+      const r = await cachedFirst(
+        'submissions',
+        async () => {
+          const res = await api.get('/me/submissions', {params: {limit: 100, offset: 0}});
+          return res.data as Submission[];
+        },
+        (fresh) => {
+          setData(fresh);
+          setStale(false);
+        },
+        () => setStale(false),
+      );
       if (r.data) setData(r.data);
       setStale(r.fromCache);
     } finally {

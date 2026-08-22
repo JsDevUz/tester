@@ -51,10 +51,15 @@ export function MessengerScreen({ navigation }: { navigation: NativeStackNavigat
 
   const load = useCallback(async () => {
     try {
-      const r = await cachedFirst('chats', async () => (await apiGetPracticeChats()).chats, (fresh) => {
-        setData(fresh);
-        setStale(false);
-      });
+      const r = await cachedFirst(
+        'chats',
+        async () => (await apiGetPracticeChats()).chats,
+        (fresh) => {
+          setData(fresh);
+          setStale(false);
+        },
+        () => setStale(false),
+      );
       if (r.data) setData(r.data);
       setStale(r.fromCache);
     } finally {

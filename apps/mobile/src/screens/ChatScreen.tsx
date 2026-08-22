@@ -71,10 +71,15 @@ export function ChatScreen({ route }: ChatProps) {
         setHasMore(chat.hasMore);
         setNextCursor(chat.nextCursor);
       };
-      const r = await cachedFirst(`chat:${chatId}`, () => apiGetPracticeChat(chatId), (fresh) => {
-        applyChat(fresh);
-        setStale(false);
-      });
+      const r = await cachedFirst(
+        `chat:${chatId}`,
+        () => apiGetPracticeChat(chatId),
+        (fresh) => {
+          applyChat(fresh);
+          setStale(false);
+        },
+        () => setStale(false),
+      );
       if (r.data) applyChat(r.data);
       setStale(r.fromCache);
     } finally {
@@ -319,7 +324,7 @@ export function ChatScreen({ route }: ChatProps) {
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === 'ios' ? 'padding' : undefined}
       keyboardVerticalOffset={Platform.OS === 'ios' ? 90 : 0}
       className="flex-1 bg-canvas dark:bg-dark-canvas">
       <OfflineBanner />

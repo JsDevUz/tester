@@ -107,7 +107,7 @@ describe('cached', () => {
       const onFresh = jest.fn();
 
       await cachedFirst('courses', request, onFresh);
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise<void>((resolve) => setImmediate(() => resolve()));
 
       expect(onFresh).toHaveBeenCalledWith({items: ['new']});
     });
@@ -120,7 +120,7 @@ describe('cached', () => {
       const onFresh = jest.fn();
 
       await cachedFirst('courses', request, onFresh);
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise<void>((resolve) => setImmediate(() => resolve()));
 
       expect(onFresh).not.toHaveBeenCalled();
     });
@@ -133,7 +133,7 @@ describe('cached', () => {
       const onFresh = jest.fn();
 
       const result = await cachedFirst('courses', request, onFresh);
-      await new Promise((resolve) => setImmediate(resolve));
+      await new Promise<void>((resolve) => setImmediate(() => resolve()));
 
       expect(result.data).toEqual({items: ['cached']});
       expect(onFresh).not.toHaveBeenCalled();

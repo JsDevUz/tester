@@ -1,13 +1,72 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as Keychain from 'react-native-keychain';
 import aesjs from 'aes-js';
 import { Platform } from 'react-native';
 import ReactNativeBlobUtil from 'react-native-blob-util';
 import { apiStartVideoPlayback } from '../api/videos';
 import { API_URL } from '../config/env';
 import { useAuthStore } from '../store/authStore';
+import { storage } from './storage';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 const OFFLINE_VIDEOS_STORAGE_KEY = '@jamm_offline_videos_v1';
+const KEY_SERVICE_PREFIX = 'uz.jamm.video.key.';
+
+export async function saveSecureVideoKey(blockId: string, keyBase64: string): Promise<void> {
+  const service = `${KEY_SERVICE_PREFIX}${blockId}`;
+  try {
+    await Keychain.setGenericPassword('aes_key', keyBase64, {
+      service,
+      accessible: Keychain.ACCESSIBLE.WHEN_UNLOCKED_THIS_DEVICE_ONLY,
+    });
+    return;
+  } catch {
+    // Fallback if Keychain is unavailable
+  }
+  await storage.set(`key:${blockId}`, keyBase64);
+}
+
+export async function getSecureVideoKey(blockId: string): Promise<string | null> {
+  const service = `${KEY_SERVICE_PREFIX}${blockId}`;
+  try {
+    const creds = await Keychain.getGenericPassword({ service });
+    if (creds && typeof creds.password === 'string') {
+      return creds.password;
+    }
+  } catch {
+    // Fallback
+  }
+  return storage.get<string>(`key:${blockId}`);
+}
+
+export async function clearSecureVideoKey(blockId: string): Promise<void> {
+  const service = `${KEY_SERVICE_PREFIX}${blockId}`;
+  try {
+    await Keychain.resetGenericPassword({ service });
+  } catch {
+    // ignore
+  }
+  await storage.remove(`key:${blockId}`);
+}
+
+/**
+ * Prepares offline playback by extracting the hardware-backed key into the block's directory.
+ */
+export async function prepareOfflinePlayback(blockId: string): Promise<void> {
+  const keyBase64 = await getSecureVideoKey(blockId);
+  if (keyBase64) {
+    const keyLocalPath = getLocalKeyPath(blockId);
+    await ReactNativeBlobUtil.fs.writeFile(keyLocalPath, keyBase64, 'base64');
+  }
+}
+
+/**
+ * Cleans up plaintext decryption keys after playback ends.
+ */
+export async function cleanupOfflinePlayback(blockId: string): Promise<void> {
+  const keyLocalPath = getLocalKeyPath(blockId);
+  await ReactNativeBlobUtil.fs.unlink(keyLocalPath).catch(() => {});
+}
 
 // Android's ExoPlayer plays the downloaded HLS playlist straight off disk and gets proper
 // seeking from its #EXTINF durations, so that is the layout it gets.
@@ -81,7 +140,10 @@ export function getLocalSubtitlePath(blockId: string): string {
 export interface OfflineVideoMeta {
   blockId: string;
   lessonId?: string;
+  lessonTitle?: string;
   courseId?: string;
+  courseTitle?: string;
+  schoolId?: string;
   title: string;
   durationSec?: number | null;
   totalBytes: number;
@@ -234,7 +296,7 @@ async function downloadFileWithRetry(
         return;
       }
       if (status === 429) {
-        await new Promise((resolve) => setTimeout(resolve, 1200 * attempt));
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 1200 * attempt));
       }
       throw new Error(`HTTP ${status}`);
     } catch (err: any) {
@@ -245,7 +307,7 @@ async function downloadFileWithRetry(
       if (attempt < maxAttempts) {
         // Exponential backoff: a flaky connection needs longer than a busy one to settle,
         // and retrying hard against a dropped link just burns the remaining attempts.
-        await new Promise((resolve) => setTimeout(resolve, Math.min(8000, 1000 * 2 ** (attempt - 1))));
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), Math.min(8000, 1000 * 2 ** (attempt - 1))));
       }
     }
   }
@@ -255,8 +317,9 @@ async function downloadFileWithRetry(
 const B64_CHARS = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
 
 function base64ToUint8Array(b64: string): Uint8Array {
-  if (typeof atob === 'function') {
-    const bin = atob(b64);
+  const gAtob = (globalThis as any).atob;
+  if (typeof gAtob === 'function') {
+    const bin = gAtob(b64);
     const u8 = new Uint8Array(bin.length);
     for (let i = 0; i < bin.length; i++) u8[i] = bin.charCodeAt(i);
     return u8;
@@ -279,14 +342,15 @@ function base64ToUint8Array(b64: string): Uint8Array {
 }
 
 function uint8ArrayToBase64(bytes: Uint8Array): string {
-  if (typeof btoa === 'function') {
+  const gBtoa = (globalThis as any).btoa;
+  if (typeof gBtoa === 'function') {
     let bin = '';
     const chunk = 8192;
     for (let i = 0; i < bytes.length; i += chunk) {
       const sub = bytes.subarray(i, i + chunk);
       for (let j = 0; j < sub.length; j++) bin += String.fromCharCode(sub[j]);
     }
-    return btoa(bin);
+    return gBtoa(bin);
   }
   let result = '';
   let i;
@@ -369,7 +433,10 @@ export async function downloadOfflineVideo(
   options: {
     title?: string;
     lessonId?: string;
+    lessonTitle?: string;
     courseId?: string;
+    courseTitle?: string;
+    schoolId?: string;
     durationSec?: number | null;
   },
   onProgress?: DownloadProgressCallback,
@@ -440,20 +507,24 @@ export async function downloadOfflineVideo(
       throw new Error('Video segmentlari topilmadi');
     }
 
-    // 4. Download AES Key
-    let keyBytes: Uint8Array | null = null;
+    // 4. Download AES Key securely
+    let keyIvLine = '';
     if (keyRemoteUrl) {
       onProgress?.(15, 'Xavfsizlik kaliti yuklanmoqda...');
-      const keyLocalPath = `${blockDir}/enc.key`;
-      const keyStat = await ReactNativeBlobUtil.fs.stat(keyLocalPath).catch(() => null);
-      if (!keyStat || Number(keyStat.size) === 0) {
-        await downloadFileWithRetry(keyLocalPath, keyRemoteUrl);
-      }
+      const tempKeyPath = `${blockDir}/temp_enc.key`;
+      await downloadFileWithRetry(tempKeyPath, keyRemoteUrl);
       try {
-        const keyBase64 = await ReactNativeBlobUtil.fs.readFile(keyLocalPath, 'base64');
-        keyBytes = base64ToUint8Array(keyBase64);
+        const keyBase64 = await ReactNativeBlobUtil.fs.readFile(tempKeyPath, 'base64');
+        await saveSecureVideoKey(blockId, keyBase64);
       } catch {
-        // key read failed
+        // key read/save failed
+      }
+      await ReactNativeBlobUtil.fs.unlink(tempKeyPath).catch(() => {});
+
+      if (keyIvHex) {
+        keyIvLine = `#EXT-X-KEY:METHOD=AES-128,URI="enc.key",IV=${keyIvHex}`;
+      } else {
+        keyIvLine = '#EXT-X-KEY:METHOD=AES-128,URI="enc.key"';
       }
     }
 
@@ -478,14 +549,10 @@ export async function downloadOfflineVideo(
       }
     }
 
-    // 6. Download and decrypt segments sequentially, each into its own local .ts file.
-    // The manifest is rewritten after every segment (with #EXT-X-ENDLIST only once all
-    // segments are done) so a download interrupted partway still leaves a valid, playable
-    // HLS asset covering whatever was downloaded so far.
+    // 6. Download encrypted segments directly into local .ts files.
+    // The manifest is rewritten after every segment so partial downloads remain playable.
     const totalSegments = segmentNames.length;
     let completedSegments = 0;
-    // Running total of what has landed on disk, plus a helper that extrapolates the final
-    // size from the average segment so far -- real segment sizes are only known once fetched.
     let downloadedBytes = 0;
     const byteProgress = () => ({
       downloaded: downloadedBytes,
@@ -497,21 +564,15 @@ export async function downloadOfflineVideo(
     const targetDuration = Math.max(1, Math.ceil(Math.max(...segmentDurations, 1)));
     const manifestLocalPath = getLocalManifestPath(blockId);
     const mergedLocalPath = getLocalMergedVideoPath(blockId);
-    // Path stored in the registry / handed to the player, per platform.
     const playableLocalPath = USE_MERGED_TS ? mergedLocalPath : manifestLocalPath;
 
-    // Always terminate the playlist with #EXT-X-ENDLIST, even mid-download. Without it,
-    // a VOD-typed playlist with no end marker is ambiguous HLS and AVPlayer treats it as
-    // a live stream awaiting more segments over the network — which fails outright with
-    // no connectivity (CoreMediaErrorDomain -12865). Marking it "ended" at whatever length
-    // has downloaded so far, and simply rewriting a longer "ended" playlist as more segments
-    // land, keeps every intermediate state a valid, offline-playable VOD asset.
     const writeManifest = async (upToCount: number) => {
       const lines = [
         '#EXTM3U',
         '#EXT-X-VERSION:3',
         `#EXT-X-TARGETDURATION:${targetDuration}`,
         '#EXT-X-PLAYLIST-TYPE:VOD',
+        ...(keyIvLine ? [keyIvLine] : []),
         ...segmentNames.slice(0, upToCount).flatMap((_name, i) => [
           `#EXTINF:${segmentDurations[i].toFixed(3)},`,
           `segment_${String(i).padStart(3, '0')}.ts`,
@@ -525,31 +586,20 @@ export async function downloadOfflineVideo(
     for (let i = 0; i < segmentNames.length; i++) {
       if (cancelToken.cancelled) throw new Error('Yuklab olish bekor qilindi');
 
-      // Yield to the event loop between segments. Decrypting one means base64-decoding it,
-      // running AES-CBC over it and base64-encoding the result -- all synchronous JS on the
-      // same thread that drives playback and touch handling. Without this pause the loop hogs
-      // the thread and the video stutters while a download is running.
       await new Promise<void>((resolve) => setTimeout(resolve, 0));
 
       const rawSegmentLine = segmentNames[i];
       const segRemoteUrl = rawSegmentLine.startsWith('http')
         ? rawSegmentLine
         : `${API_BASE}/videos/${blockId}/${rawSegmentLine}`;
-      const tempEncPath = `${blockDir}/temp_${i}.enc`;
       const segmentLocalPath = getLocalSegmentPath(blockId, i);
 
-      // Resume rather than restart: a download interrupted partway leaves its segments on
-      // disk, and re-fetching them would burn the user's data to produce identical files.
-      // (Only applies to the per-segment layout; the merged file is appended to in order,
-      // so it has no way to skip ahead.)
+      // Resume rather than restart
       if (!USE_MERGED_TS) {
         const already = await ReactNativeBlobUtil.fs.stat(segmentLocalPath).catch(() => null);
         if (already && Number(already.size) > 0) {
           completedSegments++;
           downloadedBytes += Number(already.size);
-          // Resuming a mostly-done download re-walks hundreds of existing files; rewriting
-          // the manifest for each one is a long serial stall. Every 5th is enough -- the
-          // final rewrite after the loop catches the remainder.
           if (completedSegments % 5 === 0 || completedSegments === totalSegments) {
             await writeManifest(completedSegments);
           }
@@ -563,19 +613,9 @@ export async function downloadOfflineVideo(
       }
 
       try {
-        await downloadFileWithRetry(tempEncPath, segRemoteUrl, null, 6);
-        if (keyBytes && keyBytes.length === 16) {
-          const iv = parseIv(keyIvHex, i);
-          await decryptSegmentToFile(tempEncPath, segmentLocalPath, keyBytes, iv);
-        } else {
-          const rawB64 = await ReactNativeBlobUtil.fs.readFile(tempEncPath, 'base64');
-          await ReactNativeBlobUtil.fs.writeFile(segmentLocalPath, rawB64, 'base64');
-        }
-        await ReactNativeBlobUtil.fs.unlink(tempEncPath).catch(() => { });
+        await downloadFileWithRetry(segmentLocalPath, segRemoteUrl, null, 6);
 
         if (USE_MERGED_TS) {
-          // Append this segment's bytes onto the single merged file iOS will play,
-          // then drop the standalone segment so we don't keep two copies on disk.
           const segB64 = await ReactNativeBlobUtil.fs.readFile(segmentLocalPath, 'base64');
           if (i === 0) {
             await ReactNativeBlobUtil.fs.writeFile(mergedLocalPath, segB64, 'base64');
@@ -589,17 +629,11 @@ export async function downloadOfflineVideo(
           .stat(USE_MERGED_TS ? mergedLocalPath : segmentLocalPath)
           .catch(() => null);
         if (written) {
-          // The merged file is cumulative, so its size *is* the running total; individual
-          // segments have to be added up.
           downloadedBytes = USE_MERGED_TS
             ? Number(written.size)
             : downloadedBytes + Number(written.size);
         }
       } catch (err: any) {
-        // Segments must land in order -- skipping one would leave a hole the player cannot
-        // seek across -- so a failure stops here. Everything fetched so far stays on disk and
-        // the manifest already covers it, so pressing download again resumes from this point
-        // rather than starting over.
         throw new Error(
           `Internet uzildi. ${completedSegments}/${totalSegments} qism saqlandi — ` +
           `qayta yuklab olsangiz shu joydan davom etadi.`,
@@ -623,8 +657,11 @@ export async function downloadOfflineVideo(
       const partialMeta: OfflineVideoMeta = {
         blockId,
         lessonId: options.lessonId,
+        lessonTitle: options.lessonTitle,
         courseId: options.courseId,
-        title: options.title || 'Video dars',
+        courseTitle: options.courseTitle,
+        schoolId: options.schoolId,
+        title: options.title || options.lessonTitle || 'Video dars',
         durationSec: options.durationSec,
         totalBytes: 0,
         downloadedAt: new Date().toISOString(),
@@ -660,8 +697,11 @@ export async function downloadOfflineVideo(
     const meta: OfflineVideoMeta = {
       blockId,
       lessonId: options.lessonId,
+      lessonTitle: options.lessonTitle,
       courseId: options.courseId,
-      title: options.title || 'Video dars',
+      courseTitle: options.courseTitle,
+      schoolId: options.schoolId,
+      title: options.title || options.lessonTitle || 'Video dars',
       durationSec: options.durationSec,
       totalBytes,
       downloadedAt: new Date().toISOString(),
@@ -732,6 +772,7 @@ export function cancelOfflineDownload(blockId: string): void {
  */
 export async function deleteOfflineVideo(blockId: string): Promise<void> {
   cancelOfflineDownload(blockId);
+  await clearSecureVideoKey(blockId);
   const blockDir = getOfflineVideoDir(blockId);
   try {
     const exists = await ReactNativeBlobUtil.fs.exists(blockDir);
@@ -754,6 +795,10 @@ export async function deleteOfflineVideo(blockId: string): Promise<void> {
  */
 export async function clearAllOfflineVideos(): Promise<void> {
   try {
+    const registry = await getOfflineVideosRegistry();
+    for (const blockId of Object.keys(registry)) {
+      await clearSecureVideoKey(blockId);
+    }
     const baseDir = getOfflineBaseDir();
     const exists = await ReactNativeBlobUtil.fs.exists(baseDir);
     if (exists) {

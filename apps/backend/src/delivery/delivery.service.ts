@@ -1,9 +1,9 @@
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
 import { db } from '../db';
-import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments, users } from '../db/schema';
+import { tests, submissions, answers, questions, options, testPins, schoolMembers, groupEnrollments, users, practiceBlocks } from '../db/schema';
 import { and, eq, isNull, isNotNull, gte, lte } from 'drizzle-orm';
 import { GroqService } from '../groq/groq.service';
-import { PRACTICE_ATTEMPT_LIMIT } from '../practice-blocks/practice-blocks.service';
+import { computeAttemptCeilingForLesson, PRACTICE_ATTEMPT_LIMIT_MAX } from '../practice-blocks/practice-blocks.service';
 import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
 import { gradeAnswer, evaluateObjectiveAnswer } from '../grading/grading';
 
@@ -185,7 +185,16 @@ export class DeliveryService {
       const priorAttempts = await db.query.submissions.findMany({
         where: and(eq(submissions.testId, test.id), eq(submissions.userId, userId), isNotNull(submissions.submittedAt)),
       });
-      if (priorAttempts.length >= PRACTICE_ATTEMPT_LIMIT) {
+      // A test lives on exactly one practice block in practice today (nothing in the schema
+      // requires that, but nothing creates the alternative either), so the block's lesson is
+      // this test's lesson for the purpose of the pass-threshold check below.
+      const owningBlock = await db.query.practiceBlocks.findFirst({ where: eq(practiceBlocks.testId, test.id) });
+      // No owning lesson block means there's no pass threshold to gate on -- fall back to the
+      // uncapped ceiling rather than the strict 3, matching "no threshold" in the computed case.
+      const attemptCeiling = owningBlock
+        ? await computeAttemptCeilingForLesson(owningBlock.lessonId, userId)
+        : PRACTICE_ATTEMPT_LIMIT_MAX;
+      if (priorAttempts.length >= attemptCeiling) {
         throw new BadRequestException('ATTEMPT_LIMIT_REACHED');
       }
     }

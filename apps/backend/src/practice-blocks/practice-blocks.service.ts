@@ -2,7 +2,7 @@ import { BadRequestException, Injectable, NotFoundException } from '@nestjs/comm
 import { db } from '../db';
 import { courses, modules, lessons, practiceBlocks, submissions, lessonCompletions, imageSubmissions, oralPracticeGrades, groups, groupEnrollments, schoolMembers, practiceChatMessages } from '../db/schema';
 import { PracticeMessengerService } from '../practice-messenger/practice-messenger.service';
-import { and, desc, eq, inArray, isNull } from 'drizzle-orm';
+import { and, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
 
 export function computeEarnedScore(
   latestSubmission: { score: number; total: number } | null,
@@ -47,7 +47,65 @@ export function computeTestPracticePercent(
 }
 
 const PRACTICE_BLOCK_LIMIT = 4;
+/**
+ * The first gate every practice test hits, regardless of whether the lesson has a pass
+ * threshold: 3 attempts before anything is re-evaluated.
+ *
+ * - No threshold on the lesson: practice was never required to progress, so this is a soft
+ *   cap that raises straight to PRACTICE_ATTEMPT_LIMIT_MAX -- there's nothing to gate on.
+ * - Threshold enabled and passed within these 3: the student already proved they've met the
+ *   bar, so this also raises to PRACTICE_ATTEMPT_LIMIT_MAX -- further attempts just improve
+ *   the practice score.
+ * - Threshold enabled and still not met after 3: this is where it stays. A teacher has to
+ *   delete one of the 3 submissions (existing DELETE /submissions/:id) before the student
+ *   can try again -- that isn't a special "reopen" action, it's the same deletion any admin
+ *   already had, which happens to free up a slot under this same count-based check.
+ */
 export const PRACTICE_ATTEMPT_LIMIT = 3;
+export const PRACTICE_ATTEMPT_LIMIT_MAX = 50;
+
+/**
+ * How many attempts a student gets on a given lesson's tests right now -- PRACTICE_ATTEMPT_LIMIT
+ * (3) unless the lesson has no pass threshold, or the student has already cleared it, in which
+ * case it's PRACTICE_ATTEMPT_LIMIT_MAX. Shared between the practice-blocks list (which needs it
+ * per block, for the UI) and delivery's startSubmission (which needs it to actually enforce the
+ * cap), so the two can never disagree about which ceiling applies.
+ */
+export async function computeAttemptCeilingForLesson(
+  lessonId: string,
+  studentId: string,
+  blocks?: Array<{ type: string; testId: string | null; maxScore: number | null }>,
+): Promise<number> {
+  const lesson = await db.query.lessons.findFirst({ where: eq(lessons.id, lessonId) });
+  if (!lesson?.passThresholdEnabled) return PRACTICE_ATTEMPT_LIMIT_MAX;
+
+  const testBlocks = blocks ?? (await db.query.practiceBlocks.findMany({ where: eq(practiceBlocks.lessonId, lessonId) }));
+  const testBlockScores = await Promise.all(
+    testBlocks
+      .filter((b) => b.type === 'test' && b.testId)
+      .map(async (b) => {
+        const latest = await db.query.submissions.findFirst({
+          where: and(eq(submissions.testId, b.testId!), eq(submissions.userId, studentId), isNotNull(submissions.submittedAt)),
+          orderBy: [desc(submissions.submittedAt)],
+        });
+        const earnedScore = latest
+          ? computeEffectiveTestPracticeScore(
+              latest.score !== null && latest.total !== null
+                ? { score: latest.score, total: latest.total, practiceScoreOverride: latest.practiceScoreOverride }
+                : null,
+              b.maxScore,
+            )
+          : null;
+        return { attempted: latest !== undefined, maxScore: b.maxScore, earnedScore };
+      }),
+  );
+  const allAttempted = testBlockScores.every((s) => s.attempted);
+  const combinedPercent = computeTestPracticePercent(
+    testBlockScores.map((s) => ({ type: 'test' as const, maxScore: s.maxScore, earnedScore: s.earnedScore })),
+  );
+  const lessonPassed = allAttempted && combinedPercent !== null && combinedPercent >= (lesson.passThresholdPercent ?? 0);
+  return lessonPassed ? PRACTICE_ATTEMPT_LIMIT_MAX : PRACTICE_ATTEMPT_LIMIT;
+}
 
 @Injectable()
 export class PracticeBlocksService {
@@ -206,6 +264,7 @@ export class PracticeBlocksService {
       orderBy: (b, { asc }) => [asc(b.orderIndex)],
       with: { test: true },
     });
+    const attemptCeiling = await computeAttemptCeilingForLesson(lessonId, studentId, blocks);
 
     return Promise.all(
       blocks.map(async (block) => {
@@ -318,7 +377,7 @@ export class PracticeBlocksService {
             scoreOverriddenAt:
               s.practiceScoreOverriddenAt?.toISOString() ?? null,
           })),
-          attemptsRemaining: Math.max(0, PRACTICE_ATTEMPT_LIMIT - completedSubmissions.length),
+          attemptsRemaining: Math.max(0, attemptCeiling - completedSubmissions.length),
           imageSubmissions: [],
           oralGrade: null,
         };

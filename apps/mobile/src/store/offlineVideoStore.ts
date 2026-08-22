@@ -10,6 +10,7 @@ import {
 } from '../lib/offlineVideoService';
 
 export interface ActiveDownloadState {
+  blockId: string;
   progress: number;
   stageText: string;
   status: 'downloading' | 'error' | 'completed';
@@ -17,6 +18,12 @@ export interface ActiveDownloadState {
   /** Bytes on disk and the estimated final size, for a "1.7 MB / 7.2 MB" readout. */
   downloadedBytes?: number;
   totalBytes?: number;
+  title?: string;
+  lessonId?: string;
+  lessonTitle?: string;
+  courseId?: string;
+  courseTitle?: string;
+  schoolId?: string;
 }
 
 interface OfflineVideoStoreState {
@@ -29,11 +36,17 @@ interface OfflineVideoStoreState {
     options: {
       title?: string;
       lessonId?: string;
+      lessonTitle?: string;
       courseId?: string;
+      courseTitle?: string;
+      schoolId?: string;
       durationSec?: number | null;
     },
   ) => Promise<OfflineVideoMeta | null>;
   cancelDownload: (blockId: string) => void;
+  cancelDownloadsForSchool: (schoolId: string) => void;
+  cancelDownloadsForCourse: (courseId: string) => void;
+  cancelAllActive: () => void;
   removeDownload: (blockId: string) => Promise<void>;
   clearAll: () => Promise<void>;
   isDownloaded: (blockId: string) => boolean;
@@ -54,6 +67,13 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
       activeDownloads: {
         ...state.activeDownloads,
         [blockId]: {
+          blockId,
+          title: options.title || options.lessonTitle || 'Video dars',
+          lessonId: options.lessonId,
+          lessonTitle: options.lessonTitle,
+          courseId: options.courseId,
+          courseTitle: options.courseTitle,
+          schoolId: options.schoolId,
           progress: 0,
           stageText: 'Yuklash boshlanmoqda...',
           status: 'downloading',
@@ -70,6 +90,13 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
             activeDownloads: {
               ...state.activeDownloads,
               [blockId]: {
+                blockId,
+                title: options.title || options.lessonTitle || 'Video dars',
+                lessonId: options.lessonId,
+                lessonTitle: options.lessonTitle,
+                courseId: options.courseId,
+                courseTitle: options.courseTitle,
+                schoolId: options.schoolId,
                 progress: progressPercent,
                 stageText,
                 status: 'downloading',
@@ -99,6 +126,13 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
         activeDownloads: {
           ...state.activeDownloads,
           [blockId]: {
+            blockId,
+            title: options.title || options.lessonTitle || 'Video dars',
+            lessonId: options.lessonId,
+            lessonTitle: options.lessonTitle,
+            courseId: options.courseId,
+            courseTitle: options.courseTitle,
+            schoolId: options.schoolId,
             progress: 0,
             stageText: 'Xatolik yuz berdi',
             status: 'error',
@@ -117,6 +151,50 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
       delete nextActive[blockId];
       return { activeDownloads: nextActive };
     });
+  },
+
+  cancelDownloadsForSchool: (schoolId) => {
+    const active = get().activeDownloads;
+    Object.values(active).forEach((item) => {
+      if (item.schoolId === schoolId) {
+        cancelOfflineDownload(item.blockId);
+      }
+    });
+    set((state) => {
+      const nextActive = { ...state.activeDownloads };
+      Object.keys(nextActive).forEach((bId) => {
+        if (nextActive[bId]?.schoolId === schoolId) {
+          delete nextActive[bId];
+        }
+      });
+      return { activeDownloads: nextActive };
+    });
+  },
+
+  cancelDownloadsForCourse: (courseId) => {
+    const active = get().activeDownloads;
+    Object.values(active).forEach((item) => {
+      if (item.courseId === courseId) {
+        cancelOfflineDownload(item.blockId);
+      }
+    });
+    set((state) => {
+      const nextActive = { ...state.activeDownloads };
+      Object.keys(nextActive).forEach((bId) => {
+        if (nextActive[bId]?.courseId === courseId) {
+          delete nextActive[bId];
+        }
+      });
+      return { activeDownloads: nextActive };
+    });
+  },
+
+  cancelAllActive: () => {
+    const active = get().activeDownloads;
+    Object.values(active).forEach((item) => {
+      cancelOfflineDownload(item.blockId);
+    });
+    set({ activeDownloads: {} });
   },
 
   removeDownload: async (blockId) => {
@@ -139,7 +217,6 @@ export const useOfflineVideoStore = create<OfflineVideoStoreState>((set, get) =>
   },
 
   isDownloaded: (blockId: string) => {
-    // A registry entry alone can be an interrupted download; "downloaded" means complete.
     return isOfflineVideoComplete(get().registry[blockId]);
   },
 }));

@@ -47,6 +47,7 @@ export default function App() {
             <StatusBar
               barStyle={isDark ? 'light-content' : 'dark-content'}
               backgroundColor={isDark ? '#1b1c22' : '#ffffff'}
+              translucent={false}
             />
             <NavigationContainer linking={getLinking(!!token)}>
               <RootNavigator />

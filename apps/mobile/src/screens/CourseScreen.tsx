@@ -73,6 +73,7 @@ export function CourseScreen({route, navigation}: Props) {
   const placeholderRect = useActiveVideoStore(s => s.placeholderRect);
   const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
   const setScreenAnchorRef = useActiveVideoStore(s => s.setScreenAnchorRef);
+  const bumpScrollTick = useActiveVideoStore(s => s.bumpScrollTick);
   const scrollViewRef = useRef<ScrollView>(null);
   const screenRef = useRef<View>(null);
 
@@ -82,6 +83,18 @@ export function CourseScreen({route, navigation}: Props) {
     setScreenAnchorRef(screenRef);
     return () => setScreenAnchorRef(null);
   }, [setScreenAnchorRef]);
+
+  // Scrolling moves the active video's placeholder without firing its onLayout (only the
+  // ScrollView's offset changes, not the placeholder's own size/position within it) --
+  // this nudges the real player to re-measure and follow. Throttled: onScroll otherwise
+  // fires far more often than a resize animation needs to track.
+  const lastScrollBumpRef = useRef(0);
+  const handleLessonScroll = useCallback(() => {
+    const now = Date.now();
+    if (now - lastScrollBumpRef.current < 32) return;
+    lastScrollBumpRef.current = now;
+    bumpScrollTick();
+  }, [bumpScrollTick]);
 
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -362,6 +375,8 @@ export function CourseScreen({route, navigation}: Props) {
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
+          onScroll={handleLessonScroll}
+          scrollEventThrottle={32}
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           className="flex-1">
           {selectedLessonId === null || !renderedLesson ? (

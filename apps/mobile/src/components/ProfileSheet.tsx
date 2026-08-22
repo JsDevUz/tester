@@ -22,6 +22,7 @@ import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {ChevronRight, HardDrive, LogOut, Moon, UserRound, X} from 'lucide-react-native';
 import {useAuthStore} from '../store/authStore';
 import {useThemeStore} from '../store/themeStore';
+import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {CachedImage} from './common/CachedImage';
 import {StorageUsageModal} from './StorageUsageModal';
 import type {RootStackParamList} from '../navigation/types';
@@ -37,6 +38,7 @@ const SPRING = {damping: 22, stiffness: 260, mass: 0.7};
 
 export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () => void}) {
   const [mounted, setMounted] = useState(visible);
+  const insets = useSafeAreaInsets();
 
   useEffect(() => {
     if (visible) setMounted(true);
@@ -45,11 +47,14 @@ export function ProfileSheet({visible, onClose}: {visible: boolean; onClose: () 
   if (!mounted) return null;
 
   return (
-    <ProfileSheetContent
-      visible={visible}
-      onClose={onClose}
-      onClosed={() => setMounted(false)}
-    />
+    <Modal visible transparent statusBarTranslucent onRequestClose={onClose}>
+      <ProfileSheetContent
+        visible={visible}
+        onClose={onClose}
+        onClosed={() => setMounted(false)}
+        insets={insets}
+      />
+    </Modal>
   );
 }
 
@@ -57,10 +62,12 @@ function ProfileSheetContent({
   visible,
   onClose,
   onClosed,
+  insets,
 }: {
   visible: boolean;
   onClose: () => void;
   onClosed: () => void;
+  insets: { top: number; bottom: number; left: number; right: number };
 }) {
   const {height: windowHeight} = useWindowDimensions();
   const translateY = useSharedValue(windowHeight);
@@ -143,7 +150,7 @@ function ProfileSheetContent({
               </Pressable>
             </View>
 
-            <ScrollView contentContainerClassName="pb-10" showsVerticalScrollIndicator={false}>
+            <ScrollView contentContainerStyle={{paddingBottom: Math.max(40, insets.bottom + 20)}} showsVerticalScrollIndicator={false}>
               {/* Account card -- tapping it opens the editable version of everything here. */}
               <Pressable
                 onPress={() => openScreen(() => navigation.navigate('EditProfile'))}

@@ -1518,6 +1518,28 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - react-native-netinfo (12.0.1):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - react-native-pdf (7.0.4):
     - hermes-engine
     - RCTRequired
@@ -2146,6 +2168,28 @@ PODS:
     - ReactCommon/turbomodule/core
     - ReactNativeDependencies
     - Yoga
+  - RNKeychain (10.0.0):
+    - hermes-engine
+    - RCTRequired
+    - RCTTypeSafety
+    - React-Core
+    - React-Core-prebuilt
+    - React-debug
+    - React-Fabric
+    - React-featureflags
+    - React-graphics
+    - React-ImageManager
+    - React-jsi
+    - React-NativeModulesApple
+    - React-RCTFabric
+    - React-renderercss
+    - React-rendererdebug
+    - React-utils
+    - ReactCodegen
+    - ReactCommon/turbomodule/bridging
+    - ReactCommon/turbomodule/core
+    - ReactNativeDependencies
+    - Yoga
   - RNReanimated (4.5.2):
     - hermes-engine
     - RCTRequired
@@ -2457,6 +2501,7 @@ DEPENDENCIES:
   - React-mutationobservernativemodule (from `../../../node_modules/react-native/ReactCommon/react/nativemodule/mutationobserver`)
   - react-native-blob-util (from `../../../node_modules/react-native-blob-util`)
   - react-native-image-picker (from `../../../node_modules/react-native-image-picker`)
+  - "react-native-netinfo (from `../../../node_modules/@react-native-community/netinfo`)"
   - react-native-pdf (from `../../../node_modules/react-native-pdf`)
   - react-native-render-html (from `../../../node_modules/react-native-render-html`)
   - react-native-safe-area-context (from `../../../node_modules/react-native-safe-area-context`)
@@ -2500,6 +2545,7 @@ DEPENDENCIES:
   - ReactNativeDependencies (from `../../../node_modules/react-native/third-party-podspecs/ReactNativeDependencies.podspec`)
   - RNDeviceInfo (from `../../../node_modules/react-native-device-info`)
   - RNGestureHandler (from `../../../node_modules/react-native-gesture-handler`)
+  - RNKeychain (from `../../../node_modules/react-native-keychain`)
   - RNReanimated (from `../../../node_modules/react-native-reanimated`)
   - RNScreens (from `../../../node_modules/react-native-screens`)
   - RNSVG (from `../../../node_modules/react-native-svg`)
@@ -2600,6 +2646,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native-blob-util"
   react-native-image-picker:
     :path: "../../../node_modules/react-native-image-picker"
+  react-native-netinfo:
+    :path: "../../../node_modules/@react-native-community/netinfo"
   react-native-pdf:
     :path: "../../../node_modules/react-native-pdf"
   react-native-render-html:
@@ -2686,6 +2734,8 @@ EXTERNAL SOURCES:
     :path: "../../../node_modules/react-native-device-info"
   RNGestureHandler:
     :path: "../../../node_modules/react-native-gesture-handler"
+  RNKeychain:
+    :path: "../../../node_modules/react-native-keychain"
   RNReanimated:
     :path: "../../../node_modules/react-native-reanimated"
   RNScreens:
@@ -2700,7 +2750,7 @@ EXTERNAL SOURCES:
 SPEC CHECKSUMS:
   AsyncStorage: 163ab23f6aa37a58b7f2379d0b4ee7ac84d6655c
   FBLazyVector: b3e7ad108f0d882e30445c5527d774e3fd432f3d
-  hermes-engine: 801d5a444731c6d5b138e8845bfe1223a07213ec
+  hermes-engine: 11de92fbefc81ca9f4aa68acf115eac5dcb39219
   livekit-react-native: 8b8f3cb64195b11c40d3b724aa07c44d0eed20dc
   livekit-react-native-webrtc: 9f52dbcc5edee327cdc8c9b458b6d6fd8ece1561
   RCTDeprecation: 2a74a2c57675e64419bd89078efde81f7c1de90b
@@ -2742,6 +2792,7 @@ SPEC CHECKSUMS:
   React-mutationobservernativemodule: f0a0d5ae9b51caf7becbeabf836d716cfedb6bf2
   react-native-blob-util: 13e70f811eb34f14864622c4afa37cc20fe8100e
   react-native-image-picker: 23540feacc79c63c60857f318fdfa8477c26e70a
+  react-native-netinfo: 2f906d5d9a639090ed1c079135d6485a95f749f1
   react-native-pdf: 2bc0989bc44ef7e5221c49c0f1bb464a2c27640b
   react-native-render-html: 5afc4751f1a98621b3009432ef84c47019dcb2bd
   react-native-safe-area-context: fb5c8ee9f6dd62ef710611b3d370c501f42a4ac0
@@ -2785,6 +2836,7 @@ SPEC CHECKSUMS:
   ReactNativeDependencies: fa0a54b3f5319ae0e3b9aff32bfee7a424b88e66
   RNDeviceInfo: 32413a6eefa0de704834b9d2afe5be596b44a66d
   RNGestureHandler: a426f18ab9021991fe2cbc8bf1677b740e20e70c
+  RNKeychain: 6778b35b5bd067c322f8479526ac09b1d61f31d0
   RNReanimated: 287d07d720c265159dca300c3528467bd2d17dbb
   RNScreens: 7118cd7715c226856125b5bece3c4d9abec90356
   RNSVG: 6cae8d4082913be2eb43eaec2a456222c42195ed

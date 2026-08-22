@@ -29,11 +29,18 @@ export async function cached<T>(key:string,request:()=>Promise<T>):Promise<{data
  * `onFresh` fires only when the payload actually changed, so an unchanged response costs no
  * re-render. Network failures are swallowed: the screen keeps the cached copy it is already
  * showing.
+ *
+ * `onSynced` fires once the background request settles successfully, whether or not the
+ * payload changed. A "stale" banner driven off `fromCache` alone stuck around forever on an
+ * unchanged response -- the refresh had genuinely succeeded, there was just nothing new to
+ * show for it -- so callers that need to know "are we caught up with the server" (as opposed
+ * to "did the data change") should clear their stale flag here instead of inside `onFresh`.
  */
 export async function cachedFirst<T>(
   key: string,
   request: () => Promise<T>,
   onFresh: (data: T) => void,
+  onSynced?: () => void,
 ): Promise<{data: T | null; fromCache: boolean}> {
   const snapshot = await storage.get<{data: T; savedAt: number}>(`cache:${key}`);
 
@@ -41,6 +48,7 @@ export async function cachedFirst<T>(
     .then(async (fresh) => {
       await storage.set(`cache:${key}`, {data: fresh, savedAt: Date.now()});
       if (JSON.stringify(fresh) !== JSON.stringify(snapshot?.data)) onFresh(fresh);
+      onSynced?.();
       return fresh;
     })
     .catch(() => null);

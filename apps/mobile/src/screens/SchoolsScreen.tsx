@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useState} from 'react';
-import {FlatList, Image, Pressable, RefreshControl, Text, TextInput, View} from 'react-native';
+import {FlatList, Pressable, RefreshControl, Text, View} from 'react-native';
 import type {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {ChevronDown, ChevronUp, School, Search, Users, X} from 'lucide-react-native';
 import {useColorScheme} from 'nativewind';
@@ -12,6 +12,9 @@ import {Empty, Input, Loading, OfflineBanner, Screen, StaleNote} from '../compon
 import {LiveClassBanner} from '../components/LiveClassBanner';
 import {CachedImage} from '../components/common/CachedImage';
 import {TAB_BAR_CLEARANCE} from '../navigation/tabBarLayout';
+import {useOfflineVideoStore} from '../store/offlineVideoStore';
+import {DownloadCardBadge} from '../components/DownloadCardBadge';
+import {DownloadsBottomSheet} from '../components/DownloadsBottomSheet';
 
 export function SchoolsScreen({
   navigation,
@@ -25,9 +28,14 @@ export function SchoolsScreen({
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [inviteOpen, setInviteOpen] = useState(false);
   const [inviteInput, setInviteInput] = useState('');
+  const [selectedSchool, setSelectedSchool] = useState<ApiMySchool | null>(null);
+  const [downloadsSheetOpen, setDownloadsSheetOpen] = useState(false);
+
   const {colorScheme} = useColorScheme();
   const isDark = colorScheme === 'dark';
   const insets = useSafeAreaInsets();
+
+  const activeDownloads = useOfflineVideoStore(s => s.activeDownloads);
 
   function toggleExpanded(id: string) {
     setExpandedIds(prev => {
@@ -59,12 +67,15 @@ export function SchoolsScreen({
 
   const load = useCallback(async () => {
     try {
-      // Cache-first: paint whatever was saved last time immediately, then refresh underneath.
-      // Waiting for the round trip before showing anything is what made every tap feel slow.
-      const r = await cachedFirst('schools', apiGetMySchools, (fresh) => {
-        setData(fresh);
-        setStale(false);
-      });
+      const r = await cachedFirst(
+        'schools',
+        apiGetMySchools,
+        (fresh) => {
+          setData(fresh);
+          setStale(false);
+        },
+        () => setStale(false),
+      );
       if (r.data) setData(r.data);
       setStale(r.fromCache);
     } finally {
@@ -141,6 +152,16 @@ export function SchoolsScreen({
           contentContainerStyle={{paddingBottom: TAB_BAR_CLEARANCE}}
           renderItem={({item}) => {
             const expanded = expandedIds.has(item.id);
+
+            // Active downloads in this school
+            const schoolDownloads = Object.values(activeDownloads).filter(
+              d => d.schoolId === item.id,
+            );
+            const avgProgress =
+              schoolDownloads.length > 0
+                ? schoolDownloads.reduce((sum, d) => sum + d.progress, 0) / schoolDownloads.length
+                : 0;
+
             return (
               <Pressable
                 onPress={() => navigation.navigate('Courses', {schoolId: item.id, schoolName: item.name})}
@@ -154,9 +175,21 @@ export function SchoolsScreen({
                     )}
                   </View>
                   <View className="min-w-0 flex-1">
-                    <Text className="text-lg font-extrabold text-ink dark:text-dark-ink" numberOfLines={2}>
-                      {item.name}
-                    </Text>
+                    <View className="flex-row items-center justify-between gap-2">
+                      <Text className="flex-1 text-lg font-extrabold text-ink dark:text-dark-ink" numberOfLines={2}>
+                        {item.name}
+                      </Text>
+                      {schoolDownloads.length > 0 && (
+                        <DownloadCardBadge
+                          count={schoolDownloads.length}
+                          averageProgress={avgProgress}
+                          onPress={() => {
+                            setSelectedSchool(item);
+                            setDownloadsSheetOpen(true);
+                          }}
+                        />
+                      )}
+                    </View>
                     <View className="mt-1 flex-row items-center gap-1.5">
                       <Users size={14} color={isDark ? '#a4a7b2' : '#64748b'} />
                       <Text className="text-xs font-semibold text-slate-500 dark:text-dark-muted">
@@ -189,6 +222,26 @@ export function SchoolsScreen({
                 ) : null}
               </Pressable>
             );
+          }}
+        />
+      )}
+
+      {selectedSchool && (
+        <DownloadsBottomSheet
+          visible={downloadsSheetOpen}
+          filterSchoolId={selectedSchool.id}
+          title={selectedSchool.name}
+          subtitle="Yuklanayotgan videolar"
+          onClose={() => setDownloadsSheetOpen(false)}
+          onOpenLesson={(d) => {
+            if (d.courseId) {
+              navigation.navigate('Course', {
+                courseId: d.courseId,
+                title: d.courseTitle || 'Kurs',
+                schoolId: d.schoolId,
+                initialLessonId: d.lessonId,
+              });
+            }
           }}
         />
       )}

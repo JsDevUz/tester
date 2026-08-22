@@ -32,20 +32,20 @@ export function NetworkProvider({children}: {children: React.ReactNode}) {
   }, []);
 
   useEffect(() => {
+    // NetInfo events
     const unsubscribe = NetInfo.addEventListener(state => {
-      const reachable = state.isConnected && state.isInternetReachable !== false;
-      if (reachable === onlineRef.current) return;
-      if (reachable) {
-        // NetInfo's own "internet reachable" probe already did the real-world check;
-        // trust it directly rather than firing a second HEAD request on our own API.
-        setOnline(true);
-      } else {
-        setOnline(false);
-      }
+      const trulyOnline = state.isInternetReachable ?? state.isConnected;
+      // We don't setOnline here immediately to true if it's true, we let check() confirm it if possible, 
+      // but to be responsive we can set it.
+      setOnline(Boolean(trulyOnline));
     });
-    // NetInfo does not always fire an initial event before the first render, so seed the
-    // real value once instead of assuming online.
-    void check();
+    
+    // Initial fetch
+    NetInfo.fetch().then(state => {
+      const trulyOnline = state.isInternetReachable ?? state.isConnected;
+      setOnline(Boolean(trulyOnline));
+      check();
+    });
     return unsubscribe;
   }, [check]);
 

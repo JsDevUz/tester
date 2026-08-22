@@ -1055,6 +1055,7 @@ export function HlsVideoPlayer({
                 {/* Fullscreen Button */}
                 <Pressable
                   onPress={() => {
+                    console.log('[DBG] fullscreen button pressed', {isFullscreen});
                     resumeTimeRef.current = currentTimeRef.current;
                     // Only the fullscreen flag flips here -- activeBlockId stays set, since
                     // clearing it would unmount this very player (CourseScreen only renders

@@ -241,7 +241,7 @@ export function TestTakerScreen({ route, navigation }: Props) {
         if (cancelled) return;
         const ok = await handleSubmit(true);
         if (ok || cancelled) return;
-        await new Promise((resolve) => setTimeout(resolve, 2000));
+        await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
       }
       if (!cancelled) {
         Alert.alert('Xatolik', "Vaqt tugadi, lekin topshirib bo'lmadi. Internetni tekshirib, «Topshirish»ni qayta bosing.");

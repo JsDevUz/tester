@@ -20,6 +20,8 @@ jest.mock('../db', () => ({
       testPins: { findFirst: jest.fn() },
       schoolMembers: { findMany: jest.fn() },
       groupEnrollments: { findMany: jest.fn() },
+      practiceBlocks: { findFirst: jest.fn(), findMany: jest.fn() },
+      lessons: { findFirst: jest.fn() },
     },
     insert: jest.fn(),
   },
@@ -142,6 +144,9 @@ describe('DeliveryService pin access control', () => {
     (db.query.tests.findFirst as jest.Mock).mockResolvedValue(baseTest);
     (db.query.submissions.findFirst as jest.Mock).mockResolvedValue(undefined);
     (db.query.submissions.findMany as jest.Mock).mockResolvedValue([]);
+    // No owning practice block by default -- startSubmission's attempt-limit check then
+    // falls back to the uncapped ceiling without needing a lesson at all.
+    (db.query.practiceBlocks.findFirst as jest.Mock).mockResolvedValue(undefined);
   });
 
   describe('getTestBySlug', () => {
@@ -257,6 +262,86 @@ describe('DeliveryService pin access control', () => {
 
       expect(result.submissionId).toBe('submission-1');
       expect(db.query.schoolMembers.findMany).not.toHaveBeenCalled();
+    });
+  });
+
+  describe('startSubmission practice attempt ceiling', () => {
+    beforeEach(() => {
+      const returning = jest.fn().mockResolvedValue([{ id: 'submission-1' }]);
+      const values = jest.fn(() => ({ returning }));
+      (db.insert as jest.Mock).mockReturnValue({ values });
+      (db.query.practiceBlocks.findFirst as jest.Mock).mockResolvedValue({
+        lessonId: 'lesson-1',
+        testId: 'test-1',
+      });
+    });
+
+    function priorAttempts(count: number) {
+      (db.query.submissions.findMany as jest.Mock).mockResolvedValue(
+        Array.from({ length: count }, (_, i) => ({ id: `sub-${i}`, submittedAt: new Date() })),
+      );
+    }
+
+    it('allows up to 50 attempts when the lesson has no pass threshold', async () => {
+      (db.query.lessons.findFirst as jest.Mock).mockResolvedValue({ passThresholdEnabled: false });
+      priorAttempts(49);
+
+      const result = await service.startSubmission('abc123', 'Student', 'user-1', true);
+
+      expect(result.submissionId).toBe('submission-1');
+    });
+
+    it('blocks the 51st attempt when the lesson has no pass threshold', async () => {
+      (db.query.lessons.findFirst as jest.Mock).mockResolvedValue({ passThresholdEnabled: false });
+      priorAttempts(50);
+
+      await expect(service.startSubmission('abc123', 'Student', 'user-1', true)).rejects.toMatchObject({
+        message: 'ATTEMPT_LIMIT_REACHED',
+      });
+    });
+
+    it('blocks a 4th attempt when the lesson has a pass threshold and the student has not cleared it', async () => {
+      (db.query.lessons.findFirst as jest.Mock).mockResolvedValue({
+        passThresholdEnabled: true,
+        passThresholdPercent: 70,
+      });
+      (db.query.practiceBlocks.findMany as jest.Mock).mockResolvedValue([
+        { type: 'test', testId: 'test-1', maxScore: 10 },
+      ]);
+      // Every attempt scored 0/10 -- below the 70% threshold, so the lesson is not passed.
+      (db.query.submissions.findFirst as jest.Mock).mockResolvedValue({
+        score: 0,
+        total: 10,
+        practiceScoreOverride: null,
+        submittedAt: new Date(),
+      });
+      priorAttempts(3);
+
+      await expect(service.startSubmission('abc123', 'Student', 'user-1', true)).rejects.toMatchObject({
+        message: 'ATTEMPT_LIMIT_REACHED',
+      });
+    });
+
+    it('raises the ceiling to 50 once the student has cleared the lesson\'s pass threshold within the first 3 attempts', async () => {
+      (db.query.lessons.findFirst as jest.Mock).mockResolvedValue({
+        passThresholdEnabled: true,
+        passThresholdPercent: 70,
+      });
+      (db.query.practiceBlocks.findMany as jest.Mock).mockResolvedValue([
+        { type: 'test', testId: 'test-1', maxScore: 10 },
+      ]);
+      // Scored 8/10 -- above the 70% threshold, so the lesson counts as passed.
+      (db.query.submissions.findFirst as jest.Mock).mockResolvedValue({
+        score: 8,
+        total: 10,
+        practiceScoreOverride: null,
+        submittedAt: new Date(),
+      });
+      priorAttempts(3);
+
+      const result = await service.startSubmission('abc123', 'Student', 'user-1', true);
+
+      expect(result.submissionId).toBe('submission-1');
     });
   });
 
