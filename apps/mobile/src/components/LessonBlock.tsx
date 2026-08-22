@@ -377,6 +377,11 @@ export function LessonBlock({
       <LazyVideoPlayer
         blockId={block.id}
         title={block.label || block.fileName || lessonTitle || 'Video dars'}
+        lessonId={lessonId}
+        lessonTitle={lessonTitle}
+        courseId={courseId}
+        courseTitle={courseTitle}
+        schoolId={schoolId}
         posterUrl={block.previewUrl}
       />
     );
