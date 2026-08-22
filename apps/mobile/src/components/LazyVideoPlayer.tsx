@@ -1,41 +1,63 @@
-import React, {useState} from 'react';
-import {Image, Pressable, View} from 'react-native';
+import React, {useCallback, useRef} from 'react';
+import {Image, Pressable, View, type LayoutChangeEvent} from 'react-native';
 import {Play} from 'lucide-react-native';
-import {HlsVideoPlayer} from './HlsVideoPlayer';
+import {useActiveVideoStore} from '../store/activeVideoStore';
 
 /**
- * Shows a poster until the student taps, then mounts the real player.
+ * Shows a poster until the student taps, then hands off to the single
+ * screen-level HlsVideoPlayer (see CourseScreen) by marking this block as
+ * the lesson's active video.
  *
- * A lesson can hold several video blocks, and every mounted player immediately opens a
- * playback session, checks the offline registry and starts pulling segments. On a phone that
- * meant several streams competing for one connection before anything had been watched, which
- * made the first video slower to start rather than faster.
- *
- * Once mounted the player stays mounted, so pausing does not discard the buffer.
+ * Once active, this component stops drawing the poster and instead reports
+ * its own on-screen rect on every layout pass -- CourseScreen positions the
+ * real player to sit exactly on top of that rect. The player itself never
+ * lives here, so switching a block active/inactive never mounts or unmounts
+ * a <Video>.
  */
 export function LazyVideoPlayer({
   blockId,
   title,
   posterUrl,
-  watermark,
 }: {
   blockId: string;
   title?: string;
   posterUrl?: string | null;
-  watermark?: boolean;
 }) {
-  const [activated, setActivated] = useState(false);
+  const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
+  const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const setPlaceholderRect = useActiveVideoStore(s => s.setPlaceholderRect);
+  const isActive = activeBlockId === blockId;
+  const containerRef = useRef<View>(null);
 
-  if (activated) {
-    // autoPlay: the tap that mounted the player was already the "play" tap.
-    return <HlsVideoPlayer blockId={blockId} title={title} watermark={watermark} autoPlay />;
+  // Re-measures on every layout pass (not just once on activation) so
+  // scrolling the lesson while this video plays inline keeps the real
+  // player, which reads this rect from the store, glued to the placeholder.
+  const reportLayout = useCallback(
+    (_e: LayoutChangeEvent) => {
+      containerRef.current?.measureInWindow((x, y, width, height) => {
+        if (width > 0 && height > 0) {
+          setPlaceholderRect({x, y, width, height});
+        }
+      });
+    },
+    [setPlaceholderRect],
+  );
+
+  if (isActive) {
+    return (
+      <View
+        ref={containerRef}
+        onLayout={reportLayout}
+        className="aspect-video w-full overflow-hidden rounded-2xl"
+      />
+    );
   }
 
   return (
     <Pressable
-      onPress={() => setActivated(true)}
+      onPress={() => setActiveBlockId(blockId)}
       accessibilityRole="button"
-      accessibilityLabel="Videoni ijro etish"
+      accessibilityLabel={title ? `${title}ni ijro etish` : 'Videoni ijro etish'}
       className="aspect-video w-full overflow-hidden rounded-2xl bg-black">
       {posterUrl ? (
         <Image

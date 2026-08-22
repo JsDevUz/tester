@@ -191,9 +191,19 @@ function useLessonHtmlStyles() {
 
 export function LessonBlock({
   block,
+  lessonId,
+  lessonTitle,
+  courseId,
+  courseTitle,
+  schoolId,
   onOpenLiveClassReplay,
 }: {
   block: ApiContentBlock;
+  lessonId?: string;
+  lessonTitle?: string;
+  courseId?: string;
+  courseTitle?: string;
+  schoolId?: string;
   onOpenLiveClassReplay: (classSessionId: string) => void;
 }) {
   const { width } = useWindowDimensions();
@@ -339,9 +349,8 @@ export function LessonBlock({
     return (
       <LazyVideoPlayer
         blockId={block.id}
-        title={block.label || block.fileName || 'Video dars'}
+        title={block.label || block.fileName || lessonTitle || 'Video dars'}
         posterUrl={block.previewUrl}
-        watermark
       />
     );
   }
