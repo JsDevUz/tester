@@ -1,5 +1,5 @@
 import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
-import {Alert, InteractionManager, Modal, Pressable, ScrollView, Text, View} from 'react-native';
+import {Alert, Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
   ArrowLeft,
@@ -166,10 +166,7 @@ export function CourseScreen({route, navigation}: Props) {
   useEffect(() => {
     if (!selected) return;
     if (renderedLessonId === selected.lesson.id) return;
-    const handle = InteractionManager.runAfterInteractions(() => {
-      setRenderedLessonId(selected.lesson.id);
-    });
-    return () => handle.cancel();
+    setRenderedLessonId(selected.lesson.id);
   }, [selected, renderedLessonId]);
   const unlockedLessonIds = useMemo(
     () => computeUnlockedLessonIds(course?.modules ?? []),
