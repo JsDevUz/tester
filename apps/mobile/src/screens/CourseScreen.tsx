@@ -71,6 +71,7 @@ export function CourseScreen({route, navigation}: Props) {
   const scrollViewRef = useRef<ScrollView>(null);
   const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
   const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const videoIsFullscreen = useActiveVideoStore(s => s.isFullscreen);
 
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -209,7 +210,10 @@ export function CourseScreen({route, navigation}: Props) {
       return;
     }
     navigation.setOptions({
-      headerShown: true,
+      // Hidden while a video is open fullscreen -- the video covers the header's spot, so
+      // reserving room for it there would show as a gap above the video. PiP is small
+      // enough that the header stays useful for navigating between lessons.
+      headerShown: !(activeBlockId && videoIsFullscreen),
       // Android left-aligns header titles by default, which pushes this one against the back
       // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
       headerTitleAlign: 'center',
@@ -238,7 +242,7 @@ export function CourseScreen({route, navigation}: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark]);
+  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark, activeBlockId, videoIsFullscreen]);
 
   async function markComplete() {
     if (!selected) return;

@@ -43,6 +43,7 @@ import { disableSecureScreen, enableSecureScreen } from '../lib/secureScreen';
 import { useNetwork } from '../providers/NetworkProvider';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
+import { useActiveVideoStore } from '../store/activeVideoStore';
 import { getOfflineVideoMeta, isOfflineVideoComplete } from '../lib/offlineVideoService';
 
 const API_BASE = API_URL.replace(/\/$/, '');
@@ -221,6 +222,16 @@ export function HlsVideoPlayer({
   const [progressOpen, setProgressOpen] = useState(false);
   const [mode, setMode] = useState<'fullscreen' | 'pip'>('fullscreen');
   const isFullscreen = mode === 'fullscreen';
+  const setStoreIsFullscreen = useActiveVideoStore(s => s.setIsFullscreen);
+
+  // Mirrors local `mode` into the store so CourseScreen can hide its native header only
+  // while truly fullscreen (PiP is small enough that the header stays useful). Resets to
+  // true on unmount so a later video reopens fullscreen-first regardless of how the
+  // previous one was left.
+  useEffect(() => {
+    setStoreIsFullscreen(isFullscreen);
+    return () => setStoreIsFullscreen(true);
+  }, [isFullscreen, setStoreIsFullscreen]);
 
   const [isBuffering, setIsBuffering] = useState(false);
   const insets = useSafeAreaInsets();
@@ -349,14 +360,18 @@ export function HlsVideoPlayer({
     return () => disableSecureScreen();
   }, []);
 
-  // Hidden for as long as this component is mounted -- not tied to `mode`, since PiP is
-  // still "a video open" as far as the rest of the app is concerned. Toggling this per mode
-  // change made the status bar (and with it, the screen behind a transparent PiP Modal)
-  // reflow every time PiP was entered, which is what showed as a gap above the header.
+  // Hidden only in fullscreen. PiP shares the screen with the rest of the app (the lesson
+  // is visible and scrollable behind it), so the status bar has no reason to disappear
+  // there. This also sidesteps a race with React Navigation's own status-bar handling: this
+  // effect used to hide it for the component's whole lifetime and restore it on unmount,
+  // but if that unmount landed while a screen transition (e.g. navigating back while a PiP
+  // video was still open) was resolving its own status-bar state, the two fought over the
+  // final value and left a gap the height of the mismatch above the next screen's header.
   useEffect(() => {
+    if (mode !== 'fullscreen') return;
     StatusBar.setHidden(true, 'fade');
     return () => StatusBar.setHidden(false, 'fade');
-  }, []);
+  }, [mode]);
 
   // Connectivity comes from the provider rather than a probe of our own: opening a video
   // while already known-offline should go straight to the local copy instead of burning a
@@ -1338,10 +1353,20 @@ export function HlsVideoPlayer({
               </Pressable>
               {/* Compact transport: play/pause and +/-5s, the minimum a viewer needs
                   without the full control bar (timeline/speed/subtitles/download), which
-                  don't fit usefully at this size. */}
+                  don't fit usefully at this size. Sized to just wrap its buttons (not
+                  absolute inset-0) so it only occupies the middle of the box -- covering
+                  the full box with a "box-none" View still intercepted drags meant for the
+                  PanResponder on the box itself, even over the transparent gaps between
+                  buttons. */}
               <View
                 pointerEvents="box-none"
-                className="absolute inset-0 flex-row items-center justify-center gap-3">
+                style={{
+                  position: 'absolute',
+                  top: '50%',
+                  left: '50%',
+                  transform: [{ translateX: -60 }, { translateY: -20 }],
+                }}
+                className="flex-row items-center justify-center gap-3">
                 <Pressable
                   onPress={() => skipBy(-5)}
                   className="h-8 w-8 items-center justify-center rounded-full bg-black/60">
