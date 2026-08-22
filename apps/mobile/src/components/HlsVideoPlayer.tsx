@@ -3,7 +3,6 @@ import {
   ActivityIndicator,
   Alert,
   AppState,
-  Modal,
   PanResponder,
   Platform,
   Pressable,
@@ -13,6 +12,11 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
+import Animated, {
+  useAnimatedStyle,
+  useSharedValue,
+  withTiming,
+} from 'react-native-reanimated';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import Svg, { Circle, Defs, LinearGradient as SvgLinearGradient, Rect, Stop } from 'react-native-svg';
 import ReactNativeBlobUtil from 'react-native-blob-util';
@@ -42,6 +46,7 @@ import { useNetwork } from '../providers/NetworkProvider';
 import { useAuthStore } from '../store/authStore';
 import { useOfflineVideoStore } from '../store/offlineVideoStore';
 import { getOfflineVideoMeta, isOfflineVideoComplete } from '../lib/offlineVideoService';
+import { useActiveVideoStore, type PlaceholderRect } from '../store/activeVideoStore';
 
 const API_BASE = API_URL.replace(/\/$/, '');
 
@@ -169,20 +174,32 @@ export function HlsVideoPlayer({
   watermark = true,
   title,
   lessonId,
+  lessonTitle,
   courseId,
+  courseTitle,
+  schoolId,
   autoPlay = false,
+  rect,
 }: {
   blockId: string;
   watermark?: boolean;
   title?: string;
   lessonId?: string;
+  lessonTitle?: string;
   courseId?: string;
+  courseTitle?: string;
+  schoolId?: string;
   /**
    * Start playing immediately. Set when the player was mounted by a play press (see
    * LazyVideoPlayer) -- the viewer already asked to watch, so a second press is a step that
    * should not exist.
    */
   autoPlay?: boolean;
+  /**
+   * The on-screen rect (from the lesson's placeholder) this player should sit on top of
+   * when not fullscreen. Null for one frame before the placeholder's first layout lands.
+   */
+  rect: PlaceholderRect | null;
 }) {
   const [manifestUrl, setManifestUrl] = useState<string | null>(null);
   const [subtitleUrl, setSubtitleUrl] = useState<string | null>(null);
@@ -214,7 +231,11 @@ export function HlsVideoPlayer({
   const pendingSeekRef = useRef<number | null>(null);
   const seekStartedAtRef = useRef(0);
   const [progressOpen, setProgressOpen] = useState(false);
-  const [isFullscreen, setIsFullscreen] = useState(false);
+  const isFullscreen = useActiveVideoStore(s => s.isFullscreen);
+  const setIsFullscreen = useActiveVideoStore(s => s.setIsFullscreen);
+  const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const wrapperRef = useRef<View>(null);
+
   const [isBuffering, setIsBuffering] = useState(false);
   const insets = useSafeAreaInsets();
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
@@ -484,7 +505,10 @@ export function HlsVideoPlayer({
     void startDownload(blockId, {
       title,
       lessonId,
+      lessonTitle,
       courseId,
+      courseTitle,
+      schoolId,
       durationSec: durationRef.current,
     }).then(result => {
       // Success needs no dialog -- the badge switches to its "downloaded" state. Only a
@@ -496,7 +520,7 @@ export function HlsVideoPlayer({
         }
       }
     });
-  }, [blockId, title, lessonId, courseId, startDownload]);
+  }, [blockId, title, lessonId, lessonTitle, courseId, courseTitle, schoolId, startDownload]);
 
   // Caching follows PLAYBACK, not the play button. With autoPlay the button is never pressed --
   // the poster tap starts the video directly -- so hanging the download off the button meant a
@@ -995,7 +1019,10 @@ export function HlsVideoPlayer({
           </View>
           ) : null}
 
-          {controlsVisible ? (
+          {/* Buffering (e.g. right after a play press, before the first frame lands) shows only
+              the spinner above -- surfacing play/pause/the timeline over a still-black video
+              reads as broken controls for a video that isn't there yet. */}
+          {controlsVisible && !(isBuffering && !paused) ? (
             <>
               {/* Scrim behind the controls: white text and a white thumb disappear over bright
                   footage (a scanned page, a slide). A smooth SVG gradient does this without the
@@ -1028,7 +1055,13 @@ export function HlsVideoPlayer({
                 <Pressable
                   onPress={() => {
                     resumeTimeRef.current = currentTimeRef.current;
-                    setIsFullscreen(v => !v);
+                    if (!isFullscreen) {
+                      setActiveBlockId(blockId);
+                      setIsFullscreen(true);
+                    } else {
+                      setIsFullscreen(false);
+                      setActiveBlockId(null);
+                    }
                   }}
                   className="h-8 w-8 items-center justify-center rounded-lg bg-black/75">
                   {isFullscreen ? <Minimize2 size={16} color="white" /> : <Maximize2 size={16} color="white" />}
@@ -1187,40 +1220,78 @@ export function HlsVideoPlayer({
     </>
   );
 
+  // Drives the container's position/size across three states: sitting on the placeholder,
+  // animating to/from fullscreen, and the one frame before the placeholder's first layout
+  // lands (opacity 0 avoids a flash at (0,0) instead of guessing a position).
+  const rectX = useSharedValue(rect?.x ?? 0);
+  const rectY = useSharedValue(rect?.y ?? 0);
+  const rectWidth = useSharedValue(rect?.width ?? 0);
+  const rectHeight = useSharedValue(rect?.height ?? 0);
+  const mountOpacity = useSharedValue(rect ? 1 : 0);
+  const progressTop = useSharedValue((rect?.y ?? 0) + (rect?.height ?? 0));
+
+  useEffect(() => {
+    if (isFullscreen) {
+      rectX.value = withTiming(0, { duration: 220 });
+      rectY.value = withTiming(0, { duration: 220 });
+      rectWidth.value = withTiming(windowWidth, { duration: 220 });
+      rectHeight.value = withTiming(windowHeight, { duration: 220 });
+      mountOpacity.value = withTiming(1, { duration: 120 });
+      return;
+    }
+    if (!rect) return;
+    rectX.value = withTiming(rect.x, { duration: 220 });
+    rectY.value = withTiming(rect.y, { duration: 220 });
+    rectWidth.value = withTiming(rect.width, { duration: 220 });
+    rectHeight.value = withTiming(rect.height, { duration: 220 });
+    mountOpacity.value = withTiming(1, { duration: 120 });
+    progressTop.value = withTiming(rect.y + rect.height, { duration: 220 });
+  }, [isFullscreen, rect, windowWidth, windowHeight, rectX, rectY, rectWidth, rectHeight, mountOpacity, progressTop]);
+
+  const animatedContainerStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: rectX.value,
+    top: rectY.value,
+    width: rectWidth.value,
+    height: rectHeight.value,
+    opacity: mountOpacity.value,
+    backgroundColor: 'black',
+    borderRadius: isFullscreen ? 0 : 16,
+    overflow: 'hidden',
+    zIndex: 50,
+  }));
+
+  const animatedProgressStyle = useAnimatedStyle(() => ({
+    position: 'absolute',
+    left: rect?.x ?? 0,
+    top: progressTop.value,
+    width: rect?.width ?? 0,
+    opacity: isFullscreen || !rect ? 0 : 1,
+  }));
+
   return (
-    <View>
-      {isFullscreen ? (
-        <Modal
-          visible
-          transparent={false}
-          statusBarTranslucent
-          animationType="fade"
-          supportedOrientations={['portrait', 'landscape']}
-          onRequestClose={() => setIsFullscreen(false)}>
-          <View style={{ width: windowWidth, height: windowHeight, backgroundColor: 'black' }}>
-            {mediaSurface}
-            {(error || !manifestUrl) && (
-              <Pressable
-                onPress={() => setIsFullscreen(false)}
-                style={{
-                  position: 'absolute',
-                  top: Math.max(16, insets.top + 8),
-                  right: Math.max(20, insets.right + 12),
-                  zIndex: 60,
-                }}
-                className="h-9 w-9 items-center justify-center rounded-full bg-black/70 border border-white/20">
-                <Minimize2 size={18} color="white" />
-              </Pressable>
-            )}
-          </View>
-        </Modal>
-      ) : (
-        <View className="mt-3 aspect-video w-full overflow-hidden rounded-2xl bg-black">
-          {mediaSurface}
-        </View>
-      )}
-      {!isFullscreen && videoDuration !== null && videoDuration > 0 && (
-        <View className="mt-2">
+    <>
+      <Animated.View ref={wrapperRef} style={animatedContainerStyle}>
+        {mediaSurface}
+        {(error || !manifestUrl) && isFullscreen && (
+          <Pressable
+            onPress={() => {
+              setIsFullscreen(false);
+              setActiveBlockId(null);
+            }}
+            style={{
+              position: 'absolute',
+              top: Math.max(16, insets.top + 8),
+              right: Math.max(20, insets.right + 12),
+              zIndex: 60,
+            }}
+            className="h-9 w-9 items-center justify-center rounded-full bg-black/70 border border-white/20">
+            <Minimize2 size={18} color="white" />
+          </Pressable>
+        )}
+      </Animated.View>
+      {!isFullscreen && rect && videoDuration !== null && videoDuration > 0 && (
+        <Animated.View style={[animatedProgressStyle, { marginTop: 8 }]} pointerEvents="box-none">
           <Pressable onPress={() => setProgressOpen(v => !v)} className="flex-row items-center justify-between">
             <View className="flex-row items-center gap-1">
               <Text className="text-xs font-medium text-slate-500 dark:text-dark-muted">
@@ -1252,8 +1323,8 @@ export function HlsVideoPlayer({
               ))}
             </View>
           )}
-        </View>
+        </Animated.View>
       )}
-    </View>
+    </>
   );
 }
