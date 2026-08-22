@@ -1,4 +1,4 @@
-import React, {useCallback, useEffect, useLayoutEffect, useMemo, useState} from 'react';
+import React, {useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState} from 'react';
 import {Alert, InteractionManager, Modal, Pressable, ScrollView, Text, View} from 'react-native';
 import type {NativeStackScreenProps} from '@react-navigation/native-stack';
 import {
@@ -27,7 +27,9 @@ import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
+import {HlsVideoPlayer} from '../components/HlsVideoPlayer';
 import {PracticeScreen} from '../components/PracticeScreen';
+import {useActiveVideoStore} from '../store/activeVideoStore';
 import {useNetwork} from '../providers/NetworkProvider';
 import {useOfflineVideoStore} from '../store/offlineVideoStore';
 import {isOfflineVideoComplete} from '../lib/offlineVideoService';
@@ -51,7 +53,7 @@ export function CourseScreen({route, navigation}: Props) {
   useEffect(() => {
     void loadOfflineRegistry();
   }, [loadOfflineRegistry]);
-  const {courseId} = route.params;
+  const {courseId, schoolId} = route.params;
   const [course, setCourse] = useState<ApiMyCourseDetail | null>(null);
   const [selectedLessonId, setSelectedLessonId] = useState<string | null>(null);
   const [showPractice, setShowPractice] = useState(false);
@@ -66,6 +68,12 @@ export function CourseScreen({route, navigation}: Props) {
   // lesson to a separate, one-tick-deferred value lets the tap's own UI work (closing the
   // sheet, highlighting the row) paint first; the content swaps in the frame right after.
   const [renderedLessonId, setRenderedLessonId] = useState<string | null>(null);
+  const isFullscreen = useActiveVideoStore(s => s.isFullscreen);
+  const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
+  const placeholderRect = useActiveVideoStore(s => s.placeholderRect);
+  const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const scrollViewRef = useRef<ScrollView>(null);
+
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
   const isDark = colorScheme === 'dark';
@@ -173,7 +181,8 @@ export function CourseScreen({route, navigation}: Props) {
 
   useEffect(() => {
     setShowPractice(false);
-  }, [selectedLessonId]);
+    setActiveBlockId(null);
+  }, [selectedLessonId, setActiveBlockId]);
 
   useEffect(() => {
     if (!selectedLessonId) return;
@@ -202,6 +211,7 @@ export function CourseScreen({route, navigation}: Props) {
       return;
     }
     navigation.setOptions({
+      headerShown: !isFullscreen,
       // Android left-aligns header titles by default, which pushes this one against the back
       // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
       headerTitleAlign: 'center',
@@ -230,7 +240,7 @@ export function CourseScreen({route, navigation}: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark]);
+  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark, isFullscreen]);
 
   async function markComplete() {
     if (!selected) return;
@@ -340,112 +350,153 @@ export function CourseScreen({route, navigation}: Props) {
       <Screen>
         <OfflineBanner />
         <StaleNote stale={stale} />
-        <ScrollView contentContainerClassName="p-5 pb-12">
-          <Text className="mb-2 text-xs font-semibold text-slate-400 dark:text-dark-muted">
-            {selected.module.title}
-          </Text>
-          <Text className="text-2xl font-black text-ink dark:text-dark-ink">{lesson.title}</Text>
-
-          <Pressable
-            onPress={() => void openMessenger()}
-            className="mb-5 mt-5 flex-row items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 dark:border-transparent dark:bg-dark-surface-2">
-            <View className="min-w-0 flex-1 flex-row items-center gap-3">
-              <View className="h-9 w-9 items-center justify-center rounded-full bg-slate-900 dark:bg-dark-surface">
-                <MessageCircle size={16} color="white" />
-              </View>
-              <View className="min-w-0 flex-1">
-                <Text numberOfLines={1} className="text-xs font-bold text-ink dark:text-dark-ink">
-                  {course.curatorName
-                    ? `${course.curatorName} bilan suhbatlashish`
-                    : 'Ustozga murojaat'}
-                </Text>
-                <Text numberOfLines={1} className="text-[11px] font-semibold text-slate-500 dark:text-dark-muted">
-                  {course.curatorName
-                    ? 'Kuratorga savolingizni berishingiz mumkin'
-                    : "Ustozingizga yozishingiz mumkin"}
-                </Text>
-              </View>
+        <ScrollView
+          ref={scrollViewRef}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
+          className="flex-1">
+          {selectedLessonId === null || !renderedLesson ? (
+            <View className="py-20">
+              <Loading />
             </View>
-            <MessageCircle size={18} color={isDark ? '#a4a7b2' : '#334155'} />
-          </Pressable>
-
-          {renderedLesson.lesson.blocks.length === 0 ? (
-            <View className="rounded-2xl border border-slate-100 bg-white py-16 dark:border-transparent dark:bg-dark-surface-2">
-              <Text className="text-center text-sm font-semibold text-slate-400 dark:text-dark-muted">
-                Dars kontenti hozircha tayyor emas
-              </Text>
-            </View>
-          ) : (
-            renderedLesson.lesson.blocks.map(block => (
-              <LessonBlock key={block.id} block={block} onOpenLiveClassReplay={openLiveClassReplay} />
-            ))
-          )}
-
-          {!hasPractice ? (
-            lesson.completed ? (
-              <>
-                <View className="mt-7 flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-500/10">
-                  <CheckCircle2 size={20} color="#10b981" />
-                  <Text className="font-bold text-emerald-700 dark:text-emerald-400">Dars tugatilgan</Text>
-                </View>
-                <View className="mt-3 flex-row gap-3">
-                  {canGoPrev && (
-                    <Pressable
-                      onPress={goToPrevLesson}
-                      className="flex-1 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
-                      <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
-                    </Pressable>
-                  )}
-                  {canGoNext && (
-                    <Pressable onPress={goToNextLesson} className="flex-1 items-center rounded-2xl bg-brand py-3.5">
-                      <Text className="font-bold text-white">Keyingi dars</Text>
-                    </Pressable>
-                  )}
-                </View>
-              </>
-            ) : (
-              <>
-                <Pressable
-                  onPress={async () => {
-                    if (!online) {
-                      Alert.alert('Internet kerak', "Darsni tugatish uchun internet kerak.");
-                      return;
-                    }
-                    try {
-                      await markComplete();
-                    } catch (error) {
-                      Alert.alert('Xatolik', getApiErrorMessage(error, "Darsni tugatib bo'lmadi."));
-                    }
-                  }}
-                  className="mt-7 items-center rounded-2xl bg-brand py-3.5">
-                  <Text className="font-bold text-white">
-                    {selectedIndex + 1 >= lessons.length ? 'Yakunlash' : 'Keyingi dars'}
-                  </Text>
-                </Pressable>
-                {canGoPrev && (
-                  <Pressable
-                    onPress={goToPrevLesson}
-                    className="mt-3 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
-                    <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
-                  </Pressable>
-                )}
-              </>
-            )
           ) : (
             <>
-              <Pressable onPress={() => setShowPractice(true)} className="mt-7 items-center rounded-2xl bg-brand py-3.5">
-                <Text className="font-bold text-white">Amaliyot</Text>
+              <Text className="mb-2 text-xs font-semibold text-brand dark:text-brand-light">
+                {course.title}
+              </Text>
+              <Text className="text-2xl font-black text-ink dark:text-dark-ink">{lesson.title}</Text>
+
+              <Pressable
+                onPress={() => void openMessenger()}
+                className="mb-5 mt-5 flex-row items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 dark:border-transparent dark:bg-dark-surface-2">
+                <View className="min-w-0 flex-1 flex-row items-center gap-3">
+                  <View className="h-9 w-9 items-center justify-center rounded-full bg-slate-900 dark:bg-dark-surface">
+                    <MessageCircle size={16} color="white" />
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text numberOfLines={1} className="text-xs font-bold text-ink dark:text-dark-ink">
+                      {course.curatorName
+                        ? `${course.curatorName} bilan suhbatlashish`
+                        : 'Ustozga murojaat'}
+                    </Text>
+                    <Text numberOfLines={1} className="text-[11px] font-semibold text-slate-500 dark:text-dark-muted">
+                      {course.curatorName
+                        ? 'Kuratorga savolingizni berishingiz mumkin'
+                        : "Ustozingizga yozishingiz mumkin"}
+                    </Text>
+                  </View>
+                </View>
+                <MessageCircle size={18} color={isDark ? '#a4a7b2' : '#334155'} />
               </Pressable>
-              {canGoPrev && (
-                <Pressable
-                  onPress={goToPrevLesson}
-                  className="mt-3 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
-                  <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
-                </Pressable>
+
+              {renderedLesson.lesson.blocks.length === 0 ? (
+                <View className="rounded-2xl border border-slate-100 bg-white py-16 dark:border-transparent dark:bg-dark-surface-2">
+                  <Text className="text-center text-sm font-semibold text-slate-400 dark:text-dark-muted">
+                    Dars kontenti hozircha tayyor emas
+                  </Text>
+                </View>
+              ) : (
+                renderedLesson.lesson.blocks.map(block => (
+                  <LessonBlock
+                    key={block.id}
+                    block={block}
+                    onOpenLiveClassReplay={openLiveClassReplay}
+                    lessonId={lesson.id}
+                    lessonTitle={lesson.title}
+                    courseId={courseId}
+                    courseTitle={course.title}
+                    schoolId={schoolId}
+                  />
+                ))
               )}
+
+              {
+                !hasPractice ? (
+                  lesson.completed ? (
+                    <>
+                      <View className="mt-7 flex-row items-center justify-center gap-2 rounded-2xl bg-emerald-50 p-4 dark:bg-emerald-500/10">
+                        <CheckCircle2 size={20} color="#10b981" />
+                        <Text className="font-bold text-emerald-700 dark:text-emerald-400">Dars tugatilgan</Text>
+                      </View>
+                      <View className="mt-3 flex-row gap-3">
+                        {canGoPrev && (
+                          <Pressable
+                            onPress={goToPrevLesson}
+                            className="flex-1 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
+                            <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
+                          </Pressable>
+                        )}
+                        {canGoNext && (
+                          <Pressable onPress={goToNextLesson} className="flex-1 items-center rounded-2xl bg-brand py-3.5">
+                            <Text className="font-bold text-white">Keyingi dars</Text>
+                          </Pressable>
+                        )}
+                      </View>
+                    </>
+                  ) : (
+                    <>
+                      <Pressable
+                        onPress={async () => {
+                          if (!online) {
+                            Alert.alert('Internet kerak', "Darsni tugatish uchun internet kerak.");
+                            return;
+                          }
+                          try {
+                            await markComplete();
+                          } catch (error) {
+                            Alert.alert('Xatolik', getApiErrorMessage(error, "Darsni tugatib bo'lmadi."));
+                          }
+                        }}
+                        className="mt-7 items-center rounded-2xl bg-brand py-3.5">
+                        <Text className="font-bold text-white">
+                          {selectedIndex + 1 >= lessons.length ? 'Yakunlash' : 'Keyingi dars'}
+                        </Text>
+                      </Pressable>
+                      {canGoPrev && (
+                        <Pressable
+                          onPress={goToPrevLesson}
+                          className="mt-3 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
+                          <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
+                        </Pressable>
+                      )}
+                    </>
+                  )
+                ) : (
+                  <>
+                    <Pressable onPress={() => setShowPractice(true)} className="mt-7 items-center rounded-2xl bg-brand py-3.5">
+                      <Text className="font-bold text-white">Amaliyot</Text>
+                    </Pressable>
+                    {canGoPrev && (
+                      <Pressable
+                        onPress={goToPrevLesson}
+                        className="mt-3 items-center rounded-2xl bg-slate-100 py-3.5 dark:bg-dark-surface-2">
+                        <Text className="font-bold text-ink dark:text-dark-ink">Oldingi dars</Text>
+                      </Pressable>
+                    )}
+                  </>
+                )
+              }
             </>
           )}
         </ScrollView>
+        {activeBlockId && lesson.blocks.some(b => b.id === activeBlockId) && (
+          <HlsVideoPlayer
+            blockId={activeBlockId}
+            title={
+              lesson.blocks.find(b => b.id === activeBlockId)?.label ||
+              lesson.blocks.find(b => b.id === activeBlockId)?.fileName ||
+              lesson.title
+            }
+            lessonId={lesson.id}
+            lessonTitle={lesson.title}
+            courseId={courseId}
+            courseTitle={course.title}
+            schoolId={schoolId}
+            watermark
+            autoPlay
+            rect={placeholderRect}
+          />
+        )}
         <Modal
           visible={lessonsListOpen}
           animationType="slide"
