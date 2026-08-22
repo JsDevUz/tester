@@ -6,6 +6,11 @@
         <item name="android:editTextBackground">@drawable/rn_edit_text_material</item>
         <!-- Allow content to render in the camera punch-hole / notch area -->
         <item name="android:windowLayoutInDisplayCutoutMode">shortEdges</item>
+        <!-- Without this the OS shows its own default (near-black) background for the
+             moment between the Activity starting and the first JS-rendered View painting
+             -- a visible flash to a different color right before the app's own loading
+             screen (also app_canvas) appears. -->
+        <item name="android:windowBackground">@color/app_canvas</item>
     </style>
 
 </resources>

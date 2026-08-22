@@ -33,7 +33,7 @@ export default function App() {
 
   if (!hydrated || !themeHydrated) {
     return (
-      <View className="flex-1 items-center justify-center bg-white dark:bg-dark-canvas">
+      <View className="flex-1 items-center justify-center bg-canvas dark:bg-dark-canvas">
         <ActivityIndicator color="#6366f1" />
       </View>
     );
@@ -46,7 +46,7 @@ export default function App() {
           <LiveNotificationsProvider>
             <StatusBar
               barStyle={isDark ? 'light-content' : 'dark-content'}
-              backgroundColor={isDark ? '#1b1c22' : '#ffffff'}
+              backgroundColor={isDark ? '#1b1c22' : '#f1f5f9'}
               translucent={false}
             />
             <NavigationContainer linking={getLinking(!!token)}>

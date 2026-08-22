@@ -1,3 +1,7 @@
 <resources>
     <color name="launcher_background">#67C6FE</color>
+    <!-- Matches the app's own "canvas" background (tailwind.config.js) so the moment
+         between the OS showing this Activity and the first JS-rendered screen painting
+         doesn't read as a flash to a different color. -->
+    <color name="app_canvas">#f1f5f9</color>
 </resources>
