@@ -27,9 +27,7 @@ import {computeCourseStars, computeUnlockedLessonIds, isLessonPassing} from '../
 import {getApiErrorMessage} from '../lib/errors';
 import {Loading, OfflineBanner, Screen, StaleNote} from '../components/Ui';
 import {LessonBlock} from '../components/LessonBlock';
-import {HlsVideoPlayer} from '../components/HlsVideoPlayer';
 import {PracticeScreen} from '../components/PracticeScreen';
-import {useActiveVideoStore} from '../store/activeVideoStore';
 import {useNetwork} from '../providers/NetworkProvider';
 import {useOfflineVideoStore} from '../store/offlineVideoStore';
 import {isOfflineVideoComplete} from '../lib/offlineVideoService';
@@ -68,33 +66,7 @@ export function CourseScreen({route, navigation}: Props) {
   // lesson to a separate, one-tick-deferred value lets the tap's own UI work (closing the
   // sheet, highlighting the row) paint first; the content swaps in the frame right after.
   const [renderedLessonId, setRenderedLessonId] = useState<string | null>(null);
-  const isFullscreen = useActiveVideoStore(s => s.isFullscreen);
-  const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
-  const placeholderRect = useActiveVideoStore(s => s.placeholderRect);
-  const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
-  const setScreenAnchorRef = useActiveVideoStore(s => s.setScreenAnchorRef);
-  const bumpScrollTick = useActiveVideoStore(s => s.bumpScrollTick);
   const scrollViewRef = useRef<ScrollView>(null);
-  const screenRef = useRef<View>(null);
-
-  // HlsVideoPlayer positions itself against this same node (not the window) so its
-  // absolute coordinates are correct regardless of the native header's height.
-  useEffect(() => {
-    setScreenAnchorRef(screenRef);
-    return () => setScreenAnchorRef(null);
-  }, [setScreenAnchorRef]);
-
-  // Scrolling moves the active video's placeholder without firing its onLayout (only the
-  // ScrollView's offset changes, not the placeholder's own size/position within it) --
-  // this nudges the real player to re-measure and follow. Throttled: onScroll otherwise
-  // fires far more often than a resize animation needs to track.
-  const lastScrollBumpRef = useRef(0);
-  const handleLessonScroll = useCallback(() => {
-    const now = Date.now();
-    if (now - lastScrollBumpRef.current < 32) return;
-    lastScrollBumpRef.current = now;
-    bumpScrollTick();
-  }, [bumpScrollTick]);
 
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -203,8 +175,7 @@ export function CourseScreen({route, navigation}: Props) {
 
   useEffect(() => {
     setShowPractice(false);
-    setActiveBlockId(null);
-  }, [selectedLessonId, setActiveBlockId]);
+  }, [selectedLessonId]);
 
   useEffect(() => {
     if (!selectedLessonId) return;
@@ -233,7 +204,7 @@ export function CourseScreen({route, navigation}: Props) {
       return;
     }
     navigation.setOptions({
-      headerShown: !isFullscreen,
+      headerShown: true,
       // Android left-aligns header titles by default, which pushes this one against the back
       // arrow; centering matches the iOS layout and keeps it clear of the lesson counter.
       headerTitleAlign: 'center',
@@ -262,7 +233,7 @@ export function CourseScreen({route, navigation}: Props) {
       ),
     });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark, isFullscreen]);
+  }, [selected, showPractice, selectedIndex, lessons.length, lessonsListOpen, isDark]);
 
   async function markComplete() {
     if (!selected) return;
@@ -369,14 +340,12 @@ export function CourseScreen({route, navigation}: Props) {
     const lesson = selected.lesson;
     const hasPractice = lesson.practiceBlocks.length > 0;
     return (
-      <Screen ref={screenRef}>
+      <Screen>
         <OfflineBanner />
         <StaleNote stale={stale} />
         <ScrollView
           ref={scrollViewRef}
           showsVerticalScrollIndicator={false}
-          onScroll={handleLessonScroll}
-          scrollEventThrottle={32}
           contentContainerStyle={{ padding: 20, paddingBottom: 48 }}
           className="flex-1">
           {selectedLessonId === null || !renderedLesson ? (
@@ -503,24 +472,6 @@ export function CourseScreen({route, navigation}: Props) {
             </>
           )}
         </ScrollView>
-        {activeBlockId && lesson.blocks.some(b => b.id === activeBlockId) && (
-          <HlsVideoPlayer
-            blockId={activeBlockId}
-            title={
-              lesson.blocks.find(b => b.id === activeBlockId)?.label ||
-              lesson.blocks.find(b => b.id === activeBlockId)?.fileName ||
-              lesson.title
-            }
-            lessonId={lesson.id}
-            lessonTitle={lesson.title}
-            courseId={courseId}
-            courseTitle={course.title}
-            schoolId={schoolId}
-            watermark
-            autoPlay
-            rect={placeholderRect}
-          />
-        )}
         <Modal
           visible={lessonsListOpen}
           animationType="slide"
