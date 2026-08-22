@@ -4,9 +4,12 @@ import {WifiOff} from 'lucide-react-native';
 import {useSafeAreaInsets} from 'react-native-safe-area-context';
 import {useNetwork} from '../providers/NetworkProvider';
 
-export function Screen({children, className = ''}: {children: React.ReactNode; className?: string}) {
-  return <View className={`flex-1 bg-canvas dark:bg-dark-canvas ${className}`}>{children}</View>;
-}
+export const Screen = React.forwardRef<View, {children: React.ReactNode; className?: string}>(
+  ({children, className = ''}, ref) => (
+    <View ref={ref} className={`flex-1 bg-canvas dark:bg-dark-canvas ${className}`}>{children}</View>
+  ),
+);
+Screen.displayName = 'Screen';
 
 export function Header({title, subtitle}: {title: string; subtitle?: string}) {
   const insets = useSafeAreaInsets();
@@ -63,6 +66,8 @@ export function Loading() {
 }
 
 export function StaleNote({stale}: {stale: boolean}) {
+  const {online} = useNetwork();
+  if (online) return null;
   return stale ? (
     <Text className="px-5 py-2 text-xs text-amber-700 dark:text-amber-500">Oxirgi online holat ko'rsatilmoqda</Text>
   ) : null;

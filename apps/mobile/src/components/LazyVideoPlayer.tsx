@@ -26,21 +26,32 @@ export function LazyVideoPlayer({
   const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
   const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
   const setPlaceholderRect = useActiveVideoStore(s => s.setPlaceholderRect);
+  const screenAnchorRef = useActiveVideoStore(s => s.screenAnchorRef);
   const isActive = activeBlockId === blockId;
   const containerRef = useRef<View>(null);
 
   // Re-measures on every layout pass (not just once on activation) so
   // scrolling the lesson while this video plays inline keeps the real
   // player, which reads this rect from the store, glued to the placeholder.
+  //
+  // Measured against CourseScreen's own root node (screenAnchorRef), not the window --
+  // HlsVideoPlayer is positioned absolutely inside that same root, so a window-relative
+  // rect would be off by however far the native header pushes that root down the screen.
   const reportLayout = useCallback(
     (_e: LayoutChangeEvent) => {
-      containerRef.current?.measureInWindow((x, y, width, height) => {
-        if (width > 0 && height > 0) {
-          setPlaceholderRect({x, y, width, height});
-        }
-      });
+      const anchor = screenAnchorRef?.current;
+      if (!anchor) return;
+      containerRef.current?.measureLayout(
+        anchor,
+        (x, y, width, height) => {
+          if (width > 0 && height > 0) {
+            setPlaceholderRect({x, y, width, height});
+          }
+        },
+        () => {},
+      );
     },
-    [setPlaceholderRect],
+    [setPlaceholderRect, screenAnchorRef],
   );
 
   if (isActive) {

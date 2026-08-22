@@ -72,7 +72,16 @@ export function CourseScreen({route, navigation}: Props) {
   const activeBlockId = useActiveVideoStore(s => s.activeBlockId);
   const placeholderRect = useActiveVideoStore(s => s.placeholderRect);
   const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const setScreenAnchorRef = useActiveVideoStore(s => s.setScreenAnchorRef);
   const scrollViewRef = useRef<ScrollView>(null);
+  const screenRef = useRef<View>(null);
+
+  // HlsVideoPlayer positions itself against this same node (not the window) so its
+  // absolute coordinates are correct regardless of the native header's height.
+  useEffect(() => {
+    setScreenAnchorRef(screenRef);
+    return () => setScreenAnchorRef(null);
+  }, [setScreenAnchorRef]);
 
   const {online} = useNetwork();
   const {colorScheme} = useColorScheme();
@@ -347,7 +356,7 @@ export function CourseScreen({route, navigation}: Props) {
     const lesson = selected.lesson;
     const hasPractice = lesson.practiceBlocks.length > 0;
     return (
-      <Screen>
+      <Screen ref={screenRef}>
         <OfflineBanner />
         <StaleNote stale={stale} />
         <ScrollView

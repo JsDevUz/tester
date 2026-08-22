@@ -234,6 +234,7 @@ export function HlsVideoPlayer({
   const isFullscreen = useActiveVideoStore(s => s.isFullscreen);
   const setIsFullscreen = useActiveVideoStore(s => s.setIsFullscreen);
   const setActiveBlockId = useActiveVideoStore(s => s.setActiveBlockId);
+  const screenAnchorRef = useActiveVideoStore(s => s.screenAnchorRef);
   const wrapperRef = useRef<View>(null);
 
   const [isBuffering, setIsBuffering] = useState(false);
@@ -1229,10 +1230,18 @@ export function HlsVideoPlayer({
 
   useEffect(() => {
     if (isFullscreen) {
+      const anchor = screenAnchorRef?.current;
+      if (anchor) {
+        anchor.measureInWindow((_x, anchorWindowY) => {
+          rectY.value = withTiming(-anchorWindowY, { duration: 220 });
+          rectHeight.value = withTiming(windowHeight, { duration: 220 });
+        });
+      } else {
+        rectY.value = withTiming(0, { duration: 220 });
+        rectHeight.value = withTiming(windowHeight, { duration: 220 });
+      }
       rectX.value = withTiming(0, { duration: 220 });
-      rectY.value = withTiming(0, { duration: 220 });
       rectWidth.value = withTiming(windowWidth, { duration: 220 });
-      rectHeight.value = withTiming(windowHeight, { duration: 220 });
       mountOpacity.value = withTiming(1, { duration: 120 });
       return;
     }
@@ -1243,7 +1252,7 @@ export function HlsVideoPlayer({
     rectHeight.value = withTiming(rect.height, { duration: 220 });
     mountOpacity.value = withTiming(1, { duration: 120 });
     progressTop.value = withTiming(rect.y + rect.height, { duration: 220 });
-  }, [isFullscreen, rect, windowWidth, windowHeight, rectX, rectY, rectWidth, rectHeight, mountOpacity, progressTop]);
+  }, [isFullscreen, rect, windowWidth, windowHeight, screenAnchorRef, rectX, rectY, rectWidth, rectHeight, mountOpacity, progressTop]);
 
   const animatedContainerStyle = useAnimatedStyle(() => ({
     position: 'absolute',
